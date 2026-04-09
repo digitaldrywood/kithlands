@@ -3,11 +3,9 @@
 # Start everything and open the game
 play:
 	@echo "Starting Kithlands..."
-	@docker compose up -d postgres
-	@echo "Waiting for Postgres..."
-	@until docker compose exec -T postgres pg_isready -q 2>/dev/null; do sleep 0.5; done
-	@docker compose exec -T postgres psql -U kithlands -d kithlands -f /dev/stdin < server/internal/db/migrations/001_initial.sql 2>/dev/null || true
-	@docker compose exec -T postgres psql -U kithlands -d kithlands -f /dev/stdin < server/internal/db/migrations/002_localities.sql 2>/dev/null || true
+	@echo "Running migrations..."
+	@psql -d kithlands -f server/internal/db/migrations/001_initial.sql 2>/dev/null || true
+	@psql -d kithlands -f server/internal/db/migrations/002_localities.sql 2>/dev/null || true
 	@echo "Starting Go server..."
 	@cd server && go run ./cmd/kithlands &
 	@sleep 2
@@ -27,7 +25,6 @@ stop:
 	@-pkill -f "go run ./cmd/kithlands" 2>/dev/null || true
 	@-pkill -f "cmd/kithlands" 2>/dev/null || true
 	@-pkill -f "vite" 2>/dev/null || true
-	@docker compose down 2>/dev/null || true
 	@echo "Stopped."
 
 run:
@@ -48,8 +45,8 @@ vet:
 lint: vet
 
 migrate:
-	docker compose exec -T postgres psql -U kithlands -d kithlands -f /dev/stdin < server/internal/db/migrations/001_initial.sql
-	docker compose exec -T postgres psql -U kithlands -d kithlands -f /dev/stdin < server/internal/db/migrations/002_localities.sql
+	psql -d kithlands -f server/internal/db/migrations/001_initial.sql
+	psql -d kithlands -f server/internal/db/migrations/002_localities.sql
 
 balance-sim:
 	cd server && go run ./cmd/balance_sim

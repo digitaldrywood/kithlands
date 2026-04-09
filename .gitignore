@@ -1,6 +1,7 @@
 # Environment
 .env
 .env.*
+.envrc
 
 # Go
 server/kithlands
