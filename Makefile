@@ -19,7 +19,7 @@ migrate:
 	@echo "psql \$$DATABASE_URL -f server/internal/db/migrations/001_initial.sql"
 
 balance-sim:
-	cd server && go run ../scripts/balance_sim.go
+	cd server && go run ./cmd/balance_sim
 
 client-dev:
 	cd client && npm run dev
