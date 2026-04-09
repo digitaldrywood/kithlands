@@ -222,7 +222,11 @@ func runWizard() *locality.Locality {
 		townName = "Cadott, WI"
 	}
 
-	fmt.Println("\nName 5 people you know (or press Enter for defaults):")
+	fmt.Println("\nName 5 people from your town. These become NPCs in the game --")
+	fmt.Println("neighbors, shopkeepers, quest-givers, or even the villain.")
+	fmt.Println("They are NOT your party (you pick your party next).")
+	fmt.Println("Mark each as friendly, neutral, or rival to shape their role.")
+	fmt.Println()
 	var people []locality.WizardPerson
 	defaults := []locality.WizardPerson{
 		{Name: "Bob", Relation: "friendly", Personality: "Hardware store owner"},
@@ -233,11 +237,11 @@ func runWizard() *locality.Locality {
 	}
 
 	for i := 0; i < 5; i++ {
-		name := prompt(fmt.Sprintf("  Person %d (name, or Enter for '%s'): ", i+1, defaults[i].Name))
+		name := prompt(fmt.Sprintf("  NPC %d (name, or Enter for '%s'): ", i+1, defaults[i].Name))
 		if name == "" {
 			people = append(people, defaults[i])
 		} else {
-			rel := prompt("    Friendly/Neutral/Rival? [f/n/r]: ")
+			rel := prompt("    Are they friendly, neutral, or a rival? [f/n/r]: ")
 			relation := "friendly"
 			if strings.HasPrefix(strings.ToLower(rel), "n") {
 				relation = "neutral"
@@ -248,7 +252,7 @@ func runWizard() *locality.Locality {
 		}
 	}
 
-	fmt.Println("\nName 3 places that matter to you (or Enter for defaults):")
+	fmt.Println("\nName 3 places that matter in your town (or Enter for defaults):")
 	defaultPlaces := []string{"The School", "Creswood Corners", "Fire Hall"}
 	var places []string
 	for i := 0; i < 3; i++ {
