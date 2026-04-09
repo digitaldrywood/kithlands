@@ -57,7 +57,10 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("kithlands server listening on :%s", cfg.Port)
+		if cfg.TailscaleHostname != "" {
+			log.Printf("network access: http://%s:%s", cfg.TailscaleHostname, cfg.Port)
+		}
+		log.Printf("kithlands server listening on http://localhost:%s", cfg.Port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("server error: %v", err)
 		}
