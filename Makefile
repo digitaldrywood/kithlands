@@ -1,31 +1,38 @@
 .PHONY: play stop run test build demo migrate balance-sim client-dev client-build lint vet docker-up docker-down
 
 # Start everything and open the game
-play:
+play: stop
 	@echo "Starting Kithlands..."
 	@echo "Running migrations..."
 	@psql -d kithlands -f server/internal/db/migrations/001_initial.sql 2>/dev/null || true
 	@psql -d kithlands -f server/internal/db/migrations/002_localities.sql 2>/dev/null || true
-	@echo "Starting Go server..."
-	@cd server && go run ./cmd/kithlands &
+	@echo "Starting Go server (port $${PORT:-8080})..."
+	@cd server && go run ./cmd/kithlands > /tmp/kithlands-server.log 2>&1 &
 	@sleep 2
 	@echo "Starting Phaser client..."
-	@cd client && npm run dev &
+	@cd client && npx vite --host 0.0.0.0 > /tmp/kithlands-client.log 2>&1 &
 	@sleep 2
 	@echo ""
 	@echo "========================================="
 	@echo "  KITHLANDS is running!"
-	@echo "  Open http://localhost:3000"
-	@echo "  Run 'make stop' to shut it down."
+	@echo ""
+	@echo "  Game:   http://localhost:3000"
+	@if [ -n "$${TAILSCALE_HOSTNAME}" ]; then echo "  Network: http://$${TAILSCALE_HOSTNAME}:3000"; fi
+	@echo ""
+	@echo "  API:    http://localhost:$${PORT:-8080}"
+	@if [ -n "$${TAILSCALE_HOSTNAME}" ]; then echo "  API:    http://$${TAILSCALE_HOSTNAME}:$${PORT:-8080}"; fi
+	@echo ""
+	@echo "  Logs:   /tmp/kithlands-server.log"
+	@echo "          /tmp/kithlands-client.log"
+	@echo "  Stop:   make stop"
 	@echo "========================================="
 
 # Stop everything
 stop:
-	@echo "Stopping Kithlands..."
 	@-pkill -f "go run ./cmd/kithlands" 2>/dev/null || true
-	@-pkill -f "cmd/kithlands" 2>/dev/null || true
-	@-pkill -f "vite" 2>/dev/null || true
-	@echo "Stopped."
+	@-pkill -f "go-build.*kithlands" 2>/dev/null || true
+	@-pkill -f "vite.*kithlands" 2>/dev/null || true
+	@-pkill -f "node.*vite.*client" 2>/dev/null || true
 
 run:
 	cd server && go run ./cmd/kithlands
