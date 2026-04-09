@@ -1,0 +1,29 @@
+# Environment
+.env
+.env.*
+
+# Go
+server/kithlands
+*.exe
+
+# Node
+client/node_modules/
+client/dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+pgdata/
+
+# Build
+*.out
+coverage.txt
