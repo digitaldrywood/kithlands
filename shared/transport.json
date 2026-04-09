@@ -1,1 +1,16 @@
-{}
+{
+  "tiers": [
+    { "id": "T1", "name": "Foot", "range_edges": 2, "unlock": "start", "encounter_rate_mult": 1.0 },
+    { "id": "T2", "name": "Personal", "range_edges": 4, "unlock": "act1_complete", "encounter_rate_mult": 0.75 },
+    { "id": "T3", "name": "Water", "range_edges": 6, "unlock": "act2_midpoint", "encounter_rate_mult": 0.5 },
+    { "id": "T4", "name": "Vehicle", "range_edges": 8, "unlock": "promotion_event", "encounter_rate_mult": 0.25 },
+    { "id": "T5", "name": "Sky", "range_edges": 999, "unlock": "act3_midpoint", "encounter_rate_mult": 0.0 }
+  ],
+  "conquest_skins": {
+    "T1": { "name": "On foot", "sprite": "foot" },
+    "T2": { "name": "Horse", "sprite": "horse" },
+    "T3": { "name": "Sailing Ship", "sprite": "ship" },
+    "T4": { "name": "War Galleon", "sprite": "galleon" },
+    "T5": { "name": "Airship", "sprite": "airship" }
+  }
+}

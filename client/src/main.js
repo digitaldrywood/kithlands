@@ -1,33 +1,23 @@
 import Phaser from 'phaser';
+import { TitleScene } from './scenes/title.js';
+import { WizardScene } from './scenes/wizard.js';
+import { WorldScene } from './scenes/world.js';
+import { BattleScene } from './scenes/battle.js';
 
 const config = {
   type: Phaser.AUTO,
   parent: 'game',
-  width: 256,
-  height: 240,
-  pixelArt: true,
+  width: 800,
+  height: 600,
+  backgroundColor: '#111111',
+  dom: {
+    createContainer: true,
+  },
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: {
-    preload() {
-      // Assets loaded here in future phases
-    },
-    create() {
-      this.add.text(128, 100, 'KITHLANDS', {
-        fontSize: '16px',
-        color: '#ffffff',
-        fontFamily: 'monospace',
-      }).setOrigin(0.5);
-
-      this.add.text(128, 140, 'Your town. Your people. Your saga.', {
-        fontSize: '8px',
-        color: '#aaaaaa',
-        fontFamily: 'monospace',
-      }).setOrigin(0.5);
-    },
-  },
+  scene: [TitleScene, WizardScene, WorldScene, BattleScene],
 };
 
 new Phaser.Game(config);
