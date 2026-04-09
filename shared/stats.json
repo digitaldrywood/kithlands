@@ -1,1 +1,57 @@
-{}
+{
+  "core_stats": [
+    { "id": "str", "name": "Strength",  "description": "Physical damage, carry capacity" },
+    { "id": "agi", "name": "Agility",   "description": "Turn order, evasion (+2 evade per AGI), accuracy (+1 hit% per AGI)" },
+    { "id": "int", "name": "Intellect", "description": "Magic damage, magic accuracy" },
+    { "id": "vit", "name": "Vitality",  "description": "Max HP gains, status resistance" },
+    { "id": "lck", "name": "Luck",      "description": "Critical hit chance, flee chance, treasure rolls" },
+    { "id": "hit_pct", "name": "Hit %",  "description": "Accuracy, extra attack every 32 HIT" }
+  ],
+  "xp_curve": {
+    "formula": "floor(40 * level^1.6) + 30",
+    "coefficient": 40,
+    "exponent": 1.6,
+    "constant": 30,
+    "max_level": 50,
+    "reference_table": {
+      "1": 70,
+      "2": 151,
+      "5": 487,
+      "10": 1624,
+      "15": 3260,
+      "20": 5403,
+      "25": 8054,
+      "30": 11210,
+      "40": 19016,
+      "50": 28837
+    }
+  },
+  "derived_stats": {
+    "evade": { "formula": "agi * 2", "description": "Evasion value, subtracted from attacker hit chance" },
+    "magic_defense": { "formula": "(vit + int) / 2", "description": "Reduces incoming magic damage" },
+    "crit_chance": { "formula": "lck / 4", "description": "Percentage chance of critical hit (d100)" },
+    "attacks_per_turn": { "formula": "1 + floor(hit_pct / 32)", "description": "Number of hits per physical attack" }
+  },
+  "level_up": {
+    "stat_gain_method": "Each stat rolls against class growth chance (X/8). Roll d8; if roll <= growth, stat gains +1.",
+    "hp_gain": {
+      "formula": "base_hp[class] + (vit > rand(0,32) ? strong_bonus : 0)",
+      "strong_bonus": 20,
+      "description": "Base HP from class + probabilistic VIT bonus. Strong levels get the bonus guaranteed."
+    }
+  },
+  "hit_pct_per_level": {
+    "warrior": 3,
+    "brawler": 3,
+    "rogue": 3,
+    "mender": 1,
+    "cinder": 1,
+    "wayfarer": 2
+  },
+  "combat": {
+    "base_hit_chance": 84,
+    "crit_multiplier": 2,
+    "min_damage_per_hit": 1,
+    "enemy_targeting_weights": [50, 25, 12.5, 12.5]
+  }
+}

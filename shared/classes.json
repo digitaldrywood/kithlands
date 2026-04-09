@@ -1,1 +1,252 @@
-[]
+[
+  {
+    "id": "warrior",
+    "name": "Warrior",
+    "role": "Front-line tank",
+    "promotes_to": "knight",
+    "promoted_name": "Knight",
+    "starting_stats": {
+      "str": 20,
+      "agi": 5,
+      "int": 1,
+      "vit": 10,
+      "lck": 5,
+      "mhp": 35,
+      "hit_pct": 10
+    },
+    "stat_growth_eighths": {
+      "str": 8,
+      "agi": 6,
+      "int": 4,
+      "vit": 5,
+      "lck": 6
+    },
+    "hp_per_level": 25,
+    "strong_level_rate_pct": 50,
+    "strong_level_bonus_hp": 20,
+    "equipment": {
+      "weapons": ["sword", "axe", "hammer", "dagger", "bow", "staff"],
+      "armor": ["robe", "leather", "chain", "plate"],
+      "shields": true,
+      "helmets": ["cap", "helm", "great_helm"]
+    },
+    "magic": {
+      "schools": [],
+      "max_spell_level": 0,
+      "promoted_schools": ["white"],
+      "promoted_max_spell_level": 3
+    },
+    "abilities": [],
+    "description": "High HP, heavy armor, best weapons, no magic."
+  },
+  {
+    "id": "brawler",
+    "name": "Brawler",
+    "role": "Glass-cannon striker",
+    "promotes_to": "champion",
+    "promoted_name": "Champion",
+    "starting_stats": {
+      "str": 5,
+      "agi": 5,
+      "int": 5,
+      "vit": 20,
+      "lck": 5,
+      "mhp": 33,
+      "hit_pct": 5
+    },
+    "stat_growth_eighths": {
+      "str": 5,
+      "agi": 5,
+      "int": 5,
+      "vit": 8,
+      "lck": 5
+    },
+    "hp_per_level": 22,
+    "strong_level_rate_pct": 40,
+    "strong_level_bonus_hp": 20,
+    "equipment": {
+      "weapons": [],
+      "armor": [],
+      "shields": false,
+      "helmets": []
+    },
+    "magic": {
+      "schools": [],
+      "max_spell_level": 0,
+      "promoted_schools": [],
+      "promoted_max_spell_level": 0
+    },
+    "abilities": ["focus", "counter"],
+    "bare_hand": {
+      "base_damage": 5,
+      "level_scaling_formula": "str_div_2_per_level"
+    },
+    "description": "No weapons, no armor, but late-game devastation."
+  },
+  {
+    "id": "rogue",
+    "name": "Rogue",
+    "role": "Fast utility",
+    "promotes_to": "shadow",
+    "promoted_name": "Shadow",
+    "starting_stats": {
+      "str": 5,
+      "agi": 10,
+      "int": 5,
+      "vit": 5,
+      "lck": 15,
+      "mhp": 30,
+      "hit_pct": 10
+    },
+    "stat_growth_eighths": {
+      "str": 7,
+      "agi": 6,
+      "int": 4,
+      "vit": 4,
+      "lck": 8
+    },
+    "hp_per_level": 18,
+    "strong_level_rate_pct": 35,
+    "strong_level_bonus_hp": 20,
+    "equipment": {
+      "weapons": ["dagger", "bow"],
+      "armor": ["robe", "leather"],
+      "shields": false,
+      "helmets": ["cap"]
+    },
+    "magic": {
+      "schools": [],
+      "max_spell_level": 0,
+      "promoted_schools": ["black"],
+      "promoted_max_spell_level": 2
+    },
+    "abilities": ["steal", "backstab"],
+    "special": {
+      "lockpicking": true,
+      "trap_detection": true,
+      "flee_bonus": true,
+      "loot_bonus": true
+    },
+    "description": "High evasion, multi-hit, lockpicks, scouts."
+  },
+  {
+    "id": "mender",
+    "name": "Mender",
+    "role": "Healer / support",
+    "promotes_to": "sage",
+    "promoted_name": "Sage",
+    "starting_stats": {
+      "str": 5,
+      "agi": 5,
+      "int": 5,
+      "vit": 10,
+      "lck": 10,
+      "mhp": 28,
+      "hit_pct": 5
+    },
+    "stat_growth_eighths": {
+      "str": 4,
+      "agi": 4,
+      "int": 5,
+      "vit": 4,
+      "lck": 5
+    },
+    "hp_per_level": 16,
+    "strong_level_rate_pct": 30,
+    "strong_level_bonus_hp": 20,
+    "equipment": {
+      "weapons": ["hammer", "staff"],
+      "armor": ["robe"],
+      "shields": true,
+      "helmets": ["cap"]
+    },
+    "magic": {
+      "schools": ["white"],
+      "max_spell_level": 6,
+      "promoted_schools": ["white"],
+      "promoted_max_spell_level": 8
+    },
+    "abilities": [],
+    "description": "White magic. Keeps the party alive."
+  },
+  {
+    "id": "cinder",
+    "name": "Cinder",
+    "role": "Damage caster",
+    "promotes_to": "pyromancer",
+    "promoted_name": "Pyromancer",
+    "starting_stats": {
+      "str": 1,
+      "agi": 10,
+      "int": 20,
+      "vit": 1,
+      "lck": 5,
+      "mhp": 25,
+      "hit_pct": 5
+    },
+    "stat_growth_eighths": {
+      "str": 4,
+      "agi": 3,
+      "int": 8,
+      "vit": 4,
+      "lck": 5
+    },
+    "hp_per_level": 14,
+    "strong_level_rate_pct": 25,
+    "strong_level_bonus_hp": 20,
+    "equipment": {
+      "weapons": ["dagger", "staff"],
+      "armor": ["robe"],
+      "shields": false,
+      "helmets": ["cap"]
+    },
+    "magic": {
+      "schools": ["black"],
+      "max_spell_level": 6,
+      "promoted_schools": ["black"],
+      "promoted_max_spell_level": 8
+    },
+    "abilities": [],
+    "description": "Black magic. AoE damage and elemental nukes."
+  },
+  {
+    "id": "wayfarer",
+    "name": "Wayfarer",
+    "role": "Jack-of-all-trades",
+    "promotes_to": "wanderer",
+    "promoted_name": "Wanderer",
+    "starting_stats": {
+      "str": 10,
+      "agi": 10,
+      "int": 10,
+      "vit": 5,
+      "lck": 5,
+      "mhp": 30,
+      "hit_pct": 7
+    },
+    "stat_growth_eighths": {
+      "str": 5,
+      "agi": 5,
+      "int": 5,
+      "vit": 5,
+      "lck": 5
+    },
+    "hp_per_level": 19,
+    "strong_level_rate_pct": 25,
+    "strong_level_bonus_hp": 20,
+    "equipment": {
+      "weapons": ["sword", "axe", "dagger", "bow", "hammer", "staff"],
+      "armor": ["robe", "leather", "chain"],
+      "shields": false,
+      "helmets": ["cap", "helm"]
+    },
+    "magic": {
+      "schools": ["white", "black"],
+      "max_spell_level": 4,
+      "promoted_schools": ["white", "black"],
+      "promoted_max_spell_level": 5
+    },
+    "abilities": ["inspire"],
+    "description": "A little fighting, a little magic, never the best at anything."
+  }
+]
