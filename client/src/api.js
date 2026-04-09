@@ -12,44 +12,45 @@ function headers() {
   return h;
 }
 
+async function apiCall(method, path, body) {
+  const url = `${BASE_URL}${path}`;
+  console.log(`[API] ${method} ${path}`, body || '');
+
+  const opts = { method, headers: headers() };
+  if (body) opts.body = JSON.stringify(body);
+
+  const res = await fetch(url, opts);
+  const data = await res.json();
+
+  if (data.error) {
+    console.error(`[API] ${path} error:`, data.error);
+  } else {
+    console.log(`[API] ${path} ok`, data.phase || '');
+  }
+
+  return data;
+}
+
 export async function login(email) {
-  const res = await fetch(`${BASE_URL}/auth/login`, {
-    method: 'POST',
-    headers: headers(),
-    body: JSON.stringify({ email }),
-  });
-  return res.json();
+  return apiCall('POST', '/auth/login', { email });
 }
 
 export async function getClasses() {
-  const res = await fetch(`${BASE_URL}/data/classes`);
-  return res.json();
+  return apiCall('GET', '/data/classes');
 }
 
 export async function newGame(data) {
-  const res = await fetch(`${BASE_URL}/game/new`, {
-    method: 'POST',
-    headers: headers(),
-    body: JSON.stringify(data),
-  });
-  return res.json();
+  return apiCall('POST', '/game/new', data);
 }
 
 export async function getGame(id) {
-  const res = await fetch(`${BASE_URL}/game/${id}`, { headers: headers() });
-  return res.json();
+  return apiCall('GET', `/game/${id}`);
 }
 
 export async function gameAction(gameId, action) {
-  const res = await fetch(`${BASE_URL}/game/${gameId}/action`, {
-    method: 'POST',
-    headers: headers(),
-    body: JSON.stringify(action),
-  });
-  return res.json();
+  return apiCall('POST', `/game/${gameId}/action`, action);
 }
 
 export async function healthCheck() {
-  const res = await fetch(`${BASE_URL}/health`);
-  return res.json();
+  return apiCall('GET', '/health');
 }
