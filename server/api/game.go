@@ -64,7 +64,8 @@ type GameState struct {
 	Potions   int                 `json:"potions"`
 	Location  string              `json:"location"`
 	Message   string              `json:"message,omitempty"`
-	CombatLog []string            `json:"combat_log,omitempty"`
+	CombatLog []string              `json:"combat_log,omitempty"`
+	TileMap   *locality.TileMap    `json:"tilemap,omitempty"`
 }
 
 type PartyMemberState struct {
@@ -110,6 +111,7 @@ type Game struct {
 	rng        *rand.Rand
 	loc        *locality.Locality
 	walk       *locality.WalkResult
+	tileMap    *locality.TileMap
 	party      []*character.Character
 	spellBooks map[string]*magic.SpellBook
 	inv        *inventory.Inventory
@@ -139,6 +141,7 @@ func (g *Game) State() GameState {
 
 	if g.loc != nil {
 		state.Location = g.loc.Name
+		state.TileMap = g.tileMap
 	}
 
 	for _, c := range g.party {
@@ -748,6 +751,7 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 	// Generate campaign
 	quests := generator.GenerateCampaign(loc, loc.Nodes[0].ID, rng)
 	walk := locality.Walk(loc, loc.Nodes[0].ID)
+	tileMap := locality.GenerateTileMap(loc, loc.Nodes[0].ID)
 
 	game := &Game{
 		id:         fmt.Sprintf("game_%d", time.Now().UnixNano()),
@@ -755,6 +759,7 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 		rng:        rng,
 		loc:        loc,
 		walk:       walk,
+		tileMap:    tileMap,
 		party:      party,
 		spellBooks: spellBooks,
 		inv:        inv,
