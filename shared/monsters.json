@@ -1,1 +1,135 @@
-[]
+[
+  {
+    "id": "slime",
+    "name": "Slime",
+    "tier": 1,
+    "stats": {
+      "str": 4,
+      "agi": 1,
+      "int": 1,
+      "vit": 3,
+      "lck": 1,
+      "hit_pct": 1
+    },
+    "hp": 12,
+    "armor_absorb": 0,
+    "xp_reward": 6,
+    "gold_reward": 5,
+    "weaknesses": ["fire"],
+    "resistances": [],
+    "absorbs": [],
+    "drops": [
+      { "item_id": "potion", "chance_pct": 15 }
+    ],
+    "encounter_weight": 30,
+    "min_group": 1,
+    "max_group": 4
+  },
+  {
+    "id": "goblin",
+    "name": "Goblin",
+    "tier": 1,
+    "stats": {
+      "str": 8,
+      "agi": 4,
+      "int": 1,
+      "vit": 4,
+      "lck": 3,
+      "hit_pct": 5
+    },
+    "hp": 20,
+    "armor_absorb": 2,
+    "xp_reward": 12,
+    "gold_reward": 10,
+    "weaknesses": [],
+    "resistances": [],
+    "absorbs": [],
+    "drops": [
+      { "item_id": "potion", "chance_pct": 10 },
+      { "item_id": "rusty_dagger", "chance_pct": 5 }
+    ],
+    "encounter_weight": 25,
+    "min_group": 1,
+    "max_group": 3
+  },
+  {
+    "id": "wolf",
+    "name": "Wolf",
+    "tier": 2,
+    "stats": {
+      "str": 14,
+      "agi": 10,
+      "int": 1,
+      "vit": 6,
+      "lck": 5,
+      "hit_pct": 10
+    },
+    "hp": 35,
+    "armor_absorb": 3,
+    "xp_reward": 30,
+    "gold_reward": 15,
+    "weaknesses": ["fire"],
+    "resistances": ["ice"],
+    "absorbs": [],
+    "drops": [
+      { "item_id": "antidote", "chance_pct": 20 }
+    ],
+    "encounter_weight": 20,
+    "min_group": 1,
+    "max_group": 3
+  },
+  {
+    "id": "skeleton",
+    "name": "Skeleton",
+    "tier": 2,
+    "stats": {
+      "str": 18,
+      "agi": 6,
+      "int": 3,
+      "vit": 8,
+      "lck": 2,
+      "hit_pct": 8
+    },
+    "hp": 50,
+    "armor_absorb": 8,
+    "xp_reward": 50,
+    "gold_reward": 25,
+    "weaknesses": ["fire", "holy"],
+    "resistances": ["ice", "dark"],
+    "absorbs": [],
+    "drops": [
+      { "item_id": "potion", "chance_pct": 15 },
+      { "item_id": "iron_sword", "chance_pct": 3 }
+    ],
+    "encounter_weight": 15,
+    "min_group": 1,
+    "max_group": 2
+  },
+  {
+    "id": "dark_knight",
+    "name": "Dark Knight",
+    "tier": 3,
+    "is_boss": true,
+    "stats": {
+      "str": 35,
+      "agi": 12,
+      "int": 10,
+      "vit": 20,
+      "lck": 8,
+      "hit_pct": 25
+    },
+    "hp": 300,
+    "armor_absorb": 15,
+    "xp_reward": 500,
+    "gold_reward": 300,
+    "weaknesses": ["holy"],
+    "resistances": ["dark", "ice"],
+    "absorbs": [],
+    "drops": [
+      { "item_id": "steel_sword", "chance_pct": 100 }
+    ],
+    "encounter_weight": 0,
+    "min_group": 1,
+    "max_group": 1
+  }
+]

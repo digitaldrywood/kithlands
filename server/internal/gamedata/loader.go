@@ -9,10 +9,17 @@ import (
 
 // GameData holds all loaded game data from shared/.
 type GameData struct {
-	Classes []Class
-	Stats   StatsConfig
+	Classes  []Class
+	Stats    StatsConfig
+	Items    ItemsData
+	Spells   SpellsData
+	Monsters []Monster
 
-	classByID map[string]*Class
+	classByID   map[string]*Class
+	weaponByID  map[string]*Weapon
+	armorByID   map[string]*Armor
+	spellByID   map[string]*Spell
+	monsterByID map[string]*Monster
 }
 
 // Load reads and validates all game data from the shared directory.
@@ -24,6 +31,9 @@ func Load(sharedDir string) *GameData {
 
 	gd.Classes = loadJSON[[]Class](sharedDir, "classes.json")
 	gd.Stats = loadJSON[StatsConfig](sharedDir, "stats.json")
+	gd.Items = loadJSON[ItemsData](sharedDir, "items.json")
+	gd.Spells = loadJSON[SpellsData](sharedDir, "spells.json")
+	gd.Monsters = loadJSON[[]Monster](sharedDir, "monsters.json")
 
 	gd.buildIndexes()
 	gd.validate()
@@ -31,15 +41,36 @@ func Load(sharedDir string) *GameData {
 	return gd
 }
 
-// ClassByID returns a class by its ID, or nil if not found.
-func (gd *GameData) ClassByID(id string) *Class {
-	return gd.classByID[id]
-}
+func (gd *GameData) ClassByID(id string) *Class       { return gd.classByID[id] }
+func (gd *GameData) WeaponByID(id string) *Weapon     { return gd.weaponByID[id] }
+func (gd *GameData) ArmorByID(id string) *Armor       { return gd.armorByID[id] }
+func (gd *GameData) SpellByID(id string) *Spell       { return gd.spellByID[id] }
+func (gd *GameData) MonsterByID(id string) *Monster    { return gd.monsterByID[id] }
 
 func (gd *GameData) buildIndexes() {
 	gd.classByID = make(map[string]*Class, len(gd.Classes))
 	for i := range gd.Classes {
 		gd.classByID[gd.Classes[i].ID] = &gd.Classes[i]
+	}
+
+	gd.weaponByID = make(map[string]*Weapon, len(gd.Items.Weapons))
+	for i := range gd.Items.Weapons {
+		gd.weaponByID[gd.Items.Weapons[i].ID] = &gd.Items.Weapons[i]
+	}
+
+	gd.armorByID = make(map[string]*Armor, len(gd.Items.Armor))
+	for i := range gd.Items.Armor {
+		gd.armorByID[gd.Items.Armor[i].ID] = &gd.Items.Armor[i]
+	}
+
+	gd.spellByID = make(map[string]*Spell, len(gd.Spells.Spells))
+	for i := range gd.Spells.Spells {
+		gd.spellByID[gd.Spells.Spells[i].ID] = &gd.Spells.Spells[i]
+	}
+
+	gd.monsterByID = make(map[string]*Monster, len(gd.Monsters))
+	for i := range gd.Monsters {
+		gd.monsterByID[gd.Monsters[i].ID] = &gd.Monsters[i]
 	}
 }
 
@@ -76,6 +107,33 @@ func (gd *GameData) validate() {
 	}
 	if gd.Stats.Combat.MinDamagePerHit <= 0 {
 		panic("gamedata: stats.json combat.min_damage_per_hit must be > 0")
+	}
+
+	for _, w := range gd.Items.Weapons {
+		if w.ID == "" {
+			panic("gamedata: weapon with empty id")
+		}
+		if w.Power < 0 {
+			panic(fmt.Sprintf("gamedata: weapon %q has negative power", w.ID))
+		}
+	}
+
+	for _, s := range gd.Spells.Spells {
+		if s.ID == "" {
+			panic("gamedata: spell with empty id")
+		}
+		if s.SpellLevel < 1 || s.SpellLevel > 8 {
+			panic(fmt.Sprintf("gamedata: spell %q has invalid spell_level: %d", s.ID, s.SpellLevel))
+		}
+	}
+
+	for _, m := range gd.Monsters {
+		if m.ID == "" {
+			panic("gamedata: monster with empty id")
+		}
+		if m.HP <= 0 {
+			panic(fmt.Sprintf("gamedata: monster %q has invalid hp: %d", m.ID, m.HP))
+		}
 	}
 }
 

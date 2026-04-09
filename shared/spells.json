@@ -1,1 +1,157 @@
-[]
+{
+  "charge_table": {
+    "description": "Spell charges per spell level by character level, per Section 8.1",
+    "table": {
+      "1":  [2, 0, 0, 0, 0, 0, 0, 0],
+      "3":  [3, 2, 0, 0, 0, 0, 0, 0],
+      "5":  [4, 3, 2, 0, 0, 0, 0, 0],
+      "8":  [5, 4, 3, 2, 0, 0, 0, 0],
+      "12": [6, 5, 4, 3, 2, 0, 0, 0],
+      "16": [7, 6, 5, 4, 3, 2, 0, 0],
+      "20": [8, 7, 6, 5, 4, 3, 2, 0],
+      "25": [9, 8, 7, 6, 5, 4, 3, 2],
+      "30": [9, 9, 9, 9, 9, 9, 9, 9]
+    },
+    "max_spells_per_level": 3
+  },
+  "spells": [
+    {
+      "id": "spark",
+      "name": "Spark",
+      "school": "black",
+      "spell_level": 1,
+      "target": "single_enemy",
+      "effect": "damage",
+      "element": "fire",
+      "power": 10,
+      "description": "Small fire damage to one enemy"
+    },
+    {
+      "id": "frost",
+      "name": "Frost",
+      "school": "black",
+      "spell_level": 1,
+      "target": "single_enemy",
+      "effect": "damage",
+      "element": "ice",
+      "power": 10,
+      "description": "Small ice damage to one enemy"
+    },
+    {
+      "id": "sleep",
+      "name": "Sleep",
+      "school": "black",
+      "spell_level": 1,
+      "target": "single_enemy",
+      "effect": "status",
+      "element": "none",
+      "power": 0,
+      "status_effect": "sleep",
+      "hit_chance": 60,
+      "description": "Puts one enemy to sleep"
+    },
+    {
+      "id": "ember",
+      "name": "Ember",
+      "school": "black",
+      "spell_level": 2,
+      "target": "all_enemies",
+      "effect": "damage",
+      "element": "fire",
+      "power": 12,
+      "description": "Small fire damage to all enemies"
+    },
+    {
+      "id": "chill",
+      "name": "Chill",
+      "school": "black",
+      "spell_level": 2,
+      "target": "all_enemies",
+      "effect": "damage",
+      "element": "ice",
+      "power": 12,
+      "description": "Small ice damage to all enemies"
+    },
+    {
+      "id": "shock",
+      "name": "Shock",
+      "school": "black",
+      "spell_level": 2,
+      "target": "single_enemy",
+      "effect": "damage",
+      "element": "lightning",
+      "power": 16,
+      "description": "Small lightning damage to one enemy"
+    },
+    {
+      "id": "cure",
+      "name": "Cure",
+      "school": "white",
+      "spell_level": 1,
+      "target": "single_ally",
+      "effect": "heal",
+      "element": "none",
+      "power": 16,
+      "description": "Restore ~16 HP to one ally"
+    },
+    {
+      "id": "light",
+      "name": "Light",
+      "school": "white",
+      "spell_level": 1,
+      "target": "party",
+      "effect": "utility",
+      "element": "none",
+      "power": 0,
+      "description": "Illuminates dark dungeons"
+    },
+    {
+      "id": "bless",
+      "name": "Bless",
+      "school": "white",
+      "spell_level": 1,
+      "target": "single_ally",
+      "effect": "buff",
+      "element": "none",
+      "power": 10,
+      "buff_stat": "hit_pct",
+      "description": "+10% hit% to one ally for combat"
+    },
+    {
+      "id": "heal",
+      "name": "Heal",
+      "school": "white",
+      "spell_level": 2,
+      "target": "all_allies",
+      "effect": "heal",
+      "element": "none",
+      "power": 16,
+      "description": "Restore ~16 HP to all allies"
+    },
+    {
+      "id": "mute",
+      "name": "Mute",
+      "school": "white",
+      "spell_level": 2,
+      "target": "single_enemy",
+      "effect": "status",
+      "element": "none",
+      "power": 0,
+      "status_effect": "silence",
+      "hit_chance": 50,
+      "description": "Silences one enemy"
+    },
+    {
+      "id": "cure_poison",
+      "name": "Cure Poison",
+      "school": "white",
+      "spell_level": 2,
+      "target": "single_ally",
+      "effect": "cure_status",
+      "element": "none",
+      "power": 0,
+      "cures_status": "poison",
+      "description": "Removes poison from one ally"
+    }
+  ]
+}

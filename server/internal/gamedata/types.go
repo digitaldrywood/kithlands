@@ -98,8 +98,142 @@ type HPGainConfig struct {
 }
 
 type CombatConfig struct {
-	BaseHitChance        int       `json:"base_hit_chance"`
-	CritMultiplier       int       `json:"crit_multiplier"`
-	MinDamagePerHit      int       `json:"min_damage_per_hit"`
-	EnemyTargetWeights   []float64 `json:"enemy_targeting_weights"`
+	BaseHitChance      int       `json:"base_hit_chance"`
+	CritMultiplier     int       `json:"crit_multiplier"`
+	MinDamagePerHit    int       `json:"min_damage_per_hit"`
+	EnemyTargetWeights []float64 `json:"enemy_targeting_weights"`
+}
+
+// Items
+
+type ItemsData struct {
+	Weapons     []Weapon     `json:"weapons"`
+	Armor       []Armor      `json:"armor"`
+	Shields     []Shield     `json:"shields"`
+	Helmets     []Helmet     `json:"helmets"`
+	Consumables []Consumable `json:"consumables"`
+}
+
+type Weapon struct {
+	ID        string   `json:"id"`
+	Name      string   `json:"name"`
+	Type      string   `json:"type"`
+	Tier      int      `json:"tier"`
+	Power     int      `json:"power"`
+	HitPct    int      `json:"hit_pct"`
+	CritPct   int      `json:"crit_pct"`
+	Element   string   `json:"element"`
+	Classes   []string `json:"classes"`
+	Special   string   `json:"special"`
+	BuyPrice  int      `json:"buy_price"`
+	SellPrice int      `json:"sell_price"`
+}
+
+type Armor struct {
+	ID            string   `json:"id"`
+	Name          string   `json:"name"`
+	Type          string   `json:"type"`
+	Tier          int      `json:"tier"`
+	Absorb        int      `json:"absorb"`
+	EvadePenalty  int      `json:"evade_penalty"`
+	MagicDefense  int      `json:"magic_defense"`
+	Classes       []string `json:"classes"`
+	ElementResist string   `json:"element_resist"`
+	BuyPrice      int      `json:"buy_price"`
+	SellPrice     int      `json:"sell_price"`
+}
+
+type Shield struct {
+	ID           string   `json:"id"`
+	Name         string   `json:"name"`
+	Tier         int      `json:"tier"`
+	Absorb       int      `json:"absorb"`
+	EvadePenalty int      `json:"evade_penalty"`
+	Classes      []string `json:"classes"`
+	BuyPrice     int      `json:"buy_price"`
+	SellPrice    int      `json:"sell_price"`
+}
+
+type Helmet struct {
+	ID        string   `json:"id"`
+	Name      string   `json:"name"`
+	Type      string   `json:"type"`
+	Tier      int      `json:"tier"`
+	Absorb    int      `json:"absorb"`
+	Classes   []string `json:"classes"`
+	BuyPrice  int      `json:"buy_price"`
+	SellPrice int      `json:"sell_price"`
+}
+
+type Consumable struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Effect    string `json:"effect"`
+	Value     int    `json:"value"`
+	BuyPrice  int    `json:"buy_price"`
+	SellPrice int    `json:"sell_price"`
+}
+
+// Spells
+
+type SpellsData struct {
+	ChargeTable ChargeTable `json:"charge_table"`
+	Spells      []Spell     `json:"spells"`
+}
+
+type ChargeTable struct {
+	Description      string         `json:"description"`
+	Table            map[string][]int `json:"table"`
+	MaxSpellsPerLvl  int            `json:"max_spells_per_level"`
+}
+
+type Spell struct {
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	School       string `json:"school"`
+	SpellLevel   int    `json:"spell_level"`
+	Target       string `json:"target"`
+	Effect       string `json:"effect"`
+	Element      string `json:"element"`
+	Power        int    `json:"power"`
+	StatusEffect string `json:"status_effect,omitempty"`
+	HitChance    int    `json:"hit_chance,omitempty"`
+	CuresStatus  string `json:"cures_status,omitempty"`
+	BuffStat     string `json:"buff_stat,omitempty"`
+	Description  string `json:"description"`
+}
+
+// Monsters
+
+type Monster struct {
+	ID              string        `json:"id"`
+	Name            string        `json:"name"`
+	Tier            int           `json:"tier"`
+	IsBoss          bool          `json:"is_boss"`
+	Stats           MonsterStats  `json:"stats"`
+	HP              int           `json:"hp"`
+	ArmorAbsorb     int           `json:"armor_absorb"`
+	XPReward        int           `json:"xp_reward"`
+	GoldReward      int           `json:"gold_reward"`
+	Weaknesses      []string      `json:"weaknesses"`
+	Resistances     []string      `json:"resistances"`
+	Absorbs         []string      `json:"absorbs"`
+	Drops           []Drop        `json:"drops"`
+	EncounterWeight int           `json:"encounter_weight"`
+	MinGroup        int           `json:"min_group"`
+	MaxGroup        int           `json:"max_group"`
+}
+
+type MonsterStats struct {
+	STR    int `json:"str"`
+	AGI    int `json:"agi"`
+	INT    int `json:"int"`
+	VIT    int `json:"vit"`
+	LCK    int `json:"lck"`
+	HitPct int `json:"hit_pct"`
+}
+
+type Drop struct {
+	ItemID    string `json:"item_id"`
+	ChancePct int    `json:"chance_pct"`
 }
