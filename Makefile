@@ -1,10 +1,13 @@
-.PHONY: run test build migrate balance-sim client-dev client-build lint vet
+.PHONY: run test build demo migrate balance-sim client-dev client-build lint vet
 
 run:
 	cd server && go run ./cmd/kithlands
 
 build:
 	cd server && go build -o kithlands ./cmd/kithlands
+
+demo:
+	cd server && go run ./cmd/demo
 
 test:
 	cd server && go test ./...
