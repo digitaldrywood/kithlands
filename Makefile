@@ -1,4 +1,34 @@
-.PHONY: run test build demo migrate balance-sim client-dev client-build lint vet
+.PHONY: play stop run test build demo migrate balance-sim client-dev client-build lint vet docker-up docker-down
+
+# Start everything and open the game
+play:
+	@echo "Starting Kithlands..."
+	@docker compose up -d postgres
+	@echo "Waiting for Postgres..."
+	@until docker compose exec -T postgres pg_isready -q 2>/dev/null; do sleep 0.5; done
+	@docker compose exec -T postgres psql -U kithlands -d kithlands -f /dev/stdin < server/internal/db/migrations/001_initial.sql 2>/dev/null || true
+	@docker compose exec -T postgres psql -U kithlands -d kithlands -f /dev/stdin < server/internal/db/migrations/002_localities.sql 2>/dev/null || true
+	@echo "Starting Go server..."
+	@cd server && go run ./cmd/kithlands &
+	@sleep 2
+	@echo "Starting Phaser client..."
+	@cd client && npm run dev &
+	@sleep 2
+	@echo ""
+	@echo "========================================="
+	@echo "  KITHLANDS is running!"
+	@echo "  Open http://localhost:3000"
+	@echo "  Run 'make stop' to shut it down."
+	@echo "========================================="
+
+# Stop everything
+stop:
+	@echo "Stopping Kithlands..."
+	@-pkill -f "go run ./cmd/kithlands" 2>/dev/null || true
+	@-pkill -f "cmd/kithlands" 2>/dev/null || true
+	@-pkill -f "vite" 2>/dev/null || true
+	@docker compose down 2>/dev/null || true
+	@echo "Stopped."
 
 run:
 	cd server && go run ./cmd/kithlands
@@ -18,8 +48,8 @@ vet:
 lint: vet
 
 migrate:
-	@echo "Run migrations against DATABASE_URL"
-	@echo "psql \$$DATABASE_URL -f server/internal/db/migrations/001_initial.sql"
+	docker compose exec -T postgres psql -U kithlands -d kithlands -f /dev/stdin < server/internal/db/migrations/001_initial.sql
+	docker compose exec -T postgres psql -U kithlands -d kithlands -f /dev/stdin < server/internal/db/migrations/002_localities.sql
 
 balance-sim:
 	cd server && go run ./cmd/balance_sim
