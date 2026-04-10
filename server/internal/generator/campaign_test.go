@@ -46,16 +46,16 @@ func TestGenerateCampaign_QuestCount(t *testing.T) {
 
 	// Run several seeds and verify count stays within 10-15 per GDD 10.4.
 	// Minimum: 3 act1 + 1 promo + 4 act2 + 2 act3 + 1 boss = 11.
-	// Maximum: 5 act1 + 1 promo + 6 act2 + 3 act3 + 1 boss = 16 without side quests;
-	// with side quests the generator caps at 15.
-	for seed := uint64(1); seed <= 20; seed++ {
+	// Maximum is hard-capped at 15; Act 2 is trimmed when the roll would
+	// produce more.
+	for seed := uint64(1); seed <= 50; seed++ {
 		rng := newRng(seed)
 		quests := GenerateCampaign(loc, "spawn", rng, nil)
 		if len(quests) < 11 {
 			t.Errorf("seed %d: expected >= 11 quests, got %d", seed, len(quests))
 		}
-		if len(quests) > 16 {
-			t.Errorf("seed %d: expected <= 16 quests (no side pool), got %d", seed, len(quests))
+		if len(quests) > 15 {
+			t.Errorf("seed %d: expected <= 15 quests (GDD 10.4 cap), got %d", seed, len(quests))
 		}
 	}
 }

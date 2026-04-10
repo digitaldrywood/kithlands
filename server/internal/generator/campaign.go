@@ -76,12 +76,40 @@ func GenerateCampaign(loc *locality.Locality, spawnID string, rng *rand.Rand, si
 		idx++
 	}
 
+	// Hard cap the main quest count before the boss. The act ranges above can
+	// produce up to 5+1+6+3 = 15 quests; adding the boss would push to 16.
+	// GDD 10.4 says 10-15 per campaign, so trim Act 2 (the fattest bucket)
+	// until the main count leaves room for the boss.
+	const maxQuestsPerCampaign = 15
+	for len(quests)+1 > maxQuestsPerCampaign {
+		// Drop the last Act 2 quest; fall back to last Act 3 if none.
+		trimmed := false
+		for i := len(quests) - 1; i >= 0; i-- {
+			if quests[i].Act == 2 && !quests[i].IsPromotion {
+				quests = append(quests[:i], quests[i+1:]...)
+				trimmed = true
+				break
+			}
+		}
+		if !trimmed {
+			for i := len(quests) - 1; i >= 0; i-- {
+				if quests[i].Act == 3 {
+					quests = append(quests[:i], quests[i+1:]...)
+					trimmed = true
+					break
+				}
+			}
+		}
+		if !trimmed {
+			break
+		}
+	}
+
 	// Boss
 	quests = append(quests, instantiateBossQuest(walk, loc, idx, rng))
 
 	// Side quests (surprise pool) — inserted before the boss so the boss stays last.
 	if len(sidePool) > 0 {
-		const maxQuestsPerCampaign = 15
 		bossIdx := len(quests) - 1
 		mainCount := len(quests)
 		budget := maxQuestsPerCampaign - mainCount
