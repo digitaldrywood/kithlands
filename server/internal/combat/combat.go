@@ -25,23 +25,40 @@ type Combatant struct {
 	// Bare-hand damage for Brawlers: base + (level * STR/2)
 	BareHandDamage int
 
+	// Active damage buffs (focus, inspire). Highest DamageMult applies.
+	Buffs []CombatBuff
+	// Countering is set when a Brawler uses the counter ability this turn;
+	// next hit they take triggers a reactive attack, then it clears.
+	Countering bool
+
 	MonsterID string // source monster ID for lookups
 	Size      string // small, medium, large, boss
 }
 
+// CombatBuff is a short-duration damage multiplier applied to a combatant.
+// DamageMult is expressed as a percentage (100 = unchanged, 150 = +50%).
+type CombatBuff struct {
+	Kind       string
+	DamageMult int
+	TurnsLeft  int
+}
+
 // Action represents a combat action chosen by a combatant.
 type Action struct {
-	ActorID  int
-	Kind     ActionKind
-	TargetID int
+	ActorID   int
+	Kind      ActionKind
+	TargetID  int
+	AbilityID string // populated when Kind == ActionAbility
 }
 
 type ActionKind string
 
 const (
-	ActionAttack ActionKind = "attack"
-	ActionDefend ActionKind = "defend"
-	ActionFlee   ActionKind = "flee"
+	ActionAttack  ActionKind = "attack"
+	ActionDefend  ActionKind = "defend"
+	ActionFlee    ActionKind = "flee"
+	ActionAbility ActionKind = "ability"
+	ActionCounter ActionKind = "counter" // reactive; emitted by ResolveTurn, not requested
 )
 
 // ResolvedAction is a single combat action after server resolution.
@@ -104,7 +121,8 @@ func ResolveTurn(
 		if target == nil || target.CurrentHP <= 0 {
 			// Retarget to first living enemy/ally
 			target = retarget(actor, party, enemies)
-			if target == nil {
+			// Self-targeted abilities (focus, counter) don't need a live enemy.
+			if target == nil && !selfTargetAbility(action) {
 				continue
 			}
 		}
@@ -113,16 +131,156 @@ func ResolveTurn(
 		case ActionAttack:
 			resolved := resolveAttack(actor, target, stats, rng)
 			results = append(results, resolved)
+			// Counter hook: if the defender is alive and was countering, they
+			// reactively attack back once. Only once per incoming action.
+			if resolved.TotalDmg > 0 && target.CurrentHP > 0 && target.Countering {
+				counter := resolveAttack(target, actor, stats, rng)
+				counter.Kind = ActionCounter
+				target.Countering = false
+				results = append(results, counter)
+			}
 		case ActionDefend:
 			results = append(results, ResolvedAction{
 				ActorID:   actor.ID,
 				ActorName: actor.Name,
 				Kind:      ActionDefend,
 			})
+		case ActionAbility:
+			allies := alliesOf(actor, party, enemies)
+			resolved := ResolveAbility(actor, target, allies, action.AbilityID, stats, rng)
+			results = append(results, resolved)
 		}
 	}
 
+	// Tick buffs at end of round and clear any stale counters.
+	TickBuffs(party, enemies)
+
 	return results
+}
+
+// selfTargetAbility returns true if the action is a no-target ability.
+func selfTargetAbility(a Action) bool {
+	if a.Kind != ActionAbility {
+		return false
+	}
+	switch a.AbilityID {
+	case "focus", "counter", "inspire":
+		return true
+	}
+	return false
+}
+
+// alliesOf returns the slice that contains the actor (party if player, enemies otherwise).
+func alliesOf(actor *Combatant, party, enemies []*Combatant) []*Combatant {
+	if actor.IsPlayer {
+		return party
+	}
+	return enemies
+}
+
+// TickBuffs decrements all active buff durations and removes expired ones.
+// It also clears any lingering Countering flags that were not consumed this round.
+func TickBuffs(party, enemies []*Combatant) {
+	for _, group := range [][]*Combatant{party, enemies} {
+		for _, c := range group {
+			if c == nil {
+				continue
+			}
+			c.Countering = false
+			if len(c.Buffs) == 0 {
+				continue
+			}
+			kept := c.Buffs[:0]
+			for _, b := range c.Buffs {
+				b.TurnsLeft--
+				if b.TurnsLeft > 0 {
+					kept = append(kept, b)
+				}
+			}
+			c.Buffs = kept
+		}
+	}
+}
+
+// ResolveAbility dispatches a class ability. Returns a ResolvedAction describing
+// what happened so the caller can log / animate it. Inventory / monster-table
+// side effects (e.g. Steal) are the caller's responsibility — this package does
+// not depend on inventory.
+func ResolveAbility(
+	actor, target *Combatant,
+	allies []*Combatant,
+	abilityID string,
+	stats *gamedata.CombatConfig,
+	rng *rand.Rand,
+) ResolvedAction {
+	switch abilityID {
+	case "focus":
+		applyBuff(actor, CombatBuff{Kind: "focus", DamageMult: 150, TurnsLeft: 3})
+		return ResolvedAction{
+			ActorID: actor.ID, ActorName: actor.Name,
+			Kind: ActionAbility, TargetID: actor.ID,
+		}
+	case "counter":
+		actor.Countering = true
+		return ResolvedAction{
+			ActorID: actor.ID, ActorName: actor.Name,
+			Kind: ActionAbility, TargetID: actor.ID,
+		}
+	case "inspire":
+		for _, a := range allies {
+			if a == nil || a.CurrentHP <= 0 {
+				continue
+			}
+			applyBuff(a, CombatBuff{Kind: "inspire", DamageMult: 125, TurnsLeft: 3})
+		}
+		return ResolvedAction{
+			ActorID: actor.ID, ActorName: actor.Name,
+			Kind: ActionAbility, TargetID: actor.ID,
+		}
+	case "backstab":
+		if target == nil || target.CurrentHP <= 0 {
+			return ResolvedAction{ActorID: actor.ID, ActorName: actor.Name, Kind: ActionAbility}
+		}
+		return resolveBackstab(actor, target, stats, rng)
+	case "steal":
+		// No damage; signal only. Caller handles inventory.
+		return ResolvedAction{
+			ActorID: actor.ID, ActorName: actor.Name,
+			Kind: ActionAbility, TargetID: targetID(target),
+		}
+	}
+	return ResolvedAction{ActorID: actor.ID, ActorName: actor.Name, Kind: ActionAbility}
+}
+
+func targetID(target *Combatant) int {
+	if target == nil {
+		return 0
+	}
+	return target.ID
+}
+
+// applyBuff adds a buff, replacing any existing buff of the same kind so the
+// duration always refreshes instead of stacking.
+func applyBuff(c *Combatant, buff CombatBuff) {
+	for i, existing := range c.Buffs {
+		if existing.Kind == buff.Kind {
+			c.Buffs[i] = buff
+			return
+		}
+	}
+	c.Buffs = append(c.Buffs, buff)
+}
+
+// damageMultiplier returns the largest DamageMult across the combatant's
+// active buffs, or 100 (no change) if there are none.
+func damageMultiplier(c *Combatant) int {
+	mult := 100
+	for _, b := range c.Buffs {
+		if b.DamageMult > mult {
+			mult = b.DamageMult
+		}
+	}
+	return mult
 }
 
 // resolveAttack implements the damage formula from Section 6.2.
@@ -145,6 +303,10 @@ func resolveAttack(attacker, defender *Combatant, stats *gamedata.CombatConfig, 
 		baseDamage := attacker.STR + attacker.WeaponPower
 		if attacker.BareHandDamage > 0 {
 			baseDamage = attacker.BareHandDamage
+		}
+		// Apply active damage buffs (focus, inspire).
+		if mult := damageMultiplier(attacker); mult != 100 {
+			baseDamage = baseDamage * mult / 100
 		}
 		mitigation := defender.ArmorAbsorb
 		dmg := baseDamage - mitigation + rng.IntN(max(1, baseDamage/2)+1)
@@ -179,6 +341,52 @@ func resolveAttack(attacker, defender *Combatant, stats *gamedata.CombatConfig, 
 		TargetID:  defender.ID,
 		Hits:      hits,
 		TotalDmg:  totalDmg,
+		TargetHP:  defender.CurrentHP,
+		Killed:    killed,
+	}
+}
+
+// resolveBackstab is a single high-damage guaranteed-hit strike. Base damage
+// is tripled (after existing buffs), still rolls for crit, and ignores
+// multi-hit scaling. Armor mitigation still applies.
+func resolveBackstab(attacker, defender *Combatant, stats *gamedata.CombatConfig, rng *rand.Rand) ResolvedAction {
+	baseDamage := attacker.STR + attacker.WeaponPower
+	if attacker.BareHandDamage > 0 {
+		baseDamage = attacker.BareHandDamage
+	}
+	if mult := damageMultiplier(attacker); mult != 100 {
+		baseDamage = baseDamage * mult / 100
+	}
+	baseDamage *= 3
+
+	mitigation := defender.ArmorAbsorb
+	dmg := baseDamage - mitigation + rng.IntN(max(1, baseDamage/2)+1)
+	if dmg < stats.MinDamagePerHit {
+		dmg = stats.MinDamagePerHit
+	}
+
+	isCrit := false
+	critChance := attacker.LCK / 4
+	if critChance > 0 && rng.IntN(100) < critChance {
+		dmg *= stats.CritMultiplier
+		isCrit = true
+	}
+
+	defender.CurrentHP -= dmg
+	killed := false
+	if defender.CurrentHP <= 0 {
+		defender.CurrentHP = 0
+		defender.Status = character.StatusDeath
+		killed = true
+	}
+
+	return ResolvedAction{
+		ActorID:   attacker.ID,
+		ActorName: attacker.Name,
+		Kind:      ActionAbility,
+		TargetID:  defender.ID,
+		Hits:      []Hit{{Damage: dmg, Crit: isCrit}},
+		TotalDmg:  dmg,
 		TargetHP:  defender.CurrentHP,
 		Killed:    killed,
 	}

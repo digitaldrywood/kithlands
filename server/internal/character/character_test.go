@@ -14,6 +14,23 @@ func loadTestData(t *testing.T) *gamedata.GameData {
 	return gamedata.Load("../../../shared")
 }
 
+func TestPromoteSetsFlag(t *testing.T) {
+	gd := loadTestData(t)
+	rogue := gd.ClassByID("rogue")
+	c := character.New("Sneak", "rogue", rogue)
+
+	if c.Promoted {
+		t.Fatal("new character should not be promoted")
+	}
+	c.Promote()
+	if !c.Promoted {
+		t.Error("Promote() did not set Promoted flag")
+	}
+	if c.ClassID != "rogue" {
+		t.Errorf("ClassID should remain base class, got %q", c.ClassID)
+	}
+}
+
 func TestNewCharacter(t *testing.T) {
 	gd := loadTestData(t)
 

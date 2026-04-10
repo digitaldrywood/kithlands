@@ -49,6 +49,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/game/new", s.auth.Middleware(http.HandlerFunc(s.handleNewGame)))
 	mux.Handle("GET /api/game/{id}", s.auth.Middleware(http.HandlerFunc(s.handleGetGame)))
 	mux.Handle("POST /api/game/{id}/action", s.auth.Middleware(http.HandlerFunc(s.handleGameAction)))
+	mux.Handle("POST /api/game/{id}/promote", s.auth.Middleware(http.HandlerFunc(s.handlePromote)))
 	mux.Handle("GET /api/game/{id}/shop/{nodeId}", s.auth.Middleware(http.HandlerFunc(s.handleShop)))
 	mux.Handle("POST /api/game/{id}/buy", s.auth.Middleware(http.HandlerFunc(s.handleBuy)))
 	mux.Handle("POST /api/game/{id}/equip", s.auth.Middleware(http.HandlerFunc(s.handleEquip)))
@@ -186,6 +187,28 @@ func (s *Server) handleGameAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	jsonResp(w, result)
+}
+
+func (s *Server) handlePromote(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	game := s.games.GetGame(id)
+	if game == nil {
+		httpError(w, "game not found", http.StatusNotFound)
+		return
+	}
+
+	var req PromoteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpError(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	result, err := game.Promote(req.Accept)
+	if err != nil {
+		httpError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	jsonResp(w, result)
 }
 

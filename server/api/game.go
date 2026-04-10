@@ -80,10 +80,11 @@ type GameActionRequest struct {
 }
 
 type MemberActionReq struct {
-	Slot     int    `json:"slot"`      // party slot 0-3
-	Type     string `json:"type"`      // attack, spell, item, defend
-	TargetID int    `json:"target_id"`
-	SpellID  string `json:"spell_id,omitempty"`
+	Slot      int    `json:"slot"`      // party slot 0-3
+	Type      string `json:"type"`      // attack, spell, item, defend, ability
+	TargetID  int    `json:"target_id"`
+	SpellID   string `json:"spell_id,omitempty"`
+	AbilityID string `json:"ability_id,omitempty"`
 }
 
 // GameState is the full state sent to the client.
@@ -137,6 +138,8 @@ type PartyMemberState struct {
 	Name      string `json:"name"`
 	ClassID   string `json:"class_id"`
 	ClassName string `json:"class_name"`
+	SpriteID  string `json:"sprite_id"`
+	Promoted  bool   `json:"promoted"`
 	Level     int    `json:"level"`
 	HP        int    `json:"hp"`
 	MaxHP     int    `json:"max_hp"`
@@ -147,6 +150,7 @@ type PartyMemberState struct {
 	XPNext    int    `json:"xp_next"`
 	Status    string `json:"status"`
 	Spells    []SpellState `json:"spells,omitempty"`
+	Abilities []string     `json:"abilities,omitempty"`
 }
 
 type SpellState struct {
@@ -207,6 +211,7 @@ type Game struct {
 	levelBefore []int // snapshot before combat for victory animation
 	discovered map[string]bool // bestiary: monster IDs encountered
 	formation  string             // current encounter layout type
+	promotionOffered bool        // midpoint promotion has already fired
 	mu         sync.Mutex
 }
 
@@ -233,38 +238,7 @@ func (g *Game) State() GameState {
 	g.fillExtras(&state)
 
 	for _, c := range g.party {
-		cls := g.gd.ClassByID(c.ClassID)
-		pm := PartyMemberState{
-			Name:      c.Name,
-			ClassID:   c.ClassID,
-			ClassName: cls.Name,
-			Level:     c.Level,
-			HP:        c.CurrentHP,
-			MaxHP:     c.MaxHP,
-			STR:       c.STR,
-			AGI:       c.AGI,
-			INT:       c.INT,
-			XP:        c.XP,
-			XPNext:    character.XPToNextLevel(c.Level, &g.gd.Stats.XPCurve),
-			Status:    string(c.Status),
-		}
-
-		if sb, ok := g.spellBooks[c.Name]; ok {
-			for lvl, spellIDs := range sb.KnownSpells {
-				for _, sid := range spellIDs {
-					sp := g.gd.SpellByID(sid)
-					if sp != nil {
-						pm.Spells = append(pm.Spells, SpellState{
-							ID:      sid,
-							Name:    sp.Name,
-							Charges: sb.Charges[lvl],
-						})
-					}
-				}
-			}
-		}
-
-		state.Party = append(state.Party, pm)
+		state.Party = append(state.Party, g.buildPartyMemberState(c))
 	}
 
 	for _, e := range g.enemies {
@@ -317,6 +291,57 @@ func (g *Game) ProcessAction(req GameActionRequest) (*GameState, error) {
 		state := g.stateUnlocked()
 		return &state, nil
 	}
+}
+
+// buildPartyMemberState renders a single character into the state payload,
+// honoring promotion (display name + sprite swap) and surfacing class abilities.
+func (g *Game) buildPartyMemberState(c *character.Character) PartyMemberState {
+	cls := g.gd.ClassByID(c.ClassID)
+	className := ""
+	spriteID := c.ClassID
+	if cls != nil {
+		className = cls.Name
+		if c.Promoted && cls.PromotedName != "" {
+			className = cls.PromotedName
+		}
+		if c.Promoted && cls.PromotesTo != "" {
+			spriteID = cls.PromotesTo
+		}
+	}
+	pm := PartyMemberState{
+		Name:      c.Name,
+		ClassID:   c.ClassID,
+		ClassName: className,
+		SpriteID:  spriteID,
+		Promoted:  c.Promoted,
+		Level:     c.Level,
+		HP:        c.CurrentHP,
+		MaxHP:     c.MaxHP,
+		STR:       c.STR,
+		AGI:       c.AGI,
+		INT:       c.INT,
+		XP:        c.XP,
+		XPNext:    character.XPToNextLevel(c.Level, &g.gd.Stats.XPCurve),
+		Status:    string(c.Status),
+	}
+	if cls != nil && len(cls.Abilities) > 0 {
+		pm.Abilities = append(pm.Abilities, cls.Abilities...)
+	}
+	if sb, ok := g.spellBooks[c.Name]; ok {
+		for lvl, spellIDs := range sb.KnownSpells {
+			for _, sid := range spellIDs {
+				sp := g.gd.SpellByID(sid)
+				if sp != nil {
+					pm.Spells = append(pm.Spells, SpellState{
+						ID:      sid,
+						Name:    sp.Name,
+						Charges: sb.Charges[lvl],
+					})
+				}
+			}
+		}
+	}
+	return pm
 }
 
 func (g *Game) fillExtras(state *GameState) {
@@ -388,25 +413,7 @@ func (g *Game) stateUnlocked() GameState {
 	g.fillInventoryState(&state)
 	g.fillExtras(&state)
 	for _, c := range g.party {
-		cls := g.gd.ClassByID(c.ClassID)
-		pm := PartyMemberState{
-			Name: c.Name, ClassID: c.ClassID, ClassName: cls.Name,
-			Level: c.Level, HP: c.CurrentHP, MaxHP: c.MaxHP,
-			STR: c.STR, AGI: c.AGI, INT: c.INT, XP: c.XP,
-			XPNext: character.XPToNextLevel(c.Level, &g.gd.Stats.XPCurve),
-			Status: string(c.Status),
-		}
-		if sb, ok := g.spellBooks[c.Name]; ok {
-			for lvl, ids := range sb.KnownSpells {
-				for _, sid := range ids {
-					sp := g.gd.SpellByID(sid)
-					if sp != nil {
-						pm.Spells = append(pm.Spells, SpellState{ID: sid, Name: sp.Name, Charges: sb.Charges[lvl]})
-					}
-				}
-			}
-		}
-		state.Party = append(state.Party, pm)
+		state.Party = append(state.Party, g.buildPartyMemberState(c))
 	}
 	for _, e := range g.enemies {
 		if e.CurrentHP > 0 {
