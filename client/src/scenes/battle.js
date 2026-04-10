@@ -1400,14 +1400,7 @@ export class BattleScene extends Phaser.Scene {
         const ee = this.enemySprites[targetId];
         const pt = this.partySprites[attacker];
         if (ee) {
-          await this.hitFx(
-            ee.x,
-            ee.y,
-            dmg,
-            false,
-            defeatMatch,
-            "physical",
-          );
+          await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch, "physical");
           if (defeatMatch) await this.enemyDeathFx(ee);
         } else if (pt) {
           this.cameras.main.shake(80, 0.005);
