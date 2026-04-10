@@ -900,6 +900,8 @@ These become real geographic nodes with real coordinates. The player can then ad
 
 This is the coolest loading method but it has the most edge cases (rural towns with sparse OSM data, foreign-language tags, weird coordinate systems). Save it for v3 when the rest is proven.
 
+**Radius cap:** The wizard slider allows 0.5--30 miles. The server clamps `radius_miles` to `[0.5, 30]`. The default is 1.5 miles, which works well for small cities. Use a larger radius (10--30 miles) for rural or countryside areas where landmarks, farms, and natural features are spread across a wider area. At 30 miles the Overpass query may return several megabytes of data; the query `maxsize` is set to 8 MB to accommodate this.
+
 ## 9.3 The graph walk: how spawn point creates a unique game
 
 When the player starts a new game, they pick (or are assigned) a **spawn node**. From the spawn node, the engine performs a graph walk:

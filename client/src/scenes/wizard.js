@@ -207,8 +207,8 @@ export class WizardScene extends Phaser.Scene {
     const sliderEl = document.createElement('input');
     sliderEl.type = 'range';
     sliderEl.min = '0.5';
-    sliderEl.max = '5';
-    sliderEl.step = '0.5';
+    sliderEl.max = '30';
+    sliderEl.step = '1';
     sliderEl.value = String(this.wizardData.radius_miles || 1.5);
     sliderEl.style.cssText = 'width:250px;accent-color:#44aaff;';
     const slider = this.add.dom(this.cx, 255, sliderEl);
