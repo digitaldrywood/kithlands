@@ -42,9 +42,10 @@ func main() {
 			// Create party at this level
 			party := makeParty(classIDs, level, gd, rng)
 
-			// Generate encounter
+			// Generate encounter using formation system
 			encLvl := balance.EncounterLevel([]int{level, level, level, level}, *diffFlag, 0, 0)
-			enemies := balance.GenerateEncounter(gd.Monsters, encLvl, diff, rng)
+			result := balance.GenerateFormationEncounter(gd, encLvl, diff, rng)
+			enemies := result.Combatants
 
 			// Run combat
 			rounds, wiped, dmgDealt, dmgTaken := simulateFight(party, enemies, &gd.Stats.Combat, rng)

@@ -80,10 +80,12 @@ function computeFormationPositions(enemies, layout) {
         candidates.push({ x: 100 + col * 110, y: 180 + row * 70 });
       }
     }
-    // Deterministic shuffle based on first enemy ID
-    const seed = enemies.length > 0 ? (enemies[0].id || 0) : 0;
+    // Deterministic shuffle based on enemy count + HP totals for per-encounter variation
+    let seed = enemies.length;
+    for (const e of enemies) { seed = seed * 31 + (e.max_hp || 0) + (e.id || 0); }
+    seed = Math.abs(seed) | 0;
     for (let i = candidates.length - 1; i > 0; i--) {
-      const j = ((seed + 1) * (i + 1) * 2654435761) % (i + 1);
+      const j = ((seed + 1) * (i + 1) * 2654435761 >>> 0) % (i + 1);
       [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
     }
     return enemies.map((_, i) => candidates[i % candidates.length]);
