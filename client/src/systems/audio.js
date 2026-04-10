@@ -17,9 +17,11 @@ export function initAudio(phaserScene) {
     instance = true;
     // Load mute preference
     try {
-      const saved = localStorage.getItem('kithlands_muted');
-      if (saved === 'true') muted = true;
-    } catch (e) { /* ignore */ }
+      const saved = localStorage.getItem("kithlands_muted");
+      if (saved === "true") muted = true;
+    } catch (e) {
+      /* ignore */
+    }
   }
 }
 
@@ -69,8 +71,10 @@ export function toggleMute() {
     currentMusic.volume = muted ? 0 : musicVolume;
   }
   try {
-    localStorage.setItem('kithlands_muted', String(muted));
-  } catch (e) { /* ignore */ }
+    localStorage.setItem("kithlands_muted", String(muted));
+  } catch (e) {
+    /* ignore */
+  }
   return muted;
 }
 

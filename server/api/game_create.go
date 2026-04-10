@@ -99,20 +99,20 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 		// Equip starting gear
 		switch pm.ClassID {
 		case "warrior":
-			inv.EquipWeapon(i, "short_sword", pm.ClassID, gm.gd)
-			inv.EquipArmor(i, "leather_armor", pm.ClassID, gm.gd)
+			_, _ = inv.EquipWeapon(i, "short_sword", pm.ClassID, gm.gd)
+			_, _ = inv.EquipArmor(i, "leather_armor", pm.ClassID, gm.gd)
 		case "cinder":
-			inv.EquipWeapon(i, "wooden_staff", pm.ClassID, gm.gd)
-			inv.EquipArmor(i, "cloth_robe", pm.ClassID, gm.gd)
+			_, _ = inv.EquipWeapon(i, "wooden_staff", pm.ClassID, gm.gd)
+			_, _ = inv.EquipArmor(i, "cloth_robe", pm.ClassID, gm.gd)
 		case "mender":
-			inv.EquipWeapon(i, "wooden_club", pm.ClassID, gm.gd)
-			inv.EquipArmor(i, "cloth_robe", pm.ClassID, gm.gd)
+			_, _ = inv.EquipWeapon(i, "wooden_club", pm.ClassID, gm.gd)
+			_, _ = inv.EquipArmor(i, "cloth_robe", pm.ClassID, gm.gd)
 		case "rogue":
-			inv.EquipWeapon(i, "rusty_dagger", pm.ClassID, gm.gd)
-			inv.EquipArmor(i, "leather_armor", pm.ClassID, gm.gd)
+			_, _ = inv.EquipWeapon(i, "rusty_dagger", pm.ClassID, gm.gd)
+			_, _ = inv.EquipArmor(i, "leather_armor", pm.ClassID, gm.gd)
 		case "wayfarer":
-			inv.EquipWeapon(i, "short_sword", pm.ClassID, gm.gd)
-			inv.EquipArmor(i, "leather_armor", pm.ClassID, gm.gd)
+			_, _ = inv.EquipWeapon(i, "short_sword", pm.ClassID, gm.gd)
+			_, _ = inv.EquipArmor(i, "leather_armor", pm.ClassID, gm.gd)
 		}
 
 		// Spell books for casters
@@ -123,7 +123,7 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 			for _, spell := range gm.gd.Spells.Spells {
 				for _, school := range cls.Magic.Schools {
 					if spell.School == school && spell.SpellLevel == 1 {
-						sb.LearnSpell(spell.ID, spell.SpellLevel, gm.gd.Spells.ChargeTable.MaxSpellsPerLvl)
+						_ = sb.LearnSpell(spell.ID, spell.SpellLevel, gm.gd.Spells.ChargeTable.MaxSpellsPerLvl)
 					}
 				}
 			}

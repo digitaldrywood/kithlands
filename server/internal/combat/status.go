@@ -42,10 +42,7 @@ func ProcessSleepOnDamage(c *Combatant) {
 // ProcessConfusion returns true if the confused combatant acts randomly this turn.
 // Per Section 6.5: acts randomly, may attack allies. Cured by damage.
 func ProcessConfusion(c *Combatant, rng *rand.Rand) bool {
-	if c.Status != character.Status("confuse") {
-		return false
-	}
-	return true
+	return c.Status == character.Status("confuse")
 }
 
 // CureStatus removes a status effect.

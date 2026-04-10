@@ -34,8 +34,6 @@ func BuildFromOSM(ctx context.Context, lat, lng float64, townName string) (*Loca
 	var buildings []osmElement
 	var roads []osmElement
 	var amenities []osmElement
-	var nature []osmElement
-
 	for _, el := range elements {
 		switch el.Type {
 		case "node":
@@ -53,8 +51,6 @@ func BuildFromOSM(ctx context.Context, lat, lng float64, townName string) (*Loca
 				buildings = append(buildings, el)
 			} else if el.Tags["highway"] != "" {
 				roads = append(roads, el)
-			} else if el.Tags["natural"] == "water" || el.Tags["leisure"] == "park" {
-				nature = append(nature, el)
 			}
 		}
 	}
@@ -236,7 +232,7 @@ out body; >; out skel qt;`,
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)

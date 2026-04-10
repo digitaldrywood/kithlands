@@ -34,7 +34,7 @@ func Geocode(ctx context.Context, query string) (*GeoResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("geocoding request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("geocoding returned status %d", resp.StatusCode)
@@ -61,8 +61,8 @@ func Geocode(ctx context.Context, query string) (*GeoResult, error) {
 
 	r := results[0]
 	var lat, lng float64
-	fmt.Sscanf(r.Lat, "%f", &lat)
-	fmt.Sscanf(r.Lon, "%f", &lng)
+	_, _ = fmt.Sscanf(r.Lat, "%f", &lat)
+	_, _ = fmt.Sscanf(r.Lon, "%f", &lng)
 
 	return &GeoResult{
 		Lat:     lat,

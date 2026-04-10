@@ -330,7 +330,7 @@ func TestEquipWeapon(t *testing.T) {
 	gameID := gs["id"].(string)
 
 	// Buy iron sword
-	gs = post(t, ts.URL+"/api/game/"+gameID+"/buy", map[string]string{
+	post(t, ts.URL+"/api/game/"+gameID+"/buy", map[string]string{
 		"item_id": "iron_sword", "type": "weapon",
 	})
 

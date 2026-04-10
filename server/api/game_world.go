@@ -136,7 +136,7 @@ func (g *Game) checkLevelUps() {
 		for character.CanLevelUp(c, &g.gd.Stats.XPCurve) {
 			cls := g.gd.ClassByID(c.ClassID)
 			old := c.Level
-			character.LevelUp(c, cls, &g.gd.Stats, g.rng)
+			_ = character.LevelUp(c, cls, &g.gd.Stats, g.rng)
 			g.combatLog = append(g.combatLog, fmt.Sprintf("%s leveled up! %d -> %d (HP: %d)", c.Name, old, c.Level, c.MaxHP))
 		}
 	}

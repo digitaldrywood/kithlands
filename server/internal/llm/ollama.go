@@ -62,7 +62,7 @@ func (o *OllamaGateway) Generate(ctx context.Context, req Request) (Response, er
 	if err != nil {
 		return o.fallback.Generate(ctx, req)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != http.StatusOK {
 		return o.fallback.Generate(ctx, req)

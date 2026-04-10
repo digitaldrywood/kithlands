@@ -3,7 +3,7 @@
  * Remembers wizard choices for faster repeat plays.
  */
 
-const STORAGE_KEY = 'kithlands_prefs';
+const STORAGE_KEY = "kithlands_prefs";
 
 let prefs = null;
 
@@ -21,10 +21,12 @@ function load() {
 function save() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
-  } catch (e) { /* ignore */ }
+  } catch (e) {
+    /* ignore */
+  }
 }
 
-export function getPref(key, fallback = '') {
+export function getPref(key, fallback = "") {
   return load()[key] ?? fallback;
 }
 
@@ -35,53 +37,59 @@ export function setPref(key, value) {
 }
 
 export function getEmail() {
-  return getPref('email', '');
+  return getPref("email", "");
 }
 
 export function setEmail(email) {
-  setPref('email', email);
+  setPref("email", email);
 }
 
 export function getLastWizard() {
-  return getPref('last_wizard', null);
+  return getPref("last_wizard", null);
 }
 
 export function setLastWizard(data) {
-  setPref('last_wizard', data);
+  setPref("last_wizard", data);
 }
 
 export function getPartyHistory() {
-  return getPref('party_history', []);
+  return getPref("party_history", []);
 }
 
 export function addPartyToHistory(party) {
   const history = getPartyHistory();
   // Add if not duplicate
-  const key = party.map(p => `${p.name}:${p.class_id}`).join(',');
-  const existing = history.find(h => h.map(p => `${p.name}:${p.class_id}`).join(',') === key);
+  const key = party.map((p) => `${p.name}:${p.class_id}`).join(",");
+  const existing = history.find(
+    (h) => h.map((p) => `${p.name}:${p.class_id}`).join(",") === key,
+  );
   if (!existing) {
     history.unshift(party);
     if (history.length > 5) history.pop(); // keep last 5
-    setPref('party_history', history);
+    setPref("party_history", history);
   }
 }
 
 export function getNPCHistory() {
-  return getPref('npc_history', []);
+  return getPref("npc_history", []);
 }
 
 export function addNPCsToHistory(npcs) {
   const history = getNPCHistory();
-  const key = npcs.map(n => n.name).join(',');
-  const existing = history.find(h => h.map(n => n.name).join(',') === key);
+  const key = npcs.map((n) => n.name).join(",");
+  const existing = history.find((h) => h.map((n) => n.name).join(",") === key);
   if (!existing) {
     history.unshift(npcs);
     if (history.length > 5) history.pop();
-    setPref('npc_history', history);
+    setPref("npc_history", history);
   }
 }
 
 export function clearPrefs() {
   prefs = {};
-  try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* ignore */ }
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch (e) {
+    /* ignore */
+  }
 }

@@ -1,4 +1,4 @@
-.PHONY: play stop run test build demo migrate balance-sim client-dev client-build lint vet docker-up docker-down
+.PHONY: play stop run test build demo migrate balance-sim client-dev client-build lint vet fmt pre-commit docker-up docker-down
 
 # Start everything and open the game
 play: stop
@@ -49,7 +49,15 @@ test:
 vet:
 	cd server && go vet ./...
 
-lint: vet
+lint:
+	cd server && golangci-lint run ./...
+
+fmt:
+	cd server && gofmt -w .
+	cd client && npx prettier --write .
+
+pre-commit:
+	pre-commit run --all-files
 
 migrate:
 	psql -d kithlands -f server/internal/db/migrations/001_initial.sql

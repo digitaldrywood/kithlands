@@ -38,7 +38,7 @@ func main() {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"status":"ok"}`)
+		_, _ = fmt.Fprintf(w, `{"status":"ok"}`)
 	})
 
 	// API routes
