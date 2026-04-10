@@ -152,6 +152,9 @@ export class WorldScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-ENTER', () => this.interactWithDoor());
     this.input.keyboard.on('keydown-SPACE', () => this.interactWithDoor());
 
+    // TAB for world map
+    this.input.keyboard.on('keydown-TAB', (e) => { e.preventDefault(); this.showWorldMap(); });
+
     // Touch movement
     this.input.on('pointerdown', (pointer) => {
       if (this.animating || this.menuOpen || this.codexOpen || this.gameOver) return;
@@ -340,12 +343,106 @@ export class WorldScene extends Phaser.Scene {
       this.menuGroup.push(useBtn);
     }
 
+    // Save button (always available on world map)
+    y += 55;
+    const saveBtn = this.add.text(400, y, '[ SAVE GAME ]', {
+      fontSize: '13px', color: '#4488ff', fontFamily: 'monospace',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(41).setInteractive({ useHandCursor: true });
+    saveBtn.on('pointerover', () => saveBtn.setColor('#88bbff'));
+    saveBtn.on('pointerout', () => saveBtn.setColor('#4488ff'));
+    saveBtn.on('pointerdown', async () => {
+      saveBtn.setText('Saving...');
+      const gss = this.gameState;
+      const name = `${gss.location} - ${gss.party.map(p => p.name).join(', ')}`;
+      const result = await saveGame(gss.id, name);
+      playSFX('sfx_save');
+      this.toggleMenu();
+      if (result.error) {
+        this.showMessage(`Save failed: ${result.error}`);
+      } else {
+        this.showMessage('Game saved!');
+      }
+      this.time.delayedCall(1500, () => this.hideMessage());
+    });
+    this.menuGroup.push(saveBtn);
+
+    // World map button
+    const mapBtn = this.add.text(250, y, '[ WORLD MAP ]', {
+      fontSize: '13px', color: '#ffcc44', fontFamily: 'monospace',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(41).setInteractive({ useHandCursor: true });
+    mapBtn.on('pointerdown', () => { this.toggleMenu(); this.showWorldMap(); });
+    this.menuGroup.push(mapBtn);
+
     // Close
-    const closeBtn = this.add.text(400, 530, '[ CLOSE (M/ESC) ]', {
+    const closeBtn = this.add.text(400, 545, '[ CLOSE (M/ESC) ]', {
       fontSize: '13px', color: '#aaaaaa', fontFamily: 'monospace',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(41).setInteractive({ useHandCursor: true });
     closeBtn.on('pointerdown', () => this.toggleMenu());
     this.menuGroup.push(closeBtn);
+  }
+
+  showWorldMap() {
+    this.animating = true;
+    const ol = [];
+
+    // Full screen map overlay
+    const bg = this.add.rectangle(400, 300, 780, 560, 0x000000, 0.95)
+      .setScrollFactor(0).setDepth(50).setInteractive();
+    ol.push(bg);
+
+    ol.push(this.add.text(400, 30, 'WORLD MAP', {
+      fontSize: '18px', color: '#ffff44', fontFamily: 'monospace',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(51));
+
+    // Draw large minimap
+    const mmW = 600, mmH = 440;
+    const mmX = 100, mmY = 55;
+    const scaleX = mmW / this.mapW;
+    const scaleY = mmH / this.mapH;
+
+    const mmGfx = this.add.graphics().setScrollFactor(0).setDepth(51);
+    for (let y = 0; y < this.mapH; y++) {
+      for (let x = 0; x < this.mapW; x++) {
+        const tile = this.tileData[y][x];
+        const color = TILE_COLORS[tile] || 0x000000;
+        mmGfx.fillStyle(color, 1);
+        mmGfx.fillRect(mmX + x * scaleX, mmY + y * scaleY, Math.max(1, scaleX), Math.max(1, scaleY));
+      }
+    }
+    ol.push(mmGfx);
+
+    // Location labels on the map
+    for (const spawn of this.spawns) {
+      if (spawn.kind === 'natural') continue;
+      const sx = mmX + spawn.x * scaleX;
+      const sy = mmY + spawn.y * scaleY;
+
+      mmGfx.fillStyle(0xffffff, 1);
+      mmGfx.fillRect(sx - 2, sy - 2, 5, 5);
+
+      const label = this.add.text(sx, sy - 8, spawn.name, {
+        fontSize: '7px', color: '#ffffff', fontFamily: 'monospace',
+        backgroundColor: '#00000099',
+        padding: { x: 1, y: 0 },
+      }).setOrigin(0.5, 1).setScrollFactor(0).setDepth(52);
+      ol.push(label);
+    }
+
+    // Player position
+    const px = mmX + this.playerX * scaleX;
+    const py = mmY + this.playerY * scaleY;
+    const playerDot = this.add.circle(px, py, 4, 0xff4444).setScrollFactor(0).setDepth(52);
+    ol.push(playerDot);
+
+    ol.push(this.add.text(400, 545, '[ CLOSE (ESC) ]', {
+      fontSize: '13px', color: '#aaaaaa', fontFamily: 'monospace',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(51).setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => { ol.forEach(o => o.destroy()); this.animating = false; }));
+
+    this.input.keyboard.once('keydown-ESC', () => {
+      ol.forEach(o => o.destroy());
+      this.animating = false;
+    });
   }
 
   toggleCodex() {
