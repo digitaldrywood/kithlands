@@ -11,10 +11,12 @@ import (
 func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 	switch req.Type {
 	case "encounter":
-		// Snapshot XP before combat for victory screen animation
+		// Snapshot XP and level before combat for victory screen animation
 		g.xpBefore = make([]int, len(g.party))
+		g.levelBefore = make([]int, len(g.party))
 		for i, c := range g.party {
 			g.xpBefore[i] = c.XP
+			g.levelBefore[i] = c.Level
 		}
 
 		// Random encounter triggered by client (walking on grass)
@@ -72,8 +74,12 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 
 	default:
 		// Legacy "advance" -- trigger encounter
+		g.xpBefore = make([]int, len(g.party))
+		g.levelBefore = make([]int, len(g.party))
 		partyLevels := make([]int, len(g.party))
 		for i, c := range g.party {
+			g.xpBefore[i] = c.XP
+			g.levelBefore[i] = c.Level
 			partyLevels[i] = c.Level
 		}
 		encLvl := balance.EncounterLevel(partyLevels, "normal", 0, g.currentQ)
