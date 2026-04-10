@@ -1,6 +1,7 @@
 import { playSFX, playMusic } from "../systems/audio.js";
 import { openDialogue } from "./town_dialogue.js";
-import { isTouchDevice } from "../systems/input.js";
+import { openShop } from "./world_shop.js";
+import { isTouchDevice, initTouchControls } from "../systems/input.js";
 
 const TILE_SIZE = 16;
 const SCALE = 2;
@@ -213,6 +214,9 @@ export class TownScene extends Phaser.Scene {
       if (!this.animating) this.exitToWorld();
     });
 
+    // Touch controls (reuse WorldScene's touch system)
+    initTouchControls(this);
+
     // Message overlay (same pattern as WorldScene)
     this.messageText = this.add
       .text(400, 300, "", {
@@ -311,11 +315,50 @@ export class TownScene extends Phaser.Scene {
     }
   }
 
-  interact() {
+  async interact() {
     if (this.animating) return;
+    if (!this.nearNpc) return;
+
+    this.hideInteractPrompt();
+
+    const tags = this.spawn.tags || [];
+    const tagSet = new Set(tags);
+
+    if (tagSet.has("shop") || tagSet.has("commerce")) {
+      // Shop NPC opens the shop UI
+      openShop(this, this.spawn);
+    } else if (tagSet.has("rest")) {
+      // Inn NPC restores party HP
+      this.gameState.party.forEach((p) => {
+        if (p.hp > 0) p.hp = p.max_hp;
+      });
+      playSFX("sfx_heal");
+      await openDialogue(this, this.spawn);
+      this.showMessage("HP and spells restored!");
+      this.time.delayedCall(1500, () => this.hideMessage());
+    } else if (tagSet.has("temple") || tagSet.has("revive")) {
+      // Temple NPC heals or revives
+      const dead = this.gameState.party.filter((p) => p.hp <= 0);
+      if (dead.length > 0) {
+        dead.forEach((p) => {
+          p.hp = 1;
+          p.status = "";
+        });
+      } else {
+        this.gameState.party.forEach((p) => {
+          p.hp = p.max_hp;
+        });
+      }
+      playSFX("sfx_heal");
+      await openDialogue(this, this.spawn);
+    } else {
+      // Generic NPC just talks
+      await openDialogue(this, this.spawn);
+    }
+
+    // Re-show talk prompt if still near NPC
     if (this.nearNpc) {
-      this.hideInteractPrompt();
-      openDialogue(this, this.spawn);
+      this.showInteractPrompt();
     }
   }
 
@@ -358,6 +401,10 @@ export class TownScene extends Phaser.Scene {
   hideMessage() {
     this.messageText.setVisible(false);
   }
+
+  // Stubs for compatibility with shop overlay (HUD lives in WorldScene)
+  updateHUD() {}
+  flashSaveIcon() {}
 
   drawRoom() {
     this.tileGraphics.clear();
