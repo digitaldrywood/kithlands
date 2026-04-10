@@ -31,8 +31,11 @@ const TILE_SIZE = 16;
 const SCALE = 2;
 const RENDERED_TILE = TILE_SIZE * SCALE;
 
-// Cache tilemap across scene restarts (it never changes during a game)
+// Cache tilemap and player position across scene restarts
 let cachedTileMap = null;
+let cachedPlayerX = null;
+let cachedPlayerY = null;
+let cachedPlayerDir = 'down';
 
 export class WorldScene extends Phaser.Scene {
   constructor() {
@@ -81,8 +84,9 @@ export class WorldScene extends Phaser.Scene {
     this.tileData = tm.tiles;
     this.mapW = tm.width;
     this.mapH = tm.height;
-    this.playerX = tm.player_x;
-    this.playerY = tm.player_y;
+    // Restore cached position or use tilemap default
+    this.playerX = cachedPlayerX !== null ? cachedPlayerX : tm.player_x;
+    this.playerY = cachedPlayerY !== null ? cachedPlayerY : tm.player_y;
     this.spawns = tm.spawns || [];
 
     // World bounds
@@ -97,12 +101,12 @@ export class WorldScene extends Phaser.Scene {
     // Location labels
     this.drawLabels();
 
-    // Player sprite (directional)
-    this.playerDir = 'down';
+    // Player sprite (directional, restore cached direction)
+    this.playerDir = cachedPlayerDir;
     this.player = this.add.image(
       this.playerX * RENDERED_TILE + RENDERED_TILE / 2,
       this.playerY * RENDERED_TILE + RENDERED_TILE / 2,
-      'player_down'
+      `player_${this.playerDir}`
     ).setDepth(10).setScale(SCALE);
 
     // Camera follows player
@@ -317,6 +321,11 @@ export class WorldScene extends Phaser.Scene {
       this.player.setTexture(`player_${dir}`);
     }
 
+    // Cache position for scene transitions
+    cachedPlayerX = this.playerX;
+    cachedPlayerY = this.playerY;
+    cachedPlayerDir = this.playerDir;
+
     this.tweens.add({
       targets: this.player,
       x: nx * RENDERED_TILE + RENDERED_TILE / 2,
@@ -327,12 +336,20 @@ export class WorldScene extends Phaser.Scene {
 
     this.stepCount++;
 
-    // Door interaction
+    // Door interaction -- check for quest completion or shop
     if (tile === 5) {
       const spawn = this.spawns.find(s => Math.abs(s.x - nx) <= 1 && Math.abs(s.y - ny) <= 2);
       if (spawn) {
         this.showMessage(`Entered: ${spawn.name}`);
         this.time.delayedCall(1500, () => this.hideMessage());
+
+        // Check if this is a quest target
+        const gs = this.gameState;
+        if (gs.current_quest < gs.quests.length) {
+          const q = gs.quests[gs.current_quest];
+          // Advance quest when entering any unvisited building
+          this.triggerQuestAdvance(spawn.name);
+        }
       }
     }
 
@@ -341,45 +358,56 @@ export class WorldScene extends Phaser.Scene {
       const chance = Math.min(10 + this.stepCount * 3, 50);
       if (Phaser.Math.Between(1, 100) <= chance) {
         this.stepCount = 0;
-        this.triggerEncounter();
+        this.triggerRandomEncounter();
       }
     }
 
     this.updateHUD();
   }
 
-  async triggerEncounter() {
+  async triggerRandomEncounter() {
     this.animating = true;
-    console.log('[World] encounter triggered');
+    console.log('[World] random encounter triggered');
 
     this.cameras.main.flash(300, 255, 255, 255);
 
     this.time.delayedCall(400, async () => {
       try {
-        const result = await gameAction(this.gameState.id, { type: 'advance' });
+        const result = await gameAction(this.gameState.id, { type: 'encounter' });
         this.gameState = result;
-        console.log('[World] encounter result phase:', result.phase, 'enemies:', result.enemies?.length);
 
         if (result.phase === 'combat' && result.enemies?.length > 0) {
           this.scene.start('Battle', { gameState: result });
         } else {
-          // No combat (quest advanced instead) -- show result and continue
           this.animating = false;
-          this.updateHUD();
-          this.updateQuestDisplay();
-          if (result.message) {
-            this.showMessage(result.message);
-            this.time.delayedCall(3000, () => this.hideMessage());
-          }
-          if (result.phase === 'victory') {
-            this.showEndScreen('VICTORY!', `${result.location} is saved!`, '#ffff44', result);
-          }
         }
       } catch (e) {
         console.error('[World] encounter failed:', e);
         this.animating = false;
       }
     });
+  }
+
+  async triggerQuestAdvance(locationName) {
+    console.log('[World] quest advance at:', locationName);
+    try {
+      const result = await gameAction(this.gameState.id, { type: 'quest_advance' });
+      this.gameState = result;
+      this.updateHUD();
+      this.updateQuestDisplay();
+
+      if (result.message) {
+        this.showMessage(result.message);
+        this.time.delayedCall(3000, () => this.hideMessage());
+      }
+      if (result.phase === 'victory') {
+        this.time.delayedCall(3000, () => {
+          this.showEndScreen('VICTORY!', `${result.location} is saved!`, '#ffff44', result);
+        });
+      }
+    } catch (e) {
+      console.error('[World] quest advance failed:', e);
+    }
   }
 
   drawMap() {

@@ -191,21 +191,67 @@ export class BattleScene extends Phaser.Scene {
       bg.on('pointerdown', () => {
         if (this.animating) return;
         if (b.type === 'spell') {
-          for (const p of gs.party) {
-            if (p.spells) {
-              for (const s of p.spells) {
-                if (s.charges > 0) {
-                  this.doAction({ type: 'spell', spell_id: s.id });
-                  return;
-                }
-              }
-            }
-          }
+          this.showSpellPicker(gs);
         } else {
           this.doAction({ type: b.type });
         }
       });
     }
+  }
+
+  showSpellPicker(gs) {
+    // Collect all castable spells from all party members
+    const spells = [];
+    for (const p of gs.party) {
+      if (p.hp <= 0 || !p.spells) continue;
+      for (const s of p.spells) {
+        if (s.charges > 0) {
+          spells.push({ ...s, caster: p.name });
+        }
+      }
+    }
+
+    if (spells.length === 0) return;
+
+    // Create spell picker overlay
+    const overlay = [];
+    const bg = this.add.rectangle(400, 400, 350, 40 + spells.length * 35, 0x111144, 0.95)
+      .setStrokeStyle(2, 0x4444aa).setDepth(50);
+    overlay.push(bg);
+
+    const title = this.add.text(400, 385 - spells.length * 17, 'Choose a spell:', {
+      fontSize: '13px', color: '#ffffff', fontFamily: 'monospace',
+    }).setOrigin(0.5).setDepth(51);
+    overlay.push(title);
+
+    for (let i = 0; i < spells.length; i++) {
+      const sp = spells[i];
+      const y = 410 - spells.length * 17 + i * 35;
+
+      const row = this.add.rectangle(400, y, 300, 28, 0x222255)
+        .setInteractive({ useHandCursor: true }).setDepth(51);
+      overlay.push(row);
+
+      const text = this.add.text(400, y,
+        `${sp.name} (${sp.charges} charges) - ${sp.caster}`, {
+        fontSize: '12px', color: '#aaaaff', fontFamily: 'monospace',
+      }).setOrigin(0.5).setDepth(52);
+      overlay.push(text);
+
+      row.on('pointerover', () => { row.setFillStyle(0x3333aa); text.setColor('#ffffff'); });
+      row.on('pointerout', () => { row.setFillStyle(0x222255); text.setColor('#aaaaff'); });
+      row.on('pointerdown', () => {
+        overlay.forEach(o => o.destroy());
+        this.doAction({ type: 'spell', spell_id: sp.id });
+      });
+    }
+
+    // Cancel
+    const cancel = this.add.text(400, 420 - spells.length * 17 + spells.length * 35, '[ CANCEL ]', {
+      fontSize: '11px', color: '#888888', fontFamily: 'monospace',
+    }).setOrigin(0.5).setDepth(51).setInteractive({ useHandCursor: true });
+    cancel.on('pointerdown', () => overlay.forEach(o => o.destroy()));
+    overlay.push(cancel);
   }
 
   getActivePartyIndex(gs) {

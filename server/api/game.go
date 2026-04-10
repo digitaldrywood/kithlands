@@ -55,17 +55,44 @@ type GameActionRequest struct {
 // GameState is the full state sent to the client.
 type GameState struct {
 	ID        string              `json:"id"`
-	Phase     string              `json:"phase"` // world, combat, quest_complete, victory, defeat
+	Phase     string              `json:"phase"` // world, combat, combat_victory, quest_complete, victory, defeat
 	Party     []PartyMemberState  `json:"party"`
 	Enemies   []EnemyState        `json:"enemies,omitempty"`
 	Quests    []QuestState        `json:"quests"`
 	CurrentQ  int                 `json:"current_quest"`
 	Gold      int                 `json:"gold"`
 	Potions   int                 `json:"potions"`
+	Items     []ItemState         `json:"items"`
+	Equipment [4]EquipState       `json:"equipment"`
 	Location  string              `json:"location"`
 	Message   string              `json:"message,omitempty"`
-	CombatLog []string              `json:"combat_log,omitempty"`
-	TileMap   *locality.TileMap    `json:"tilemap,omitempty"`
+	CombatLog []string            `json:"combat_log,omitempty"`
+	TileMap   *locality.TileMap   `json:"tilemap,omitempty"`
+	ShopItems []ShopItemState     `json:"shop_items,omitempty"`
+}
+
+type ItemState struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Count int    `json:"count"`
+}
+
+type EquipState struct {
+	WeaponID   string `json:"weapon_id"`
+	WeaponName string `json:"weapon_name"`
+	ArmorID    string `json:"armor_id"`
+	ArmorName  string `json:"armor_name"`
+}
+
+type ShopItemState struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Type     string `json:"type"` // weapon, armor, consumable, spell
+	Price    int    `json:"price"`
+	Power    int    `json:"power,omitempty"`
+	Absorb   int    `json:"absorb,omitempty"`
+	Classes  string `json:"classes,omitempty"`
+	Owned    bool   `json:"owned,omitempty"`
 }
 
 type PartyMemberState struct {
@@ -217,19 +244,9 @@ func (g *Game) ProcessAction(req GameActionRequest) (*GameState, error) {
 }
 
 func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
-	if g.currentQ >= len(g.quests) {
-		g.phase = "victory"
-		g.message = fmt.Sprintf("%s is saved! Your adventure is complete.", g.loc.Name)
-		state := g.stateUnlocked()
-		return &state, nil
-	}
-
-	// Travel to next quest, chance of encounter
-	q := &g.quests[g.currentQ]
-	g.message = fmt.Sprintf("Traveling toward: %s", q.Name)
-
-	if g.rng.IntN(100) < 50 {
-		// Random encounter
+	switch req.Type {
+	case "encounter":
+		// Random encounter triggered by client (walking on grass)
 		partyLevels := make([]int, len(g.party))
 		for i, c := range g.party {
 			partyLevels[i] = c.Level
@@ -241,25 +258,46 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 		for _, e := range g.enemies {
 			g.combatLog = append(g.combatLog, fmt.Sprintf("  %s (HP: %d)", e.Name, e.MaxHP))
 		}
-	} else {
-		// No encounter, advance quest
-		q.Completed = true
-		g.message = fmt.Sprintf("Quest complete: %s\n%s\n+%d XP, +%d gold",
-			q.Name, q.Completion, q.Reward.XP, q.Reward.Gold)
-		g.inv.Gold += q.Reward.Gold
-		for _, c := range g.party {
-			if c.IsAlive() {
-				c.XP += q.Reward.XP
-			}
-		}
-		g.checkLevelUps()
-		g.restParty()
-		g.currentQ++
+
+	case "quest_advance":
+		// Player entered a quest-relevant location
 		if g.currentQ >= len(g.quests) {
 			g.phase = "victory"
 			g.message = fmt.Sprintf("%s is saved! Your adventure is complete.", g.loc.Name)
 		} else {
-			g.phase = "quest_complete"
+			q := &g.quests[g.currentQ]
+			q.Completed = true
+			g.message = fmt.Sprintf("Quest complete: %s\n%s\n+%d XP, +%d gold",
+				q.Name, q.Completion, q.Reward.XP, q.Reward.Gold)
+			g.inv.Gold += q.Reward.Gold
+			for _, c := range g.party {
+				if c.IsAlive() {
+					c.XP += q.Reward.XP
+				}
+			}
+			g.checkLevelUps()
+			g.restParty()
+			g.currentQ++
+			if g.currentQ >= len(g.quests) {
+				g.phase = "victory"
+				g.message = fmt.Sprintf("%s is saved! Your adventure is complete.", g.loc.Name)
+			} else {
+				g.phase = "quest_complete"
+			}
+		}
+
+	default:
+		// Legacy "advance" -- trigger encounter
+		partyLevels := make([]int, len(g.party))
+		for i, c := range g.party {
+			partyLevels[i] = c.Level
+		}
+		encLvl := balance.EncounterLevel(partyLevels, "normal", 0, g.currentQ)
+		g.enemies = balance.GenerateEncounter(g.gd.Monsters, encLvl, g.diff, g.rng)
+		g.phase = "combat"
+		g.combatLog = append(g.combatLog, "Enemies appear!")
+		for _, e := range g.enemies {
+			g.combatLog = append(g.combatLog, fmt.Sprintf("  %s (HP: %d)", e.Name, e.MaxHP))
 		}
 	}
 
@@ -341,16 +379,39 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 
 	if combat.CheckVictory(g.enemies) {
 		totalXP, totalGold := 0, 0
+		var drops []string
 		for _, e := range g.enemies {
 			for _, m := range g.gd.Monsters {
 				if m.Name == e.Name {
 					totalXP += m.XPReward
 					totalGold += m.GoldReward
+					// Roll drops
+					for _, drop := range m.Drops {
+						if g.rng.IntN(100) < drop.ChancePct {
+							drops = append(drops, drop.ItemID)
+						}
+					}
 					break
 				}
 			}
 		}
 		g.inv.Gold += totalGold
+		// Add dropped items to inventory
+		for _, itemID := range drops {
+			g.inv.Consumables[itemID]++
+			// Find item name for log
+			itemName := itemID
+			for _, c := range g.gd.Items.Consumables {
+				if c.ID == itemID {
+					itemName = c.Name
+					break
+				}
+			}
+			if w := g.gd.WeaponByID(itemID); w != nil {
+				itemName = w.Name
+			}
+			g.combatLog = append(g.combatLog, fmt.Sprintf("Found: %s!", itemName))
+		}
 		living := 0
 		for _, c := range g.party {
 			if c.IsAlive() {
@@ -625,7 +686,6 @@ func (g *Game) restParty() {
 }
 
 func (g *Game) stateUnlocked() GameState {
-	// Must be called with lock held; calls State() logic inline
 	state := GameState{
 		ID: g.id, Phase: g.phase, CurrentQ: g.currentQ,
 		Gold: g.inv.Gold, Potions: g.inv.Consumables["potion"],
@@ -633,6 +693,34 @@ func (g *Game) stateUnlocked() GameState {
 	}
 	if g.loc != nil {
 		state.Location = g.loc.Name
+	}
+
+	// Items (non-potion consumables and weapons in inventory)
+	for id, count := range g.inv.Consumables {
+		if id == "potion" {
+			continue // shown separately
+		}
+		name := id
+		for _, c := range g.gd.Items.Consumables {
+			if c.ID == id {
+				name = c.Name
+				break
+			}
+		}
+		state.Items = append(state.Items, ItemState{ID: id, Name: name, Count: count})
+	}
+
+	// Equipment per party slot
+	for i := 0; i < len(g.party) && i < 4; i++ {
+		eq := g.inv.Equipment[i]
+		es := EquipState{WeaponID: eq.WeaponID, ArmorID: eq.ArmorID}
+		if w := g.gd.WeaponByID(eq.WeaponID); w != nil {
+			es.WeaponName = w.Name
+		}
+		if a := g.gd.ArmorByID(eq.ArmorID); a != nil {
+			es.ArmorName = a.Name
+		}
+		state.Equipment[i] = es
 	}
 	for _, c := range g.party {
 		cls := g.gd.ClassByID(c.ClassID)
