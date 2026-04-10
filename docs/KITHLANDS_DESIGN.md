@@ -524,11 +524,13 @@ Hit% is partly a derived stat (gained per level by class) and partly equipment-d
 
 FF1's XP curve is famous for getting essentially flat after level 29 (~32,800 XP per level forever). Kithlands uses a similar shape but caps at level 50 instead of 99 to keep campaigns short and replayable.
 
-**XP-to-next-level formula:**
+**XP-to-next-level formula (approximate):**
 
 ```
 xp(level) = floor(40 * level^1.6) + 30
 ```
+
+The formula above is an approximation. The reference table below is authoritative; intermediate levels are linearly interpolated between sample points. See `shared/stats.json` for the full 50-level table.
 
 Resulting curve:
 
@@ -899,6 +901,8 @@ The player enters their town name and Kithlands queries the Overpass API for:
 These become real geographic nodes with real coordinates. The player can then add personal nodes (their neighbors, their favorite spots) on top of the OSM base layer.
 
 This is the coolest loading method but it has the most edge cases (rural towns with sparse OSM data, foreign-language tags, weird coordinate systems). Save it for v3 when the rest is proven.
+
+**Radius cap:** The wizard slider allows 0.5--30 miles. The server clamps `radius_miles` to `[0.5, 30]`. The default is 1.5 miles, which works well for small cities. Use a larger radius (10--30 miles) for rural or countryside areas where landmarks, farms, and natural features are spread across a wider area. At 30 miles the Overpass query may return several megabytes of data; the query `maxsize` is set to 8 MB to accommodate this.
 
 ## 9.3 The graph walk: how spawn point creates a unique game
 

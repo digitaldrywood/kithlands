@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand/v2"
+	"strconv"
 
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
 )
@@ -62,9 +63,14 @@ func New(name, classID string, class *gamedata.Class) *Character {
 	}
 }
 
-// XPToNextLevel computes XP needed to reach the next level per Section 5.2:
-// xp(level) = floor(40 * level^1.6) + 30
+// XPToNextLevel returns the XP needed to reach the next level per Section 5.2.
+// Values come from the authoritative reference table in stats.json.
+// Falls back to floor(coefficient * level^exponent) + constant if the level
+// is missing from the table.
 func XPToNextLevel(level int, curve *gamedata.XPCurve) int {
+	if v, ok := curve.RefTable[strconv.Itoa(level)]; ok {
+		return v
+	}
 	return int(math.Floor(curve.Coefficient*math.Pow(float64(level), curve.Exponent))) + int(curve.Constant)
 }
 

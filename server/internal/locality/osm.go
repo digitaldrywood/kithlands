@@ -25,7 +25,7 @@ func BuildFromOSM(ctx context.Context, lat, lng float64, radiusM int, townName s
 
 	// Auto-widen: if fewer than 5 classified nodes, double radius and re-query
 	if len(nodes) < 5 {
-		wider := min(radiusM*2, 8000)
+		wider := min(radiusM*2, 48280)
 		if wider > radiusM {
 			elements, err = queryOverpass(ctx, lat, lng, wider)
 			if err != nil {
@@ -143,7 +143,7 @@ func PreviewOSM(ctx context.Context, lat, lng float64, radiusM int) ([]Node, int
 
 	// Auto-widen: if fewer than 5 classified nodes, double radius and re-query
 	if len(nodes) < 5 {
-		wider := min(radiusM*2, 8000)
+		wider := min(radiusM*2, 48280)
 		if wider > radiusM {
 			elements, err = queryOverpass(ctx, lat, lng, wider)
 			if err != nil {
@@ -345,7 +345,7 @@ func (l *Locality) Roads() []Road {
 
 // queryOverpass fetches OSM data around a point.
 func queryOverpass(ctx context.Context, lat, lng float64, radiusM int) ([]osmElement, error) {
-	query := fmt.Sprintf(`[out:json][timeout:25][maxsize:2097152];
+	query := fmt.Sprintf(`[out:json][timeout:25][maxsize:8388608];
 (
   node["amenity"](around:%d,%f,%f);
   node["shop"](around:%d,%f,%f);
