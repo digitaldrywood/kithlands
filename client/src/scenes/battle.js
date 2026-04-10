@@ -19,6 +19,9 @@ export class BattleScene extends Phaser.Scene {
   init(data) { this.gameState = data.gameState; }
 
   create() {
+    // Clear previous keyboard listeners to prevent duplicates on scene restart
+    this.input.keyboard.removeAllListeners();
+
     this.animating = false;
     this.enemySprites = {};
     this.partySprites = {};
@@ -123,9 +126,11 @@ export class BattleScene extends Phaser.Scene {
           return;
         }
         if (this.targetingMode) {
-          if (n < this.livingEnemies.length) {
+          // Match the displayed number (1-based position in full enemy list)
+          const enemies = this.gameState.enemies;
+          if (n < enemies.length && enemies[n].hp > 0) {
             this.exitTargetingMode();
-            this.onEnemyClick(this.livingEnemies[n].id);
+            this.onEnemyClick(enemies[n].id);
           }
           return;
         }
@@ -438,7 +443,9 @@ export class BattleScene extends Phaser.Scene {
       repeat: -1,
     });
 
-    this.promptText.setText(`Target: ${enemy.name} [${this.selectedTargetIdx + 1}]`);
+    // Show the position number from the full enemy list (matches displayed number)
+    const fullIdx = this.gameState.enemies.findIndex(e => e.id === enemy.id);
+    this.promptText.setText(`Target: ${enemy.name} [${fullIdx + 1}]`);
   }
 
   showSpellPicker(slot) {
