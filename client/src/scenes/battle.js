@@ -15,26 +15,34 @@ const CLASS_SPRITES = {
 export class BattleScene extends Phaser.Scene {
   constructor() { super('Battle'); }
 
-  init(data) {
-    this.gameState = data.gameState;
-  }
+  init(data) { this.gameState = data.gameState; }
 
   create() {
     this.animating = false;
     this.enemySprites = {};
     this.partySprites = {};
+    this.partyArrows = [];
     this.pendingAction = null;
     this.pendingSpellId = null;
+    this.actionBtns = null;
+
+    // Per-member action collection
+    this.memberActions = []; // array of {slot, type, target_id, spell_id}
+    this.currentMemberIdx = 0;
+    this.livingMembers = [];
 
     const gs = this.gameState;
     if (!gs || gs.phase !== 'combat' || !gs.enemies?.length) {
-      if (gs?.combat_log?.length) {
-        this.showVictoryResults(gs);
-      } else {
-        this.scene.start('World', { gameState: gs });
-      }
+      if (gs?.combat_log?.length) this.showVictoryResults(gs);
+      else this.scene.start('World', { gameState: gs });
       return;
     }
+
+    // Find living party members
+    for (let i = 0; i < gs.party.length; i++) {
+      if (gs.party[i].hp > 0) this.livingMembers.push(i);
+    }
+    this.currentMemberIdx = 0;
 
     // Background
     this.add.rectangle(400, 300, 800, 600, 0x0a0a1e);
@@ -43,11 +51,36 @@ export class BattleScene extends Phaser.Scene {
     this.drawEnemies(gs);
     this.drawParty(gs);
     this.drawLog(gs);
-    this.drawActions(gs);
 
-    this.promptText = this.add.text(400, 345, 'Choose an action', {
+    this.promptText = this.add.text(400, 340, '', {
       fontSize: '11px', color: '#ffff44', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(5);
+
+    // Show first member's turn
+    this.showCurrentMemberTurn();
+  }
+
+  showCurrentMemberTurn() {
+    const gs = this.gameState;
+    if (this.currentMemberIdx >= this.livingMembers.length) {
+      // All members have chosen -- send all actions to server
+      this.submitAllActions();
+      return;
+    }
+
+    const slot = this.livingMembers[this.currentMemberIdx];
+    const member = gs.party[slot];
+
+    // Move arrow to current member
+    for (let i = 0; i < this.partyArrows.length; i++) {
+      this.partyArrows[i].setVisible(i === slot);
+    }
+
+    this.promptText.setText(`${member.name}'s turn -- choose an action`).setColor('#ffff44');
+    this.pendingAction = null;
+
+    // Draw action buttons for this member
+    this.drawActions(gs, slot);
   }
 
   drawEnemies(gs) {
@@ -81,7 +114,6 @@ export class BattleScene extends Phaser.Scene {
         fontSize: '10px', color: '#ffffff', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
-      // HP bar
       const bw = 65, pct = Math.max(0, e.hp / e.max_hp);
       this.add.rectangle(x, y + sz / 2 + 10, bw, 7, 0x333333);
       if (pct > 0) {
@@ -101,11 +133,10 @@ export class BattleScene extends Phaser.Scene {
       const x = px, y = 160 + i * 85;
       const alive = p.hp > 0;
 
-      // Indicator arrow for each member
       const arrow = this.add.triangle(x - 18, y, 0, -8, 0, 8, 10, 0, 0xffff44)
         .setDepth(2).setVisible(false);
+      this.partyArrows[i] = arrow;
 
-      // Sprite
       const cs = CLASS_SPRITES[p.class_id];
       let sprite;
       if (cs && this.textures.exists(cs)) {
@@ -115,8 +146,7 @@ export class BattleScene extends Phaser.Scene {
       } else {
         sprite = this.add.rectangle(x + 15, y, 35, 35, alive ? 0xFF5722 : 0x444444);
       }
-
-      this.partySprites[p.name] = { sprite, arrow, x: x + 15, y, alive };
+      this.partySprites[p.name] = { sprite, arrow, x: x + 15, y, alive, slot: i };
 
       this.add.text(x + 45, y - 18, p.name, {
         fontSize: '11px', color: alive ? '#ffffff' : '#666666', fontFamily: 'monospace',
@@ -125,7 +155,6 @@ export class BattleScene extends Phaser.Scene {
         fontSize: '9px', color: '#aaaaaa', fontFamily: 'monospace',
       });
 
-      // HP bar
       const bw = 85, hpPct = Math.max(0, p.hp / p.max_hp);
       this.add.rectangle(x + 90 + bw / 2, y + 13, bw, 6, 0x333333);
       if (hpPct > 0) {
@@ -142,30 +171,6 @@ export class BattleScene extends Phaser.Scene {
         });
       }
     }
-
-    // Show indicator on first living member
-    this.highlightMember(gs, 0);
-  }
-
-  highlightMember(gs, index) {
-    // Hide all arrows
-    for (const name in this.partySprites) {
-      this.partySprites[name].arrow.setVisible(false);
-    }
-    // Show arrow for the given index
-    let count = 0;
-    for (const p of gs.party) {
-      if (p.hp > 0) {
-        if (count === index) {
-          if (this.partySprites[p.name]) {
-            this.partySprites[p.name].arrow.setVisible(true);
-          }
-          return p.name;
-        }
-        count++;
-      }
-    }
-    return null;
   }
 
   drawLog(gs) {
@@ -179,8 +184,16 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
-  drawActions(gs) {
-    const hasSpells = gs.party.some(p => p.hp > 0 && p.spells?.some(s => s.charges > 0));
+  drawActions(gs, slot) {
+    // Remove old buttons
+    if (this.actionBtns) {
+      this.actionBtns.forEach(o => o.destroy());
+    }
+    this.actionBtns = [];
+
+    const member = gs.party[slot];
+    const hasSpells = member.spells?.length > 0 && member.spells.some(s => s.charges > 0);
+
     const btns = [{ label: 'ATTACK', type: 'attack', color: '#ff4444' }];
     if (hasSpells) btns.push({ label: 'SPELL', type: 'spell', color: '#8888ff' });
     if (gs.potions > 0) btns.push({ label: `POTION(${gs.potions})`, type: 'item', color: '#44ff44' });
@@ -191,9 +204,11 @@ export class BattleScene extends Phaser.Scene {
       const b = btns[i], x = sx + i * 145;
       const bg = this.add.rectangle(x, 555, 125, 30, 0x1a1a44)
         .setStrokeStyle(1, 0x444488).setInteractive({ useHandCursor: true });
-      this.add.text(x, 555, b.label, {
+      const txt = this.add.text(x, 555, b.label, {
         fontSize: '12px', color: b.color, fontFamily: 'monospace',
       }).setOrigin(0.5);
+
+      this.actionBtns.push(bg, txt);
 
       bg.on('pointerover', () => bg.setFillStyle(0x2a2a66));
       bg.on('pointerout', () => bg.setFillStyle(0x1a1a44));
@@ -201,11 +216,14 @@ export class BattleScene extends Phaser.Scene {
         if (this.animating) return;
         if (b.type === 'attack') {
           this.pendingAction = 'attack';
-          this.promptText.setText('Click an enemy to attack!').setColor('#ff4444');
+          this.promptText.setText(`${member.name}: Click an enemy to attack!`).setColor('#ff4444');
         } else if (b.type === 'spell') {
-          this.showSpellPicker();
-        } else {
-          this.doAction({ type: b.type });
+          this.showSpellPicker(slot);
+        } else if (b.type === 'item') {
+          this.recordAction(slot, { slot, type: 'item', target_id: 0 });
+        } else if (b.type === 'flee') {
+          // Flee sends immediately (whole party flees)
+          this.doFlee();
         }
       });
     }
@@ -213,45 +231,55 @@ export class BattleScene extends Phaser.Scene {
 
   onEnemyClick(enemyId) {
     if (this.animating) return;
+    const slot = this.livingMembers[this.currentMemberIdx];
+
     if (this.pendingAction === 'attack') {
       this.pendingAction = null;
-      this.doAction({ type: 'attack', target_id: enemyId });
+      this.recordAction(slot, { slot, type: 'attack', target_id: enemyId });
     } else if (this.pendingAction === 'spell') {
       this.pendingAction = null;
-      this.doAction({ type: 'spell', spell_id: this.pendingSpellId, target_id: enemyId });
+      this.recordAction(slot, { slot, type: 'spell', target_id: enemyId, spell_id: this.pendingSpellId });
     }
   }
 
-  showSpellPicker() {
+  recordAction(slot, action) {
+    const member = this.gameState.party[slot];
+    const actionName = action.type === 'spell' ? 'casts spell' : action.type === 'item' ? 'uses potion' : 'attacks';
+    this.promptText.setText(`${member.name} ${actionName}!`).setColor('#44ff44');
+
+    this.memberActions.push(action);
+    this.currentMemberIdx++;
+
+    // Brief pause then show next member's turn
+    this.time.delayedCall(400, () => this.showCurrentMemberTurn());
+  }
+
+  showSpellPicker(slot) {
     const gs = this.gameState;
-    const allSpells = [];
-    for (const p of gs.party) {
-      if (p.hp <= 0 || !p.spells) continue;
-      for (const s of p.spells) {
-        if (s.charges > 0) allSpells.push({ ...s, caster: p.name });
-      }
-    }
-    if (!allSpells.length) return;
+    const member = gs.party[slot];
+    if (!member?.spells) return;
+
+    const spells = member.spells.filter(s => s.charges > 0);
+    if (!spells.length) return;
 
     const ol = [];
-    const h = 50 + allSpells.length * 32;
+    const h = 50 + spells.length * 32;
     const bg = this.add.rectangle(400, 380, 320, h, 0x111144, 0.95)
       .setStrokeStyle(2, 0x4444aa).setDepth(50).setInteractive();
     ol.push(bg);
 
-    ol.push(this.add.text(400, 380 - h / 2 + 15, 'Choose a spell:', {
+    ol.push(this.add.text(400, 380 - h / 2 + 15, `${member.name}'s spells:`, {
       fontSize: '12px', color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51));
 
-    for (let i = 0; i < allSpells.length; i++) {
-      const sp = allSpells[i];
+    for (let i = 0; i < spells.length; i++) {
+      const sp = spells[i];
       const y = 380 - h / 2 + 40 + i * 32;
       const row = this.add.rectangle(400, y, 280, 26, 0x222255)
         .setInteractive({ useHandCursor: true }).setDepth(51);
-      const txt = this.add.text(400, y,
-        `${sp.name} (${sp.charges}) - ${sp.caster}`, {
-          fontSize: '11px', color: '#aaaaff', fontFamily: 'monospace',
-        }).setOrigin(0.5).setDepth(52);
+      const txt = this.add.text(400, y, `${sp.name} (${sp.charges} charges)`, {
+        fontSize: '11px', color: '#aaaaff', fontFamily: 'monospace',
+      }).setOrigin(0.5).setDepth(52);
       ol.push(row, txt);
 
       row.on('pointerover', () => { row.setFillStyle(0x3333aa); txt.setColor('#ffffff'); });
@@ -260,7 +288,7 @@ export class BattleScene extends Phaser.Scene {
         ol.forEach(o => o.destroy());
         this.pendingAction = 'spell';
         this.pendingSpellId = sp.id;
-        this.promptText.setText(`Cast ${sp.name} -- click a target!`).setColor('#8888ff');
+        this.promptText.setText(`${member.name}: Cast ${sp.name} -- click a target!`).setColor('#8888ff');
       });
     }
 
@@ -271,19 +299,38 @@ export class BattleScene extends Phaser.Scene {
     ol.push(cancel);
   }
 
-  async doAction(action) {
+  async doFlee() {
     this.animating = true;
     this.promptText.setText('');
+    const result = await gameAction(this.gameState.id, { type: 'flee' });
+    this.gameState = result;
+    this.time.delayedCall(300, () => {
+      this.animating = false;
+      if (result.phase !== 'combat') {
+        this.scene.start('World', { gameState: result });
+      } else {
+        this.scene.restart({ gameState: result });
+      }
+    });
+  }
+
+  async submitAllActions() {
+    this.animating = true;
+    this.promptText.setText('Resolving combat...').setColor('#ffffff');
 
     try {
-      const result = await gameAction(this.gameState.id, action);
+      const result = await gameAction(this.gameState.id, {
+        type: 'combat_round',
+        actions: this.memberActions,
+      });
+
       if (result.error) {
         console.error('[Battle] error:', result.error);
         this.animating = false;
         return;
       }
 
-      // Animate each line of the combat log sequentially
+      // Animate each line of the combat log
       const log = result.combat_log || [];
       await this.animateCombatLog(log);
 
@@ -304,124 +351,106 @@ export class BattleScene extends Phaser.Scene {
   }
 
   async animateCombatLog(log) {
-    const gs = this.gameState;
-    let memberIdx = 0;
-
     for (const line of log) {
-      // Parse who is acting
       const attackMatch = line.match(/^(.+?) attacks (.+?) for (\d+)/);
       const spellMatch = line.match(/^(.+?) casts (.+?) on (.+?) for (\d+)/);
-      const healMatch = line.match(/healed (\d+)/);
       const defeatMatch = line.includes('DEFEATED');
 
       if (attackMatch) {
         const [, attacker, target, dmg] = attackMatch;
 
-        // Move indicator to attacker if party member
-        const partyEntry = this.partySprites[attacker];
-        if (partyEntry) {
-          // Show this party member's arrow
-          for (const n in this.partySprites) this.partySprites[n].arrow.setVisible(false);
-          partyEntry.arrow.setVisible(true);
+        // Move arrow to attacker
+        const pe = this.partySprites[attacker];
+        if (pe) {
+          for (const a of this.partyArrows) a.setVisible(false);
+          pe.arrow.setVisible(true);
           this.promptText.setText(`${attacker} attacks!`).setColor('#ff4444');
-
-          // Flash the party sprite forward
-          await this.tweenPromise(partyEntry.sprite, { x: partyEntry.x - 20, duration: 80 });
-          await this.tweenPromise(partyEntry.sprite, { x: partyEntry.x, duration: 80 });
+          await this.tweenP(pe.sprite, { x: pe.x - 20, duration: 80 });
+          await this.tweenP(pe.sprite, { x: pe.x, duration: 80 });
         }
 
-        // Find target sprite and animate hit
-        const enemyEntry = Object.values(this.enemySprites).find(e => e.name === target);
-        const partyTarget = this.partySprites[target];
-
-        if (enemyEntry) {
-          await this.showHitEffect(enemyEntry.x, enemyEntry.y, dmg, false, defeatMatch);
-          if (enemyEntry.sprite.setTint) {
-            enemyEntry.sprite.setTint(0xff4444);
-            this.time.delayedCall(200, () => { if (enemyEntry.sprite.clearTint) enemyEntry.sprite.clearTint(); });
-          }
-        } else if (partyTarget) {
-          // Enemy attacking a party member
+        // Hit effect on target
+        const ee = Object.values(this.enemySprites).find(e => e.name === target);
+        const pt = this.partySprites[target];
+        if (ee) {
+          await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch);
+          if (ee.sprite.setTint) { ee.sprite.setTint(0xff4444); this.time.delayedCall(200, () => ee.sprite.clearTint?.()); }
+        } else if (pt) {
           this.promptText.setText(`${attacker} attacks ${target}!`).setColor('#ff8800');
-          await this.showHitEffect(partyTarget.x, partyTarget.y, dmg, true, false);
-          if (partyTarget.sprite.setTint) {
-            partyTarget.sprite.setTint(0xff4444);
-            this.time.delayedCall(200, () => { if (partyTarget.sprite.clearTint) partyTarget.sprite.clearTint(); });
-          }
+          await this.hitFx(pt.x, pt.y, dmg, true, false);
+          if (pt.sprite.setTint) { pt.sprite.setTint(0xff4444); this.time.delayedCall(200, () => pt.sprite.clearTint?.()); }
           this.cameras.main.shake(80, 0.005);
         }
+        await this.wait(200);
 
-        await this.wait(250);
       } else if (spellMatch) {
         const [, caster, spell, target, dmg] = spellMatch;
-
-        const partyEntry = this.partySprites[caster];
-        if (partyEntry) {
-          for (const n in this.partySprites) this.partySprites[n].arrow.setVisible(false);
-          partyEntry.arrow.setVisible(true);
+        const pe = this.partySprites[caster];
+        if (pe) {
+          for (const a of this.partyArrows) a.setVisible(false);
+          pe.arrow.setVisible(true);
           this.promptText.setText(`${caster} casts ${spell}!`).setColor('#8888ff');
         }
 
-        // Spell flash
         const flash = this.add.rectangle(400, 300, 800, 600, 0x4444ff, 0.2).setDepth(19);
         this.time.delayedCall(200, () => flash.destroy());
 
-        const enemyEntry = Object.values(this.enemySprites).find(e => e.name === target);
-        if (enemyEntry) {
-          // Particles
+        const ee = Object.values(this.enemySprites).find(e => e.name === target);
+        if (ee) {
           for (let j = 0; j < 6; j++) {
-            const px = enemyEntry.x + Phaser.Math.Between(-25, 25);
-            const py = enemyEntry.y + Phaser.Math.Between(-25, 25);
+            const px = ee.x + Phaser.Math.Between(-25, 25);
+            const py = ee.y + Phaser.Math.Between(-25, 25);
             const p = this.add.circle(px, py, 4, 0x8888ff).setDepth(20);
             this.tweens.add({ targets: p, y: py - 30, alpha: 0, duration: 400, onComplete: () => p.destroy() });
           }
-          await this.showHitEffect(enemyEntry.x, enemyEntry.y, dmg, false, defeatMatch);
+          await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch);
         }
+        await this.wait(250);
 
-        await this.wait(300);
       } else if (line.includes('Found:')) {
         this.promptText.setText(line).setColor('#44ff44');
         await this.wait(400);
+
+      } else if (line.includes('healed')) {
+        this.promptText.setText(line).setColor('#44ff44');
+        const healMatch = line.match(/healed (\d+)/);
+        if (healMatch) {
+          const nt = this.add.text(600, 220, `+${healMatch[1]}`, {
+            fontSize: '16px', color: '#44ff44', fontFamily: 'monospace', fontStyle: 'bold',
+          }).setOrigin(0.5).setDepth(25);
+          this.tweens.add({ targets: nt, y: nt.y - 30, alpha: 0, duration: 700, onComplete: () => nt.destroy() });
+        }
+        await this.wait(300);
       }
     }
   }
 
-  showHitEffect(x, y, dmg, isPartyTarget, defeated) {
+  hitFx(x, y, dmg, isParty, defeated) {
     return new Promise(resolve => {
-      // Slash line
       const g = this.add.graphics().setDepth(20);
-      g.lineStyle(3, isPartyTarget ? 0xff8800 : 0xffffff, 1);
+      g.lineStyle(3, isParty ? 0xff8800 : 0xffffff, 1);
       g.lineBetween(x - 20, y - 15, x + 20, y + 15);
       this.time.delayedCall(150, () => g.destroy());
 
-      // Damage number
-      const color = isPartyTarget ? '#ff8800' : '#ff4444';
-      const numText = this.add.text(x + Phaser.Math.Between(-15, 15), y - 10, `-${dmg}`, {
+      const color = isParty ? '#ff8800' : '#ff4444';
+      const nt = this.add.text(x + Phaser.Math.Between(-10, 10), y - 10, `-${dmg}`, {
         fontSize: '16px', color, fontFamily: 'monospace', fontStyle: 'bold',
       }).setOrigin(0.5).setDepth(25);
-      this.tweens.add({
-        targets: numText, y: numText.y - 35, alpha: 0,
-        duration: 700, ease: 'Power2', onComplete: () => numText.destroy(),
-      });
+      this.tweens.add({ targets: nt, y: nt.y - 35, alpha: 0, duration: 700, onComplete: () => nt.destroy() });
 
       if (defeated) {
-        const defText = this.add.text(x, y + 20, 'DEFEATED!', {
-          fontSize: '12px', color: '#ff4444', fontFamily: 'monospace',
+        const dt = this.add.text(x, y + 20, 'DEFEATED!', {
+          fontSize: '11px', color: '#ff4444', fontFamily: 'monospace',
         }).setOrigin(0.5).setDepth(25);
-        this.tweens.add({
-          targets: defText, alpha: 0, duration: 1000, delay: 300,
-          onComplete: () => defText.destroy(),
-        });
+        this.tweens.add({ targets: dt, alpha: 0, duration: 1000, delay: 300, onComplete: () => dt.destroy() });
       }
 
-      this.time.delayedCall(200, resolve);
+      this.time.delayedCall(150, resolve);
     });
   }
 
-  tweenPromise(target, config) {
-    return new Promise(resolve => {
-      this.tweens.add({ targets: target, ...config, onComplete: resolve });
-    });
+  tweenP(target, config) {
+    return new Promise(resolve => this.tweens.add({ targets: target, ...config, onComplete: resolve }));
   }
 
   wait(ms) {
@@ -447,14 +476,12 @@ export class BattleScene extends Phaser.Scene {
 
     const log = gs.combat_log || [];
     let y = 80;
-
-    for (const line of log) {
-      if (line.includes('Victory') || line.includes('Found:') || line.startsWith('+')) {
-        this.add.text(400, y, line, { fontSize: '12px', color: '#44ff44', fontFamily: 'monospace' }).setOrigin(0.5);
+    for (const l of log) {
+      if (l.includes('Victory') || l.includes('Found:') || l.startsWith('+')) {
+        this.add.text(400, y, l, { fontSize: '12px', color: '#44ff44', fontFamily: 'monospace' }).setOrigin(0.5);
         y += 20;
       }
     }
-
     const lvlUps = log.filter(l => l.includes('leveled up'));
     if (lvlUps.length) {
       y += 8;
@@ -465,7 +492,6 @@ export class BattleScene extends Phaser.Scene {
         y += 20;
       }
     }
-
     for (const l of log.filter(l => l.includes('Quest complete'))) {
       y += 5;
       this.add.text(400, y, l, { fontSize: '12px', color: '#44ccff', fontFamily: 'monospace' }).setOrigin(0.5);

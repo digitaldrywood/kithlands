@@ -45,11 +45,19 @@ type PartyMemberReq struct {
 }
 
 type GameActionRequest struct {
-	Type     string `json:"type"`     // attack, spell, item, flee, advance, travel
-	TargetID int    `json:"target_id,omitempty"`
+	Type     string              `json:"type"`     // attack, spell, item, flee, encounter, quest_advance
+	TargetID int                 `json:"target_id,omitempty"`
+	SpellID  string              `json:"spell_id,omitempty"`
+	ItemID   string              `json:"item_id,omitempty"`
+	SlotIdx  int                 `json:"slot_idx,omitempty"`
+	Actions  []MemberActionReq   `json:"actions,omitempty"` // per-member actions for combat
+}
+
+type MemberActionReq struct {
+	Slot     int    `json:"slot"`      // party slot 0-3
+	Type     string `json:"type"`      // attack, spell, item, defend
+	TargetID int    `json:"target_id"`
 	SpellID  string `json:"spell_id,omitempty"`
-	ItemID   string `json:"item_id,omitempty"`
-	SlotIdx  int    `json:"slot_idx,omitempty"` // which party member is acting
 }
 
 // GameState is the full state sent to the client.
@@ -308,13 +316,7 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 	stats := &g.gd.Stats.Combat
 
-	// Handle spell/item for the acting slot
-	if req.Type == "spell" && req.SpellID != "" {
-		return g.processCombatSpell(req)
-	}
-	if req.Type == "item" {
-		return g.processCombatItem(req)
-	}
+	// Handle flee
 	if req.Type == "flee" {
 		if g.rng.IntN(100) < 40 {
 			g.phase = "world"
@@ -324,38 +326,134 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 			return &state, nil
 		}
 		g.combatLog = append(g.combatLog, "Couldn't escape!")
+		// Enemies still attack after failed flee -- fall through
 	}
 
-	// Build combatants from current party state
+	// Handle item (potion) -- use and then enemies attack
+	if req.Type == "item" {
+		return g.processCombatItem(req)
+	}
+
 	combatants := g.makeCombatants()
 
-	// Player attacks -- use requested target if valid, otherwise first living
+	// Build party actions from per-member actions if provided
 	var actions []combat.Action
-	for _, pc := range combatants {
-		if pc.CurrentHP <= 0 {
-			continue
-		}
-		// Try requested target first
-		var target *combat.Combatant
-		if req.TargetID > 0 {
-			for _, e := range g.enemies {
-				if e.ID == req.TargetID && e.CurrentHP > 0 {
-					target = e
-					break
+
+	if len(req.Actions) > 0 {
+		// Per-member actions from client
+		for _, ma := range req.Actions {
+			if ma.Slot < 0 || ma.Slot >= len(combatants) {
+				continue
+			}
+			pc := combatants[ma.Slot]
+			if pc.CurrentHP <= 0 {
+				continue
+			}
+
+			switch ma.Type {
+			case "spell":
+				// Resolve spell inline
+				spell := g.gd.SpellByID(ma.SpellID)
+				if spell != nil {
+					// Find caster character
+					caster := g.party[ma.Slot]
+					if sb, ok := g.spellBooks[caster.Name]; ok && sb.CanCast(spell) {
+						sb.ConsumeCharge(spell.SpellLevel)
+						switch spell.Effect {
+						case "damage":
+							for _, e := range g.enemies {
+								if (ma.TargetID > 0 && e.ID != ma.TargetID) && spell.Target == "single_enemy" {
+									continue
+								}
+								if e.CurrentHP <= 0 {
+									continue
+								}
+								target := &magic.SpellTarget{}
+								for _, m := range g.gd.Monsters {
+									if m.Name == e.Name {
+										target.Weaknesses = m.Weaknesses
+										target.Resistances = m.Resistances
+									}
+								}
+								dmg := magic.ResolveSpellDamage(spell, target, g.rng)
+								e.CurrentHP -= dmg
+								if e.CurrentHP <= 0 {
+									e.CurrentHP = 0
+									g.combatLog = append(g.combatLog, fmt.Sprintf("%s casts %s on %s for %d damage - DEFEATED!", caster.Name, spell.Name, e.Name, dmg))
+								} else {
+									g.combatLog = append(g.combatLog, fmt.Sprintf("%s casts %s on %s for %d damage", caster.Name, spell.Name, e.Name, dmg))
+								}
+								if spell.Target == "single_enemy" {
+									break
+								}
+							}
+						case "heal":
+							amt := magic.ResolveHealSpell(spell, g.rng)
+							var healTarget *character.Character
+							for _, c := range g.party {
+								if c.IsAlive() && (healTarget == nil || c.CurrentHP < healTarget.CurrentHP) {
+									healTarget = c
+								}
+							}
+							if healTarget != nil {
+								healTarget.Heal(amt)
+								g.combatLog = append(g.combatLog, fmt.Sprintf("%s casts %s - healed %d HP", caster.Name, spell.Name, amt))
+							}
+						}
+					}
+					continue // don't add a combat.Action for spells, already resolved
+				}
+
+			default:
+				// Physical attack
+				var target *combat.Combatant
+				if ma.TargetID > 0 {
+					for _, e := range g.enemies {
+						if e.ID == ma.TargetID && e.CurrentHP > 0 {
+							target = e
+							break
+						}
+					}
+				}
+				if target == nil {
+					for _, e := range g.enemies {
+						if e.CurrentHP > 0 {
+							target = e
+							break
+						}
+					}
+				}
+				if target != nil {
+					actions = append(actions, combat.Action{ActorID: pc.ID, Kind: combat.ActionAttack, TargetID: target.ID})
 				}
 			}
 		}
-		// Fallback to first living
-		if target == nil {
-			for _, e := range g.enemies {
-				if e.CurrentHP > 0 {
-					target = e
-					break
+	} else {
+		// Legacy single action -- all members attack same target
+		for _, pc := range combatants {
+			if pc.CurrentHP <= 0 {
+				continue
+			}
+			var target *combat.Combatant
+			if req.TargetID > 0 {
+				for _, e := range g.enemies {
+					if e.ID == req.TargetID && e.CurrentHP > 0 {
+						target = e
+						break
+					}
 				}
 			}
-		}
-		if target != nil {
-			actions = append(actions, combat.Action{ActorID: pc.ID, Kind: combat.ActionAttack, TargetID: target.ID})
+			if target == nil {
+				for _, e := range g.enemies {
+					if e.CurrentHP > 0 {
+						target = e
+						break
+					}
+				}
+			}
+			if target != nil {
+				actions = append(actions, combat.Action{ActorID: pc.ID, Kind: combat.ActionAttack, TargetID: target.ID})
+			}
 		}
 	}
 
