@@ -79,6 +79,9 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 			if promoMsg := g.applyPromotionIfNeeded(completedIdx); promoMsg != "" {
 				g.message += "\n" + promoMsg
 			}
+			if tierName := g.checkTransportUnlocks(); tierName != "" {
+				g.message += fmt.Sprintf("\nTransport upgraded: %s!", tierName)
+			}
 			if g.currentQ >= len(g.quests) {
 				g.phase = "victory"
 				g.message = fmt.Sprintf("%s is saved! Your adventure is complete.", g.loc.Name)
@@ -211,4 +214,79 @@ func (g *Game) restParty() {
 	for _, sb := range g.spellBooks {
 		sb.RestoreAllCharges()
 	}
+}
+
+// checkTransportUnlocks evaluates quest completion state and unlocks transport
+// tiers whose conditions are met. Returns the name of the newly active tier if
+// the current tier changed, or "" if unchanged.
+func (g *Game) checkTransportUnlocks() string {
+	if g.trans == nil {
+		return ""
+	}
+	tiers := g.gd.Transport.Tiers
+	before := g.trans.CurrentTier
+
+	// act1_complete: all non-promotion Act 1 quests are done
+	act1Done := true
+	hasAct1 := false
+	for _, q := range g.quests {
+		if q.Act == 1 && !q.IsPromotion {
+			hasAct1 = true
+			if !q.Completed {
+				act1Done = false
+				break
+			}
+		}
+	}
+	if hasAct1 && act1Done {
+		g.trans.TryUnlock("act1_complete", tiers)
+	}
+
+	// promotion_event: any promotion quest completed
+	for _, q := range g.quests {
+		if q.IsPromotion && q.Completed {
+			g.trans.TryUnlock("promotion_event", tiers)
+			break
+		}
+	}
+
+	// act2_midpoint: at least half of Act 2 quests done
+	act2Total, act2Done := 0, 0
+	for _, q := range g.quests {
+		if q.Act == 2 {
+			act2Total++
+			if q.Completed {
+				act2Done++
+			}
+		}
+	}
+	if act2Total > 0 && act2Done >= (act2Total+1)/2 {
+		g.trans.TryUnlock("act2_midpoint", tiers)
+	}
+
+	// act3_midpoint: at least half of Act 3 quests done
+	act3Total, act3Done := 0, 0
+	for _, q := range g.quests {
+		if q.Act == 3 {
+			act3Total++
+			if q.Completed {
+				act3Done++
+			}
+		}
+	}
+	if act3Total > 0 && act3Done >= (act3Total+1)/2 {
+		g.trans.TryUnlock("act3_midpoint", tiers)
+	}
+
+	if g.trans.CurrentTier != before {
+		td := g.trans.CurrentTierData(tiers)
+		if td != nil {
+			skin := td.Name
+			if s, ok := g.gd.Transport.ConquestSkins[td.ID]; ok {
+				skin = s.Name
+			}
+			return skin
+		}
+	}
+	return ""
 }

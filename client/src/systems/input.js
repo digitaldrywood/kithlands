@@ -36,9 +36,10 @@ export function isTouchDevice() {
 
 // ─── A* Pathfinding ───────────────────────────────────────────
 
-function findPath(tileData, sx, sy, ex, ey, mapW, mapH) {
+function findPath(tileData, sx, sy, ex, ey, mapW, mapH, canWalk) {
+  const walkable = canWalk || ((tile) => !!TILE_WALKABLE[tile]);
   if (ex < 0 || ex >= mapW || ey < 0 || ey >= mapH) return null;
-  if (!TILE_WALKABLE[tileData[ey][ex]]) return null;
+  if (!walkable(tileData[ey][ex])) return null;
   if (sx === ex && sy === ey) return [];
 
   const toKey = (x, y) => x * mapH + y;
@@ -84,7 +85,7 @@ function findPath(tileData, sx, sy, ex, ey, mapW, mapH) {
       const nx = cur.x + dx,
         ny = cur.y + dy;
       if (nx < 0 || nx >= mapW || ny < 0 || ny >= mapH) continue;
-      if (!TILE_WALKABLE[tileData[ny][nx]]) continue;
+      if (!walkable(tileData[ny][nx])) continue;
       const nk = toKey(nx, ny);
       if (closed.has(nk)) continue;
 
@@ -210,6 +211,9 @@ function setupTapToMove(scene) {
       const ty = Math.floor(worldPoint.y / RENDERED_TILE);
       if (tx === scene.playerX && ty === scene.playerY) return;
 
+      const canWalk = scene.canWalkTile
+        ? (tile) => scene.canWalkTile(tile)
+        : null;
       const path = findPath(
         scene.tileData,
         scene.playerX,
@@ -218,6 +222,7 @@ function setupTapToMove(scene) {
         ty,
         scene.mapW,
         scene.mapH,
+        canWalk,
       );
 
       if (path && path.length > 0) {

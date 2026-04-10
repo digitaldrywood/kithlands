@@ -535,6 +535,9 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 				g.logCombat(promoMsg, CombatActionEntry{Kind: "info"})
 				g.message = promoMsg
 			}
+			if tierName := g.checkTransportUnlocks(); tierName != "" {
+				g.logCombat(fmt.Sprintf("Transport upgraded: %s!", tierName), CombatActionEntry{Kind: "info"})
+			}
 		}
 
 		if g.currentQ >= len(g.quests) {
@@ -666,6 +669,9 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 			if promoMsg := g.applyPromotionIfNeeded(completedIdx); promoMsg != "" {
 				g.logCombat(promoMsg, CombatActionEntry{Kind: "info"})
 				g.message = promoMsg
+			}
+			if tierName := g.checkTransportUnlocks(); tierName != "" {
+				g.logCombat(fmt.Sprintf("Transport upgraded: %s!", tierName), CombatActionEntry{Kind: "info"})
 			}
 		}
 		g.restParty()
