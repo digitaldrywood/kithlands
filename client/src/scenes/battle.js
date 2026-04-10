@@ -20,6 +20,7 @@ const STATUS_ICONS = {
   sleep: "icon_sleep",
   silence: "icon_mute",
   stone: "icon_paralyze",
+  confuse: "icon_confuse",
 };
 const ELEMENT_COLORS = {
   fire: 0xff4444,
@@ -1353,6 +1354,68 @@ export class BattleScene extends Phaser.Scene {
         await this.wait(300);
       } else if (line.includes("Found:")) {
         this.promptText.setText(line).setColor("#44ff44");
+        await this.wait(400);
+      } else if (action.kind === "poison_tick") {
+        // Poison damage at start of round
+        const targetId = action.target_id;
+        const dmg = action.damage || action.total_damage;
+        this.promptText.setText(line).setColor("#44bb44");
+        const ee = this.enemySprites[targetId];
+        const pt = this.partySprites[action.actor_name];
+        const sprite = ee || pt;
+        if (sprite) {
+          if (sprite.sprite?.setTint) {
+            sprite.sprite.setTint(0x44bb44);
+            this.time.delayedCall(300, () => sprite.sprite.clearTint?.());
+          }
+          const px = sprite.x || sprite.sprite?.x;
+          const py = sprite.y || sprite.sprite?.y;
+          if (px != null && py != null) {
+            const nt = this.add
+              .text(px, py - 20, `-${dmg}`, {
+                fontSize: "14px",
+                color: "#44bb44",
+                fontFamily: "monospace",
+                fontStyle: "bold",
+              })
+              .setOrigin(0.5)
+              .setDepth(25);
+            this.tweens.add({
+              targets: nt,
+              y: nt.y - 25,
+              alpha: 0,
+              duration: 600,
+              onComplete: () => nt.destroy(),
+            });
+          }
+        }
+        await this.wait(300);
+      } else if (action.kind === "confusion") {
+        // Confused actor attacks randomly
+        const attacker = action.actor_name;
+        const targetId = action.target_id;
+        const dmg = action.damage;
+        this.promptText.setText(line).setColor("#dddd44");
+        playSFX("sfx_hit");
+        const ee = this.enemySprites[targetId];
+        const pt = this.partySprites[attacker];
+        if (ee) {
+          await this.hitFx(
+            ee.x,
+            ee.y,
+            dmg,
+            false,
+            defeatMatch,
+            "physical",
+          );
+          if (defeatMatch) await this.enemyDeathFx(ee);
+        } else if (pt) {
+          this.cameras.main.shake(80, 0.005);
+        }
+        await this.wait(300);
+      } else if (action.kind === "status_effect") {
+        // Status spell landed or resisted
+        this.promptText.setText(line).setColor("#cc88ff");
         await this.wait(400);
       } else if (action.kind === "ability") {
         this.promptText.setText(line).setColor("#ff88ff");
