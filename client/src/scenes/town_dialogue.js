@@ -13,10 +13,7 @@ const FALLBACK_DIALOGUE = {
   rest: {
     npc_name: "Innkeeper",
     sprite: "npc_innkeeper",
-    lines: [
-      "Welcome, weary traveler.",
-      "Rest here and recover your strength.",
-    ],
+    lines: ["Welcome, weary traveler.", "Rest here and recover your strength."],
   },
   temple: {
     npc_name: "Priestess",
@@ -35,9 +32,11 @@ const FALLBACK_DIALOGUE = {
 
 function fallbackForTags(tags) {
   const tagSet = new Set(tags || []);
-  if (tagSet.has("shop") || tagSet.has("commerce")) return FALLBACK_DIALOGUE.shop;
+  if (tagSet.has("shop") || tagSet.has("commerce"))
+    return FALLBACK_DIALOGUE.shop;
   if (tagSet.has("rest")) return FALLBACK_DIALOGUE.rest;
-  if (tagSet.has("temple") || tagSet.has("revive")) return FALLBACK_DIALOGUE.temple;
+  if (tagSet.has("temple") || tagSet.has("revive"))
+    return FALLBACK_DIALOGUE.temple;
   return FALLBACK_DIALOGUE.default;
 }
 

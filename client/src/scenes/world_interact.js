@@ -175,4 +175,3 @@ export function hideInteractPrompt(scene) {
     scene.interactPrompt = null;
   }
 }
-

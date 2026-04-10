@@ -321,9 +321,7 @@ export class TownScene extends Phaser.Scene {
 
   showInteractPrompt() {
     this.hideInteractPrompt();
-    const label = isTouchDevice()
-      ? "[ TAP A ] Talk"
-      : "[ ENTER / SPACE ] Talk";
+    const label = isTouchDevice() ? "[ TAP A ] Talk" : "[ ENTER / SPACE ] Talk";
     this.interactPrompt = this.add
       .text(this.player.x, this.player.y - 25, label, {
         fontSize: "10px",

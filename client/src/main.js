@@ -22,7 +22,14 @@ const config = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, TitleScene, WizardScene, WorldScene, BattleScene, TownScene],
+  scene: [
+    BootScene,
+    TitleScene,
+    WizardScene,
+    WorldScene,
+    BattleScene,
+    TownScene,
+  ],
 };
 
 new Phaser.Game(config);
