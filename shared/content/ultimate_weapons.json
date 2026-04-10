@@ -1,0 +1,15 @@
+{
+  "ultimates": [
+    { "id": "ult_sword",  "name": "Hero's Edge",    "weapon_class": "sword",  "tier": 7 },
+    { "id": "ult_axe",    "name": "World Splitter", "weapon_class": "axe",    "tier": 7 },
+    { "id": "ult_dagger", "name": "Whisperfang",    "weapon_class": "dagger", "tier": 7 },
+    { "id": "ult_staff",  "name": "Starcaller",     "weapon_class": "staff",  "tier": 7 },
+    { "id": "ult_bow",    "name": "Sky's Eye",      "weapon_class": "bow",    "tier": 7 },
+    { "id": "ult_hammer", "name": "Mountainvoice",  "weapon_class": "hammer", "tier": 7 }
+  ],
+  "placement_rules": {
+    "guarantee": "all_must_be_findable_per_run",
+    "method": "random_distribution_across_act3_locations",
+    "reskinned_per_flavor": true
+  }
+}

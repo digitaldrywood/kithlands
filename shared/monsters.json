@@ -131,5 +131,299 @@
     "encounter_weight": 0,
     "min_group": 1,
     "max_group": 1
+  },
+  {
+    "id": "giant_rat",
+    "name": "Giant Rat",
+    "tier": 1,
+    "stats": {
+      "str": 5,
+      "agi": 6,
+      "int": 1,
+      "vit": 2,
+      "lck": 2,
+      "hit_pct": 3
+    },
+    "hp": 10,
+    "armor_absorb": 0,
+    "xp_reward": 4,
+    "gold_reward": 3,
+    "weaknesses": ["fire"],
+    "resistances": [],
+    "absorbs": [],
+    "drops": [
+      { "item_id": "antidote", "chance_pct": 10 }
+    ],
+    "encounter_weight": 35,
+    "min_group": 2,
+    "max_group": 5
+  },
+  {
+    "id": "bandit",
+    "name": "Bandit",
+    "tier": 2,
+    "stats": {
+      "str": 16,
+      "agi": 8,
+      "int": 2,
+      "vit": 7,
+      "lck": 4,
+      "hit_pct": 8
+    },
+    "hp": 42,
+    "armor_absorb": 6,
+    "xp_reward": 35,
+    "gold_reward": 20,
+    "weaknesses": [],
+    "resistances": [],
+    "absorbs": [],
+    "drops": [
+      { "item_id": "potion", "chance_pct": 20 },
+      { "item_id": "iron_dagger", "chance_pct": 5 }
+    ],
+    "encounter_weight": 18,
+    "min_group": 2,
+    "max_group": 4
+  },
+  {
+    "id": "armored_knight",
+    "name": "Armored Knight",
+    "tier": 3,
+    "stats": {
+      "str": 28,
+      "agi": 8,
+      "int": 4,
+      "vit": 16,
+      "lck": 3,
+      "hit_pct": 15
+    },
+    "hp": 95,
+    "armor_absorb": 18,
+    "xp_reward": 120,
+    "gold_reward": 60,
+    "weaknesses": ["lightning"],
+    "resistances": [],
+    "absorbs": [],
+    "drops": [
+      { "item_id": "hi_potion", "chance_pct": 15 },
+      { "item_id": "steel_sword", "chance_pct": 3 }
+    ],
+    "encounter_weight": 12,
+    "min_group": 1,
+    "max_group": 2
+  },
+  {
+    "id": "gargoyle",
+    "name": "Gargoyle",
+    "tier": 3,
+    "stats": {
+      "str": 24,
+      "agi": 14,
+      "int": 6,
+      "vit": 14,
+      "lck": 5,
+      "hit_pct": 18
+    },
+    "hp": 80,
+    "armor_absorb": 14,
+    "xp_reward": 100,
+    "gold_reward": 50,
+    "weaknesses": ["lightning"],
+    "resistances": ["fire", "ice"],
+    "absorbs": [],
+    "drops": [
+      { "item_id": "soft", "chance_pct": 10 }
+    ],
+    "encounter_weight": 10,
+    "min_group": 1,
+    "max_group": 2
+  },
+  {
+    "id": "wyvern",
+    "name": "Wyvern",
+    "tier": 4,
+    "stats": {
+      "str": 45,
+      "agi": 18,
+      "int": 6,
+      "vit": 22,
+      "lck": 8,
+      "hit_pct": 20
+    },
+    "hp": 180,
+    "armor_absorb": 12,
+    "xp_reward": 280,
+    "gold_reward": 150,
+    "weaknesses": ["ice"],
+    "resistances": ["fire"],
+    "absorbs": [],
+    "drops": [
+      { "item_id": "hi_potion", "chance_pct": 15 },
+      { "item_id": "mythril_sword", "chance_pct": 3 }
+    ],
+    "encounter_weight": 12,
+    "min_group": 1,
+    "max_group": 2
+  },
+  {
+    "id": "iron_golem",
+    "name": "Iron Golem",
+    "tier": 4,
+    "stats": {
+      "str": 50,
+      "agi": 4,
+      "int": 1,
+      "vit": 30,
+      "lck": 1,
+      "hit_pct": 12
+    },
+    "hp": 220,
+    "armor_absorb": 25,
+    "xp_reward": 320,
+    "gold_reward": 100,
+    "weaknesses": ["lightning"],
+    "resistances": ["fire", "ice"],
+    "absorbs": [],
+    "drops": [
+      { "item_id": "mythril_axe", "chance_pct": 4 }
+    ],
+    "encounter_weight": 8,
+    "min_group": 1,
+    "max_group": 1
+  },
+  {
+    "id": "shadow_wraith",
+    "name": "Shadow Wraith",
+    "tier": 5,
+    "stats": {
+      "str": 55,
+      "agi": 22,
+      "int": 18,
+      "vit": 16,
+      "lck": 12,
+      "hit_pct": 25
+    },
+    "hp": 280,
+    "armor_absorb": 8,
+    "xp_reward": 450,
+    "gold_reward": 200,
+    "weaknesses": ["holy"],
+    "resistances": ["ice"],
+    "absorbs": ["dark"],
+    "drops": [
+      { "item_id": "phoenix_down", "chance_pct": 10 },
+      { "item_id": "venom_dagger", "chance_pct": 2 }
+    ],
+    "encounter_weight": 8,
+    "min_group": 1,
+    "max_group": 2
+  },
+  {
+    "id": "war_hydra",
+    "name": "War Hydra",
+    "tier": 5,
+    "stats": {
+      "str": 62,
+      "agi": 12,
+      "int": 8,
+      "vit": 28,
+      "lck": 6,
+      "hit_pct": 22
+    },
+    "hp": 350,
+    "armor_absorb": 18,
+    "xp_reward": 520,
+    "gold_reward": 250,
+    "weaknesses": ["ice"],
+    "resistances": ["fire"],
+    "absorbs": [],
+    "drops": [
+      { "item_id": "hi_potion", "chance_pct": 20 },
+      { "item_id": "flame_blade", "chance_pct": 2 }
+    ],
+    "encounter_weight": 6,
+    "min_group": 1,
+    "max_group": 1
+  },
+  {
+    "id": "elder_dragon",
+    "name": "Elder Dragon",
+    "tier": 6,
+    "stats": {
+      "str": 78,
+      "agi": 20,
+      "int": 22,
+      "vit": 35,
+      "lck": 10,
+      "hit_pct": 30
+    },
+    "hp": 500,
+    "armor_absorb": 28,
+    "xp_reward": 800,
+    "gold_reward": 400,
+    "weaknesses": ["ice"],
+    "resistances": ["fire", "lightning"],
+    "absorbs": [],
+    "drops": [
+      { "item_id": "phoenix_down", "chance_pct": 15 },
+      { "item_id": "rune_blade", "chance_pct": 2 }
+    ],
+    "encounter_weight": 4,
+    "min_group": 1,
+    "max_group": 1
+  },
+  {
+    "id": "siege_commander",
+    "name": "Siege Commander",
+    "tier": 6,
+    "is_boss": true,
+    "stats": {
+      "str": 85,
+      "agi": 16,
+      "int": 14,
+      "vit": 40,
+      "lck": 8,
+      "hit_pct": 32
+    },
+    "hp": 650,
+    "armor_absorb": 35,
+    "xp_reward": 1200,
+    "gold_reward": 600,
+    "weaknesses": ["holy"],
+    "resistances": ["dark"],
+    "absorbs": [],
+    "drops": [
+      { "item_id": "rune_blade", "chance_pct": 100 }
+    ],
+    "encounter_weight": 0,
+    "min_group": 1,
+    "max_group": 1
+  },
+  {
+    "id": "dragon_lord",
+    "name": "Dragon Lord",
+    "tier": 7,
+    "is_boss": true,
+    "stats": {
+      "str": 110,
+      "agi": 25,
+      "int": 30,
+      "vit": 50,
+      "lck": 15,
+      "hit_pct": 40
+    },
+    "hp": 1200,
+    "armor_absorb": 45,
+    "xp_reward": 2500,
+    "gold_reward": 1500,
+    "weaknesses": ["holy"],
+    "resistances": ["fire", "dark"],
+    "absorbs": [],
+    "drops": [
+      { "item_id": "hero_edge", "chance_pct": 100 }
+    ],
+    "encounter_weight": 0,
+    "min_group": 1,
+    "max_group": 1
   }
 ]

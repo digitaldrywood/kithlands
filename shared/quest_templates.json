@@ -1,1 +1,38 @@
-[]
+[
+  {
+    "id": "Q01",
+    "name": "Fetch",
+    "actions": ["goto", "get", "goto", "give"],
+    "act": 1
+  },
+  {
+    "id": "Q02",
+    "name": "Delivery",
+    "actions": ["get", "goto", "give"],
+    "act": 1
+  },
+  {
+    "id": "Q04",
+    "name": "Bandit Clearing",
+    "actions": ["goto", "kill", "goto", "report"],
+    "act": 1
+  },
+  {
+    "id": "Q05",
+    "name": "Lost Person",
+    "actions": ["learn", "goto", "escort"],
+    "act": 2
+  },
+  {
+    "id": "Q08",
+    "name": "Ritual",
+    "actions": ["get", "goto", "use", "defend"],
+    "act": 2
+  },
+  {
+    "id": "Q12",
+    "name": "Boss",
+    "actions": ["goto", "kill", "goto", "report"],
+    "act": 3
+  }
+]

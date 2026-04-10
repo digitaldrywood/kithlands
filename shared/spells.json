@@ -152,6 +152,142 @@
       "power": 0,
       "cures_status": "poison",
       "description": "Removes poison from one ally"
+    },
+    {
+      "id": "fireball",
+      "name": "Fireball",
+      "school": "black",
+      "spell_level": 3,
+      "target": "single_enemy",
+      "effect": "damage",
+      "element": "fire",
+      "power": 20,
+      "description": "Medium fire damage to one enemy"
+    },
+    {
+      "id": "iceshard",
+      "name": "Iceshard",
+      "school": "black",
+      "spell_level": 3,
+      "target": "single_enemy",
+      "effect": "damage",
+      "element": "ice",
+      "power": 20,
+      "description": "Medium ice damage to one enemy"
+    },
+    {
+      "id": "slow",
+      "name": "Slow",
+      "school": "black",
+      "spell_level": 3,
+      "target": "single_enemy",
+      "effect": "status",
+      "element": "none",
+      "power": 0,
+      "status_effect": "slow",
+      "hit_chance": 65,
+      "description": "Halves AGI of one enemy"
+    },
+    {
+      "id": "blaze",
+      "name": "Blaze",
+      "school": "black",
+      "spell_level": 4,
+      "target": "all_enemies",
+      "effect": "damage",
+      "element": "fire",
+      "power": 24,
+      "description": "Medium fire damage to all enemies"
+    },
+    {
+      "id": "blizzard",
+      "name": "Blizzard",
+      "school": "black",
+      "spell_level": 4,
+      "target": "all_enemies",
+      "effect": "damage",
+      "element": "ice",
+      "power": 24,
+      "description": "Medium ice damage to all enemies"
+    },
+    {
+      "id": "thunder",
+      "name": "Thunder",
+      "school": "black",
+      "spell_level": 4,
+      "target": "all_enemies",
+      "effect": "damage",
+      "element": "lightning",
+      "power": 24,
+      "description": "Medium lightning damage to all enemies"
+    },
+    {
+      "id": "cura",
+      "name": "Cura",
+      "school": "white",
+      "spell_level": 3,
+      "target": "single_ally",
+      "effect": "heal",
+      "element": "none",
+      "power": 32,
+      "description": "Restore ~32 HP to one ally"
+    },
+    {
+      "id": "aegis",
+      "name": "Aegis",
+      "school": "white",
+      "spell_level": 3,
+      "target": "single_ally",
+      "effect": "buff",
+      "element": "none",
+      "power": 0,
+      "buff_stat": "armor_absorb",
+      "description": "Doubles armor of one ally for combat"
+    },
+    {
+      "id": "dispel",
+      "name": "Dispel",
+      "school": "white",
+      "spell_level": 3,
+      "target": "all_allies",
+      "effect": "cure_status",
+      "element": "none",
+      "power": 0,
+      "cures_status": "all",
+      "description": "Removes all status effects from all allies"
+    },
+    {
+      "id": "heala",
+      "name": "Heala",
+      "school": "white",
+      "spell_level": 4,
+      "target": "all_allies",
+      "effect": "heal",
+      "element": "none",
+      "power": 32,
+      "description": "Restore ~32 HP to all allies"
+    },
+    {
+      "id": "banish",
+      "name": "Banish",
+      "school": "white",
+      "spell_level": 4,
+      "target": "single_enemy",
+      "effect": "damage",
+      "element": "holy",
+      "power": 40,
+      "description": "Massive holy damage to one undead enemy"
+    },
+    {
+      "id": "resurrect",
+      "name": "Resurrect",
+      "school": "white",
+      "spell_level": 4,
+      "target": "single_ally",
+      "effect": "utility",
+      "element": "none",
+      "power": 0,
+      "description": "Revive one fallen ally with 1 HP"
     }
   ]
 }
