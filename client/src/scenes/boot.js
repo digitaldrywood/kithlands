@@ -48,6 +48,7 @@ export class BootScene extends Phaser.Scene {
     this.load.image("icon_mute", "/sprites/ui/icon_mute.png");
     this.load.image("icon_paralyze", "/sprites/ui/icon_paralyze.png");
     this.load.image("icon_slow", "/sprites/ui/icon_slow.png");
+    this.load.image("icon_confuse", "/sprites/ui/icon_confuse.png");
 
     // Monster sprites
     this.load.image("monster_slime", "/sprites/monsters/slime.png");
@@ -90,6 +91,28 @@ export class BootScene extends Phaser.Scene {
     this.load.audio("sfx_save", "/audio/sfx/save.wav");
     this.load.audio("sfx_potion", "/audio/sfx/potion.wav");
     this.load.audio("sfx_equip", "/audio/sfx/equip.wav");
+
+    // Interior tilesets
+    this.load.image("tile_altar", "/tilesets/interiors/altar.png");
+    this.load.image("tile_bed", "/tilesets/interiors/bed.png");
+    this.load.image("tile_bookshelf", "/tilesets/interiors/bookshelf.png");
+    this.load.image("tile_counter", "/tilesets/interiors/counter.png");
+    this.load.image("tile_inn_floor", "/tilesets/interiors/inn_floor.png");
+    this.load.image("tile_shop_floor", "/tilesets/interiors/shop_floor.png");
+    this.load.image(
+      "tile_temple_floor",
+      "/tilesets/interiors/temple_floor.png",
+    );
+    this.load.image("tile_stone_wall", "/tilesets/interiors/stone_wall.png");
+    this.load.image("tile_wooden_wall", "/tilesets/interiors/wooden_wall.png");
+
+    // NPC sprites
+    this.load.image("npc_priestess", "/sprites/npcs/priestess.png");
+    this.load.image("npc_merchant", "/sprites/npcs/merchant.png");
+    this.load.image("npc_innkeeper", "/sprites/npcs/innkeeper.png");
+    this.load.image("npc_blacksmith", "/sprites/npcs/blacksmith.png");
+    this.load.image("npc_guard", "/sprites/npcs/guard.png");
+    this.load.image("npc_elder", "/sprites/npcs/elder.png");
   }
 
   create() {

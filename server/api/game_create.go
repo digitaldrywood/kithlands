@@ -14,6 +14,7 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/inventory"
 	"github.com/digitaldrywood/kithlands/internal/locality"
 	"github.com/digitaldrywood/kithlands/internal/magic"
+	"github.com/digitaldrywood/kithlands/internal/transport"
 )
 
 // GameManager holds active game sessions.
@@ -73,17 +74,17 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 	if req.UseOSM {
 		for i, p := range req.People {
 			loc.Nodes = append(loc.Nodes, locality.Node{
-				ID:         fmt.Sprintf("person_%d", i),
-				Kind:       locality.NodePerson,
-				Name:       p.Name,
-				Tags:       []string{"person", p.Relation},
+				ID:   fmt.Sprintf("person_%d", i),
+				Kind: locality.NodePerson,
+				Name: p.Name,
+				Tags: []string{"person", p.Relation},
 				Importance: 70,
 			})
 			if len(loc.Nodes) > 1 {
 				loc.Edges = append(loc.Edges, locality.Edge{
-					From:   fmt.Sprintf("person_%d", i),
-					To:     loc.Nodes[0].ID,
-					Kind:   locality.EdgeSocial,
+					From: fmt.Sprintf("person_%d", i),
+					To:   loc.Nodes[0].ID,
+					Kind: locality.EdgeSocial,
 					Weight: 0.5,
 				})
 			}
@@ -150,25 +151,25 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 	}
 	quests := generator.GenerateCampaign(loc, spawnID, rng, gm.sidePool)
 	walk := locality.Walk(loc, spawnID)
-	tileMap := locality.GenerateTileMap(loc, spawnID, walk)
+	tileMap := locality.GenerateTileMap(loc, spawnID)
 
 	game := &Game{
-		id:           fmt.Sprintf("game_%d", time.Now().UnixNano()),
-		gd:           gm.gd,
-		rng:          rng,
-		loc:          loc,
-		walk:         walk,
-		tileMap:      tileMap,
-		party:        party,
-		spellBooks:   spellBooks,
-		inv:          inv,
-		quests:       quests,
-		currentQ:     0,
-		phase:        "world",
-		diff:         balance.GetDifficulty(req.Difficulty),
-		rngSeed:      rngSeed,
-		discovered:   make(map[string]bool),
-		visitedNodes: make(map[string]bool),
+		id:         fmt.Sprintf("game_%d", time.Now().UnixNano()),
+		gd:         gm.gd,
+		rng:        rng,
+		loc:        loc,
+		walk:       walk,
+		tileMap:    tileMap,
+		party:      party,
+		spellBooks: spellBooks,
+		inv:        inv,
+		quests:     quests,
+		currentQ:   0,
+		phase:      "world",
+		diff:       balance.GetDifficulty(req.Difficulty),
+		rngSeed:    rngSeed,
+		discovered: make(map[string]bool),
+		trans:      transport.NewState(),
 	}
 
 	gm.mu.Lock()

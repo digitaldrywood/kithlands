@@ -1,7 +1,4 @@
-import { saveGame, autosaveGame } from "../api.js";
-import { playSFX, playMusic } from "../systems/audio.js";
-import { getAutosaveEnabled } from "../systems/prefs.js";
-import { openShop } from "./world_shop.js";
+import { playSFX } from "../systems/audio.js";
 import { isTouchDevice } from "../systems/input.js";
 
 // TILE_COLORS needed for world map rendering
@@ -21,141 +18,27 @@ const TILE_COLORS = {
   12: 0xffe082, // sand
 };
 
-export function interactWithDoor(scene) {
+export async function interactWithDoor(scene) {
   if (scene.animating || scene.menuOpen || scene.gameOver) return;
   const spawn = scene.currentDoorSpawn;
   if (!spawn) return;
 
   hideInteractPrompt(scene);
   scene.currentDoorSpawn = null;
+  scene.animating = true;
 
-  const tags = spawn.tags || [];
-  const isShop = tags.includes("shop") || tags.includes("commerce");
-  const isInn = tags.includes("rest");
-  const isTemple = tags.includes("temple") || tags.includes("revive");
-
-  if (isShop) {
-    playSFX("sfx_door");
-    playMusic("music_shop");
-    openShop(scene, spawn);
-  } else if (isTemple) {
-    const dead = scene.gameState.party.filter((p) => p.hp <= 0);
-    if (dead.length > 0) {
-      dead.forEach((p) => {
-        p.hp = 1;
-        p.status = "";
-      });
-      scene.showMessage(
-        `Temple of Light\n${dead.map((p) => p.name).join(", ")} revived!`,
-      );
-    } else {
-      scene.gameState.party.forEach((p) => {
-        p.hp = p.max_hp;
-      });
-      scene.showMessage(
-        `Temple of Light\nBlessings upon you. HP fully restored!`,
-      );
-    }
-    playSFX("sfx_heal");
-    scene.updateHUD();
-    silentAutosave(scene, "temple_visit");
-    scene.time.delayedCall(2000, () => {
-      scene.hideMessage();
-      offerSave(scene, "Temple of Light");
-    });
-  } else if (isInn) {
-    scene.gameState.party.forEach((p) => {
-      if (p.hp > 0) p.hp = p.max_hp;
-    });
-    playSFX("sfx_heal");
-    playMusic("music_inn", false);
-    scene.showMessage(`Rested at ${spawn.name}.\nHP and spells restored!`);
-    scene.updateHUD();
-    silentAutosave(scene, "inn_rest");
-    scene.time.delayedCall(2000, () => {
-      scene.hideMessage();
-      offerSave(scene, spawn.name);
-    });
-  } else {
-    scene.showMessage(`Entered: ${spawn.name}`);
-    scene.time.delayedCall(1500, () => scene.hideMessage());
-  }
-
-  // Quest advance when entering any building
+  // Quest advance when entering any building (await so gameState is fresh)
   const gs = scene.gameState;
   if (gs.current_quest < gs.quests.length) {
-    scene.triggerQuestAdvance(spawn.name);
+    await scene.triggerQuestAdvance(spawn.name);
   }
-}
 
-export function offerSave(scene, locationName) {
-  scene.animating = true;
-  const ol = [];
-
-  const bg = scene.add
-    .rectangle(400, 300, 400, 160, 0x112233, 0.95)
-    .setStrokeStyle(2, 0x4488ff)
-    .setScrollFactor(0)
-    .setDepth(50)
-    .setInteractive();
-  ol.push(bg);
-
-  ol.push(
-    scene.add
-      .text(400, 250, `Save your progress at ${locationName}?`, {
-        fontSize: "13px",
-        color: "#ffffff",
-        fontFamily: "monospace",
-        wordWrap: { width: 350 },
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(51),
-  );
-
-  const yesBtn = scene.add
-    .text(330, 310, "[ SAVE ]", {
-      fontSize: "16px",
-      color: "#44ff44",
-      fontFamily: "monospace",
-    })
-    .setOrigin(0.5)
-    .setScrollFactor(0)
-    .setDepth(51)
-    .setInteractive({ useHandCursor: true });
-  yesBtn.on("pointerover", () => yesBtn.setColor("#88ff88"));
-  yesBtn.on("pointerout", () => yesBtn.setColor("#44ff44"));
-  yesBtn.on("pointerdown", async () => {
-    yesBtn.setText("Saving...");
-    const gs = scene.gameState;
-    const name = `${gs.location} - ${gs.party.map((p) => p.name).join(", ")}`;
-    const result = await saveGame(gs.id, name);
-    ol.forEach((o) => o.destroy());
-    scene.animating = false;
-    if (result.error) {
-      scene.showMessage(`Save failed: ${result.error}`);
-    } else {
-      scene.showMessage("Game saved!");
-    }
-    scene.time.delayedCall(1500, () => scene.hideMessage());
+  // Transition to interior scene
+  playSFX("sfx_door");
+  scene.cameras.main.fadeOut(300, 0, 0, 0);
+  scene.cameras.main.once("camerafadeoutcomplete", () => {
+    scene.scene.start("Town", { gameState: scene.gameState, spawn });
   });
-  ol.push(yesBtn);
-
-  const noBtn = scene.add
-    .text(470, 310, "[ NO ]", {
-      fontSize: "16px",
-      color: "#aaaaaa",
-      fontFamily: "monospace",
-    })
-    .setOrigin(0.5)
-    .setScrollFactor(0)
-    .setDepth(51)
-    .setInteractive({ useHandCursor: true });
-  noBtn.on("pointerdown", () => {
-    ol.forEach((o) => o.destroy());
-    scene.animating = false;
-  });
-  ol.push(noBtn);
 }
 
 export function showWorldMap(scene) {
@@ -291,15 +174,4 @@ export function hideInteractPrompt(scene) {
     scene.interactPrompt.destroy();
     scene.interactPrompt = null;
   }
-}
-
-function silentAutosave(scene, triggerEvent) {
-  if (!getAutosaveEnabled()) return;
-  const gs = scene.gameState;
-  if (!gs?.id) return;
-  autosaveGame(gs.id, triggerEvent)
-    .then(() => {
-      if (scene.flashSaveIcon) scene.flashSaveIcon();
-    })
-    .catch((e) => console.error("[Autosave] failed:", e));
 }

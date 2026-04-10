@@ -1,5 +1,6 @@
 import { gameAction } from "../api.js";
 import { initAudio, playMusic, playSFX, stopMusic } from "../systems/audio.js";
+import { FloatingTextPool } from "../ui/floating_text.js";
 
 const ENEMY_SPRITES = {
   Slime: "monster_slime",
@@ -20,6 +21,7 @@ const STATUS_ICONS = {
   sleep: "icon_sleep",
   silence: "icon_mute",
   stone: "icon_paralyze",
+  confuse: "icon_confuse",
 };
 const ELEMENT_COLORS = {
   fire: 0xff4444,
@@ -91,6 +93,11 @@ export class BattleScene extends Phaser.Scene {
     this.targetHighlightTween = null;
     this.pickerOverlay = null;
     this.pickerItems = [];
+
+    // Floating text pool for damage/heal numbers
+    if (this.floatingText) this.floatingText.destroy();
+    this.floatingText = new FloatingTextPool(this);
+    this.events.once("shutdown", () => this.floatingText?.destroy());
 
     const gs = this.gameState;
     if (!gs || gs.phase !== "combat" || !gs.enemies?.length) {
@@ -381,24 +388,37 @@ export class BattleScene extends Phaser.Scene {
 
       const bw = 65,
         pct = Math.max(0, e.hp / e.max_hp);
-      this.add.rectangle(x, y + sz / 2 + 10, bw, 7, 0x333333);
-      if (pct > 0) {
-        const bc = pct > 0.5 ? 0x44ff44 : pct > 0.25 ? 0xff8800 : 0xff0000;
-        this.add.rectangle(
-          x - (bw / 2) * (1 - pct),
-          y + sz / 2 + 10,
-          bw * pct,
-          7,
-          bc,
-        );
-      }
-      this.add
+      const barX = x - bw / 2,
+        barY = y + sz / 2 + 10;
+      const bc = pct > 0.5 ? 0x44ff44 : pct > 0.25 ? 0xff8800 : 0xff0000;
+      const bg = this.add
+        .rectangle(barX, barY, bw, 7, 0x333333)
+        .setOrigin(0, 0.5)
+        .setDepth(8);
+      const ghost = this.add
+        .rectangle(barX, barY, bw * pct, 7, 0xff6644)
+        .setOrigin(0, 0.5)
+        .setDepth(9);
+      const fill = this.add
+        .rectangle(barX, barY, bw * pct, 7, pct > 0 ? bc : 0x333333)
+        .setOrigin(0, 0.5)
+        .setDepth(10);
+      const hpLabel = this.add
         .text(x, y + sz / 2 + 22, `${e.hp}/${e.max_hp}`, {
           fontSize: "8px",
           color: "#aaaaaa",
           fontFamily: "monospace",
         })
         .setOrigin(0.5);
+      this.enemySprites[e.id].hpBar = {
+        bg,
+        ghost,
+        fill,
+        label: hpLabel,
+        width: bw,
+        currentPct: pct,
+        maxHP: e.max_hp,
+      };
 
       // Status effect icon
       if (e.status && STATUS_ICONS[e.status]) {
@@ -464,22 +484,40 @@ export class BattleScene extends Phaser.Scene {
 
       const bw = 85,
         hpPct = Math.max(0, p.hp / p.max_hp);
-      this.add.rectangle(x + 90 + bw / 2, y + 13, bw, 6, 0x333333);
-      if (hpPct > 0) {
-        const bc = hpPct > 0.5 ? 0x44ff44 : hpPct > 0.25 ? 0xff8800 : 0xff0000;
-        this.add.rectangle(
-          x + 90 + (bw * hpPct) / 2,
-          y + 13,
-          bw * hpPct,
-          6,
-          bc,
-        );
-      }
-      this.add.text(x + 90 + bw + 5, y + 8, `${p.hp}/${p.max_hp}`, {
-        fontSize: "8px",
-        color: "#cccccc",
-        fontFamily: "monospace",
-      });
+      const barX = x + 90,
+        barY = y + 13;
+      const bc = hpPct > 0.5 ? 0x44ff44 : hpPct > 0.25 ? 0xff8800 : 0xff0000;
+      const bg = this.add
+        .rectangle(barX, barY, bw, 6, 0x333333)
+        .setOrigin(0, 0.5)
+        .setDepth(8);
+      const ghost = this.add
+        .rectangle(barX, barY, bw * hpPct, 6, 0xff6644)
+        .setOrigin(0, 0.5)
+        .setDepth(9);
+      const fill = this.add
+        .rectangle(barX, barY, bw * hpPct, 6, hpPct > 0 ? bc : 0x333333)
+        .setOrigin(0, 0.5)
+        .setDepth(10);
+      const hpLabel = this.add.text(
+        x + 90 + bw + 5,
+        y + 8,
+        `${p.hp}/${p.max_hp}`,
+        {
+          fontSize: "8px",
+          color: "#cccccc",
+          fontFamily: "monospace",
+        },
+      );
+      this.partySprites[p.name].hpBar = {
+        bg,
+        ghost,
+        fill,
+        label: hpLabel,
+        width: bw,
+        currentPct: hpPct,
+        maxHP: p.max_hp,
+      };
 
       if (p.spells?.length > 0 && alive) {
         this.add.text(
@@ -1216,27 +1254,55 @@ export class BattleScene extends Phaser.Scene {
 
         // Hit effect on target
         playSFX("sfx_slash");
-        const pt = this.partySprites[attackMatch?.[2]];
+        const pt =
+          this.partySprites[action.target_name] ||
+          this.partySprites[attackMatch?.[2]];
         if (ee) {
+          const targetKey = `enemy_${targetId}`;
           playSFX(defeatMatch ? "sfx_death" : "sfx_hit");
-          await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch, dmgType);
+          await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch, dmgType, {
+            crit: action.crit,
+            missed: action.missed,
+            targetKey,
+          });
           if (ee.sprite.setTint) {
             ee.sprite.setTint(0xff4444);
             this.time.delayedCall(200, () => ee.sprite.clearTint?.());
           }
+          // Animate HP bar drain
+          if (ee.hpBar) {
+            const newHP = Math.max(
+              0,
+              ee.hpBar.maxHP * ee.hpBar.currentPct - dmg,
+            );
+            this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
+          }
           // Enemy death animation
           if (defeatMatch) await this.enemyDeathFx(ee);
         } else if (pt) {
-          const atkName = attackMatch?.[1] || attacker;
-          const tgtName = attackMatch?.[2] || "";
+          const targetKey = `party_${action.target_name || attackMatch?.[2]}`;
+          const atkName = action.actor_name || attackMatch?.[1] || attacker;
+          const tgtName = action.target_name || attackMatch?.[2] || "";
           this.promptText
             .setText(`${atkName} attacks ${tgtName}!`)
             .setColor("#ff8800");
           playSFX("sfx_party_hit");
-          await this.hitFx(pt.x, pt.y, dmg, true, false, dmgType);
+          await this.hitFx(pt.x, pt.y, dmg, true, false, dmgType, {
+            crit: action.crit,
+            missed: action.missed,
+            targetKey,
+          });
           if (pt.sprite.setTint) {
             pt.sprite.setTint(0xff4444);
             this.time.delayedCall(200, () => pt.sprite.clearTint?.());
+          }
+          // Animate party HP bar drain
+          if (pt.hpBar) {
+            const newHP = Math.max(
+              0,
+              pt.hpBar.maxHP * pt.hpBar.currentPct - dmg,
+            );
+            this.animateHPBar(pt.hpBar, newHP, pt.hpBar.maxHP);
           }
           this.cameras.main.shake(80, 0.005);
         }
@@ -1253,7 +1319,19 @@ export class BattleScene extends Phaser.Scene {
         playSFX("sfx_slash");
         const ee = this.enemySprites[targetId];
         if (ee) {
-          await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch, dmgType);
+          const targetKey = `enemy_${targetId}`;
+          await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch, dmgType, {
+            crit: action.crit,
+            missed: action.missed,
+            targetKey,
+          });
+          if (ee.hpBar) {
+            const newHP = Math.max(
+              0,
+              ee.hpBar.maxHP * ee.hpBar.currentPct - dmg,
+            );
+            this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
+          }
           if (defeatMatch) await this.enemyDeathFx(ee);
         }
         await this.wait(200);
@@ -1322,7 +1400,23 @@ export class BattleScene extends Phaser.Scene {
                 onComplete: () => p.destroy(),
               });
             }
-            await this.hitFx(ee.x, ee.y, tgt.dmg, false, tgt.defeated, dmgType);
+            const targetKey = `enemy_${tgt.targetId}`;
+            await this.hitFx(
+              ee.x,
+              ee.y,
+              tgt.dmg,
+              false,
+              tgt.defeated,
+              dmgType,
+              { targetKey, element },
+            );
+            if (ee.hpBar) {
+              const newHP = Math.max(
+                0,
+                ee.hpBar.maxHP * ee.hpBar.currentPct - tgt.dmg,
+              );
+              this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
+            }
             if (tgt.defeated) await this.enemyDeathFx(ee);
           }
           if (t < targets.length - 1) await this.wait(200);
@@ -1333,26 +1427,83 @@ export class BattleScene extends Phaser.Scene {
         const healMatch = line.match(/healed (\d+)/);
         if (healMatch) {
           playSFX("sfx_heal");
-          const nt = this.add
-            .text(600, 220, `+${healMatch[1]}`, {
-              fontSize: "16px",
-              color: "#44ff44",
-              fontFamily: "monospace",
-              fontStyle: "bold",
-            })
-            .setOrigin(0.5)
-            .setDepth(25);
-          this.tweens.add({
-            targets: nt,
-            y: nt.y - 30,
-            alpha: 0,
-            duration: 700,
-            onComplete: () => nt.destroy(),
-          });
+          const healTarget =
+            this.partySprites[action.target_name] ||
+            this.partySprites[action.actor_name];
+          const hx = healTarget ? healTarget.x : 600;
+          const hy = healTarget ? healTarget.y : 220;
+          const targetKey = healTarget
+            ? `party_${action.target_name || action.actor_name}`
+            : "party_heal";
+          this.floatingText.spawn(hx, hy, healMatch[1], "heal", targetKey);
+          // Animate HP bar up
+          if (healTarget?.hpBar) {
+            const newHP = Math.min(
+              healTarget.hpBar.maxHP,
+              healTarget.hpBar.maxHP * healTarget.hpBar.currentPct +
+                parseInt(healMatch[1]),
+            );
+            this.animateHPBar(healTarget.hpBar, newHP, healTarget.hpBar.maxHP);
+          }
         }
         await this.wait(300);
       } else if (line.includes("Found:")) {
         this.promptText.setText(line).setColor("#44ff44");
+        await this.wait(400);
+      } else if (action.kind === "poison_tick") {
+        // Poison damage at start of round
+        const targetId = action.target_id;
+        const dmg = action.damage || action.total_damage;
+        this.promptText.setText(line).setColor("#44bb44");
+        const ee = this.enemySprites[targetId];
+        const pt = this.partySprites[action.actor_name];
+        const sprite = ee || pt;
+        if (sprite) {
+          if (sprite.sprite?.setTint) {
+            sprite.sprite.setTint(0x44bb44);
+            this.time.delayedCall(300, () => sprite.sprite.clearTint?.());
+          }
+          const px = sprite.x || sprite.sprite?.x;
+          const py = sprite.y || sprite.sprite?.y;
+          if (px != null && py != null) {
+            const nt = this.add
+              .text(px, py - 20, `-${dmg}`, {
+                fontSize: "14px",
+                color: "#44bb44",
+                fontFamily: "monospace",
+                fontStyle: "bold",
+              })
+              .setOrigin(0.5)
+              .setDepth(25);
+            this.tweens.add({
+              targets: nt,
+              y: nt.y - 25,
+              alpha: 0,
+              duration: 600,
+              onComplete: () => nt.destroy(),
+            });
+          }
+        }
+        await this.wait(300);
+      } else if (action.kind === "confusion") {
+        // Confused actor attacks randomly
+        const attacker = action.actor_name;
+        const targetId = action.target_id;
+        const dmg = action.damage;
+        this.promptText.setText(line).setColor("#dddd44");
+        playSFX("sfx_hit");
+        const ee = this.enemySprites[targetId];
+        const pt = this.partySprites[attacker];
+        if (ee) {
+          await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch, "physical");
+          if (defeatMatch) await this.enemyDeathFx(ee);
+        } else if (pt) {
+          this.cameras.main.shake(80, 0.005);
+        }
+        await this.wait(300);
+      } else if (action.kind === "status_effect") {
+        // Status spell landed or resisted
+        this.promptText.setText(line).setColor("#cc88ff");
         await this.wait(400);
       } else if (action.kind === "ability") {
         this.promptText.setText(line).setColor("#ff88ff");
@@ -1361,6 +1512,7 @@ export class BattleScene extends Phaser.Scene {
           playSFX("sfx_slash");
           const ee = this.enemySprites[action.target_id];
           if (ee) {
+            const targetKey = `enemy_${action.target_id}`;
             await this.hitFx(
               ee.x,
               ee.y,
@@ -1368,7 +1520,15 @@ export class BattleScene extends Phaser.Scene {
               false,
               defeatMatch,
               action.damage_type || "physical",
+              { crit: action.crit, targetKey },
             );
+            if (ee.hpBar) {
+              const newHP = Math.max(
+                0,
+                ee.hpBar.maxHP * ee.hpBar.currentPct - action.damage,
+              );
+              this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
+            }
             if (defeatMatch) await this.enemyDeathFx(ee);
           }
         }
@@ -1377,68 +1537,33 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
-  hitFx(x, y, dmg, isParty, defeated, damageType) {
+  hitFx(x, y, dmg, isParty, defeated, damageType, opts = {}) {
     return new Promise((resolve) => {
+      // Slash graphic (kept from original)
       const g = this.add.graphics().setDepth(20);
       g.lineStyle(3, isParty ? 0xff8800 : 0xffffff, 1);
       g.lineBetween(x - 20, y - 15, x + 20, y + 15);
       this.time.delayedCall(150, () => g.destroy());
 
-      const color = isParty ? "#ff8800" : "#ff4444";
-      const nt = this.add
-        .text(x + Phaser.Math.Between(-10, 10), y - 10, `-${dmg}`, {
-          fontSize: "16px",
-          color,
-          fontFamily: "monospace",
-          fontStyle: "bold",
-        })
-        .setOrigin(0.5)
-        .setDepth(25);
-      this.tweens.add({
-        targets: nt,
-        y: nt.y - 35,
-        alpha: 0,
-        duration: 700,
-        onComplete: () => nt.destroy(),
-      });
+      const targetKey = opts.targetKey || `pos_${x}_${y}`;
 
-      // Damage type indicator
-      if (damageType && !isParty) {
-        const dtLabel = damageType === "magical" ? "MAG" : "PHY";
-        const dtColor = damageType === "magical" ? "#bb88ff" : "#ffffff";
-        const dt2 = this.add
-          .text(x + Phaser.Math.Between(-10, 10), y - 26, dtLabel, {
-            fontSize: "8px",
-            color: dtColor,
-            fontFamily: "monospace",
-          })
-          .setOrigin(0.5)
-          .setDepth(25);
-        this.tweens.add({
-          targets: dt2,
-          y: dt2.y - 20,
-          alpha: 0,
-          duration: 600,
-          onComplete: () => dt2.destroy(),
+      // Determine floating text type
+      if (opts.missed) {
+        this.floatingText.spawn(x, y, 0, "miss", targetKey);
+      } else if (opts.crit) {
+        this.floatingText.spawn(x, y, dmg, "crit", targetKey);
+      } else if (isParty) {
+        this.floatingText.spawn(x, y, dmg, "party_hit", targetKey);
+      } else if (damageType === "magical") {
+        this.floatingText.spawn(x, y, dmg, "magical", targetKey, {
+          element: opts.element,
         });
+      } else {
+        this.floatingText.spawn(x, y, dmg, "physical", targetKey);
       }
 
       if (defeated) {
-        const dt = this.add
-          .text(x, y + 20, "DEFEATED!", {
-            fontSize: "11px",
-            color: "#ff4444",
-            fontFamily: "monospace",
-          })
-          .setOrigin(0.5)
-          .setDepth(25);
-        this.tweens.add({
-          targets: dt,
-          alpha: 0,
-          duration: 1000,
-          delay: 300,
-          onComplete: () => dt.destroy(),
-        });
+        this.floatingText.spawn(x, y + 30, 0, "defeated", targetKey);
       }
 
       this.time.delayedCall(150, resolve);
@@ -1474,6 +1599,34 @@ export class BattleScene extends Phaser.Scene {
 
   wait(ms) {
     return new Promise((resolve) => this.time.delayedCall(ms, resolve));
+  }
+
+  animateHPBar(hpBarData, newHP, maxHP) {
+    if (!hpBarData) return;
+    const newPct = Math.max(0, newHP / maxHP);
+    const oldPct = hpBarData.currentPct;
+    if (newPct === oldPct) return;
+
+    const bw = hpBarData.width;
+    const bc = newPct > 0.5 ? 0x44ff44 : newPct > 0.25 ? 0xff8800 : 0xff0000;
+
+    // Immediately update fill bar to new value
+    hpBarData.fill.width = bw * newPct;
+    hpBarData.fill.setFillStyle(newPct > 0 ? bc : 0x333333);
+
+    // Update HP label
+    hpBarData.label.setText(`${Math.max(0, newHP)}/${maxHP}`);
+
+    // Ghost bar drains after a short delay
+    this.tweens.add({
+      targets: hpBarData.ghost,
+      width: bw * newPct,
+      duration: 250,
+      delay: 100,
+      ease: "Quad.Out",
+    });
+
+    hpBarData.currentPct = newPct;
   }
 
   showVictoryResults(gs) {

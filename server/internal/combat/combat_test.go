@@ -587,3 +587,212 @@ func TestRetargetOnDeadTarget(t *testing.T) {
 		t.Errorf("should retarget to living enemy (3), got %d", results[0].TargetID)
 	}
 }
+
+func TestPoisonDamagePerTurn(t *testing.T) {
+	gd := loadTestData(t)
+	stats := &gd.Stats.Combat
+
+	attacker := makeWarrior("Hero", 10, 0)
+	attacker.Status = character.StatusPoison
+	attacker.MaxHP = 100
+	attacker.CurrentHP = 100
+
+	enemy := makeEnemy(2, "Goblin", 5, 1, 50, 0)
+
+	rng := rand.New(rand.NewPCG(42, 0))
+	actions := []combat.Action{{ActorID: 1, Kind: combat.ActionAttack, TargetID: 2}}
+	results := combat.ResolveTurn(
+		[]*combat.Combatant{attacker},
+		[]*combat.Combatant{enemy},
+		actions, stats, rng,
+	)
+
+	// First result should be poison tick: 5% of 100 = 5 damage
+	if len(results) < 1 {
+		t.Fatal("expected at least 1 result")
+	}
+	if results[0].Kind != combat.ActionPoisonTick {
+		t.Fatalf("first result should be poison_tick, got %s", results[0].Kind)
+	}
+	if results[0].TotalDmg != 5 {
+		t.Errorf("poison damage: got %d, want 5 (5%% of 100)", results[0].TotalDmg)
+	}
+	if attacker.CurrentHP != 95 {
+		t.Errorf("HP after poison: got %d, want 95", attacker.CurrentHP)
+	}
+	// Should still be poisoned (not dead)
+	if attacker.Status != character.StatusPoison {
+		t.Errorf("status after poison: got %q, want %q", attacker.Status, character.StatusPoison)
+	}
+}
+
+func TestPoisonKillsCombatant(t *testing.T) {
+	c := &combat.Combatant{
+		ID: 1, Name: "Dying", MaxHP: 100, CurrentHP: 3,
+		Status: character.StatusPoison,
+	}
+	dmg := combat.ProcessPoison(c)
+	if dmg != 5 {
+		t.Errorf("poison damage: got %d, want 5", dmg)
+	}
+	if c.CurrentHP != 0 {
+		t.Errorf("HP: got %d, want 0", c.CurrentHP)
+	}
+	if c.Status != character.StatusDeath {
+		t.Errorf("status: got %q, want %q", c.Status, character.StatusDeath)
+	}
+}
+
+func TestPoisonMinDamageIsOne(t *testing.T) {
+	c := &combat.Combatant{
+		ID: 1, Name: "Tiny", MaxHP: 10, CurrentHP: 10,
+		Status: character.StatusPoison,
+	}
+	dmg := combat.ProcessPoison(c)
+	// 5% of 10 = 0, should be clamped to 1
+	if dmg != 1 {
+		t.Errorf("poison damage: got %d, want 1 (min damage)", dmg)
+	}
+}
+
+func TestSleepWakesOnDamage(t *testing.T) {
+	gd := loadTestData(t)
+	stats := &gd.Stats.Combat
+
+	attacker := makeWarrior("Hero", 10, 0)
+	attacker.AGI = 50
+
+	enemy := makeEnemy(2, "Sleeper", 5, 1, 100, 0)
+	enemy.Status = character.StatusSleep
+
+	rng := rand.New(rand.NewPCG(42, 0))
+	actions := []combat.Action{{ActorID: 1, Kind: combat.ActionAttack, TargetID: 2}}
+	results := combat.ResolveTurn(
+		[]*combat.Combatant{attacker},
+		[]*combat.Combatant{enemy},
+		actions, stats, rng,
+	)
+
+	if len(results) == 0 {
+		t.Fatal("expected attack result")
+	}
+	if results[0].TotalDmg <= 0 {
+		t.Fatal("expected damage to wake sleeper")
+	}
+	if enemy.Status != character.StatusNone {
+		t.Errorf("enemy should be awake after damage, got status %q", enemy.Status)
+	}
+}
+
+func TestConfusedActsRandomly(t *testing.T) {
+	gd := loadTestData(t)
+	stats := &gd.Stats.Combat
+
+	confused := makeWarrior("Confused", 10, 0)
+	confused.Status = character.StatusConfuse
+	confused.AGI = 50
+
+	ally := &combat.Combatant{
+		ID: 3, Name: "Ally", IsPlayer: true,
+		STR: 10, AGI: 5, MaxHP: 100, CurrentHP: 100,
+	}
+
+	enemy := makeEnemy(2, "Goblin", 5, 1, 100, 0)
+
+	// Run many iterations to verify random targeting hits both allies and enemies.
+	hitAlly := 0
+	hitEnemy := 0
+	for seed := uint64(0); seed < 200; seed++ {
+		confused.CurrentHP = 100
+		confused.Status = character.StatusConfuse
+		ally.CurrentHP = 100
+		ally.Status = character.StatusNone
+		enemy.CurrentHP = 100
+		enemy.Status = character.StatusNone
+
+		rng := rand.New(rand.NewPCG(seed, 0))
+		actions := []combat.Action{{ActorID: 1, Kind: combat.ActionAttack, TargetID: 2}}
+		results := combat.ResolveTurn(
+			[]*combat.Combatant{confused, ally},
+			[]*combat.Combatant{enemy},
+			actions, stats, rng,
+		)
+
+		for _, r := range results {
+			if r.Kind == combat.ActionConfusion {
+				if r.TargetID == 2 {
+					hitEnemy++
+				} else {
+					hitAlly++
+				}
+			}
+		}
+	}
+
+	if hitAlly == 0 {
+		t.Error("confused actor never attacked an ally")
+	}
+	if hitEnemy == 0 {
+		t.Error("confused actor never attacked an enemy")
+	}
+}
+
+func TestConfusedSkipsAbilities(t *testing.T) {
+	gd := loadTestData(t)
+	stats := &gd.Stats.Combat
+
+	confused := makeWarrior("Confused", 10, 0)
+	confused.Status = character.StatusConfuse
+	confused.AGI = 50
+
+	enemy := makeEnemy(2, "Goblin", 5, 1, 100, 0)
+
+	rng := rand.New(rand.NewPCG(42, 0))
+	// Try to use an ability while confused - should be forced to basic attack.
+	actions := []combat.Action{{ActorID: 1, Kind: combat.ActionAbility, TargetID: 2, AbilityID: "focus"}}
+	results := combat.ResolveTurn(
+		[]*combat.Combatant{confused},
+		[]*combat.Combatant{enemy},
+		actions, stats, rng,
+	)
+
+	if len(results) == 0 {
+		t.Fatal("expected confusion result")
+	}
+	if results[0].Kind != combat.ActionConfusion {
+		t.Errorf("expected confusion action, got %s", results[0].Kind)
+	}
+}
+
+func TestStonedCountsAsDefeatedForVictory(t *testing.T) {
+	enemies := []*combat.Combatant{
+		{ID: 1, CurrentHP: 50, Status: character.StatusStone},
+	}
+	if !combat.CheckVictory(enemies) {
+		t.Error("stoned enemy should count as defeated for victory")
+	}
+}
+
+func TestConfusedCombatantNotSkipped(t *testing.T) {
+	gd := loadTestData(t)
+	stats := &gd.Stats.Combat
+
+	confused := makeWarrior("Confused", 10, 0)
+	confused.Status = character.StatusConfuse
+	confused.AGI = 50
+
+	enemy := makeEnemy(2, "Goblin", 5, 1, 100, 0)
+
+	rng := rand.New(rand.NewPCG(42, 0))
+	actions := []combat.Action{{ActorID: 1, Kind: combat.ActionAttack, TargetID: 2}}
+	results := combat.ResolveTurn(
+		[]*combat.Combatant{confused},
+		[]*combat.Combatant{enemy},
+		actions, stats, rng,
+	)
+
+	// Confused actor should still act (not be skipped like sleep/stone)
+	if len(results) == 0 {
+		t.Fatal("confused combatant should still produce an action")
+	}
+}

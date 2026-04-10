@@ -42,6 +42,7 @@ const (
 	StatusSilence Status = "silence"
 	StatusStone   Status = "stone"
 	StatusDeath   Status = "death"
+	StatusConfuse Status = "confuse"
 )
 
 // New creates a character of the given class with starting stats.

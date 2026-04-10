@@ -6,7 +6,21 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+
+	"github.com/digitaldrywood/kithlands/internal/transport"
 )
+
+// TransportData holds transportation tier definitions from transport.json.
+type TransportData struct {
+	Tiers         []transport.Tier       `json:"tiers"`
+	ConquestSkins map[string]SkinEntry   `json:"conquest_skins"`
+}
+
+// SkinEntry is a flavor-specific sprite mapping for a transport tier.
+type SkinEntry struct {
+	Name   string `json:"name"`
+	Sprite string `json:"sprite"`
+}
 
 // GameData holds all loaded game data from shared/.
 type GameData struct {
@@ -16,6 +30,7 @@ type GameData struct {
 	Spells     SpellsData
 	Monsters   []Monster
 	Formations []Formation
+	Transport  TransportData
 
 	classByID     map[string]*Class
 	weaponByID    map[string]*Weapon
@@ -39,6 +54,7 @@ func Load(sharedDir string) *GameData {
 	gd.Spells = loadJSON[SpellsData](sharedDir, "spells.json")
 	gd.Monsters = loadJSON[[]Monster](sharedDir, "monsters.json")
 	gd.Formations = loadJSON[[]Formation](sharedDir, "formations.json")
+	gd.Transport = loadJSON[TransportData](sharedDir, "transport.json")
 
 	gd.buildIndexes()
 	gd.validate()
@@ -207,6 +223,21 @@ func (gd *GameData) validate() {
 			if s.Max < s.Min {
 				panic(fmt.Sprintf("gamedata: formation %q slot %q has max < min: %d < %d", f.ID, s.MonsterID, s.Max, s.Min))
 			}
+		}
+	}
+
+	if len(gd.Transport.Tiers) == 0 {
+		panic("gamedata: transport.json has no tiers")
+	}
+	for _, t := range gd.Transport.Tiers {
+		if t.ID == "" {
+			panic("gamedata: transport tier with empty id")
+		}
+		if t.RangeEdges <= 0 {
+			panic(fmt.Sprintf("gamedata: transport tier %q has invalid range_edges: %d", t.ID, t.RangeEdges))
+		}
+		if t.Unlock == "" {
+			panic(fmt.Sprintf("gamedata: transport tier %q has empty unlock condition", t.ID))
 		}
 	}
 }

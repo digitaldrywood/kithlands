@@ -68,15 +68,16 @@ SPRITES_DIR = os.path.join(PUBLIC_DIR, "sprites")
 TILESETS_DIR = os.path.join(PUBLIC_DIR, "tilesets")
 
 STYLE = (
-    "Pixel Remaster style, 16-bit JRPG pixel art like Final Fantasy VI or "
-    "Chrono Trigger. Rich colors, clean pixel edges, no anti-aliasing, no "
-    "outlines. On a bright green #00FF00 background."
+    "Final Fantasy Pixel Remaster style. High-definition detailed pixel art "
+    "with fine shading, rich color gradients, and smooth anti-aliased edges. "
+    "Modern HD quality suitable for high-resolution displays. Detailed and "
+    "refined, not chunky or retro. On a solid bright magenta #FF00FF background."
 )
 
 TILE_STYLE = (
-    "Pixel Remaster style, 16-bit JRPG pixel art tileset tile. Seamless "
-    "tileable texture, top-down perspective. Clean pixel edges, no "
-    "anti-aliasing. Rich colors matching SNES-era RPG aesthetic."
+    "Final Fantasy Pixel Remaster style tileset tile. High-definition detailed "
+    "pixel art, seamless tileable texture, top-down perspective. Fine shading, "
+    "rich color gradients. Modern HD quality, not chunky or retro."
 )
 
 # ---------------------------------------------------------------------------
@@ -86,42 +87,42 @@ TILE_STYLE = (
 CLASS_SPRITES = [
     # (filename, size, description)
     # Base classes
-    ("warrior.png", 48,
+    ("warrior.png", 192,
      f"Front-facing portrait of a JRPG warrior knight character. Silver plate armor, blue cape, short sword held at side. Heroic stance. {STYLE}"),
-    ("brawler.png", 48,
+    ("brawler.png", 192,
      f"Front-facing portrait of a JRPG brawler monk character. Muscular build, wrapped fists, orange gi, no weapons, martial arts stance. {STYLE}"),
-    ("rogue.png", 48,
+    ("rogue.png", 192,
      f"Front-facing portrait of a JRPG thief/rogue character. Dark leather armor, green hooded cloak, holding a dagger, confident smirk. {STYLE}"),
-    ("mender.png", 48,
+    ("mender.png", 192,
      f"Front-facing portrait of a JRPG white mage healer character. White and blue robes, gentle expression, holding a healing staff with a crystal. {STYLE}"),
-    ("cinder.png", 48,
+    ("cinder.png", 192,
      f"Front-facing portrait of a JRPG black mage character. Dark purple robe, tall pointed hat with shadow hiding face except glowing yellow eyes, wooden staff. Mysterious stance. {STYLE}"),
-    ("wayfarer.png", 48,
+    ("wayfarer.png", 192,
      f"Front-facing portrait of a JRPG wandering adventurer character. Travel-worn brown cloak, wide-brim hat, carrying a walking staff and satchel. Friendly expression. {STYLE}"),
     # Promoted classes
-    ("knight.png", 48,
+    ("knight.png", 192,
      f"Front-facing portrait of a JRPG holy knight character. Gleaming gold-trimmed plate armor, white cape, longsword with glowing blade, noble stance. More ornate than base warrior. {STYLE}"),
-    ("champion.png", 48,
+    ("champion.png", 192,
      f"Front-facing portrait of a JRPG champion martial artist character. Powerful build, glowing fists with chi energy, red headband, scarred arms, battle-hardened stance. {STYLE}"),
-    ("shadow.png", 48,
+    ("shadow.png", 192,
      f"Front-facing portrait of a JRPG shadow assassin character. Black form-fitting armor, dark purple cloak with shadow wisps, twin daggers, glowing violet eyes. {STYLE}"),
-    ("sage.png", 48,
+    ("sage.png", 192,
      f"Front-facing portrait of a JRPG sage character. Ornate white and gold robes, glowing staff, halo of light, serene wise expression. More powerful than base mender. {STYLE}"),
-    ("pyromancer.png", 48,
+    ("pyromancer.png", 192,
      f"Front-facing portrait of a JRPG pyromancer character. Crimson and black robes with flame motifs, staff topped with fire crystal, eyes glowing orange, arcane fire swirling. {STYLE}"),
-    ("wanderer.png", 48,
+    ("wanderer.png", 192,
      f"Front-facing portrait of a JRPG wanderer character. Weathered adventurer gear, enchanted dual-colored cloak (half white half black), sword in one hand staff in other, experienced look. {STYLE}"),
 ]
 
 WALK_SPRITES = [
     # (filename, size, description) -- individual directional sprites
-    ("player_down.png", 32,
+    ("player_down.png", 128,
      f"Single pixel art sprite of a small JRPG adventurer character facing toward the viewer (front view). Brown hair, blue tunic, simple design. Full body visible, standing pose. {STYLE}"),
-    ("player_up.png", 32,
+    ("player_up.png", 128,
      f"Single pixel art sprite of a small JRPG adventurer character facing away from the viewer (back view). Brown hair, blue tunic, simple design. Full body visible, standing pose. {STYLE}"),
-    ("player_left.png", 32,
+    ("player_left.png", 128,
      f"Single pixel art sprite of a small JRPG adventurer character facing left (side view, walking left). Brown hair, blue tunic, simple design. Full body visible. {STYLE}"),
-    ("player_right.png", 32,
+    ("player_right.png", 128,
      f"Single pixel art sprite of a small JRPG adventurer character facing right (side view, walking right). Brown hair, blue tunic, simple design. Full body visible. {STYLE}"),
 ]
 
@@ -140,7 +141,7 @@ for direction in ["down", "up", "left", "right"]:
                 "standing still feet together",
                 "stepping with right foot forward"][frame]
         WALK_ANIMATION_FRAMES.append((
-            f"walk/walk_{direction}_{frame}.png", 32,
+            f"walk/walk_{direction}_{frame}.png", 128,
             f"Single pixel art sprite of a small JRPG adventurer character "
             f"facing {facing}, {step}. Brown hair, blue tunic. Walk cycle "
             f"frame {frame + 1} of 4. Full body visible. {STYLE}"
@@ -148,60 +149,60 @@ for direction in ["down", "up", "left", "right"]:
 
 MONSTER_SPRITES = [
     # Existing (regenerated for consistency)
-    ("monsters/slime.png", 64,
+    ("monsters/slime.png", 256,
      f"A cute blue translucent slime monster from a JRPG. Round blob shape, two dot eyes, small smile. Slightly bouncing pose. {STYLE}"),
-    ("monsters/goblin.png", 64,
+    ("monsters/goblin.png", 256,
      f"A small green-skinned goblin enemy from a JRPG. Pointy ears, red eyes, leather vest, holding a rusty dagger. Aggressive stance. {STYLE}"),
-    ("monsters/wolf.png", 64,
+    ("monsters/wolf.png", 256,
      f"A fierce grey wolf enemy from a JRPG. Snarling, fangs bared, crouched to pounce. Dark fur with lighter belly. {STYLE}"),
-    ("monsters/skeleton.png", 64,
+    ("monsters/skeleton.png", 256,
      f"A skeleton warrior enemy from a JRPG. Bone white, glowing blue eyes in empty sockets, holding a rusted sword, tattered armor scraps. {STYLE}"),
-    ("monsters/dark_knight.png", 96,
+    ("monsters/dark_knight.png", 384,
      f"A dark knight boss enemy from a JRPG. Imposing black full plate armor with purple trim, large dark sword, glowing red eyes behind visor, dark aura. Larger and more detailed than regular enemies. {STYLE}"),
     # New Tier 1
-    ("monsters/bat.png", 64,
+    ("monsters/bat.png", 256,
      f"A dark purple vampire bat monster from a JRPG. Wings spread wide, red glowing eyes, fangs visible, swooping attack pose. {STYLE}"),
-    ("monsters/rat.png", 64,
+    ("monsters/rat.png", 256,
      f"A large brown dire rat monster from a JRPG. Matted fur, red beady eyes, long pink tail, sharp teeth bared, aggressive hunch. {STYLE}"),
-    ("monsters/snake.png", 64,
+    ("monsters/snake.png", 256,
      f"A green venomous serpent monster from a JRPG. Coiled body, hood flared like a cobra, forked tongue out, poison dripping from fangs. {STYLE}"),
-    ("monsters/spider.png", 64,
+    ("monsters/spider.png", 256,
      f"A large black cave spider monster from a JRPG. Eight legs spread wide, multiple red eyes, dripping web silk, menacing pose. {STYLE}"),
     # New Tier 2
-    ("monsters/orc.png", 64,
+    ("monsters/orc.png", 256,
      f"A muscular green orc warrior enemy from a JRPG. Heavy build, tusks, leather armor, wielding a crude battle axe, war paint on face. {STYLE}"),
-    ("monsters/ghost.png", 64,
+    ("monsters/ghost.png", 256,
      f"A floating translucent ghost enemy from a JRPG. Pale blue-white wispy form, hollow dark eyes, reaching spectral hands, trailing ectoplasm. {STYLE}"),
-    ("monsters/bandit.png", 64,
+    ("monsters/bandit.png", 256,
      f"A human bandit enemy from a JRPG. Scruffy appearance, eye patch, leather vest, wielding a short sword, menacing grin. {STYLE}"),
-    ("monsters/troll.png", 64,
+    ("monsters/troll.png", 256,
      f"A large green troll monster from a JRPG. Hulking build, warty skin, small eyes, carrying a wooden club, hunched posture. {STYLE}"),
     # New Tier 3
-    ("monsters/wyvern.png", 64,
+    ("monsters/wyvern.png", 256,
      f"A blue-green wyvern dragon monster from a JRPG. Bat-like wings, long serpentine neck, sharp talons, breathing frost mist. {STYLE}"),
-    ("monsters/lich.png", 64,
+    ("monsters/lich.png", 256,
      f"An undead lich sorcerer enemy from a JRPG. Skeletal figure in tattered dark robes, glowing green eyes, holding a necromantic staff, dark magic aura. {STYLE}"),
-    ("monsters/golem.png", 64,
+    ("monsters/golem.png", 256,
      f"A stone golem construct enemy from a JRPG. Massive rocky body, glowing rune marks on chest, heavy stone fists, craggy angular form. {STYLE}"),
-    ("monsters/demon.png", 64,
+    ("monsters/demon.png", 256,
      f"A red-skinned demon enemy from a JRPG. Horns, bat wings, clawed hands, forked tail, wreathed in dark fire, sinister grin. {STYLE}"),
     # New Boss
-    ("monsters/dragon.png", 96,
+    ("monsters/dragon.png", 384,
      f"An ancient red dragon boss from a JRPG. Massive and imposing, great wings spread, breathing fire, golden eyes, armored scales, crown of horns. Larger and more detailed than regular enemies. {STYLE}"),
 ]
 
 NPC_SPRITES = [
-    ("npcs/elder.png", 32,
+    ("npcs/elder.png", 128,
      f"A small JRPG village elder NPC. White beard, brown robes, wooden walking cane, wise expression. Top-down overworld scale. Full body visible. {STYLE}"),
-    ("npcs/merchant.png", 32,
+    ("npcs/merchant.png", 128,
      f"A small JRPG traveling merchant NPC. Round figure, colorful vest, large backpack of wares, friendly smile. Top-down overworld scale. Full body visible. {STYLE}"),
-    ("npcs/blacksmith.png", 32,
+    ("npcs/blacksmith.png", 128,
      f"A small JRPG blacksmith NPC. Muscular arms, leather apron, holding a hammer, soot-marked face. Top-down overworld scale. Full body visible. {STYLE}"),
-    ("npcs/innkeeper.png", 32,
+    ("npcs/innkeeper.png", 128,
      f"A small JRPG innkeeper NPC. Plump and welcoming, white apron, holding a mug, warm smile. Top-down overworld scale. Full body visible. {STYLE}"),
-    ("npcs/priestess.png", 32,
+    ("npcs/priestess.png", 128,
      f"A small JRPG temple priestess NPC. White robes with gold trim, prayer beads, serene expression. Top-down overworld scale. Full body visible. {STYLE}"),
-    ("npcs/guard.png", 32,
+    ("npcs/guard.png", 128,
      f"A small JRPG town guard NPC. Chain mail armor, spear, helmet, alert stance. Top-down overworld scale. Full body visible. {STYLE}"),
 ]
 
@@ -236,57 +237,57 @@ INTERIOR_TILESETS = [
 
 UI_ICONS = [
     # (filename, size, description)
-    ("ui/icon_sword.png", 16,
-     f"Tiny pixel art sword weapon icon for a JRPG menu. Silver blade, brown hilt. Clean and readable at 16x16. {STYLE}"),
-    ("ui/icon_shield.png", 16,
-     f"Tiny pixel art shield defense icon for a JRPG menu. Blue and silver kite shield. Clean and readable at 16x16. {STYLE}"),
-    ("ui/icon_potion.png", 16,
-     f"Tiny pixel art red health potion bottle icon for a JRPG menu. Round glass bottle, red liquid. Clean and readable at 16x16. {STYLE}"),
-    ("ui/icon_spell.png", 16,
-     f"Tiny pixel art magic spell icon for a JRPG menu. Glowing blue magic orb with sparkles. Clean and readable at 16x16. {STYLE}"),
-    ("ui/icon_gold.png", 16,
-     f"Tiny pixel art gold coin icon for a JRPG menu. Shiny yellow gold coin with G marking. Clean and readable at 16x16. {STYLE}"),
-    ("ui/icon_xp.png", 16,
-     f"Tiny pixel art experience star icon for a JRPG menu. Glowing green star. Clean and readable at 16x16. {STYLE}"),
-    ("ui/icon_poison.png", 16,
-     f"Tiny pixel art poison status icon. Purple skull with green drip. Clean and readable at 16x16. {STYLE}"),
-    ("ui/icon_sleep.png", 16,
-     f"Tiny pixel art sleep status icon. Blue ZZZ letters. Clean and readable at 16x16. {STYLE}"),
-    ("ui/icon_mute.png", 16,
-     f"Tiny pixel art mute/silence status icon. Red X over a mouth. Clean and readable at 16x16. {STYLE}"),
-    ("ui/icon_slow.png", 16,
-     f"Tiny pixel art slow status icon. Orange snail shape. Clean and readable at 16x16. {STYLE}"),
-    ("ui/icon_paralyze.png", 16,
-     f"Tiny pixel art paralyze status icon. Yellow lightning bolt. Clean and readable at 16x16. {STYLE}"),
+    ("ui/icon_sword.png", 64,
+     f"Sword weapon icon for a JRPG menu. Silver blade, brown hilt. Clean and detailed. {STYLE}"),
+    ("ui/icon_shield.png", 64,
+     f"Shield defense icon for a JRPG menu. Blue and silver kite shield. Clean and detailed. {STYLE}"),
+    ("ui/icon_potion.png", 64,
+     f"Red health potion bottle icon for a JRPG menu. Round glass bottle, red liquid. Clean and detailed. {STYLE}"),
+    ("ui/icon_spell.png", 64,
+     f"Magic spell icon for a JRPG menu. Glowing blue magic orb with sparkles. Clean and detailed. {STYLE}"),
+    ("ui/icon_gold.png", 64,
+     f"Gold coin icon for a JRPG menu. Shiny yellow gold coin with G marking. Clean and detailed. {STYLE}"),
+    ("ui/icon_xp.png", 64,
+     f"Experience star icon for a JRPG menu. Glowing green star. Clean and detailed. {STYLE}"),
+    ("ui/icon_poison.png", 64,
+     f"Poison status icon. Purple skull with green drip. Clean and detailed. {STYLE}"),
+    ("ui/icon_sleep.png", 64,
+     f"Sleep status icon. Blue ZZZ letters. Clean and detailed. {STYLE}"),
+    ("ui/icon_mute.png", 64,
+     f"Mute/silence status icon. Red X over a mouth. Clean and detailed. {STYLE}"),
+    ("ui/icon_slow.png", 64,
+     f"Slow status icon. Orange snail shape. Clean and detailed. {STYLE}"),
+    ("ui/icon_paralyze.png", 64,
+     f"Paralyze status icon. Yellow lightning bolt. Clean and detailed. {STYLE}"),
 ]
 
 UI_ELEMENTS = [
     # Menu border pieces
-    ("ui/border_tl.png", 16,
+    ("ui/border_tl.png", 64,
      f"JRPG menu border top-left corner piece. Dark blue with gold trim, ornate corner. {STYLE}"),
-    ("ui/border_t.png", 16,
+    ("ui/border_t.png", 64,
      f"JRPG menu border top edge piece. Dark blue with gold trim line, horizontally tileable. {STYLE}"),
-    ("ui/border_tr.png", 16,
+    ("ui/border_tr.png", 64,
      f"JRPG menu border top-right corner piece. Dark blue with gold trim, ornate corner. {STYLE}"),
-    ("ui/border_l.png", 16,
+    ("ui/border_l.png", 64,
      f"JRPG menu border left edge piece. Dark blue with gold trim line, vertically tileable. {STYLE}"),
-    ("ui/border_r.png", 16,
+    ("ui/border_r.png", 64,
      f"JRPG menu border right edge piece. Dark blue with gold trim line, vertically tileable. {STYLE}"),
-    ("ui/border_bl.png", 16,
+    ("ui/border_bl.png", 64,
      f"JRPG menu border bottom-left corner piece. Dark blue with gold trim, ornate corner. {STYLE}"),
-    ("ui/border_b.png", 16,
+    ("ui/border_b.png", 64,
      f"JRPG menu border bottom edge piece. Dark blue with gold trim line, horizontally tileable. {STYLE}"),
-    ("ui/border_br.png", 16,
+    ("ui/border_br.png", 64,
      f"JRPG menu border bottom-right corner piece. Dark blue with gold trim, ornate corner. {STYLE}"),
-    ("ui/border_fill.png", 16,
+    ("ui/border_fill.png", 64,
      f"JRPG menu background fill. Solid dark blue, slight gradient. {STYLE}"),
     # HP bar pieces
-    ("ui/hp_bar_frame.png", 48,
-     f"JRPG HP bar frame/outline. Horizontal bar shape, dark metallic border, empty center. 48 pixels wide, narrow height. {STYLE}"),
-    ("ui/hp_bar_fill.png", 48,
-     f"JRPG HP bar fill gradient. Horizontal green to yellow health bar fill. 48 pixels wide, narrow height. {STYLE}"),
-    ("ui/hp_bar_empty.png", 48,
-     f"JRPG HP bar empty fill. Horizontal dark red empty health bar. 48 pixels wide, narrow height. {STYLE}"),
+    ("ui/hp_bar_frame.png", 192,
+     f"JRPG HP bar frame/outline. Horizontal bar shape, dark metallic border, empty center. {STYLE}"),
+    ("ui/hp_bar_fill.png", 192,
+     f"JRPG HP bar fill gradient. Horizontal green to yellow health bar fill. {STYLE}"),
+    ("ui/hp_bar_empty.png", 192,
+     f"JRPG HP bar empty fill. Horizontal dark red empty health bar. {STYLE}"),
 ]
 
 
@@ -341,8 +342,8 @@ def generate_image(prompt):
     return None
 
 
-def remove_green_background(img, threshold=120):
-    """Replace green-screen (#00FF00 area) with transparency."""
+def remove_background(img, threshold=120):
+    """Replace magenta-screen (#FF00FF area) with transparency."""
     img = img.convert("RGBA")
     pixels = img.load()
     w, h = img.size
@@ -352,17 +353,20 @@ def remove_green_background(img, threshold=120):
             r, g, b, a = pixels[x, y]
             if a == 0:
                 continue
-            is_green = False
-            if g > 120 and r < threshold and b < threshold:
-                is_green = True
-            elif g > 100 and g > r * 1.4 and g > b * 1.4:
-                is_green = True
-            elif g > 180 and (r + b) < g:
-                is_green = True
-            if is_green:
+            is_magenta = False
+            # Pure magenta: high red + high blue, low green
+            if r > 120 and b > 120 and g < threshold:
+                is_magenta = True
+            # Dominant magenta: R and B both significantly outweigh G
+            elif r > 100 and b > 100 and r > g * 1.4 and b > g * 1.4:
+                is_magenta = True
+            # Very saturated magenta
+            elif (r + b) > 360 and g < 100:
+                is_magenta = True
+            if is_magenta:
                 pixels[x, y] = (0, 0, 0, 0)
 
-    # Second pass: remove isolated semi-transparent green edge pixels
+    # Second pass: remove isolated semi-transparent magenta edge pixels
     pixels = img.load()
     for y in range(1, h - 1):
         for x in range(1, w - 1):
@@ -377,7 +381,7 @@ def remove_green_background(img, threshold=120):
                     _, _, _, na = pixels[x + dx, y + dy]
                     if na == 0:
                         transparent_neighbors += 1
-            if transparent_neighbors >= 5 and g > r and g > b:
+            if transparent_neighbors >= 5 and r > g and b > g:
                 pixels[x, y] = (0, 0, 0, 0)
 
     return img
@@ -402,7 +406,7 @@ def resize_to_square(img, target_size):
     scale = min(target_size / w, target_size / h)
     new_w = int(w * scale)
     new_h = int(h * scale)
-    img = img.resize((new_w, new_h), Image.NEAREST)
+    img = img.resize((new_w, new_h), Image.LANCZOS)
 
     result = Image.new("RGBA", (target_size, target_size), (0, 0, 0, 0))
     offset_x = (target_size - new_w) // 2
@@ -419,7 +423,7 @@ def generate_and_process(prompt, output_path, target_size, is_tile=False):
         return False
 
     if not is_tile:
-        img = remove_green_background(img)
+        img = remove_background(img)
         img = crop_to_content(img)
     img = resize_to_square(img, target_size)
     img.save(output_path, "PNG")

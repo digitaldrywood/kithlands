@@ -17,20 +17,21 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/locality"
 	"github.com/digitaldrywood/kithlands/internal/magic"
 	"github.com/digitaldrywood/kithlands/internal/save"
+	"github.com/digitaldrywood/kithlands/internal/transport"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // SaveGameData is the full serializable game state stored in JSONB.
 type SaveGameData struct {
-	Party      []*character.Character      `json:"party"`
-	SpellBooks map[string]*magic.SpellBook `json:"spell_books"`
-	Inventory  *inventory.Inventory        `json:"inventory"`
-	Quests     []generator.Quest           `json:"quests"`
-	CurrentQ   int                         `json:"current_quest"`
-	Phase      string                      `json:"phase"`
-	Discovered map[string]bool             `json:"discovered"`
-	PlayerX    int                         `json:"player_x"`
-	PlayerY    int                         `json:"player_y"`
+	Party      []*character.Character        `json:"party"`
+	SpellBooks map[string]*magic.SpellBook   `json:"spell_books"`
+	Inventory  *inventory.Inventory          `json:"inventory"`
+	Quests     []generator.Quest             `json:"quests"`
+	CurrentQ   int                           `json:"current_quest"`
+	Phase      string                        `json:"phase"`
+	Discovered map[string]bool               `json:"discovered"`
+	PlayerX    int                           `json:"player_x"`
+	PlayerY    int                           `json:"player_y"`
 }
 
 // ToSaveState serializes the live game into a SaveState for database storage.
@@ -58,7 +59,7 @@ func (g *Game) ToSaveState(name, userID string) (*save.SaveState, error) {
 		"phase":         g.phase,
 		"discovered":    g.discovered,
 		"spell_books":   g.spellBooks,
-		"visited_nodes": g.visitedNodes,
+		"transport":     g.trans,
 	}
 	worldJSON, err := json.Marshal(worldState)
 	if err != nil {
@@ -102,18 +103,18 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	}
 
 	var worldState struct {
-		CurrentQ     int                         `json:"current_quest"`
-		Phase        string                      `json:"phase"`
-		Discovered   map[string]bool             `json:"discovered"`
-		SpellBooks   map[string]*magic.SpellBook `json:"spell_books"`
-		VisitedNodes map[string]bool             `json:"visited_nodes"`
+		CurrentQ   int                         `json:"current_quest"`
+		Phase      string                      `json:"phase"`
+		Discovered map[string]bool             `json:"discovered"`
+		SpellBooks map[string]*magic.SpellBook `json:"spell_books"`
+		Transport  *transport.State            `json:"transport"`
 	}
 	if err := json.Unmarshal(ss.WorldState, &worldState); err != nil {
 		return nil, fmt.Errorf("unmarshaling world state: %w", err)
 	}
 
 	walk := locality.Walk(loc, loc.Nodes[0].ID)
-	tileMap := locality.GenerateTileMap(loc, loc.Nodes[0].ID, walk)
+	tileMap := locality.GenerateTileMap(loc, loc.Nodes[0].ID)
 
 	rng := rand.New(rand.NewPCG(uint64(ss.RNGSeed), 0))
 
@@ -127,28 +128,28 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		discovered = make(map[string]bool)
 	}
 
-	visitedNodes := worldState.VisitedNodes
-	if visitedNodes == nil {
-		visitedNodes = make(map[string]bool)
+	trans := worldState.Transport
+	if trans == nil {
+		trans = transport.NewState()
 	}
 
 	game := &Game{
-		id:           fmt.Sprintf("game_%d", time.Now().UnixNano()),
-		gd:           gd,
-		rng:          rng,
-		rngSeed:      ss.RNGSeed,
-		loc:          loc,
-		walk:         walk,
-		tileMap:      tileMap,
-		party:        party,
-		spellBooks:   spellBooks,
-		inv:          &inv,
-		quests:       quests,
-		currentQ:     worldState.CurrentQ,
-		phase:        "world", // always resume in world
-		diff:         balance.GetDifficulty(ss.Difficulty),
-		discovered:   discovered,
-		visitedNodes: visitedNodes,
+		id:         fmt.Sprintf("game_%d", time.Now().UnixNano()),
+		gd:         gd,
+		rng:        rng,
+		rngSeed:    ss.RNGSeed,
+		loc:        loc,
+		walk:       walk,
+		tileMap:    tileMap,
+		party:      party,
+		spellBooks: spellBooks,
+		inv:        &inv,
+		quests:     quests,
+		currentQ:   worldState.CurrentQ,
+		phase:      "world", // always resume in world
+		diff:       balance.GetDifficulty(ss.Difficulty),
+		discovered: discovered,
+		trans:      trans,
 	}
 
 	return game, nil

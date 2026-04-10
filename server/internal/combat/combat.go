@@ -58,7 +58,9 @@ const (
 	ActionDefend  ActionKind = "defend"
 	ActionFlee    ActionKind = "flee"
 	ActionAbility ActionKind = "ability"
-	ActionCounter ActionKind = "counter" // reactive; emitted by ResolveTurn, not requested
+	ActionCounter    ActionKind = "counter"     // reactive; emitted by ResolveTurn, not requested
+	ActionPoisonTick ActionKind = "poison_tick" // emitted for poison damage at start of round
+	ActionConfusion  ActionKind = "confusion"   // emitted when confused actor attacks randomly
 )
 
 // ResolvedAction is a single combat action after server resolution.
@@ -96,6 +98,30 @@ func ResolveTurn(
 		allCombatants[c.ID] = c
 	}
 
+	var results []ResolvedAction
+
+	// Poison tick at start of round per Section 6.5: -5% max HP per turn.
+	for _, group := range [][]*Combatant{party, enemies} {
+		for _, c := range group {
+			if c == nil || c.CurrentHP <= 0 {
+				continue
+			}
+			dmg := ProcessPoison(c)
+			if dmg > 0 {
+				results = append(results, ResolvedAction{
+					ActorID:   c.ID,
+					ActorName: c.Name,
+					Kind:      ActionPoisonTick,
+					TargetID:  c.ID,
+					Hits:      []Hit{{Damage: dmg}},
+					TotalDmg:  dmg,
+					TargetHP:  c.CurrentHP,
+					Killed:    c.Status == character.StatusDeath,
+				})
+			}
+		}
+	}
+
 	// Sort actions by actor AGI descending, random tiebreak
 	sort.Slice(actions, func(i, j int) bool {
 		ai := allCombatants[actions[i].ActorID]
@@ -106,14 +132,29 @@ func ResolveTurn(
 		return rng.IntN(2) == 0
 	})
 
-	var results []ResolvedAction
-
 	for _, action := range actions {
 		actor := allCombatants[action.ActorID]
 		if actor == nil || actor.CurrentHP <= 0 {
 			continue
 		}
 		if actor.Status == character.StatusSleep || actor.Status == character.StatusStone || actor.Status == character.StatusDeath {
+			continue
+		}
+
+		// Confusion: confused actors attack a random combatant per Section 6.5.
+		if ProcessConfusion(actor, rng) {
+			allLiving := allLivingCombatants(party, enemies)
+			if len(allLiving) == 0 {
+				continue
+			}
+			confuseTarget := allLiving[rng.IntN(len(allLiving))]
+			resolved := resolveAttack(actor, confuseTarget, stats, rng)
+			resolved.Kind = ActionConfusion
+			results = append(results, resolved)
+			// Wake sleeping targets hit by confusion attack.
+			if resolved.TotalDmg > 0 && confuseTarget.Status == character.StatusSleep {
+				ProcessSleepOnDamage(confuseTarget)
+			}
 			continue
 		}
 
@@ -131,6 +172,10 @@ func ResolveTurn(
 		case ActionAttack:
 			resolved := resolveAttack(actor, target, stats, rng)
 			results = append(results, resolved)
+			// Wake sleeping targets on damage per Section 6.5.
+			if resolved.TotalDmg > 0 && target.Status == character.StatusSleep {
+				ProcessSleepOnDamage(target)
+			}
 			// Counter hook: if the defender is alive and was countering, they
 			// reactively attack back once. Only once per incoming action.
 			if resolved.TotalDmg > 0 && target.CurrentHP > 0 && target.Countering {
@@ -390,6 +435,19 @@ func resolveBackstab(attacker, defender *Combatant, stats *gamedata.CombatConfig
 		TargetHP:  defender.CurrentHP,
 		Killed:    killed,
 	}
+}
+
+// allLivingCombatants returns every combatant with HP > 0 and not dead/stoned.
+func allLivingCombatants(party, enemies []*Combatant) []*Combatant {
+	var out []*Combatant
+	for _, group := range [][]*Combatant{party, enemies} {
+		for _, c := range group {
+			if c != nil && c.CurrentHP > 0 && c.Status != character.StatusDeath && c.Status != character.StatusStone {
+				out = append(out, c)
+			}
+		}
+	}
+	return out
 }
 
 func retarget(actor *Combatant, party, enemies []*Combatant) *Combatant {

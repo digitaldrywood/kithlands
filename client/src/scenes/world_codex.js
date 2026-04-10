@@ -122,7 +122,7 @@ export function toggleCodex(scene) {
           if (spriteKey && scene.textures.exists(spriteKey) && discovered) {
             const s = scene.add
               .image(70, y + 5, spriteKey)
-              .setScale(0.5)
+              .setScale(32 / Math.max(scene.textures.get(spriteKey).getSourceImage().width, 1))
               .setScrollFactor(0)
               .setDepth(42);
             tabContent.push(s);
