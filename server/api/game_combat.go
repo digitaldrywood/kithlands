@@ -21,7 +21,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 			state := g.stateUnlocked()
 			return &state, nil
 		}
-		g.combatLog = append(g.combatLog, "Couldn't escape!")
+		g.logCombat("Couldn't escape!", CombatActionEntry{Kind: "info"})
 		// Enemies still attack after failed flee -- fall through
 	}
 
@@ -54,8 +54,10 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 					targetIdx := ma.TargetID
 					if targetIdx >= 0 && targetIdx < len(g.party) && g.party[targetIdx].IsAlive() {
 						g.party[targetIdx].Heal(30)
-						g.combatLog = append(g.combatLog, fmt.Sprintf("%s uses Potion on %s - healed 30 HP (%d/%d)",
-							g.party[ma.Slot].Name, g.party[targetIdx].Name, g.party[targetIdx].CurrentHP, g.party[targetIdx].MaxHP))
+						g.logCombat(
+							fmt.Sprintf("%s uses Potion on %s - healed 30 HP (%d/%d)",
+								g.party[ma.Slot].Name, g.party[targetIdx].Name, g.party[targetIdx].CurrentHP, g.party[targetIdx].MaxHP),
+							CombatActionEntry{Kind: "item", ActorID: pc.ID, ActorName: g.party[ma.Slot].Name, TargetID: targetIdx})
 					} else {
 						// Fallback: heal most damaged
 						var healTarget *character.Character
@@ -66,8 +68,10 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 						}
 						if healTarget != nil {
 							healTarget.Heal(30)
-							g.combatLog = append(g.combatLog, fmt.Sprintf("%s uses Potion on %s - healed 30 HP (%d/%d)",
-								g.party[ma.Slot].Name, healTarget.Name, healTarget.CurrentHP, healTarget.MaxHP))
+							g.logCombat(
+								fmt.Sprintf("%s uses Potion on %s - healed 30 HP (%d/%d)",
+									g.party[ma.Slot].Name, healTarget.Name, healTarget.CurrentHP, healTarget.MaxHP),
+								CombatActionEntry{Kind: "item", ActorID: pc.ID, ActorName: g.party[ma.Slot].Name})
 						}
 					}
 				}
@@ -81,8 +85,10 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 						g.inv.Consumables["phoenix_down"]--
 						g.party[targetIdx].CurrentHP = 1
 						g.party[targetIdx].Status = character.StatusNone
-						g.combatLog = append(g.combatLog, fmt.Sprintf("%s uses Phoenix Down on %s - revived with 1 HP!",
-							g.party[ma.Slot].Name, g.party[targetIdx].Name))
+						g.logCombat(
+							fmt.Sprintf("%s uses Phoenix Down on %s - revived with 1 HP!",
+								g.party[ma.Slot].Name, g.party[targetIdx].Name),
+							CombatActionEntry{Kind: "item", ActorID: pc.ID, ActorName: g.party[ma.Slot].Name, TargetID: targetIdx})
 					}
 				}
 				continue
@@ -113,11 +119,18 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 								}
 								dmg := magic.ResolveSpellDamage(spell, target, g.rng)
 								e.CurrentHP -= dmg
-								if e.CurrentHP <= 0 {
+								killed := e.CurrentHP <= 0
+								if killed {
 									e.CurrentHP = 0
-									g.combatLog = append(g.combatLog, fmt.Sprintf("%s casts %s on %s[%d] for %d damage - DEFEATED!", caster.Name, spell.Name, e.Name, e.ID, dmg))
+									g.logCombat(
+										fmt.Sprintf("%s casts %s on %s[%d] for %d damage - DEFEATED!", caster.Name, spell.Name, e.Name, e.ID, dmg),
+										CombatActionEntry{Kind: "spell", Element: spell.Element, DamageType: "magical",
+											ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, Damage: dmg, Killed: true, SpellName: spell.Name})
 								} else {
-									g.combatLog = append(g.combatLog, fmt.Sprintf("%s casts %s on %s[%d] for %d damage", caster.Name, spell.Name, e.Name, e.ID, dmg))
+									g.logCombat(
+										fmt.Sprintf("%s casts %s on %s[%d] for %d damage", caster.Name, spell.Name, e.Name, e.ID, dmg),
+										CombatActionEntry{Kind: "spell", Element: spell.Element, DamageType: "magical",
+											ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, Damage: dmg, SpellName: spell.Name})
 								}
 								if spell.Target == "single_enemy" {
 									break
@@ -133,7 +146,9 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 							}
 							if healTarget != nil {
 								healTarget.Heal(amt)
-								g.combatLog = append(g.combatLog, fmt.Sprintf("%s casts %s - healed %d HP", caster.Name, spell.Name, amt))
+								g.logCombat(
+									fmt.Sprintf("%s casts %s - healed %d HP", caster.Name, spell.Name, amt),
+									CombatActionEntry{Kind: "heal", ActorID: pc.ID, ActorName: caster.Name, Damage: amt, SpellName: spell.Name})
 							}
 						}
 					}
@@ -254,35 +269,53 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 				if r.Killed {
 					status = " - DEFEATED!"
 				}
-				g.combatLog = append(g.combatLog, fmt.Sprintf("%s counter-attacks %s[%d] for %d damage%s",
-					r.ActorName, targetName, r.TargetID, r.TotalDmg, status))
+				g.logCombat(
+					fmt.Sprintf("%s counter-attacks %s[%d] for %d damage%s",
+						r.ActorName, targetName, r.TargetID, r.TotalDmg, status),
+					CombatActionEntry{Kind: "counter", DamageType: "physical",
+						ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Damage: r.TotalDmg, Killed: r.Killed})
 			}
 		case combat.ActionAbility:
 			abilityID := abilityByActor[r.ActorID]
 			targetName := g.findCombatantName(combatants, r.TargetID)
 			switch abilityID {
 			case "focus":
-				g.combatLog = append(g.combatLog, fmt.Sprintf("%s focuses - next attacks hit harder!", r.ActorName))
+				g.logCombat(
+					fmt.Sprintf("%s focuses - next attacks hit harder!", r.ActorName),
+					CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName})
 			case "counter":
-				g.combatLog = append(g.combatLog, fmt.Sprintf("%s braces to counter!", r.ActorName))
+				g.logCombat(
+					fmt.Sprintf("%s braces to counter!", r.ActorName),
+					CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName})
 			case "inspire":
-				g.combatLog = append(g.combatLog, fmt.Sprintf("%s inspires the party!", r.ActorName))
+				g.logCombat(
+					fmt.Sprintf("%s inspires the party!", r.ActorName),
+					CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName})
 			case "backstab":
 				status := ""
 				if r.Killed {
 					status = " - DEFEATED!"
 				}
-				g.combatLog = append(g.combatLog, fmt.Sprintf("%s backstabs %s for %d damage%s",
-					r.ActorName, targetName, r.TotalDmg, status))
+				g.logCombat(
+					fmt.Sprintf("%s backstabs %s for %d damage%s",
+						r.ActorName, targetName, r.TotalDmg, status),
+					CombatActionEntry{Kind: "ability", DamageType: "physical",
+						ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Damage: r.TotalDmg, Killed: r.Killed})
 			case "steal":
 				if itemID, itemName, ok := g.tryStealFrom(r.TargetID); ok {
 					g.inv.Consumables[itemID]++
-					g.combatLog = append(g.combatLog, fmt.Sprintf("%s steals %s from %s!", r.ActorName, itemName, targetName))
+					g.logCombat(
+						fmt.Sprintf("%s steals %s from %s!", r.ActorName, itemName, targetName),
+						CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID})
 				} else {
-					g.combatLog = append(g.combatLog, fmt.Sprintf("%s tries to steal from %s but finds nothing.", r.ActorName, targetName))
+					g.logCombat(
+						fmt.Sprintf("%s tries to steal from %s but finds nothing.", r.ActorName, targetName),
+						CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID})
 				}
 			default:
-				g.combatLog = append(g.combatLog, fmt.Sprintf("%s uses an ability.", r.ActorName))
+				g.logCombat(
+					fmt.Sprintf("%s uses an ability.", r.ActorName),
+					CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName})
 			}
 		default:
 			if r.TotalDmg > 0 {
@@ -291,8 +324,11 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 				if r.Killed {
 					status = " - DEFEATED!"
 				}
-				g.combatLog = append(g.combatLog, fmt.Sprintf("%s attacks %s[%d] for %d damage%s",
-					r.ActorName, targetName, r.TargetID, r.TotalDmg, status))
+				g.logCombat(
+					fmt.Sprintf("%s attacks %s[%d] for %d damage%s",
+						r.ActorName, targetName, r.TargetID, r.TotalDmg, status),
+					CombatActionEntry{Kind: "attack", DamageType: "physical",
+						ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Damage: r.TotalDmg, Killed: r.Killed})
 			}
 		}
 	}
@@ -336,7 +372,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 			if w := g.gd.WeaponByID(itemID); w != nil {
 				itemName = w.Name
 			}
-			g.combatLog = append(g.combatLog, fmt.Sprintf("Found: %s!", itemName))
+			g.logCombat(fmt.Sprintf("Found: %s!", itemName), CombatActionEntry{Kind: "info"})
 		}
 		living := 0
 		for _, c := range g.party {
@@ -352,7 +388,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 				}
 			}
 		}
-		g.combatLog = append(g.combatLog, fmt.Sprintf("Victory! +%d XP, +%d gold", totalXP, totalGold))
+		g.logCombat(fmt.Sprintf("Victory! +%d XP, +%d gold", totalXP, totalGold), CombatActionEntry{Kind: "info"})
 		g.checkLevelUps()
 		g.enemies = nil
 
@@ -367,12 +403,14 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 				}
 			}
 			g.checkLevelUps()
-			g.combatLog = append(g.combatLog, fmt.Sprintf("Quest complete: %s (+%d XP, +%d gold)", q.Name, q.Reward.XP, q.Reward.Gold))
+			g.logCombat(
+				fmt.Sprintf("Quest complete: %s (+%d XP, +%d gold)", q.Name, q.Reward.XP, q.Reward.Gold),
+				CombatActionEntry{Kind: "info"})
 			g.restParty()
 			completedIdx := g.currentQ
 			g.currentQ++
 			if promoMsg := g.applyPromotionIfNeeded(completedIdx); promoMsg != "" {
-				g.combatLog = append(g.combatLog, promoMsg)
+				g.logCombat(promoMsg, CombatActionEntry{Kind: "info"})
 				g.message = promoMsg
 			}
 		}
@@ -427,11 +465,18 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 				}
 				dmg := magic.ResolveSpellDamage(spell, target, g.rng)
 				e.CurrentHP -= dmg
-				if e.CurrentHP <= 0 {
+				killed := e.CurrentHP <= 0
+				if killed {
 					e.CurrentHP = 0
-					g.combatLog = append(g.combatLog, fmt.Sprintf("%s casts %s on %s for %d - DEFEATED!", caster.Name, spell.Name, e.Name, dmg))
+					g.logCombat(
+						fmt.Sprintf("%s casts %s on %s for %d - DEFEATED!", caster.Name, spell.Name, e.Name, dmg),
+						CombatActionEntry{Kind: "spell", Element: spell.Element, DamageType: "magical",
+							ActorName: caster.Name, TargetID: e.ID, Damage: dmg, Killed: true, SpellName: spell.Name})
 				} else {
-					g.combatLog = append(g.combatLog, fmt.Sprintf("%s casts %s on %s for %d (HP:%d)", caster.Name, spell.Name, e.Name, dmg, e.CurrentHP))
+					g.logCombat(
+						fmt.Sprintf("%s casts %s on %s for %d (HP:%d)", caster.Name, spell.Name, e.Name, dmg, e.CurrentHP),
+						CombatActionEntry{Kind: "spell", Element: spell.Element, DamageType: "magical",
+							ActorName: caster.Name, TargetID: e.ID, Damage: dmg, SpellName: spell.Name})
 				}
 				if spell.Target == "single_enemy" {
 					break
@@ -449,7 +494,9 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 		}
 		if target != nil {
 			target.Heal(amt)
-			g.combatLog = append(g.combatLog, fmt.Sprintf("%s casts %s on %s for %d HP", caster.Name, spell.Name, target.Name, amt))
+			g.logCombat(
+				fmt.Sprintf("%s casts %s on %s for %d HP", caster.Name, spell.Name, target.Name, amt),
+				CombatActionEntry{Kind: "heal", ActorName: caster.Name, Damage: amt, SpellName: spell.Name})
 		}
 	}
 
@@ -474,7 +521,10 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 				if r.Killed {
 					status = " - DEFEATED!"
 				}
-				g.combatLog = append(g.combatLog, fmt.Sprintf("%s attacks %s for %d%s", r.ActorName, name, r.TotalDmg, status))
+				g.logCombat(
+					fmt.Sprintf("%s attacks %s for %d%s", r.ActorName, name, r.TotalDmg, status),
+					CombatActionEntry{Kind: "attack", DamageType: "physical",
+						ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Damage: r.TotalDmg, Killed: r.Killed})
 			}
 		}
 		for i, pc := range combatants {
@@ -484,14 +534,14 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 	}
 
 	if combat.CheckVictory(g.enemies) {
-		g.combatLog = append(g.combatLog, "Victory!")
+		g.logCombat("Victory!", CombatActionEntry{Kind: "info"})
 		g.enemies = nil
 		if g.currentQ < len(g.quests) {
 			g.quests[g.currentQ].Completed = true
 			completedIdx := g.currentQ
 			g.currentQ++
 			if promoMsg := g.applyPromotionIfNeeded(completedIdx); promoMsg != "" {
-				g.combatLog = append(g.combatLog, promoMsg)
+				g.logCombat(promoMsg, CombatActionEntry{Kind: "info"})
 				g.message = promoMsg
 			}
 		}
@@ -527,7 +577,9 @@ func (g *Game) processCombatItem(req GameActionRequest) (*GameState, error) {
 	}
 	if target != nil {
 		target.Heal(30)
-		g.combatLog = append(g.combatLog, fmt.Sprintf("%s uses Potion - healed 30 HP (HP:%d/%d)", target.Name, target.CurrentHP, target.MaxHP))
+		g.logCombat(
+			fmt.Sprintf("%s uses Potion - healed 30 HP (HP:%d/%d)", target.Name, target.CurrentHP, target.MaxHP),
+			CombatActionEntry{Kind: "item", ActorName: target.Name})
 	}
 
 	// Enemy turn
@@ -547,7 +599,10 @@ func (g *Game) processCombatItem(req GameActionRequest) (*GameState, error) {
 		for _, r := range results {
 			if r.TotalDmg > 0 {
 				name := g.findCombatantName(combatants, r.TargetID)
-				g.combatLog = append(g.combatLog, fmt.Sprintf("%s attacks %s for %d", r.ActorName, name, r.TotalDmg))
+				g.logCombat(
+					fmt.Sprintf("%s attacks %s for %d", r.ActorName, name, r.TotalDmg),
+					CombatActionEntry{Kind: "attack", DamageType: "physical",
+						ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Damage: r.TotalDmg})
 			}
 		}
 		for i, pc := range combatants {

@@ -42,6 +42,13 @@ export class BootScene extends Phaser.Scene {
     this.load.image("mender", "/sprites/mender.png");
     this.load.image("rogue", "/sprites/rogue.png");
 
+    // Status effect icons
+    this.load.image("icon_poison", "/sprites/ui/icon_poison.png");
+    this.load.image("icon_sleep", "/sprites/ui/icon_sleep.png");
+    this.load.image("icon_mute", "/sprites/ui/icon_mute.png");
+    this.load.image("icon_paralyze", "/sprites/ui/icon_paralyze.png");
+    this.load.image("icon_slow", "/sprites/ui/icon_slow.png");
+
     // Monster sprites
     this.load.image("monster_slime", "/sprites/monsters/slime.png");
     this.load.image("monster_goblin", "/sprites/monsters/goblin.png");
