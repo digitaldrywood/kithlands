@@ -158,6 +158,10 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 								}
 								dmg := magic.ResolveSpellDamage(spell, target, g.rng)
 								e.CurrentHP -= dmg
+								// Wake sleeping enemies on spell damage per Section 6.5.
+								if dmg > 0 && e.Status == character.StatusSleep {
+									combat.ProcessSleepOnDamage(e)
+								}
 								killed := e.CurrentHP <= 0
 								if killed {
 									e.CurrentHP = 0

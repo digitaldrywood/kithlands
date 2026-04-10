@@ -183,6 +183,10 @@ func ResolveTurn(
 				counter.Kind = ActionCounter
 				target.Countering = false
 				results = append(results, counter)
+				// Wake sleeping actors hit by counter.
+				if counter.TotalDmg > 0 && actor.Status == character.StatusSleep {
+					ProcessSleepOnDamage(actor)
+				}
 			}
 		case ActionDefend:
 			results = append(results, ResolvedAction{
@@ -194,6 +198,10 @@ func ResolveTurn(
 			allies := alliesOf(actor, party, enemies)
 			resolved := ResolveAbility(actor, target, allies, action.AbilityID, stats, rng)
 			results = append(results, resolved)
+			// Wake sleeping targets hit by abilities (e.g. backstab).
+			if resolved.TotalDmg > 0 && target != nil && target.Status == character.StatusSleep {
+				ProcessSleepOnDamage(target)
+			}
 		}
 	}
 
