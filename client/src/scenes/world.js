@@ -493,5 +493,20 @@ export class WorldScene extends Phaser.Scene {
     this.add.text(400, y + 20, `Gold: ${gs.gold}`, {
       fontSize: '14px', color: '#ffcc44', fontFamily: 'monospace',
     }).setOrigin(0.5);
+
+    // Exit buttons
+    const titleBtn = this.add.text(300, y + 70, '[ TITLE SCREEN ]', {
+      fontSize: '18px', color: '#4488ff', fontFamily: 'monospace',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    titleBtn.on('pointerover', () => titleBtn.setColor('#88bbff'));
+    titleBtn.on('pointerout', () => titleBtn.setColor('#4488ff'));
+    titleBtn.on('pointerdown', () => this.scene.start('Title'));
+
+    const newBtn = this.add.text(500, y + 70, '[ NEW GAME ]', {
+      fontSize: '18px', color: '#44ff44', fontFamily: 'monospace',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    newBtn.on('pointerover', () => newBtn.setColor('#88ff88'));
+    newBtn.on('pointerout', () => newBtn.setColor('#44ff44'));
+    newBtn.on('pointerdown', () => this.scene.start('Title'));
   }
 }
