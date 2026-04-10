@@ -125,6 +125,12 @@ export class WorldScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-M', () => this.toggleMenu());
     this.input.keyboard.on('keydown-ESC', () => { if (this.menuOpen) this.toggleMenu(); });
 
+    // Enter/Space to interact with doors
+    this.currentDoorSpawn = null;
+    this.interactPrompt = null;
+    this.input.keyboard.on('keydown-ENTER', () => this.interactWithDoor());
+    this.input.keyboard.on('keydown-SPACE', () => this.interactWithDoor());
+
     // Touch movement
     this.input.on('pointerdown', (pointer) => {
       if (this.animating) return;
@@ -460,47 +466,16 @@ export class WorldScene extends Phaser.Scene {
 
     this.stepCount++;
 
-    // Door interaction -- check for shop, inn, or quest target
+    // Door tile -- show prompt to enter
     if (tile === 5) {
       const spawn = this.spawns.find(s => Math.abs(s.x - nx) <= 1 && Math.abs(s.y - ny) <= 2);
       if (spawn) {
-        const tags = spawn.tags || [];
-        const isShop = tags.includes('shop') || tags.includes('commerce');
-        const isInn = tags.includes('rest');
-
-        const isTemple = tags.includes('temple') || tags.includes('revive');
-
-        if (isShop) {
-          this.openShop(spawn);
-        } else if (isTemple) {
-          // Temple: revive dead party members
-          const dead = this.gameState.party.filter(p => p.hp <= 0);
-          if (dead.length > 0) {
-            dead.forEach(p => { p.hp = 1; p.status = ''; });
-            this.showMessage(`Temple of Light\n${dead.map(p => p.name).join(', ')} revived!`);
-          } else {
-            this.gameState.party.forEach(p => { p.hp = p.max_hp; });
-            this.showMessage(`Temple of Light\nBlessings upon you. HP fully restored!`);
-          }
-          this.updateHUD();
-          this.time.delayedCall(2000, () => this.hideMessage());
-        } else if (isInn) {
-          // Rest at inn
-          this.gameState.party.forEach(p => { if (p.hp > 0) p.hp = p.max_hp; });
-          this.showMessage(`Rested at ${spawn.name}.\nHP and spells restored!`);
-          this.updateHUD();
-          this.time.delayedCall(2000, () => this.hideMessage());
-        } else {
-          this.showMessage(`Entered: ${spawn.name}`);
-          this.time.delayedCall(1500, () => this.hideMessage());
-        }
-
-        // Always check quest advance when entering any building
-        const gs = this.gameState;
-        if (gs.current_quest < gs.quests.length) {
-          this.triggerQuestAdvance(spawn.name);
-        }
+        this.currentDoorSpawn = spawn;
+        this.showInteractPrompt(spawn);
       }
+    } else if (this.currentDoorSpawn) {
+      this.currentDoorSpawn = null;
+      this.hideInteractPrompt();
     }
 
     // Random encounter on grass/dark grass
@@ -513,6 +488,76 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.updateHUD();
+  }
+
+  showInteractPrompt(spawn) {
+    this.hideInteractPrompt();
+    const tags = spawn.tags || [];
+    let action = 'Enter';
+    if (tags.includes('shop') || tags.includes('commerce')) action = 'Shop';
+    else if (tags.includes('rest')) action = 'Rest';
+    else if (tags.includes('temple') || tags.includes('revive')) action = 'Pray';
+
+    this.interactPrompt = this.add.text(
+      this.player.x,
+      this.player.y - 30,
+      `[ ENTER / SPACE ] ${action} at ${spawn.name}`,
+      {
+        fontSize: '10px', color: '#ffff44', fontFamily: 'monospace',
+        backgroundColor: '#000000cc',
+        padding: { x: 6, y: 3 },
+      }
+    ).setOrigin(0.5).setDepth(15);
+  }
+
+  hideInteractPrompt() {
+    if (this.interactPrompt) {
+      this.interactPrompt.destroy();
+      this.interactPrompt = null;
+    }
+  }
+
+  interactWithDoor() {
+    if (this.animating || this.menuOpen || this.gameOver) return;
+    const spawn = this.currentDoorSpawn;
+    if (!spawn) return;
+
+    this.hideInteractPrompt();
+    this.currentDoorSpawn = null;
+
+    const tags = spawn.tags || [];
+    const isShop = tags.includes('shop') || tags.includes('commerce');
+    const isInn = tags.includes('rest');
+    const isTemple = tags.includes('temple') || tags.includes('revive');
+
+    if (isShop) {
+      this.openShop(spawn);
+    } else if (isTemple) {
+      const dead = this.gameState.party.filter(p => p.hp <= 0);
+      if (dead.length > 0) {
+        dead.forEach(p => { p.hp = 1; p.status = ''; });
+        this.showMessage(`Temple of Light\n${dead.map(p => p.name).join(', ')} revived!`);
+      } else {
+        this.gameState.party.forEach(p => { p.hp = p.max_hp; });
+        this.showMessage(`Temple of Light\nBlessings upon you. HP fully restored!`);
+      }
+      this.updateHUD();
+      this.time.delayedCall(2000, () => this.hideMessage());
+    } else if (isInn) {
+      this.gameState.party.forEach(p => { if (p.hp > 0) p.hp = p.max_hp; });
+      this.showMessage(`Rested at ${spawn.name}.\nHP and spells restored!`);
+      this.updateHUD();
+      this.time.delayedCall(2000, () => this.hideMessage());
+    } else {
+      this.showMessage(`Entered: ${spawn.name}`);
+      this.time.delayedCall(1500, () => this.hideMessage());
+    }
+
+    // Quest advance when entering any building
+    const gs = this.gameState;
+    if (gs.current_quest < gs.quests.length) {
+      this.triggerQuestAdvance(spawn.name);
+    }
   }
 
   async openShop(spawn) {
