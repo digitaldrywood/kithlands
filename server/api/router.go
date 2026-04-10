@@ -19,13 +19,20 @@ type Server struct {
 }
 
 func NewServer(db *pgxpool.Pool, gd *gamedata.GameData) *Server {
-	return &Server{
+	s := &Server{
 		db:     db,
 		gd:     gd,
-		auth:   auth.NewService(db),
 		filter: safety.NewFilter(),
 		games:  NewGameManager(gd),
 	}
+	if db != nil {
+		s.auth = auth.NewService(db)
+	}
+	return s
+}
+
+func (s *Server) GetGameManager() *GameManager {
+	return s.games
 }
 
 func (s *Server) RegisterRoutes(mux *http.ServeMux) {

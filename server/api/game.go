@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"math/rand/v2"
+	"strings"
 	"sync"
 	"time"
 
@@ -178,6 +179,9 @@ func (g *Game) State() GameState {
 		state.Location = g.loc.Name
 		state.TileMap = g.tileMap
 	}
+
+	// Items and equipment (shared logic with stateUnlocked)
+	g.fillInventoryState(&state)
 
 	for _, c := range g.party {
 		cls := g.gd.ClassByID(c.ClassID)
@@ -396,9 +400,9 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 								e.CurrentHP -= dmg
 								if e.CurrentHP <= 0 {
 									e.CurrentHP = 0
-									g.combatLog = append(g.combatLog, fmt.Sprintf("%s casts %s on %s for %d damage - DEFEATED!", caster.Name, spell.Name, e.Name, dmg))
+									g.combatLog = append(g.combatLog, fmt.Sprintf("%s casts %s on %s[%d] for %d damage - DEFEATED!", caster.Name, spell.Name, e.Name, e.ID, dmg))
 								} else {
-									g.combatLog = append(g.combatLog, fmt.Sprintf("%s casts %s on %s for %d damage", caster.Name, spell.Name, e.Name, dmg))
+									g.combatLog = append(g.combatLog, fmt.Sprintf("%s casts %s on %s[%d] for %d damage", caster.Name, spell.Name, e.Name, e.ID, dmg))
 								}
 								if spell.Target == "single_enemy" {
 									break
@@ -493,8 +497,8 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 			if r.Killed {
 				status = " - DEFEATED!"
 			}
-			g.combatLog = append(g.combatLog, fmt.Sprintf("%s attacks %s for %d damage%s",
-				r.ActorName, targetName, r.TotalDmg, status))
+			g.combatLog = append(g.combatLog, fmt.Sprintf("%s attacks %s[%d] for %d damage%s",
+				r.ActorName, targetName, r.TargetID, r.TotalDmg, status))
 		}
 	}
 
@@ -812,20 +816,11 @@ func (g *Game) restParty() {
 	}
 }
 
-func (g *Game) stateUnlocked() GameState {
-	state := GameState{
-		ID: g.id, Phase: g.phase, CurrentQ: g.currentQ,
-		Gold: g.inv.Gold, Potions: g.inv.Consumables["potion"],
-		Message: g.message, CombatLog: g.combatLog,
-	}
-	if g.loc != nil {
-		state.Location = g.loc.Name
-	}
-
+func (g *Game) fillInventoryState(state *GameState) {
 	// Items (non-potion consumables and weapons in inventory)
 	for id, count := range g.inv.Consumables {
-		if id == "potion" {
-			continue // shown separately
+		if id == "potion" || count <= 0 {
+			continue
 		}
 		name := id
 		for _, c := range g.gd.Items.Consumables {
@@ -833,6 +828,13 @@ func (g *Game) stateUnlocked() GameState {
 				name = c.Name
 				break
 			}
+		}
+		// Weapon/armor in inventory
+		if w := g.gd.WeaponByID(strings.TrimPrefix(id, "wpn_")); w != nil && strings.HasPrefix(id, "wpn_") {
+			name = w.Name
+		}
+		if a := g.gd.ArmorByID(strings.TrimPrefix(id, "arm_")); a != nil && strings.HasPrefix(id, "arm_") {
+			name = a.Name
 		}
 		state.Items = append(state.Items, ItemState{ID: id, Name: name, Count: count})
 	}
@@ -849,6 +851,19 @@ func (g *Game) stateUnlocked() GameState {
 		}
 		state.Equipment[i] = es
 	}
+}
+
+func (g *Game) stateUnlocked() GameState {
+	state := GameState{
+		ID: g.id, Phase: g.phase, CurrentQ: g.currentQ,
+		Gold: g.inv.Gold, Potions: g.inv.Consumables["potion"],
+		Message: g.message, CombatLog: g.combatLog,
+	}
+	if g.loc != nil {
+		state.Location = g.loc.Name
+	}
+
+	g.fillInventoryState(&state)
 	for _, c := range g.party {
 		cls := g.gd.ClassByID(c.ClassID)
 		pm := PartyMemberState{

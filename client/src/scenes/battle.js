@@ -352,12 +352,14 @@ export class BattleScene extends Phaser.Scene {
 
   async animateCombatLog(log) {
     for (const line of log) {
-      const attackMatch = line.match(/^(.+?) attacks (.+?) for (\d+)/);
-      const spellMatch = line.match(/^(.+?) casts (.+?) on (.+?) for (\d+)/);
+      // Parse attack: "Hero attacks Goblin[102] for 24 damage"
+      const attackMatch = line.match(/^(.+?) attacks (.+?)\[(\d+)\] for (\d+)/);
+      // Parse spell: "Mage casts Spark on Goblin[102] for 11 damage"
+      const spellMatch = line.match(/^(.+?) casts (.+?) on (.+?)\[?(\d*)\]? for (\d+)/);
       const defeatMatch = line.includes('DEFEATED');
 
       if (attackMatch) {
-        const [, attacker, target, dmg] = attackMatch;
+        const [, attacker, target, targetId, dmg] = attackMatch;
 
         // Move arrow to attacker
         const pe = this.partySprites[attacker];
@@ -369,8 +371,8 @@ export class BattleScene extends Phaser.Scene {
           await this.tweenP(pe.sprite, { x: pe.x, duration: 80 });
         }
 
-        // Hit effect on target
-        const ee = Object.values(this.enemySprites).find(e => e.name === target);
+        // Hit effect on target -- use ID for correct sprite
+        const ee = targetId ? this.enemySprites[parseInt(targetId)] : Object.values(this.enemySprites).find(e => e.name === target);
         const pt = this.partySprites[target];
         if (ee) {
           await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch);
@@ -384,7 +386,7 @@ export class BattleScene extends Phaser.Scene {
         await this.wait(200);
 
       } else if (spellMatch) {
-        const [, caster, spell, target, dmg] = spellMatch;
+        const [, caster, spell, target, targetId, dmg] = spellMatch;
         const pe = this.partySprites[caster];
         if (pe) {
           for (const a of this.partyArrows) a.setVisible(false);
@@ -395,7 +397,7 @@ export class BattleScene extends Phaser.Scene {
         const flash = this.add.rectangle(400, 300, 800, 600, 0x4444ff, 0.2).setDepth(19);
         this.time.delayedCall(200, () => flash.destroy());
 
-        const ee = Object.values(this.enemySprites).find(e => e.name === target);
+        const ee = targetId ? this.enemySprites[parseInt(targetId)] : Object.values(this.enemySprites).find(e => e.name === target);
         if (ee) {
           for (let j = 0; j < 6; j++) {
             const px = ee.x + Phaser.Math.Between(-25, 25);
