@@ -24,7 +24,8 @@ func cadottLocality() *locality.Locality {
 
 func TestTilemapHasDoors(t *testing.T) {
 	loc := cadottLocality()
-	tm := locality.GenerateTileMap(loc, loc.Nodes[0].ID)
+	walk := locality.Walk(loc, loc.Nodes[0].ID)
+	tm := locality.GenerateTileMap(loc, loc.Nodes[0].ID, walk)
 
 	doors := 0
 	for y := 0; y < tm.Height; y++ {
@@ -43,7 +44,8 @@ func TestTilemapHasDoors(t *testing.T) {
 
 func TestEverySpawnHasDoor(t *testing.T) {
 	loc := cadottLocality()
-	tm := locality.GenerateTileMap(loc, loc.Nodes[0].ID)
+	walk := locality.Walk(loc, loc.Nodes[0].ID)
+	tm := locality.GenerateTileMap(loc, loc.Nodes[0].ID, walk)
 
 	for _, s := range tm.Spawns {
 		// Check for a door tile near this spawn (within 2 tiles)
@@ -70,7 +72,8 @@ func TestEverySpawnHasDoor(t *testing.T) {
 
 func TestDoorIsWalkable(t *testing.T) {
 	loc := cadottLocality()
-	tm := locality.GenerateTileMap(loc, loc.Nodes[0].ID)
+	walk := locality.Walk(loc, loc.Nodes[0].ID)
+	tm := locality.GenerateTileMap(loc, loc.Nodes[0].ID, walk)
 
 	for y := 0; y < tm.Height; y++ {
 		for x := 0; x < tm.Width; x++ {
@@ -97,7 +100,8 @@ func TestDoorIsWalkable(t *testing.T) {
 
 func TestSpawnTagsIncluded(t *testing.T) {
 	loc := cadottLocality()
-	tm := locality.GenerateTileMap(loc, loc.Nodes[0].ID)
+	walk := locality.Walk(loc, loc.Nodes[0].ID)
+	tm := locality.GenerateTileMap(loc, loc.Nodes[0].ID, walk)
 
 	shopFound := false
 	innFound := false
@@ -105,9 +109,15 @@ func TestSpawnTagsIncluded(t *testing.T) {
 
 	for _, s := range tm.Spawns {
 		for _, tag := range s.Tags {
-			if tag == "shop" { shopFound = true }
-			if tag == "rest" { innFound = true }
-			if tag == "temple" || tag == "revive" { templeFound = true }
+			if tag == "shop" {
+				shopFound = true
+			}
+			if tag == "rest" {
+				innFound = true
+			}
+			if tag == "temple" || tag == "revive" {
+				templeFound = true
+			}
 		}
 		t.Logf("Spawn: %s (%s) tags=%v at (%d,%d)", s.Name, s.Kind, s.Tags, s.X, s.Y)
 	}
@@ -130,7 +140,7 @@ func TestTargetedPotionInCombat(t *testing.T) {
 	gs := post(t, ts.URL+"/api/game/new", api.NewGameRequest{
 		TownName: "Test", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
 		Places: []string{"X"}, BigBuilding: "Hall",
-		Party:  []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}, {Name: "Mage", ClassID: "cinder"}},
+		Party:      []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}, {Name: "Mage", ClassID: "cinder"}},
 		Difficulty: "normal",
 	})
 	gameID := gs["id"].(string)
@@ -169,7 +179,7 @@ func TestPhoenixDownRevive(t *testing.T) {
 	gs := post(t, ts.URL+"/api/game/new", api.NewGameRequest{
 		TownName: "Test", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
 		Places: []string{"X"}, BigBuilding: "Hall",
-		Party:  []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}, {Name: "Mage", ClassID: "cinder"}},
+		Party:      []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}, {Name: "Mage", ClassID: "cinder"}},
 		Difficulty: "normal",
 	})
 	gameID := gs["id"].(string)
@@ -211,7 +221,7 @@ func TestShopReturnsItems(t *testing.T) {
 	gs := post(t, ts.URL+"/api/game/new", api.NewGameRequest{
 		TownName: "Test", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
 		Places: []string{"X"}, BigBuilding: "Hall",
-		Party:  []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
+		Party:      []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
 		Difficulty: "normal",
 	})
 	gameID := gs["id"].(string)
@@ -232,15 +242,24 @@ func TestShopReturnsItems(t *testing.T) {
 	hasConsumable := false
 	for _, item := range items {
 		switch item.Type {
-		case "weapon": hasWeapon = true
-		case "armor": hasArmor = true
-		case "consumable": hasConsumable = true
+		case "weapon":
+			hasWeapon = true
+		case "armor":
+			hasArmor = true
+		case "consumable":
+			hasConsumable = true
 		}
 	}
 
-	if !hasWeapon { t.Error("shop missing weapons") }
-	if !hasArmor { t.Error("shop missing armor") }
-	if !hasConsumable { t.Error("shop missing consumables") }
+	if !hasWeapon {
+		t.Error("shop missing weapons")
+	}
+	if !hasArmor {
+		t.Error("shop missing armor")
+	}
+	if !hasConsumable {
+		t.Error("shop missing consumables")
+	}
 
 	t.Logf("Shop has %d items (weapons=%v armor=%v consumables=%v)", len(items), hasWeapon, hasArmor, hasConsumable)
 }
@@ -252,7 +271,7 @@ func TestBuyEquipFullFlow(t *testing.T) {
 	gs := post(t, ts.URL+"/api/game/new", api.NewGameRequest{
 		TownName: "Test", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
 		Places: []string{"X"}, BigBuilding: "Hall",
-		Party:  []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
+		Party:      []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
 		Difficulty: "normal",
 	})
 	gameID := gs["id"].(string)

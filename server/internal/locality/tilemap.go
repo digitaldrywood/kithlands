@@ -1,6 +1,9 @@
 package locality
 
-import "math"
+import (
+	"container/heap"
+	"math"
+)
 
 // TileType represents what kind of tile is at a map position.
 type TileType int
@@ -21,15 +24,23 @@ const (
 	TileSand      TileType = 12
 )
 
+// HiddenPathInfo records a carved secret path between two node areas.
+type HiddenPathInfo struct {
+	FromNodeID string   `json:"from_node_id"`
+	ToNodeID   string   `json:"to_node_id"`
+	Tiles      [][2]int `json:"tiles"` // (x,y) pairs of carved tiles
+}
+
 // TileMap is the rendered map sent to the Phaser client.
 type TileMap struct {
-	Width    int        `json:"width"`
-	Height   int        `json:"height"`
-	TileSize int        `json:"tile_size"`
-	Tiles    [][]int    `json:"tiles"`
-	Spawns   []MapSpawn `json:"spawns"`
-	PlayerX  int        `json:"player_x"`
-	PlayerY  int        `json:"player_y"`
+	Width      int             `json:"width"`
+	Height     int             `json:"height"`
+	TileSize   int             `json:"tile_size"`
+	Tiles      [][]int         `json:"tiles"`
+	Spawns     []MapSpawn      `json:"spawns"`
+	PlayerX    int             `json:"player_x"`
+	PlayerY    int             `json:"player_y"`
+	HiddenPath *HiddenPathInfo `json:"hidden_path,omitempty"`
 }
 
 // MapSpawn marks where a locality node appears on the map.
@@ -45,7 +56,7 @@ type MapSpawn struct {
 // GenerateTileMap creates a large procedural map from a locality graph.
 // Map scales with node count. Nodes are spread across the map with
 // wilderness, forests, water, and paths between them.
-func GenerateTileMap(loc *Locality, spawnID string) *TileMap {
+func GenerateTileMap(loc *Locality, spawnID string, walk *WalkResult) *TileMap {
 	nodeCount := len(loc.Nodes)
 	mapW := clamp(nodeCount*18, 120, 250)
 	mapH := mapW * 3 / 4
@@ -139,6 +150,9 @@ func GenerateTileMap(loc *Locality, spawnID string) *TileMap {
 		}
 	}
 
+	// Carve hidden path connecting close-tier to far-tier node
+	hiddenPath := carveHiddenPath(tiles, nodePositions, walk, mapW, mapH, seed)
+
 	// Tree border
 	for x := 0; x < mapW; x++ {
 		for t := 0; t < 2; t++ {
@@ -154,13 +168,14 @@ func GenerateTileMap(loc *Locality, spawnID string) *TileMap {
 	}
 
 	return &TileMap{
-		Width:    mapW,
-		Height:   mapH,
-		TileSize: tileSize,
-		Tiles:    tiles,
-		Spawns:   spawns,
-		PlayerX:  playerX,
-		PlayerY:  playerY,
+		Width:      mapW,
+		Height:     mapH,
+		TileSize:   tileSize,
+		Tiles:      tiles,
+		Spawns:     spawns,
+		PlayerX:    playerX,
+		PlayerY:    playerY,
+		HiddenPath: hiddenPath,
 	}
 }
 
@@ -169,9 +184,9 @@ func fillTerrain(tiles [][]int, w, h int, seed uint64) {
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
 			// Simple noise at multiple scales
-			n1 := noise(x, y, seed, 20)       // large features
-			n2 := noise(x, y, seed+99, 8)     // medium features
-			n3 := noise(x, y, seed+777, 3)    // small features
+			n1 := noise(x, y, seed, 20)    // large features
+			n2 := noise(x, y, seed+99, 8)  // medium features
+			n3 := noise(x, y, seed+777, 3) // small features
 			val := n1*0.5 + n2*0.3 + n3*0.2
 
 			if val < 0.15 {
@@ -411,10 +426,18 @@ func distributeNodesOSM(loc *Locality, mapW, mapH int) []nodePos {
 			minLng, maxLng = n.Coord.Lng, n.Coord.Lng
 			first = true
 		}
-		if n.Coord.Lat < minLat { minLat = n.Coord.Lat }
-		if n.Coord.Lat > maxLat { maxLat = n.Coord.Lat }
-		if n.Coord.Lng < minLng { minLng = n.Coord.Lng }
-		if n.Coord.Lng > maxLng { maxLng = n.Coord.Lng }
+		if n.Coord.Lat < minLat {
+			minLat = n.Coord.Lat
+		}
+		if n.Coord.Lat > maxLat {
+			maxLat = n.Coord.Lat
+		}
+		if n.Coord.Lng < minLng {
+			minLng = n.Coord.Lng
+		}
+		if n.Coord.Lng > maxLng {
+			maxLng = n.Coord.Lng
+		}
 	}
 
 	// Use center +/- 0.015 degrees (~1.5km) if no bbox
@@ -448,7 +471,7 @@ func distributeNodesOSM(loc *Locality, mapW, mapH int) []nodePos {
 			y = margin + int(normY*float64(usableH))
 		} else {
 			// Fallback: distribute without coords
-			x = margin + (placed*usableW/(len(loc.Nodes)+1))
+			x = margin + (placed * usableW / (len(loc.Nodes) + 1))
 			y = margin + usableH/2
 		}
 
@@ -474,4 +497,184 @@ func clamp(v, lo, hi int) int {
 		return hi
 	}
 	return v
+}
+
+// carveHiddenPath uses A* to find and carve a dark-grass corridor between a
+// close-tier node and a far-tier node. Returns nil if no valid path exists.
+func carveHiddenPath(tiles [][]int, nodePositions []nodePos, walk *WalkResult, mapW, mapH int, seed uint64) *HiddenPathInfo {
+	if walk == nil || len(walk.Close) == 0 || len(walk.Far) == 0 {
+		return nil
+	}
+
+	// Pick one close node and one far node deterministically from seed.
+	closeIdx := int(seed % uint64(len(walk.Close)))
+	farIdx := int((seed / 7) % uint64(len(walk.Far)))
+	closeNode := walk.Close[closeIdx]
+	farNode := walk.Far[farIdx]
+
+	// Find tile positions for the chosen nodes.
+	var fromX, fromY, toX, toY int
+	foundFrom, foundTo := false, false
+	for _, np := range nodePositions {
+		if np.nodeID == closeNode.ID {
+			fromX, fromY = np.x, np.y
+			foundFrom = true
+		}
+		if np.nodeID == farNode.ID {
+			toX, toY = np.x, np.y
+			foundTo = true
+		}
+	}
+	if !foundFrom || !foundTo {
+		return nil
+	}
+
+	// Build proximity map: tiles within 3 of a building or door are forbidden.
+	forbidden := make([][]bool, mapH)
+	for y := range forbidden {
+		forbidden[y] = make([]bool, mapW)
+	}
+	for y := 0; y < mapH; y++ {
+		for x := 0; x < mapW; x++ {
+			t := TileType(tiles[y][x])
+			if t == TileBuilding || t == TileDoor {
+				for dy := -3; dy <= 3; dy++ {
+					for dx := -3; dx <= 3; dx++ {
+						nx, ny := x+dx, y+dy
+						if nx >= 0 && nx < mapW && ny >= 0 && ny < mapH {
+							forbidden[ny][nx] = true
+						}
+					}
+				}
+			}
+		}
+	}
+
+	path := astarPath(tiles, forbidden, fromX, fromY, toX, toY, mapW, mapH)
+	if len(path) == 0 {
+		return nil
+	}
+
+	// Carve: replace non-walkable tiles along the path with dark grass.
+	carved := make([][2]int, 0, len(path))
+	for _, p := range path {
+		t := TileType(tiles[p[1]][p[0]])
+		if t == TileTree || t == TileForest || t == TileBush || t == TileHill {
+			tiles[p[1]][p[0]] = int(TileDarkGrass)
+			carved = append(carved, p)
+		}
+	}
+
+	return &HiddenPathInfo{
+		FromNodeID: closeNode.ID,
+		ToNodeID:   farNode.ID,
+		Tiles:      carved,
+	}
+}
+
+// A* priority queue types.
+
+type astarNode struct {
+	x, y, cost, est int
+}
+
+type astarHeap []astarNode
+
+func (h astarHeap) Len() int           { return len(h) }
+func (h astarHeap) Less(i, j int) bool { return h[i].est < h[j].est }
+func (h astarHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h *astarHeap) Push(x any)        { *h = append(*h, x.(astarNode)) }
+func (h *astarHeap) Pop() any {
+	old := *h
+	n := len(old)
+	item := old[n-1]
+	*h = old[:n-1]
+	return item
+}
+
+// astarPath finds a path from (sx,sy) to (tx,ty) on the tile grid.
+// Traversal costs: dark grass/grass/path/sand = 1, tree/forest/bush/hill = 3.
+// Water, border (rows/cols 0-1 and last 2), and forbidden tiles are impassable.
+func astarPath(tiles [][]int, forbidden [][]bool, sx, sy, tx, ty, w, h int) [][2]int {
+	type key struct{ x, y int }
+
+	dist := make(map[key]int)
+	prev := make(map[key]key)
+	dist[key{sx, sy}] = 0
+
+	pq := &astarHeap{{x: sx, y: sy, cost: 0, est: abs(tx-sx) + abs(ty-sy)}}
+	heap.Init(pq)
+
+	dirs := [4][2]int{{0, -1}, {0, 1}, {-1, 0}, {1, 0}}
+
+	for pq.Len() > 0 {
+		cur := heap.Pop(pq).(astarNode)
+		k := key{cur.x, cur.y}
+
+		if cur.x == tx && cur.y == ty {
+			// Reconstruct path.
+			var path [][2]int
+			at := key{tx, ty}
+			for at != (key{sx, sy}) {
+				path = append(path, [2]int{at.x, at.y})
+				at = prev[at]
+			}
+			// Reverse.
+			for i, j := 0, len(path)-1; i < j; i, j = i+1, j-1 {
+				path[i], path[j] = path[j], path[i]
+			}
+			return path
+		}
+
+		if d, ok := dist[k]; ok && cur.cost > d {
+			continue
+		}
+
+		for _, dir := range dirs {
+			nx, ny := cur.x+dir[0], cur.y+dir[1]
+			// Stay inside map with 2-tile border margin.
+			if nx < 2 || nx >= w-2 || ny < 2 || ny >= h-2 {
+				continue
+			}
+			if forbidden[ny][nx] {
+				continue
+			}
+
+			moveCost := tileCost(TileType(tiles[ny][nx]))
+			if moveCost < 0 {
+				continue // impassable
+			}
+
+			nk := key{nx, ny}
+			newCost := cur.cost + moveCost
+			if d, ok := dist[nk]; ok && newCost >= d {
+				continue
+			}
+			dist[nk] = newCost
+			prev[nk] = k
+			est := newCost + abs(tx-nx) + abs(ty-ny)
+			heap.Push(pq, astarNode{x: nx, y: ny, cost: newCost, est: est})
+		}
+	}
+
+	return nil // no path found
+}
+
+// tileCost returns the traversal cost for A* pathfinding. Returns -1 for impassable.
+func tileCost(t TileType) int {
+	switch t {
+	case TileDarkGrass, TileGrass, TilePath, TileSand, TileFloor:
+		return 1
+	case TileTree, TileForest, TileBush, TileHill:
+		return 3
+	default:
+		return -1 // water, building, door, rock
+	}
+}
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }

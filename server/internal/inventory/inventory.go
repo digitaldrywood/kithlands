@@ -29,6 +29,28 @@ func New() *Inventory {
 	}
 }
 
+// HasKeyItem checks whether a key item is in the inventory.
+func (inv *Inventory) HasKeyItem(id string) bool {
+	return slices.Contains(inv.KeyItems, id)
+}
+
+// AddKeyItem adds a key item if not already present.
+func (inv *Inventory) AddKeyItem(id string) {
+	if !inv.HasKeyItem(id) {
+		inv.KeyItems = append(inv.KeyItems, id)
+	}
+}
+
+// RemoveKeyItem removes a key item from inventory.
+func (inv *Inventory) RemoveKeyItem(id string) {
+	for i, k := range inv.KeyItems {
+		if k == id {
+			inv.KeyItems = append(inv.KeyItems[:i], inv.KeyItems[i+1:]...)
+			return
+		}
+	}
+}
+
 // CanEquipWeapon checks if a class can equip a weapon type.
 func CanEquipWeapon(classID string, weapon *gamedata.Weapon) bool {
 	return slices.Contains(weapon.Classes, classID)

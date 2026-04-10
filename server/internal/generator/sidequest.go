@@ -13,11 +13,13 @@ import (
 // SideQuestEntry matches the schema of shared/content/side_quests.json.
 // Only the fields the generator actually uses are deserialized.
 type SideQuestEntry struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Act      int    `json:"act"`
-	Rarity   string `json:"rarity"`
-	Template string `json:"template"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Act        int    `json:"act"`
+	Rarity     string `json:"rarity"`
+	Template   string `json:"template"`
+	Hidden     bool   `json:"hidden"`
+	SoftPrereq string `json:"soft_prereq,omitempty"` // node ID that reveals the quest
 }
 
 // LoadSideQuestPool reads the side quest pool JSON from the given shared dir.
@@ -110,5 +112,19 @@ func instantiateSideQuest(entry SideQuestEntry, walk *locality.WalkResult, loc *
 	q.ID = fmt.Sprintf("side_%s_%d", entry.ID, idx)
 	q.Name = fmt.Sprintf("%s (%s)", entry.Name, q.TargetName)
 	q.IsSideQuest = true
+	q.Hidden = entry.Hidden
+	// Resolve dynamic soft prereq markers to actual node IDs.
+	switch entry.SoftPrereq {
+	case "_far_node":
+		if len(walk.Far) > 0 {
+			q.SoftPrereq = walk.Far[rng.IntN(len(walk.Far))].ID
+		}
+	case "_medium_node":
+		if len(walk.Medium) > 0 {
+			q.SoftPrereq = walk.Medium[rng.IntN(len(walk.Medium))].ID
+		}
+	default:
+		q.SoftPrereq = entry.SoftPrereq
+	}
 	return q
 }

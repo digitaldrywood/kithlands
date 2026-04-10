@@ -163,6 +163,18 @@ func (g *Game) GetShopItems(nodeID string) []ShopItemState {
 		})
 	}
 
+	// Key items (skip items already owned)
+	for _, ki := range g.gd.Items.KeyItems {
+		if ki.BuyPrice > 0 && !g.inv.HasKeyItem(ki.ID) {
+			items = append(items, ShopItemState{
+				ID:    ki.ID,
+				Name:  ki.Name,
+				Type:  "key_item",
+				Price: ki.BuyPrice,
+			})
+		}
+	}
+
 	// Spells (at magic shops)
 	node := g.loc.NodeByID(nodeID)
 	if node != nil {
@@ -226,6 +238,20 @@ func (g *Game) BuyItem(itemID, itemType string) error {
 		}
 		g.inv.Gold -= a.BuyPrice
 		g.inv.Consumables["arm_"+itemID]++
+		return nil
+	case "key_item":
+		ki := g.gd.KeyItemByID(itemID)
+		if ki == nil {
+			return fmt.Errorf("key item not found: %s", itemID)
+		}
+		if g.inv.HasKeyItem(itemID) {
+			return fmt.Errorf("already own %s", ki.Name)
+		}
+		if g.inv.Gold < ki.BuyPrice {
+			return fmt.Errorf("need %d gold, have %d", ki.BuyPrice, g.inv.Gold)
+		}
+		g.inv.Gold -= ki.BuyPrice
+		g.inv.AddKeyItem(itemID)
 		return nil
 	}
 	return fmt.Errorf("unknown item: %s", itemID)

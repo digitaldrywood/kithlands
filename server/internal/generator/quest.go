@@ -40,6 +40,8 @@ type Quest struct {
 	IsPromotion  bool          `json:"is_promotion,omitempty"`
 	IsSideQuest  bool          `json:"is_side_quest,omitempty"`
 	Completed    bool          `json:"completed"`
+	Hidden       bool          `json:"hidden,omitempty"`
+	SoftPrereq   string        `json:"soft_prereq,omitempty"` // node ID that reveals this quest
 }
 
 type QuestReward struct {

@@ -38,6 +38,7 @@ type GameData struct {
 	spellByID     map[string]*Spell
 	monsterByID   map[string]*Monster
 	formationByID map[string]*Formation
+	keyItemByID   map[string]*KeyItem
 }
 
 // Load reads and validates all game data from the shared directory.
@@ -61,12 +62,13 @@ func Load(sharedDir string) *GameData {
 	return gd
 }
 
-func (gd *GameData) ClassByID(id string) *Class       { return gd.classByID[id] }
-func (gd *GameData) WeaponByID(id string) *Weapon     { return gd.weaponByID[id] }
-func (gd *GameData) ArmorByID(id string) *Armor       { return gd.armorByID[id] }
-func (gd *GameData) SpellByID(id string) *Spell       { return gd.spellByID[id] }
-func (gd *GameData) MonsterByID(id string) *Monster       { return gd.monsterByID[id] }
-func (gd *GameData) FormationByID(id string) *Formation   { return gd.formationByID[id] }
+func (gd *GameData) ClassByID(id string) *Class         { return gd.classByID[id] }
+func (gd *GameData) WeaponByID(id string) *Weapon       { return gd.weaponByID[id] }
+func (gd *GameData) ArmorByID(id string) *Armor         { return gd.armorByID[id] }
+func (gd *GameData) SpellByID(id string) *Spell         { return gd.spellByID[id] }
+func (gd *GameData) MonsterByID(id string) *Monster     { return gd.monsterByID[id] }
+func (gd *GameData) FormationByID(id string) *Formation { return gd.formationByID[id] }
+func (gd *GameData) KeyItemByID(id string) *KeyItem     { return gd.keyItemByID[id] }
 
 func (gd *GameData) buildIndexes() {
 	gd.classByID = make(map[string]*Class, len(gd.Classes))
@@ -97,6 +99,11 @@ func (gd *GameData) buildIndexes() {
 	gd.formationByID = make(map[string]*Formation, len(gd.Formations))
 	for i := range gd.Formations {
 		gd.formationByID[gd.Formations[i].ID] = &gd.Formations[i]
+	}
+
+	gd.keyItemByID = make(map[string]*KeyItem, len(gd.Items.KeyItems))
+	for i := range gd.Items.KeyItems {
+		gd.keyItemByID[gd.Items.KeyItems[i].ID] = &gd.Items.KeyItems[i]
 	}
 }
 
@@ -174,6 +181,18 @@ func (gd *GameData) validate() {
 		}
 		if !validSizes[m.Size] {
 			panic(fmt.Sprintf("gamedata: monster %q has invalid size: %q", m.ID, m.Size))
+		}
+	}
+
+	for _, ki := range gd.Items.KeyItems {
+		if ki.ID == "" {
+			panic("gamedata: key_item with empty id")
+		}
+		if ki.Name == "" {
+			panic(fmt.Sprintf("gamedata: key_item %q has empty name", ki.ID))
+		}
+		if ki.BuyPrice < 0 {
+			panic(fmt.Sprintf("gamedata: key_item %q has negative buy_price", ki.ID))
 		}
 	}
 
