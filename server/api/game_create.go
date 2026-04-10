@@ -179,6 +179,9 @@ func milesToMeters(miles float64) int {
 	if miles <= 0 {
 		return 2400 // default ~1.5 miles
 	}
+	if miles > 5 {
+		miles = 5 // cap at 5 miles (~8km)
+	}
 	return int(miles * 1609.34)
 }
 

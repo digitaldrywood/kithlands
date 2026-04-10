@@ -71,7 +71,8 @@ export class WizardScene extends Phaser.Scene {
     // Skip NPC step when OSM has enough named buildings (>= 5)
     if (this.wizardData.use_osm && this.step === 2) {
       const pois = this.wizardData.osm_preview || [];
-      if (pois.length >= 5) {
+      const namedBuildings = pois.filter(p => (p.kind === 'business' || p.kind === 'landmark' || p.kind === 'place') && p.name && !p.name.match(/^(Building|House|Shed|Farmland|Water)( \d+)?$/));
+      if (namedBuildings.length >= 5) {
         if (!this.wizardData.people || this.wizardData.people.length === 0) {
           this.wizardData.people = [
             { name: 'Bob', relation: 'friendly' },
@@ -249,6 +250,7 @@ export class WizardScene extends Phaser.Scene {
             if (preview.error) {
               status.setText('Map scan failed. Continuing without preview.').setColor('#ff8844');
               this.wizardData.osm_preview = null;
+              this.wizardData.spawn_node_id = '';
             } else {
               this.wizardData.osm_preview = preview.nodes || [];
               this.wizardData.radius_miles = preview.radius_miles || this.wizardData.radius_miles;
@@ -257,6 +259,7 @@ export class WizardScene extends Phaser.Scene {
           } catch (previewErr) {
             status.setText('Map scan failed. Continuing without preview.').setColor('#ff8844');
             this.wizardData.osm_preview = null;
+            this.wizardData.spawn_node_id = '';
           }
 
           // Brief pause to show result
@@ -284,25 +287,19 @@ export class WizardScene extends Phaser.Scene {
       return;
     }
 
+    // Sort by importance (highest first) so most relevant POIs are visible
+    pois.sort((a, b) => (b.importance || 0) - (a.importance || 0));
+
     this.addLabel(70, `Found ${pois.length} locations. Pick your starting point:`);
 
-    // Scrollable list -- show up to 12 POIs
+    // Show up to 12 POIs (already sorted by importance)
     const maxShow = Math.min(pois.length, 12);
-    let selectedIdx = 0;
+    let selectedIdx = 0; // highest importance is first after sort
 
-    // Find default: highest importance node
-    let bestImp = -1;
-    for (let i = 0; i < pois.length; i++) {
-      if (pois[i].importance > bestImp) {
-        bestImp = pois[i].importance;
-        selectedIdx = i;
-      }
-    }
-
-    // If we have a saved spawn, try to find it
+    // If we have a saved spawn, try to find it in visible range
     if (this.wizardData.spawn_node_id) {
       const idx = pois.findIndex(p => p.id === this.wizardData.spawn_node_id);
-      if (idx >= 0) selectedIdx = idx;
+      if (idx >= 0 && idx < maxShow) selectedIdx = idx;
     }
 
     const items = [];
@@ -474,7 +471,7 @@ export class WizardScene extends Phaser.Scene {
     let minLat = Infinity, maxLat = -Infinity;
     let minLng = Infinity, maxLng = -Infinity;
     for (const p of pois) {
-      if (p.lat && p.lng) {
+      if (p.lat != null && p.lng != null) {
         minLat = Math.min(minLat, p.lat);
         maxLat = Math.max(maxLat, p.lat);
         minLng = Math.min(minLng, p.lng);
@@ -502,7 +499,7 @@ export class WizardScene extends Phaser.Scene {
 
     // Draw POIs
     for (const p of pois) {
-      if (!p.lat || !p.lng) continue;
+      if (p.lat == null || p.lng == null) continue;
       const px = mapX + ((p.lng - minLng) / lngRange) * mapW;
       const py = mapY + mapH - ((p.lat - minLat) / latRange) * mapH;
       const color = kindColors[p.kind] || 0xaaaaaa;
@@ -593,14 +590,16 @@ export class WizardScene extends Phaser.Scene {
     const osmMsg = this.wizardData.use_osm ? 'Fetching real-world map data from OpenStreetMap...' : 'Generating locality, campaign, and encounters...';
     this.addLabel(100, osmMsg);
 
-    // Save wizard prefs for next time
-    setLastWizard(this.wizardData);
+    // Don't persist or send the large preview data
+    const saveData = { ...this.wizardData };
+    delete saveData.osm_preview;
+
+    // Save wizard prefs for next time (without preview payload)
+    setLastWizard(saveData);
     if (this.wizardData.party) addPartyToHistory(this.wizardData.party);
     if (this.wizardData.people) addNPCsToHistory(this.wizardData.people);
 
-    // Don't send preview data to server (it's large and unnecessary)
-    const gameData = { ...this.wizardData };
-    delete gameData.osm_preview;
+    const gameData = saveData;
 
     try {
       const result = await newGame(gameData);

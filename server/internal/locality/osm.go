@@ -211,7 +211,7 @@ func classifyElements(elements []osmElement, lat, lng float64, radiusM int) ([]N
 		importance := buildingImportance(b.Tags)
 
 		nodes = append(nodes, Node{
-			ID:         fmt.Sprintf("osm_b_%d", nodeIdx),
+			ID:         fmt.Sprintf("osm_%d", b.ID),
 			Kind:       kind,
 			Name:       name,
 			Coord:      &LatLng{Lat: bLat, Lng: bLng},
@@ -244,7 +244,7 @@ func classifyElements(elements []osmElement, lat, lng float64, radiusM int) ([]N
 		tags := amenityTags(a.Tags)
 
 		nodes = append(nodes, Node{
-			ID:         fmt.Sprintf("osm_a_%d", nodeIdx),
+			ID:         fmt.Sprintf("osm_%d", a.ID),
 			Kind:       kind,
 			Name:       name,
 			Coord:      &LatLng{Lat: a.Lat, Lng: a.Lon},
@@ -268,7 +268,7 @@ func classifyElements(elements []osmElement, lat, lng float64, radiusM int) ([]N
 
 		nLat, nLng := wayCenter(n, nodeMap)
 		nodes = append(nodes, Node{
-			ID:         fmt.Sprintf("osm_n_%d", nodeIdx),
+			ID:         fmt.Sprintf("osm_%d", n.ID),
 			Kind:       NodeNatural,
 			Name:       name,
 			Coord:      &LatLng{Lat: nLat, Lng: nLng},
