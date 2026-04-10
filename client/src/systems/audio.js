@@ -29,6 +29,22 @@ export function playMusic(key, loop = true) {
   if (!scene || !scene.sound) return;
   if (key === currentMusicKey) return; // already playing
 
+  // Browsers block audio until the first user gesture. If the sound manager
+  // is still locked, remember the request and retry once Phaser emits
+  // 'unlocked' after the first click/tap.
+  if (scene.sound.locked) {
+    currentMusicKey = key;
+    const pending = scene;
+    pending.sound.once('unlocked', () => {
+      // Only play if no newer call has taken over in the meantime.
+      if (currentMusicKey === key) {
+        currentMusicKey = null; // force playMusic to actually start it
+        playMusic(key, loop);
+      }
+    });
+    return;
+  }
+
   // Stop current music with fade
   if (currentMusic && currentMusic.isPlaying) {
     const old = currentMusic;
