@@ -40,9 +40,9 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 			}
 		}
 
-		g.combatLog = append(g.combatLog, "Enemies appear!")
+		g.logCombat("Enemies appear!", CombatActionEntry{Kind: "info"})
 		for _, e := range g.enemies {
-			g.combatLog = append(g.combatLog, fmt.Sprintf("  %s (HP: %d)", e.Name, e.MaxHP))
+			g.logCombat(fmt.Sprintf("  %s (HP: %d)", e.Name, e.MaxHP), CombatActionEntry{Kind: "info"})
 		}
 
 	case "quest_advance":
@@ -92,9 +92,9 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 		g.enemies = result.Combatants
 		g.formation = result.Layout
 		g.phase = "combat"
-		g.combatLog = append(g.combatLog, "Enemies appear!")
+		g.logCombat("Enemies appear!", CombatActionEntry{Kind: "info"})
 		for _, e := range g.enemies {
-			g.combatLog = append(g.combatLog, fmt.Sprintf("  %s (HP: %d)", e.Name, e.MaxHP))
+			g.logCombat(fmt.Sprintf("  %s (HP: %d)", e.Name, e.MaxHP), CombatActionEntry{Kind: "info"})
 		}
 	}
 
@@ -187,7 +187,7 @@ func (g *Game) checkLevelUps() {
 			cls := g.gd.ClassByID(c.ClassID)
 			old := c.Level
 			_ = character.LevelUp(c, cls, &g.gd.Stats, g.rng)
-			g.combatLog = append(g.combatLog, fmt.Sprintf("%s leveled up! %d -> %d (HP: %d)", c.Name, old, c.Level, c.MaxHP))
+			g.logCombat(fmt.Sprintf("%s leveled up! %d -> %d (HP: %d)", c.Name, old, c.Level, c.MaxHP), CombatActionEntry{Kind: "info"})
 		}
 	}
 }

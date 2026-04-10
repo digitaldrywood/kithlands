@@ -105,7 +105,8 @@ type GameState struct {
 	Equipment [4]EquipState       `json:"equipment"`
 	Location  string              `json:"location"`
 	Message   string              `json:"message,omitempty"`
-	CombatLog []string            `json:"combat_log,omitempty"`
+	CombatLog     []string             `json:"combat_log,omitempty"`
+	CombatActions []CombatActionEntry  `json:"combat_actions,omitempty"`
 	TileMap   *locality.TileMap   `json:"tilemap,omitempty"`
 	ShopItems []ShopItemState     `json:"shop_items,omitempty"`
 }
@@ -160,11 +161,26 @@ type SpellState struct {
 }
 
 type EnemyState struct {
-	ID    int    `json:"id"`
-	Name  string `json:"name"`
-	HP    int    `json:"hp"`
-	MaxHP int    `json:"max_hp"`
-	Size  string `json:"size"`
+	ID     int    `json:"id"`
+	Name   string `json:"name"`
+	HP     int    `json:"hp"`
+	MaxHP  int    `json:"max_hp"`
+	Size   string `json:"size"`
+	Status string `json:"status"`
+}
+
+// CombatActionEntry carries structured metadata for a single combat log line.
+// Sent alongside combat_log so the client can drive animations without parsing text.
+type CombatActionEntry struct {
+	Kind       string `json:"kind"`                     // attack, spell, ability, heal, item, counter, info
+	Element    string `json:"element,omitempty"`         // fire, ice, lightning, holy, dark, none
+	DamageType string `json:"damage_type,omitempty"`     // physical, magical
+	ActorID    int    `json:"actor_id,omitempty"`
+	ActorName  string `json:"actor_name,omitempty"`
+	TargetID   int    `json:"target_id,omitempty"`
+	Damage     int    `json:"damage,omitempty"`
+	Killed     bool   `json:"killed,omitempty"`
+	SpellName  string `json:"spell_name,omitempty"`
 }
 
 type QuestState struct {
@@ -204,7 +220,8 @@ type Game struct {
 	currentQ   int
 	phase      string // world, combat, quest_complete, victory, defeat
 	enemies    []*combat.Combatant
-	combatLog  []string
+	combatLog     []string
+	combatActions []CombatActionEntry
 	message    string
 	diff       balance.Difficulty
 	xpBefore    []int // snapshot before combat for victory animation
@@ -225,8 +242,9 @@ func (g *Game) State() GameState {
 		CurrentQ:  g.currentQ,
 		Gold:      g.inv.Gold,
 		Potions:   g.inv.Consumables["potion"],
-		Message:   g.message,
-		CombatLog: g.combatLog,
+		Message:       g.message,
+		CombatLog:     g.combatLog,
+		CombatActions: g.combatActions,
 	}
 
 	if g.loc != nil {
@@ -245,6 +263,7 @@ func (g *Game) State() GameState {
 		if e.CurrentHP > 0 {
 			state.Enemies = append(state.Enemies, EnemyState{
 				ID: e.ID, Name: e.Name, HP: e.CurrentHP, MaxHP: e.MaxHP, Size: e.Size,
+				Status: string(e.Status),
 			})
 		}
 	}
@@ -278,6 +297,7 @@ func (g *Game) ProcessAction(req GameActionRequest) (*GameState, error) {
 	defer g.mu.Unlock()
 
 	g.combatLog = nil
+	g.combatActions = nil
 	g.message = ""
 
 	switch g.phase {
@@ -404,7 +424,7 @@ func (g *Game) stateUnlocked() GameState {
 	state := GameState{
 		ID: g.id, Phase: g.phase, CurrentQ: g.currentQ,
 		Gold: g.inv.Gold, Potions: g.inv.Consumables["potion"],
-		Message: g.message, CombatLog: g.combatLog,
+		Message: g.message, CombatLog: g.combatLog, CombatActions: g.combatActions,
 	}
 	if g.loc != nil {
 		state.Location = g.loc.Name
@@ -417,7 +437,7 @@ func (g *Game) stateUnlocked() GameState {
 	}
 	for _, e := range g.enemies {
 		if e.CurrentHP > 0 {
-			state.Enemies = append(state.Enemies, EnemyState{ID: e.ID, Name: e.Name, HP: e.CurrentHP, MaxHP: e.MaxHP, Size: e.Size})
+			state.Enemies = append(state.Enemies, EnemyState{ID: e.ID, Name: e.Name, HP: e.CurrentHP, MaxHP: e.MaxHP, Size: e.Size, Status: string(e.Status)})
 		}
 	}
 	if g.phase == "combat" {
@@ -427,4 +447,10 @@ func (g *Game) stateUnlocked() GameState {
 		state.Quests = append(state.Quests, QuestState{Name: q.Name, Description: q.Description, Act: q.Act, Completed: q.Completed})
 	}
 	return state
+}
+
+// logCombat appends a text line and its structured metadata in lockstep.
+func (g *Game) logCombat(text string, action CombatActionEntry) {
+	g.combatLog = append(g.combatLog, text)
+	g.combatActions = append(g.combatActions, action)
 }
