@@ -18,10 +18,31 @@ import subprocess
 import sys
 import argparse
 
-# Use venv PIL
-sys.path.insert(0, '/tmp/kith-venv/lib/python3.12/site-packages')
-from PIL import Image
-import io
+# Defer PIL import so --dry-run works without Pillow installed
+Image = None
+io_module = None
+
+
+def _ensure_pil():
+    """Import PIL lazily; exit with a clear message if unavailable."""
+    global Image, io_module
+    if Image is not None:
+        return
+    try:
+        from PIL import Image as _Img
+        import io as _io
+        Image = _Img
+        io_module = _io
+    except ImportError:
+        sys.path.insert(0, '/tmp/kith-venv/lib/python3.12/site-packages')
+        try:
+            from PIL import Image as _Img
+            import io as _io
+            Image = _Img
+            io_module = _io
+        except ImportError:
+            print("ERROR: Pillow not installed. Run: pip install Pillow")
+            sys.exit(1)
 
 def _load_api_key():
     """Load API key from environment or project .env file."""
@@ -275,6 +296,7 @@ UI_ELEMENTS = [
 
 def generate_image(prompt):
     """Generate an image via Gemini and return a PIL Image."""
+    _ensure_pil()
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
@@ -312,7 +334,7 @@ def generate_image(prompt):
     for part in parts:
         if "inlineData" in part:
             raw = base64.b64decode(part["inlineData"]["data"])
-            img = Image.open(io.BytesIO(raw))
+            img = Image.open(io_module.BytesIO(raw))
             return img
 
     print("  ERROR: No image in response")

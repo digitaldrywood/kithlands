@@ -13,8 +13,15 @@ import os
 import sys
 import hashlib
 
-sys.path.insert(0, '/tmp/kith-venv/lib/python3.12/site-packages')
-from PIL import Image, ImageDraw
+try:
+    from PIL import Image, ImageDraw
+except ImportError:
+    sys.path.insert(0, '/tmp/kith-venv/lib/python3.12/site-packages')
+    try:
+        from PIL import Image, ImageDraw
+    except ImportError:
+        print("ERROR: Pillow not installed. Run: pip install Pillow")
+        sys.exit(1)
 
 PUBLIC_DIR = os.path.join(os.path.dirname(__file__), "..", "client", "public")
 SPRITES_DIR = os.path.join(PUBLIC_DIR, "sprites")
@@ -256,16 +263,21 @@ def draw_border(img, color, size, piece):
     draw.rectangle([0, 0, size, size], fill=bg)
 
     w = max(1, size // 6)
-    if "t" in piece and piece != "tr":
-        draw.rectangle([0, 0, size, w], fill=gold)
-    if "b" in piece and piece != "br":
-        draw.rectangle([0, size - w, size, size], fill=gold)
-    if "l" in piece and piece != "bl":
-        draw.rectangle([0, 0, w, size], fill=gold)
-    if "r" in piece and "l" not in piece:
-        draw.rectangle([size - w, 0, size, size], fill=gold)
     if piece == "fill":
         draw.rectangle([0, 0, size, size], fill=bg)
+    else:
+        has_top = "t" in piece
+        has_bottom = "b" in piece
+        has_left = "l" in piece
+        has_right = "r" in piece
+        if has_top:
+            draw.rectangle([0, 0, size, w], fill=gold)
+        if has_bottom:
+            draw.rectangle([0, size - w, size, size], fill=gold)
+        if has_left:
+            draw.rectangle([0, 0, w, size], fill=gold)
+        if has_right:
+            draw.rectangle([size - w, 0, size, size], fill=gold)
 
 
 def draw_hp_bar(img, color, size, bar_type):
@@ -343,24 +355,62 @@ def generate_all():
         save(img, os.path.join(SPRITES_DIR, f"player_{direction}.png"))
         count += 1
 
-    # Walk cycle frames
+    # Walk cycle frames -- each frame has distinct leg positions
     os.makedirs(os.path.join(SPRITES_DIR, "walk"), exist_ok=True)
     for direction in ["down", "up", "left", "right"]:
         for frame in range(4):
             img = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
-            draw_character(img, player_color, 32)
-            # Slight leg offset per frame
             draw = ImageDraw.Draw(img)
-            offset = [-2, 0, 2, 0][frame]
-            fw = 4
-            if direction in ("left", "right"):
-                draw.rectangle([14 + offset, 24, 14 + offset + fw, 28],
-                               fill=_darker(player_color, 40))
+            cx, cy = 16, 16
+            body_color = player_color
+            foot_color = _darker(player_color, 40)
+            head_color = _lighter(player_color, 40)
+
+            # Body
+            bw, bh = 10, 14
+            draw.rectangle([cx - bw//2, cy - bh//4, cx + bw//2, cy + bh//2],
+                           fill=body_color)
+            # Head
+            hr = 4
+            draw.ellipse([cx - hr, cy - bh//4 - hr*2, cx + hr, cy - bh//4],
+                         fill=head_color)
+
+            # Direction indicator (arrow on body)
+            if direction == "down":
+                draw.point((cx, cy + 2), fill=(255, 255, 255, 200))
+            elif direction == "up":
+                draw.point((cx, cy - 4), fill=(255, 255, 255, 200))
+            elif direction == "left":
+                draw.point((cx - 3, cy), fill=(255, 255, 255, 200))
+            elif direction == "right":
+                draw.point((cx + 3, cy), fill=(255, 255, 255, 200))
+
+            # Legs -- distinct per frame and direction
+            fw = 3
+            fh = 4
+            foot_y = cy + bh//2
+            if direction in ("down", "up"):
+                # Frame 0: feet together, 1: left forward, 2: together, 3: right forward
+                left_off = [0, -3, 0, 3][frame]
+                right_off = [0, 3, 0, -3][frame]
+                draw.rectangle([cx - 4 + left_off, foot_y,
+                                cx - 4 + left_off + fw, foot_y + fh],
+                               fill=foot_color)
+                draw.rectangle([cx + 1 + right_off, foot_y,
+                                cx + 1 + right_off + fw, foot_y + fh],
+                               fill=foot_color)
             else:
-                draw.rectangle([10 + offset, 24, 10 + offset + fw, 28],
-                               fill=_darker(player_color, 40))
-                draw.rectangle([18 - offset, 24, 18 - offset + fw, 28],
-                               fill=_darker(player_color, 40))
+                # Side view: single leg with stride offset
+                stride = [-1, 2, 5, 2][frame]
+                draw.rectangle([cx - 1 + stride, foot_y,
+                                cx - 1 + stride + fw, foot_y + fh],
+                               fill=foot_color)
+                # Trailing leg (offset opposite)
+                trail = [2, -1, -2, -1][frame]
+                draw.rectangle([cx - 1 + trail, foot_y + 1,
+                                cx - 1 + trail + fw, foot_y + fh + 1],
+                               fill=_darker(foot_color, 20))
+
             save(img, os.path.join(SPRITES_DIR, f"walk/walk_{direction}_{frame}.png"))
             count += 1
 
