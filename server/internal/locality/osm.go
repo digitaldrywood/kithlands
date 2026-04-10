@@ -211,7 +211,7 @@ func classifyElements(elements []osmElement, lat, lng float64, radiusM int) ([]N
 		importance := buildingImportance(b.Tags)
 
 		nodes = append(nodes, Node{
-			ID:         fmt.Sprintf("osm_%d", b.ID),
+			ID:         fmt.Sprintf("osm_w%d", b.ID),
 			Kind:       kind,
 			Name:       name,
 			Coord:      &LatLng{Lat: bLat, Lng: bLng},
@@ -244,7 +244,7 @@ func classifyElements(elements []osmElement, lat, lng float64, radiusM int) ([]N
 		tags := amenityTags(a.Tags)
 
 		nodes = append(nodes, Node{
-			ID:         fmt.Sprintf("osm_%d", a.ID),
+			ID:         fmt.Sprintf("osm_n%d", a.ID),
 			Kind:       kind,
 			Name:       name,
 			Coord:      &LatLng{Lat: a.Lat, Lng: a.Lon},
@@ -268,7 +268,7 @@ func classifyElements(elements []osmElement, lat, lng float64, radiusM int) ([]N
 
 		nLat, nLng := wayCenter(n, nodeMap)
 		nodes = append(nodes, Node{
-			ID:         fmt.Sprintf("osm_%d", n.ID),
+			ID:         fmt.Sprintf("osm_w%d", n.ID),
 			Kind:       NodeNatural,
 			Name:       name,
 			Coord:      &LatLng{Lat: nLat, Lng: nLng},
@@ -345,7 +345,7 @@ func (l *Locality) Roads() []Road {
 
 // queryOverpass fetches OSM data around a point.
 func queryOverpass(ctx context.Context, lat, lng float64, radiusM int) ([]osmElement, error) {
-	query := fmt.Sprintf(`[out:json][timeout:25];
+	query := fmt.Sprintf(`[out:json][timeout:25][maxsize:2097152];
 (
   node["amenity"](around:%d,%f,%f);
   node["shop"](around:%d,%f,%f);

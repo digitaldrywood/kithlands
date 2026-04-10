@@ -29,6 +29,15 @@ export class WizardScene extends Phaser.Scene {
     this.showStep();
   }
 
+  shouldSkipNPCStep() {
+    if (!this.wizardData.use_osm) return false;
+    const pois = this.wizardData.osm_preview || [];
+    // Only count POIs that had real OSM names (not auto-generated ones)
+    const generated = /^(Building|House|Shed|Farmland|Water|Church|School|Parking|Fuel|Shelter|Place Of Worship|Fire Station|Restaurant|Cafe|Bar|Fast Food|Commercial|Retail|Civic|Government)( \d+)?$/;
+    const namedPOIs = pois.filter(p => p.name && !generated.test(p.name));
+    return namedPOIs.length >= 5;
+  }
+
   clearContent() {
     this.contentGroup.clear(true, true);
     // Remove any DOM elements
@@ -68,11 +77,9 @@ export class WizardScene extends Phaser.Scene {
       return;
     }
 
-    // Skip NPC step when OSM has enough named buildings (>= 5)
-    if (this.wizardData.use_osm && this.step === 2) {
-      const pois = this.wizardData.osm_preview || [];
-      const namedBuildings = pois.filter(p => (p.kind === 'business' || p.kind === 'landmark' || p.kind === 'place') && p.name && !p.name.match(/^(Building|House|Shed|Farmland|Water)( \d+)?$/));
-      if (namedBuildings.length >= 5) {
+    // Skip NPC step when OSM has enough genuinely named POIs (>= 5)
+    if (this.step === 2 && this.shouldSkipNPCStep()) {
+      {
         if (!this.wizardData.people || this.wizardData.people.length === 0) {
           this.wizardData.people = [
             { name: 'Bob', relation: 'friendly' },
@@ -136,20 +143,15 @@ export class WizardScene extends Phaser.Scene {
       if (this.wizardData.use_osm) {
         // Skip big building (4) and places (3) going back
         if (this.step === 4 || this.step === 3) {
-          // Check if NPC step was also skipped
-          const pois = this.wizardData.osm_preview || [];
-          if (pois.length >= 5 && this.step >= 2) {
+          if (this.shouldSkipNPCStep()) {
             this.step = 1; // Jump back to POI picker
           } else {
             this.step = 2; // Jump back to NPCs
           }
         }
         // If NPC step was skipped, jump from party back to POI
-        if (this.step === 2) {
-          const pois = this.wizardData.osm_preview || [];
-          if (pois.length >= 5) {
-            this.step = 1;
-          }
+        if (this.step === 2 && this.shouldSkipNPCStep()) {
+          this.step = 1;
         }
       }
       // Skip POI step when not using OSM (going back)
