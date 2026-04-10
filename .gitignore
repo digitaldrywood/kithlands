@@ -2,6 +2,7 @@
 .env
 .env.*
 .envrc
+CLAUDE.local.md
 
 # Go
 server/kithlands
