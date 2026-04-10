@@ -35,7 +35,7 @@ export function playMusic(key, loop = true) {
   if (scene.sound.locked) {
     currentMusicKey = key;
     const pending = scene;
-    pending.sound.once('unlocked', () => {
+    pending.sound.once("unlocked", () => {
       // Only play if no newer call has taken over in the meantime.
       if (currentMusicKey === key) {
         currentMusicKey = null; // force playMusic to actually start it
