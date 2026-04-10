@@ -1,46 +1,34 @@
 import { gameAction } from '../api.js';
 
 const ENEMY_SPRITES = {
-  'Slime': 'monster_slime',
-  'Goblin': 'monster_goblin',
-  'Wolf': 'monster_wolf',
-  'Skeleton': 'monster_skeleton',
-  'Dark Knight': 'monster_dark_knight',
+  'Slime': 'monster_slime', 'Goblin': 'monster_goblin', 'Wolf': 'monster_wolf',
+  'Skeleton': 'monster_skeleton', 'Dark Knight': 'monster_dark_knight',
 };
-
 const ENEMY_COLORS = {
   'Slime': 0x42A5F5, 'Goblin': 0x66BB6A, 'Wolf': 0x8D6E63,
   'Skeleton': 0xEEEEEE, 'Dark Knight': 0x512DA8,
 };
-
 const CLASS_SPRITES = {
   'warrior': 'warrior', 'cinder': 'cinder', 'mender': 'mender', 'rogue': 'rogue',
 };
 
-const SPELL_COLORS = {
-  'fire': 0xff4400, 'ice': 0x44aaff, 'lightning': 0xffff00, 'none': 0xffffff,
-};
-
 export class BattleScene extends Phaser.Scene {
-  constructor() {
-    super('Battle');
-  }
+  constructor() { super('Battle'); }
 
   init(data) {
     this.gameState = data.gameState;
-    console.log('[Battle] init, phase:', this.gameState?.phase);
   }
 
   create() {
     this.animating = false;
-    this.turnIndex = 0; // which party member is selecting
-    this.pendingAction = null; // waiting for target selection
-    this.enemySpriteMap = {}; // id -> sprite for animations
+    this.enemySprites = {};
+    this.partySprites = {};
+    this.pendingAction = null;
+    this.pendingSpellId = null;
 
     const gs = this.gameState;
-
     if (!gs || gs.phase !== 'combat' || !gs.enemies?.length) {
-      if (gs?.combat_log?.length > 0) {
+      if (gs?.combat_log?.length) {
         this.showVictoryResults(gs);
       } else {
         this.scene.start('World', { gameState: gs });
@@ -52,193 +40,179 @@ export class BattleScene extends Phaser.Scene {
     this.add.rectangle(400, 300, 800, 600, 0x0a0a1e);
     this.add.rectangle(400, 400, 800, 200, 0x111133);
 
-    // Enemies
+    this.drawEnemies(gs);
+    this.drawParty(gs);
+    this.drawLog(gs);
+    this.drawActions(gs);
+
+    this.promptText = this.add.text(400, 345, 'Choose an action', {
+      fontSize: '11px', color: '#ffff44', fontFamily: 'monospace',
+    }).setOrigin(0.5).setDepth(5);
+  }
+
+  drawEnemies(gs) {
     const enemies = gs.enemies;
     const spacing = Math.min(130, 450 / Math.max(enemies.length, 1));
-    const startX = 80 + (450 - enemies.length * spacing) / 2;
+    const sx = 80 + (450 - enemies.length * spacing) / 2;
 
     for (let i = 0; i < enemies.length; i++) {
       const e = enemies[i];
-      const x = startX + i * spacing;
-      const y = 250;
-      const baseSize = e.name === 'Dark Knight' ? 80 : 50;
+      const x = sx + i * spacing, y = 240;
+      const sz = e.name === 'Dark Knight' ? 80 : 50;
 
-      // Sprite or rectangle
-      const spriteKey = ENEMY_SPRITES[e.name];
+      const key = ENEMY_SPRITES[e.name];
       let sprite;
-      if (spriteKey && this.textures.exists(spriteKey)) {
-        sprite = this.add.image(x, y, spriteKey);
-        const s = baseSize / Math.max(sprite.width, sprite.height) * 2;
-        sprite.setScale(s);
+      if (key && this.textures.exists(key)) {
+        sprite = this.add.image(x, y, key);
+        sprite.setScale(sz / Math.max(sprite.width, sprite.height) * 2);
       } else {
-        sprite = this.add.rectangle(x, y, baseSize, baseSize, ENEMY_COLORS[e.name] || 0xFF5722);
+        sprite = this.add.rectangle(x, y, sz, sz, ENEMY_COLORS[e.name] || 0xFF5722);
       }
-      sprite.setData('enemyId', e.id);
-      this.enemySpriteMap[e.id] = sprite;
-
-      // Make enemy clickable for targeting
       sprite.setInteractive({ useHandCursor: true });
-      sprite.on('pointerdown', () => this.selectTarget(e.id));
-      sprite.on('pointerover', () => sprite.setAlpha(0.8));
+      sprite.on('pointerdown', () => this.onEnemyClick(e.id));
+      sprite.on('pointerover', () => {
+        sprite.setAlpha(0.7);
+        if (this.pendingAction) this.promptText.setText(`Target: ${e.name}`);
+      });
       sprite.on('pointerout', () => sprite.setAlpha(1));
+      this.enemySprites[e.id] = { sprite, x, y, name: e.name };
 
-      // Name
-      this.add.text(x, y - baseSize / 2 - 20, e.name, {
-        fontSize: '11px', color: '#ffffff', fontFamily: 'monospace',
+      this.add.text(x, y - sz / 2 - 18, e.name, {
+        fontSize: '10px', color: '#ffffff', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       // HP bar
-      const barW = 70;
-      this.add.rectangle(x, y + baseSize / 2 + 12, barW, 8, 0x333333);
-      const pct = Math.max(0, e.hp / e.max_hp);
+      const bw = 65, pct = Math.max(0, e.hp / e.max_hp);
+      this.add.rectangle(x, y + sz / 2 + 10, bw, 7, 0x333333);
       if (pct > 0) {
         const bc = pct > 0.5 ? 0x44ff44 : pct > 0.25 ? 0xff8800 : 0xff0000;
-        this.add.rectangle(x - barW / 2 * (1 - pct), y + baseSize / 2 + 12, barW * pct, 8, bc);
+        this.add.rectangle(x - bw / 2 * (1 - pct), y + sz / 2 + 10, bw * pct, 7, bc);
       }
-      this.add.text(x, y + baseSize / 2 + 26, `${e.hp}/${e.max_hp}`, {
-        fontSize: '9px', color: '#cccccc', fontFamily: 'monospace',
+      this.add.text(x, y + sz / 2 + 22, `${e.hp}/${e.max_hp}`, {
+        fontSize: '8px', color: '#aaaaaa', fontFamily: 'monospace',
       }).setOrigin(0.5);
     }
+  }
 
-    // "Click enemy to target" hint (shown when selecting)
-    this.targetHint = this.add.text(300, 340, '', {
-      fontSize: '11px', color: '#ffff44', fontFamily: 'monospace',
-    }).setDepth(5);
-
-    // Party
-    this.partyIndicators = [];
-    const partyX = 560;
+  drawParty(gs) {
+    const px = 560;
     for (let i = 0; i < gs.party.length; i++) {
       const p = gs.party[i];
-      const x = partyX;
-      const y = 170 + i * 80;
+      const x = px, y = 160 + i * 85;
       const alive = p.hp > 0;
 
-      // Turn indicator arrow
-      const arrow = this.add.triangle(x - 15, y, 0, -8, 0, 8, 10, 0, 0xffff44)
-        .setDepth(2)
-        .setVisible(alive && i === this.turnIndex);
-      this.partyIndicators.push(arrow);
-
-      // Active highlight
-      if (alive && i === this.turnIndex) {
-        this.add.rectangle(x - 5, y, 220, 70, 0x223366, 0.5).setOrigin(0, 0.5);
-      }
+      // Indicator arrow for each member
+      const arrow = this.add.triangle(x - 18, y, 0, -8, 0, 8, 10, 0, 0xffff44)
+        .setDepth(2).setVisible(false);
 
       // Sprite
       const cs = CLASS_SPRITES[p.class_id];
+      let sprite;
       if (cs && this.textures.exists(cs)) {
-        const s = this.add.image(x + 15, y, cs);
-        s.setScale(50 / Math.max(s.width, s.height) * 2);
-        if (!alive) s.setTint(0x444444);
+        sprite = this.add.image(x + 15, y, cs);
+        sprite.setScale(50 / Math.max(sprite.width, sprite.height) * 2);
+        if (!alive) sprite.setTint(0x444444);
       } else {
-        this.add.rectangle(x + 15, y, 35, 35, alive ? 0xFF5722 : 0x444444);
+        sprite = this.add.rectangle(x + 15, y, 35, 35, alive ? 0xFF5722 : 0x444444);
       }
 
-      // Name/stats
-      this.add.text(x + 45, y - 20, p.name, {
-        fontSize: '12px', color: alive ? '#ffffff' : '#666666', fontFamily: 'monospace',
+      this.partySprites[p.name] = { sprite, arrow, x: x + 15, y, alive };
+
+      this.add.text(x + 45, y - 18, p.name, {
+        fontSize: '11px', color: alive ? '#ffffff' : '#666666', fontFamily: 'monospace',
       });
-      this.add.text(x + 45, y - 4, `${p.class_name} Lv${p.level}`, {
-        fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
+      this.add.text(x + 45, y - 3, `${p.class_name} Lv${p.level}`, {
+        fontSize: '9px', color: '#aaaaaa', fontFamily: 'monospace',
       });
 
       // HP bar
-      const barW = 90, hpPct = Math.max(0, p.hp / p.max_hp);
-      this.add.rectangle(x + 90 + barW / 2, y + 12, barW, 6, 0x333333);
+      const bw = 85, hpPct = Math.max(0, p.hp / p.max_hp);
+      this.add.rectangle(x + 90 + bw / 2, y + 13, bw, 6, 0x333333);
       if (hpPct > 0) {
         const bc = hpPct > 0.5 ? 0x44ff44 : hpPct > 0.25 ? 0xff8800 : 0xff0000;
-        this.add.rectangle(x + 90 + barW * hpPct / 2, y + 12, barW * hpPct, 6, bc);
+        this.add.rectangle(x + 90 + bw * hpPct / 2, y + 13, bw * hpPct, 6, bc);
       }
-      this.add.text(x + 90 + barW + 5, y + 7, `${p.hp}/${p.max_hp}`, {
-        fontSize: '9px', color: '#cccccc', fontFamily: 'monospace',
+      this.add.text(x + 90 + bw + 5, y + 8, `${p.hp}/${p.max_hp}`, {
+        fontSize: '8px', color: '#cccccc', fontFamily: 'monospace',
       });
 
       if (p.spells?.length > 0 && alive) {
-        const ss = p.spells.map(s => `${s.name}(${s.charges})`).join(' ');
-        this.add.text(x + 45, y + 20, ss, {
-          fontSize: '8px', color: '#8888ff', fontFamily: 'monospace',
+        this.add.text(x + 45, y + 22, p.spells.map(s => `${s.name}(${s.charges})`).join(' '), {
+          fontSize: '7px', color: '#8888ff', fontFamily: 'monospace',
         });
       }
     }
 
-    // Combat log
-    this.add.rectangle(400, 490, 780, 60, 0x000000, 0.85);
+    // Show indicator on first living member
+    this.highlightMember(gs, 0);
+  }
+
+  highlightMember(gs, index) {
+    // Hide all arrows
+    for (const name in this.partySprites) {
+      this.partySprites[name].arrow.setVisible(false);
+    }
+    // Show arrow for the given index
+    let count = 0;
+    for (const p of gs.party) {
+      if (p.hp > 0) {
+        if (count === index) {
+          if (this.partySprites[p.name]) {
+            this.partySprites[p.name].arrow.setVisible(true);
+          }
+          return p.name;
+        }
+        count++;
+      }
+    }
+    return null;
+  }
+
+  drawLog(gs) {
+    this.add.rectangle(400, 488, 780, 55, 0x000000, 0.85);
     const log = gs.combat_log || [];
     for (let i = 0; i < Math.min(log.length, 3); i++) {
-      this.add.text(20, 500 - i * 16, log[log.length - 1 - i], {
+      this.add.text(20, 498 - i * 16, log[log.length - 1 - i], {
         fontSize: '10px', color: '#cccccc', fontFamily: 'monospace',
         wordWrap: { width: 760 },
       });
     }
-
-    // Action buttons
-    this.renderActionButtons(gs);
-
-    // Find first living member for turn indicator
-    this.advanceTurn(gs);
   }
 
-  advanceTurn(gs) {
-    // Move indicator to current turn member
-    for (let i = 0; i < this.partyIndicators.length; i++) {
-      this.partyIndicators[i].setVisible(i === this.turnIndex);
-    }
-    const member = gs.party[this.turnIndex];
-    if (member) {
-      this.targetHint.setText(`${member.name}'s turn -- choose an action`);
-    }
-  }
+  drawActions(gs) {
+    const hasSpells = gs.party.some(p => p.hp > 0 && p.spells?.some(s => s.charges > 0));
+    const btns = [{ label: 'ATTACK', type: 'attack', color: '#ff4444' }];
+    if (hasSpells) btns.push({ label: 'SPELL', type: 'spell', color: '#8888ff' });
+    if (gs.potions > 0) btns.push({ label: `POTION(${gs.potions})`, type: 'item', color: '#44ff44' });
+    btns.push({ label: 'FLEE', type: 'flee', color: '#ffcc44' });
 
-  renderActionButtons(gs) {
-    const member = gs.party[this.turnIndex];
-    const hasSpells = member?.spells?.length > 0 && member.spells.some(s => s.charges > 0);
-
-    const buttons = [{ label: 'ATTACK', type: 'attack', color: '#ff4444' }];
-    if (hasSpells) buttons.push({ label: 'SPELL', type: 'spell', color: '#8888ff' });
-    if (gs.potions > 0) buttons.push({ label: `POTION(${gs.potions})`, type: 'item', color: '#44ff44' });
-    buttons.push({ label: 'FLEE', type: 'flee', color: '#ffcc44' });
-
-    const totalW = buttons.length * 150;
-    const sx = 400 - totalW / 2 + 75;
-
-    for (let i = 0; i < buttons.length; i++) {
-      const b = buttons[i];
-      const x = sx + i * 150;
-
-      const bg = this.add.rectangle(x, 555, 130, 32, 0x1a1a44)
+    const tw = btns.length * 145, sx = 400 - tw / 2 + 72;
+    for (let i = 0; i < btns.length; i++) {
+      const b = btns[i], x = sx + i * 145;
+      const bg = this.add.rectangle(x, 555, 125, 30, 0x1a1a44)
         .setStrokeStyle(1, 0x444488).setInteractive({ useHandCursor: true });
-
       this.add.text(x, 555, b.label, {
-        fontSize: '13px', color: b.color, fontFamily: 'monospace',
+        fontSize: '12px', color: b.color, fontFamily: 'monospace',
       }).setOrigin(0.5);
 
       bg.on('pointerover', () => bg.setFillStyle(0x2a2a66));
       bg.on('pointerout', () => bg.setFillStyle(0x1a1a44));
       bg.on('pointerdown', () => {
         if (this.animating) return;
-        switch (b.type) {
-          case 'attack':
-            this.pendingAction = 'attack';
-            this.targetHint.setText('Click an enemy to attack!').setColor('#ff4444');
-            break;
-          case 'spell':
-            this.showSpellPicker(gs);
-            break;
-          case 'item':
-            this.doAction({ type: 'item' });
-            break;
-          case 'flee':
-            this.doAction({ type: 'flee' });
-            break;
+        if (b.type === 'attack') {
+          this.pendingAction = 'attack';
+          this.promptText.setText('Click an enemy to attack!').setColor('#ff4444');
+        } else if (b.type === 'spell') {
+          this.showSpellPicker();
+        } else {
+          this.doAction({ type: b.type });
         }
       });
     }
   }
 
-  selectTarget(enemyId) {
+  onEnemyClick(enemyId) {
     if (this.animating) return;
-
     if (this.pendingAction === 'attack') {
       this.pendingAction = null;
       this.doAction({ type: 'attack', target_id: enemyId });
@@ -248,64 +222,58 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
-  showSpellPicker(gs) {
-    const member = gs.party[this.turnIndex];
-    if (!member?.spells) return;
+  showSpellPicker() {
+    const gs = this.gameState;
+    const allSpells = [];
+    for (const p of gs.party) {
+      if (p.hp <= 0 || !p.spells) continue;
+      for (const s of p.spells) {
+        if (s.charges > 0) allSpells.push({ ...s, caster: p.name });
+      }
+    }
+    if (!allSpells.length) return;
 
-    const spells = member.spells.filter(s => s.charges > 0);
-    if (spells.length === 0) return;
+    const ol = [];
+    const h = 50 + allSpells.length * 32;
+    const bg = this.add.rectangle(400, 380, 320, h, 0x111144, 0.95)
+      .setStrokeStyle(2, 0x4444aa).setDepth(50).setInteractive();
+    ol.push(bg);
 
-    const overlay = [];
-    const bg = this.add.rectangle(400, 380, 300, 40 + spells.length * 35, 0x111144, 0.95)
-      .setStrokeStyle(2, 0x4444aa).setDepth(50);
-    overlay.push(bg);
-
-    const title = this.add.text(400, 365 - spells.length * 17, `${member.name}'s spells:`, {
+    ol.push(this.add.text(400, 380 - h / 2 + 15, 'Choose a spell:', {
       fontSize: '12px', color: '#ffffff', fontFamily: 'monospace',
-    }).setOrigin(0.5).setDepth(51);
-    overlay.push(title);
+    }).setOrigin(0.5).setDepth(51));
 
-    for (let i = 0; i < spells.length; i++) {
-      const sp = spells[i];
-      const y = 390 - spells.length * 17 + i * 35;
-
-      const row = this.add.rectangle(400, y, 260, 28, 0x222255)
+    for (let i = 0; i < allSpells.length; i++) {
+      const sp = allSpells[i];
+      const y = 380 - h / 2 + 40 + i * 32;
+      const row = this.add.rectangle(400, y, 280, 26, 0x222255)
         .setInteractive({ useHandCursor: true }).setDepth(51);
-      overlay.push(row);
+      const txt = this.add.text(400, y,
+        `${sp.name} (${sp.charges}) - ${sp.caster}`, {
+          fontSize: '11px', color: '#aaaaff', fontFamily: 'monospace',
+        }).setOrigin(0.5).setDepth(52);
+      ol.push(row, txt);
 
-      const text = this.add.text(400, y, `${sp.name} (${sp.charges} charges)`, {
-        fontSize: '12px', color: '#aaaaff', fontFamily: 'monospace',
-      }).setOrigin(0.5).setDepth(52);
-      overlay.push(text);
-
-      row.on('pointerover', () => { row.setFillStyle(0x3333aa); text.setColor('#ffffff'); });
-      row.on('pointerout', () => { row.setFillStyle(0x222255); text.setColor('#aaaaff'); });
+      row.on('pointerover', () => { row.setFillStyle(0x3333aa); txt.setColor('#ffffff'); });
+      row.on('pointerout', () => { row.setFillStyle(0x222255); txt.setColor('#aaaaff'); });
       row.on('pointerdown', () => {
-        overlay.forEach(o => o.destroy());
+        ol.forEach(o => o.destroy());
         this.pendingAction = 'spell';
         this.pendingSpellId = sp.id;
-        this.targetHint.setText(`Cast ${sp.name} -- click an enemy!`).setColor('#8888ff');
+        this.promptText.setText(`Cast ${sp.name} -- click a target!`).setColor('#8888ff');
       });
     }
 
-    const cancel = this.add.text(400, 400 - spells.length * 17 + spells.length * 35, '[ CANCEL ]', {
+    const cancel = this.add.text(400, 380 + h / 2 - 15, '[ CANCEL ]', {
       fontSize: '10px', color: '#888888', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51).setInteractive({ useHandCursor: true });
-    cancel.on('pointerdown', () => overlay.forEach(o => o.destroy()));
-    overlay.push(cancel);
+    cancel.on('pointerdown', () => ol.forEach(o => o.destroy()));
+    ol.push(cancel);
   }
 
   async doAction(action) {
     this.animating = true;
-    this.targetHint.setText('');
-    console.log('[Battle] action:', action.type, 'target:', action.target_id);
-
-    // Visual effect BEFORE sending to server
-    if (action.type === 'attack' && action.target_id != null) {
-      await this.playAttackEffect(action.target_id);
-    } else if (action.type === 'spell') {
-      await this.playSpellEffect(action.target_id);
-    }
+    this.promptText.setText('');
 
     try {
       const result = await gameAction(this.gameState.id, action);
@@ -315,24 +283,17 @@ export class BattleScene extends Phaser.Scene {
         return;
       }
 
+      // Animate each line of the combat log sequentially
+      const log = result.combat_log || [];
+      await this.animateCombatLog(log);
+
       this.gameState = result;
 
-      // Show damage numbers from combat log
-      await this.playResultEffects(result);
-
-      this.time.delayedCall(300, () => {
+      this.time.delayedCall(400, () => {
         this.animating = false;
         if (this.gameState.phase !== 'combat') {
           this.showVictoryResults(this.gameState);
         } else {
-          // Advance turn indicator for next round
-          this.turnIndex = 0;
-          for (let i = 0; i < this.gameState.party.length; i++) {
-            if (this.gameState.party[i].hp > 0) {
-              this.turnIndex = i;
-              break;
-            }
-          }
           this.scene.restart({ gameState: this.gameState });
         }
       });
@@ -342,109 +303,129 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
-  playAttackEffect(targetId) {
+  async animateCombatLog(log) {
+    const gs = this.gameState;
+    let memberIdx = 0;
+
+    for (const line of log) {
+      // Parse who is acting
+      const attackMatch = line.match(/^(.+?) attacks (.+?) for (\d+)/);
+      const spellMatch = line.match(/^(.+?) casts (.+?) on (.+?) for (\d+)/);
+      const healMatch = line.match(/healed (\d+)/);
+      const defeatMatch = line.includes('DEFEATED');
+
+      if (attackMatch) {
+        const [, attacker, target, dmg] = attackMatch;
+
+        // Move indicator to attacker if party member
+        const partyEntry = this.partySprites[attacker];
+        if (partyEntry) {
+          // Show this party member's arrow
+          for (const n in this.partySprites) this.partySprites[n].arrow.setVisible(false);
+          partyEntry.arrow.setVisible(true);
+          this.promptText.setText(`${attacker} attacks!`).setColor('#ff4444');
+
+          // Flash the party sprite forward
+          await this.tweenPromise(partyEntry.sprite, { x: partyEntry.x - 20, duration: 80 });
+          await this.tweenPromise(partyEntry.sprite, { x: partyEntry.x, duration: 80 });
+        }
+
+        // Find target sprite and animate hit
+        const enemyEntry = Object.values(this.enemySprites).find(e => e.name === target);
+        const partyTarget = this.partySprites[target];
+
+        if (enemyEntry) {
+          await this.showHitEffect(enemyEntry.x, enemyEntry.y, dmg, false, defeatMatch);
+          if (enemyEntry.sprite.setTint) {
+            enemyEntry.sprite.setTint(0xff4444);
+            this.time.delayedCall(200, () => { if (enemyEntry.sprite.clearTint) enemyEntry.sprite.clearTint(); });
+          }
+        } else if (partyTarget) {
+          // Enemy attacking a party member
+          this.promptText.setText(`${attacker} attacks ${target}!`).setColor('#ff8800');
+          await this.showHitEffect(partyTarget.x, partyTarget.y, dmg, true, false);
+          if (partyTarget.sprite.setTint) {
+            partyTarget.sprite.setTint(0xff4444);
+            this.time.delayedCall(200, () => { if (partyTarget.sprite.clearTint) partyTarget.sprite.clearTint(); });
+          }
+          this.cameras.main.shake(80, 0.005);
+        }
+
+        await this.wait(250);
+      } else if (spellMatch) {
+        const [, caster, spell, target, dmg] = spellMatch;
+
+        const partyEntry = this.partySprites[caster];
+        if (partyEntry) {
+          for (const n in this.partySprites) this.partySprites[n].arrow.setVisible(false);
+          partyEntry.arrow.setVisible(true);
+          this.promptText.setText(`${caster} casts ${spell}!`).setColor('#8888ff');
+        }
+
+        // Spell flash
+        const flash = this.add.rectangle(400, 300, 800, 600, 0x4444ff, 0.2).setDepth(19);
+        this.time.delayedCall(200, () => flash.destroy());
+
+        const enemyEntry = Object.values(this.enemySprites).find(e => e.name === target);
+        if (enemyEntry) {
+          // Particles
+          for (let j = 0; j < 6; j++) {
+            const px = enemyEntry.x + Phaser.Math.Between(-25, 25);
+            const py = enemyEntry.y + Phaser.Math.Between(-25, 25);
+            const p = this.add.circle(px, py, 4, 0x8888ff).setDepth(20);
+            this.tweens.add({ targets: p, y: py - 30, alpha: 0, duration: 400, onComplete: () => p.destroy() });
+          }
+          await this.showHitEffect(enemyEntry.x, enemyEntry.y, dmg, false, defeatMatch);
+        }
+
+        await this.wait(300);
+      } else if (line.includes('Found:')) {
+        this.promptText.setText(line).setColor('#44ff44');
+        await this.wait(400);
+      }
+    }
+  }
+
+  showHitEffect(x, y, dmg, isPartyTarget, defeated) {
     return new Promise(resolve => {
-      const sprite = this.enemySpriteMap[targetId];
-      if (!sprite) { resolve(); return; }
+      // Slash line
+      const g = this.add.graphics().setDepth(20);
+      g.lineStyle(3, isPartyTarget ? 0xff8800 : 0xffffff, 1);
+      g.lineBetween(x - 20, y - 15, x + 20, y + 15);
+      this.time.delayedCall(150, () => g.destroy());
 
-      // White slash line across enemy
-      const x = sprite.x, y = sprite.y;
-      const slash = this.add.graphics().setDepth(20);
-      slash.lineStyle(3, 0xffffff, 1);
-      slash.lineBetween(x - 25, y - 20, x + 25, y + 20);
-
-      // Screen shake
-      this.cameras.main.shake(120, 0.008);
-
-      // Enemy flash red
-      if (sprite.setTint) sprite.setTint(0xff4444);
-
-      this.time.delayedCall(150, () => {
-        slash.destroy();
-        if (sprite.clearTint) sprite.clearTint();
-        resolve();
+      // Damage number
+      const color = isPartyTarget ? '#ff8800' : '#ff4444';
+      const numText = this.add.text(x + Phaser.Math.Between(-15, 15), y - 10, `-${dmg}`, {
+        fontSize: '16px', color, fontFamily: 'monospace', fontStyle: 'bold',
+      }).setOrigin(0.5).setDepth(25);
+      this.tweens.add({
+        targets: numText, y: numText.y - 35, alpha: 0,
+        duration: 700, ease: 'Power2', onComplete: () => numText.destroy(),
       });
+
+      if (defeated) {
+        const defText = this.add.text(x, y + 20, 'DEFEATED!', {
+          fontSize: '12px', color: '#ff4444', fontFamily: 'monospace',
+        }).setOrigin(0.5).setDepth(25);
+        this.tweens.add({
+          targets: defText, alpha: 0, duration: 1000, delay: 300,
+          onComplete: () => defText.destroy(),
+        });
+      }
+
+      this.time.delayedCall(200, resolve);
     });
   }
 
-  playSpellEffect(targetId) {
+  tweenPromise(target, config) {
     return new Promise(resolve => {
-      const sprite = this.enemySpriteMap[targetId];
-
-      // Screen-wide spell flash
-      const flash = this.add.rectangle(400, 300, 800, 600, 0x4444ff, 0.3).setDepth(19);
-
-      // Colored particles at target
-      if (sprite) {
-        const x = sprite.x, y = sprite.y;
-        for (let i = 0; i < 8; i++) {
-          const px = x + Phaser.Math.Between(-30, 30);
-          const py = y + Phaser.Math.Between(-30, 30);
-          const particle = this.add.circle(px, py, 4, 0x8888ff).setDepth(20);
-          this.tweens.add({
-            targets: particle, y: py - 30, alpha: 0,
-            duration: 400, ease: 'Power2',
-            onComplete: () => particle.destroy(),
-          });
-        }
-      }
-
-      this.time.delayedCall(300, () => {
-        flash.destroy();
-        resolve();
-      });
+      this.tweens.add({ targets: target, ...config, onComplete: resolve });
     });
   }
 
-  playResultEffects(result) {
-    return new Promise(resolve => {
-      const log = result.combat_log || [];
-      let delay = 0;
-
-      for (const line of log) {
-        // Parse damage numbers and show floating text
-        const dmgMatch = line.match(/for (\d+) damage/);
-        const healMatch = line.match(/healed (\d+)/);
-
-        if (dmgMatch) {
-          const dmg = dmgMatch[1];
-          this.time.delayedCall(delay, () => {
-            // Show damage number floating up
-            const numText = this.add.text(
-              Phaser.Math.Between(300, 500),
-              Phaser.Math.Between(200, 350),
-              `-${dmg}`,
-              { fontSize: '18px', color: '#ff4444', fontFamily: 'monospace', fontStyle: 'bold' }
-            ).setOrigin(0.5).setDepth(25);
-
-            this.tweens.add({
-              targets: numText, y: numText.y - 40, alpha: 0,
-              duration: 800, ease: 'Power2',
-              onComplete: () => numText.destroy(),
-            });
-          });
-          delay += 200;
-        }
-
-        if (healMatch) {
-          const heal = healMatch[1];
-          this.time.delayedCall(delay, () => {
-            const numText = this.add.text(600, 250, `+${heal}`, {
-              fontSize: '18px', color: '#44ff44', fontFamily: 'monospace', fontStyle: 'bold',
-            }).setOrigin(0.5).setDepth(25);
-
-            this.tweens.add({
-              targets: numText, y: numText.y - 40, alpha: 0,
-              duration: 800, ease: 'Power2',
-              onComplete: () => numText.destroy(),
-            });
-          });
-          delay += 200;
-        }
-      }
-
-      this.time.delayedCall(Math.max(delay, 200), resolve);
-    });
+  wait(ms) {
+    return new Promise(resolve => this.time.delayedCall(ms, resolve));
   }
 
   showVictoryResults(gs) {
@@ -452,11 +433,8 @@ export class BattleScene extends Phaser.Scene {
     this.add.rectangle(400, 300, 800, 600, 0x0a0a1e);
 
     const isDefeat = gs.phase === 'defeat';
-    const title = isDefeat ? 'DEFEAT' : 'VICTORY!';
-    const titleColor = isDefeat ? '#ff4444' : '#ffff44';
-
-    this.add.text(400, 40, title, {
-      fontSize: '36px', color: titleColor, fontFamily: 'monospace',
+    this.add.text(400, 40, isDefeat ? 'DEFEAT' : 'VICTORY!', {
+      fontSize: '36px', color: isDefeat ? '#ff4444' : '#ffff44', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     if (isDefeat) {
@@ -470,55 +448,41 @@ export class BattleScene extends Phaser.Scene {
     const log = gs.combat_log || [];
     let y = 80;
 
-    // XP/gold/items
     for (const line of log) {
-      if (line.includes('Victory') || line.includes('Found:') || line.includes('+')) {
-        this.add.text(400, y, line, {
-          fontSize: '12px', color: '#44ff44', fontFamily: 'monospace',
-        }).setOrigin(0.5);
+      if (line.includes('Victory') || line.includes('Found:') || line.startsWith('+')) {
+        this.add.text(400, y, line, { fontSize: '12px', color: '#44ff44', fontFamily: 'monospace' }).setOrigin(0.5);
         y += 20;
       }
     }
 
-    // Level ups
-    const levelUps = log.filter(l => l.includes('leveled up'));
-    if (levelUps.length > 0) {
-      y += 10;
-      this.add.text(400, y, '-- LEVEL UP --', {
-        fontSize: '16px', color: '#ffff44', fontFamily: 'monospace',
-      }).setOrigin(0.5);
-      y += 25;
-      for (const line of levelUps) {
-        this.add.text(400, y, line, {
-          fontSize: '12px', color: '#ffcc44', fontFamily: 'monospace',
-        }).setOrigin(0.5);
+    const lvlUps = log.filter(l => l.includes('leveled up'));
+    if (lvlUps.length) {
+      y += 8;
+      this.add.text(400, y, '-- LEVEL UP --', { fontSize: '16px', color: '#ffff44', fontFamily: 'monospace' }).setOrigin(0.5);
+      y += 22;
+      for (const l of lvlUps) {
+        this.add.text(400, y, l, { fontSize: '12px', color: '#ffcc44', fontFamily: 'monospace' }).setOrigin(0.5);
         y += 20;
       }
     }
 
-    // Quest completions
-    for (const line of log.filter(l => l.includes('Quest complete'))) {
+    for (const l of log.filter(l => l.includes('Quest complete'))) {
       y += 5;
-      this.add.text(400, y, line, {
-        fontSize: '12px', color: '#44ccff', fontFamily: 'monospace',
-      }).setOrigin(0.5);
+      this.add.text(400, y, l, { fontSize: '12px', color: '#44ccff', fontFamily: 'monospace' }).setOrigin(0.5);
       y += 20;
     }
 
-    // Party
-    y += 15;
-    this.add.text(400, y, 'Party:', { fontSize: '14px', color: '#ffffff', fontFamily: 'monospace' }).setOrigin(0.5);
-    y += 22;
+    y += 12;
+    this.add.text(400, y, 'Party:', { fontSize: '13px', color: '#ffffff', fontFamily: 'monospace' }).setOrigin(0.5);
+    y += 20;
     for (const p of gs.party) {
-      const c = p.hp <= 0 ? '#666666' : '#ffffff';
       this.add.text(400, y,
         `${p.name} (${p.class_name}) Lv${p.level}  HP:${p.hp}/${p.max_hp}  XP:${p.xp}/${p.xp_next}`,
-        { fontSize: '11px', color: c, fontFamily: 'monospace' }
+        { fontSize: '11px', color: p.hp <= 0 ? '#666666' : '#ffffff', fontFamily: 'monospace' }
       ).setOrigin(0.5);
       y += 18;
     }
-
-    y += 10;
+    y += 8;
     this.add.text(400, y, `Gold: ${gs.gold}  |  Potions: ${gs.potions}`, {
       fontSize: '12px', color: '#ffcc44', fontFamily: 'monospace',
     }).setOrigin(0.5);
@@ -533,7 +497,6 @@ export class BattleScene extends Phaser.Scene {
     btn.on('pointerover', () => btn.setColor('#88ff88'));
     btn.on('pointerout', () => btn.setColor('#44ff44'));
     btn.on('pointerdown', () => this.scene.start('World', { gameState: gs }));
-
     this.input.keyboard.on('keydown-ENTER', () => this.scene.start('World', { gameState: gs }));
     this.input.keyboard.on('keydown-SPACE', () => this.scene.start('World', { gameState: gs }));
   }

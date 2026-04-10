@@ -43,9 +43,20 @@ export class TitleScene extends Phaser.Scene {
     quickBtn.on('pointerout', () => quickBtn.setColor('#ffcc44'));
     quickBtn.on('pointerdown', () => this.startGame(inputEl, true));
 
+    // Skip email entirely for testing
+    const testBtn = this.add.text(cx, 460, '[ PLAY NOW - skip login ]', {
+      fontSize: '14px', color: '#888888', fontFamily: 'monospace',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    testBtn.on('pointerover', () => testBtn.setColor('#aaaaaa'));
+    testBtn.on('pointerout', () => testBtn.setColor('#888888'));
+    testBtn.on('pointerdown', () => {
+      inputEl.value = `test_${Date.now()}@kithlands.dev`;
+      this.startGame(inputEl, true);
+    });
+
     this.input.keyboard.on('keydown-ENTER', () => this.startGame(inputEl, false));
 
-    this.statusText = this.add.text(cx, 480, '', {
+    this.statusText = this.add.text(cx, 510, '', {
       fontSize: '12px', color: '#ff4444', fontFamily: 'monospace',
       wordWrap: { width: 600 },
     }).setOrigin(0.5);
