@@ -19,12 +19,12 @@ type Server struct {
 	games  *GameManager
 }
 
-func NewServer(db *pgxpool.Pool, gd *gamedata.GameData) *Server {
+func NewServer(db *pgxpool.Pool, gd *gamedata.GameData, sharedDir string) *Server {
 	s := &Server{
 		db:     db,
 		gd:     gd,
 		filter: safety.NewFilter(),
-		games:  NewGameManager(gd),
+		games:  NewGameManager(gd, sharedDir),
 	}
 	if db != nil {
 		s.auth = auth.NewService(db)

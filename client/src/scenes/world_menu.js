@@ -239,6 +239,23 @@ export function toggleMenu(scene) {
   });
   scene.menuGroup.push(autoBtn);
 
+  // Quest log button -- opens full quest log overlay
+  y += 32;
+  const questBtn = scene.add
+    .text(400, y, "[ QUEST LOG ]", {
+      fontSize: "13px",
+      color: "#ffcc44",
+      fontFamily: "monospace",
+    })
+    .setOrigin(0.5)
+    .setScrollFactor(0)
+    .setDepth(41)
+    .setInteractive({ useHandCursor: true });
+  questBtn.on("pointerover", () => questBtn.setColor("#ffee88"));
+  questBtn.on("pointerout", () => questBtn.setColor("#ffcc44"));
+  questBtn.on("pointerdown", () => showQuestLog(scene));
+  scene.menuGroup.push(questBtn);
+
   // Close
   const closeBtn = scene.add
     .text(400, 545, "[ CLOSE (M/ESC) ]", {
@@ -357,6 +374,271 @@ export async function showEquipPicker(scene, slot, type) {
     scene.menuOpen = false;
   });
   overlay.push(closeBtn);
+}
+
+export function showQuestLog(scene) {
+  // Close the party menu first so the overlay sits cleanly on its own.
+  if (scene.menuGroup) {
+    scene.menuGroup.forEach((c) => c.destroy());
+    scene.menuGroup = null;
+  }
+  scene.menuOpen = false;
+
+  const gs = scene.gameState;
+  const quests = Array.isArray(gs.quests) ? gs.quests : [];
+  const currentIdx = gs.current_quest ?? 0;
+  const overlay = [];
+
+  const bg = scene.add
+    .rectangle(400, 300, 720, 520, 0x000000, 0.96)
+    .setStrokeStyle(2, 0x444488)
+    .setScrollFactor(0)
+    .setDepth(50)
+    .setInteractive();
+  overlay.push(bg);
+
+  const title = scene.add
+    .text(400, 60, "QUEST LOG", {
+      fontSize: "18px",
+      color: "#ffff44",
+      fontFamily: "monospace",
+    })
+    .setOrigin(0.5)
+    .setScrollFactor(0)
+    .setDepth(51);
+  overlay.push(title);
+
+  const subtitle = scene.add
+    .text(
+      400,
+      82,
+      `${quests.length} total  |  ${currentIdx} completed  |  ${Math.max(0, quests.length - currentIdx)} remaining`,
+      { fontSize: "11px", color: "#888888", fontFamily: "monospace" },
+    )
+    .setOrigin(0.5)
+    .setScrollFactor(0)
+    .setDepth(51);
+  overlay.push(subtitle);
+
+  if (quests.length === 0) {
+    const empty = scene.add
+      .text(400, 300, "No active quests.", {
+        fontSize: "13px",
+        color: "#888888",
+        fontFamily: "monospace",
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(51);
+    overlay.push(empty);
+  } else {
+    let y = 110;
+    // CURRENT
+    const curHeader = scene.add
+      .text(70, y, "CURRENT", {
+        fontSize: "12px",
+        color: "#ffcc44",
+        fontFamily: "monospace",
+      })
+      .setScrollFactor(0)
+      .setDepth(51);
+    overlay.push(curHeader);
+    y += 18;
+
+    if (currentIdx < quests.length) {
+      const q = quests[currentIdx];
+      y = renderQuestBlock(scene, overlay, q, 70, y, "current");
+    } else {
+      const doneLine = scene.add
+        .text(80, y, "All quests complete!", {
+          fontSize: "12px",
+          color: "#44ff88",
+          fontFamily: "monospace",
+        })
+        .setScrollFactor(0)
+        .setDepth(51);
+      overlay.push(doneLine);
+      y += 20;
+    }
+    y += 10;
+
+    // UPCOMING (hide boss name to avoid spoilers)
+    const upHeader = scene.add
+      .text(70, y, "UPCOMING", {
+        fontSize: "12px",
+        color: "#88aacc",
+        fontFamily: "monospace",
+      })
+      .setScrollFactor(0)
+      .setDepth(51);
+    overlay.push(upHeader);
+    y += 18;
+
+    if (currentIdx + 1 >= quests.length) {
+      const none = scene.add
+        .text(80, y, "(none)", {
+          fontSize: "11px",
+          color: "#555555",
+          fontFamily: "monospace",
+        })
+        .setScrollFactor(0)
+        .setDepth(51);
+      overlay.push(none);
+      y += 18;
+    } else {
+      for (let i = currentIdx + 1; i < quests.length && y < 420; i++) {
+        const q = quests[i];
+        const prefix = questPrefix(q);
+        const displayName =
+          q.template_id === "Q12" || q.name?.toLowerCase().startsWith("defeat")
+            ? "??? (final encounter)"
+            : q.name;
+        const line = scene.add
+          .text(80, y, `${prefix}[Act ${q.act}] ${displayName}`, {
+            fontSize: "11px",
+            color: "#6688aa",
+            fontFamily: "monospace",
+          })
+          .setScrollFactor(0)
+          .setDepth(51);
+        overlay.push(line);
+        y += 15;
+      }
+    }
+    y += 8;
+
+    // COMPLETED
+    const doneHeader = scene.add
+      .text(70, y, "COMPLETED", {
+        fontSize: "12px",
+        color: "#66aa66",
+        fontFamily: "monospace",
+      })
+      .setScrollFactor(0)
+      .setDepth(51);
+    overlay.push(doneHeader);
+    y += 18;
+
+    if (currentIdx === 0) {
+      const none = scene.add
+        .text(80, y, "(none yet)", {
+          fontSize: "11px",
+          color: "#444444",
+          fontFamily: "monospace",
+        })
+        .setScrollFactor(0)
+        .setDepth(51);
+      overlay.push(none);
+    } else {
+      for (let i = 0; i < currentIdx && y < 510; i++) {
+        const q = quests[i];
+        const prefix = questPrefix(q);
+        const line = scene.add
+          .text(80, y, `${prefix}[Act ${q.act}] ${q.name}`, {
+            fontSize: "11px",
+            color: "#558855",
+            fontFamily: "monospace",
+          })
+          .setScrollFactor(0)
+          .setDepth(51);
+        overlay.push(line);
+        y += 15;
+      }
+    }
+  }
+
+  const closeBtn = scene.add
+    .text(400, 548, "[ CLOSE ]", {
+      fontSize: "12px",
+      color: "#aaaaaa",
+      fontFamily: "monospace",
+    })
+    .setOrigin(0.5)
+    .setScrollFactor(0)
+    .setDepth(51)
+    .setInteractive({ useHandCursor: true });
+  closeBtn.on("pointerdown", () => overlay.forEach((o) => o.destroy()));
+  overlay.push(closeBtn);
+}
+
+function questPrefix(q) {
+  if (q.is_promotion) return "[Promotion] ";
+  if (q.is_side_quest) return "[Side] ";
+  return "";
+}
+
+function renderQuestBlock(scene, overlay, q, x, y, kind) {
+  const prefix = questPrefix(q);
+  const color = q.is_promotion ? "#ffcc44" : "#ffffff";
+  const name = scene.add
+    .text(x + 10, y, `${prefix}[Act ${q.act}] ${q.name}`, {
+      fontSize: "12px",
+      color,
+      fontFamily: "monospace",
+    })
+    .setScrollFactor(0)
+    .setDepth(51);
+  overlay.push(name);
+  y += 16;
+
+  const giver = q.giver_name ? `from ${q.giver_name}` : "";
+  const target = q.target_name ? ` -> ${q.target_name}` : "";
+  const meta = scene.add
+    .text(x + 16, y, `${giver}${target}`, {
+      fontSize: "10px",
+      color: "#aaaaaa",
+      fontFamily: "monospace",
+    })
+    .setScrollFactor(0)
+    .setDepth(51);
+  overlay.push(meta);
+  y += 14;
+
+  if (q.description) {
+    const desc = scene.add
+      .text(x + 16, y, wrapText(q.description, 78), {
+        fontSize: "10px",
+        color: "#cccccc",
+        fontFamily: "monospace",
+      })
+      .setScrollFactor(0)
+      .setDepth(51);
+    overlay.push(desc);
+    y += 14 * Math.max(1, desc.height / 14);
+  }
+
+  if (q.reward && (q.reward.xp || q.reward.gold)) {
+    const rew = scene.add
+      .text(
+        x + 16,
+        y,
+        `Reward: ${q.reward.xp || 0} XP, ${q.reward.gold || 0} gold`,
+        { fontSize: "10px", color: "#ffcc66", fontFamily: "monospace" },
+      )
+      .setScrollFactor(0)
+      .setDepth(51);
+    overlay.push(rew);
+    y += 14;
+  }
+
+  return y;
+}
+
+function wrapText(s, width) {
+  if (!s || s.length <= width) return s || "";
+  const words = s.split(" ");
+  const lines = [];
+  let line = "";
+  for (const w of words) {
+    if ((line + " " + w).trim().length > width) {
+      lines.push(line.trim());
+      line = w;
+    } else {
+      line = (line + " " + w).trim();
+    }
+  }
+  if (line) lines.push(line);
+  return lines.join("\n");
 }
 
 export function useOverworldPotion(scene) {

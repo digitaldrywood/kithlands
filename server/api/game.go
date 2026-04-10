@@ -164,10 +164,24 @@ type EnemyState struct {
 }
 
 type QuestState struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Act         int    `json:"act"`
-	Completed   bool   `json:"completed"`
+	ID           string           `json:"id"`
+	Name         string           `json:"name"`
+	Description  string           `json:"description"`
+	Completion   string           `json:"completion,omitempty"`
+	Act          int              `json:"act"`
+	Completed    bool             `json:"completed"`
+	IsPromotion  bool             `json:"is_promotion,omitempty"`
+	IsSideQuest  bool             `json:"is_side_quest,omitempty"`
+	GiverName    string           `json:"giver_name,omitempty"`
+	GiverNodeID  string           `json:"giver_node_id,omitempty"`
+	TargetName   string           `json:"target_name,omitempty"`
+	TargetNodeID string           `json:"target_node_id,omitempty"`
+	Reward       QuestRewardState `json:"reward"`
+}
+
+type QuestRewardState struct {
+	XP   int `json:"xp"`
+	Gold int `json:"gold"`
 }
 
 // Game holds the live state of one game session.
@@ -266,7 +280,19 @@ func (g *Game) State() GameState {
 
 	for _, q := range g.quests {
 		state.Quests = append(state.Quests, QuestState{
-			Name: q.Name, Description: q.Description, Act: q.Act, Completed: q.Completed,
+			ID:           q.ID,
+			Name:         q.Name,
+			Description:  q.Description,
+			Completion:   q.Completion,
+			Act:          q.Act,
+			Completed:    q.Completed,
+			IsPromotion:  q.IsPromotion,
+			IsSideQuest:  q.IsSideQuest,
+			GiverName:    q.GiverName,
+			GiverNodeID:  q.GiverNodeID,
+			TargetName:   q.TargetName,
+			TargetNodeID: q.TargetNodeID,
+			Reward:       QuestRewardState{XP: q.Reward.XP, Gold: q.Reward.Gold},
 		})
 	}
 

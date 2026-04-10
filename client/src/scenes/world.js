@@ -586,6 +586,37 @@ export class WorldScene extends Phaser.Scene {
     this.mmY = mmY;
     this.mmScaleX = scaleX;
     this.mmScaleY = scaleY;
+    this.drawQuestMarker();
+  }
+
+  drawQuestMarker() {
+    if (this.mmX == null) return;
+    if (this.questMarker) {
+      this.questMarker.destroy();
+      this.questMarker = null;
+    }
+    const gs = this.gameState;
+    if (!gs || !Array.isArray(gs.quests)) return;
+    const q = gs.quests[gs.current_quest];
+    if (!q) return;
+    const targetID = q.target_node_id;
+    const targetName = q.target_name;
+    if (!targetID && !targetName) return;
+    const spawn = this.spawns.find(
+      (s) => s.node_id === targetID || s.name === targetName,
+    );
+    if (!spawn) return;
+    this.questMarker = this.add
+      .star(
+        this.mmX + spawn.x * this.mmScaleX,
+        this.mmY + spawn.y * this.mmScaleY,
+        4,
+        2,
+        4,
+        0xffff44,
+      )
+      .setScrollFactor(0)
+      .setDepth(21);
   }
 
   updateMinimap() {
@@ -631,10 +662,13 @@ export class WorldScene extends Phaser.Scene {
   updateQuestDisplay() {
     const gs = this.gameState;
     if (gs.current_quest < gs.quests.length) {
-      this.questText.setText(`Quest: ${gs.quests[gs.current_quest].name}`);
+      const q = gs.quests[gs.current_quest];
+      const giver = q.giver_name ? ` — from ${q.giver_name}` : "";
+      this.questText.setText(`Quest: [Act ${q.act}] ${q.name}${giver}`);
     } else {
       this.questText.setText("All quests complete!");
     }
+    this.drawQuestMarker();
   }
 
   showMessage(text) {

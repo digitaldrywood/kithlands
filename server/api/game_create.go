@@ -18,13 +18,21 @@ import (
 
 // GameManager holds active game sessions.
 type GameManager struct {
-	gd    *gamedata.GameData
-	games map[string]*Game
-	mu    sync.RWMutex
+	gd        *gamedata.GameData
+	sharedDir string
+	sidePool  []generator.SideQuestEntry
+	games     map[string]*Game
+	mu        sync.RWMutex
 }
 
-func NewGameManager(gd *gamedata.GameData) *GameManager {
-	return &GameManager{gd: gd, games: make(map[string]*Game)}
+func NewGameManager(gd *gamedata.GameData, sharedDir string) *GameManager {
+	gm := &GameManager{gd: gd, sharedDir: sharedDir, games: make(map[string]*Game)}
+	if sharedDir != "" {
+		if pool, err := generator.LoadSideQuestPool(sharedDir); err == nil {
+			gm.sidePool = pool
+		}
+	}
+	return gm
 }
 
 func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
@@ -140,7 +148,7 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 			spawnID = req.SpawnNodeID
 		}
 	}
-	quests := generator.GenerateCampaign(loc, spawnID, rng)
+	quests := generator.GenerateCampaign(loc, spawnID, rng, gm.sidePool)
 	walk := locality.Walk(loc, spawnID)
 	tileMap := locality.GenerateTileMap(loc, spawnID)
 

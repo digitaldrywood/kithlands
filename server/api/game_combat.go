@@ -289,7 +289,12 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 			g.checkLevelUps()
 			g.combatLog = append(g.combatLog, fmt.Sprintf("Quest complete: %s (+%d XP, +%d gold)", q.Name, q.Reward.XP, q.Reward.Gold))
 			g.restParty()
+			completedIdx := g.currentQ
 			g.currentQ++
+			if promoMsg := g.applyPromotionIfNeeded(completedIdx); promoMsg != "" {
+				g.combatLog = append(g.combatLog, promoMsg)
+				g.message = promoMsg
+			}
 		}
 
 		if g.currentQ >= len(g.quests) {
@@ -402,7 +407,12 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 		g.enemies = nil
 		if g.currentQ < len(g.quests) {
 			g.quests[g.currentQ].Completed = true
+			completedIdx := g.currentQ
 			g.currentQ++
+			if promoMsg := g.applyPromotionIfNeeded(completedIdx); promoMsg != "" {
+				g.combatLog = append(g.combatLog, promoMsg)
+				g.message = promoMsg
+			}
 		}
 		g.restParty()
 		g.checkLevelUps()

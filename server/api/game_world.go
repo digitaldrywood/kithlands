@@ -63,7 +63,11 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 			}
 			g.checkLevelUps()
 			g.restParty()
+			completedIdx := g.currentQ
 			g.currentQ++
+			if promoMsg := g.applyPromotionIfNeeded(completedIdx); promoMsg != "" {
+				g.message += "\n" + promoMsg
+			}
 			if g.currentQ >= len(g.quests) {
 				g.phase = "victory"
 				g.message = fmt.Sprintf("%s is saved! Your adventure is complete.", g.loc.Name)
@@ -95,6 +99,43 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 
 	state := g.stateUnlocked()
 	return &state, nil
+}
+
+// applyPromotionIfNeeded checks whether the quest at the given index is the
+// promotion story beat; if so, flips Promoted = true on every party member
+// and returns a display message describing the class promotions. The caller
+// should append the message to g.message (or g.combatLog).
+func (g *Game) applyPromotionIfNeeded(questIdx int) string {
+	if questIdx < 0 || questIdx >= len(g.quests) {
+		return ""
+	}
+	if !g.quests[questIdx].IsPromotion {
+		return ""
+	}
+	var names []string
+	for _, c := range g.party {
+		if c.Promoted {
+			continue
+		}
+		c.Promoted = true
+		cls := g.gd.ClassByID(c.ClassID)
+		if cls != nil && cls.PromotedName != "" {
+			names = append(names, fmt.Sprintf("%s is now a %s", c.Name, cls.PromotedName))
+		} else {
+			names = append(names, fmt.Sprintf("%s has been promoted", c.Name))
+		}
+	}
+	if len(names) == 0 {
+		return ""
+	}
+	msg := "Your party has been promoted! "
+	for i, n := range names {
+		if i > 0 {
+			msg += ", "
+		}
+		msg += n
+	}
+	return msg + "."
 }
 
 func (g *Game) processAdvance(req GameActionRequest) (*GameState, error) {
