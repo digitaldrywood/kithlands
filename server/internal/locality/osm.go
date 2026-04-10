@@ -34,8 +34,6 @@ func BuildFromOSM(ctx context.Context, lat, lng float64, townName string) (*Loca
 	var buildings []osmElement
 	var roads []osmElement
 	var amenities []osmElement
-	var nature []osmElement
-
 	for _, el := range elements {
 		switch el.Type {
 		case "node":
@@ -53,8 +51,6 @@ func BuildFromOSM(ctx context.Context, lat, lng float64, townName string) (*Loca
 				buildings = append(buildings, el)
 			} else if el.Tags["highway"] != "" {
 				roads = append(roads, el)
-			} else if el.Tags["natural"] == "water" || el.Tags["leisure"] == "park" {
-				nature = append(nature, el)
 			}
 		}
 	}
@@ -148,9 +144,9 @@ func BuildFromOSM(ctx context.Context, lat, lng float64, townName string) (*Loca
 	}
 
 	// Always ensure we have an inn, shop, and temple
-	ensureNode(loc, "inn", "The Wayward Inn", NodeBusiness, []string{"commerce", "rest"})
-	ensureNode(loc, "shop", "General Store", NodeBusiness, []string{"commerce", "shop"})
-	ensureNode(loc, "temple", "Temple of Light", NodeLandmark, []string{"temple", "revive"})
+	ensureNode(loc, "rest", "inn", "The Wayward Inn", NodeBusiness, []string{"commerce", "rest"})
+	ensureNode(loc, "shop", "shop", "General Store", NodeBusiness, []string{"commerce", "shop"})
+	ensureNode(loc, "revive", "temple", "Temple of Light", NodeLandmark, []string{"temple", "revive"})
 
 	// Build edges: connect nodes based on geographic proximity
 	for i := 0; i < len(loc.Nodes); i++ {
@@ -236,7 +232,7 @@ out body; >; out skel qt;`,
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -422,13 +418,11 @@ func parseRoads(roads []osmElement, nodeMap map[int64]osmNode, minLat, maxLat, m
 	return result
 }
 
-func ensureNode(loc *Locality, id, name string, kind NodeKind, tags []string) {
+func ensureNode(loc *Locality, checkTag, id, name string, kind NodeKind, tags []string) {
 	for _, n := range loc.Nodes {
 		for _, t := range n.Tags {
-			for _, target := range tags {
-				if t == target {
-					return // already have one
-				}
+			if t == checkTag {
+				return // already have one with this function
 			}
 		}
 	}

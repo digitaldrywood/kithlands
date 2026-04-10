@@ -93,7 +93,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 					// Find caster character
 					caster := g.party[ma.Slot]
 					if sb, ok := g.spellBooks[caster.Name]; ok && sb.CanCast(spell) {
-						sb.ConsumeCharge(spell.SpellLevel)
+						_ = sb.ConsumeCharge(spell.SpellLevel)
 						switch spell.Effect {
 						case "damage":
 							for _, e := range g.enemies {
@@ -305,7 +305,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 	return &state, nil
 }
 
-func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) {
+func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { //nolint:unused
 	spell := g.gd.SpellByID(req.SpellID)
 	if spell == nil {
 		state := g.stateUnlocked()
@@ -317,7 +317,7 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) {
 	for _, c := range g.party {
 		if sb, ok := g.spellBooks[c.Name]; ok && sb.CanCast(spell) {
 			caster = c
-			sb.ConsumeCharge(spell.SpellLevel)
+			_ = sb.ConsumeCharge(spell.SpellLevel)
 			break
 		}
 	}

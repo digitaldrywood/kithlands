@@ -1,0 +1,46 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    # standard quality
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    # security
+    - gosec
+    - bodyclose
+    - noctx
+    - sqlclosecheck
+    # cleanup
+    - misspell
+    - unconvert
+
+  settings:
+    gosec:
+      excludes:
+        # math/rand is fine for game mechanics (not crypto)
+        - G404
+        # integer overflow in hash functions is intentional
+        - G115
+        # file inclusion via variable is expected for config/gamedata loading
+        - G304
+        # errcheck-equivalent in gosec; covered by errcheck linter with exclusions
+        - G104
+
+  exclusions:
+    rules:
+      # Test files: don't require error checking on setup/assert helpers
+      - path: _test\.go
+        linters:
+          - errcheck
+          - gosec
+          - noctx
+      # CLI tools: relaxed error checking for demo/sim binaries
+      - path: cmd/(demo|balance_sim)/
+        linters:
+          - errcheck

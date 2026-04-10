@@ -217,7 +217,7 @@ func (s *Server) handleListSaves(w http.ResponseWriter, r *http.Request) {
 	var summaries []SaveSummary
 	for _, sv := range saves {
 		var party []*character.Character
-		json.Unmarshal(sv.Party, &party)
+		_ = json.Unmarshal(sv.Party, &party)
 
 		names := make([]string, len(party))
 		for i, c := range party {

@@ -21,9 +21,20 @@ jobs:
         working-directory: server
         run: go vet ./...
 
-      - name: Test
+      - name: Build
         working-directory: server
-        run: go test ./...
+        run: go build ./...
+
+      - name: Test (race detection)
+        working-directory: server
+        run: go test -race ./...
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.1.6
+          working-directory: server
+          args: --timeout=5m
 
   client:
     runs-on: ubuntu-latest
@@ -33,6 +44,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
 
       - name: Install
         working-directory: client
@@ -41,3 +54,69 @@ jobs:
       - name: Build
         working-directory: client
         run: npm run build
+
+      - name: Prettier check
+        working-directory: client
+        run: npx prettier --check --ignore-path .gitignore .
+
+      - name: Audit dependencies
+        working-directory: client
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+
+  balance-sim:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: server/go.sum
+
+      - name: Balance sim smoke test
+        working-directory: server
+        run: go run ./cmd/balance_sim -battles=10 -shared=../shared
+
+  json-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate shared JSON files
+        run: |
+          failed=0
+          for f in $(find shared -name '*.json' -type f); do
+            if ! python3 -c "import json, sys; json.load(open(sys.argv[1]))" "$f" 2>&1; then
+              echo "FAIL: $f"
+              failed=1
+            else
+              echo "OK: $f"
+            fi
+          done
+          exit $failed
+
+  pr-size:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check PR size
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          TOTAL=$(git diff --numstat origin/main...HEAD | awk '{ add += $1; del += $2 } END { print add + del }')
+          echo "PR changes: $TOTAL lines"
+          if [ "$TOTAL" -gt 500 ]; then
+            EXISTING=$(gh pr view "$PR_NUMBER" --json comments --jq '.comments[].body' | grep -c "PR size warning" || true)
+            if [ "$EXISTING" -eq 0 ]; then
+              gh pr comment "$PR_NUMBER" --body "<!-- PR size warning -->**Warning:** This PR has $TOTAL lines changed (threshold: 500). Consider splitting into smaller PRs."
+            fi
+          fi

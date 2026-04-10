@@ -1,4 +1,4 @@
-const BASE_URL = '/api';
+const BASE_URL = "/api";
 
 let authToken = null;
 
@@ -7,14 +7,14 @@ export function setToken(token) {
 }
 
 function headers() {
-  const h = { 'Content-Type': 'application/json' };
-  if (authToken) h['Authorization'] = `Bearer ${authToken}`;
+  const h = { "Content-Type": "application/json" };
+  if (authToken) h["Authorization"] = `Bearer ${authToken}`;
   return h;
 }
 
 async function apiCall(method, path, body) {
   const url = `${BASE_URL}${path}`;
-  console.log(`[API] ${method} ${path}`, body || '');
+  console.log(`[API] ${method} ${path}`, body || "");
 
   const opts = { method, headers: headers() };
   if (body) opts.body = JSON.stringify(body);
@@ -25,68 +25,75 @@ async function apiCall(method, path, body) {
   if (data.error) {
     console.error(`[API] ${path} error:`, data.error);
   } else {
-    console.log(`[API] ${path} ok`, data.phase || '');
+    console.log(`[API] ${path} ok`, data.phase || "");
   }
 
   return data;
 }
 
 export async function login(email) {
-  return apiCall('POST', '/auth/login', { email });
+  return apiCall("POST", "/auth/login", { email });
 }
 
 export async function getClasses() {
-  return apiCall('GET', '/data/classes');
+  return apiCall("GET", "/data/classes");
 }
 
 export async function newGame(data) {
-  return apiCall('POST', '/game/new', data);
+  return apiCall("POST", "/game/new", data);
 }
 
 export async function getGame(id) {
-  return apiCall('GET', `/game/${id}`);
+  return apiCall("GET", `/game/${id}`);
 }
 
 export async function gameAction(gameId, action) {
-  return apiCall('POST', `/game/${gameId}/action`, action);
+  return apiCall("POST", `/game/${gameId}/action`, action);
 }
 
 export async function healthCheck() {
-  return apiCall('GET', '/health');
+  return apiCall("GET", "/health");
 }
 
 export async function getShop(gameId, nodeId) {
-  return apiCall('GET', `/game/${gameId}/shop/${nodeId}`);
+  return apiCall("GET", `/game/${gameId}/shop/${nodeId}`);
 }
 
 export async function buyItem(gameId, itemId, type) {
-  return apiCall('POST', `/game/${gameId}/buy`, { item_id: itemId, type });
+  return apiCall("POST", `/game/${gameId}/buy`, { item_id: itemId, type });
 }
 
 export async function equipItem(gameId, slot, itemId, type) {
-  return apiCall('POST', `/game/${gameId}/equip`, { slot, item_id: itemId, type });
+  return apiCall("POST", `/game/${gameId}/equip`, {
+    slot,
+    item_id: itemId,
+    type,
+  });
 }
 
 export async function learnSpell(gameId, charName, spellId) {
-  return apiCall('POST', `/game/${gameId}/learn`, { char_name: charName, spell_id: spellId });
+  return apiCall("POST", `/game/${gameId}/learn`, {
+    char_name: charName,
+    spell_id: spellId,
+  });
 }
 
 export async function geocode(query) {
-  return apiCall('POST', '/geocode', { query });
+  return apiCall("POST", "/geocode", { query });
 }
 
 export async function saveGame(gameId, name) {
-  return apiCall('POST', `/game/${gameId}/save`, { name });
+  return apiCall("POST", `/game/${gameId}/save`, { name });
 }
 
 export async function listSaves() {
-  return apiCall('GET', '/saves');
+  return apiCall("GET", "/saves");
 }
 
 export async function loadSave(saveId) {
-  return apiCall('POST', `/saves/${saveId}/load`);
+  return apiCall("POST", `/saves/${saveId}/load`);
 }
 
 export async function deleteSave(saveId) {
-  return apiCall('DELETE', `/saves/${saveId}`);
+  return apiCall("DELETE", `/saves/${saveId}`);
 }
