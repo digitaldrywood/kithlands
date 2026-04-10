@@ -415,6 +415,38 @@ def resize_to_square(img, target_size):
     return result
 
 
+def cleanup_edge_artifacts(img):
+    """Drop semi-transparent edge pixels that only contain chromakey bleed colors.
+
+    After LANCZOS resize, edge pixels can blend content with any residual
+    chromakey color. Force semi-transparent edge pixels to fully transparent
+    when they sit on the alpha boundary and are dominated by the chromakey hue.
+    """
+    img = img.convert("RGBA")
+    pixels = img.load()
+    w, h = img.size
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = pixels[x, y]
+            if a == 0 or a >= 250:
+                continue
+            # Semi-transparent pixel adjacent to transparent area
+            has_transparent_neighbor = False
+            if y > 0 and pixels[x, y - 1][3] == 0: has_transparent_neighbor = True
+            elif y < h - 1 and pixels[x, y + 1][3] == 0: has_transparent_neighbor = True
+            elif x > 0 and pixels[x - 1, y][3] == 0: has_transparent_neighbor = True
+            elif x < w - 1 and pixels[x + 1, y][3] == 0: has_transparent_neighbor = True
+            if not has_transparent_neighbor:
+                continue
+            # Drop if magenta-leaning (pink/purple edge bleed)
+            if r > 120 and b > 120 and g < 120:
+                pixels[x, y] = (0, 0, 0, 0)
+            # Drop if pure green bleed (#00FF00 chromakey leftover)
+            elif g > 150 and r < 100 and b < 100:
+                pixels[x, y] = (0, 0, 0, 0)
+    return img
+
+
 def generate_and_process(prompt, output_path, target_size, is_tile=False):
     """Generate, remove green, crop, resize, save."""
     print(f"  Generating: {os.path.basename(output_path)}...")
