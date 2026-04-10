@@ -2,6 +2,7 @@ import { saveGame, autosaveGame } from '../api.js';
 import { playSFX, playMusic } from '../systems/audio.js';
 import { getAutosaveEnabled } from '../systems/prefs.js';
 import { openShop } from './world_shop.js';
+import { isTouchDevice } from '../systems/input.js';
 
 // TILE_COLORS needed for world map rendering
 const TILE_COLORS = {
@@ -189,7 +190,7 @@ export function showInteractPrompt(scene, spawn) {
   scene.interactPrompt = scene.add.text(
     scene.player.x,
     scene.player.y - 30,
-    `[ ENTER / SPACE ] ${action} at ${spawn.name}`,
+    `${isTouchDevice() ? '[ TAP A ]' : '[ ENTER / SPACE ]'} ${action} at ${spawn.name}`,
     {
       fontSize: '10px', color: '#ffff44', fontFamily: 'monospace',
       backgroundColor: '#000000cc',
