@@ -64,7 +64,8 @@ type MemberActionReq struct {
 // GameState is the full state sent to the client.
 type GameState struct {
 	ID        string              `json:"id"`
-	Phase     string              `json:"phase"` // world, combat, combat_victory, quest_complete, victory, defeat
+	Phase     string              `json:"phase"` // world, combat, quest_complete, victory, defeat
+	XPBefore  []int               `json:"xp_before,omitempty"` // XP values before combat for victory animation
 	Party     []PartyMemberState  `json:"party"`
 	Enemies   []EnemyState        `json:"enemies,omitempty"`
 	Quests    []QuestState        `json:"quests"`
@@ -158,6 +159,8 @@ type Game struct {
 	combatLog  []string
 	message    string
 	diff       balance.Difficulty
+	xpBefore   []int // snapshot before combat for victory animation
+	discovered map[string]bool // bestiary: monster IDs encountered
 	mu         sync.Mutex
 }
 
@@ -180,8 +183,8 @@ func (g *Game) State() GameState {
 		state.TileMap = g.tileMap
 	}
 
-	// Items and equipment (shared logic with stateUnlocked)
 	g.fillInventoryState(&state)
+	g.fillExtras(&state)
 
 	for _, c := range g.party {
 		cls := g.gd.ClassByID(c.ClassID)
@@ -258,6 +261,12 @@ func (g *Game) ProcessAction(req GameActionRequest) (*GameState, error) {
 func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 	switch req.Type {
 	case "encounter":
+		// Snapshot XP before combat for victory screen animation
+		g.xpBefore = make([]int, len(g.party))
+		for i, c := range g.party {
+			g.xpBefore[i] = c.XP
+		}
+
 		// Random encounter triggered by client (walking on grass)
 		partyLevels := make([]int, len(g.party))
 		for i, c := range g.party {
@@ -266,6 +275,19 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 		encLvl := balance.EncounterLevel(partyLevels, "normal", 0, g.currentQ)
 		g.enemies = balance.GenerateEncounter(g.gd.Monsters, encLvl, g.diff, g.rng)
 		g.phase = "combat"
+
+		// Track discovered monsters
+		for _, e := range g.enemies {
+			if g.discovered == nil {
+				g.discovered = make(map[string]bool)
+			}
+			for _, m := range g.gd.Monsters {
+				if m.Name == e.Name {
+					g.discovered[m.ID] = true
+				}
+			}
+		}
+
 		g.combatLog = append(g.combatLog, "Enemies appear!")
 		for _, e := range g.enemies {
 			g.combatLog = append(g.combatLog, fmt.Sprintf("  %s (HP: %d)", e.Name, e.MaxHP))
@@ -839,6 +861,13 @@ func (g *Game) restParty() {
 	}
 }
 
+func (g *Game) fillExtras(state *GameState) {
+	// XP before combat (for victory animation)
+	if len(g.xpBefore) > 0 {
+		state.XPBefore = g.xpBefore
+	}
+}
+
 func (g *Game) fillInventoryState(state *GameState) {
 	// Items (non-potion consumables and weapons in inventory)
 	for id, count := range g.inv.Consumables {
@@ -887,6 +916,7 @@ func (g *Game) stateUnlocked() GameState {
 	}
 
 	g.fillInventoryState(&state)
+	g.fillExtras(&state)
 	for _, c := range g.party {
 		cls := g.gd.ClassByID(c.ClassID)
 		pm := PartyMemberState{
@@ -1020,6 +1050,7 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 		currentQ:   0,
 		phase:      "world",
 		diff:       balance.GetDifficulty(req.Difficulty),
+		discovered: make(map[string]bool),
 	}
 
 	gm.mu.Lock()

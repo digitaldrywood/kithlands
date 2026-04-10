@@ -574,12 +574,12 @@ export class BattleScene extends Phaser.Scene {
     this.add.rectangle(400, 300, 800, 600, 0x0a0a1e);
 
     const isDefeat = gs.phase === 'defeat';
-    this.add.text(400, 40, isDefeat ? 'DEFEAT' : 'VICTORY!', {
-      fontSize: '36px', color: isDefeat ? '#ff4444' : '#ffff44', fontFamily: 'monospace',
+    this.add.text(400, 30, isDefeat ? 'DEFEAT' : 'VICTORY!', {
+      fontSize: '32px', color: isDefeat ? '#ff4444' : '#ffff44', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     if (isDefeat) {
-      this.add.text(400, 100, gs.message || 'Your party has fallen.', {
+      this.add.text(400, 80, gs.message || 'Your party has fallen.', {
         fontSize: '14px', color: '#aaaaaa', fontFamily: 'monospace',
       }).setOrigin(0.5);
       this.addContinueButton(gs);
@@ -587,45 +587,138 @@ export class BattleScene extends Phaser.Scene {
     }
 
     const log = gs.combat_log || [];
-    let y = 80;
+
+    // Rewards summary (gold, items)
+    let y = 60;
     for (const l of log) {
-      if (l.includes('Victory') || l.includes('Found:') || l.startsWith('+')) {
-        this.add.text(400, y, l, { fontSize: '12px', color: '#44ff44', fontFamily: 'monospace' }).setOrigin(0.5);
-        y += 20;
+      if (l.includes('Victory') || l.includes('Found:')) {
+        this.add.text(400, y, l, { fontSize: '11px', color: '#44ff44', fontFamily: 'monospace' }).setOrigin(0.5);
+        y += 16;
       }
-    }
-    const lvlUps = log.filter(l => l.includes('leveled up'));
-    if (lvlUps.length) {
-      y += 8;
-      this.add.text(400, y, '-- LEVEL UP --', { fontSize: '16px', color: '#ffff44', fontFamily: 'monospace' }).setOrigin(0.5);
-      y += 22;
-      for (const l of lvlUps) {
-        this.add.text(400, y, l, { fontSize: '12px', color: '#ffcc44', fontFamily: 'monospace' }).setOrigin(0.5);
-        y += 20;
-      }
-    }
-    for (const l of log.filter(l => l.includes('Quest complete'))) {
-      y += 5;
-      this.add.text(400, y, l, { fontSize: '12px', color: '#44ccff', fontFamily: 'monospace' }).setOrigin(0.5);
-      y += 20;
     }
 
-    y += 12;
-    this.add.text(400, y, 'Party:', { fontSize: '13px', color: '#ffffff', fontFamily: 'monospace' }).setOrigin(0.5);
-    y += 20;
-    for (const p of gs.party) {
-      this.add.text(400, y,
-        `${p.name} (${p.class_name}) Lv${p.level}  HP:${p.hp}/${p.max_hp}  XP:${p.xp}/${p.xp_next}`,
-        { fontSize: '11px', color: p.hp <= 0 ? '#666666' : '#ffffff', fontFamily: 'monospace' }
-      ).setOrigin(0.5);
-      y += 18;
+    // Quest completions
+    for (const l of log.filter(l => l.includes('Quest complete'))) {
+      this.add.text(400, y, l, { fontSize: '11px', color: '#44ccff', fontFamily: 'monospace' }).setOrigin(0.5);
+      y += 16;
     }
-    y += 8;
+
+    // Animated XP bars for each party member
+    y += 15;
+    const barW = 300;
+    const xpBefore = gs.xp_before || [];
+
+    for (let i = 0; i < gs.party.length; i++) {
+      const p = gs.party[i];
+      const alive = p.hp > 0;
+      const prevXP = xpBefore[i] || 0;
+
+      // Character sprite + name
+      const cs = CLASS_SPRITES[p.class_id];
+      if (cs && this.textures.exists(cs)) {
+        const sprite = this.add.image(100, y + 20, cs);
+        sprite.setScale(40 / Math.max(sprite.width, sprite.height) * 2);
+        if (!alive) sprite.setTint(0x444444);
+      }
+
+      // Name and level
+      this.add.text(140, y, `${p.name}`, {
+        fontSize: '13px', color: alive ? '#ffffff' : '#666666', fontFamily: 'monospace',
+      });
+      const levelText = this.add.text(140, y + 16, `${p.class_name} Lv.${p.level}`, {
+        fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
+      });
+
+      // HP bar
+      this.add.text(300, y, 'HP', { fontSize: '9px', color: '#888888', fontFamily: 'monospace' });
+      this.add.rectangle(300 + barW / 2 + 15, y + 4, barW, 8, 0x333333);
+      const hpPct = Math.max(0, p.hp / p.max_hp);
+      if (hpPct > 0) {
+        const hpColor = hpPct > 0.5 ? 0x44ff44 : hpPct > 0.25 ? 0xff8800 : 0xff0000;
+        this.add.rectangle(300 + 15 + barW * hpPct / 2, y + 4, barW * hpPct, 8, hpColor);
+      }
+      this.add.text(300 + barW + 20, y, `${p.hp}/${p.max_hp}`, {
+        fontSize: '9px', color: '#cccccc', fontFamily: 'monospace',
+      });
+
+      // XP bar with animation
+      this.add.text(300, y + 18, 'XP', { fontSize: '9px', color: '#888888', fontFamily: 'monospace' });
+      const xpBarBg = this.add.rectangle(300 + barW / 2 + 15, y + 22, barW, 10, 0x222244);
+      const xpPctStart = p.xp_next > 0 ? Math.min(1, prevXP / p.xp_next) : 0;
+      const xpPctEnd = p.xp_next > 0 ? Math.min(1, p.xp / p.xp_next) : 0;
+
+      const xpBarFill = this.add.rectangle(
+        300 + 15, y + 22,
+        1, 10, 0x4488ff
+      ).setOrigin(0, 0.5);
+
+      const xpText = this.add.text(300 + barW + 20, y + 17, `${prevXP}/${p.xp_next}`, {
+        fontSize: '9px', color: '#8888ff', fontFamily: 'monospace',
+      });
+
+      // Animate the XP bar filling
+      const delay = 500 + i * 800;
+      this.tweens.add({
+        targets: xpBarFill,
+        width: barW * xpPctEnd,
+        duration: 1200,
+        delay,
+        ease: 'Power2',
+        onUpdate: () => {
+          // Update XP text as bar fills
+          const progress = xpBarFill.width / barW;
+          const currentXP = Math.floor(prevXP + (p.xp - prevXP) * (progress / xpPctEnd || 0));
+          xpText.setText(`${Math.min(currentXP, p.xp)}/${p.xp_next}`);
+        },
+      });
+
+      // Check for level up -- flash effect
+      const leveledUp = log.some(l => l.includes(`${p.name} leveled up`));
+      if (leveledUp) {
+        this.time.delayedCall(delay + 1300, () => {
+          // Flash
+          const flash = this.add.rectangle(400, y + 20, 700, 50, 0xffff44, 0.3);
+          this.tweens.add({ targets: flash, alpha: 0, duration: 600, onComplete: () => flash.destroy() });
+
+          // Level up text
+          const lvlText = this.add.text(650, y + 12, 'LEVEL UP!', {
+            fontSize: '14px', color: '#ffff44', fontFamily: 'monospace', fontStyle: 'bold',
+          }).setOrigin(0.5).setAlpha(0);
+          this.tweens.add({ targets: lvlText, alpha: 1, duration: 300 });
+
+          // Update level display
+          levelText.setText(`${p.class_name} Lv.${p.level}`).setColor('#ffff44');
+        });
+      }
+
+      // Stats row
+      this.add.text(140, y + 35,
+        `STR:${p.str}  AGI:${p.agi}  INT:${p.int_stat}`,
+        { fontSize: '8px', color: '#888888', fontFamily: 'monospace' }
+      );
+
+      y += 65;
+    }
+
+    // Gold and items
+    y += 5;
     this.add.text(400, y, `Gold: ${gs.gold}  |  Potions: ${gs.potions}`, {
       fontSize: '12px', color: '#ffcc44', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
-    this.addContinueButton(gs);
+    // Items found
+    if (gs.items && gs.items.length > 0) {
+      y += 18;
+      const itemStr = gs.items.map(i => `${i.name}(${i.count})`).join(', ');
+      this.add.text(400, y, `Items: ${itemStr}`, {
+        fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
+      }).setOrigin(0.5);
+    }
+
+    // Delay continue button to let animations play
+    this.time.delayedCall(500 + gs.party.length * 800 + 1000, () => {
+      this.addContinueButton(gs);
+    });
   }
 
   addContinueButton(gs) {
