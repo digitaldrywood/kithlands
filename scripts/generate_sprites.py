@@ -458,6 +458,8 @@ def generate_and_process(prompt, output_path, target_size, is_tile=False):
         img = remove_background(img)
         img = crop_to_content(img)
     img = resize_to_square(img, target_size)
+    if not is_tile:
+        img = cleanup_edge_artifacts(img)
     img.save(output_path, "PNG")
     size_kb = os.path.getsize(output_path) // 1024
     print(f"  Saved: {output_path} ({size_kb} KB, {target_size}x{target_size})")
