@@ -351,6 +351,23 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 			}
 
 			switch ma.Type {
+			case "item":
+				// Use potion on most damaged party member
+				if g.inv.Consumables["potion"] > 0 {
+					g.inv.Consumables["potion"]--
+					var healTarget *character.Character
+					for _, c := range g.party {
+						if c.IsAlive() && (healTarget == nil || c.CurrentHP < healTarget.CurrentHP) {
+							healTarget = c
+						}
+					}
+					if healTarget != nil {
+						healTarget.Heal(30)
+						g.combatLog = append(g.combatLog, fmt.Sprintf("%s uses Potion on %s - healed 30 HP (%d/%d)", g.party[ma.Slot].Name, healTarget.Name, healTarget.CurrentHP, healTarget.MaxHP))
+					}
+				}
+				continue
+
 			case "spell":
 				// Resolve spell inline
 				spell := g.gd.SpellByID(ma.SpellID)
