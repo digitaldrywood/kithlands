@@ -17,6 +17,9 @@ const TILE_COLORS = {
   7: 0x9E9E9E, // rock
   8: 0x66BB6A, // bush
   9: 0x388E3C, // dark grass
+  10: 0x1B5E20, // forest (darker)
+  11: 0x8D6E63, // hill
+  12: 0xFFE082, // sand
 };
 
 const TILE_WALKABLE = {
@@ -30,6 +33,9 @@ const TILE_WALKABLE = {
   7: false, // rock
   8: false, // bush
   9: true,  // dark grass
+  10: false, // forest
+  11: false, // hill
+  12: true,  // sand
 };
 
 const TILE_SIZE = 16;
@@ -194,6 +200,9 @@ export class WorldScene extends Phaser.Scene {
         }
       }
     }
+
+    // Minimap
+    this.drawMinimap();
 
     // HUD buttons
     const codexBtn = this.add.text(690, 575, '[H]elp', {
@@ -690,6 +699,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.updateHUD();
+    this.updateMinimap();
   }
 
   offerSave(locationName) {
@@ -1012,6 +1022,56 @@ export class WorldScene extends Phaser.Scene {
         this.tileGraphics.fillStyle(color, 1);
         this.tileGraphics.fillRect(x * RENDERED_TILE, y * RENDERED_TILE, RENDERED_TILE, RENDERED_TILE);
       }
+    }
+  }
+
+  drawMinimap() {
+    const mmW = 120, mmH = 90;
+    const mmX = 670, mmY = 10;
+    const scaleX = mmW / this.mapW;
+    const scaleY = mmH / this.mapH;
+
+    // Background
+    this.add.rectangle(mmX + mmW / 2, mmY + mmH / 2, mmW + 4, mmH + 4, 0x000000, 0.7)
+      .setScrollFactor(0).setDepth(18);
+
+    // Draw tiles at mini scale
+    const mmGfx = this.add.graphics().setScrollFactor(0).setDepth(19);
+    for (let y = 0; y < this.mapH; y += 2) {
+      for (let x = 0; x < this.mapW; x += 2) {
+        const tile = this.tileData[y][x];
+        const color = TILE_COLORS[tile] || 0x000000;
+        mmGfx.fillStyle(color, 0.8);
+        mmGfx.fillRect(mmX + x * scaleX, mmY + y * scaleY, Math.max(1, scaleX * 2), Math.max(1, scaleY * 2));
+      }
+    }
+
+    // Location markers
+    for (const spawn of this.spawns) {
+      if (spawn.kind === 'natural') continue;
+      mmGfx.fillStyle(0xffffff, 1);
+      mmGfx.fillRect(mmX + spawn.x * scaleX - 1, mmY + spawn.y * scaleY - 1, 3, 3);
+    }
+
+    // Player dot (updated each frame)
+    this.minimapDot = this.add.circle(
+      mmX + this.playerX * scaleX,
+      mmY + this.playerY * scaleY,
+      2, 0xff4444
+    ).setScrollFactor(0).setDepth(20);
+
+    this.mmX = mmX;
+    this.mmY = mmY;
+    this.mmScaleX = scaleX;
+    this.mmScaleY = scaleY;
+  }
+
+  updateMinimap() {
+    if (this.minimapDot && this.mmX != null) {
+      this.minimapDot.setPosition(
+        this.mmX + this.playerX * this.mmScaleX,
+        this.mmY + this.playerY * this.mmScaleY
+      );
     }
   }
 
