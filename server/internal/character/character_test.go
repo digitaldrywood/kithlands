@@ -3,6 +3,7 @@ package character_test
 import (
 	"math"
 	"math/rand/v2"
+	"strconv"
 	"testing"
 
 	"github.com/digitaldrywood/kithlands/internal/character"
@@ -61,34 +62,24 @@ func TestXPCurve(t *testing.T) {
 	gd := loadTestData(t)
 	curve := &gd.Stats.XPCurve
 
-	// Verify formula: floor(40 * level^1.6) + 30
-	// Note: the GDD Section 5.2 reference table values diverge from
-	// this formula at higher levels. The formula is implemented as stated.
-	// Levels 1-2 match exactly; higher levels should be tuned via
-	// balance_sim. This is flagged for Cory to decide authoritative values.
-	tests := map[int]int{
-		1: 70,  // floor(40 * 1^1.6) + 30 = 70
-		2: 151, // floor(40 * 2^1.6) + 30 = 151
-	}
-
-	for level, want := range tests {
+	// Verify XPToNextLevel returns the authoritative reference table value
+	// for every level from 1 to MaxLevel.
+	prev := 0
+	for level := 1; level <= curve.MaxLevel; level++ {
+		want, ok := curve.RefTable[strconv.Itoa(level)]
+		if !ok {
+			t.Fatalf("reference table missing level %d", level)
+		}
 		got := character.XPToNextLevel(level, curve)
 		if got != want {
 			t.Errorf("XP at level %d: got %d, want %d", level, got, want)
 		}
-	}
-
-	// Verify the curve is monotonically increasing
-	prev := 0
-	for level := 1; level <= curve.MaxLevel; level++ {
-		xp := character.XPToNextLevel(level, curve)
-		if xp <= prev {
-			t.Errorf("XP curve not increasing: level %d (%d) <= level %d (%d)", level, xp, level-1, prev)
+		if got <= prev {
+			t.Errorf("XP curve not increasing: level %d (%d) <= level %d (%d)", level, got, level-1, prev)
 		}
-		prev = xp
+		prev = got
 	}
 
-	// Verify max level is 50
 	if curve.MaxLevel != 50 {
 		t.Errorf("max level: got %d, want 50", curve.MaxLevel)
 	}
@@ -275,7 +266,7 @@ func TestMultiLevelUp(t *testing.T) {
 	if c.XP != 79 {
 		t.Errorf("remaining XP: got %d, want 79", c.XP)
 	}
-	// Should not be able to level again (need 259 for lv3->4)
+	// Should not be able to level again (need 263 for lv3->4)
 	if character.CanLevelUp(c, curve) {
 		t.Errorf("should not be able to level up with %d XP (need %d)", c.XP, character.XPToNextLevel(c.Level, curve))
 	}
