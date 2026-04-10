@@ -1,5 +1,6 @@
 import { login, setToken, newGame, listSaves, loadSave } from '../api.js';
 import { initAudio, playMusic, playSFX } from '../systems/audio.js';
+import { getEmail, setEmail, getLastWizard, setLastWizard } from '../systems/prefs.js';
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -37,12 +38,15 @@ export class TitleScene extends Phaser.Scene {
     const inputEl = document.createElement('input');
     inputEl.type = 'email';
     inputEl.placeholder = 'player@example.com';
+    inputEl.value = getEmail(); // pre-fill from last session
     inputEl.style.cssText = 'font-size:16px;padding:6px 14px;width:280px;text-align:center;background:#222;color:#fff;border:2px solid #555;outline:none;font-family:monospace;';
     this.add.dom(cx, 245, inputEl);
 
     // Buttons
     this.makeButton(cx, 310, '[ NEW GAME ]', '#44ff44', () => this.startGame(inputEl, false));
-    this.makeButton(cx, 350, '[ QUICK START - Cadott ]', '#ffcc44', () => this.startGame(inputEl, true));
+    const lastWiz = getLastWizard();
+    const quickLabel = lastWiz ? `[ QUICK START - ${lastWiz.town_name} ]` : '[ QUICK START - Cadott ]';
+    this.makeButton(cx, 350, quickLabel, '#ffcc44', () => this.startGame(inputEl, true));
     this.makeButton(cx, 390, '[ LOAD GAME ]', '#4488ff', () => this.doLogin(inputEl, () => this.showLoadScreen()));
     this.makeButton(cx, 440, '[ PLAY NOW - skip login ]', '#888888', () => {
       inputEl.value = `test_${Date.now()}@kithlands.dev`;
@@ -181,10 +185,12 @@ export class TitleScene extends Phaser.Scene {
         return;
       }
       setToken(result.token);
+      setEmail(email); // remember email
 
       if (quick) {
-        console.log('[Title] quick start with Cadott defaults');
-        const gameResult = await newGame({
+        // Use last wizard data if available, otherwise Cadott defaults
+        const last = getLastWizard();
+        const gameData = last || {
           town_name: 'Cadott, WI',
           people: [
             { name: 'Bob', relation: 'friendly' },
@@ -198,7 +204,9 @@ export class TitleScene extends Phaser.Scene {
             { name: 'Sparks', class_id: 'cinder' },
           ],
           difficulty: 'normal',
-        });
+        };
+        console.log('[Title] quick start with', gameData.town_name);
+        const gameResult = await newGame(gameData);
 
         if (gameResult.error) {
           this.statusText.setText(gameResult.error).setColor('#ff4444');

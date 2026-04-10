@@ -1,4 +1,5 @@
 import { newGame, getClasses, geocode } from '../api.js';
+import { getLastWizard, setLastWizard, addPartyToHistory, addNPCsToHistory, getPartyHistory, getNPCHistory } from '../systems/prefs.js';
 
 export class WizardScene extends Phaser.Scene {
   constructor() {
@@ -7,13 +8,17 @@ export class WizardScene extends Phaser.Scene {
 
   create() {
     this.step = 0;
+    const last = getLastWizard() || {};
     this.wizardData = {
-      town_name: '',
-      people: [],
-      places: [],
-      big_building: '',
-      party: [],
-      difficulty: 'normal',
+      town_name: last.town_name || '',
+      people: last.people || [],
+      places: last.places || [],
+      big_building: last.big_building || '',
+      party: last.party || [],
+      difficulty: last.difficulty || 'normal',
+      use_osm: last.use_osm ?? true,
+      lat: last.lat || 0,
+      lng: last.lng || 0,
     };
 
     this.cx = 400;
@@ -93,6 +98,7 @@ export class WizardScene extends Phaser.Scene {
     this.addTitle('LOCALITY WIZARD');
     this.addLabel(80, 'Where do you live? This becomes the world of your game.\nEnter a town name or address to build from real-world map data.');
     const input = this.addInput(140, 'Town name or address (e.g. Cadott, WI)');
+    if (this.wizardData.town_name) input.node.value = this.wizardData.town_name;
 
     // Status text for geocoding
     const status = this.add.text(this.cx, 175, '', {
@@ -154,9 +160,13 @@ export class WizardScene extends Phaser.Scene {
 
     const inputs = [];
     for (let i = 0; i < 3; i++) {
+      const prevNPC = this.wizardData.people[i];
+      const defName = prevNPC?.name || defaults[i].name;
+      const defRel = prevNPC?.relation || defaults[i].rel;
       this.addLabel(165 + i * 80, `NPC ${i + 1}:`);
-      const nameInput = this.addInput(195 + i * 80, defaults[i].name, 200);
-      inputs.push({ nameInput, defaultName: defaults[i].name, defaultRel: defaults[i].rel });
+      const nameInput = this.addInput(195 + i * 80, defName, 200);
+      if (prevNPC) nameInput.node.value = prevNPC.name;
+      inputs.push({ nameInput, defaultName: defName, defaultRel: defRel });
     }
 
     this.addBackButton(440);
@@ -177,9 +187,12 @@ export class WizardScene extends Phaser.Scene {
     const defaults = ['The School', 'Creswood Corners', 'Fire Hall'];
     const inputs = [];
     for (let i = 0; i < 3; i++) {
+      const prevPlace = this.wizardData.places[i];
+      const defPlace = prevPlace || defaults[i];
       this.addLabel(130 + i * 80, `Place ${i + 1}:`);
-      const input = this.addInput(160 + i * 80, defaults[i], 250);
-      inputs.push({ input, def: defaults[i] });
+      const input = this.addInput(160 + i * 80, defPlace, 250);
+      if (prevPlace) input.node.value = prevPlace;
+      inputs.push({ input, def: defPlace });
     }
 
     this.addBackButton(400);
@@ -193,7 +206,9 @@ export class WizardScene extends Phaser.Scene {
   showBigBuildingStep() {
     this.addTitle('THE BIG BUILDING');
     this.addLabel(80, 'What\'s the biggest building in town?\nThis becomes the final dungeon or seat of power.');
-    const input = this.addInput(150, 'Town Hall');
+    const defBuilding = this.wizardData.big_building || 'Town Hall';
+    const input = this.addInput(150, defBuilding);
+    if (this.wizardData.big_building) input.node.value = this.wizardData.big_building;
     this.addBackButton(220);
     this.addButton(220, 'NEXT', () => {
       this.wizardData.big_building = input.node.value.trim() || 'Town Hall';
@@ -206,9 +221,10 @@ export class WizardScene extends Phaser.Scene {
     this.addTitle('PICK YOUR PARTY');
     this.addLabel(70, 'Choose 2 party members for the demo.\nClasses: warrior, brawler, rogue, mender, cinder, wayfarer');
 
+    const prevParty = this.wizardData.party;
     const slots = [
-      { defName: 'Hero', defClass: 'warrior' },
-      { defName: 'Sparks', defClass: 'cinder' },
+      { defName: prevParty[0]?.name || 'Hero', defClass: prevParty[0]?.class_id || 'warrior' },
+      { defName: prevParty[1]?.name || 'Sparks', defClass: prevParty[1]?.class_id || 'cinder' },
     ];
 
     const inputs = [];
@@ -216,6 +232,10 @@ export class WizardScene extends Phaser.Scene {
       this.addLabel(140 + i * 110, `Slot ${i + 1}:`);
       const nameInput = this.addInput(170 + i * 110, `Name (${slots[i].defName})`, 180);
       const classInput = this.addInput(205 + i * 110, `Class (${slots[i].defClass})`, 180);
+      if (prevParty[i]) {
+        nameInput.node.value = prevParty[i].name;
+        classInput.node.value = prevParty[i].class_id;
+      }
       inputs.push({ nameInput, classInput, def: slots[i] });
     }
 
@@ -273,6 +293,11 @@ export class WizardScene extends Phaser.Scene {
     this.addTitle('Creating your world...');
     const osmMsg = this.wizardData.use_osm ? 'Fetching real-world map data from OpenStreetMap...' : 'Generating locality, campaign, and encounters...';
     this.addLabel(100, osmMsg);
+
+    // Save wizard prefs for next time
+    setLastWizard(this.wizardData);
+    if (this.wizardData.party) addPartyToHistory(this.wizardData.party);
+    if (this.wizardData.people) addNPCsToHistory(this.wizardData.people);
 
     try {
       const result = await newGame(this.wizardData);
