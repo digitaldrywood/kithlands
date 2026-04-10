@@ -1,11 +1,11 @@
 {
   "ultimates": [
-    { "id": "ult_sword",  "name": "Hero's Edge",    "weapon_class": "sword",  "tier": 7 },
-    { "id": "ult_axe",    "name": "World Splitter", "weapon_class": "axe",    "tier": 7 },
-    { "id": "ult_dagger", "name": "Whisperfang",    "weapon_class": "dagger", "tier": 7 },
-    { "id": "ult_staff",  "name": "Starcaller",     "weapon_class": "staff",  "tier": 7 },
-    { "id": "ult_bow",    "name": "Sky's Eye",      "weapon_class": "bow",    "tier": 7 },
-    { "id": "ult_hammer", "name": "Mountainvoice",  "weapon_class": "hammer", "tier": 7 }
+    { "id": "ult_sword",  "item_id": "hero_edge",      "name": "Hero's Edge",    "weapon_class": "sword",  "tier": 7 },
+    { "id": "ult_axe",    "item_id": "world_splitter",  "name": "World Splitter", "weapon_class": "axe",    "tier": 7 },
+    { "id": "ult_dagger", "item_id": "whisperfang",     "name": "Whisperfang",    "weapon_class": "dagger", "tier": 7 },
+    { "id": "ult_staff",  "item_id": "starcaller",      "name": "Starcaller",     "weapon_class": "staff",  "tier": 7 },
+    { "id": "ult_bow",    "item_id": "skys_eye",        "name": "Sky's Eye",      "weapon_class": "bow",    "tier": 7 },
+    { "id": "ult_hammer", "item_id": "mountainvoice",   "name": "Mountainvoice",  "weapon_class": "hammer", "tier": 7 }
   ],
   "placement_rules": {
     "guarantee": "all_must_be_findable_per_run",

@@ -140,7 +140,7 @@
     "category": "side_quest",
     "flavor_compatibility": ["conquest"],
     "locality_requirements": ["has_wilderness"],
-    "act": 1,
+    "act": 2,
     "difficulty_tier": 2,
     "rarity": "uncommon",
     "tags": ["military", "rescue"],

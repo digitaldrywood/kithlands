@@ -4,7 +4,7 @@
     "name": "Monster Island",
     "category": "easter_egg",
     "flavor_compatibility": ["conquest"],
-    "locality_requirements": ["has_water"],
+    "locality_requirements": ["has_water", "has_t3_transport"],
     "act": 2,
     "difficulty_tier": 3,
     "rarity": "rare",
@@ -12,7 +12,7 @@
     "template": "",
     "rewards": ["unique_item_tier5", "xp_bonus_massive"],
     "blocks": [],
-    "requires": ["has_t3_transport"]
+    "requires": []
   },
   {
     "id": "ee_speedrunners_cave",
