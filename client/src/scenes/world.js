@@ -58,6 +58,20 @@ const TILE_WALKABLE = {
   12: true, // sand
 };
 
+// Tiles unlocked by water transport (T3+)
+const WATER_TILES = { 2: true };
+// Tiles unlocked by flying transport (T5)
+const FLY_TILES = { 2: true, 3: true, 7: true, 8: true, 10: true, 11: true };
+
+// Vehicle indicator colors by tier
+const VEHICLE_COLORS = {
+  T1: null, // no indicator for walking
+  T2: 0x8b4513, // brown (horse)
+  T3: 0x1e90ff, // blue (sailing ship)
+  T4: 0x191970, // dark blue (war galleon)
+  T5: 0xf0f0ff, // white (airship)
+};
+
 const TILE_SIZE = 16;
 const SCALE = 2;
 const RENDERED_TILE = TILE_SIZE * SCALE;
@@ -164,6 +178,10 @@ export class WorldScene extends Phaser.Scene {
       )
       .setDepth(10)
       .setScale(SCALE);
+
+    // Vehicle indicator circle behind player (T2+)
+    this.vehicleIndicator = null;
+    this.updateVehicleIndicator();
 
     // Camera follows player
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
@@ -390,7 +408,7 @@ export class WorldScene extends Phaser.Scene {
     if (nx < 0 || nx >= this.mapW || ny < 0 || ny >= this.mapH) return;
 
     const tile = this.tileData[ny][nx];
-    if (!TILE_WALKABLE[tile]) return;
+    if (!this.canWalkTile(tile)) return;
 
     this.playerX = nx;
     this.playerY = ny;
@@ -411,13 +429,24 @@ export class WorldScene extends Phaser.Scene {
     cachedPlayerY = this.playerY;
     cachedPlayerDir = this.playerDir;
 
+    const destX = nx * RENDERED_TILE + RENDERED_TILE / 2;
+    const destY = ny * RENDERED_TILE + RENDERED_TILE / 2;
     this.tweens.add({
       targets: this.player,
-      x: nx * RENDERED_TILE + RENDERED_TILE / 2,
-      y: ny * RENDERED_TILE + RENDERED_TILE / 2,
+      x: destX,
+      y: destY,
       duration: 100,
       ease: "Linear",
     });
+    if (this.vehicleIndicator) {
+      this.tweens.add({
+        targets: this.vehicleIndicator,
+        x: destX,
+        y: destY,
+        duration: 100,
+        ease: "Linear",
+      });
+    }
 
     this.stepCount++;
 
@@ -435,9 +464,11 @@ export class WorldScene extends Phaser.Scene {
       hideInteractPrompt(this);
     }
 
-    // Random encounter on grass/dark grass
-    if ((tile === 0 || tile === 9) && this.stepCount > 6) {
-      const chance = Math.min(10 + this.stepCount * 3, 50);
+    // Random encounter on grass/dark grass (modified by transport tier)
+    const encounterMult = this.gameState.transport?.encounter_rate_mult ?? 1.0;
+    if ((tile === 0 || tile === 9) && this.stepCount > 6 && encounterMult > 0) {
+      const baseChance = Math.min(10 + this.stepCount * 3, 50);
+      const chance = baseChance * encounterMult;
       if (Phaser.Math.Between(1, 100) <= chance) {
         this.stepCount = 0;
         this.triggerRandomEncounter();
@@ -494,6 +525,7 @@ export class WorldScene extends Phaser.Scene {
       this.gameState = result;
       this.updateHUD();
       this.updateQuestDisplay();
+      this.updateVehicleIndicator();
 
       if (result.message) {
         this.showMessage(result.message);
@@ -630,9 +662,35 @@ export class WorldScene extends Phaser.Scene {
     const parts = gs.party.map(
       (p) => `${p.name} Lv${p.level} ${p.hp}/${p.max_hp}`,
     );
+    const tierName = gs.transport?.tier_name || "Foot";
     this.hudText.setText(
-      `${parts.join(" | ")} | Gold:${gs.gold} Potions:${gs.potions}`,
+      `[${tierName}] ${parts.join(" | ")} | Gold:${gs.gold} Potions:${gs.potions}`,
     );
+  }
+
+  canWalkTile(tile) {
+    if (TILE_WALKABLE[tile]) return true;
+    const tr = this.gameState.transport;
+    if (!tr) return false;
+    if (tr.flies && FLY_TILES[tile]) return true;
+    if (tr.crosses_water && WATER_TILES[tile]) return true;
+    return false;
+  }
+
+  updateVehicleIndicator() {
+    const tier = this.gameState.transport?.current_tier || "T1";
+    const color = VEHICLE_COLORS[tier];
+
+    if (this.vehicleIndicator) {
+      this.vehicleIndicator.destroy();
+      this.vehicleIndicator = null;
+    }
+
+    if (color == null) return; // T1 has no indicator
+
+    this.vehicleIndicator = this.add
+      .circle(this.player.x, this.player.y, 14, color, 0.6)
+      .setDepth(9); // behind player sprite (depth 10)
   }
 
   updateQuestDisplay() {

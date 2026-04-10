@@ -13,6 +13,7 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/inventory"
 	"github.com/digitaldrywood/kithlands/internal/locality"
 	"github.com/digitaldrywood/kithlands/internal/magic"
+	"github.com/digitaldrywood/kithlands/internal/transport"
 )
 
 // Request/response types
@@ -109,6 +110,17 @@ type GameState struct {
 	CombatActions []CombatActionEntry  `json:"combat_actions,omitempty"`
 	TileMap   *locality.TileMap   `json:"tilemap,omitempty"`
 	ShopItems []ShopItemState     `json:"shop_items,omitempty"`
+	Transport TransportInfo        `json:"transport"`
+}
+
+// TransportInfo is the transport tier state sent to the client.
+type TransportInfo struct {
+	CurrentTier   string  `json:"current_tier"`
+	TierName      string  `json:"tier_name"`
+	Sprite        string  `json:"sprite"`
+	EncounterMult float64 `json:"encounter_rate_mult"`
+	CrossesWater  bool    `json:"crosses_water"`
+	Flies         bool    `json:"flies"`
 }
 
 type ItemState struct {
@@ -229,6 +241,7 @@ type Game struct {
 	discovered map[string]bool // bestiary: monster IDs encountered
 	formation  string             // current encounter layout type
 	promotionOffered bool        // midpoint promotion has already fired
+	trans      *transport.State   // current transport tier & unlocks
 	mu         sync.Mutex
 }
 
@@ -252,6 +265,7 @@ func (g *Game) State() GameState {
 		state.TileMap = g.tileMap
 	}
 
+	state.Transport = g.buildTransportInfo()
 	g.fillInventoryState(&state)
 	g.fillExtras(&state)
 
@@ -430,6 +444,7 @@ func (g *Game) stateUnlocked() GameState {
 		state.Location = g.loc.Name
 	}
 
+	state.Transport = g.buildTransportInfo()
 	g.fillInventoryState(&state)
 	g.fillExtras(&state)
 	for _, c := range g.party {
@@ -447,6 +462,30 @@ func (g *Game) stateUnlocked() GameState {
 		state.Quests = append(state.Quests, QuestState{Name: q.Name, Description: q.Description, Act: q.Act, Completed: q.Completed})
 	}
 	return state
+}
+
+// buildTransportInfo creates the transport payload for the client.
+func (g *Game) buildTransportInfo() TransportInfo {
+	if g.trans == nil {
+		return TransportInfo{CurrentTier: "T1", TierName: "Foot", EncounterMult: 1.0}
+	}
+	tiers := g.gd.Transport.Tiers
+	td := g.trans.CurrentTierData(tiers)
+	if td == nil {
+		return TransportInfo{CurrentTier: g.trans.CurrentTier, TierName: "Unknown", EncounterMult: 1.0}
+	}
+	sprite := td.Name
+	if skin, ok := g.gd.Transport.ConquestSkins[td.ID]; ok {
+		sprite = skin.Sprite
+	}
+	return TransportInfo{
+		CurrentTier:   td.ID,
+		TierName:      td.Name,
+		Sprite:        sprite,
+		EncounterMult: td.EncounterRateMult,
+		CrossesWater:  td.CrossesWater,
+		Flies:         td.Flies,
+	}
 }
 
 // logCombat appends a text line and its structured metadata in lockstep.

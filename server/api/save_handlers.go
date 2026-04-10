@@ -17,6 +17,7 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/locality"
 	"github.com/digitaldrywood/kithlands/internal/magic"
 	"github.com/digitaldrywood/kithlands/internal/save"
+	"github.com/digitaldrywood/kithlands/internal/transport"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -58,6 +59,7 @@ func (g *Game) ToSaveState(name, userID string) (*save.SaveState, error) {
 		"phase":         g.phase,
 		"discovered":    g.discovered,
 		"spell_books":   g.spellBooks,
+		"transport":     g.trans,
 	}
 	worldJSON, err := json.Marshal(worldState)
 	if err != nil {
@@ -105,6 +107,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		Phase      string                      `json:"phase"`
 		Discovered map[string]bool             `json:"discovered"`
 		SpellBooks map[string]*magic.SpellBook `json:"spell_books"`
+		Transport  *transport.State            `json:"transport"`
 	}
 	if err := json.Unmarshal(ss.WorldState, &worldState); err != nil {
 		return nil, fmt.Errorf("unmarshaling world state: %w", err)
@@ -125,6 +128,11 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		discovered = make(map[string]bool)
 	}
 
+	trans := worldState.Transport
+	if trans == nil {
+		trans = transport.NewState()
+	}
+
 	game := &Game{
 		id:         fmt.Sprintf("game_%d", time.Now().UnixNano()),
 		gd:         gd,
@@ -141,6 +149,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		phase:      "world", // always resume in world
 		diff:       balance.GetDifficulty(ss.Difficulty),
 		discovered: discovered,
+		trans:      trans,
 	}
 
 	return game, nil

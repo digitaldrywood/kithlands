@@ -14,6 +14,7 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/inventory"
 	"github.com/digitaldrywood/kithlands/internal/locality"
 	"github.com/digitaldrywood/kithlands/internal/magic"
+	"github.com/digitaldrywood/kithlands/internal/transport"
 )
 
 // GameManager holds active game sessions.
@@ -168,6 +169,7 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 		diff:       balance.GetDifficulty(req.Difficulty),
 		rngSeed:    rngSeed,
 		discovered: make(map[string]bool),
+		trans:      transport.NewState(),
 	}
 
 	gm.mu.Lock()
