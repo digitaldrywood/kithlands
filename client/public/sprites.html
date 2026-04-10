@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kithlands - Sprite Gallery (Dev)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Courier New', monospace;
+    padding: 24px;
+  }
+  h1 {
+    text-align: center;
+    color: #ffd700;
+    font-size: 28px;
+    margin-bottom: 8px;
+    letter-spacing: 2px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #888;
+    font-size: 12px;
+    margin-bottom: 32px;
+  }
+  section {
+    margin-bottom: 40px;
+  }
+  h2 {
+    color: #4fc3f7;
+    font-size: 18px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 6px;
+    margin-bottom: 16px;
+  }
+  h2 .count {
+    color: #666;
+    font-weight: normal;
+    font-size: 13px;
+  }
+  .comparison-row {
+    display: flex;
+    gap: 32px;
+    margin-bottom: 24px;
+    align-items: flex-start;
+  }
+  .comparison-card {
+    background: #16213e;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    flex: 1;
+    max-width: 400px;
+  }
+  .comparison-card.highlight {
+    border-color: #ffd700;
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.15);
+  }
+  .comparison-card img {
+    image-rendering: auto;
+    display: block;
+    margin: 0 auto 12px;
+    max-width: 100%;
+  }
+  .comparison-card .label {
+    font-size: 14px;
+    color: #ffd700;
+    margin-bottom: 4px;
+    font-weight: bold;
+  }
+  .comparison-card .name {
+    font-size: 12px;
+    color: #ccc;
+  }
+  .comparison-card .meta {
+    font-size: 11px;
+    color: #666;
+    margin-top: 4px;
+  }
+  .verdict {
+    background: #1a2a1a;
+    border: 1px solid #2a5a2a;
+    border-radius: 4px;
+    padding: 12px 16px;
+    color: #8f8;
+    font-size: 13px;
+    margin-bottom: 24px;
+  }
+  .grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .sprite-card {
+    background: #16213e;
+    border: 1px solid #333;
+    border-radius: 4px;
+    padding: 12px;
+    text-align: center;
+    transition: border-color 0.2s;
+  }
+  .sprite-card:hover {
+    border-color: #4fc3f7;
+  }
+  .sprite-card img {
+    image-rendering: auto;
+    display: block;
+    margin: 0 auto 8px;
+  }
+  .sprite-card .name {
+    font-size: 11px;
+    color: #ccc;
+    word-break: break-all;
+  }
+  .sprite-card .meta {
+    font-size: 10px;
+    color: #666;
+    margin-top: 2px;
+  }
+  .checkerboard {
+    background-image:
+      linear-gradient(45deg, #222 25%, transparent 25%),
+      linear-gradient(-45deg, #222 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #222 75%),
+      linear-gradient(-45deg, transparent 75%, #222 75%);
+    background-size: 8px 8px;
+    background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+    display: inline-block;
+    padding: 4px;
+  }
+  .walk-group {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+</style>
+</head>
+<body>
+
+<h1>KITHLANDS SPRITE GALLERY</h1>
+<p class="subtitle">Dev asset browser -- HD Pixel Remaster style comparison</p>
+
+<section>
+  <h2>HD Pixel Remaster Test -- Current vs Proposed</h2>
+  <div class="verdict">
+    Comparing current chunky sprites (left) against HD Pixel Remaster regeneration (right).
+    The HD versions are 4x resolution with LANCZOS smoothing and refined style prompts.
+  </div>
+
+  <h3 style="color: #aaa; margin-bottom: 12px;">Warrior (Class Portrait)</h3>
+  <div class="comparison-row">
+    <div class="comparison-card">
+      <div class="label">Current (48x48)</div>
+      <div class="checkerboard">
+        <img src="sprites/warrior.png" width="192" height="192">
+      </div>
+      <div class="meta">48x48 native, shown at 4x -- visible pixels</div>
+    </div>
+    <div class="comparison-card highlight">
+      <div class="label">HD Pixel Remaster (192x192)</div>
+      <div class="checkerboard">
+        <img src="sprites/test_warrior_hd.png" width="192" height="192">
+      </div>
+      <div class="meta">192x192 native -- fine detail, smooth shading</div>
+    </div>
+  </div>
+
+  <h3 style="color: #aaa; margin-bottom: 12px;">Slime (Monster)</h3>
+  <div class="comparison-row">
+    <div class="comparison-card">
+      <div class="label">Current (64x64)</div>
+      <div class="checkerboard">
+        <img src="sprites/monsters/slime.png" width="256" height="256">
+      </div>
+      <div class="meta">64x64 native, shown at 4x -- visible pixels</div>
+    </div>
+    <div class="comparison-card highlight">
+      <div class="label">HD Pixel Remaster (256x256)</div>
+      <div class="checkerboard">
+        <img src="sprites/test_slime_hd.png" width="256" height="256">
+      </div>
+      <div class="meta">256x256 native -- translucent detail, smooth gradients</div>
+    </div>
+  </div>
+
+  <h3 style="color: #aaa; margin-bottom: 12px;">Player (Overworld)</h3>
+  <div class="comparison-row">
+    <div class="comparison-card">
+      <div class="label">Current (32x32)</div>
+      <div class="checkerboard">
+        <img src="sprites/player_down.png" width="128" height="128">
+      </div>
+      <div class="meta">32x32 native, shown at 4x -- visible pixels</div>
+    </div>
+    <div class="comparison-card highlight">
+      <div class="label">HD Pixel Remaster (128x128)</div>
+      <div class="checkerboard">
+        <img src="sprites/test_player_hd.png" width="128" height="128">
+      </div>
+      <div class="meta">128x128 native -- fine detail at same display size</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>All Current Sprites</h2>
+
+  <h3 style="color: #aaa; margin: 16px 0 12px;">Class Battle Portraits</h3>
+  <div class="grid" id="grid-classes"></div>
+
+  <h3 style="color: #aaa; margin: 16px 0 12px;">Player Directional</h3>
+  <div class="grid" id="grid-player"></div>
+
+  <h3 style="color: #aaa; margin: 16px 0 12px;">Monsters</h3>
+  <div class="grid" id="grid-monsters"></div>
+
+  <h3 style="color: #aaa; margin: 16px 0 12px;">NPCs</h3>
+  <div class="grid" id="grid-npcs"></div>
+
+  <h3 style="color: #aaa; margin: 16px 0 12px;">Walk Animation</h3>
+  <div class="grid" id="grid-walk"></div>
+
+  <h3 style="color: #aaa; margin: 16px 0 12px;">UI Icons</h3>
+  <div class="grid" id="grid-ui"></div>
+</section>
+
+<script>
+function makeCard(src, name, nativeSize, displaySize) {
+  const card = document.createElement('div');
+  card.className = 'sprite-card';
+  card.innerHTML = `
+    <div class="checkerboard">
+      <img src="${src}" width="${displaySize}" height="${displaySize}">
+    </div>
+    <div class="name">${name.replace('.png','').replace(/_/g,' ')}</div>
+    <div class="meta">${nativeSize}x${nativeSize}</div>
+  `;
+  return card;
+}
+
+const sections = {
+  classes: {
+    grid: 'grid-classes', base: 'sprites/', display: 128,
+    items: ['warrior','brawler','rogue','mender','cinder','wayfarer','knight','champion','shadow','sage','pyromancer','wanderer']
+  },
+  player: {
+    grid: 'grid-player', base: 'sprites/', display: 96,
+    items: ['player_down','player_up','player_left','player_right']
+  },
+  monsters: {
+    grid: 'grid-monsters', base: 'sprites/monsters/', display: 128,
+    items: ['slime','goblin','wolf','skeleton','bat','rat','snake','spider','orc','ghost','bandit','troll','wyvern','lich','golem','demon','dark_knight','dragon']
+  },
+  npcs: {
+    grid: 'grid-npcs', base: 'sprites/npcs/', display: 96,
+    items: ['elder','merchant','blacksmith','innkeeper','priestess','guard']
+  },
+  walk: {
+    grid: 'grid-walk', base: 'sprites/walk/', display: 64,
+    items: ['walk_down_0','walk_down_1','walk_down_2','walk_down_3',
+            'walk_left_0','walk_left_1','walk_left_2','walk_left_3',
+            'walk_right_0','walk_right_1','walk_right_2','walk_right_3',
+            'walk_up_0','walk_up_1','walk_up_2','walk_up_3']
+  },
+  ui: {
+    grid: 'grid-ui', base: 'sprites/ui/', display: 48,
+    items: ['icon_sword','icon_shield','icon_potion','icon_spell','icon_gold','icon_xp',
+            'icon_poison','icon_sleep','icon_mute','icon_slow','icon_paralyze',
+            'border_tl','border_t','border_tr','border_l','border_fill','border_r',
+            'border_bl','border_b','border_br','hp_bar_frame','hp_bar_fill','hp_bar_empty']
+  }
+};
+
+for (const [key, cfg] of Object.entries(sections)) {
+  const grid = document.getElementById(cfg.grid);
+  for (const name of cfg.items) {
+    grid.appendChild(makeCard(cfg.base + name + '.png', name, '?', cfg.display));
+  }
+}
+</script>
+</body>
+</html>
