@@ -97,11 +97,12 @@ export class WorldScene extends Phaser.Scene {
     // Location labels
     this.drawLabels();
 
-    // Player sprite
+    // Player sprite (directional)
+    this.playerDir = 'down';
     this.player = this.add.image(
       this.playerX * RENDERED_TILE + RENDERED_TILE / 2,
       this.playerY * RENDERED_TILE + RENDERED_TILE / 2,
-      'player'
+      'player_down'
     ).setDepth(10).setScale(SCALE);
 
     // Camera follows player
@@ -110,6 +111,12 @@ export class WorldScene extends Phaser.Scene {
     // Input
     this.cursors = this.input.keyboard.createCursorKeys();
     this.wasd = this.input.keyboard.addKeys('W,A,S,D');
+    this.menuOpen = false;
+    this.menuGroup = null;
+
+    // M key opens menu
+    this.input.keyboard.on('keydown-M', () => this.toggleMenu());
+    this.input.keyboard.on('keydown-ESC', () => { if (this.menuOpen) this.toggleMenu(); });
 
     // Touch movement
     this.input.on('pointerdown', (pointer) => {
@@ -164,10 +171,112 @@ export class WorldScene extends Phaser.Scene {
       }
     }
 
+    // Menu button in HUD
+    const menuBtn = this.add.text(760, 575, '[M]enu', {
+      fontSize: '12px', color: '#ffcc44', fontFamily: 'monospace',
+    }).setScrollFactor(0).setDepth(21).setInteractive({ useHandCursor: true });
+    menuBtn.on('pointerdown', () => this.toggleMenu());
+
     this.lastMoveTime = 0;
     this.moveCooldown = 150;
 
     console.log('[World] created, player at', this.playerX, this.playerY);
+  }
+
+  toggleMenu() {
+    if (this.menuOpen) {
+      if (this.menuGroup) {
+        this.menuGroup.forEach(c => c.destroy());
+        this.menuGroup = null;
+      }
+      this.menuOpen = false;
+      return;
+    }
+
+    this.menuOpen = true;
+    this.menuGroup = [];
+    const gs = this.gameState;
+
+    // Background panel
+    const bg = this.add.rectangle(400, 300, 500, 400, 0x000000, 0.9).setScrollFactor(0).setDepth(40);
+    this.menuGroup.push(bg);
+
+    const title = this.add.text(400, 120, 'PARTY MENU', {
+      fontSize: '20px', color: '#ffff44', fontFamily: 'monospace',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(41);
+    this.menuGroup.push(title);
+
+    let y = 160;
+    for (const p of gs.party) {
+      const hpColor = p.hp < p.max_hp * 0.3 ? '#ff4444' : '#44ff44';
+      const line = this.add.text(200, y,
+        `${p.name} (${p.class_name}) Lv.${p.level}\n  HP: ${p.hp}/${p.max_hp}  STR:${p.str} AGI:${p.agi} INT:${p.int_stat}\n  XP: ${p.xp}/${p.xp_next}`,
+        { fontSize: '12px', color: '#ffffff', fontFamily: 'monospace' }
+      ).setScrollFactor(0).setDepth(41);
+      this.menuGroup.push(line);
+
+      if (p.spells && p.spells.length > 0) {
+        const spells = this.add.text(200, y + 48,
+          `  Spells: ${p.spells.map(s => `${s.name}(${s.charges})`).join(', ')}`,
+          { fontSize: '11px', color: '#8888ff', fontFamily: 'monospace' }
+        ).setScrollFactor(0).setDepth(41);
+        this.menuGroup.push(spells);
+        y += 70;
+      } else {
+        y += 55;
+      }
+    }
+
+    // Gold and items
+    const inv = this.add.text(200, y + 10,
+      `Gold: ${gs.gold}  |  Potions: ${gs.potions}`,
+      { fontSize: '13px', color: '#ffcc44', fontFamily: 'monospace' }
+    ).setScrollFactor(0).setDepth(41);
+    this.menuGroup.push(inv);
+
+    // Use potion button
+    if (gs.potions > 0) {
+      const useBtn = this.add.text(400, y + 45, '[ USE POTION ]', {
+        fontSize: '14px', color: '#44ff44', fontFamily: 'monospace',
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(41).setInteractive({ useHandCursor: true });
+      useBtn.on('pointerover', () => useBtn.setColor('#88ff88'));
+      useBtn.on('pointerout', () => useBtn.setColor('#44ff44'));
+      useBtn.on('pointerdown', () => this.useOverworldPotion());
+      this.menuGroup.push(useBtn);
+    }
+
+    // Close
+    const closeBtn = this.add.text(400, 470, '[ CLOSE (M/ESC) ]', {
+      fontSize: '14px', color: '#aaaaaa', fontFamily: 'monospace',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(41).setInteractive({ useHandCursor: true });
+    closeBtn.on('pointerdown', () => this.toggleMenu());
+    this.menuGroup.push(closeBtn);
+  }
+
+  useOverworldPotion() {
+    const gs = this.gameState;
+    if (gs.potions <= 0) return;
+
+    // Find most damaged living party member
+    let target = null;
+    for (const p of gs.party) {
+      if (p.hp > 0 && p.hp < p.max_hp) {
+        if (!target || p.hp < target.hp) target = p;
+      }
+    }
+    if (!target) {
+      this.showMessage('No one needs healing.');
+      this.time.delayedCall(1500, () => this.hideMessage());
+      return;
+    }
+
+    // Apply locally (server will validate on next action)
+    target.hp = Math.min(target.max_hp, target.hp + 30);
+    gs.potions--;
+    this.showMessage(`${target.name} used a Potion. HP: ${target.hp}/${target.max_hp}`);
+    this.time.delayedCall(1500, () => this.hideMessage());
+    this.toggleMenu(); // close and reopen to refresh
+    this.updateHUD();
   }
 
   update(time) {
@@ -196,6 +305,17 @@ export class WorldScene extends Phaser.Scene {
 
     this.playerX = nx;
     this.playerY = ny;
+
+    // Update facing direction
+    let dir = this.playerDir;
+    if (dx < 0) dir = 'left';
+    else if (dx > 0) dir = 'right';
+    else if (dy < 0) dir = 'up';
+    else if (dy > 0) dir = 'down';
+    if (dir !== this.playerDir) {
+      this.playerDir = dir;
+      this.player.setTexture(`player_${dir}`);
+    }
 
     this.tweens.add({
       targets: this.player,

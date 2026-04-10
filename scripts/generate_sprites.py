@@ -67,8 +67,12 @@ def generate_image(prompt, output_path, size=None):
     return None
 
 
-def remove_green_background(img, threshold=80):
-    """Replace green-screen (#00FF00 area) with transparency."""
+def remove_green_background(img, threshold=120):
+    """Replace green-screen (#00FF00 area) with transparency.
+
+    Uses a ratio-based approach: if green is the dominant channel
+    by a significant margin, the pixel is considered background.
+    """
     img = img.convert("RGBA")
     pixels = img.load()
     w, h = img.size
@@ -76,11 +80,43 @@ def remove_green_background(img, threshold=80):
     for y in range(h):
         for x in range(w):
             r, g, b, a = pixels[x, y]
-            # Detect green-screen: high green, low red and blue
-            if g > 150 and r < threshold and b < threshold:
+            if a == 0:
+                continue
+
+            # Ratio-based: green must be dominant by a margin
+            is_green = False
+
+            # Pure green screen (#00FF00 area)
+            if g > 120 and r < threshold and b < threshold:
+                is_green = True
+            # Green-dominant with margin (catches fringing)
+            elif g > 100 and g > r * 1.4 and g > b * 1.4:
+                is_green = True
+            # Very bright green tones
+            elif g > 180 and (r + b) < g:
+                is_green = True
+
+            if is_green:
                 pixels[x, y] = (0, 0, 0, 0)
-            # Also catch near-green
-            elif g > 180 and r < 100 and b < 100:
+
+    # Second pass: remove isolated semi-transparent green edge pixels
+    pixels = img.load()
+    for y in range(1, h - 1):
+        for x in range(1, w - 1):
+            r, g, b, a = pixels[x, y]
+            if a == 0:
+                continue
+            # Check if surrounded by mostly transparent pixels
+            transparent_neighbors = 0
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    if dx == 0 and dy == 0:
+                        continue
+                    _, _, _, na = pixels[x + dx, y + dy]
+                    if na == 0:
+                        transparent_neighbors += 1
+            # If mostly surrounded by transparent and has green tint, remove
+            if transparent_neighbors >= 5 and g > r and g > b:
                 pixels[x, y] = (0, 0, 0, 0)
 
     return img
@@ -153,10 +189,16 @@ def main():
          f"Front-facing portrait of a JRPG thief/rogue character. Dark leather armor, green hooded cloak, holding a dagger, confident smirk. {style}"),
     ]
 
-    # Player overworld sprite (smaller, for walking on map)
+    # Player overworld sprites (4 directions for walking)
     overworld = [
-        ("player_overworld.png", 32,
-         f"Single front-facing walking sprite of a small JRPG adventurer character. Simple design, brown hair, blue tunic, seen from above at slight angle. {style}"),
+        ("player_down.png", 32,
+         f"Single pixel art sprite of a small JRPG adventurer character facing toward the viewer (front view). Brown hair, blue tunic, simple design. Full body visible, standing pose. {style}"),
+        ("player_up.png", 32,
+         f"Single pixel art sprite of a small JRPG adventurer character facing away from the viewer (back view). Brown hair, blue tunic, simple design. Full body visible, standing pose. {style}"),
+        ("player_left.png", 32,
+         f"Single pixel art sprite of a small JRPG adventurer character facing left (side view, walking left). Brown hair, blue tunic, simple design. Full body visible. {style}"),
+        ("player_right.png", 32,
+         f"Single pixel art sprite of a small JRPG adventurer character facing right (side view, walking right). Brown hair, blue tunic, simple design. Full body visible. {style}"),
     ]
 
     # Monster sprites

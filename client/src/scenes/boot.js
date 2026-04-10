@@ -21,8 +21,13 @@ export class BootScene extends Phaser.Scene {
       fontSize: '12px', color: '#aaaaaa', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
+    // Player directional sprites
+    this.load.image('player_down', '/sprites/player_down.png');
+    this.load.image('player_up', '/sprites/player_up.png');
+    this.load.image('player_left', '/sprites/player_left.png');
+    this.load.image('player_right', '/sprites/player_right.png');
+
     // Character sprites
-    this.load.image('player', '/sprites/player_overworld.png');
     this.load.image('warrior', '/sprites/warrior.png');
     this.load.image('cinder', '/sprites/cinder.png');
     this.load.image('mender', '/sprites/mender.png');
