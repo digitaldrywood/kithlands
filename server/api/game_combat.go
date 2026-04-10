@@ -8,6 +8,38 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/magic"
 )
 
+// toHitEntries converts internal combat.Hit slices to the API-facing CombatHitEntry type.
+func toHitEntries(hits []combat.Hit) []CombatHitEntry {
+	if len(hits) == 0 {
+		return nil
+	}
+	out := make([]CombatHitEntry, len(hits))
+	for i, h := range hits {
+		out[i] = CombatHitEntry{Damage: h.Damage, Crit: h.Crit, Missed: h.Missed}
+	}
+	return out
+}
+
+// anyCrit returns true if any hit in the slice was a critical hit.
+func anyCrit(hits []combat.Hit) bool {
+	for _, h := range hits {
+		if h.Crit {
+			return true
+		}
+	}
+	return false
+}
+
+// allMissed returns true if every hit in the slice was a miss.
+func allMissed(hits []combat.Hit) bool {
+	for _, h := range hits {
+		if !h.Missed {
+			return false
+		}
+	}
+	return len(hits) > 0
+}
+
 func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 	stats := &g.gd.Stats.Combat
 
@@ -57,7 +89,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 						g.logCombat(
 							fmt.Sprintf("%s uses Potion on %s - healed 30 HP (%d/%d)",
 								g.party[ma.Slot].Name, g.party[targetIdx].Name, g.party[targetIdx].CurrentHP, g.party[targetIdx].MaxHP),
-							CombatActionEntry{Kind: "item", ActorID: pc.ID, ActorName: g.party[ma.Slot].Name, TargetID: targetIdx})
+							CombatActionEntry{Kind: "item", ActorID: pc.ID, ActorName: g.party[ma.Slot].Name, TargetID: targetIdx, TargetName: g.party[targetIdx].Name, Damage: 30})
 					} else {
 						// Fallback: heal most damaged
 						var healTarget *character.Character
@@ -71,7 +103,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 							g.logCombat(
 								fmt.Sprintf("%s uses Potion on %s - healed 30 HP (%d/%d)",
 									g.party[ma.Slot].Name, healTarget.Name, healTarget.CurrentHP, healTarget.MaxHP),
-								CombatActionEntry{Kind: "item", ActorID: pc.ID, ActorName: g.party[ma.Slot].Name})
+								CombatActionEntry{Kind: "item", ActorID: pc.ID, ActorName: g.party[ma.Slot].Name, TargetName: healTarget.Name, Damage: 30})
 						}
 					}
 				}
@@ -88,7 +120,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 						g.logCombat(
 							fmt.Sprintf("%s uses Phoenix Down on %s - revived with 1 HP!",
 								g.party[ma.Slot].Name, g.party[targetIdx].Name),
-							CombatActionEntry{Kind: "item", ActorID: pc.ID, ActorName: g.party[ma.Slot].Name, TargetID: targetIdx})
+							CombatActionEntry{Kind: "item", ActorID: pc.ID, ActorName: g.party[ma.Slot].Name, TargetID: targetIdx, TargetName: g.party[targetIdx].Name})
 					}
 				}
 				continue
@@ -125,12 +157,12 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 									g.logCombat(
 										fmt.Sprintf("%s casts %s on %s[%d] for %d damage - DEFEATED!", caster.Name, spell.Name, e.Name, e.ID, dmg),
 										CombatActionEntry{Kind: "spell", Element: spell.Element, DamageType: "magical",
-											ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, Damage: dmg, Killed: true, SpellName: spell.Name})
+											ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, TargetName: e.Name, Damage: dmg, Killed: true, SpellName: spell.Name})
 								} else {
 									g.logCombat(
 										fmt.Sprintf("%s casts %s on %s[%d] for %d damage", caster.Name, spell.Name, e.Name, e.ID, dmg),
 										CombatActionEntry{Kind: "spell", Element: spell.Element, DamageType: "magical",
-											ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, Damage: dmg, SpellName: spell.Name})
+											ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, TargetName: e.Name, Damage: dmg, SpellName: spell.Name})
 								}
 								if spell.Target == "single_enemy" {
 									break
@@ -148,7 +180,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 								healTarget.Heal(amt)
 								g.logCombat(
 									fmt.Sprintf("%s casts %s - healed %d HP", caster.Name, spell.Name, amt),
-									CombatActionEntry{Kind: "heal", ActorID: pc.ID, ActorName: caster.Name, Damage: amt, SpellName: spell.Name})
+									CombatActionEntry{Kind: "heal", ActorID: pc.ID, ActorName: caster.Name, TargetName: healTarget.Name, Damage: amt, SpellName: spell.Name})
 							}
 						}
 					}
@@ -273,7 +305,8 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 					fmt.Sprintf("%s counter-attacks %s[%d] for %d damage%s",
 						r.ActorName, targetName, r.TargetID, r.TotalDmg, status),
 					CombatActionEntry{Kind: "counter", DamageType: "physical",
-						ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Damage: r.TotalDmg, Killed: r.Killed})
+						ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, TargetName: targetName,
+						Damage: r.TotalDmg, Killed: r.Killed, Crit: anyCrit(r.Hits), Missed: allMissed(r.Hits), Hits: toHitEntries(r.Hits)})
 			}
 		case combat.ActionAbility:
 			abilityID := abilityByActor[r.ActorID]
@@ -300,7 +333,8 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 					fmt.Sprintf("%s backstabs %s for %d damage%s",
 						r.ActorName, targetName, r.TotalDmg, status),
 					CombatActionEntry{Kind: "ability", DamageType: "physical",
-						ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Damage: r.TotalDmg, Killed: r.Killed})
+						ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, TargetName: targetName,
+						Damage: r.TotalDmg, Killed: r.Killed, Crit: anyCrit(r.Hits), Hits: toHitEntries(r.Hits)})
 			case "steal":
 				if itemID, itemName, ok := g.tryStealFrom(r.TargetID); ok {
 					g.inv.Consumables[itemID]++
@@ -328,7 +362,8 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 					fmt.Sprintf("%s attacks %s[%d] for %d damage%s",
 						r.ActorName, targetName, r.TargetID, r.TotalDmg, status),
 					CombatActionEntry{Kind: "attack", DamageType: "physical",
-						ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Damage: r.TotalDmg, Killed: r.Killed})
+						ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, TargetName: targetName,
+						Damage: r.TotalDmg, Killed: r.Killed, Crit: anyCrit(r.Hits), Missed: allMissed(r.Hits), Hits: toHitEntries(r.Hits)})
 			}
 		}
 	}
@@ -524,7 +559,8 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 				g.logCombat(
 					fmt.Sprintf("%s attacks %s for %d%s", r.ActorName, name, r.TotalDmg, status),
 					CombatActionEntry{Kind: "attack", DamageType: "physical",
-						ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Damage: r.TotalDmg, Killed: r.Killed})
+						ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, TargetName: name,
+						Damage: r.TotalDmg, Killed: r.Killed, Crit: anyCrit(r.Hits), Missed: allMissed(r.Hits), Hits: toHitEntries(r.Hits)})
 			}
 		}
 		for i, pc := range combatants {
@@ -602,7 +638,8 @@ func (g *Game) processCombatItem(req GameActionRequest) (*GameState, error) {
 				g.logCombat(
 					fmt.Sprintf("%s attacks %s for %d", r.ActorName, name, r.TotalDmg),
 					CombatActionEntry{Kind: "attack", DamageType: "physical",
-						ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Damage: r.TotalDmg})
+						ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, TargetName: name,
+						Damage: r.TotalDmg, Killed: r.Killed, Crit: anyCrit(r.Hits), Missed: allMissed(r.Hits), Hits: toHitEntries(r.Hits)})
 			}
 		}
 		for i, pc := range combatants {
