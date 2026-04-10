@@ -11,6 +11,17 @@ import (
 func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 	switch req.Type {
 	case "encounter":
+		// Poison tick per Section 6.5: -1 HP per step on world map.
+		for _, c := range g.party {
+			if c.Status == character.StatusPoison && c.CurrentHP > 0 {
+				c.CurrentHP--
+				if c.CurrentHP <= 0 {
+					c.CurrentHP = 0
+					c.Status = character.StatusDeath
+				}
+			}
+		}
+
 		// Snapshot XP and level before combat for victory screen animation
 		g.xpBefore = make([]int, len(g.party))
 		g.levelBefore = make([]int, len(g.party))

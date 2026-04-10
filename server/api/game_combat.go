@@ -94,6 +94,13 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 				continue
 
 			case "spell":
+				// Silence check per Section 6.5: silenced casters cannot cast.
+				if g.party[ma.Slot].Status == character.StatusSilence {
+					g.logCombat(
+						fmt.Sprintf("%s is silenced and cannot cast!", g.party[ma.Slot].Name),
+						CombatActionEntry{Kind: "info", ActorID: pc.ID, ActorName: g.party[ma.Slot].Name})
+					continue
+				}
 				// Resolve spell inline
 				spell := g.gd.SpellByID(ma.SpellID)
 				if spell != nil {
@@ -149,6 +156,57 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 								g.logCombat(
 									fmt.Sprintf("%s casts %s - healed %d HP", caster.Name, spell.Name, amt),
 									CombatActionEntry{Kind: "heal", ActorID: pc.ID, ActorName: caster.Name, Damage: amt, SpellName: spell.Name})
+							}
+						case "status":
+							// Status effect spells (sleep, mute, poison_powder, slow)
+							for _, e := range g.enemies {
+								if (ma.TargetID > 0 && e.ID != ma.TargetID) && spell.Target == "single_enemy" {
+									continue
+								}
+								if e.CurrentHP <= 0 {
+									continue
+								}
+								if magic.ResolveStatusSpell(spell, e.VIT, g.rng) {
+									combat.ApplyStatus(e, character.Status(spell.StatusEffect))
+									g.logCombat(
+										fmt.Sprintf("%s casts %s on %s[%d] - %s!", caster.Name, spell.Name, e.Name, e.ID, spell.StatusEffect),
+										CombatActionEntry{Kind: "status_effect", ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, SpellName: spell.Name})
+								} else {
+									g.logCombat(
+										fmt.Sprintf("%s casts %s on %s[%d] - resisted!", caster.Name, spell.Name, e.Name, e.ID),
+										CombatActionEntry{Kind: "status_effect", ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, SpellName: spell.Name})
+								}
+								if spell.Target == "single_enemy" {
+									break
+								}
+							}
+						case "cure_status":
+							// Cure status spells (cure_poison, dispel)
+							if spell.Target == "all_allies" {
+								for _, c := range g.party {
+									if !c.IsAlive() {
+										continue
+									}
+									if spell.CuresStatus == "all" {
+										if c.Status != character.StatusNone && c.Status != character.StatusDeath {
+											c.Status = character.StatusNone
+										}
+									} else if c.Status == character.Status(spell.CuresStatus) {
+										c.Status = character.StatusNone
+									}
+								}
+								g.logCombat(
+									fmt.Sprintf("%s casts %s - statuses cured!", caster.Name, spell.Name),
+									CombatActionEntry{Kind: "heal", ActorID: pc.ID, ActorName: caster.Name, SpellName: spell.Name})
+							} else {
+								// Single ally target
+								targetIdx := ma.TargetID
+								if targetIdx >= 0 && targetIdx < len(g.party) && g.party[targetIdx].IsAlive() {
+									magic.ApplySpellToCharacter(g.party[targetIdx], spell, 0)
+									g.logCombat(
+										fmt.Sprintf("%s casts %s on %s - cured!", caster.Name, spell.Name, g.party[targetIdx].Name),
+										CombatActionEntry{Kind: "heal", ActorID: pc.ID, ActorName: caster.Name, SpellName: spell.Name})
+								}
 							}
 						}
 					}
@@ -241,7 +299,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 
 	// Enemy attacks
 	for _, e := range g.enemies {
-		if e.CurrentHP <= 0 || e.Status == character.StatusSleep {
+		if e.CurrentHP <= 0 || e.Status == character.StatusSleep || e.Status == character.StatusStone || e.Status == character.StatusDeath {
 			continue
 		}
 		target := combat.SelectEnemyTarget(combatants, g.rng)
@@ -262,6 +320,35 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 	results := combat.ResolveTurn(combatants, g.enemies, actions, stats, g.rng)
 	for _, r := range results {
 		switch r.Kind {
+		case combat.ActionPoisonTick:
+			status := ""
+			if r.Killed {
+				status = " - DEFEATED!"
+			}
+			g.logCombat(
+				fmt.Sprintf("%s takes %d poison damage%s", r.ActorName, r.TotalDmg, status),
+				CombatActionEntry{Kind: "poison_tick",
+					ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Damage: r.TotalDmg, Killed: r.Killed})
+		case combat.ActionConfusion:
+			targetName := g.findCombatantName(combatants, r.TargetID)
+			if targetName == "?" {
+				// Target might be an enemy
+				for _, e := range g.enemies {
+					if e.ID == r.TargetID {
+						targetName = e.Name
+						break
+					}
+				}
+			}
+			status := ""
+			if r.Killed {
+				status = " - DEFEATED!"
+			}
+			g.logCombat(
+				fmt.Sprintf("%s is confused and attacks %s[%d] for %d damage%s",
+					r.ActorName, targetName, r.TargetID, r.TotalDmg, status),
+				CombatActionEntry{Kind: "confusion", DamageType: "physical",
+					ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Damage: r.TotalDmg, Killed: r.Killed})
 		case combat.ActionCounter:
 			if r.TotalDmg > 0 {
 				targetName := g.findCombatantName(combatants, r.TargetID)
