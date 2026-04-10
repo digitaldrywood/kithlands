@@ -1,6 +1,5 @@
-import { gameAction, autosaveGame } from '../api.js';
+import { gameAction } from '../api.js';
 import { initAudio, playMusic, playSFX, stopMusic } from '../systems/audio.js';
-import { getAutosaveEnabled } from '../systems/prefs.js';
 
 const ENEMY_SPRITES = {
   'Slime': 'monster_slime', 'Goblin': 'monster_goblin', 'Wolf': 'monster_wolf',
@@ -637,11 +636,18 @@ export class BattleScene extends Phaser.Scene {
     y += 15;
     const barW = 300;
     const xpBefore = gs.xp_before || [];
+    const levelBefore = gs.level_before || [];
+    const xpThresholds = gs.xp_thresholds || [];
+
+    const animPromises = [];
 
     for (let i = 0; i < gs.party.length; i++) {
       const p = gs.party[i];
       const alive = p.hp > 0;
       const prevXP = xpBefore[i] || 0;
+      const prevLvl = levelBefore[i] || p.level;
+      const thresholds = xpThresholds[i] || [p.xp_next];
+      const levelsGained = p.level - prevLvl;
 
       // Character sprite + name
       const cs = CLASS_SPRITES[p.class_id];
@@ -651,11 +657,12 @@ export class BattleScene extends Phaser.Scene {
         if (!alive) sprite.setTint(0x444444);
       }
 
-      // Name and level
+      // Name and level (show pre-combat level initially if leveled up)
       this.add.text(140, y, `${p.name}`, {
         fontSize: '13px', color: alive ? '#ffffff' : '#666666', fontFamily: 'monospace',
       });
-      const levelText = this.add.text(140, y + 16, `${p.class_name} Lv.${p.level}`, {
+      const displayLvl = levelsGained > 0 ? prevLvl : p.level;
+      const levelText = this.add.text(140, y + 16, `${p.class_name} Lv.${displayLvl}`, {
         fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
       });
 
@@ -673,54 +680,80 @@ export class BattleScene extends Phaser.Scene {
 
       // XP bar with animation
       this.add.text(300, y + 18, 'XP', { fontSize: '9px', color: '#888888', fontFamily: 'monospace' });
-      const xpBarBg = this.add.rectangle(300 + barW / 2 + 15, y + 22, barW, 10, 0x222244);
-      const xpPctStart = p.xp_next > 0 ? Math.min(1, prevXP / p.xp_next) : 0;
-      const xpPctEnd = p.xp_next > 0 ? Math.min(1, p.xp / p.xp_next) : 0;
+      this.add.rectangle(300 + barW / 2 + 15, y + 22, barW, 10, 0x222244);
+
+      const firstThreshold = thresholds[0] || p.xp_next;
+      const xpPctStart = firstThreshold > 0 ? Math.min(1, prevXP / firstThreshold) : 0;
 
       const xpBarFill = this.add.rectangle(
         300 + 15, y + 22,
-        1, 10, 0x4488ff
+        Math.max(1, barW * xpPctStart), 10, 0x4488ff
       ).setOrigin(0, 0.5);
 
-      const xpText = this.add.text(300 + barW + 20, y + 17, `${prevXP}/${p.xp_next}`, {
+      const xpText = this.add.text(300 + barW + 20, y + 17, `${prevXP}/${firstThreshold}`, {
         fontSize: '9px', color: '#8888ff', fontFamily: 'monospace',
       });
 
-      // Animate the XP bar filling
-      const delay = 500 + i * 800;
-      this.tweens.add({
-        targets: xpBarFill,
-        width: barW * xpPctEnd,
-        duration: 1200,
-        delay,
-        ease: 'Power2',
-        onUpdate: () => {
-          // Update XP text as bar fills
-          const progress = xpBarFill.width / barW;
-          const currentXP = Math.floor(prevXP + (p.xp - prevXP) * (progress / xpPctEnd || 0));
-          xpText.setText(`${Math.min(currentXP, p.xp)}/${p.xp_next}`);
-        },
-      });
+      // Animate XP bar with multi-level-up support
+      const memberY = y;
+      const staggerDelay = 500 + i * 800;
+      const scene = this;
 
-      // Check for level up -- flash effect (capture y in closure)
-      const leveledUp = log.some(l => l.includes(`${p.name} leveled up`));
-      if (leveledUp) {
-        const memberY = y; // capture current y for this member
-        this.time.delayedCall(delay + 1300, () => {
-          // Flash on THIS member's row
-          const flash = this.add.rectangle(400, memberY + 20, 700, 50, 0xffff44, 0.3);
-          this.tweens.add({ targets: flash, alpha: 0, duration: 600, onComplete: () => flash.destroy() });
+      const animPromise = (async () => {
+        await scene.wait(staggerDelay);
 
-          // Level up text next to this member
-          const lvlUpText = this.add.text(650, memberY + 12, 'LEVEL UP!', {
-            fontSize: '14px', color: '#ffff44', fontFamily: 'monospace', fontStyle: 'bold',
-          }).setOrigin(0.5).setAlpha(0);
-          this.tweens.add({ targets: lvlUpText, alpha: 1, duration: 300 });
+        // Build segments: one per level boundary crossed, plus final segment
+        const segments = [];
+        for (let s = 0; s <= levelsGained; s++) {
+          const threshold = thresholds[s] || p.xp_next;
+          const startXP = s === 0 ? prevXP : 0;
+          const isLevelUp = s < levelsGained;
+          const endXP = isLevelUp ? threshold : p.xp;
+          segments.push({ startXP, endXP, threshold, isLevelUp, newLevel: prevLvl + s + 1 });
+        }
 
-          // Update level display
-          levelText.setText(`${p.class_name} Lv.${p.level}`).setColor('#ffff44');
-        });
-      }
+        for (const seg of segments) {
+          const startPct = seg.threshold > 0 ? Math.min(1, seg.startXP / seg.threshold) : 0;
+          const endPct = seg.threshold > 0 ? Math.min(1, seg.endXP / seg.threshold) : 0;
+
+          xpBarFill.width = Math.max(1, barW * startPct);
+          xpText.setText(`${seg.startXP}/${seg.threshold}`);
+
+          if (Math.abs(endPct - startPct) > 0.001) {
+            await scene.tweenP(xpBarFill, {
+              width: Math.max(1, barW * endPct),
+              duration: 800,
+              ease: 'Power2',
+              onUpdate: () => {
+                const progress = xpBarFill.width / barW;
+                const ratio = endPct > 0 ? progress / endPct : 0;
+                const currentXP = Math.floor(seg.startXP + (seg.endXP - seg.startXP) * Math.min(1, ratio));
+                xpText.setText(`${currentXP}/${seg.threshold}`);
+              },
+            });
+          }
+          xpText.setText(`${seg.endXP}/${seg.threshold}`);
+
+          if (seg.isLevelUp) {
+            // Flash LEVEL UP effect
+            const flash = scene.add.rectangle(400, memberY + 20, 700, 50, 0xffff44, 0.3);
+            scene.tweens.add({ targets: flash, alpha: 0, duration: 600, onComplete: () => flash.destroy() });
+
+            const lvlUpText = scene.add.text(650, memberY + 12, 'LEVEL UP!', {
+              fontSize: '14px', color: '#ffff44', fontFamily: 'monospace', fontStyle: 'bold',
+            }).setOrigin(0.5).setAlpha(0);
+            await scene.tweenP(lvlUpText, { alpha: 1, duration: 300 });
+
+            levelText.setText(`${p.class_name} Lv.${seg.newLevel}`).setColor('#ffff44');
+            await scene.wait(400);
+
+            // Fade out level-up text before next segment
+            scene.tweens.add({ targets: lvlUpText, alpha: 0, duration: 200, onComplete: () => lvlUpText.destroy() });
+          }
+        }
+      })();
+
+      animPromises.push(animPromise);
 
       // Stats row
       this.add.text(140, y + 35,
@@ -746,14 +779,9 @@ export class BattleScene extends Phaser.Scene {
       }).setOrigin(0.5);
     }
 
-    // Autosave after victory
-    if (getAutosaveEnabled() && gs.id) {
-      autosaveGame(gs.id, 'battle_victory').catch(e => console.error('[Battle] autosave failed:', e));
-    }
-
-    // Delay continue button to let animations play
-    this.time.delayedCall(500 + gs.party.length * 800 + 1000, () => {
-      this.addContinueButton(gs);
+    // Show continue button after all animations complete
+    Promise.all(animPromises).then(() => {
+      this.wait(500).then(() => this.addContinueButton(gs));
     });
   }
 
