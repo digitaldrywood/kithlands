@@ -356,18 +356,41 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 
 			switch ma.Type {
 			case "item":
-				// Use potion on most damaged party member
+				// Use potion on targeted party member
 				if g.inv.Consumables["potion"] > 0 {
 					g.inv.Consumables["potion"]--
-					var healTarget *character.Character
-					for _, c := range g.party {
-						if c.IsAlive() && (healTarget == nil || c.CurrentHP < healTarget.CurrentHP) {
-							healTarget = c
+					targetIdx := ma.TargetID
+					if targetIdx >= 0 && targetIdx < len(g.party) && g.party[targetIdx].IsAlive() {
+						g.party[targetIdx].Heal(30)
+						g.combatLog = append(g.combatLog, fmt.Sprintf("%s uses Potion on %s - healed 30 HP (%d/%d)",
+							g.party[ma.Slot].Name, g.party[targetIdx].Name, g.party[targetIdx].CurrentHP, g.party[targetIdx].MaxHP))
+					} else {
+						// Fallback: heal most damaged
+						var healTarget *character.Character
+						for _, c := range g.party {
+							if c.IsAlive() && (healTarget == nil || c.CurrentHP < healTarget.CurrentHP) {
+								healTarget = c
+							}
+						}
+						if healTarget != nil {
+							healTarget.Heal(30)
+							g.combatLog = append(g.combatLog, fmt.Sprintf("%s uses Potion on %s - healed 30 HP (%d/%d)",
+								g.party[ma.Slot].Name, healTarget.Name, healTarget.CurrentHP, healTarget.MaxHP))
 						}
 					}
-					if healTarget != nil {
-						healTarget.Heal(30)
-						g.combatLog = append(g.combatLog, fmt.Sprintf("%s uses Potion on %s - healed 30 HP (%d/%d)", g.party[ma.Slot].Name, healTarget.Name, healTarget.CurrentHP, healTarget.MaxHP))
+				}
+				continue
+
+			case "revive":
+				// Use Phoenix Down on dead party member
+				if g.inv.Consumables["phoenix_down"] > 0 {
+					targetIdx := ma.TargetID
+					if targetIdx >= 0 && targetIdx < len(g.party) && !g.party[targetIdx].IsAlive() {
+						g.inv.Consumables["phoenix_down"]--
+						g.party[targetIdx].CurrentHP = 1
+						g.party[targetIdx].Status = character.StatusNone
+						g.combatLog = append(g.combatLog, fmt.Sprintf("%s uses Phoenix Down on %s - revived with 1 HP!",
+							g.party[ma.Slot].Name, g.party[targetIdx].Name))
 					}
 				}
 				continue

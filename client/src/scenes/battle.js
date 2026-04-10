@@ -196,7 +196,8 @@ export class BattleScene extends Phaser.Scene {
 
     const btns = [{ label: 'ATTACK', type: 'attack', color: '#ff4444' }];
     if (hasSpells) btns.push({ label: 'SPELL', type: 'spell', color: '#8888ff' });
-    if (gs.potions > 0) btns.push({ label: `POTION(${gs.potions})`, type: 'item', color: '#44ff44' });
+    const hasItems = gs.potions > 0 || (gs.items && gs.items.some(i => i.id === 'phoenix_down'));
+    if (hasItems) btns.push({ label: 'ITEMS', type: 'item', color: '#44ff44' });
     btns.push({ label: 'FLEE', type: 'flee', color: '#ffcc44' });
 
     const tw = btns.length * 145, sx = 400 - tw / 2 + 72;
@@ -220,7 +221,7 @@ export class BattleScene extends Phaser.Scene {
         } else if (b.type === 'spell') {
           this.showSpellPicker(slot);
         } else if (b.type === 'item') {
-          this.recordAction(slot, { slot, type: 'item', target_id: 0 });
+          this.showItemPicker(slot);
         } else if (b.type === 'flee') {
           // Flee sends immediately (whole party flees)
           this.doFlee();
@@ -293,6 +294,115 @@ export class BattleScene extends Phaser.Scene {
     }
 
     const cancel = this.add.text(400, 380 + h / 2 - 15, '[ CANCEL ]', {
+      fontSize: '10px', color: '#888888', fontFamily: 'monospace',
+    }).setOrigin(0.5).setDepth(51).setInteractive({ useHandCursor: true });
+    cancel.on('pointerdown', () => ol.forEach(o => o.destroy()));
+    ol.push(cancel);
+  }
+
+  showItemPicker(slot) {
+    const gs = this.gameState;
+    const ol = [];
+
+    // Available items
+    const items = [];
+    if (gs.potions > 0) items.push({ id: 'potion', name: `Potion (${gs.potions})`, type: 'heal' });
+    const phoenix = gs.items?.find(i => i.id === 'phoenix_down');
+    if (phoenix) items.push({ id: 'phoenix_down', name: `Phoenix Down (${phoenix.count})`, type: 'revive' });
+
+    if (items.length === 0) return;
+
+    const h = 50 + items.length * 35;
+    const bg = this.add.rectangle(400, 380, 320, h, 0x112211, 0.95)
+      .setStrokeStyle(2, 0x44aa44).setDepth(50).setInteractive();
+    ol.push(bg);
+
+    ol.push(this.add.text(400, 380 - h / 2 + 15, 'Choose an item:', {
+      fontSize: '12px', color: '#ffffff', fontFamily: 'monospace',
+    }).setOrigin(0.5).setDepth(51));
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const y = 380 - h / 2 + 40 + i * 35;
+      const row = this.add.rectangle(400, y, 280, 28, 0x224422)
+        .setInteractive({ useHandCursor: true }).setDepth(51);
+      const txt = this.add.text(400, y, item.name, {
+        fontSize: '11px', color: '#88ff88', fontFamily: 'monospace',
+      }).setOrigin(0.5).setDepth(52);
+      ol.push(row, txt);
+
+      row.on('pointerover', () => { row.setFillStyle(0x336633); txt.setColor('#ffffff'); });
+      row.on('pointerout', () => { row.setFillStyle(0x224422); txt.setColor('#88ff88'); });
+      row.on('pointerdown', () => {
+        ol.forEach(o => o.destroy());
+        this.showPartyTargetPicker(slot, item);
+      });
+    }
+
+    const cancel = this.add.text(400, 380 + h / 2 - 12, '[ CANCEL ]', {
+      fontSize: '10px', color: '#888888', fontFamily: 'monospace',
+    }).setOrigin(0.5).setDepth(51).setInteractive({ useHandCursor: true });
+    cancel.on('pointerdown', () => ol.forEach(o => o.destroy()));
+    ol.push(cancel);
+  }
+
+  showPartyTargetPicker(slot, item) {
+    const gs = this.gameState;
+    const ol = [];
+
+    // Filter targets based on item type
+    const targets = [];
+    for (let i = 0; i < gs.party.length; i++) {
+      const p = gs.party[i];
+      if (item.type === 'revive') {
+        // Phoenix Down only on dead members
+        if (p.hp <= 0) targets.push({ slot: i, ...p });
+      } else {
+        // Potions on living members
+        if (p.hp > 0) targets.push({ slot: i, ...p });
+      }
+    }
+
+    if (targets.length === 0) {
+      this.promptText.setText('No valid targets!').setColor('#ff4444');
+      return;
+    }
+
+    const h = 50 + targets.length * 40;
+    const bg = this.add.rectangle(400, 350, 350, h, 0x112211, 0.95)
+      .setStrokeStyle(2, 0x44aa44).setDepth(50).setInteractive();
+    ol.push(bg);
+
+    ol.push(this.add.text(400, 350 - h / 2 + 15, `Use ${item.name.split('(')[0].trim()} on:`, {
+      fontSize: '12px', color: '#ffffff', fontFamily: 'monospace',
+    }).setOrigin(0.5).setDepth(51));
+
+    for (let i = 0; i < targets.length; i++) {
+      const t = targets[i];
+      const y = 350 - h / 2 + 45 + i * 40;
+      const hpColor = t.hp <= 0 ? '#ff4444' : t.hp < t.max_hp * 0.5 ? '#ffaa44' : '#44ff44';
+      const hpStr = t.hp <= 0 ? 'DEAD' : `${t.hp}/${t.max_hp} HP`;
+
+      const row = this.add.rectangle(400, y, 300, 32, 0x224422)
+        .setInteractive({ useHandCursor: true }).setDepth(51);
+      const txt = this.add.text(400, y, `${t.name} (${t.class_name}) - ${hpStr}`, {
+        fontSize: '11px', color: hpColor, fontFamily: 'monospace',
+      }).setOrigin(0.5).setDepth(52);
+      ol.push(row, txt);
+
+      row.on('pointerover', () => row.setFillStyle(0x336633));
+      row.on('pointerout', () => row.setFillStyle(0x224422));
+      row.on('pointerdown', () => {
+        ol.forEach(o => o.destroy());
+        this.recordAction(slot, {
+          slot,
+          type: item.id === 'phoenix_down' ? 'revive' : 'item',
+          target_id: t.slot,
+        });
+      });
+    }
+
+    const cancel = this.add.text(400, 350 + h / 2 - 12, '[ CANCEL ]', {
       fontSize: '10px', color: '#888888', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51).setInteractive({ useHandCursor: true });
     cancel.on('pointerdown', () => ol.forEach(o => o.destroy()));

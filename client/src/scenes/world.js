@@ -468,11 +468,25 @@ export class WorldScene extends Phaser.Scene {
         const isShop = tags.includes('shop') || tags.includes('commerce');
         const isInn = tags.includes('rest');
 
+        const isTemple = tags.includes('temple') || tags.includes('revive');
+
         if (isShop) {
           this.openShop(spawn);
+        } else if (isTemple) {
+          // Temple: revive dead party members
+          const dead = this.gameState.party.filter(p => p.hp <= 0);
+          if (dead.length > 0) {
+            dead.forEach(p => { p.hp = 1; p.status = ''; });
+            this.showMessage(`Temple of Light\n${dead.map(p => p.name).join(', ')} revived!`);
+          } else {
+            this.gameState.party.forEach(p => { p.hp = p.max_hp; });
+            this.showMessage(`Temple of Light\nBlessings upon you. HP fully restored!`);
+          }
+          this.updateHUD();
+          this.time.delayedCall(2000, () => this.hideMessage());
         } else if (isInn) {
           // Rest at inn
-          this.gameState.party.forEach(p => { p.hp = p.max_hp; });
+          this.gameState.party.forEach(p => { if (p.hp > 0) p.hp = p.max_hp; });
           this.showMessage(`Rested at ${spawn.name}.\nHP and spells restored!`);
           this.updateHUD();
           this.time.delayedCall(2000, () => this.hideMessage());
