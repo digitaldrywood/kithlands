@@ -11,7 +11,7 @@ import (
 func newGameWithParty(t *testing.T, party []api.PartyMemberReq) *api.Game {
 	t.Helper()
 	gd := gamedata.Load("../../shared")
-	gm := api.NewGameManager(gd)
+	gm := api.NewGameManager(gd, "../../shared")
 	game, err := gm.CreateGame(api.NewGameRequest{
 		TownName:    "Cadott",
 		People:      []api.WizardPersonReq{{Name: "Bob", Relation: "friendly"}},
