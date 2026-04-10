@@ -201,8 +201,9 @@ export class WorldScene extends Phaser.Scene {
     this.menuGroup = [];
     const gs = this.gameState;
 
-    // Background panel (wider for equipment)
-    const bg = this.add.rectangle(400, 300, 700, 500, 0x000000, 0.95).setScrollFactor(0).setDepth(40);
+    // Background panel (wider for equipment) -- interactive to block clicks through to map
+    const bg = this.add.rectangle(400, 300, 700, 500, 0x000000, 0.95)
+      .setScrollFactor(0).setDepth(40).setInteractive();
     this.menuGroup.push(bg);
 
     const title = this.add.text(400, 65, 'PARTY MENU', {
@@ -403,7 +404,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   update(time) {
-    if (this.animating) return;
+    if (this.animating || this.menuOpen) return;
     if (time - this.lastMoveTime < this.moveCooldown) return;
 
     let dx = 0, dy = 0;
@@ -524,7 +525,7 @@ export class WorldScene extends Phaser.Scene {
 
     const overlay = [];
     const bg = this.add.rectangle(400, 300, 650, 500, 0x0a0a22, 0.95)
-      .setStrokeStyle(2, 0x444488).setScrollFactor(0).setDepth(50);
+      .setStrokeStyle(2, 0x444488).setScrollFactor(0).setDepth(50).setInteractive();
     overlay.push(bg);
 
     const title = this.add.text(400, 70, `${spawn.name}`, {

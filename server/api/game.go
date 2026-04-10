@@ -329,17 +329,29 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 	// Build combatants from current party state
 	combatants := g.makeCombatants()
 
-	// Player attacks
+	// Player attacks -- use requested target if valid, otherwise first living
 	var actions []combat.Action
 	for _, pc := range combatants {
 		if pc.CurrentHP <= 0 {
 			continue
 		}
+		// Try requested target first
 		var target *combat.Combatant
-		for _, e := range g.enemies {
-			if e.CurrentHP > 0 {
-				target = e
-				break
+		if req.TargetID > 0 {
+			for _, e := range g.enemies {
+				if e.ID == req.TargetID && e.CurrentHP > 0 {
+					target = e
+					break
+				}
+			}
+		}
+		// Fallback to first living
+		if target == nil {
+			for _, e := range g.enemies {
+				if e.CurrentHP > 0 {
+					target = e
+					break
+				}
 			}
 		}
 		if target != nil {
