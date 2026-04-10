@@ -24,6 +24,9 @@ type Combatant struct {
 
 	// Bare-hand damage for Brawlers: base + (level * STR/2)
 	BareHandDamage int
+
+	MonsterID string // source monster ID for lookups
+	Size      string // small, medium, large, boss
 }
 
 // Action represents a combat action chosen by a combatant.

@@ -9,17 +9,19 @@ import (
 
 // GameData holds all loaded game data from shared/.
 type GameData struct {
-	Classes  []Class
-	Stats    StatsConfig
-	Items    ItemsData
-	Spells   SpellsData
-	Monsters []Monster
+	Classes    []Class
+	Stats      StatsConfig
+	Items      ItemsData
+	Spells     SpellsData
+	Monsters   []Monster
+	Formations []Formation
 
-	classByID   map[string]*Class
-	weaponByID  map[string]*Weapon
-	armorByID   map[string]*Armor
-	spellByID   map[string]*Spell
-	monsterByID map[string]*Monster
+	classByID     map[string]*Class
+	weaponByID    map[string]*Weapon
+	armorByID     map[string]*Armor
+	spellByID     map[string]*Spell
+	monsterByID   map[string]*Monster
+	formationByID map[string]*Formation
 }
 
 // Load reads and validates all game data from the shared directory.
@@ -34,6 +36,7 @@ func Load(sharedDir string) *GameData {
 	gd.Items = loadJSON[ItemsData](sharedDir, "items.json")
 	gd.Spells = loadJSON[SpellsData](sharedDir, "spells.json")
 	gd.Monsters = loadJSON[[]Monster](sharedDir, "monsters.json")
+	gd.Formations = loadJSON[[]Formation](sharedDir, "formations.json")
 
 	gd.buildIndexes()
 	gd.validate()
@@ -45,7 +48,8 @@ func (gd *GameData) ClassByID(id string) *Class       { return gd.classByID[id] 
 func (gd *GameData) WeaponByID(id string) *Weapon     { return gd.weaponByID[id] }
 func (gd *GameData) ArmorByID(id string) *Armor       { return gd.armorByID[id] }
 func (gd *GameData) SpellByID(id string) *Spell       { return gd.spellByID[id] }
-func (gd *GameData) MonsterByID(id string) *Monster    { return gd.monsterByID[id] }
+func (gd *GameData) MonsterByID(id string) *Monster       { return gd.monsterByID[id] }
+func (gd *GameData) FormationByID(id string) *Formation   { return gd.formationByID[id] }
 
 func (gd *GameData) buildIndexes() {
 	gd.classByID = make(map[string]*Class, len(gd.Classes))
@@ -71,6 +75,11 @@ func (gd *GameData) buildIndexes() {
 	gd.monsterByID = make(map[string]*Monster, len(gd.Monsters))
 	for i := range gd.Monsters {
 		gd.monsterByID[gd.Monsters[i].ID] = &gd.Monsters[i]
+	}
+
+	gd.formationByID = make(map[string]*Formation, len(gd.Formations))
+	for i := range gd.Formations {
+		gd.formationByID[gd.Formations[i].ID] = &gd.Formations[i]
 	}
 }
 
@@ -127,12 +136,46 @@ func (gd *GameData) validate() {
 		}
 	}
 
+	validSizes := map[string]bool{"small": true, "medium": true, "large": true, "boss": true}
 	for _, m := range gd.Monsters {
 		if m.ID == "" {
 			panic("gamedata: monster with empty id")
 		}
 		if m.HP <= 0 {
 			panic(fmt.Sprintf("gamedata: monster %q has invalid hp: %d", m.ID, m.HP))
+		}
+		if !validSizes[m.Size] {
+			panic(fmt.Sprintf("gamedata: monster %q has invalid size: %q", m.ID, m.Size))
+		}
+	}
+
+	validLayouts := map[string]bool{
+		"line": true, "vshape": true, "triangle": true,
+		"boss_minions": true, "scattered": true, "rows": true,
+	}
+	for _, f := range gd.Formations {
+		if f.ID == "" {
+			panic("gamedata: formation with empty id")
+		}
+		if !validLayouts[f.Layout] {
+			panic(fmt.Sprintf("gamedata: formation %q has invalid layout: %q", f.ID, f.Layout))
+		}
+		if f.MinEncounterLevel < 1 {
+			panic(fmt.Sprintf("gamedata: formation %q has invalid min_encounter_level: %d", f.ID, f.MinEncounterLevel))
+		}
+		if len(f.Slots) == 0 {
+			panic(fmt.Sprintf("gamedata: formation %q has no slots", f.ID))
+		}
+		for _, s := range f.Slots {
+			if gd.monsterByID[s.MonsterID] == nil {
+				panic(fmt.Sprintf("gamedata: formation %q slot references unknown monster: %q", f.ID, s.MonsterID))
+			}
+			if s.Min < 1 {
+				panic(fmt.Sprintf("gamedata: formation %q slot %q has invalid min: %d", f.ID, s.MonsterID, s.Min))
+			}
+			if s.Max < s.Min {
+				panic(fmt.Sprintf("gamedata: formation %q slot %q has max < min: %d < %d", f.ID, s.MonsterID, s.Max, s.Min))
+			}
 		}
 	}
 }

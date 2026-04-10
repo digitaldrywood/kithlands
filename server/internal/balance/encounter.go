@@ -69,6 +69,8 @@ func ScaleMonster(m *gamedata.Monster, id int, encounterLevel int, diff Difficul
 }
 
 // GenerateEncounter picks monsters for a random encounter at the given level.
+// Kept for backward compatibility with balance_sim. New code should use
+// GenerateFormationEncounter which supports mixed formations and layouts.
 func GenerateEncounter(monsters []gamedata.Monster, encounterLevel int, diff Difficulty, rng *rand.Rand) []*combat.Combatant {
 	// Filter to eligible monsters (tier <= encounterLevel)
 	var eligible []gamedata.Monster

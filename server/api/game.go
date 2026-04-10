@@ -69,6 +69,7 @@ type GameState struct {
 	XPBefore  []int               `json:"xp_before,omitempty"` // XP values before combat for victory animation
 	Party     []PartyMemberState  `json:"party"`
 	Enemies   []EnemyState        `json:"enemies,omitempty"`
+	Formation string              `json:"formation,omitempty"`
 	Quests    []QuestState        `json:"quests"`
 	CurrentQ  int                 `json:"current_quest"`
 	Gold      int                 `json:"gold"`
@@ -129,10 +130,11 @@ type SpellState struct {
 }
 
 type EnemyState struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
-	HP   int    `json:"hp"`
-	MaxHP int   `json:"max_hp"`
+	ID    int    `json:"id"`
+	Name  string `json:"name"`
+	HP    int    `json:"hp"`
+	MaxHP int    `json:"max_hp"`
+	Size  string `json:"size"`
 }
 
 type QuestState struct {
@@ -163,6 +165,7 @@ type Game struct {
 	diff       balance.Difficulty
 	xpBefore   []int // snapshot before combat for victory animation
 	discovered map[string]bool // bestiary: monster IDs encountered
+	formation  string             // current encounter layout type
 	mu         sync.Mutex
 }
 
@@ -226,9 +229,12 @@ func (g *Game) State() GameState {
 	for _, e := range g.enemies {
 		if e.CurrentHP > 0 {
 			state.Enemies = append(state.Enemies, EnemyState{
-				ID: e.ID, Name: e.Name, HP: e.CurrentHP, MaxHP: e.MaxHP,
+				ID: e.ID, Name: e.Name, HP: e.CurrentHP, MaxHP: e.MaxHP, Size: e.Size,
 			})
 		}
+	}
+	if g.phase == "combat" {
+		state.Formation = g.formation
 	}
 
 	for _, q := range g.quests {
@@ -339,8 +345,11 @@ func (g *Game) stateUnlocked() GameState {
 	}
 	for _, e := range g.enemies {
 		if e.CurrentHP > 0 {
-			state.Enemies = append(state.Enemies, EnemyState{ID: e.ID, Name: e.Name, HP: e.CurrentHP, MaxHP: e.MaxHP})
+			state.Enemies = append(state.Enemies, EnemyState{ID: e.ID, Name: e.Name, HP: e.CurrentHP, MaxHP: e.MaxHP, Size: e.Size})
 		}
+	}
+	if g.phase == "combat" {
+		state.Formation = g.formation
 	}
 	for _, q := range g.quests {
 		state.Quests = append(state.Quests, QuestState{Name: q.Name, Description: q.Description, Act: q.Act, Completed: q.Completed})
