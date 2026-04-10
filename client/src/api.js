@@ -110,6 +110,10 @@ export async function deleteSave(saveId) {
   return apiCall("DELETE", `/saves/${saveId}`);
 }
 
+export async function getNpcDialogue(gameId, nodeId) {
+  return apiCall("GET", `/game/${gameId}/npc/${nodeId}/talk`);
+}
+
 export async function autosaveGame(gameId, triggerEvent) {
   return apiCall("POST", `/game/${gameId}/autosave`, {
     trigger_event: triggerEvent,
