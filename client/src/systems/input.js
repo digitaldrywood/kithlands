@@ -153,6 +153,9 @@ function setupTapToMove(scene) {
     if (isControlArea(pointer.x, pointer.y)) return;
     if (scene.input.pointer1?.isDown && scene.input.pointer2?.isDown) return;
 
+    // Cancel any existing auto-walk on new tap
+    cancelAutoWalk(scene);
+
     const worldPoint = scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
     const tx = Math.floor(worldPoint.x / RENDERED_TILE);
     const ty = Math.floor(worldPoint.y / RENDERED_TILE);
@@ -288,15 +291,26 @@ function setupPinchZoom(scene) {
 // ─── Swipe Gestures ──────────────────────────────────────────
 
 function setupSwipeGestures(scene) {
-  let sx = 0, sy = 0, st = 0;
+  let sx = 0, sy = 0, st = 0, spid = -1, multiTouch = false;
 
   scene.input.on('pointerdown', (pointer) => {
     if (!pointer.wasTouch) return;
-    sx = pointer.x; sy = pointer.y; st = Date.now();
+    if (spid < 0) {
+      sx = pointer.x; sy = pointer.y; st = Date.now(); spid = pointer.id;
+      multiTouch = false;
+    } else {
+      // Second finger touched — this is a pinch, not a swipe
+      multiTouch = true;
+    }
   });
 
   scene.input.on('pointerup', (pointer) => {
-    if (!pointer.wasTouch || Date.now() - st > 300) return;
+    if (pointer.id !== spid) return;
+    const wasMulti = multiTouch;
+    spid = -1;
+    multiTouch = false;
+    if (wasMulti || Date.now() - st > 300) return;
+
     const dx = pointer.x - sx;
     const dy = pointer.y - sy;
     if (Math.abs(dx) < 50 && Math.abs(dy) < 50) return;
@@ -345,21 +359,19 @@ function createTouchHUD(scene) {
 
 export function initTouchControls(scene) {
   _controls = null;
-  _isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  // Don't use feature detection alone — wait for actual touch event to avoid
+  // showing touch UI on touchscreen laptops in desktop mode
+  _isTouch = false;
 
   setupTapToMove(scene);
 
-  if (!_isTouch) {
-    scene.input.once('pointerdown', (pointer) => {
-      if (pointer.wasTouch && !_isTouch) {
-        _isTouch = true;
-        createTouchUI(scene);
-      }
-    });
-    return;
-  }
-
-  createTouchUI(scene);
+  // Activate touch UI on first real touch event
+  scene.input.on('pointerdown', (pointer) => {
+    if (pointer.wasTouch && !_isTouch) {
+      _isTouch = true;
+      createTouchUI(scene);
+    }
+  });
 }
 
 function createTouchUI(scene) {
