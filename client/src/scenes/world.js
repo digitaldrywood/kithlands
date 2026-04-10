@@ -144,7 +144,7 @@ export class WorldScene extends Phaser.Scene {
 
     // Touch movement
     this.input.on('pointerdown', (pointer) => {
-      if (this.animating) return;
+      if (this.animating || this.menuOpen || this.codexOpen || this.gameOver) return;
       const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
       const tx = Math.floor(worldPoint.x / RENDERED_TILE);
       const ty = Math.floor(worldPoint.y / RENDERED_TILE);
