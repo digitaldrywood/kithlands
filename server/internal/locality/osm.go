@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // BuildFromOSM fetches real-world data from OpenStreetMap Overpass API
@@ -20,7 +22,7 @@ func BuildFromOSM(ctx context.Context, lat, lng float64, townName string) (*Loca
 	}
 
 	loc := &Locality{
-		ID:        fmt.Sprintf("osm_%f_%f", lat, lng),
+		ID:        uuid.New().String(),
 		Name:      townName,
 		Center:    LatLng{Lat: lat, Lng: lng},
 		Generated: time.Now(),
