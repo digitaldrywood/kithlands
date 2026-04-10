@@ -1,11 +1,26 @@
 import { gameAction } from '../api.js';
 
+const ENEMY_SPRITES = {
+  'Slime': 'monster_slime',
+  'Goblin': 'monster_goblin',
+  'Wolf': 'monster_wolf',
+  'Skeleton': 'monster_skeleton',
+  'Dark Knight': 'monster_dark_knight',
+};
+
 const ENEMY_COLORS = {
   'Slime': 0x42A5F5,
   'Goblin': 0x66BB6A,
   'Wolf': 0x8D6E63,
   'Skeleton': 0xEEEEEE,
   'Dark Knight': 0x512DA8,
+};
+
+const CLASS_SPRITES = {
+  'warrior': 'warrior',
+  'cinder': 'cinder',
+  'mender': 'mender',
+  'rogue': 'rogue',
 };
 
 export class BattleScene extends Phaser.Scene {
@@ -49,10 +64,17 @@ export class BattleScene extends Phaser.Scene {
       const e = enemies[i];
       const x = enemyStartX + i * enemySpacing;
       const y = 300;
-      const color = ENEMY_COLORS[e.name] || 0xFF5722;
+      const spriteKey = ENEMY_SPRITES[e.name];
       const size = e.name === 'Dark Knight' ? 60 : 40;
 
-      this.add.rectangle(x, y, size, size, color);
+      if (spriteKey && this.textures.exists(spriteKey)) {
+        const s = this.add.image(x, y, spriteKey);
+        const targetScale = size / Math.max(s.width, s.height) * 2;
+        s.setScale(targetScale);
+      } else {
+        const color = ENEMY_COLORS[e.name] || 0xFF5722;
+        this.add.rectangle(x, y, size, size, color);
+      }
       this.add.text(x, y - size / 2 - 18, e.name, {
         fontSize: '11px', color: '#ffffff', fontFamily: 'monospace',
       }).setOrigin(0.5);
@@ -77,7 +99,15 @@ export class BattleScene extends Phaser.Scene {
       const y = 200 + i * 70;
       const alive = p.hp > 0;
 
-      this.add.rectangle(x, y, 30, 30, alive ? 0xFF5722 : 0x444444);
+      const classSprite = CLASS_SPRITES[p.class_id];
+      if (classSprite && this.textures.exists(classSprite) && alive) {
+        const s = this.add.image(x, y, classSprite);
+        const targetScale = 30 / Math.max(s.width, s.height) * 2;
+        s.setScale(targetScale);
+        if (!alive) s.setTint(0x444444);
+      } else {
+        this.add.rectangle(x, y, 30, 30, alive ? 0xFF5722 : 0x444444);
+      }
       this.add.text(x + 30, y - 15, p.name, {
         fontSize: '12px', color: alive ? '#ffffff' : '#666666', fontFamily: 'monospace',
       });

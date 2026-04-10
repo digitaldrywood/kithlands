@@ -98,13 +98,11 @@ export class WorldScene extends Phaser.Scene {
     this.drawLabels();
 
     // Player sprite
-    this.player = this.add.rectangle(
+    this.player = this.add.image(
       this.playerX * RENDERED_TILE + RENDERED_TILE / 2,
       this.playerY * RENDERED_TILE + RENDERED_TILE / 2,
-      RENDERED_TILE - 4,
-      RENDERED_TILE - 4,
-      0xFF5722
-    ).setDepth(10);
+      'player'
+    ).setDepth(10).setScale(SCALE);
 
     // Camera follows player
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
