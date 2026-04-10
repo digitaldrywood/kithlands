@@ -37,6 +37,21 @@ export class WizardScene extends Phaser.Scene {
   showStep() {
     this.clearContent();
 
+    // Skip places and big building steps when using OSM
+    // (the map provides all POIs automatically)
+    if (this.wizardData.use_osm && (this.step === 2 || this.step === 3)) {
+      // Auto-fill defaults so the server has something if needed
+      if (this.step === 2 && (!this.wizardData.places || this.wizardData.places.length === 0)) {
+        this.wizardData.places = ['From Map', 'From Map', 'From Map'];
+      }
+      if (this.step === 3 && !this.wizardData.big_building) {
+        this.wizardData.big_building = 'Town Hall';
+      }
+      this.step++;
+      this.showStep();
+      return;
+    }
+
     switch (this.step) {
       case 0: this.showTownStep(); break;
       case 1: this.showPeopleStep(); break;
@@ -79,7 +94,14 @@ export class WizardScene extends Phaser.Scene {
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     btn.on('pointerover', () => btn.setColor('#aaaaaa'));
     btn.on('pointerout', () => btn.setColor('#888888'));
-    btn.on('pointerdown', () => { this.step--; this.showStep(); });
+    btn.on('pointerdown', () => {
+      this.step--;
+      // Skip past OSM-hidden steps when going back too
+      if (this.wizardData.use_osm && (this.step === 3 || this.step === 2)) {
+        this.step = 1; // jump back to NPCs
+      }
+      this.showStep();
+    });
     this.contentGroup.add(btn);
   }
 
