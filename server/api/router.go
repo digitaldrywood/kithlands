@@ -6,6 +6,7 @@ import (
 
 	"github.com/digitaldrywood/kithlands/internal/auth"
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
+	"github.com/digitaldrywood/kithlands/internal/locality"
 	"github.com/digitaldrywood/kithlands/internal/safety"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -42,6 +43,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/data/stats", s.handleGetStats)
 
 	// Protected (auth required)
+	mux.Handle("POST /api/geocode", s.auth.Middleware(http.HandlerFunc(s.handleGeocode)))
 	mux.Handle("POST /api/wizard", s.auth.Middleware(http.HandlerFunc(s.handleWizard)))
 	mux.Handle("POST /api/game/new", s.auth.Middleware(http.HandlerFunc(s.handleNewGame)))
 	mux.Handle("GET /api/game/{id}", s.auth.Middleware(http.HandlerFunc(s.handleGetGame)))
@@ -79,6 +81,24 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonResp(w, map[string]string{"token": token})
+}
+
+func (s *Server) handleGeocode(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Query string `json:"query"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Query == "" {
+		httpError(w, "query required", http.StatusBadRequest)
+		return
+	}
+
+	result, err := locality.Geocode(r.Context(), req.Query)
+	if err != nil {
+		httpError(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	jsonResp(w, result)
 }
 
 func (s *Server) handleGetClasses(w http.ResponseWriter, r *http.Request) {

@@ -1,4 +1,4 @@
-import { newGame, getClasses } from '../api.js';
+import { newGame, getClasses, geocode } from '../api.js';
 
 export class WizardScene extends Phaser.Scene {
   constructor() {
@@ -79,12 +79,54 @@ export class WizardScene extends Phaser.Scene {
 
   showTownStep() {
     this.addTitle('LOCALITY WIZARD');
-    this.addLabel(80, 'Where do you live? This becomes the world of your game.');
-    const input = this.addInput(130, 'Town name (e.g. Cadott, WI)');
-    this.addButton(200, 'NEXT', () => {
-      this.wizardData.town_name = input.node.value.trim() || 'Cadott, WI';
-      this.step++;
-      this.showStep();
+    this.addLabel(80, 'Where do you live? This becomes the world of your game.\nEnter a town name or address to build from real-world map data.');
+    const input = this.addInput(140, 'Town name or address (e.g. Cadott, WI)');
+
+    // Status text for geocoding
+    const status = this.add.text(this.cx, 175, '', {
+      fontSize: '11px', color: '#aaaaaa', fontFamily: 'monospace',
+    }).setOrigin(0.5);
+    this.contentGroup.add(status);
+
+    // Use real map toggle
+    let useOSM = true;
+    const osmToggle = this.add.text(this.cx, 200, '[X] Use real-world map data (OpenStreetMap)', {
+      fontSize: '12px', color: '#44aaff', fontFamily: 'monospace',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    osmToggle.on('pointerdown', () => {
+      useOSM = !useOSM;
+      osmToggle.setText(`[${useOSM ? 'X' : ' '}] Use real-world map data (OpenStreetMap)`);
+      osmToggle.setColor(useOSM ? '#44aaff' : '#666666');
+    });
+    this.contentGroup.add(osmToggle);
+
+    this.addButton(260, 'FIND & CONTINUE', async () => {
+      const townName = input.node.value.trim() || 'Cadott, WI';
+      this.wizardData.town_name = townName;
+      this.wizardData.use_osm = useOSM;
+
+      if (useOSM) {
+        status.setText('Looking up location...').setColor('#ffcc44');
+        try {
+          const result = await geocode(townName);
+          if (result.error) {
+            status.setText(`Not found: ${result.error}`).setColor('#ff4444');
+            return;
+          }
+          this.wizardData.lat = result.lat;
+          this.wizardData.lng = result.lng;
+          status.setText(`Found: ${result.display_name}`).setColor('#44ff44');
+          // Brief pause to show result
+          this.time.delayedCall(1000, () => { this.step++; this.showStep(); });
+        } catch (e) {
+          status.setText('Geocoding failed. Continuing without OSM.').setColor('#ff8844');
+          this.wizardData.use_osm = false;
+          this.time.delayedCall(1500, () => { this.step++; this.showStep(); });
+        }
+      } else {
+        this.step++;
+        this.showStep();
+      }
     });
   }
 
@@ -174,7 +216,8 @@ export class WizardScene extends Phaser.Scene {
 
   async startGameStep() {
     this.addTitle('Creating your world...');
-    this.addLabel(100, 'Generating locality, campaign, and encounters...');
+    const osmMsg = this.wizardData.use_osm ? 'Fetching real-world map data from OpenStreetMap...' : 'Generating locality, campaign, and encounters...';
+    this.addLabel(100, osmMsg);
 
     try {
       const result = await newGame(this.wizardData);

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"math/rand/v2"
 	"strings"
@@ -38,6 +39,9 @@ type NewGameRequest struct {
 	BigBuilding string            `json:"big_building"`
 	Party       []PartyMemberReq  `json:"party"`
 	Difficulty  string            `json:"difficulty"`
+	UseOSM      bool              `json:"use_osm,omitempty"`
+	Lat         float64           `json:"lat,omitempty"`
+	Lng         float64           `json:"lng,omitempty"`
 }
 
 type PartyMemberReq struct {
@@ -969,19 +973,51 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 	rngSeed := time.Now().UnixNano()
 	rng := rand.New(rand.NewPCG(uint64(rngSeed), 0))
 
-	// Build locality
-	var wizPeople []locality.WizardPerson
-	for _, p := range req.People {
-		wizPeople = append(wizPeople, locality.WizardPerson{Name: p.Name, Relation: p.Relation})
+	// Build locality -- OSM or wizard
+	var loc *locality.Locality
+	if req.UseOSM && req.Lat != 0 && req.Lng != 0 {
+		var err error
+		loc, err = locality.BuildFromOSM(context.Background(), req.Lat, req.Lng, req.TownName)
+		if err != nil {
+			// Fall back to wizard if OSM fails
+			loc = nil
+		}
 	}
-	loc := locality.BuildFromWizard(locality.WizardInput{
-		TownName:    req.TownName,
-		People:      wizPeople,
-		Places:      req.Places,
-		BigBuilding: req.BigBuilding,
-		Flavor:      "conquest",
-		Difficulty:  req.Difficulty,
-	})
+	if loc == nil {
+		var wizPeople []locality.WizardPerson
+		for _, p := range req.People {
+			wizPeople = append(wizPeople, locality.WizardPerson{Name: p.Name, Relation: p.Relation})
+		}
+		loc = locality.BuildFromWizard(locality.WizardInput{
+			TownName:    req.TownName,
+			People:      wizPeople,
+			Places:      req.Places,
+			BigBuilding: req.BigBuilding,
+			Flavor:      "conquest",
+			Difficulty:  req.Difficulty,
+		})
+	}
+
+	// Add personal NPCs on top of OSM data
+	if req.UseOSM {
+		for i, p := range req.People {
+			loc.Nodes = append(loc.Nodes, locality.Node{
+				ID:   fmt.Sprintf("person_%d", i),
+				Kind: locality.NodePerson,
+				Name: p.Name,
+				Tags: []string{"person", p.Relation},
+				Importance: 70,
+			})
+			if len(loc.Nodes) > 1 {
+				loc.Edges = append(loc.Edges, locality.Edge{
+					From: fmt.Sprintf("person_%d", i),
+					To:   loc.Nodes[0].ID,
+					Kind: locality.EdgeSocial,
+					Weight: 0.5,
+				})
+			}
+		}
+	}
 
 	// Create party
 	var party []*character.Character

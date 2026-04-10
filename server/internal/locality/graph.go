@@ -13,6 +13,7 @@ type Locality struct {
 	Edges     []Edge     `json:"edges"`
 	Generated time.Time  `json:"generated"`
 	Source    string     `json:"source"` // wizard, csv, osm, hybrid
+	roads     []Road     // parsed OSM road data (not serialized)
 }
 
 type LatLng struct {

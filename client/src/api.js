@@ -71,6 +71,10 @@ export async function learnSpell(gameId, charName, spellId) {
   return apiCall('POST', `/game/${gameId}/learn`, { char_name: charName, spell_id: spellId });
 }
 
+export async function geocode(query) {
+  return apiCall('POST', '/geocode', { query });
+}
+
 export async function saveGame(gameId, name) {
   return apiCall('POST', `/game/${gameId}/save`, { name });
 }

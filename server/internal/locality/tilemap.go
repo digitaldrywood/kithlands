@@ -60,8 +60,13 @@ func GenerateTileMap(loc *Locality, spawnID string) *TileMap {
 	seed := hashString(loc.Name)
 	fillTerrain(tiles, mapW, mapH, seed)
 
-	// Place nodes
-	nodePositions := distributeNodes(loc.Nodes, mapW, mapH)
+	// Place nodes -- use real coordinates if OSM, otherwise grid layout
+	var nodePositions []nodePos
+	if loc.Source == "osm" {
+		nodePositions = distributeNodesOSM(loc, mapW, mapH)
+	} else {
+		nodePositions = distributeNodes(loc.Nodes, mapW, mapH)
+	}
 
 	var spawns []MapSpawn
 	playerX, playerY := mapW/2, mapH/2
@@ -115,6 +120,22 @@ func GenerateTileMap(loc *Locality, spawnID string) *TileMap {
 		}
 		if fromPos != nil && toPos != nil {
 			drawWidePath(tiles, fromPos.x, fromPos.y+2, toPos.x, toPos.y+2, mapW, mapH)
+		}
+	}
+
+	// Draw OSM roads if available
+	if len(loc.Roads()) > 0 {
+		margin := 8
+		usableW := mapW - 2*margin
+		usableH := mapH - 2*margin
+		for _, road := range loc.Roads() {
+			for j := 1; j < len(road.Points); j++ {
+				x1 := margin + int(road.Points[j-1].X*float64(usableW))
+				y1 := margin + int(road.Points[j-1].Y*float64(usableH))
+				x2 := margin + int(road.Points[j].X*float64(usableW))
+				y2 := margin + int(road.Points[j].Y*float64(usableH))
+				drawWidePath(tiles, x1, y1, x2, y2, mapW, mapH)
+			}
 		}
 	}
 
@@ -369,6 +390,73 @@ func distributeNodes(nodes []Node, mapW, mapH int) []nodePos {
 		y = clamp(y, 5, mapH-6)
 
 		result = append(result, nodePos{nodeID: node.ID, x: x, y: y})
+	}
+
+	return result
+}
+
+// distributeNodesOSM places nodes at positions derived from real lat/lng coordinates.
+func distributeNodesOSM(loc *Locality, mapW, mapH int) []nodePos {
+	var result []nodePos
+
+	// Find bounding box of all nodes with coordinates
+	var minLat, maxLat, minLng, maxLng float64
+	first := true
+	for _, n := range loc.Nodes {
+		if n.Coord == nil {
+			continue
+		}
+		if first {
+			minLat, maxLat = n.Coord.Lat, n.Coord.Lat
+			minLng, maxLng = n.Coord.Lng, n.Coord.Lng
+			first = true
+		}
+		if n.Coord.Lat < minLat { minLat = n.Coord.Lat }
+		if n.Coord.Lat > maxLat { maxLat = n.Coord.Lat }
+		if n.Coord.Lng < minLng { minLng = n.Coord.Lng }
+		if n.Coord.Lng > maxLng { maxLng = n.Coord.Lng }
+	}
+
+	// Use center +/- 0.015 degrees (~1.5km) if no bbox
+	if !first || maxLat-minLat < 0.001 {
+		minLat = loc.Center.Lat - 0.015
+		maxLat = loc.Center.Lat + 0.015
+		minLng = loc.Center.Lng - 0.02
+		maxLng = loc.Center.Lng + 0.02
+	}
+
+	// Add padding
+	padLat := (maxLat - minLat) * 0.1
+	padLng := (maxLng - minLng) * 0.1
+	minLat -= padLat
+	maxLat += padLat
+	minLng -= padLng
+	maxLng += padLng
+
+	margin := 8
+	usableW := mapW - 2*margin
+	usableH := mapH - 2*margin
+
+	placed := 0
+	for _, n := range loc.Nodes {
+		var x, y int
+		if n.Coord != nil {
+			// Map real coordinates to tile positions
+			normX := (n.Coord.Lng - minLng) / (maxLng - minLng)
+			normY := 1 - (n.Coord.Lat-minLat)/(maxLat-minLat) // invert Y
+			x = margin + int(normX*float64(usableW))
+			y = margin + int(normY*float64(usableH))
+		} else {
+			// Fallback: distribute without coords
+			x = margin + (placed*usableW/(len(loc.Nodes)+1))
+			y = margin + usableH/2
+		}
+
+		x = clamp(x, 5, mapW-6)
+		y = clamp(y, 5, mapH-6)
+
+		result = append(result, nodePos{nodeID: n.ID, x: x, y: y})
+		placed++
 	}
 
 	return result
