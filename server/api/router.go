@@ -43,6 +43,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/data/stats", s.handleGetStats)
 
 	// Protected (auth required)
+	mux.Handle("POST /api/osm/preview", s.auth.Middleware(http.HandlerFunc(s.handleOSMPreview)))
 	mux.Handle("POST /api/geocode", s.auth.Middleware(http.HandlerFunc(s.handleGeocode)))
 	mux.Handle("POST /api/wizard", s.auth.Middleware(http.HandlerFunc(s.handleWizard)))
 	mux.Handle("POST /api/game/new", s.auth.Middleware(http.HandlerFunc(s.handleNewGame)))
@@ -186,6 +187,52 @@ func (s *Server) handleGameAction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonResp(w, result)
+}
+
+func (s *Server) handleOSMPreview(w http.ResponseWriter, r *http.Request) {
+	var req OSMPreviewRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpError(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if req.Lat == 0 && req.Lng == 0 {
+		httpError(w, "lat and lng required", http.StatusBadRequest)
+		return
+	}
+	if req.RadiusMiles <= 0 {
+		req.RadiusMiles = 1.5
+	}
+
+	radiusM := milesToMeters(req.RadiusMiles)
+	nodes, actualRadiusM, err := locality.PreviewOSM(r.Context(), req.Lat, req.Lng, radiusM)
+	if err != nil {
+		httpError(w, "OSM query failed: "+err.Error(), http.StatusBadGateway)
+		return
+	}
+
+	// Convert locality.Node to OSMPreviewNode for JSON response
+	var previewNodes []OSMPreviewNode
+	for _, n := range nodes {
+		pn := OSMPreviewNode{
+			ID:         n.ID,
+			Name:       n.Name,
+			Kind:       string(n.Kind),
+			Tags:       n.Tags,
+			Importance: n.Importance,
+		}
+		if n.Coord != nil {
+			pn.Lat = n.Coord.Lat
+			pn.Lng = n.Coord.Lng
+		}
+		previewNodes = append(previewNodes, pn)
+	}
+
+	resp := OSMPreviewResponse{
+		Nodes:       previewNodes,
+		RadiusMiles: float64(actualRadiusM) / 1609.34,
+		Cached:      false,
+	}
+	jsonResp(w, resp)
 }
 
 func jsonResp(w http.ResponseWriter, data any) {
