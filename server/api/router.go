@@ -50,6 +50,12 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/game/{id}/buy", s.auth.Middleware(http.HandlerFunc(s.handleBuy)))
 	mux.Handle("POST /api/game/{id}/equip", s.auth.Middleware(http.HandlerFunc(s.handleEquip)))
 	mux.Handle("POST /api/game/{id}/learn", s.auth.Middleware(http.HandlerFunc(s.handleLearnSpell)))
+
+	// Save/Load
+	mux.Handle("POST /api/game/{id}/save", s.auth.Middleware(http.HandlerFunc(s.handleSaveGame)))
+	mux.Handle("GET /api/saves", s.auth.Middleware(http.HandlerFunc(s.handleListSaves)))
+	mux.Handle("POST /api/saves/{saveId}/load", s.auth.Middleware(http.HandlerFunc(s.handleLoadSave)))
+	mux.Handle("DELETE /api/saves/{saveId}", s.auth.Middleware(http.HandlerFunc(s.handleDeleteSave)))
 }
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {

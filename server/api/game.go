@@ -146,6 +146,7 @@ type Game struct {
 	id         string
 	gd         *gamedata.GameData
 	rng        *rand.Rand
+	rngSeed    int64
 	loc        *locality.Locality
 	walk       *locality.WalkResult
 	tileMap    *locality.TileMap
@@ -965,7 +966,8 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 		return nil, fmt.Errorf("party must have 1-4 members")
 	}
 
-	rng := rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 0))
+	rngSeed := time.Now().UnixNano()
+	rng := rand.New(rand.NewPCG(uint64(rngSeed), 0))
 
 	// Build locality
 	var wizPeople []locality.WizardPerson
@@ -1050,6 +1052,7 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 		currentQ:   0,
 		phase:      "world",
 		diff:       balance.GetDifficulty(req.Difficulty),
+		rngSeed:    rngSeed,
 		discovered: make(map[string]bool),
 	}
 

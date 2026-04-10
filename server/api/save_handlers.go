@@ -1,0 +1,344 @@
+package api
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"math/rand/v2"
+	"net/http"
+	"time"
+
+	"github.com/digitaldrywood/kithlands/internal/auth"
+	"github.com/digitaldrywood/kithlands/internal/balance"
+	"github.com/digitaldrywood/kithlands/internal/character"
+	"github.com/digitaldrywood/kithlands/internal/gamedata"
+	"github.com/digitaldrywood/kithlands/internal/generator"
+	"github.com/digitaldrywood/kithlands/internal/inventory"
+	"github.com/digitaldrywood/kithlands/internal/locality"
+	"github.com/digitaldrywood/kithlands/internal/magic"
+	"github.com/digitaldrywood/kithlands/internal/save"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+// SaveGameData is the full serializable game state stored in JSONB.
+type SaveGameData struct {
+	Party      []*character.Character        `json:"party"`
+	SpellBooks map[string]*magic.SpellBook   `json:"spell_books"`
+	Inventory  *inventory.Inventory          `json:"inventory"`
+	Quests     []generator.Quest             `json:"quests"`
+	CurrentQ   int                           `json:"current_quest"`
+	Phase      string                        `json:"phase"`
+	Discovered map[string]bool               `json:"discovered"`
+	PlayerX    int                           `json:"player_x"`
+	PlayerY    int                           `json:"player_y"`
+}
+
+// ToSaveState serializes the live game into a SaveState for database storage.
+func (g *Game) ToSaveState(name, userID string) (*save.SaveState, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	partyJSON, err := json.Marshal(g.party)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling party: %w", err)
+	}
+
+	invJSON, err := json.Marshal(g.inv)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling inventory: %w", err)
+	}
+
+	questJSON, err := json.Marshal(g.quests)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling quests: %w", err)
+	}
+
+	worldState := map[string]any{
+		"current_quest": g.currentQ,
+		"phase":         g.phase,
+		"discovered":    g.discovered,
+		"spell_books":   g.spellBooks,
+	}
+	worldJSON, err := json.Marshal(worldState)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling world state: %w", err)
+	}
+
+	// Compute play time (approximate)
+	playTime := 0
+
+	return &save.SaveState{
+		UserID:      userID,
+		LocalityID:  g.loc.ID,
+		Name:        name,
+		Flavor:      "conquest",
+		Difficulty:  g.diff.ID,
+		SpawnNodeID: g.loc.Nodes[0].ID,
+		Party:       partyJSON,
+		Inventory:   invJSON,
+		QuestState:  questJSON,
+		WorldState:  worldJSON,
+		RNGSeed:     g.rngSeed,
+		PlayTimeSec: playTime,
+	}, nil
+}
+
+// FromSaveState reconstructs a Game from a SaveState.
+func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Locality) (*Game, error) {
+	var party []*character.Character
+	if err := json.Unmarshal(ss.Party, &party); err != nil {
+		return nil, fmt.Errorf("unmarshaling party: %w", err)
+	}
+
+	var inv inventory.Inventory
+	if err := json.Unmarshal(ss.Inventory, &inv); err != nil {
+		return nil, fmt.Errorf("unmarshaling inventory: %w", err)
+	}
+
+	var quests []generator.Quest
+	if err := json.Unmarshal(ss.QuestState, &quests); err != nil {
+		return nil, fmt.Errorf("unmarshaling quests: %w", err)
+	}
+
+	var worldState struct {
+		CurrentQ   int                         `json:"current_quest"`
+		Phase      string                      `json:"phase"`
+		Discovered map[string]bool             `json:"discovered"`
+		SpellBooks map[string]*magic.SpellBook `json:"spell_books"`
+	}
+	if err := json.Unmarshal(ss.WorldState, &worldState); err != nil {
+		return nil, fmt.Errorf("unmarshaling world state: %w", err)
+	}
+
+	walk := locality.Walk(loc, loc.Nodes[0].ID)
+	tileMap := locality.GenerateTileMap(loc, loc.Nodes[0].ID)
+
+	rng := rand.New(rand.NewPCG(uint64(ss.RNGSeed), 0))
+
+	spellBooks := worldState.SpellBooks
+	if spellBooks == nil {
+		spellBooks = make(map[string]*magic.SpellBook)
+	}
+
+	discovered := worldState.Discovered
+	if discovered == nil {
+		discovered = make(map[string]bool)
+	}
+
+	game := &Game{
+		id:         fmt.Sprintf("game_%d", time.Now().UnixNano()),
+		gd:         gd,
+		rng:        rng,
+		rngSeed:    ss.RNGSeed,
+		loc:        loc,
+		walk:       walk,
+		tileMap:    tileMap,
+		party:      party,
+		spellBooks: spellBooks,
+		inv:        &inv,
+		quests:     quests,
+		currentQ:   worldState.CurrentQ,
+		phase:      "world", // always resume in world
+		diff:       balance.GetDifficulty(ss.Difficulty),
+		discovered: discovered,
+	}
+
+	return game, nil
+}
+
+// Save API handlers
+
+func (s *Server) handleSaveGame(w http.ResponseWriter, r *http.Request) {
+	gameID := r.PathValue("id")
+	game := s.games.GetGame(gameID)
+	if game == nil {
+		httpError(w, "game not found", http.StatusNotFound)
+		return
+	}
+
+	user := auth.UserFromContext(r.Context())
+	if user == nil {
+		httpError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
+		req.Name = fmt.Sprintf("Save %s", time.Now().Format("Jan 2 15:04"))
+	}
+
+	ss, err := game.ToSaveState(req.Name, user.ID)
+	if err != nil {
+		httpError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Store locality first
+	if s.db != nil {
+		s.saveLocality(r.Context(), game, user.ID)
+	}
+
+	saveSvc := save.NewService(s.db)
+	if err := saveSvc.Create(r.Context(), ss); err != nil {
+		httpError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	jsonResp(w, map[string]string{"status": "saved", "name": ss.Name})
+}
+
+func (s *Server) handleListSaves(w http.ResponseWriter, r *http.Request) {
+	user := auth.UserFromContext(r.Context())
+	if user == nil {
+		httpError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	saveSvc := save.NewService(s.db)
+	saves, err := saveSvc.ListByUser(r.Context(), user.ID)
+	if err != nil {
+		httpError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Build summary list
+	type SaveSummary struct {
+		ID         string    `json:"id"`
+		Name       string    `json:"name"`
+		Flavor     string    `json:"flavor"`
+		Difficulty string    `json:"difficulty"`
+		PlayTime   int       `json:"play_time"`
+		UpdatedAt  time.Time `json:"updated_at"`
+		Party      []string  `json:"party"` // party member names
+	}
+
+	var summaries []SaveSummary
+	for _, sv := range saves {
+		var party []*character.Character
+		json.Unmarshal(sv.Party, &party)
+
+		names := make([]string, len(party))
+		for i, c := range party {
+			names[i] = fmt.Sprintf("%s Lv%d", c.Name, c.Level)
+		}
+
+		summaries = append(summaries, SaveSummary{
+			ID:         sv.ID,
+			Name:       sv.Name,
+			Flavor:     sv.Flavor,
+			Difficulty: sv.Difficulty,
+			PlayTime:   sv.PlayTimeSec,
+			UpdatedAt:  sv.UpdatedAt,
+			Party:      names,
+		})
+	}
+
+	jsonResp(w, map[string]any{"saves": summaries})
+}
+
+func (s *Server) handleLoadSave(w http.ResponseWriter, r *http.Request) {
+	saveID := r.PathValue("saveId")
+
+	user := auth.UserFromContext(r.Context())
+	if user == nil {
+		httpError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	saveSvc := save.NewService(s.db)
+	ss, err := saveSvc.Load(r.Context(), saveID, user.ID)
+	if err != nil {
+		httpError(w, "save not found", http.StatusNotFound)
+		return
+	}
+
+	// Load the locality
+	loc, err := s.loadLocality(r.Context(), ss.LocalityID)
+	if err != nil {
+		httpError(w, "locality not found", http.StatusNotFound)
+		return
+	}
+
+	game, err := FromSaveState(ss, s.gd, loc)
+	if err != nil {
+		httpError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	s.games.mu.Lock()
+	s.games.games[game.id] = game
+	s.games.mu.Unlock()
+
+	state := game.State()
+	jsonResp(w, state)
+}
+
+func (s *Server) handleDeleteSave(w http.ResponseWriter, r *http.Request) {
+	saveID := r.PathValue("saveId")
+	user := auth.UserFromContext(r.Context())
+	if user == nil {
+		httpError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if s.db != nil {
+		_, err := s.db.Exec(r.Context(), "DELETE FROM saves WHERE id = $1 AND user_id = $2", saveID, user.ID)
+		if err != nil {
+			httpError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	jsonResp(w, map[string]string{"status": "deleted"})
+}
+
+// Helper: persist locality to DB
+func (s *Server) saveLocality(ctx context.Context, game *Game, userID string) {
+	if s.db == nil {
+		return
+	}
+
+	game.mu.Lock()
+	loc := game.loc
+	game.mu.Unlock()
+
+	graphJSON, err := json.Marshal(loc)
+	if err != nil {
+		return
+	}
+
+	// Upsert locality
+	_, _ = s.db.Exec(ctx,
+		`INSERT INTO localities (id, user_id, source, name, graph)
+		 VALUES ($1, $2, $3, $4, $5)
+		 ON CONFLICT (id) DO UPDATE SET last_used_at = NOW()`,
+		loc.ID, userID, loc.Source, loc.Name, graphJSON)
+}
+
+// Helper: load locality from DB
+func (s *Server) loadLocality(ctx context.Context, localityID string) (*locality.Locality, error) {
+	if s.db == nil {
+		return nil, fmt.Errorf("no database")
+	}
+
+	var graphJSON []byte
+	err := s.db.QueryRow(ctx,
+		`SELECT graph FROM localities WHERE id = $1`, localityID).Scan(&graphJSON)
+	if err != nil {
+		return nil, fmt.Errorf("loading locality: %w", err)
+	}
+
+	var loc locality.Locality
+	if err := json.Unmarshal(graphJSON, &loc); err != nil {
+		return nil, fmt.Errorf("unmarshaling locality: %w", err)
+	}
+
+	return &loc, nil
+}
+
+// saveLocalityForGame is used by external callers
+func (s *Server) SaveLocalityForGame(ctx context.Context, db *pgxpool.Pool, game *Game, userID string) {
+	s.saveLocality(ctx, game, userID)
+}

@@ -1,4 +1,4 @@
-import { login, setToken, newGame } from '../api.js';
+import { login, setToken, newGame, listSaves, loadSave } from '../api.js';
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -6,60 +6,160 @@ export class TitleScene extends Phaser.Scene {
   }
 
   create() {
+    this.showMainMenu();
+  }
+
+  showMainMenu() {
+    this.children.removeAll(true);
+    // Remove DOM elements
+    this.children.list
+      .filter(c => c.type === 'DOMElement')
+      .forEach(c => c.destroy());
+
     const cx = 400;
 
-    this.add.text(cx, 100, 'KITHLANDS', {
+    this.add.text(cx, 80, 'KITHLANDS', {
       fontSize: '48px', color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
-    this.add.text(cx, 160, 'Your town. Your people. Your saga.', {
+    this.add.text(cx, 140, 'Your town. Your people. Your saga.', {
       fontSize: '16px', color: '#aaaaaa', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     // Email input
-    this.add.text(cx, 240, 'Enter your email to play:', {
+    this.add.text(cx, 210, 'Enter your email to play:', {
       fontSize: '14px', color: '#cccccc', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     const inputEl = document.createElement('input');
     inputEl.type = 'email';
     inputEl.placeholder = 'player@example.com';
-    inputEl.style.cssText = 'font-size:18px;padding:8px 16px;width:300px;text-align:center;background:#222;color:#fff;border:2px solid #555;outline:none;font-family:monospace;';
-    this.emailInput = this.add.dom(cx, 280, inputEl);
+    inputEl.style.cssText = 'font-size:16px;padding:6px 14px;width:280px;text-align:center;background:#222;color:#fff;border:2px solid #555;outline:none;font-family:monospace;';
+    this.add.dom(cx, 245, inputEl);
 
-    // Start with wizard
-    const startBtn = this.add.text(cx, 360, '[ NEW GAME ]', {
-      fontSize: '22px', color: '#44ff44', fontFamily: 'monospace',
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    startBtn.on('pointerover', () => startBtn.setColor('#88ff88'));
-    startBtn.on('pointerout', () => startBtn.setColor('#44ff44'));
-    startBtn.on('pointerdown', () => this.startGame(inputEl, false));
-
-    // Quick start -- skip wizard, use Cadott defaults
-    const quickBtn = this.add.text(cx, 410, '[ QUICK START - Cadott Defaults ]', {
-      fontSize: '16px', color: '#ffcc44', fontFamily: 'monospace',
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    quickBtn.on('pointerover', () => quickBtn.setColor('#ffee88'));
-    quickBtn.on('pointerout', () => quickBtn.setColor('#ffcc44'));
-    quickBtn.on('pointerdown', () => this.startGame(inputEl, true));
-
-    // Skip email entirely for testing
-    const testBtn = this.add.text(cx, 460, '[ PLAY NOW - skip login ]', {
-      fontSize: '14px', color: '#888888', fontFamily: 'monospace',
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    testBtn.on('pointerover', () => testBtn.setColor('#aaaaaa'));
-    testBtn.on('pointerout', () => testBtn.setColor('#888888'));
-    testBtn.on('pointerdown', () => {
+    // Buttons
+    this.makeButton(cx, 310, '[ NEW GAME ]', '#44ff44', () => this.startGame(inputEl, false));
+    this.makeButton(cx, 350, '[ QUICK START - Cadott ]', '#ffcc44', () => this.startGame(inputEl, true));
+    this.makeButton(cx, 390, '[ LOAD GAME ]', '#4488ff', () => this.doLogin(inputEl, () => this.showLoadScreen()));
+    this.makeButton(cx, 440, '[ PLAY NOW - skip login ]', '#888888', () => {
       inputEl.value = `test_${Date.now()}@kithlands.dev`;
       this.startGame(inputEl, true);
     });
 
-    this.input.keyboard.on('keydown-ENTER', () => this.startGame(inputEl, false));
-
-    this.statusText = this.add.text(cx, 510, '', {
+    this.statusText = this.add.text(cx, 500, '', {
       fontSize: '12px', color: '#ff4444', fontFamily: 'monospace',
       wordWrap: { width: 600 },
     }).setOrigin(0.5);
+  }
+
+  makeButton(x, y, label, color, callback) {
+    const btn = this.add.text(x, y, label, {
+      fontSize: '16px', color, fontFamily: 'monospace',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    btn.on('pointerover', () => btn.setAlpha(0.7));
+    btn.on('pointerout', () => btn.setAlpha(1));
+    btn.on('pointerdown', callback);
+    return btn;
+  }
+
+  async doLogin(inputEl, callback) {
+    const email = inputEl.value.trim();
+    if (!email || !email.includes('@')) {
+      this.statusText.setText('Please enter a valid email.').setColor('#ff4444');
+      return;
+    }
+    this.statusText.setText('Connecting...').setColor('#aaaaaa');
+    try {
+      const result = await login(email);
+      if (!result.token) {
+        this.statusText.setText(result.error || 'Login failed.').setColor('#ff4444');
+        return;
+      }
+      setToken(result.token);
+      callback();
+    } catch (e) {
+      this.statusText.setText('Server unreachable. Run: make play').setColor('#ff4444');
+    }
+  }
+
+  async showLoadScreen() {
+    this.children.removeAll(true);
+    this.children.list.filter(c => c.type === 'DOMElement').forEach(c => c.destroy());
+
+    const cx = 400;
+    this.add.text(cx, 50, 'LOAD GAME', {
+      fontSize: '28px', color: '#4488ff', fontFamily: 'monospace',
+    }).setOrigin(0.5);
+
+    this.add.text(cx, 90, 'Loading saves...', {
+      fontSize: '12px', color: '#aaaaaa', fontFamily: 'monospace',
+    }).setOrigin(0.5);
+
+    try {
+      const result = await listSaves();
+      const saves = result.saves || [];
+
+      this.children.removeAll(true);
+
+      this.add.text(cx, 40, 'LOAD GAME', {
+        fontSize: '28px', color: '#4488ff', fontFamily: 'monospace',
+      }).setOrigin(0.5);
+
+      if (saves.length === 0) {
+        this.add.text(cx, 200, 'No saved games found.', {
+          fontSize: '14px', color: '#666666', fontFamily: 'monospace',
+        }).setOrigin(0.5);
+        this.add.text(cx, 240, 'Start a new game first, then save at an inn or temple.', {
+          fontSize: '11px', color: '#888888', fontFamily: 'monospace',
+        }).setOrigin(0.5);
+      } else {
+        let y = 100;
+        for (const sv of saves.slice(0, 8)) {
+          const partyStr = sv.party ? sv.party.join(', ') : '';
+          const dateStr = new Date(sv.updated_at).toLocaleDateString();
+          const timeStr = sv.play_time > 0 ? `${Math.floor(sv.play_time / 60)}min` : '';
+
+          const row = this.add.rectangle(cx, y + 15, 600, 50, 0x112233)
+            .setStrokeStyle(1, 0x334466).setInteractive({ useHandCursor: true });
+
+          this.add.text(150, y, sv.name, {
+            fontSize: '14px', color: '#ffffff', fontFamily: 'monospace',
+          });
+          this.add.text(150, y + 18, `${partyStr}  |  ${sv.difficulty}  |  ${dateStr} ${timeStr}`, {
+            fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
+          });
+
+          row.on('pointerover', () => row.setFillStyle(0x223355));
+          row.on('pointerout', () => row.setFillStyle(0x112233));
+          row.on('pointerdown', () => this.loadGameSave(sv.id));
+
+          y += 55;
+        }
+      }
+
+      this.makeButton(cx, 540, '[ BACK ]', '#aaaaaa', () => this.showMainMenu());
+
+    } catch (e) {
+      console.error('[Title] load saves error:', e);
+      this.add.text(cx, 200, 'Failed to load saves.', {
+        fontSize: '14px', color: '#ff4444', fontFamily: 'monospace',
+      }).setOrigin(0.5);
+      this.makeButton(cx, 540, '[ BACK ]', '#aaaaaa', () => this.showMainMenu());
+    }
+  }
+
+  async loadGameSave(saveId) {
+    try {
+      const result = await loadSave(saveId);
+      if (result.error) {
+        console.error('[Title] load error:', result.error);
+        return;
+      }
+      console.log('[Title] save loaded, going to World');
+      this.scene.start('World', { gameState: result });
+    } catch (e) {
+      console.error('[Title] load failed:', e);
+    }
   }
 
   async startGame(inputEl, quick) {
@@ -80,7 +180,6 @@ export class TitleScene extends Phaser.Scene {
       setToken(result.token);
 
       if (quick) {
-        // Skip wizard, create game with Cadott defaults
         console.log('[Title] quick start with Cadott defaults');
         const gameResult = await newGame({
           town_name: 'Cadott, WI',
@@ -103,7 +202,6 @@ export class TitleScene extends Phaser.Scene {
           return;
         }
 
-        console.log('[Title] game created, going to World');
         this.scene.start('World', { gameState: gameResult });
       } else {
         this.scene.start('Wizard');

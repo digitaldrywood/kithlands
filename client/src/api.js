@@ -70,3 +70,19 @@ export async function equipItem(gameId, slot, itemId, type) {
 export async function learnSpell(gameId, charName, spellId) {
   return apiCall('POST', `/game/${gameId}/learn`, { char_name: charName, spell_id: spellId });
 }
+
+export async function saveGame(gameId, name) {
+  return apiCall('POST', `/game/${gameId}/save`, { name });
+}
+
+export async function listSaves() {
+  return apiCall('GET', '/saves');
+}
+
+export async function loadSave(saveId) {
+  return apiCall('POST', `/saves/${saveId}/load`);
+}
+
+export async function deleteSave(saveId) {
+  return apiCall('DELETE', `/saves/${saveId}`);
+}

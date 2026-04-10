@@ -1,4 +1,4 @@
-import { gameAction, getShop, buyItem, equipItem, learnSpell } from '../api.js';
+import { gameAction, getShop, buyItem, equipItem, learnSpell, saveGame } from '../api.js';
 
 const ENEMY_SPRITES = {
   'Slime': 'monster_slime', 'Goblin': 'monster_goblin', 'Wolf': 'monster_wolf',
@@ -692,6 +692,50 @@ export class WorldScene extends Phaser.Scene {
     this.updateHUD();
   }
 
+  offerSave(locationName) {
+    this.animating = true;
+    const ol = [];
+
+    const bg = this.add.rectangle(400, 300, 400, 160, 0x112233, 0.95)
+      .setStrokeStyle(2, 0x4488ff).setScrollFactor(0).setDepth(50).setInteractive();
+    ol.push(bg);
+
+    ol.push(this.add.text(400, 250, `Save your progress at ${locationName}?`, {
+      fontSize: '13px', color: '#ffffff', fontFamily: 'monospace',
+      wordWrap: { width: 350 },
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(51));
+
+    const yesBtn = this.add.text(330, 310, '[ SAVE ]', {
+      fontSize: '16px', color: '#44ff44', fontFamily: 'monospace',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(51).setInteractive({ useHandCursor: true });
+    yesBtn.on('pointerover', () => yesBtn.setColor('#88ff88'));
+    yesBtn.on('pointerout', () => yesBtn.setColor('#44ff44'));
+    yesBtn.on('pointerdown', async () => {
+      yesBtn.setText('Saving...');
+      const gs = this.gameState;
+      const name = `${gs.location} - ${gs.party.map(p => p.name).join(', ')}`;
+      const result = await saveGame(gs.id, name);
+      ol.forEach(o => o.destroy());
+      this.animating = false;
+      if (result.error) {
+        this.showMessage(`Save failed: ${result.error}`);
+      } else {
+        this.showMessage('Game saved!');
+      }
+      this.time.delayedCall(1500, () => this.hideMessage());
+    });
+    ol.push(yesBtn);
+
+    const noBtn = this.add.text(470, 310, '[ NO ]', {
+      fontSize: '16px', color: '#aaaaaa', fontFamily: 'monospace',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(51).setInteractive({ useHandCursor: true });
+    noBtn.on('pointerdown', () => {
+      ol.forEach(o => o.destroy());
+      this.animating = false;
+    });
+    ol.push(noBtn);
+  }
+
   showInteractPrompt(spawn) {
     this.hideInteractPrompt();
     const tags = spawn.tags || [];
@@ -744,12 +788,12 @@ export class WorldScene extends Phaser.Scene {
         this.showMessage(`Temple of Light\nBlessings upon you. HP fully restored!`);
       }
       this.updateHUD();
-      this.time.delayedCall(2000, () => this.hideMessage());
+      this.time.delayedCall(2000, () => { this.hideMessage(); this.offerSave('Temple of Light'); });
     } else if (isInn) {
       this.gameState.party.forEach(p => { if (p.hp > 0) p.hp = p.max_hp; });
       this.showMessage(`Rested at ${spawn.name}.\nHP and spells restored!`);
       this.updateHUD();
-      this.time.delayedCall(2000, () => this.hideMessage());
+      this.time.delayedCall(2000, () => { this.hideMessage(); this.offerSave(spawn.name); });
     } else {
       this.showMessage(`Entered: ${spawn.name}`);
       this.time.delayedCall(1500, () => this.hideMessage());
