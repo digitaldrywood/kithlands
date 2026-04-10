@@ -569,12 +569,17 @@ func parseRoads(roads []osmElement, nodeMap map[int64]osmNode, minLat, maxLat, m
 
 func ensureNode(loc *Locality, id, name string, kind NodeKind, tags []string) {
 	for _, n := range loc.Nodes {
-		for _, t := range n.Tags {
-			for _, target := range tags {
+		matched := 0
+		for _, target := range tags {
+			for _, t := range n.Tags {
 				if t == target {
-					return // already have one
+					matched++
+					break
 				}
 			}
+		}
+		if matched == len(tags) {
+			return // already have one with all required tags
 		}
 	}
 	loc.Nodes = append(loc.Nodes, Node{
