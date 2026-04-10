@@ -4,16 +4,26 @@
  * pinch-to-zoom, and swipe gestures for mobile devices.
  */
 
-import { interactWithDoor } from '../scenes/world_interact.js';
-import { toggleMenu } from '../scenes/world_menu.js';
-import { toggleCodex } from '../scenes/world_codex.js';
-import { toggleMute, isMuted } from './audio.js';
+import { interactWithDoor } from "../scenes/world_interact.js";
+import { toggleMenu } from "../scenes/world_menu.js";
+import { toggleCodex } from "../scenes/world_codex.js";
+import { toggleMute, isMuted } from "./audio.js";
 
 // Tile walkability (mirrored from world.js to avoid circular dependency)
 const TILE_WALKABLE = {
-  0: true, 1: true, 2: false, 3: false, 4: false,
-  5: true, 6: true, 7: false, 8: false, 9: true,
-  10: false, 11: false, 12: true,
+  0: true,
+  1: true,
+  2: false,
+  3: false,
+  4: false,
+  5: true,
+  6: true,
+  7: false,
+  8: false,
+  9: true,
+  10: false,
+  11: false,
+  12: true,
 };
 const RENDERED_TILE = 32;
 
@@ -36,7 +46,12 @@ function findPath(tileData, sx, sy, ex, ey, mapW, mapH) {
   const closed = new Set();
   const gScore = new Map();
   const parent = new Map();
-  const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+  const dirs = [
+    [0, -1],
+    [0, 1],
+    [-1, 0],
+    [1, 0],
+  ];
   const h = (x, y) => Math.abs(x - ex) + Math.abs(y - ey);
 
   const sk = toKey(sx, sy);
@@ -66,7 +81,8 @@ function findPath(tileData, sx, sy, ex, ey, mapW, mapH) {
     closed.add(ck);
 
     for (const [dx, dy] of dirs) {
-      const nx = cur.x + dx, ny = cur.y + dy;
+      const nx = cur.x + dx,
+        ny = cur.y + dy;
       if (nx < 0 || nx >= mapW || ny < 0 || ny >= mapH) continue;
       if (!TILE_WALKABLE[tileData[ny][nx]]) continue;
       const nk = toKey(nx, ny);
@@ -77,7 +93,7 @@ function findPath(tileData, sx, sy, ex, ey, mapW, mapH) {
         gScore.set(nk, ng);
         parent.set(nk, ck);
         const nf = ng + h(nx, ny);
-        const idx = open.findIndex(o => toKey(o.x, o.y) === nk);
+        const idx = open.findIndex((o) => toKey(o.x, o.y) === nk);
         if (idx >= 0) open[idx].f = nf;
         else open.push({ x: nx, y: ny, f: nf });
       }
@@ -93,12 +109,16 @@ function findPath(tileData, sx, sy, ex, ey, mapW, mapH) {
 
 function startAutoWalk(scene, path) {
   cancelAutoWalk(scene);
-  const preview = path.map(step =>
-    scene.add.circle(
-      step.x * RENDERED_TILE + RENDERED_TILE / 2,
-      step.y * RENDERED_TILE + RENDERED_TILE / 2,
-      4, 0xffffff, 0.3
-    ).setDepth(8)
+  const preview = path.map((step) =>
+    scene.add
+      .circle(
+        step.x * RENDERED_TILE + RENDERED_TILE / 2,
+        step.y * RENDERED_TILE + RENDERED_TILE / 2,
+        4,
+        0xffffff,
+        0.3,
+      )
+      .setDepth(8),
   );
 
   let idx = 0;
@@ -106,8 +126,13 @@ function startAutoWalk(scene, path) {
     delay: 160,
     loop: true,
     callback: () => {
-      if (idx >= path.length || scene.animating || scene.menuOpen ||
-          scene.codexOpen || scene.gameOver) {
+      if (
+        idx >= path.length ||
+        scene.animating ||
+        scene.menuOpen ||
+        scene.codexOpen ||
+        scene.gameOver
+      ) {
         cancelAutoWalk(scene);
         return;
       }
@@ -119,7 +144,10 @@ function startAutoWalk(scene, path) {
         return;
       }
       scene.tryMove(dx, dy);
-      if (preview[idx]) { preview[idx].destroy(); preview[idx] = null; }
+      if (preview[idx]) {
+        preview[idx].destroy();
+        preview[idx] = null;
+      }
       idx++;
       if (idx >= path.length) cancelAutoWalk(scene);
     },
@@ -131,7 +159,9 @@ function startAutoWalk(scene, path) {
 function cancelAutoWalk(scene) {
   if (!scene._autoWalk) return;
   scene._autoWalk.timer.remove();
-  scene._autoWalk.preview.forEach(el => { if (el) el.destroy(); });
+  scene._autoWalk.preview.forEach((el) => {
+    if (el) el.destroy();
+  });
   scene._autoWalk = null;
 }
 
@@ -139,18 +169,19 @@ function cancelAutoWalk(scene) {
 
 function isControlArea(x, y) {
   if (!_isTouch) return false;
-  if (x < 175 && y > 395) return true;   // D-pad
-  if (x > 675 && y > 440) return true;   // Action button
-  if (x > 660 && y < 260) return true;   // Touch HUD
-  if (y > 565) return true;              // HUD bar
+  if (x < 175 && y > 395) return true; // D-pad
+  if (x > 675 && y > 440) return true; // Action button
+  if (x > 660 && y < 260) return true; // Touch HUD
+  if (y > 565) return true; // HUD bar
   return false;
 }
 
 function setupTapToMove(scene) {
   let pendingTap = null;
 
-  scene.input.on('pointerdown', (pointer) => {
-    if (scene.animating || scene.menuOpen || scene.codexOpen || scene.gameOver) return;
+  scene.input.on("pointerdown", (pointer) => {
+    if (scene.animating || scene.menuOpen || scene.codexOpen || scene.gameOver)
+      return;
     if (!scene.tileData) return;
     if (isControlArea(pointer.x, pointer.y)) return;
 
@@ -159,13 +190,17 @@ function setupTapToMove(scene) {
 
     // If second pointer arrives, this is a pinch — cancel pending tap
     if (scene.input.pointer1?.isDown && scene.input.pointer2?.isDown) {
-      if (pendingTap) { pendingTap.remove(); pendingTap = null; }
+      if (pendingTap) {
+        pendingTap.remove();
+        pendingTap = null;
+      }
       return;
     }
 
     // Defer tap processing briefly so a pinch's second finger can cancel it
     if (pendingTap) pendingTap.remove();
-    const px = pointer.x, py = pointer.y;
+    const px = pointer.x,
+      py = pointer.y;
     pendingTap = scene.time.delayedCall(80, () => {
       pendingTap = null;
       if (scene.input.pointer2?.isDown) return; // Became a pinch
@@ -175,8 +210,15 @@ function setupTapToMove(scene) {
       const ty = Math.floor(worldPoint.y / RENDERED_TILE);
       if (tx === scene.playerX && ty === scene.playerY) return;
 
-      const path = findPath(scene.tileData, scene.playerX, scene.playerY,
-        tx, ty, scene.mapW, scene.mapH);
+      const path = findPath(
+        scene.tileData,
+        scene.playerX,
+        scene.playerY,
+        tx,
+        ty,
+        scene.mapW,
+        scene.mapH,
+      );
 
       if (path && path.length > 0) {
         startAutoWalk(scene, path);
@@ -194,30 +236,43 @@ function setupTapToMove(scene) {
 // ─── D-pad ────────────────────────────────────────────────────
 
 function createDpad(scene) {
-  const cx = 85, cy = 470;
+  const cx = 85,
+    cy = 470;
   const size = 58;
   const offset = size + 4;
   const els = _controls.elements;
 
-  const bg = scene.add.circle(cx, cy, 82, 0x000000, 0.15)
-    .setScrollFactor(0).setDepth(25);
+  const bg = scene.add
+    .circle(cx, cy, 82, 0x000000, 0.15)
+    .setScrollFactor(0)
+    .setDepth(25);
   els.push(bg);
 
   const directions = [
-    { label: '\u25B2', dx: 0, dy: -1, x: cx, y: cy - offset },
-    { label: '\u25BC', dx: 0, dy: 1, x: cx, y: cy + offset },
-    { label: '\u25C0', dx: -1, dy: 0, x: cx - offset, y: cy },
-    { label: '\u25B6', dx: 1, dy: 0, x: cx + offset, y: cy },
+    { label: "\u25B2", dx: 0, dy: -1, x: cx, y: cy - offset },
+    { label: "\u25BC", dx: 0, dy: 1, x: cx, y: cy + offset },
+    { label: "\u25C0", dx: -1, dy: 0, x: cx - offset, y: cy },
+    { label: "\u25B6", dx: 1, dy: 0, x: cx + offset, y: cy },
   ];
 
   for (const dir of directions) {
-    const btn = scene.add.rectangle(dir.x, dir.y, size, size, 0xffffff, 0.15)
-      .setScrollFactor(0).setDepth(25).setInteractive();
-    const lbl = scene.add.text(dir.x, dir.y, dir.label, {
-      fontSize: '22px', color: '#ffffff', fontFamily: 'monospace',
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(26).setAlpha(0.35);
+    const btn = scene.add
+      .rectangle(dir.x, dir.y, size, size, 0xffffff, 0.15)
+      .setScrollFactor(0)
+      .setDepth(25)
+      .setInteractive();
+    const lbl = scene.add
+      .text(dir.x, dir.y, dir.label, {
+        fontSize: "22px",
+        color: "#ffffff",
+        fontFamily: "monospace",
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(26)
+      .setAlpha(0.35);
 
-    btn.on('pointerdown', () => {
+    btn.on("pointerdown", () => {
       btn.setFillStyle(0xffffff, 0.35);
       lbl.setAlpha(0.7);
       cancelAutoWalk(scene);
@@ -227,7 +282,13 @@ function createDpad(scene) {
         delay: 150,
         loop: true,
         callback: () => {
-          if (scene.animating || scene.menuOpen || scene.codexOpen || scene.gameOver) return;
+          if (
+            scene.animating ||
+            scene.menuOpen ||
+            scene.codexOpen ||
+            scene.gameOver
+          )
+            return;
           scene.tryMove(dir.dx, dir.dy);
         },
       });
@@ -241,8 +302,8 @@ function createDpad(scene) {
         _controls.moveTimer = null;
       }
     };
-    btn.on('pointerup', release);
-    btn.on('pointerout', release);
+    btn.on("pointerup", release);
+    btn.on("pointerout", release);
 
     els.push(btn, lbl);
   }
@@ -251,21 +312,35 @@ function createDpad(scene) {
 // ─── Action Button ────────────────────────────────────────────
 
 function createActionButton(scene) {
-  const x = 715, y = 480;
+  const x = 715,
+    y = 480;
   const r = 34;
   const els = _controls.elements;
 
-  const bg = scene.add.circle(x, y, r + 4, 0x000000, 0.15)
-    .setScrollFactor(0).setDepth(25);
+  const bg = scene.add
+    .circle(x, y, r + 4, 0x000000, 0.15)
+    .setScrollFactor(0)
+    .setDepth(25);
 
-  const btn = scene.add.circle(x, y, r, 0xffc107, 0.2)
-    .setScrollFactor(0).setDepth(25).setInteractive();
+  const btn = scene.add
+    .circle(x, y, r, 0xffc107, 0.2)
+    .setScrollFactor(0)
+    .setDepth(25)
+    .setInteractive();
 
-  const lbl = scene.add.text(x, y, 'A', {
-    fontSize: '26px', color: '#ffffff', fontFamily: 'monospace', fontStyle: 'bold',
-  }).setOrigin(0.5).setScrollFactor(0).setDepth(26).setAlpha(0.45);
+  const lbl = scene.add
+    .text(x, y, "A", {
+      fontSize: "26px",
+      color: "#ffffff",
+      fontFamily: "monospace",
+      fontStyle: "bold",
+    })
+    .setOrigin(0.5)
+    .setScrollFactor(0)
+    .setDepth(26)
+    .setAlpha(0.45);
 
-  btn.on('pointerdown', () => {
+  btn.on("pointerdown", () => {
     btn.setFillStyle(0xffc107, 0.45);
     lbl.setAlpha(0.8);
     interactWithDoor(scene);
@@ -274,8 +349,8 @@ function createActionButton(scene) {
     btn.setFillStyle(0xffc107, 0.2);
     lbl.setAlpha(0.45);
   };
-  btn.on('pointerup', release);
-  btn.on('pointerout', release);
+  btn.on("pointerup", release);
+  btn.on("pointerout", release);
 
   els.push(bg, btn, lbl);
 }
@@ -285,33 +360,50 @@ function createActionButton(scene) {
 function setupPinchZoom(scene) {
   let lastDist = 0;
 
-  scene.input.on('pointermove', () => {
+  scene.input.on("pointermove", () => {
     const p1 = scene.input.pointer1;
     const p2 = scene.input.pointer2;
-    if (!p1.isDown || !p2.isDown) { lastDist = 0; return; }
+    if (!p1.isDown || !p2.isDown) {
+      lastDist = 0;
+      return;
+    }
 
     const dist = Phaser.Math.Distance.Between(p1.x, p1.y, p2.x, p2.y);
-    if (lastDist === 0) { lastDist = dist; return; }
+    if (lastDist === 0) {
+      lastDist = dist;
+      return;
+    }
 
     const zoom = Phaser.Math.Clamp(
-      scene.cameras.main.zoom + (dist - lastDist) * 0.004, 0.5, 2.0
+      scene.cameras.main.zoom + (dist - lastDist) * 0.004,
+      0.5,
+      2.0,
     );
     scene.cameras.main.setZoom(zoom);
     lastDist = dist;
   });
 
-  scene.input.on('pointerup', () => { lastDist = 0; });
+  scene.input.on("pointerup", () => {
+    lastDist = 0;
+  });
 }
 
 // ─── Swipe Gestures ──────────────────────────────────────────
 
 function setupSwipeGestures(scene) {
-  let sx = 0, sy = 0, st = 0, spid = -1, multiTouch = false;
+  let sx = 0,
+    sy = 0,
+    st = 0,
+    spid = -1,
+    multiTouch = false;
 
-  scene.input.on('pointerdown', (pointer) => {
+  scene.input.on("pointerdown", (pointer) => {
     if (!pointer.wasTouch) return;
     if (spid < 0) {
-      sx = pointer.x; sy = pointer.y; st = Date.now(); spid = pointer.id;
+      sx = pointer.x;
+      sy = pointer.y;
+      st = Date.now();
+      spid = pointer.id;
       multiTouch = false;
     } else {
       // Second finger touched — this is a pinch, not a swipe
@@ -319,7 +411,7 @@ function setupSwipeGestures(scene) {
     }
   });
 
-  scene.input.on('pointerup', (pointer) => {
+  scene.input.on("pointerup", (pointer) => {
     if (pointer.id !== spid) return;
     const wasMulti = multiTouch;
     spid = -1;
@@ -333,7 +425,13 @@ function setupSwipeGestures(scene) {
     if (Math.abs(dy) > Math.abs(dx) && dy > 0) {
       if (scene.codexOpen) toggleCodex(scene);
       else if (scene.menuOpen) toggleMenu(scene);
-    } else if (dx > 0 && sx < 40 && !scene.menuOpen && !scene.codexOpen && !scene.animating) {
+    } else if (
+      dx > 0 &&
+      sx < 40 &&
+      !scene.menuOpen &&
+      !scene.codexOpen &&
+      !scene.animating
+    ) {
       toggleMenu(scene);
     }
   });
@@ -343,31 +441,48 @@ function setupSwipeGestures(scene) {
 
 function createTouchHUD(scene) {
   const els = _controls.elements;
-  const btnW = 55, btnH = 44;
-  const x = 735, startY = 110;
+  const btnW = 55,
+    btnH = 44;
+  const x = 735,
+    startY = 110;
   const gap = 4;
 
   const makeTouchBtn = (y, label, color, handler) => {
-    const bg = scene.add.rectangle(x, y, btnW, btnH, 0x000000, 0.6)
-      .setScrollFactor(0).setDepth(25).setInteractive();
-    const txt = scene.add.text(x, y, label, {
-      fontSize: '11px', color, fontFamily: 'monospace',
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(26);
-    bg.on('pointerdown', handler);
-    bg.on('pointerover', () => bg.setFillStyle(0x333333, 0.8));
-    bg.on('pointerout', () => bg.setFillStyle(0x000000, 0.6));
+    const bg = scene.add
+      .rectangle(x, y, btnW, btnH, 0x000000, 0.6)
+      .setScrollFactor(0)
+      .setDepth(25)
+      .setInteractive();
+    const txt = scene.add
+      .text(x, y, label, {
+        fontSize: "11px",
+        color,
+        fontFamily: "monospace",
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(26);
+    bg.on("pointerdown", handler);
+    bg.on("pointerover", () => bg.setFillStyle(0x333333, 0.8));
+    bg.on("pointerout", () => bg.setFillStyle(0x000000, 0.6));
     els.push(bg, txt);
     return txt;
   };
 
-  makeTouchBtn(startY, 'MENU', '#ffcc44', () => toggleMenu(scene));
-  makeTouchBtn(startY + btnH + gap, 'HELP', '#8888ff', () => toggleCodex(scene));
+  makeTouchBtn(startY, "MENU", "#ffcc44", () => toggleMenu(scene));
+  makeTouchBtn(startY + btnH + gap, "HELP", "#8888ff", () =>
+    toggleCodex(scene),
+  );
 
-  const muteTxt = makeTouchBtn(startY + (btnH + gap) * 2, isMuted() ? 'VOL+' : 'MUTE',
-    '#888888', () => {
+  const muteTxt = makeTouchBtn(
+    startY + (btnH + gap) * 2,
+    isMuted() ? "VOL+" : "MUTE",
+    "#888888",
+    () => {
       const m = toggleMute();
-      muteTxt.setText(m ? 'VOL+' : 'MUTE');
-    });
+      muteTxt.setText(m ? "VOL+" : "MUTE");
+    },
+  );
 }
 
 // ─── Init / Destroy ──────────────────────────────────────────
@@ -381,7 +496,7 @@ export function initTouchControls(scene) {
   setupTapToMove(scene);
 
   // Activate touch UI on first real touch event
-  scene.input.on('pointerdown', (pointer) => {
+  scene.input.on("pointerdown", (pointer) => {
     if (pointer.wasTouch && !_isTouch) {
       _isTouch = true;
       createTouchUI(scene);
@@ -401,6 +516,8 @@ function createTouchUI(scene) {
 export function destroyTouchControls() {
   if (!_controls) return;
   if (_controls.moveTimer) _controls.moveTimer.remove();
-  _controls.elements.forEach(el => { if (el && el.scene) el.destroy(); });
+  _controls.elements.forEach((el) => {
+    if (el && el.scene) el.destroy();
+  });
   _controls = null;
 }
