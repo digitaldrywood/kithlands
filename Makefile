@@ -1,4 +1,4 @@
-.PHONY: play stop run test build demo migrate balance-sim client-dev client-build lint vet fmt pre-commit docker-up docker-down
+.PHONY: play stop run test build demo migrate balance-sim validate-data client-dev client-build lint vet fmt pre-commit docker-up docker-down
 
 # Start everything and open the game
 play: stop
@@ -65,6 +65,9 @@ migrate:
 
 balance-sim:
 	cd server && go run ./cmd/balance_sim
+
+validate-data:
+	cd server && go run ./cmd/validate_gamedata -shared=../shared
 
 client-dev:
 	cd client && npm run dev
