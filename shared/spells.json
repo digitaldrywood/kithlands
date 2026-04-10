@@ -240,7 +240,7 @@
       "target": "single_ally",
       "effect": "buff",
       "element": "none",
-      "power": 0,
+      "power": 100,
       "buff_stat": "armor_absorb",
       "description": "Doubles armor of one ally for combat"
     },

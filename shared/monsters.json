@@ -420,7 +420,8 @@
     "resistances": ["fire", "dark"],
     "absorbs": [],
     "drops": [
-      { "item_id": "hero_edge", "chance_pct": 100 }
+      { "item_id": "rune_blade", "chance_pct": 100 },
+      { "item_id": "phoenix_down", "chance_pct": 50 }
     ],
     "encounter_weight": 0,
     "min_group": 1,
