@@ -199,6 +199,7 @@ var autosaveTriggerLabels = map[string]string{
 	"level_up":       "Level Up",
 	"purchase":       "Equipment Purchase",
 	"timed":          "Timed",
+	"victory":        "Victory",
 }
 
 func (s *Server) handleAutosave(w http.ResponseWriter, r *http.Request) {

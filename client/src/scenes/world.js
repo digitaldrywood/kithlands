@@ -248,14 +248,6 @@ export class WorldScene extends Phaser.Scene {
       padding: { x: 4, y: 2 },
     }).setScrollFactor(0).setDepth(21).setAlpha(0);
 
-    // Check if returning from battle with level-ups or quest completions
-    if (gs.combat_log) {
-      const hasLevelUp = gs.combat_log.some(l => l.includes('leveled up'));
-      const hasQuestComplete = gs.combat_log.some(l => l.includes('Quest complete'));
-      if (hasLevelUp) this.triggerAutosave('level_up');
-      else if (hasQuestComplete) this.triggerAutosave('quest_complete');
-    }
-
     console.log('[World] created, player at', this.playerX, this.playerY);
   }
 
@@ -392,8 +384,8 @@ export class WorldScene extends Phaser.Scene {
 
     this.time.delayedCall(400, async () => {
       try {
-        // Autosave before combat starts
-        this.triggerAutosave('pre_combat');
+        // Autosave before combat starts (await to avoid racing the encounter mutation)
+        await this.triggerAutosave('pre_combat');
 
         const result = await gameAction(this.gameState.id, { type: 'encounter' });
         this.gameState = result;
@@ -422,7 +414,9 @@ export class WorldScene extends Phaser.Scene {
         this.showMessage(result.message);
         this.time.delayedCall(3000, () => this.hideMessage());
       }
-      if (result.phase === 'quest_complete' || result.phase === 'victory') {
+      if (result.phase === 'victory') {
+        this.triggerAutosave('victory');
+      } else if (result.phase === 'quest_complete') {
         this.triggerAutosave('quest_complete');
       }
       if (result.phase === 'victory') {

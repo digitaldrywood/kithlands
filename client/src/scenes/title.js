@@ -120,36 +120,33 @@ export class TitleScene extends Phaser.Scene {
           fontSize: '11px', color: '#888888', fontFamily: 'monospace',
         }).setOrigin(0.5);
       } else {
-        let y = 100;
-        for (const sv of saves.slice(0, 8)) {
-          const partyStr = sv.party ? sv.party.join(', ') : '';
-          const dateStr = new Date(sv.updated_at).toLocaleDateString();
-          const timeStr = sv.play_time > 0 ? `${Math.floor(sv.play_time / 60)}min` : '';
-          const isAutosave = sv.save_type === 'autosave';
+        // Separate manual and autosaves so autosaves never displace manual saves
+        const manualSaves = saves.filter(sv => sv.save_type !== 'autosave');
+        const autoSaves = saves.filter(sv => sv.save_type === 'autosave');
 
-          const rowColor = isAutosave ? 0x0a1a2a : 0x112233;
-          const strokeColor = isAutosave ? 0x225577 : 0x334466;
-          const row = this.add.rectangle(cx, y + 15, 600, 50, rowColor)
-            .setStrokeStyle(1, strokeColor).setInteractive({ useHandCursor: true });
+        let y = 80;
 
-          const nameColor = isAutosave ? '#44ccff' : '#ffffff';
-          this.add.text(150, y, sv.name, {
-            fontSize: '14px', color: nameColor, fontFamily: 'monospace',
+        // Manual saves section
+        if (manualSaves.length > 0) {
+          this.add.text(150, y, 'Manual Saves', {
+            fontSize: '12px', color: '#aaaaaa', fontFamily: 'monospace',
           });
-
-          let detailStr = `${partyStr}  |  ${sv.difficulty}  |  ${dateStr} ${timeStr}`;
-          if (isAutosave && sv.trigger_event) {
-            detailStr = `${partyStr}  |  ${sv.difficulty}  |  ${dateStr} ${timeStr}`;
+          y += 20;
+          for (const sv of manualSaves.slice(0, 5)) {
+            y = this.renderSaveRow(cx, y, sv, false);
           }
-          this.add.text(150, y + 18, detailStr, {
-            fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
+        }
+
+        // Autosaves section
+        if (autoSaves.length > 0) {
+          y += 5;
+          this.add.text(150, y, 'Autosaves', {
+            fontSize: '12px', color: '#44ccff', fontFamily: 'monospace',
           });
-
-          row.on('pointerover', () => row.setFillStyle(isAutosave ? 0x1a2a3a : 0x223355));
-          row.on('pointerout', () => row.setFillStyle(rowColor));
-          row.on('pointerdown', () => this.loadGameSave(sv.id));
-
-          y += 55;
+          y += 20;
+          for (const sv of autoSaves.slice(0, 3)) {
+            y = this.renderSaveRow(cx, y, sv, true);
+          }
         }
       }
 
@@ -162,6 +159,33 @@ export class TitleScene extends Phaser.Scene {
       }).setOrigin(0.5);
       this.makeButton(cx, 540, '[ BACK ]', '#aaaaaa', () => this.showMainMenu());
     }
+  }
+
+  renderSaveRow(cx, y, sv, isAutosave) {
+    const partyStr = sv.party ? sv.party.join(', ') : '';
+    const dateStr = new Date(sv.updated_at).toLocaleDateString();
+    const timeStr = sv.play_time > 0 ? `${Math.floor(sv.play_time / 60)}min` : '';
+
+    const rowColor = isAutosave ? 0x0a1a2a : 0x112233;
+    const strokeColor = isAutosave ? 0x225577 : 0x334466;
+    const row = this.add.rectangle(cx, y + 15, 600, 50, rowColor)
+      .setStrokeStyle(1, strokeColor).setInteractive({ useHandCursor: true });
+
+    const nameColor = isAutosave ? '#44ccff' : '#ffffff';
+    this.add.text(150, y, sv.name, {
+      fontSize: '14px', color: nameColor, fontFamily: 'monospace',
+    });
+
+    const detailStr = `${partyStr}  |  ${sv.difficulty}  |  ${dateStr} ${timeStr}`;
+    this.add.text(150, y + 18, detailStr, {
+      fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
+    });
+
+    row.on('pointerover', () => row.setFillStyle(isAutosave ? 0x1a2a3a : 0x223355));
+    row.on('pointerout', () => row.setFillStyle(rowColor));
+    row.on('pointerdown', () => this.loadGameSave(sv.id));
+
+    return y + 55;
   }
 
   async loadGameSave(saveId) {
