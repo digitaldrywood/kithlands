@@ -4,6 +4,7 @@ import { getAutosaveEnabled, getAutosaveInterval } from '../systems/prefs.js';
 import { toggleMenu } from './world_menu.js';
 import { toggleCodex } from './world_codex.js';
 import { interactWithDoor, showWorldMap, showInteractPrompt, hideInteractPrompt } from './world_interact.js';
+import { initTouchControls } from '../systems/input.js';
 
 const ENEMY_SPRITES = {
   'Slime': 'monster_slime', 'Goblin': 'monster_goblin', 'Wolf': 'monster_wolf',
@@ -159,20 +160,8 @@ export class WorldScene extends Phaser.Scene {
     // TAB for world map
     this.input.keyboard.on('keydown-TAB', (e) => { e.preventDefault(); showWorldMap(this); });
 
-    // Touch movement
-    this.input.on('pointerdown', (pointer) => {
-      if (this.animating || this.menuOpen || this.codexOpen || this.gameOver) return;
-      const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-      const tx = Math.floor(worldPoint.x / RENDERED_TILE);
-      const ty = Math.floor(worldPoint.y / RENDERED_TILE);
-      const dx = tx - this.playerX;
-      const dy = ty - this.playerY;
-      if (Math.abs(dx) > Math.abs(dy)) {
-        this.tryMove(dx > 0 ? 1 : -1, 0);
-      } else if (dy !== 0) {
-        this.tryMove(0, dy > 0 ? 1 : -1);
-      }
-    });
+    // Touch controls (D-pad, tap-to-move with pathfinding, pinch-to-zoom, swipe gestures)
+    initTouchControls(this);
 
     // HUD
     this.add.rectangle(400, 585, 800, 30, 0x000000, 0.8).setScrollFactor(0).setDepth(20);
