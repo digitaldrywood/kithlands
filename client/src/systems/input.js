@@ -141,38 +141,53 @@ function isControlArea(x, y) {
   if (!_isTouch) return false;
   if (x < 175 && y > 395) return true;   // D-pad
   if (x > 675 && y > 440) return true;   // Action button
-  if (x > 660 && y < 185) return true;   // Touch HUD
+  if (x > 660 && y < 260) return true;   // Touch HUD
   if (y > 565) return true;              // HUD bar
   return false;
 }
 
 function setupTapToMove(scene) {
+  let pendingTap = null;
+
   scene.input.on('pointerdown', (pointer) => {
     if (scene.animating || scene.menuOpen || scene.codexOpen || scene.gameOver) return;
     if (!scene.tileData) return;
     if (isControlArea(pointer.x, pointer.y)) return;
-    if (scene.input.pointer1?.isDown && scene.input.pointer2?.isDown) return;
 
     // Cancel any existing auto-walk on new tap
     cancelAutoWalk(scene);
 
-    const worldPoint = scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
-    const tx = Math.floor(worldPoint.x / RENDERED_TILE);
-    const ty = Math.floor(worldPoint.y / RENDERED_TILE);
-    if (tx === scene.playerX && ty === scene.playerY) return;
-
-    const path = findPath(scene.tileData, scene.playerX, scene.playerY,
-      tx, ty, scene.mapW, scene.mapH);
-
-    if (path && path.length > 0) {
-      startAutoWalk(scene, path);
-    } else {
-      // Fallback: single step toward tapped direction
-      const dx = tx - scene.playerX;
-      const dy = ty - scene.playerY;
-      if (Math.abs(dx) > Math.abs(dy)) scene.tryMove(dx > 0 ? 1 : -1, 0);
-      else if (dy !== 0) scene.tryMove(0, dy > 0 ? 1 : -1);
+    // If second pointer arrives, this is a pinch — cancel pending tap
+    if (scene.input.pointer1?.isDown && scene.input.pointer2?.isDown) {
+      if (pendingTap) { pendingTap.remove(); pendingTap = null; }
+      return;
     }
+
+    // Defer tap processing briefly so a pinch's second finger can cancel it
+    if (pendingTap) pendingTap.remove();
+    const px = pointer.x, py = pointer.y;
+    pendingTap = scene.time.delayedCall(80, () => {
+      pendingTap = null;
+      if (scene.input.pointer2?.isDown) return; // Became a pinch
+
+      const worldPoint = scene.cameras.main.getWorldPoint(px, py);
+      const tx = Math.floor(worldPoint.x / RENDERED_TILE);
+      const ty = Math.floor(worldPoint.y / RENDERED_TILE);
+      if (tx === scene.playerX && ty === scene.playerY) return;
+
+      const path = findPath(scene.tileData, scene.playerX, scene.playerY,
+        tx, ty, scene.mapW, scene.mapH);
+
+      if (path && path.length > 0) {
+        startAutoWalk(scene, path);
+      } else {
+        // Fallback: single step toward tapped direction
+        const dx = tx - scene.playerX;
+        const dy = ty - scene.playerY;
+        if (Math.abs(dx) > Math.abs(dy)) scene.tryMove(dx > 0 ? 1 : -1, 0);
+        else if (dy !== 0) scene.tryMove(0, dy > 0 ? 1 : -1);
+      }
+    });
   });
 }
 
@@ -328,9 +343,9 @@ function setupSwipeGestures(scene) {
 
 function createTouchHUD(scene) {
   const els = _controls.elements;
-  const btnW = 55, btnH = 30;
+  const btnW = 55, btnH = 44;
   const x = 735, startY = 110;
-  const gap = 6;
+  const gap = 4;
 
   const makeTouchBtn = (y, label, color, handler) => {
     const bg = scene.add.rectangle(x, y, btnW, btnH, 0x000000, 0.6)
