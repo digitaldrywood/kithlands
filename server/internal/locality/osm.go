@@ -15,10 +15,25 @@ import (
 
 // BuildFromOSM fetches real-world data from OpenStreetMap Overpass API
 // and builds a Locality graph from it.
-func BuildFromOSM(ctx context.Context, lat, lng float64, townName string) (*Locality, error) {
-	elements, err := queryOverpass(ctx, lat, lng, 1500) // 1.5km radius
+func BuildFromOSM(ctx context.Context, lat, lng float64, radiusM int, townName string) (*Locality, error) {
+	elements, err := queryOverpass(ctx, lat, lng, radiusM)
 	if err != nil {
 		return nil, fmt.Errorf("overpass query: %w", err)
+	}
+
+	nodes, roadElements := classifyElements(elements, lat, lng, radiusM)
+
+	// Auto-widen: if fewer than 5 classified nodes, double radius and re-query
+	if len(nodes) < 5 {
+		wider := min(radiusM*2, 8000)
+		if wider > radiusM {
+			elements, err = queryOverpass(ctx, lat, lng, wider)
+			if err != nil {
+				return nil, fmt.Errorf("overpass query (widened): %w", err)
+			}
+			nodes, roadElements = classifyElements(elements, lat, lng, wider)
+			radiusM = wider
+		}
 	}
 
 	loc := &Locality{
@@ -26,95 +41,10 @@ func BuildFromOSM(ctx context.Context, lat, lng float64, townName string) (*Loca
 		Name:      townName,
 		Center:    LatLng{Lat: lat, Lng: lng},
 		Generated: time.Now(),
-		Source:     "osm",
+		Source:    "osm",
 	}
 
-	// Parse OSM elements into nodes
-	nodeMap := make(map[int64]osmNode)    // OSM node ID -> coords
-	var buildings []osmElement
-	var roads []osmElement
-	var amenities []osmElement
-	for _, el := range elements {
-		switch el.Type {
-		case "node":
-			nodeMap[el.ID] = osmNode{lat: el.Lat, lon: el.Lon}
-			if el.Tags != nil {
-				if el.Tags["amenity"] != "" || el.Tags["shop"] != "" {
-					amenities = append(amenities, el)
-				}
-			}
-		case "way":
-			if el.Tags == nil {
-				continue
-			}
-			if el.Tags["building"] != "" && el.Tags["name"] != "" {
-				buildings = append(buildings, el)
-			} else if el.Tags["highway"] != "" {
-				roads = append(roads, el)
-			}
-		}
-	}
-
-	// Bounding box for coordinate mapping
-	minLat, maxLat := lat-0.015, lat+0.015 // ~1.5km
-	minLng, maxLng := lng-0.02, lng+0.02
-
-	// Convert buildings to locality nodes
-	seen := make(map[string]bool)
-	nodeIdx := 0
-
-	for _, b := range buildings {
-		name := b.Tags["name"]
-		if name == "" || seen[name] {
-			continue
-		}
-		seen[name] = true
-
-		bLat, bLng := wayCenter(b, nodeMap)
-		kind := classifyBuilding(b.Tags)
-		tags := buildingTags(b.Tags)
-		importance := buildingImportance(b.Tags)
-
-		loc.Nodes = append(loc.Nodes, Node{
-			ID:         fmt.Sprintf("osm_b_%d", nodeIdx),
-			Kind:       kind,
-			Name:       name,
-			Coord:      &LatLng{Lat: bLat, Lng: bLng},
-			Tags:       tags,
-			Importance: importance,
-		})
-		nodeIdx++
-
-		if nodeIdx >= 30 { // cap to prevent huge graphs
-			break
-		}
-	}
-
-	// Convert amenities (nodes with names)
-	for _, a := range amenities {
-		name := a.Tags["name"]
-		if name == "" || seen[name] {
-			continue
-		}
-		seen[name] = true
-
-		kind := classifyAmenity(a.Tags)
-		tags := amenityTags(a.Tags)
-
-		loc.Nodes = append(loc.Nodes, Node{
-			ID:         fmt.Sprintf("osm_a_%d", nodeIdx),
-			Kind:       kind,
-			Name:       name,
-			Coord:      &LatLng{Lat: a.Lat, Lng: a.Lon},
-			Tags:       tags,
-			Importance: 50,
-		})
-		nodeIdx++
-
-		if nodeIdx >= 40 {
-			break
-		}
-	}
+	loc.Nodes = nodes
 
 	// If too few nodes, add filler nodes like the wizard does
 	if len(loc.Nodes) < 5 {
@@ -144,9 +74,15 @@ func BuildFromOSM(ctx context.Context, lat, lng float64, townName string) (*Loca
 	}
 
 	// Always ensure we have an inn, shop, and temple
-	ensureNode(loc, "rest", "inn", "The Wayward Inn", NodeBusiness, []string{"commerce", "rest"})
-	ensureNode(loc, "shop", "shop", "General Store", NodeBusiness, []string{"commerce", "shop"})
-	ensureNode(loc, "revive", "temple", "Temple of Light", NodeLandmark, []string{"temple", "revive"})
+	ensureNode(loc, "inn", "The Wayward Inn", NodeBusiness, []string{"commerce", "rest"})
+	ensureNode(loc, "shop", "General Store", NodeBusiness, []string{"commerce", "shop"})
+	ensureNode(loc, "temple", "Temple of Light", NodeLandmark, []string{"temple", "revive"})
+
+	// Scale bounding box to match radius
+	degLat := float64(radiusM) / 111000.0
+	degLng := degLat / math.Cos(lat*math.Pi/180.0)
+	minLat, maxLat := lat-degLat, lat+degLat
+	minLng, maxLng := lng-degLng, lng+degLng
 
 	// Build edges: connect nodes based on geographic proximity
 	for i := 0; i < len(loc.Nodes); i++ {
@@ -181,10 +117,219 @@ func BuildFromOSM(ctx context.Context, lat, lng float64, townName string) (*Loca
 		}
 	}
 
+	// Parse nodeMap from elements for road processing
+	nodeMap := make(map[int64]osmNode)
+	for _, el := range elements {
+		if el.Type == "node" {
+			nodeMap[el.ID] = osmNode{lat: el.Lat, lon: el.Lon}
+		}
+	}
+
 	// Store road data for tilemap rendering
-	loc.roads = parseRoads(roads, nodeMap, minLat, maxLat, minLng, maxLng)
+	loc.roads = parseRoads(roadElements, nodeMap, minLat, maxLat, minLng, maxLng)
 
 	return loc, nil
+}
+
+// PreviewOSM fetches and classifies OSM data without building graph edges.
+// Returns classified nodes, the actual radius used (may be widened), and any error.
+func PreviewOSM(ctx context.Context, lat, lng float64, radiusM int) ([]Node, int, error) {
+	elements, err := queryOverpass(ctx, lat, lng, radiusM)
+	if err != nil {
+		return nil, radiusM, fmt.Errorf("overpass query: %w", err)
+	}
+
+	nodes, _ := classifyElements(elements, lat, lng, radiusM)
+
+	// Auto-widen: if fewer than 5 classified nodes, double radius and re-query
+	if len(nodes) < 5 {
+		wider := min(radiusM*2, 8000)
+		if wider > radiusM {
+			elements, err = queryOverpass(ctx, lat, lng, wider)
+			if err != nil {
+				return nil, radiusM, fmt.Errorf("overpass query (widened): %w", err)
+			}
+			nodes, _ = classifyElements(elements, lat, lng, wider)
+			radiusM = wider
+		}
+	}
+
+	return nodes, radiusM, nil
+}
+
+// classifyElements parses raw OSM elements into locality Nodes and road elements.
+// It handles buildings, amenities, farmland, natural features, and religious sites.
+// Unnamed POIs receive generated names via generatePOIName, with numeric suffixes
+// for deduplication.
+func classifyElements(elements []osmElement, lat, lng float64, radiusM int) ([]Node, []osmElement) {
+	nodeMap := make(map[int64]osmNode)
+	var buildings []osmElement
+	var roads []osmElement
+	var amenities []osmElement
+	var nature []osmElement
+
+	for _, el := range elements {
+		switch el.Type {
+		case "node":
+			nodeMap[el.ID] = osmNode{lat: el.Lat, lon: el.Lon}
+			if el.Tags != nil {
+				if el.Tags["amenity"] != "" || el.Tags["shop"] != "" || el.Tags["religion"] != "" {
+					amenities = append(amenities, el)
+				}
+			}
+		case "way":
+			if el.Tags == nil {
+				continue
+			}
+			if el.Tags["building"] != "" {
+				buildings = append(buildings, el)
+			} else if el.Tags["highway"] != "" {
+				roads = append(roads, el)
+			} else if el.Tags["natural"] != "" || el.Tags["leisure"] == "park" {
+				nature = append(nature, el)
+			} else if el.Tags["landuse"] == "farmland" {
+				nature = append(nature, el)
+			}
+		}
+	}
+
+	seen := make(map[string]int) // name -> count for deduplication
+	var nodes []Node
+	nodeIdx := 0
+
+	// Convert buildings to locality nodes
+	for _, b := range buildings {
+		name := b.Tags["name"]
+		if name == "" {
+			name = generatePOIName(b.Tags)
+		}
+		name = deduplicateName(name, seen)
+
+		bLat, bLng := wayCenter(b, nodeMap)
+		kind := classifyBuilding(b.Tags)
+		tags := buildingTags(b.Tags)
+		importance := buildingImportance(b.Tags)
+
+		nodes = append(nodes, Node{
+			ID:         fmt.Sprintf("osm_w%d", b.ID),
+			Kind:       kind,
+			Name:       name,
+			Coord:      &LatLng{Lat: bLat, Lng: bLng},
+			Tags:       tags,
+			Importance: importance,
+		})
+		nodeIdx++
+
+		if nodeIdx >= 30 {
+			break
+		}
+	}
+
+	// Convert amenities
+	for _, a := range amenities {
+		name := a.Tags["name"]
+		if name == "" {
+			name = generatePOIName(a.Tags)
+		}
+		if seen[name] > 0 && a.Tags["name"] == "" {
+			// Only deduplicate generated names; skip exact duplicate named POIs
+			name = deduplicateName(name, seen)
+		} else if seen[name] > 0 {
+			continue // skip duplicate named amenities
+		} else {
+			seen[name]++
+		}
+
+		kind := classifyAmenity(a.Tags)
+		tags := amenityTags(a.Tags)
+
+		nodes = append(nodes, Node{
+			ID:         fmt.Sprintf("osm_n%d", a.ID),
+			Kind:       kind,
+			Name:       name,
+			Coord:      &LatLng{Lat: a.Lat, Lng: a.Lon},
+			Tags:       tags,
+			Importance: 50,
+		})
+		nodeIdx++
+
+		if nodeIdx >= 40 {
+			break
+		}
+	}
+
+	// Convert nature/landuse elements
+	for _, n := range nature {
+		name := n.Tags["name"]
+		if name == "" {
+			name = generatePOIName(n.Tags)
+		}
+		name = deduplicateName(name, seen)
+
+		nLat, nLng := wayCenter(n, nodeMap)
+		nodes = append(nodes, Node{
+			ID:         fmt.Sprintf("osm_w%d", n.ID),
+			Kind:       NodeNatural,
+			Name:       name,
+			Coord:      &LatLng{Lat: nLat, Lng: nLng},
+			Tags:       []string{"natural"},
+			Importance: 40,
+		})
+		nodeIdx++
+
+		if nodeIdx >= 45 {
+			break
+		}
+	}
+
+	return nodes, roads
+}
+
+// generatePOIName creates a display name from OSM tags when no name tag exists.
+func generatePOIName(tags map[string]string) string {
+	if tags["name"] != "" {
+		return tags["name"]
+	}
+	if v := tags["amenity"]; v != "" {
+		return titleCase(v)
+	}
+	if v := tags["shop"]; v != "" {
+		return titleCase(v) + " Shop"
+	}
+	if v := tags["building"]; v != "" && v != "yes" {
+		return titleCase(v)
+	}
+	if v := tags["landuse"]; v != "" {
+		return titleCase(v)
+	}
+	if v := tags["natural"]; v != "" {
+		return titleCase(v)
+	}
+	if v := tags["religion"]; v != "" {
+		return titleCase(v)
+	}
+	return "Building"
+}
+
+// titleCase converts an underscore-separated string to Title Case.
+func titleCase(s string) string {
+	s = strings.ReplaceAll(s, "_", " ")
+	words := strings.Fields(s)
+	for i, w := range words {
+		if len(w) > 0 {
+			words[i] = strings.ToUpper(w[:1]) + w[1:]
+		}
+	}
+	return strings.Join(words, " ")
+}
+
+// deduplicateName ensures unique names by appending a numeric suffix when needed.
+func deduplicateName(name string, seen map[string]int) string {
+	seen[name]++
+	if seen[name] == 1 {
+		return name
+	}
+	return fmt.Sprintf("%s %d", name, seen[name])
 }
 
 // Road represents a simplified road segment for tilemap rendering.
@@ -200,16 +345,20 @@ func (l *Locality) Roads() []Road {
 
 // queryOverpass fetches OSM data around a point.
 func queryOverpass(ctx context.Context, lat, lng float64, radiusM int) ([]osmElement, error) {
-	query := fmt.Sprintf(`[out:json][timeout:25];
+	query := fmt.Sprintf(`[out:json][timeout:25][maxsize:2097152];
 (
   node["amenity"](around:%d,%f,%f);
   node["shop"](around:%d,%f,%f);
-  way["building"]["name"](around:%d,%f,%f);
+  node["religion"](around:%d,%f,%f);
+  way["building"](around:%d,%f,%f);
   way["highway"](around:%d,%f,%f);
-  way["natural"="water"](around:%d,%f,%f);
+  way["natural"](around:%d,%f,%f);
   way["leisure"="park"](around:%d,%f,%f);
+  way["landuse"="farmland"](around:%d,%f,%f);
 );
 out body; >; out skel qt;`,
+		radiusM, lat, lng,
+		radiusM, lat, lng,
 		radiusM, lat, lng,
 		radiusM, lat, lng,
 		radiusM, lat, lng,
@@ -232,7 +381,7 @@ out body; >; out skel qt;`,
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close() //nolint:errcheck
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -418,12 +567,19 @@ func parseRoads(roads []osmElement, nodeMap map[int64]osmNode, minLat, maxLat, m
 	return result
 }
 
-func ensureNode(loc *Locality, checkTag, id, name string, kind NodeKind, tags []string) {
+func ensureNode(loc *Locality, id, name string, kind NodeKind, tags []string) {
 	for _, n := range loc.Nodes {
-		for _, t := range n.Tags {
-			if t == checkTag {
-				return // already have one with this function
+		matched := 0
+		for _, target := range tags {
+			for _, t := range n.Tags {
+				if t == target {
+					matched++
+					break
+				}
 			}
+		}
+		if matched == len(tags) {
+			return // already have one with all required tags
 		}
 	}
 	loc.Nodes = append(loc.Nodes, Node{

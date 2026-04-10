@@ -39,6 +39,30 @@ type NewGameRequest struct {
 	UseOSM      bool              `json:"use_osm,omitempty"`
 	Lat         float64           `json:"lat,omitempty"`
 	Lng         float64           `json:"lng,omitempty"`
+	RadiusMiles float64           `json:"radius_miles,omitempty"`
+	SpawnNodeID string            `json:"spawn_node_id,omitempty"`
+}
+
+type OSMPreviewRequest struct {
+	Lat         float64 `json:"lat"`
+	Lng         float64 `json:"lng"`
+	RadiusMiles float64 `json:"radius_miles"`
+}
+
+type OSMPreviewNode struct {
+	ID         string   `json:"id"`
+	Name       string   `json:"name"`
+	Kind       string   `json:"kind"`
+	Lat        float64  `json:"lat"`
+	Lng        float64  `json:"lng"`
+	Tags       []string `json:"tags"`
+	Importance int      `json:"importance"`
+}
+
+type OSMPreviewResponse struct {
+	Nodes       []OSMPreviewNode `json:"nodes"`
+	RadiusMiles float64          `json:"radius_miles"`
+	Cached      bool             `json:"cached"`
 }
 
 type PartyMemberReq struct {

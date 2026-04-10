@@ -82,6 +82,10 @@ export async function geocode(query) {
   return apiCall("POST", "/geocode", { query });
 }
 
+export async function osmPreview(lat, lng, radiusMiles) {
+  return apiCall('POST', '/osm/preview', { lat, lng, radius_miles: radiusMiles });
+}
+
 export async function saveGame(gameId, name) {
   return apiCall("POST", `/game/${gameId}/save`, { name });
 }

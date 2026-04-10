@@ -161,6 +161,29 @@ func TestNewGame(t *testing.T) {
 	t.Logf("Game created: %s, %d quests, %d party members", gs["id"], len(quests), len(party))
 }
 
+func TestNewGameWithSpawnNodeID(t *testing.T) {
+	_, ts := testServer(t)
+	defer ts.Close()
+
+	gs := post(t, ts.URL+"/api/game/new", api.NewGameRequest{
+		TownName:    "Cadott",
+		People:      []api.WizardPersonReq{{Name: "Bob", Relation: "friendly"}},
+		Places:      []string{"School"},
+		BigBuilding: "Town Hall",
+		Party:       []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
+		Difficulty:  "normal",
+		SpawnNodeID: "central",
+		RadiusMiles: 2.0,
+	})
+
+	if gs["error"] != nil {
+		t.Fatalf("new game error: %v", gs["error"])
+	}
+	if gs["phase"] != "world" {
+		t.Errorf("phase: got %v, want world", gs["phase"])
+	}
+}
+
 func TestCombatEncounter(t *testing.T) {
 	_, ts := testServer(t)
 	defer ts.Close()
