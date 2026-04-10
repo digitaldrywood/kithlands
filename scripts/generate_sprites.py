@@ -71,7 +71,7 @@ STYLE = (
     "Final Fantasy Pixel Remaster style. High-definition detailed pixel art "
     "with fine shading, rich color gradients, and smooth anti-aliased edges. "
     "Modern HD quality suitable for high-resolution displays. Detailed and "
-    "refined, not chunky or retro. On a bright green #00FF00 background."
+    "refined, not chunky or retro. On a solid bright magenta #FF00FF background."
 )
 
 TILE_STYLE = (
@@ -342,8 +342,8 @@ def generate_image(prompt):
     return None
 
 
-def remove_green_background(img, threshold=120):
-    """Replace green-screen (#00FF00 area) with transparency."""
+def remove_background(img, threshold=120):
+    """Replace magenta-screen (#FF00FF area) with transparency."""
     img = img.convert("RGBA")
     pixels = img.load()
     w, h = img.size
@@ -353,17 +353,20 @@ def remove_green_background(img, threshold=120):
             r, g, b, a = pixels[x, y]
             if a == 0:
                 continue
-            is_green = False
-            if g > 120 and r < threshold and b < threshold:
-                is_green = True
-            elif g > 100 and g > r * 1.4 and g > b * 1.4:
-                is_green = True
-            elif g > 180 and (r + b) < g:
-                is_green = True
-            if is_green:
+            is_magenta = False
+            # Pure magenta: high red + high blue, low green
+            if r > 120 and b > 120 and g < threshold:
+                is_magenta = True
+            # Dominant magenta: R and B both significantly outweigh G
+            elif r > 100 and b > 100 and r > g * 1.4 and b > g * 1.4:
+                is_magenta = True
+            # Very saturated magenta
+            elif (r + b) > 360 and g < 100:
+                is_magenta = True
+            if is_magenta:
                 pixels[x, y] = (0, 0, 0, 0)
 
-    # Second pass: remove isolated semi-transparent green edge pixels
+    # Second pass: remove isolated semi-transparent magenta edge pixels
     pixels = img.load()
     for y in range(1, h - 1):
         for x in range(1, w - 1):
@@ -378,7 +381,7 @@ def remove_green_background(img, threshold=120):
                     _, _, _, na = pixels[x + dx, y + dy]
                     if na == 0:
                         transparent_neighbors += 1
-            if transparent_neighbors >= 5 and g > r and g > b:
+            if transparent_neighbors >= 5 and r > g and b > g:
                 pixels[x, y] = (0, 0, 0, 0)
 
     return img
@@ -420,7 +423,7 @@ def generate_and_process(prompt, output_path, target_size, is_tile=False):
         return False
 
     if not is_tile:
-        img = remove_green_background(img)
+        img = remove_background(img)
         img = crop_to_content(img)
     img = resize_to_square(img, target_size)
     img.save(output_path, "PNG")
