@@ -83,7 +83,11 @@ export async function geocode(query) {
 }
 
 export async function osmPreview(lat, lng, radiusMiles) {
-  return apiCall('POST', '/osm/preview', { lat, lng, radius_miles: radiusMiles });
+  return apiCall("POST", "/osm/preview", {
+    lat,
+    lng,
+    radius_miles: radiusMiles,
+  });
 }
 
 export async function saveGame(gameId, name) {
@@ -103,5 +107,7 @@ export async function deleteSave(saveId) {
 }
 
 export async function autosaveGame(gameId, triggerEvent) {
-  return apiCall('POST', `/game/${gameId}/autosave`, { trigger_event: triggerEvent });
+  return apiCall("POST", `/game/${gameId}/autosave`, {
+    trigger_event: triggerEvent,
+  });
 }

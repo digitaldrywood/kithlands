@@ -86,19 +86,19 @@ export function addNPCsToHistory(npcs) {
 }
 
 export function getAutosaveEnabled() {
-  return getPref('autosave_enabled', true);
+  return getPref("autosave_enabled", true);
 }
 
 export function setAutosaveEnabled(enabled) {
-  setPref('autosave_enabled', enabled);
+  setPref("autosave_enabled", enabled);
 }
 
 export function getAutosaveInterval() {
-  return getPref('autosave_interval', 300000); // default 5 minutes
+  return getPref("autosave_interval", 300000); // default 5 minutes
 }
 
 export function setAutosaveInterval(ms) {
-  setPref('autosave_interval', ms);
+  setPref("autosave_interval", ms);
 }
 
 export function clearPrefs() {

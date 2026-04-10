@@ -1,5 +1,5 @@
-import { getShop, buyItem, autosaveGame } from '../api.js';
-import { getAutosaveEnabled } from '../systems/prefs.js';
+import { getShop, buyItem, autosaveGame } from "../api.js";
+import { getAutosaveEnabled } from "../systems/prefs.js";
 
 export async function openShop(scene, spawn) {
   scene.animating = true;
@@ -9,7 +9,7 @@ export async function openShop(scene, spawn) {
   try {
     shopData = await getShop(gs.id, spawn.node_id);
   } catch (e) {
-    console.error('[World] shop fetch failed:', e);
+    console.error("[World] shop fetch failed:", e);
     scene.animating = false;
     return;
   }
@@ -17,44 +17,63 @@ export async function openShop(scene, spawn) {
   const items = shopData.shop_items || [];
   if (items.length === 0) {
     scene.showMessage(`${spawn.name} has nothing for sale.`);
-    scene.time.delayedCall(1500, () => { scene.hideMessage(); scene.animating = false; });
+    scene.time.delayedCall(1500, () => {
+      scene.hideMessage();
+      scene.animating = false;
+    });
     return;
   }
 
   // Group items by type
-  const weapons = items.filter(i => i.type === 'weapon');
-  const armor = items.filter(i => i.type === 'armor');
-  const consumables = items.filter(i => i.type === 'consumable');
-  const spells = items.filter(i => i.type === 'spell');
+  const weapons = items.filter((i) => i.type === "weapon");
+  const armor = items.filter((i) => i.type === "armor");
+  const consumables = items.filter((i) => i.type === "consumable");
+  const spells = items.filter((i) => i.type === "spell");
 
   const overlay = [];
-  const bg = scene.add.rectangle(400, 300, 650, 500, 0x0a0a22, 0.95)
-    .setStrokeStyle(2, 0x444488).setScrollFactor(0).setDepth(50).setInteractive();
+  const bg = scene.add
+    .rectangle(400, 300, 650, 500, 0x0a0a22, 0.95)
+    .setStrokeStyle(2, 0x444488)
+    .setScrollFactor(0)
+    .setDepth(50)
+    .setInteractive();
   overlay.push(bg);
 
-  const title = scene.add.text(400, 70, `${spawn.name}`, {
-    fontSize: '18px', color: '#ffff44', fontFamily: 'monospace',
-  }).setOrigin(0.5).setScrollFactor(0).setDepth(51);
+  const title = scene.add
+    .text(400, 70, `${spawn.name}`, {
+      fontSize: "18px",
+      color: "#ffff44",
+      fontFamily: "monospace",
+    })
+    .setOrigin(0.5)
+    .setScrollFactor(0)
+    .setDepth(51);
   overlay.push(title);
 
-  const goldText = scene.add.text(400, 95, `Gold: ${gs.gold}`, {
-    fontSize: '13px', color: '#ffcc44', fontFamily: 'monospace',
-  }).setOrigin(0.5).setScrollFactor(0).setDepth(51);
+  const goldText = scene.add
+    .text(400, 95, `Gold: ${gs.gold}`, {
+      fontSize: "13px",
+      color: "#ffcc44",
+      fontFamily: "monospace",
+    })
+    .setOrigin(0.5)
+    .setScrollFactor(0)
+    .setDepth(51);
   overlay.push(goldText);
 
   // Tabs
-  let currentTab = 'weapons';
+  let currentTab = "weapons";
   const tabs = [
-    { label: 'Weapons', key: 'weapons', items: weapons },
-    { label: 'Armor', key: 'armor', items: armor },
-    { label: 'Items', key: 'consumables', items: consumables },
-    { label: 'Spells', key: 'spells', items: spells },
+    { label: "Weapons", key: "weapons", items: weapons },
+    { label: "Armor", key: "armor", items: armor },
+    { label: "Items", key: "consumables", items: consumables },
+    { label: "Spells", key: "spells", items: spells },
   ];
 
   let listGroup = [];
 
   const renderList = (tabItems, tabType) => {
-    listGroup.forEach(o => o.destroy());
+    listGroup.forEach((o) => o.destroy());
     listGroup = [];
 
     let y = 145;
@@ -62,7 +81,7 @@ export async function openShop(scene, spawn) {
 
     for (const item of displayItems) {
       const affordable = gs.gold >= item.price;
-      const color = affordable ? '#ffffff' : '#666666';
+      const color = affordable ? "#ffffff" : "#666666";
 
       let desc = `${item.name}`;
       if (item.power) desc += ` (Pow:${item.power})`;
@@ -70,19 +89,40 @@ export async function openShop(scene, spawn) {
       if (item.classes) desc += ` [${item.classes}]`;
       desc += `  ${item.price}g`;
 
-      const text = scene.add.text(150, y, desc, {
-        fontSize: '11px', color, fontFamily: 'monospace',
-      }).setScrollFactor(0).setDepth(52);
+      const text = scene.add
+        .text(150, y, desc, {
+          fontSize: "11px",
+          color,
+          fontFamily: "monospace",
+        })
+        .setScrollFactor(0)
+        .setDepth(52);
       listGroup.push(text);
 
       if (affordable) {
-        const buyBtn = scene.add.text(620, y, '[BUY]', {
-          fontSize: '11px', color: '#44ff44', fontFamily: 'monospace',
-        }).setScrollFactor(0).setDepth(52).setInteractive({ useHandCursor: true });
-        buyBtn.on('pointerover', () => buyBtn.setColor('#88ff88'));
-        buyBtn.on('pointerout', () => buyBtn.setColor('#44ff44'));
-        buyBtn.on('pointerdown', async () => {
-          const result = await buyItem(gs.id, item.id, tabType === 'spells' ? 'consumable' : tabType === 'weapons' ? 'weapon' : tabType === 'armor' ? 'armor' : 'consumable');
+        const buyBtn = scene.add
+          .text(620, y, "[BUY]", {
+            fontSize: "11px",
+            color: "#44ff44",
+            fontFamily: "monospace",
+          })
+          .setScrollFactor(0)
+          .setDepth(52)
+          .setInteractive({ useHandCursor: true });
+        buyBtn.on("pointerover", () => buyBtn.setColor("#88ff88"));
+        buyBtn.on("pointerout", () => buyBtn.setColor("#44ff44"));
+        buyBtn.on("pointerdown", async () => {
+          const result = await buyItem(
+            gs.id,
+            item.id,
+            tabType === "spells"
+              ? "consumable"
+              : tabType === "weapons"
+                ? "weapon"
+                : tabType === "armor"
+                  ? "armor"
+                  : "consumable",
+          );
           if (!result.error) {
             scene.gameState = result;
             gs.gold = result.gold;
@@ -93,9 +133,11 @@ export async function openShop(scene, spawn) {
             renderList(tabItems, tabType);
             // Autosave after purchase
             if (getAutosaveEnabled() && result.id) {
-              autosaveGame(result.id, 'purchase').then(() => {
-                if (scene.flashSaveIcon) scene.flashSaveIcon();
-              }).catch(e => console.error('[Shop] autosave failed:', e));
+              autosaveGame(result.id, "purchase")
+                .then(() => {
+                  if (scene.flashSaveIcon) scene.flashSaveIcon();
+                })
+                .catch((e) => console.error("[Shop] autosave failed:", e));
             }
           }
         });
@@ -106,9 +148,15 @@ export async function openShop(scene, spawn) {
     }
 
     if (displayItems.length === 0) {
-      const empty = scene.add.text(400, 200, 'Nothing in this category.', {
-        fontSize: '12px', color: '#666666', fontFamily: 'monospace',
-      }).setOrigin(0.5).setScrollFactor(0).setDepth(52);
+      const empty = scene.add
+        .text(400, 200, "Nothing in this category.", {
+          fontSize: "12px",
+          color: "#666666",
+          fontFamily: "monospace",
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(52);
       listGroup.push(empty);
     }
   };
@@ -117,14 +165,25 @@ export async function openShop(scene, spawn) {
   let tabX = 180;
   for (const tab of tabs) {
     const isActive = tab.key === currentTab;
-    const tabBtn = scene.add.text(tabX, 118, tab.label, {
-      fontSize: '12px', color: isActive ? '#ffffff' : '#666666', fontFamily: 'monospace',
-      backgroundColor: isActive ? '#333366' : '#111133',
-      padding: { x: 6, y: 2 },
-    }).setScrollFactor(0).setDepth(51).setInteractive({ useHandCursor: true });
-    tabBtn.on('pointerdown', () => {
+    const tabBtn = scene.add
+      .text(tabX, 118, tab.label, {
+        fontSize: "12px",
+        color: isActive ? "#ffffff" : "#666666",
+        fontFamily: "monospace",
+        backgroundColor: isActive ? "#333366" : "#111133",
+        padding: { x: 6, y: 2 },
+      })
+      .setScrollFactor(0)
+      .setDepth(51)
+      .setInteractive({ useHandCursor: true });
+    tabBtn.on("pointerdown", () => {
       currentTab = tab.key;
-      const type = tab.key === 'weapons' ? 'weapon' : tab.key === 'armor' ? 'armor' : 'consumable';
+      const type =
+        tab.key === "weapons"
+          ? "weapon"
+          : tab.key === "armor"
+            ? "armor"
+            : "consumable";
       renderList(tab.items, type);
       // Refresh tab colors (hacky but works for prototype)
     });
@@ -133,24 +192,31 @@ export async function openShop(scene, spawn) {
   }
 
   // Close button
-  const closeBtn = scene.add.text(400, 530, '[ LEAVE SHOP (ESC) ]', {
-    fontSize: '14px', color: '#aaaaaa', fontFamily: 'monospace',
-  }).setOrigin(0.5).setScrollFactor(0).setDepth(51).setInteractive({ useHandCursor: true });
-  closeBtn.on('pointerdown', () => {
-    overlay.forEach(o => o.destroy());
-    listGroup.forEach(o => o.destroy());
+  const closeBtn = scene.add
+    .text(400, 530, "[ LEAVE SHOP (ESC) ]", {
+      fontSize: "14px",
+      color: "#aaaaaa",
+      fontFamily: "monospace",
+    })
+    .setOrigin(0.5)
+    .setScrollFactor(0)
+    .setDepth(51)
+    .setInteractive({ useHandCursor: true });
+  closeBtn.on("pointerdown", () => {
+    overlay.forEach((o) => o.destroy());
+    listGroup.forEach((o) => o.destroy());
     scene.animating = false;
   });
   overlay.push(closeBtn);
 
   // ESC to close
-  const escHandler = scene.input.keyboard.on('keydown-ESC', () => {
-    overlay.forEach(o => o.destroy());
-    listGroup.forEach(o => o.destroy());
+  const escHandler = scene.input.keyboard.on("keydown-ESC", () => {
+    overlay.forEach((o) => o.destroy());
+    listGroup.forEach((o) => o.destroy());
     scene.animating = false;
-    scene.input.keyboard.off('keydown-ESC', escHandler);
+    scene.input.keyboard.off("keydown-ESC", escHandler);
   });
 
   // Show first tab
-  renderList(weapons, 'weapon');
+  renderList(weapons, "weapon");
 }
