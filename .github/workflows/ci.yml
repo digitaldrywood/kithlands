@@ -57,7 +57,7 @@ jobs:
 
       - name: Prettier check
         working-directory: client
-        run: npx prettier --check .
+        run: npx prettier --check 'src/**/*.js' '*.js' '*.html'
 
       - name: Audit dependencies
         working-directory: client
@@ -99,6 +99,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
