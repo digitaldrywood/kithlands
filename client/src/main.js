@@ -4,6 +4,7 @@ import { TitleScene } from "./scenes/title.js";
 import { WizardScene } from "./scenes/wizard.js";
 import { WorldScene } from "./scenes/world.js";
 import { BattleScene } from "./scenes/battle.js";
+import { TownScene } from "./scenes/town.js";
 
 const config = {
   type: Phaser.AUTO,
@@ -21,7 +22,7 @@ const config = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, TitleScene, WizardScene, WorldScene, BattleScene],
+  scene: [BootScene, TitleScene, WizardScene, WorldScene, BattleScene, TownScene],
 };
 
 new Phaser.Game(config);
