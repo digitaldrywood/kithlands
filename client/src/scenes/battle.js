@@ -672,19 +672,20 @@ export class BattleScene extends Phaser.Scene {
         },
       });
 
-      // Check for level up -- flash effect
+      // Check for level up -- flash effect (capture y in closure)
       const leveledUp = log.some(l => l.includes(`${p.name} leveled up`));
       if (leveledUp) {
+        const memberY = y; // capture current y for this member
         this.time.delayedCall(delay + 1300, () => {
-          // Flash
-          const flash = this.add.rectangle(400, y + 20, 700, 50, 0xffff44, 0.3);
+          // Flash on THIS member's row
+          const flash = this.add.rectangle(400, memberY + 20, 700, 50, 0xffff44, 0.3);
           this.tweens.add({ targets: flash, alpha: 0, duration: 600, onComplete: () => flash.destroy() });
 
-          // Level up text
-          const lvlText = this.add.text(650, y + 12, 'LEVEL UP!', {
+          // Level up text next to this member
+          const lvlUpText = this.add.text(650, memberY + 12, 'LEVEL UP!', {
             fontSize: '14px', color: '#ffff44', fontFamily: 'monospace', fontStyle: 'bold',
           }).setOrigin(0.5).setAlpha(0);
-          this.tweens.add({ targets: lvlText, alpha: 1, duration: 300 });
+          this.tweens.add({ targets: lvlUpText, alpha: 1, duration: 300 });
 
           // Update level display
           levelText.setText(`${p.class_name} Lv.${p.level}`).setColor('#ffff44');
