@@ -54,3 +54,19 @@ export async function gameAction(gameId, action) {
 export async function healthCheck() {
   return apiCall('GET', '/health');
 }
+
+export async function getShop(gameId, nodeId) {
+  return apiCall('GET', `/game/${gameId}/shop/${nodeId}`);
+}
+
+export async function buyItem(gameId, itemId, type) {
+  return apiCall('POST', `/game/${gameId}/buy`, { item_id: itemId, type });
+}
+
+export async function equipItem(gameId, slot, itemId, type) {
+  return apiCall('POST', `/game/${gameId}/equip`, { slot, item_id: itemId, type });
+}
+
+export async function learnSpell(gameId, charName, spellId) {
+  return apiCall('POST', `/game/${gameId}/learn`, { char_name: charName, spell_id: spellId });
+}

@@ -29,11 +29,12 @@ type TileMap struct {
 
 // MapSpawn marks where a locality node appears on the map.
 type MapSpawn struct {
-	NodeID string `json:"node_id"`
-	Name   string `json:"name"`
-	Kind   string `json:"kind"`
-	X      int    `json:"x"`
-	Y      int    `json:"y"`
+	NodeID string   `json:"node_id"`
+	Name   string   `json:"name"`
+	Kind   string   `json:"kind"`
+	Tags   []string `json:"tags"`
+	X      int      `json:"x"`
+	Y      int      `json:"y"`
 }
 
 // GenerateTileMap creates a simple procedural map from a locality graph.
@@ -112,6 +113,7 @@ func GenerateTileMap(loc *Locality, spawnID string) *TileMap {
 			NodeID: node.ID,
 			Name:   node.Name,
 			Kind:   string(node.Kind),
+			Tags:   node.Tags,
 			X:      x,
 			Y:      y,
 		})

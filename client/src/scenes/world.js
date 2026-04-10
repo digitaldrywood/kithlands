@@ -1,4 +1,4 @@
-import { gameAction } from '../api.js';
+import { gameAction, getShop, buyItem, equipItem, learnSpell } from '../api.js';
 
 // Tile colors for programmatic rendering
 const TILE_COLORS = {
@@ -201,47 +201,91 @@ export class WorldScene extends Phaser.Scene {
     this.menuGroup = [];
     const gs = this.gameState;
 
-    // Background panel
-    const bg = this.add.rectangle(400, 300, 500, 400, 0x000000, 0.9).setScrollFactor(0).setDepth(40);
+    // Background panel (wider for equipment)
+    const bg = this.add.rectangle(400, 300, 700, 500, 0x000000, 0.95).setScrollFactor(0).setDepth(40);
     this.menuGroup.push(bg);
 
-    const title = this.add.text(400, 120, 'PARTY MENU', {
-      fontSize: '20px', color: '#ffff44', fontFamily: 'monospace',
+    const title = this.add.text(400, 65, 'PARTY MENU', {
+      fontSize: '18px', color: '#ffff44', fontFamily: 'monospace',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(41);
     this.menuGroup.push(title);
 
-    let y = 160;
-    for (const p of gs.party) {
-      const hpColor = p.hp < p.max_hp * 0.3 ? '#ff4444' : '#44ff44';
-      const line = this.add.text(200, y,
-        `${p.name} (${p.class_name}) Lv.${p.level}\n  HP: ${p.hp}/${p.max_hp}  STR:${p.str} AGI:${p.agi} INT:${p.int_stat}\n  XP: ${p.xp}/${p.xp_next}`,
-        { fontSize: '12px', color: '#ffffff', fontFamily: 'monospace' }
+    let y = 95;
+    for (let i = 0; i < gs.party.length; i++) {
+      const p = gs.party[i];
+      const eq = gs.equipment ? gs.equipment[i] : {};
+
+      // Name and stats
+      const line = this.add.text(80, y,
+        `${p.name} (${p.class_name}) Lv.${p.level}  HP:${p.hp}/${p.max_hp}  STR:${p.str} AGI:${p.agi} INT:${p.int_stat}`,
+        { fontSize: '11px', color: '#ffffff', fontFamily: 'monospace' }
       ).setScrollFactor(0).setDepth(41);
       this.menuGroup.push(line);
 
+      // XP
+      const xpLine = this.add.text(80, y + 16,
+        `  XP: ${p.xp}/${p.xp_next}`,
+        { fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace' }
+      ).setScrollFactor(0).setDepth(41);
+      this.menuGroup.push(xpLine);
+
+      // Equipment
+      const weaponName = eq.weapon_name || 'None';
+      const armorName = eq.armor_name || 'None';
+      const eqLine = this.add.text(80, y + 30,
+        `  Weapon: ${weaponName}  |  Armor: ${armorName}`,
+        { fontSize: '10px', color: '#ffcc44', fontFamily: 'monospace' }
+      ).setScrollFactor(0).setDepth(41);
+      this.menuGroup.push(eqLine);
+
+      // Equip buttons
+      const eqWpnBtn = this.add.text(540, y + 28, '[Equip Wpn]', {
+        fontSize: '9px', color: '#44aaff', fontFamily: 'monospace',
+      }).setScrollFactor(0).setDepth(41).setInteractive({ useHandCursor: true });
+      eqWpnBtn.on('pointerdown', () => this.showEquipPicker(i, 'weapon'));
+      this.menuGroup.push(eqWpnBtn);
+
+      const eqArmBtn = this.add.text(630, y + 28, '[Equip Arm]', {
+        fontSize: '9px', color: '#44aaff', fontFamily: 'monospace',
+      }).setScrollFactor(0).setDepth(41).setInteractive({ useHandCursor: true });
+      eqArmBtn.on('pointerdown', () => this.showEquipPicker(i, 'armor'));
+      this.menuGroup.push(eqArmBtn);
+
+      // Spells
       if (p.spells && p.spells.length > 0) {
-        const spells = this.add.text(200, y + 48,
+        const spells = this.add.text(80, y + 44,
           `  Spells: ${p.spells.map(s => `${s.name}(${s.charges})`).join(', ')}`,
-          { fontSize: '11px', color: '#8888ff', fontFamily: 'monospace' }
+          { fontSize: '9px', color: '#8888ff', fontFamily: 'monospace' }
         ).setScrollFactor(0).setDepth(41);
         this.menuGroup.push(spells);
-        y += 70;
+        y += 65;
       } else {
-        y += 55;
+        y += 52;
       }
     }
 
-    // Gold and items
-    const inv = this.add.text(200, y + 10,
+    // Gold, potions, items
+    y += 5;
+    const inv = this.add.text(80, y,
       `Gold: ${gs.gold}  |  Potions: ${gs.potions}`,
-      { fontSize: '13px', color: '#ffcc44', fontFamily: 'monospace' }
+      { fontSize: '12px', color: '#ffcc44', fontFamily: 'monospace' }
     ).setScrollFactor(0).setDepth(41);
     this.menuGroup.push(inv);
 
+    // Other items
+    if (gs.items && gs.items.length > 0) {
+      y += 18;
+      const itemStr = gs.items.map(i => `${i.name}(${i.count})`).join(', ');
+      const itemLine = this.add.text(80, y, `Items: ${itemStr}`, {
+        fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
+      }).setScrollFactor(0).setDepth(41);
+      this.menuGroup.push(itemLine);
+    }
+
     // Use potion button
     if (gs.potions > 0) {
-      const useBtn = this.add.text(400, y + 45, '[ USE POTION ]', {
-        fontSize: '14px', color: '#44ff44', fontFamily: 'monospace',
+      const useBtn = this.add.text(400, y + 35, '[ USE POTION ]', {
+        fontSize: '13px', color: '#44ff44', fontFamily: 'monospace',
       }).setOrigin(0.5).setScrollFactor(0).setDepth(41).setInteractive({ useHandCursor: true });
       useBtn.on('pointerover', () => useBtn.setColor('#88ff88'));
       useBtn.on('pointerout', () => useBtn.setColor('#44ff44'));
@@ -250,11 +294,86 @@ export class WorldScene extends Phaser.Scene {
     }
 
     // Close
-    const closeBtn = this.add.text(400, 470, '[ CLOSE (M/ESC) ]', {
-      fontSize: '14px', color: '#aaaaaa', fontFamily: 'monospace',
+    const closeBtn = this.add.text(400, 530, '[ CLOSE (M/ESC) ]', {
+      fontSize: '13px', color: '#aaaaaa', fontFamily: 'monospace',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(41).setInteractive({ useHandCursor: true });
     closeBtn.on('pointerdown', () => this.toggleMenu());
     this.menuGroup.push(closeBtn);
+  }
+
+  async showEquipPicker(slot, type) {
+    // Close menu first
+    if (this.menuGroup) {
+      this.menuGroup.forEach(c => c.destroy());
+      this.menuGroup = null;
+    }
+
+    const gs = this.gameState;
+    const overlay = [];
+
+    // Find available items from inventory
+    const prefix = type === 'weapon' ? 'wpn_' : 'arm_';
+    const available = [];
+
+    // Get items from game state inventory
+    if (gs.items) {
+      for (const item of gs.items) {
+        if (item.id.startsWith(prefix)) {
+          const realId = item.id.substring(prefix.length);
+          available.push({ id: realId, name: item.name, count: item.count });
+        }
+      }
+    }
+
+    // Also check consumables for prefixed items
+    // These come through as items in the state
+
+    const bg = this.add.rectangle(400, 300, 400, 200 + available.length * 30, 0x111144, 0.95)
+      .setStrokeStyle(2, 0x4444aa).setScrollFactor(0).setDepth(50);
+    overlay.push(bg);
+
+    const title = this.add.text(400, 220, `Equip ${type} for ${gs.party[slot].name}:`, {
+      fontSize: '13px', color: '#ffffff', fontFamily: 'monospace',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(51);
+    overlay.push(title);
+
+    if (available.length === 0) {
+      const none = this.add.text(400, 280, 'No items available.\nBuy gear at the General Store!', {
+        fontSize: '12px', color: '#666666', fontFamily: 'monospace', align: 'center',
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(51);
+      overlay.push(none);
+    } else {
+      let y = 255;
+      for (const item of available) {
+        const row = this.add.text(400, y, `${item.name} (x${item.count})`, {
+          fontSize: '12px', color: '#aaaaff', fontFamily: 'monospace',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(51).setInteractive({ useHandCursor: true });
+        row.on('pointerover', () => row.setColor('#ffffff'));
+        row.on('pointerout', () => row.setColor('#aaaaff'));
+        row.on('pointerdown', async () => {
+          const result = await equipItem(gs.id, slot, item.id, type);
+          if (!result.error) {
+            this.gameState = result;
+            this.showMessage(`Equipped: ${item.name}`);
+            this.updateHUD();
+            this.time.delayedCall(1000, () => this.hideMessage());
+          }
+          overlay.forEach(o => o.destroy());
+          this.menuOpen = false;
+        });
+        overlay.push(row);
+        y += 30;
+      }
+    }
+
+    const closeBtn = this.add.text(400, 380 + available.length * 15, '[ CANCEL ]', {
+      fontSize: '11px', color: '#888888', fontFamily: 'monospace',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(51).setInteractive({ useHandCursor: true });
+    closeBtn.on('pointerdown', () => {
+      overlay.forEach(o => o.destroy());
+      this.menuOpen = false;
+    });
+    overlay.push(closeBtn);
   }
 
   useOverworldPotion() {
@@ -336,18 +455,30 @@ export class WorldScene extends Phaser.Scene {
 
     this.stepCount++;
 
-    // Door interaction -- check for quest completion or shop
+    // Door interaction -- check for shop, inn, or quest target
     if (tile === 5) {
       const spawn = this.spawns.find(s => Math.abs(s.x - nx) <= 1 && Math.abs(s.y - ny) <= 2);
       if (spawn) {
-        this.showMessage(`Entered: ${spawn.name}`);
-        this.time.delayedCall(1500, () => this.hideMessage());
+        const tags = spawn.tags || [];
+        const isShop = tags.includes('shop') || tags.includes('commerce');
+        const isInn = tags.includes('rest');
 
-        // Check if this is a quest target
+        if (isShop) {
+          this.openShop(spawn);
+        } else if (isInn) {
+          // Rest at inn
+          this.gameState.party.forEach(p => { p.hp = p.max_hp; });
+          this.showMessage(`Rested at ${spawn.name}.\nHP and spells restored!`);
+          this.updateHUD();
+          this.time.delayedCall(2000, () => this.hideMessage());
+        } else {
+          this.showMessage(`Entered: ${spawn.name}`);
+          this.time.delayedCall(1500, () => this.hideMessage());
+        }
+
+        // Always check quest advance when entering any building
         const gs = this.gameState;
         if (gs.current_quest < gs.quests.length) {
-          const q = gs.quests[gs.current_quest];
-          // Advance quest when entering any unvisited building
           this.triggerQuestAdvance(spawn.name);
         }
       }
@@ -363,6 +494,154 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.updateHUD();
+  }
+
+  async openShop(spawn) {
+    this.animating = true;
+    const gs = this.gameState;
+
+    let shopData;
+    try {
+      shopData = await getShop(gs.id, spawn.node_id);
+    } catch (e) {
+      console.error('[World] shop fetch failed:', e);
+      this.animating = false;
+      return;
+    }
+
+    const items = shopData.shop_items || [];
+    if (items.length === 0) {
+      this.showMessage(`${spawn.name} has nothing for sale.`);
+      this.time.delayedCall(1500, () => { this.hideMessage(); this.animating = false; });
+      return;
+    }
+
+    // Group items by type
+    const weapons = items.filter(i => i.type === 'weapon');
+    const armor = items.filter(i => i.type === 'armor');
+    const consumables = items.filter(i => i.type === 'consumable');
+    const spells = items.filter(i => i.type === 'spell');
+
+    const overlay = [];
+    const bg = this.add.rectangle(400, 300, 650, 500, 0x0a0a22, 0.95)
+      .setStrokeStyle(2, 0x444488).setScrollFactor(0).setDepth(50);
+    overlay.push(bg);
+
+    const title = this.add.text(400, 70, `${spawn.name}`, {
+      fontSize: '18px', color: '#ffff44', fontFamily: 'monospace',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(51);
+    overlay.push(title);
+
+    const goldText = this.add.text(400, 95, `Gold: ${gs.gold}`, {
+      fontSize: '13px', color: '#ffcc44', fontFamily: 'monospace',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(51);
+    overlay.push(goldText);
+
+    // Tabs
+    let currentTab = 'weapons';
+    const tabs = [
+      { label: 'Weapons', key: 'weapons', items: weapons },
+      { label: 'Armor', key: 'armor', items: armor },
+      { label: 'Items', key: 'consumables', items: consumables },
+      { label: 'Spells', key: 'spells', items: spells },
+    ];
+
+    let listGroup = [];
+
+    const renderList = (tabItems, tabType) => {
+      listGroup.forEach(o => o.destroy());
+      listGroup = [];
+
+      let y = 145;
+      const displayItems = tabItems.slice(0, 10); // max 10 items visible
+
+      for (const item of displayItems) {
+        const affordable = gs.gold >= item.price;
+        const color = affordable ? '#ffffff' : '#666666';
+
+        let desc = `${item.name}`;
+        if (item.power) desc += ` (Pow:${item.power})`;
+        if (item.absorb) desc += ` (Abs:${item.absorb})`;
+        if (item.classes) desc += ` [${item.classes}]`;
+        desc += `  ${item.price}g`;
+
+        const text = this.add.text(150, y, desc, {
+          fontSize: '11px', color, fontFamily: 'monospace',
+        }).setScrollFactor(0).setDepth(52);
+        listGroup.push(text);
+
+        if (affordable) {
+          const buyBtn = this.add.text(620, y, '[BUY]', {
+            fontSize: '11px', color: '#44ff44', fontFamily: 'monospace',
+          }).setScrollFactor(0).setDepth(52).setInteractive({ useHandCursor: true });
+          buyBtn.on('pointerover', () => buyBtn.setColor('#88ff88'));
+          buyBtn.on('pointerout', () => buyBtn.setColor('#44ff44'));
+          buyBtn.on('pointerdown', async () => {
+            const result = await buyItem(gs.id, item.id, tabType === 'spells' ? 'consumable' : tabType === 'weapons' ? 'weapon' : tabType === 'armor' ? 'armor' : 'consumable');
+            if (!result.error) {
+              this.gameState = result;
+              gs.gold = result.gold;
+              goldText.setText(`Gold: ${result.gold}`);
+              this.showMessage(`Bought: ${item.name}!`);
+              this.updateHUD();
+              this.time.delayedCall(1000, () => this.hideMessage());
+              renderList(tabItems, tabType);
+            }
+          });
+          listGroup.push(buyBtn);
+        }
+
+        y += 22;
+      }
+
+      if (displayItems.length === 0) {
+        const empty = this.add.text(400, 200, 'Nothing in this category.', {
+          fontSize: '12px', color: '#666666', fontFamily: 'monospace',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(52);
+        listGroup.push(empty);
+      }
+    };
+
+    // Tab buttons
+    let tabX = 180;
+    for (const tab of tabs) {
+      const isActive = tab.key === currentTab;
+      const tabBtn = this.add.text(tabX, 118, tab.label, {
+        fontSize: '12px', color: isActive ? '#ffffff' : '#666666', fontFamily: 'monospace',
+        backgroundColor: isActive ? '#333366' : '#111133',
+        padding: { x: 6, y: 2 },
+      }).setScrollFactor(0).setDepth(51).setInteractive({ useHandCursor: true });
+      tabBtn.on('pointerdown', () => {
+        currentTab = tab.key;
+        const type = tab.key === 'weapons' ? 'weapon' : tab.key === 'armor' ? 'armor' : 'consumable';
+        renderList(tab.items, type);
+        // Refresh tab colors (hacky but works for prototype)
+      });
+      overlay.push(tabBtn);
+      tabX += 120;
+    }
+
+    // Close button
+    const closeBtn = this.add.text(400, 530, '[ LEAVE SHOP (ESC) ]', {
+      fontSize: '14px', color: '#aaaaaa', fontFamily: 'monospace',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(51).setInteractive({ useHandCursor: true });
+    closeBtn.on('pointerdown', () => {
+      overlay.forEach(o => o.destroy());
+      listGroup.forEach(o => o.destroy());
+      this.animating = false;
+    });
+    overlay.push(closeBtn);
+
+    // ESC to close
+    const escHandler = this.input.keyboard.on('keydown-ESC', () => {
+      overlay.forEach(o => o.destroy());
+      listGroup.forEach(o => o.destroy());
+      this.animating = false;
+      this.input.keyboard.off('keydown-ESC', escHandler);
+    });
+
+    // Show first tab
+    renderList(weapons, 'weapon');
   }
 
   async triggerRandomEncounter() {
