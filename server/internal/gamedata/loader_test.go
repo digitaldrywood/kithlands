@@ -58,6 +58,49 @@ func TestStatsConfig(t *testing.T) {
 	}
 }
 
+func TestFormationsLoaded(t *testing.T) {
+	gd := gamedata.Load("../../../shared")
+	if len(gd.Formations) == 0 {
+		t.Fatal("expected at least one formation")
+	}
+
+	// Verify a known formation exists
+	f := gd.FormationByID("slime_pack")
+	if f == nil {
+		t.Fatal("slime_pack formation not found")
+	}
+	if f.Layout != "line" {
+		t.Errorf("slime_pack layout: got %q, want %q", f.Layout, "line")
+	}
+	if len(f.Slots) != 1 {
+		t.Fatalf("slime_pack slots: got %d, want 1", len(f.Slots))
+	}
+	if f.Slots[0].MonsterID != "slime" {
+		t.Errorf("slime_pack slot monster_id: got %q, want %q", f.Slots[0].MonsterID, "slime")
+	}
+}
+
+func TestFormationSlotMonsterIDsResolve(t *testing.T) {
+	gd := gamedata.Load("../../../shared")
+	for _, f := range gd.Formations {
+		for _, slot := range f.Slots {
+			if gd.MonsterByID(slot.MonsterID) == nil {
+				t.Errorf("formation %q slot references unknown monster: %q", f.ID, slot.MonsterID)
+			}
+		}
+	}
+}
+
+func TestMonsterSizesValid(t *testing.T) {
+	gd := gamedata.Load("../../../shared")
+	validSizes := map[string]bool{"small": true, "medium": true, "large": true, "boss": true}
+	for _, m := range gd.Monsters {
+		if !validSizes[m.Size] {
+			t.Errorf("monster %q has invalid size: %q", m.ID, m.Size)
+		}
+	}
+}
+
 func TestLoadPanicsOnMissingDir(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {

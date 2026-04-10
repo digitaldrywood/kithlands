@@ -17,6 +17,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 			g.phase = "world"
 			g.message = "Got away safely!"
 			g.enemies = nil
+			g.formation = ""
 			state := g.stateUnlocked()
 			return &state, nil
 		}

@@ -25,18 +25,18 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 			partyLevels[i] = c.Level
 		}
 		encLvl := balance.EncounterLevel(partyLevels, "normal", 0, g.currentQ)
-		g.enemies = balance.GenerateEncounter(g.gd.Monsters, encLvl, g.diff, g.rng)
+		result := balance.GenerateFormationEncounter(g.gd, encLvl, g.diff, g.rng)
+		g.enemies = result.Combatants
+		g.formation = result.Layout
 		g.phase = "combat"
 
 		// Track discovered monsters
+		if g.discovered == nil {
+			g.discovered = make(map[string]bool)
+		}
 		for _, e := range g.enemies {
-			if g.discovered == nil {
-				g.discovered = make(map[string]bool)
-			}
-			for _, m := range g.gd.Monsters {
-				if m.Name == e.Name {
-					g.discovered[m.ID] = true
-				}
+			if e.MonsterID != "" {
+				g.discovered[e.MonsterID] = true
 			}
 		}
 
@@ -83,7 +83,9 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 			partyLevels[i] = c.Level
 		}
 		encLvl := balance.EncounterLevel(partyLevels, "normal", 0, g.currentQ)
-		g.enemies = balance.GenerateEncounter(g.gd.Monsters, encLvl, g.diff, g.rng)
+		result := balance.GenerateFormationEncounter(g.gd, encLvl, g.diff, g.rng)
+		g.enemies = result.Combatants
+		g.formation = result.Layout
 		g.phase = "combat"
 		g.combatLog = append(g.combatLog, "Enemies appear!")
 		for _, e := range g.enemies {

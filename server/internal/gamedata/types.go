@@ -209,6 +209,7 @@ type Monster struct {
 	ID              string        `json:"id"`
 	Name            string        `json:"name"`
 	Tier            int           `json:"tier"`
+	Size            string        `json:"size"` // small, medium, large, boss
 	IsBoss          bool          `json:"is_boss"`
 	Stats           MonsterStats  `json:"stats"`
 	HP              int           `json:"hp"`
@@ -236,4 +237,21 @@ type MonsterStats struct {
 type Drop struct {
 	ItemID    string `json:"item_id"`
 	ChancePct int    `json:"chance_pct"`
+}
+
+// Formations
+
+type Formation struct {
+	ID                string          `json:"id"`
+	Weight            int             `json:"weight"`
+	MinEncounterLevel int             `json:"min_encounter_level"`
+	MaxEncounterLevel int             `json:"max_encounter_level"` // 0 = no upper bound
+	Layout            string          `json:"layout"`              // line, vshape, triangle, boss_minions, scattered, rows
+	Slots             []FormationSlot `json:"slots"`
+}
+
+type FormationSlot struct {
+	MonsterID string `json:"monster_id"`
+	Min       int    `json:"min"`
+	Max       int    `json:"max"`
 }

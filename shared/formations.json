@@ -1,0 +1,107 @@
+[
+  {
+    "id": "slime_pack",
+    "weight": 40,
+    "min_encounter_level": 1,
+    "max_encounter_level": 3,
+    "layout": "line",
+    "slots": [
+      { "monster_id": "slime", "min": 2, "max": 4 }
+    ]
+  },
+  {
+    "id": "goblin_rabble",
+    "weight": 35,
+    "min_encounter_level": 1,
+    "max_encounter_level": 3,
+    "layout": "line",
+    "slots": [
+      { "monster_id": "goblin", "min": 2, "max": 3 }
+    ]
+  },
+  {
+    "id": "mixed_horde",
+    "weight": 15,
+    "min_encounter_level": 2,
+    "max_encounter_level": 4,
+    "layout": "vshape",
+    "slots": [
+      { "monster_id": "slime", "min": 2, "max": 3 },
+      { "monster_id": "wolf", "min": 1, "max": 2 }
+    ]
+  },
+  {
+    "id": "scattered_mob",
+    "weight": 20,
+    "min_encounter_level": 1,
+    "max_encounter_level": 3,
+    "layout": "scattered",
+    "slots": [
+      { "monster_id": "slime", "min": 1, "max": 2 },
+      { "monster_id": "goblin", "min": 1, "max": 2 }
+    ]
+  },
+  {
+    "id": "wolf_hunt",
+    "weight": 25,
+    "min_encounter_level": 2,
+    "max_encounter_level": 5,
+    "layout": "line",
+    "slots": [
+      { "monster_id": "wolf", "min": 1, "max": 3 }
+    ]
+  },
+  {
+    "id": "wolf_pack",
+    "weight": 20,
+    "min_encounter_level": 2,
+    "max_encounter_level": 5,
+    "layout": "rows",
+    "slots": [
+      { "monster_id": "wolf", "min": 2, "max": 3 }
+    ]
+  },
+  {
+    "id": "wolf_escort",
+    "weight": 10,
+    "min_encounter_level": 2,
+    "max_encounter_level": 4,
+    "layout": "triangle",
+    "slots": [
+      { "monster_id": "wolf", "min": 1, "max": 1 },
+      { "monster_id": "slime", "min": 2, "max": 3 }
+    ]
+  },
+  {
+    "id": "skeleton_patrol",
+    "weight": 20,
+    "min_encounter_level": 2,
+    "max_encounter_level": 5,
+    "layout": "line",
+    "slots": [
+      { "monster_id": "skeleton", "min": 1, "max": 2 }
+    ]
+  },
+  {
+    "id": "skeleton_ambush",
+    "weight": 15,
+    "min_encounter_level": 3,
+    "max_encounter_level": 5,
+    "layout": "vshape",
+    "slots": [
+      { "monster_id": "skeleton", "min": 1, "max": 1 },
+      { "monster_id": "goblin", "min": 2, "max": 2 }
+    ]
+  },
+  {
+    "id": "dark_knight_boss",
+    "weight": 0,
+    "min_encounter_level": 3,
+    "max_encounter_level": 0,
+    "layout": "boss_minions",
+    "slots": [
+      { "monster_id": "dark_knight", "min": 1, "max": 1 },
+      { "monster_id": "skeleton", "min": 1, "max": 2 }
+    ]
+  }
+]

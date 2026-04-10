@@ -3,6 +3,7 @@
     "id": "slime",
     "name": "Slime",
     "tier": 1,
+    "size": "small",
     "stats": {
       "str": 4,
       "agi": 1,
@@ -29,6 +30,7 @@
     "id": "goblin",
     "name": "Goblin",
     "tier": 1,
+    "size": "small",
     "stats": {
       "str": 8,
       "agi": 4,
@@ -56,6 +58,7 @@
     "id": "wolf",
     "name": "Wolf",
     "tier": 2,
+    "size": "medium",
     "stats": {
       "str": 14,
       "agi": 10,
@@ -82,6 +85,7 @@
     "id": "skeleton",
     "name": "Skeleton",
     "tier": 2,
+    "size": "medium",
     "stats": {
       "str": 18,
       "agi": 6,
@@ -109,6 +113,7 @@
     "id": "dark_knight",
     "name": "Dark Knight",
     "tier": 3,
+    "size": "boss",
     "is_boss": true,
     "stats": {
       "str": 35,
