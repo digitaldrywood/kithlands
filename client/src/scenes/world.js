@@ -1,4 +1,5 @@
 import { gameAction, getShop, buyItem, equipItem, learnSpell, saveGame } from '../api.js';
+import { initAudio, playMusic, playSFX, toggleMute, isMuted, stopMusic } from '../systems/audio.js';
 
 const ENEMY_SPRITES = {
   'Slime': 'monster_slime', 'Goblin': 'monster_goblin', 'Wolf': 'monster_wolf',
@@ -66,6 +67,9 @@ export class WorldScene extends Phaser.Scene {
     this.stepCount = 0;
     this.animating = false;
     this.gameOver = false;
+
+    initAudio(this);
+    playMusic('music_overworld');
 
     const gs = this.gameState;
 
@@ -205,6 +209,14 @@ export class WorldScene extends Phaser.Scene {
     this.drawMinimap();
 
     // HUD buttons
+    const muteBtn = this.add.text(620, 575, isMuted() ? '[unmute]' : '[mute]', {
+      fontSize: '12px', color: '#666666', fontFamily: 'monospace',
+    }).setScrollFactor(0).setDepth(21).setInteractive({ useHandCursor: true });
+    muteBtn.on('pointerdown', () => {
+      const m = toggleMute();
+      muteBtn.setText(m ? '[unmute]' : '[mute]');
+    });
+
     const codexBtn = this.add.text(690, 575, '[H]elp', {
       fontSize: '12px', color: '#8888ff', fontFamily: 'monospace',
     }).setScrollFactor(0).setDepth(21).setInteractive({ useHandCursor: true });
@@ -787,6 +799,8 @@ export class WorldScene extends Phaser.Scene {
     const isTemple = tags.includes('temple') || tags.includes('revive');
 
     if (isShop) {
+      playSFX('sfx_door');
+      playMusic('music_shop');
       this.openShop(spawn);
     } else if (isTemple) {
       const dead = this.gameState.party.filter(p => p.hp <= 0);
@@ -797,10 +811,13 @@ export class WorldScene extends Phaser.Scene {
         this.gameState.party.forEach(p => { p.hp = p.max_hp; });
         this.showMessage(`Temple of Light\nBlessings upon you. HP fully restored!`);
       }
+      playSFX('sfx_heal');
       this.updateHUD();
       this.time.delayedCall(2000, () => { this.hideMessage(); this.offerSave('Temple of Light'); });
     } else if (isInn) {
       this.gameState.party.forEach(p => { if (p.hp > 0) p.hp = p.max_hp; });
+      playSFX('sfx_heal');
+      playMusic('music_inn', false);
       this.showMessage(`Rested at ${spawn.name}.\nHP and spells restored!`);
       this.updateHUD();
       this.time.delayedCall(2000, () => { this.hideMessage(); this.offerSave(spawn.name); });
@@ -970,6 +987,7 @@ export class WorldScene extends Phaser.Scene {
     cachedPlayerX = this.playerX;
     cachedPlayerY = this.playerY;
     cachedPlayerDir = this.playerDir;
+    playSFX('sfx_encounter');
     console.log('[World] random encounter triggered at', this.playerX, this.playerY);
 
     this.cameras.main.flash(300, 255, 255, 255);

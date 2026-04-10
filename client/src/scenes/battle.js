@@ -1,4 +1,5 @@
 import { gameAction } from '../api.js';
+import { initAudio, playMusic, playSFX, stopMusic } from '../systems/audio.js';
 
 const ENEMY_SPRITES = {
   'Slime': 'monster_slime', 'Goblin': 'monster_goblin', 'Wolf': 'monster_wolf',
@@ -43,6 +44,12 @@ export class BattleScene extends Phaser.Scene {
       if (gs.party[i].hp > 0) this.livingMembers.push(i);
     }
     this.currentMemberIdx = 0;
+
+    initAudio(this);
+
+    // Play battle music (boss if Dark Knight, normal otherwise)
+    const isBoss = gs.enemies.some(e => e.name === 'Dark Knight');
+    playMusic(isBoss ? 'music_boss' : 'music_battle');
 
     // Background
     this.add.rectangle(400, 300, 800, 600, 0x0a0a1e);
@@ -482,13 +489,16 @@ export class BattleScene extends Phaser.Scene {
         }
 
         // Hit effect on target -- use ID for correct sprite
+        playSFX('sfx_slash');
         const ee = targetId ? this.enemySprites[parseInt(targetId)] : Object.values(this.enemySprites).find(e => e.name === target);
         const pt = this.partySprites[target];
         if (ee) {
+          playSFX(defeatMatch ? 'sfx_death' : 'sfx_hit');
           await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch);
           if (ee.sprite.setTint) { ee.sprite.setTint(0xff4444); this.time.delayedCall(200, () => ee.sprite.clearTint?.()); }
         } else if (pt) {
           this.promptText.setText(`${attacker} attacks ${target}!`).setColor('#ff8800');
+          playSFX('sfx_party_hit');
           await this.hitFx(pt.x, pt.y, dmg, true, false);
           if (pt.sprite.setTint) { pt.sprite.setTint(0xff4444); this.time.delayedCall(200, () => pt.sprite.clearTint?.()); }
           this.cameras.main.shake(80, 0.005);
@@ -504,6 +514,7 @@ export class BattleScene extends Phaser.Scene {
           this.promptText.setText(`${caster} casts ${spell}!`).setColor('#8888ff');
         }
 
+        playSFX('sfx_spell');
         const flash = this.add.rectangle(400, 300, 800, 600, 0x4444ff, 0.2).setDepth(19);
         this.time.delayedCall(200, () => flash.destroy());
 
@@ -574,15 +585,33 @@ export class BattleScene extends Phaser.Scene {
     this.add.rectangle(400, 300, 800, 600, 0x0a0a1e);
 
     const isDefeat = gs.phase === 'defeat';
+    stopMusic();
+    playMusic(isDefeat ? 'music_defeat' : 'music_victory', false);
+
     this.add.text(400, 30, isDefeat ? 'DEFEAT' : 'VICTORY!', {
       fontSize: '32px', color: isDefeat ? '#ff4444' : '#ffff44', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     if (isDefeat) {
-      this.add.text(400, 80, gs.message || 'Your party has fallen.', {
+      this.add.text(400, 100, gs.message || 'Your party has fallen.', {
         fontSize: '14px', color: '#aaaaaa', fontFamily: 'monospace',
       }).setOrigin(0.5);
-      this.addContinueButton(gs);
+
+      // Defeat options
+      const loadBtn = this.add.text(400, 300, '[ LOAD LAST SAVE ]', {
+        fontSize: '18px', color: '#4488ff', fontFamily: 'monospace',
+      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      loadBtn.on('pointerover', () => loadBtn.setColor('#88bbff'));
+      loadBtn.on('pointerout', () => loadBtn.setColor('#4488ff'));
+      loadBtn.on('pointerdown', () => this.scene.start('Title'));
+
+      const titleBtn = this.add.text(400, 360, '[ TITLE SCREEN ]', {
+        fontSize: '18px', color: '#aaaaaa', fontFamily: 'monospace',
+      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      titleBtn.on('pointerover', () => titleBtn.setColor('#cccccc'));
+      titleBtn.on('pointerout', () => titleBtn.setColor('#aaaaaa'));
+      titleBtn.on('pointerdown', () => this.scene.start('Title'));
+
       return;
     }
 

@@ -1,4 +1,5 @@
 import { login, setToken, newGame, listSaves, loadSave } from '../api.js';
+import { initAudio, playMusic, playSFX } from '../systems/audio.js';
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -10,6 +11,8 @@ export class TitleScene extends Phaser.Scene {
   }
 
   showMainMenu() {
+    initAudio(this);
+    playMusic('music_title');
     this.children.removeAll(true);
     // Remove DOM elements
     this.children.list
