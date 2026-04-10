@@ -38,7 +38,8 @@ export class WizardScene extends Phaser.Scene {
       case 2: this.showPlacesStep(); break;
       case 3: this.showBigBuildingStep(); break;
       case 4: this.showPartyStep(); break;
-      case 5: this.startGameStep(); break;
+      case 5: this.showConfirmStep(); break;
+      case 6: this.startGameStep(); break;
     }
   }
 
@@ -64,6 +65,17 @@ export class WizardScene extends Phaser.Scene {
     el.placeholder = placeholder;
     el.style.cssText = `font-size:16px;padding:6px 12px;width:${width}px;text-align:center;background:#222;color:#fff;border:2px solid #555;outline:none;font-family:monospace;`;
     return this.add.dom(this.cx, y, el);
+  }
+
+  addBackButton(y) {
+    if (this.step <= 0) return;
+    const btn = this.add.text(200, y, '[ BACK ]', {
+      fontSize: '14px', color: '#888888', fontFamily: 'monospace',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    btn.on('pointerover', () => btn.setColor('#aaaaaa'));
+    btn.on('pointerout', () => btn.setColor('#888888'));
+    btn.on('pointerdown', () => { this.step--; this.showStep(); });
+    this.contentGroup.add(btn);
   }
 
   addButton(y, label, callback) {
@@ -142,12 +154,13 @@ export class WizardScene extends Phaser.Scene {
 
     const inputs = [];
     for (let i = 0; i < 3; i++) {
-      this.addLabel(150 + i * 70, `NPC ${i + 1}:`);
-      const nameInput = this.addInput(175 + i * 70, defaults[i].name, 200);
+      this.addLabel(165 + i * 80, `NPC ${i + 1}:`);
+      const nameInput = this.addInput(195 + i * 80, defaults[i].name, 200);
       inputs.push({ nameInput, defaultName: defaults[i].name, defaultRel: defaults[i].rel });
     }
 
-    this.addButton(400, 'NEXT', () => {
+    this.addBackButton(440);
+    this.addButton(440, 'NEXT', () => {
       this.wizardData.people = inputs.map(inp => ({
         name: inp.nameInput.node.value.trim() || inp.defaultName,
         relation: inp.defaultRel,
@@ -164,12 +177,13 @@ export class WizardScene extends Phaser.Scene {
     const defaults = ['The School', 'Creswood Corners', 'Fire Hall'];
     const inputs = [];
     for (let i = 0; i < 3; i++) {
-      this.addLabel(140 + i * 60, `Place ${i + 1}:`);
-      const input = this.addInput(165 + i * 60, defaults[i], 250);
+      this.addLabel(130 + i * 80, `Place ${i + 1}:`);
+      const input = this.addInput(160 + i * 80, defaults[i], 250);
       inputs.push({ input, def: defaults[i] });
     }
 
-    this.addButton(380, 'NEXT', () => {
+    this.addBackButton(400);
+    this.addButton(400, 'NEXT', () => {
       this.wizardData.places = inputs.map(inp => inp.input.node.value.trim() || inp.def);
       this.step++;
       this.showStep();
@@ -180,6 +194,7 @@ export class WizardScene extends Phaser.Scene {
     this.addTitle('THE BIG BUILDING');
     this.addLabel(80, 'What\'s the biggest building in town?\nThis becomes the final dungeon or seat of power.');
     const input = this.addInput(150, 'Town Hall');
+    this.addBackButton(220);
     this.addButton(220, 'NEXT', () => {
       this.wizardData.big_building = input.node.value.trim() || 'Town Hall';
       this.step++;
@@ -198,17 +213,57 @@ export class WizardScene extends Phaser.Scene {
 
     const inputs = [];
     for (let i = 0; i < 2; i++) {
-      this.addLabel(140 + i * 100, `Slot ${i + 1}:`);
-      const nameInput = this.addInput(165 + i * 100, `Name (${slots[i].defName})`, 180);
-      const classInput = this.addInput(200 + i * 100, `Class (${slots[i].defClass})`, 180);
+      this.addLabel(140 + i * 110, `Slot ${i + 1}:`);
+      const nameInput = this.addInput(170 + i * 110, `Name (${slots[i].defName})`, 180);
+      const classInput = this.addInput(205 + i * 110, `Class (${slots[i].defClass})`, 180);
       inputs.push({ nameInput, classInput, def: slots[i] });
     }
 
-    this.addButton(420, 'BEGIN ADVENTURE', () => {
+    this.addBackButton(430);
+    this.addButton(430, 'NEXT', () => {
       this.wizardData.party = inputs.map(inp => ({
         name: inp.nameInput.node.value.trim() || inp.def.defName,
         class_id: inp.classInput.node.value.trim().toLowerCase() || inp.def.defClass,
       }));
+      this.step++;
+      this.showStep();
+    });
+  }
+
+  showConfirmStep() {
+    this.addTitle('CONFIRM YOUR GAME');
+    const d = this.wizardData;
+
+    let y = 80;
+    this.addLabel(y, `Town: ${d.town_name}${d.use_osm ? ' (OpenStreetMap)' : ''}`);
+    y += 25;
+
+    const peopleStr = d.people?.map(p => p.name).join(', ') || 'defaults';
+    this.addLabel(y, `NPCs: ${peopleStr}`);
+    y += 25;
+
+    const placesStr = d.places?.join(', ') || 'defaults';
+    this.addLabel(y, `Places: ${placesStr}`);
+    y += 25;
+
+    this.addLabel(y, `Big Building: ${d.big_building || 'Town Hall'}`);
+    y += 35;
+
+    this.addLabel(y, 'Party:');
+    y += 22;
+    if (d.party) {
+      for (const p of d.party) {
+        this.addLabel(y, `  ${p.name} (${p.class_id})`);
+        y += 20;
+      }
+    }
+    y += 20;
+
+    this.addLabel(y, `Difficulty: ${d.difficulty || 'normal'}`);
+    y += 40;
+
+    this.addBackButton(y);
+    this.addButton(y, 'BEGIN ADVENTURE', () => {
       this.step++;
       this.showStep();
     });
