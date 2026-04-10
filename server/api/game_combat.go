@@ -140,6 +140,37 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 					continue // don't add a combat.Action for spells, already resolved
 				}
 
+			case "ability":
+				// Dispatch a class ability through combat.ResolveTurn so it
+				// respects AGI ordering and shares counter/buff machinery.
+				var target *combat.Combatant
+				if ma.TargetID > 0 {
+					for _, e := range g.enemies {
+						if e.ID == ma.TargetID && e.CurrentHP > 0 {
+							target = e
+							break
+						}
+					}
+				}
+				if target == nil {
+					for _, e := range g.enemies {
+						if e.CurrentHP > 0 {
+							target = e
+							break
+						}
+					}
+				}
+				targetID := 0
+				if target != nil {
+					targetID = target.ID
+				}
+				actions = append(actions, combat.Action{
+					ActorID:   pc.ID,
+					Kind:      combat.ActionAbility,
+					TargetID:  targetID,
+					AbilityID: ma.AbilityID,
+				})
+
 			default:
 				// Physical attack
 				var target *combat.Combatant
@@ -204,16 +235,65 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 		}
 	}
 
+	// Remember which slot issued which ability so we can attribute steal
+	// outcomes and ability log lines after ResolveTurn.
+	abilityByActor := make(map[int]string, len(req.Actions))
+	for _, ma := range req.Actions {
+		if ma.Type == "ability" && ma.Slot >= 0 && ma.Slot < len(combatants) {
+			abilityByActor[combatants[ma.Slot].ID] = ma.AbilityID
+		}
+	}
+
 	results := combat.ResolveTurn(combatants, g.enemies, actions, stats, g.rng)
 	for _, r := range results {
-		if r.TotalDmg > 0 {
-			targetName := g.findCombatantName(combatants, r.TargetID)
-			status := ""
-			if r.Killed {
-				status = " - DEFEATED!"
+		switch r.Kind {
+		case combat.ActionCounter:
+			if r.TotalDmg > 0 {
+				targetName := g.findCombatantName(combatants, r.TargetID)
+				status := ""
+				if r.Killed {
+					status = " - DEFEATED!"
+				}
+				g.combatLog = append(g.combatLog, fmt.Sprintf("%s counter-attacks %s[%d] for %d damage%s",
+					r.ActorName, targetName, r.TargetID, r.TotalDmg, status))
 			}
-			g.combatLog = append(g.combatLog, fmt.Sprintf("%s attacks %s[%d] for %d damage%s",
-				r.ActorName, targetName, r.TargetID, r.TotalDmg, status))
+		case combat.ActionAbility:
+			abilityID := abilityByActor[r.ActorID]
+			targetName := g.findCombatantName(combatants, r.TargetID)
+			switch abilityID {
+			case "focus":
+				g.combatLog = append(g.combatLog, fmt.Sprintf("%s focuses - next attacks hit harder!", r.ActorName))
+			case "counter":
+				g.combatLog = append(g.combatLog, fmt.Sprintf("%s braces to counter!", r.ActorName))
+			case "inspire":
+				g.combatLog = append(g.combatLog, fmt.Sprintf("%s inspires the party!", r.ActorName))
+			case "backstab":
+				status := ""
+				if r.Killed {
+					status = " - DEFEATED!"
+				}
+				g.combatLog = append(g.combatLog, fmt.Sprintf("%s backstabs %s for %d damage%s",
+					r.ActorName, targetName, r.TotalDmg, status))
+			case "steal":
+				if itemID, itemName, ok := g.tryStealFrom(r.TargetID); ok {
+					g.inv.Consumables[itemID]++
+					g.combatLog = append(g.combatLog, fmt.Sprintf("%s steals %s from %s!", r.ActorName, itemName, targetName))
+				} else {
+					g.combatLog = append(g.combatLog, fmt.Sprintf("%s tries to steal from %s but finds nothing.", r.ActorName, targetName))
+				}
+			default:
+				g.combatLog = append(g.combatLog, fmt.Sprintf("%s uses an ability.", r.ActorName))
+			}
+		default:
+			if r.TotalDmg > 0 {
+				targetName := g.findCombatantName(combatants, r.TargetID)
+				status := ""
+				if r.Killed {
+					status = " - DEFEATED!"
+				}
+				g.combatLog = append(g.combatLog, fmt.Sprintf("%s attacks %s[%d] for %d damage%s",
+					r.ActorName, targetName, r.TargetID, r.TotalDmg, status))
+			}
 		}
 	}
 
@@ -302,6 +382,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 			g.message = fmt.Sprintf("%s is saved!", g.loc.Name)
 		} else {
 			g.phase = "quest_complete"
+			g.maybeTriggerPromotion()
 		}
 	} else if combat.CheckDefeat(combatants) {
 		g.phase = "defeat"
@@ -477,4 +558,48 @@ func (g *Game) processCombatItem(req GameActionRequest) (*GameState, error) {
 
 	state := g.stateUnlocked()
 	return &state, nil
+}
+
+// tryStealFrom rolls the enemy's drop table for the Rogue Steal ability.
+// A successful roll returns (itemID, displayName, true) and the caller adds
+// the item to the inventory. Steal uses the same probabilities as the
+// post-victory drop table — rogues get multiple chances per fight, so flat
+// rates are already generous.
+func (g *Game) tryStealFrom(targetID int) (string, string, bool) {
+	var enemy *combat.Combatant
+	for _, e := range g.enemies {
+		if e.ID == targetID {
+			enemy = e
+			break
+		}
+	}
+	if enemy == nil {
+		return "", "", false
+	}
+	var drops []string
+	for _, m := range g.gd.Monsters {
+		if m.Name == enemy.Name {
+			for _, drop := range m.Drops {
+				if g.rng.IntN(100) < drop.ChancePct {
+					drops = append(drops, drop.ItemID)
+				}
+			}
+			break
+		}
+	}
+	if len(drops) == 0 {
+		return "", "", false
+	}
+	itemID := drops[g.rng.IntN(len(drops))]
+	itemName := itemID
+	for _, c := range g.gd.Items.Consumables {
+		if c.ID == itemID {
+			itemName = c.Name
+			break
+		}
+	}
+	if w := g.gd.WeaponByID(itemID); w != nil {
+		itemName = w.Name
+	}
+	return itemID, itemName, true
 }

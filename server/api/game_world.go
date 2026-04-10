@@ -73,6 +73,7 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 				g.message = fmt.Sprintf("%s is saved! Your adventure is complete.", g.loc.Name)
 			} else {
 				g.phase = "quest_complete"
+				g.maybeTriggerPromotion()
 			}
 		}
 

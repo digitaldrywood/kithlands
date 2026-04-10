@@ -1,35 +1,26 @@
-import { gameAction } from "../api.js";
-import { initAudio, playMusic, playSFX, stopMusic } from "../systems/audio.js";
+import { gameAction } from '../api.js';
+import { initAudio, playMusic, playSFX, stopMusic } from '../systems/audio.js';
 
 const ENEMY_SPRITES = {
-  Slime: "monster_slime",
-  Goblin: "monster_goblin",
-  Wolf: "monster_wolf",
-  Skeleton: "monster_skeleton",
-  "Dark Knight": "monster_dark_knight",
+  'Slime': 'monster_slime', 'Goblin': 'monster_goblin', 'Wolf': 'monster_wolf',
+  'Skeleton': 'monster_skeleton', 'Dark Knight': 'monster_dark_knight',
 };
 const ENEMY_COLORS = {
-  Slime: 0x42a5f5,
-  Goblin: 0x66bb6a,
-  Wolf: 0x8d6e63,
-  Skeleton: 0xeeeeee,
-  "Dark Knight": 0x512da8,
+  'Slime': 0x42A5F5, 'Goblin': 0x66BB6A, 'Wolf': 0x8D6E63,
+  'Skeleton': 0xEEEEEE, 'Dark Knight': 0x512DA8,
 };
 const CLASS_SPRITES = {
-  warrior: "warrior",
-  cinder: "cinder",
-  mender: "mender",
-  rogue: "rogue",
+  'warrior': 'warrior', 'cinder': 'cinder', 'mender': 'mender', 'rogue': 'rogue',
+  'brawler': 'brawler', 'wayfarer': 'wayfarer',
+  // Promoted classes
+  'knight': 'knight', 'pyromancer': 'pyromancer', 'sage': 'sage',
+  'shadow': 'shadow', 'champion': 'champion', 'wanderer': 'wanderer',
 };
 
 export class BattleScene extends Phaser.Scene {
-  constructor() {
-    super("Battle");
-  }
+  constructor() { super('Battle'); }
 
-  init(data) {
-    this.gameState = data.gameState;
-  }
+  init(data) { this.gameState = data.gameState; }
 
   create() {
     // Clear previous keyboard listeners to prevent duplicates on scene restart
@@ -59,9 +50,9 @@ export class BattleScene extends Phaser.Scene {
     this.pickerItems = [];
 
     const gs = this.gameState;
-    if (!gs || gs.phase !== "combat" || !gs.enemies?.length) {
+    if (!gs || gs.phase !== 'combat' || !gs.enemies?.length) {
       if (gs?.combat_log?.length) this.showVictoryResults(gs);
-      else this.scene.start("World", { gameState: gs });
+      else this.scene.start('World', { gameState: gs });
       return;
     }
 
@@ -74,8 +65,8 @@ export class BattleScene extends Phaser.Scene {
     initAudio(this);
 
     // Play battle music (boss if Dark Knight, normal otherwise)
-    const isBoss = gs.enemies.some((e) => e.name === "Dark Knight");
-    playMusic(isBoss ? "music_boss" : "music_battle");
+    const isBoss = gs.enemies.some(e => e.name === 'Dark Knight');
+    playMusic(isBoss ? 'music_boss' : 'music_battle');
 
     // Background
     this.add.rectangle(400, 300, 800, 600, 0x0a0a1e);
@@ -85,14 +76,9 @@ export class BattleScene extends Phaser.Scene {
     this.drawParty(gs);
     this.drawLog(gs);
 
-    this.promptText = this.add
-      .text(400, 340, "", {
-        fontSize: "11px",
-        color: "#ffff44",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5)
-      .setDepth(5);
+    this.promptText = this.add.text(400, 340, '', {
+      fontSize: '11px', color: '#ffff44', fontFamily: 'monospace',
+    }).setOrigin(0.5).setDepth(5);
 
     this.setupKeyboard();
 
@@ -102,50 +88,45 @@ export class BattleScene extends Phaser.Scene {
 
   setupKeyboard() {
     // Action hotkeys (A/S/I/F)
-    this.input.keyboard.on("keydown-A", () => {
+    this.input.keyboard.on('keydown-A', () => {
       if (this.animating || this.targetingMode || this.pickerOverlay) return;
       if (this.currentMemberIdx >= this.livingMembers.length) return;
       const slot = this.livingMembers[this.currentMemberIdx];
       const member = this.gameState.party[slot];
-      this.pendingAction = "attack";
+      this.pendingAction = 'attack';
       this.enterTargetingMode();
-      this.promptText
-        .setText(`${member.name}: Select a target to attack!`)
-        .setColor("#ff4444");
+      this.promptText.setText(`${member.name}: Select a target to attack!`).setColor('#ff4444');
     });
 
-    this.input.keyboard.on("keydown-S", () => {
+    this.input.keyboard.on('keydown-S', () => {
       if (this.animating || this.targetingMode || this.pickerOverlay) return;
       if (this.currentMemberIdx >= this.livingMembers.length) return;
       const slot = this.livingMembers[this.currentMemberIdx];
       this.showSpellPicker(slot);
     });
 
-    this.input.keyboard.on("keydown-I", () => {
+    this.input.keyboard.on('keydown-I', () => {
       if (this.animating || this.targetingMode || this.pickerOverlay) return;
       if (this.currentMemberIdx >= this.livingMembers.length) return;
       const slot = this.livingMembers[this.currentMemberIdx];
       this.showItemPicker(slot);
     });
 
-    this.input.keyboard.on("keydown-F", () => {
+    this.input.keyboard.on('keydown-B', () => {
+      if (this.animating || this.targetingMode || this.pickerOverlay) return;
+      if (this.currentMemberIdx >= this.livingMembers.length) return;
+      const slot = this.livingMembers[this.currentMemberIdx];
+      this.showAbilityPicker(slot);
+    });
+
+    this.input.keyboard.on('keydown-F', () => {
       if (this.animating || this.targetingMode || this.pickerOverlay) return;
       if (this.currentMemberIdx >= this.livingMembers.length) return;
       this.doFlee();
     });
 
     // Number keys 1-9 for target/picker selection
-    const numKeys = [
-      "ONE",
-      "TWO",
-      "THREE",
-      "FOUR",
-      "FIVE",
-      "SIX",
-      "SEVEN",
-      "EIGHT",
-      "NINE",
-    ];
+    const numKeys = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
     for (let n = 0; n < numKeys.length; n++) {
       this.input.keyboard.on(`keydown-${numKeys[n]}`, () => {
         if (this.animating) return;
@@ -168,23 +149,20 @@ export class BattleScene extends Phaser.Scene {
     }
 
     // Arrow keys to cycle targets
-    this.input.keyboard.on("keydown-LEFT", () => {
+    this.input.keyboard.on('keydown-LEFT', () => {
       if (!this.targetingMode || this.livingEnemies.length === 0) return;
-      this.selectedTargetIdx =
-        (this.selectedTargetIdx - 1 + this.livingEnemies.length) %
-        this.livingEnemies.length;
+      this.selectedTargetIdx = (this.selectedTargetIdx - 1 + this.livingEnemies.length) % this.livingEnemies.length;
       this.updateTargetHighlight();
     });
 
-    this.input.keyboard.on("keydown-RIGHT", () => {
+    this.input.keyboard.on('keydown-RIGHT', () => {
       if (!this.targetingMode || this.livingEnemies.length === 0) return;
-      this.selectedTargetIdx =
-        (this.selectedTargetIdx + 1) % this.livingEnemies.length;
+      this.selectedTargetIdx = (this.selectedTargetIdx + 1) % this.livingEnemies.length;
       this.updateTargetHighlight();
     });
 
     // Enter to confirm target
-    this.input.keyboard.on("keydown-ENTER", () => {
+    this.input.keyboard.on('keydown-ENTER', () => {
       if (this.targetingMode && this.livingEnemies.length > 0) {
         const enemy = this.livingEnemies[this.selectedTargetIdx];
         this.exitTargetingMode();
@@ -193,7 +171,7 @@ export class BattleScene extends Phaser.Scene {
     });
 
     // Escape to cancel
-    this.input.keyboard.on("keydown-ESC", () => {
+    this.input.keyboard.on('keydown-ESC', () => {
       if (this.pickerOverlay) {
         this.closePicker();
         return;
@@ -203,9 +181,7 @@ export class BattleScene extends Phaser.Scene {
         this.pendingAction = null;
         const slot = this.livingMembers[this.currentMemberIdx];
         const member = this.gameState.party[slot];
-        this.promptText
-          .setText(`${member.name}'s turn -- choose an action`)
-          .setColor("#ffff44");
+        this.promptText.setText(`${member.name}'s turn -- choose an action`).setColor('#ffff44');
         return;
       }
     });
@@ -227,9 +203,7 @@ export class BattleScene extends Phaser.Scene {
       this.partyArrows[i].setVisible(i === slot);
     }
 
-    this.promptText
-      .setText(`${member.name}'s turn -- choose an action`)
-      .setColor("#ffff44");
+    this.promptText.setText(`${member.name}'s turn -- choose an action`).setColor('#ffff44');
     this.pendingAction = null;
 
     // Draw action buttons for this member
@@ -244,74 +218,45 @@ export class BattleScene extends Phaser.Scene {
 
     for (let i = 0; i < enemies.length; i++) {
       const e = enemies[i];
-      const x = sx + i * spacing,
-        y = 240;
-      const sz = e.name === "Dark Knight" ? 80 : 50;
+      const x = sx + i * spacing, y = 240;
+      const sz = e.name === 'Dark Knight' ? 80 : 50;
 
       const key = ENEMY_SPRITES[e.name];
       let sprite;
       if (key && this.textures.exists(key)) {
         sprite = this.add.image(x, y, key);
-        sprite.setScale((sz / Math.max(sprite.width, sprite.height)) * 2);
+        sprite.setScale(sz / Math.max(sprite.width, sprite.height) * 2);
       } else {
-        sprite = this.add.rectangle(
-          x,
-          y,
-          sz,
-          sz,
-          ENEMY_COLORS[e.name] || 0xff5722,
-        );
+        sprite = this.add.rectangle(x, y, sz, sz, ENEMY_COLORS[e.name] || 0xFF5722);
       }
       sprite.setInteractive({ useHandCursor: true });
-      sprite.on("pointerdown", () => this.onEnemyClick(e.id));
-      sprite.on("pointerover", () => {
+      sprite.on('pointerdown', () => this.onEnemyClick(e.id));
+      sprite.on('pointerover', () => {
         sprite.setAlpha(0.7);
         if (this.pendingAction) this.promptText.setText(`Target: ${e.name}`);
       });
-      sprite.on("pointerout", () => sprite.setAlpha(1));
+      sprite.on('pointerout', () => sprite.setAlpha(1));
       this.enemySprites[e.id] = { sprite, x, y, name: e.name };
 
-      this.add
-        .text(x, y - sz / 2 - 18, e.name, {
-          fontSize: "10px",
-          color: "#ffffff",
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5);
+      this.add.text(x, y - sz / 2 - 18, e.name, {
+        fontSize: '10px', color: '#ffffff', fontFamily: 'monospace',
+      }).setOrigin(0.5);
 
       // Number indicator for keyboard targeting
-      const numText = this.add
-        .text(x, y + sz / 2 + 1, `${i + 1}`, {
-          fontSize: "10px",
-          color: "#ffff44",
-          fontFamily: "monospace",
-          fontStyle: "bold",
-        })
-        .setOrigin(0.5)
-        .setDepth(10)
-        .setAlpha(0.3);
+      const numText = this.add.text(x, y + sz / 2 + 1, `${i + 1}`, {
+        fontSize: '10px', color: '#ffff44', fontFamily: 'monospace', fontStyle: 'bold',
+      }).setOrigin(0.5).setDepth(10).setAlpha(0.3);
       this.enemyNumbers.push({ text: numText, enemyId: e.id });
 
-      const bw = 65,
-        pct = Math.max(0, e.hp / e.max_hp);
+      const bw = 65, pct = Math.max(0, e.hp / e.max_hp);
       this.add.rectangle(x, y + sz / 2 + 10, bw, 7, 0x333333);
       if (pct > 0) {
         const bc = pct > 0.5 ? 0x44ff44 : pct > 0.25 ? 0xff8800 : 0xff0000;
-        this.add.rectangle(
-          x - (bw / 2) * (1 - pct),
-          y + sz / 2 + 10,
-          bw * pct,
-          7,
-          bc,
-        );
+        this.add.rectangle(x - bw / 2 * (1 - pct), y + sz / 2 + 10, bw * pct, 7, bc);
       }
-      this.add
-        .text(x, y + sz / 2 + 22, `${e.hp}/${e.max_hp}`, {
-          fontSize: "8px",
-          color: "#aaaaaa",
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5);
+      this.add.text(x, y + sz / 2 + 22, `${e.hp}/${e.max_hp}`, {
+        fontSize: '8px', color: '#aaaaaa', fontFamily: 'monospace',
+      }).setOrigin(0.5);
     }
   }
 
@@ -319,81 +264,45 @@ export class BattleScene extends Phaser.Scene {
     const px = 560;
     for (let i = 0; i < gs.party.length; i++) {
       const p = gs.party[i];
-      const x = px,
-        y = 160 + i * 85;
+      const x = px, y = 160 + i * 85;
       const alive = p.hp > 0;
 
-      const arrow = this.add
-        .triangle(x - 18, y, 0, -8, 0, 8, 10, 0, 0xffff44)
-        .setDepth(2)
-        .setVisible(false);
+      const arrow = this.add.triangle(x - 18, y, 0, -8, 0, 8, 10, 0, 0xffff44)
+        .setDepth(2).setVisible(false);
       this.partyArrows[i] = arrow;
 
-      const cs = CLASS_SPRITES[p.class_id];
+      const cs = CLASS_SPRITES[p.sprite_id || p.class_id];
       let sprite;
       if (cs && this.textures.exists(cs)) {
         sprite = this.add.image(x + 15, y, cs);
-        sprite.setScale((50 / Math.max(sprite.width, sprite.height)) * 2);
+        sprite.setScale(50 / Math.max(sprite.width, sprite.height) * 2);
         if (!alive) sprite.setTint(0x444444);
       } else {
-        sprite = this.add.rectangle(
-          x + 15,
-          y,
-          35,
-          35,
-          alive ? 0xff5722 : 0x444444,
-        );
+        sprite = this.add.rectangle(x + 15, y, 35, 35, alive ? 0xFF5722 : 0x444444);
       }
-      this.partySprites[p.name] = {
-        sprite,
-        arrow,
-        x: x + 15,
-        y,
-        alive,
-        slot: i,
-      };
+      this.partySprites[p.name] = { sprite, arrow, x: x + 15, y, alive, slot: i };
 
       this.add.text(x + 45, y - 18, p.name, {
-        fontSize: "11px",
-        color: alive ? "#ffffff" : "#666666",
-        fontFamily: "monospace",
+        fontSize: '11px', color: alive ? '#ffffff' : '#666666', fontFamily: 'monospace',
       });
       this.add.text(x + 45, y - 3, `${p.class_name} Lv${p.level}`, {
-        fontSize: "9px",
-        color: "#aaaaaa",
-        fontFamily: "monospace",
+        fontSize: '9px', color: '#aaaaaa', fontFamily: 'monospace',
       });
 
-      const bw = 85,
-        hpPct = Math.max(0, p.hp / p.max_hp);
+      const bw = 85, hpPct = Math.max(0, p.hp / p.max_hp);
       this.add.rectangle(x + 90 + bw / 2, y + 13, bw, 6, 0x333333);
       if (hpPct > 0) {
         const bc = hpPct > 0.5 ? 0x44ff44 : hpPct > 0.25 ? 0xff8800 : 0xff0000;
-        this.add.rectangle(
-          x + 90 + (bw * hpPct) / 2,
-          y + 13,
-          bw * hpPct,
-          6,
-          bc,
-        );
+        this.add.rectangle(x + 90 + bw * hpPct / 2, y + 13, bw * hpPct, 6, bc);
       }
       this.add.text(x + 90 + bw + 5, y + 8, `${p.hp}/${p.max_hp}`, {
-        fontSize: "8px",
-        color: "#cccccc",
-        fontFamily: "monospace",
+        fontSize: '8px', color: '#cccccc', fontFamily: 'monospace',
       });
 
       if (p.spells?.length > 0 && alive) {
-        this.add.text(
-          x + 45,
-          y + 22,
-          p.spells.map((s) => `${s.name}(${s.charges})`).join(" "),
-          {
-            fontSize: "7px",
-            color: "#8888ff",
-            fontFamily: "monospace",
-          },
-        );
+        this.add.text(x + 45, y + 22, p.spells.map(s => `${s.name}(${s.charges})`).join(' '), {
+          fontSize: '7px', color: '#8888ff', fontFamily: 'monospace',
+        });
       }
     }
   }
@@ -403,9 +312,7 @@ export class BattleScene extends Phaser.Scene {
     const log = gs.combat_log || [];
     for (let i = 0; i < Math.min(log.length, 3); i++) {
       this.add.text(20, 498 - i * 16, log[log.length - 1 - i], {
-        fontSize: "10px",
-        color: "#cccccc",
-        fontFamily: "monospace",
+        fontSize: '10px', color: '#cccccc', fontFamily: 'monospace',
         wordWrap: { width: 760 },
       });
     }
@@ -414,58 +321,47 @@ export class BattleScene extends Phaser.Scene {
   drawActions(gs, slot) {
     // Remove old buttons
     if (this.actionBtns) {
-      this.actionBtns.forEach((o) => o.destroy());
+      this.actionBtns.forEach(o => o.destroy());
     }
     this.actionBtns = [];
 
     const member = gs.party[slot];
-    const hasSpells =
-      member.spells?.length > 0 && member.spells.some((s) => s.charges > 0);
+    const hasSpells = member.spells?.length > 0 && member.spells.some(s => s.charges > 0);
+    const hasAbilities = member.abilities?.length > 0;
 
-    const btns = [{ label: "[A]TTACK", type: "attack", color: "#ff4444" }];
-    if (hasSpells)
-      btns.push({ label: "[S]PELL", type: "spell", color: "#8888ff" });
-    const hasItems =
-      gs.potions > 0 ||
-      (gs.items && gs.items.some((i) => i.id === "phoenix_down"));
-    if (hasItems)
-      btns.push({ label: "[I]TEMS", type: "item", color: "#44ff44" });
-    btns.push({ label: "[F]LEE", type: "flee", color: "#ffcc44" });
+    const btns = [{ label: '[A]TTACK', type: 'attack', color: '#ff4444' }];
+    if (hasSpells) btns.push({ label: '[S]PELL', type: 'spell', color: '#8888ff' });
+    if (hasAbilities) btns.push({ label: '[B]ABILITY', type: 'ability', color: '#ff88ff' });
+    const hasItems = gs.potions > 0 || (gs.items && gs.items.some(i => i.id === 'phoenix_down'));
+    if (hasItems) btns.push({ label: '[I]TEMS', type: 'item', color: '#44ff44' });
+    btns.push({ label: '[F]LEE', type: 'flee', color: '#ffcc44' });
 
-    const tw = btns.length * 145,
-      sx = 400 - tw / 2 + 72;
+    const tw = btns.length * 145, sx = 400 - tw / 2 + 72;
     for (let i = 0; i < btns.length; i++) {
-      const b = btns[i],
-        x = sx + i * 145;
-      const bg = this.add
-        .rectangle(x, 555, 125, 30, 0x1a1a44)
-        .setStrokeStyle(1, 0x444488)
-        .setInteractive({ useHandCursor: true });
-      const txt = this.add
-        .text(x, 555, b.label, {
-          fontSize: "12px",
-          color: b.color,
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5);
+      const b = btns[i], x = sx + i * 145;
+      const bg = this.add.rectangle(x, 555, 125, 30, 0x1a1a44)
+        .setStrokeStyle(1, 0x444488).setInteractive({ useHandCursor: true });
+      const txt = this.add.text(x, 555, b.label, {
+        fontSize: '12px', color: b.color, fontFamily: 'monospace',
+      }).setOrigin(0.5);
 
       this.actionBtns.push(bg, txt);
 
-      bg.on("pointerover", () => bg.setFillStyle(0x2a2a66));
-      bg.on("pointerout", () => bg.setFillStyle(0x1a1a44));
-      bg.on("pointerdown", () => {
+      bg.on('pointerover', () => bg.setFillStyle(0x2a2a66));
+      bg.on('pointerout', () => bg.setFillStyle(0x1a1a44));
+      bg.on('pointerdown', () => {
         if (this.animating) return;
-        if (b.type === "attack") {
-          this.pendingAction = "attack";
+        if (b.type === 'attack') {
+          this.pendingAction = 'attack';
           this.enterTargetingMode();
-          this.promptText
-            .setText(`${member.name}: Select a target to attack!`)
-            .setColor("#ff4444");
-        } else if (b.type === "spell") {
+          this.promptText.setText(`${member.name}: Select a target to attack!`).setColor('#ff4444');
+        } else if (b.type === 'spell') {
           this.showSpellPicker(slot);
-        } else if (b.type === "item") {
+        } else if (b.type === 'ability') {
+          this.showAbilityPicker(slot);
+        } else if (b.type === 'item') {
           this.showItemPicker(slot);
-        } else if (b.type === "flee") {
+        } else if (b.type === 'flee') {
           // Flee sends immediately (whole party flees)
           this.doFlee();
         }
@@ -478,31 +374,22 @@ export class BattleScene extends Phaser.Scene {
     if (this.targetingMode) this.exitTargetingMode();
     const slot = this.livingMembers[this.currentMemberIdx];
 
-    if (this.pendingAction === "attack") {
+    if (this.pendingAction === 'attack') {
       this.pendingAction = null;
-      this.recordAction(slot, { slot, type: "attack", target_id: enemyId });
-    } else if (this.pendingAction === "spell") {
+      this.recordAction(slot, { slot, type: 'attack', target_id: enemyId });
+    } else if (this.pendingAction === 'spell') {
       this.pendingAction = null;
-      this.recordAction(slot, {
-        slot,
-        type: "spell",
-        target_id: enemyId,
-        spell_id: this.pendingSpellId,
-      });
+      this.recordAction(slot, { slot, type: 'spell', target_id: enemyId, spell_id: this.pendingSpellId });
+    } else if (this.pendingAction === 'ability') {
+      this.pendingAction = null;
+      this.recordAction(slot, { slot, type: 'ability', target_id: enemyId, ability_id: this.pendingAbilityId });
     }
   }
 
   recordAction(slot, action) {
     const member = this.gameState.party[slot];
-    const actionName =
-      action.type === "spell"
-        ? "casts spell"
-        : action.type === "item"
-          ? "uses potion"
-          : "attacks";
-    this.promptText
-      .setText(`${member.name} ${actionName}!`)
-      .setColor("#44ff44");
+    const actionName = action.type === 'spell' ? 'casts spell' : action.type === 'item' ? 'uses potion' : 'attacks';
+    this.promptText.setText(`${member.name} ${actionName}!`).setColor('#44ff44');
 
     this.memberActions.push(action);
     this.currentMemberIdx++;
@@ -513,12 +400,12 @@ export class BattleScene extends Phaser.Scene {
 
   enterTargetingMode() {
     this.targetingMode = true;
-    this.livingEnemies = this.gameState.enemies.filter((e) => e.hp > 0);
+    this.livingEnemies = this.gameState.enemies.filter(e => e.hp > 0);
     this.selectedTargetIdx = 0;
 
     // Brighten number indicators
     for (const en of this.enemyNumbers) {
-      const isLiving = this.livingEnemies.some((e) => e.id === en.enemyId);
+      const isLiving = this.livingEnemies.some(e => e.id === en.enemyId);
       en.text.setAlpha(isLiving ? 1.0 : 0.1);
     }
 
@@ -562,12 +449,9 @@ export class BattleScene extends Phaser.Scene {
     }
 
     // Create pulsing highlight around selected enemy
-    const sz = enemy.name === "Dark Knight" ? 90 : 60;
-    this.targetHighlight = this.add
-      .rectangle(es.x, es.y, sz, sz)
-      .setStrokeStyle(2, 0xffff44)
-      .setFillStyle(0xffff44, 0.1)
-      .setDepth(9);
+    const sz = enemy.name === 'Dark Knight' ? 90 : 60;
+    this.targetHighlight = this.add.rectangle(es.x, es.y, sz, sz)
+      .setStrokeStyle(2, 0xffff44).setFillStyle(0xffff44, 0.1).setDepth(9);
 
     this.targetHighlightTween = this.tweens.add({
       targets: this.targetHighlight,
@@ -578,7 +462,7 @@ export class BattleScene extends Phaser.Scene {
     });
 
     // Show the position number from the full enemy list (matches displayed number)
-    const fullIdx = this.gameState.enemies.findIndex((e) => e.id === enemy.id);
+    const fullIdx = this.gameState.enemies.findIndex(e => e.id === enemy.id);
     this.promptText.setText(`Target: ${enemy.name} [${fullIdx + 1}]`);
   }
 
@@ -587,80 +471,115 @@ export class BattleScene extends Phaser.Scene {
     const member = gs.party[slot];
     if (!member?.spells) return;
 
-    const spells = member.spells.filter((s) => s.charges > 0);
+    const spells = member.spells.filter(s => s.charges > 0);
     if (!spells.length) return;
 
     const ol = [];
     const h = 50 + spells.length * 32;
-    const bg = this.add
-      .rectangle(400, 380, 320, h, 0x111144, 0.95)
-      .setStrokeStyle(2, 0x4444aa)
-      .setDepth(50)
-      .setInteractive();
+    const bg = this.add.rectangle(400, 380, 320, h, 0x111144, 0.95)
+      .setStrokeStyle(2, 0x4444aa).setDepth(50).setInteractive();
     ol.push(bg);
 
-    ol.push(
-      this.add
-        .text(400, 380 - h / 2 + 15, `${member.name}'s spells:`, {
-          fontSize: "12px",
-          color: "#ffffff",
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5)
-        .setDepth(51),
-    );
+    ol.push(this.add.text(400, 380 - h / 2 + 15, `${member.name}'s spells:`, {
+      fontSize: '12px', color: '#ffffff', fontFamily: 'monospace',
+    }).setOrigin(0.5).setDepth(51));
 
     this.pickerItems = [];
     for (let i = 0; i < spells.length; i++) {
       const sp = spells[i];
       const y = 380 - h / 2 + 40 + i * 32;
-      const row = this.add
-        .rectangle(400, y, 280, 26, 0x222255)
-        .setInteractive({ useHandCursor: true })
-        .setDepth(51);
-      const txt = this.add
-        .text(400, y, `${i + 1}. ${sp.name} (${sp.charges} charges)`, {
-          fontSize: "11px",
-          color: "#aaaaff",
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5)
-        .setDepth(52);
+      const row = this.add.rectangle(400, y, 280, 26, 0x222255)
+        .setInteractive({ useHandCursor: true }).setDepth(51);
+      const txt = this.add.text(400, y, `${i + 1}. ${sp.name} (${sp.charges} charges)`, {
+        fontSize: '11px', color: '#aaaaff', fontFamily: 'monospace',
+      }).setOrigin(0.5).setDepth(52);
       ol.push(row, txt);
 
       const selectSpell = () => {
         this.closePicker();
-        this.pendingAction = "spell";
+        this.pendingAction = 'spell';
         this.pendingSpellId = sp.id;
         this.enterTargetingMode();
-        this.promptText
-          .setText(`${member.name}: Cast ${sp.name} -- select a target!`)
-          .setColor("#8888ff");
+        this.promptText.setText(`${member.name}: Cast ${sp.name} -- select a target!`).setColor('#8888ff');
       };
 
       this.pickerItems.push({ action: selectSpell });
 
-      row.on("pointerover", () => {
-        row.setFillStyle(0x3333aa);
-        txt.setColor("#ffffff");
-      });
-      row.on("pointerout", () => {
-        row.setFillStyle(0x222255);
-        txt.setColor("#aaaaff");
-      });
-      row.on("pointerdown", selectSpell);
+      row.on('pointerover', () => { row.setFillStyle(0x3333aa); txt.setColor('#ffffff'); });
+      row.on('pointerout', () => { row.setFillStyle(0x222255); txt.setColor('#aaaaff'); });
+      row.on('pointerdown', selectSpell);
     }
 
-    const cancel = this.add
-      .text(400, 380 + h / 2 - 15, "[ CANCEL / ESC ]", {
-        fontSize: "10px",
-        color: "#888888",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5)
-      .setDepth(51)
-      .setInteractive({ useHandCursor: true });
-    cancel.on("pointerdown", () => this.closePicker());
+    const cancel = this.add.text(400, 380 + h / 2 - 15, '[ CANCEL / ESC ]', {
+      fontSize: '10px', color: '#888888', fontFamily: 'monospace',
+    }).setOrigin(0.5).setDepth(51).setInteractive({ useHandCursor: true });
+    cancel.on('pointerdown', () => this.closePicker());
+    ol.push(cancel);
+
+    this.pickerOverlay = ol;
+  }
+
+  showAbilityPicker(slot) {
+    const gs = this.gameState;
+    const member = gs.party[slot];
+    const abilities = member?.abilities || [];
+    if (abilities.length === 0) return;
+
+    // Metadata for labels and whether the ability needs a target.
+    const meta = {
+      focus:    { label: 'Focus',    desc: 'Self: boost next attacks',       targeted: false },
+      counter:  { label: 'Counter',  desc: 'Self: counter-attack when hit',  targeted: false },
+      inspire:  { label: 'Inspire',  desc: 'Party: buff all allies',         targeted: false },
+      backstab: { label: 'Backstab', desc: 'Enemy: 3x damage strike',        targeted: true  },
+      steal:    { label: 'Steal',    desc: 'Enemy: steal an item',           targeted: true  },
+    };
+
+    const ol = [];
+    const h = 60 + abilities.length * 36;
+    const bg = this.add.rectangle(400, 370, 360, h, 0x331144, 0.95)
+      .setStrokeStyle(2, 0xaa44aa).setDepth(50).setInteractive();
+    ol.push(bg);
+
+    ol.push(this.add.text(400, 370 - h / 2 + 16, `${member.name}'s abilities:`, {
+      fontSize: '12px', color: '#ffffff', fontFamily: 'monospace',
+    }).setOrigin(0.5).setDepth(51));
+
+    this.pickerItems = [];
+    for (let i = 0; i < abilities.length; i++) {
+      const id = abilities[i];
+      const m = meta[id] || { label: id, desc: '', targeted: true };
+      const y = 370 - h / 2 + 46 + i * 36;
+      const row = this.add.rectangle(400, y, 320, 30, 0x442255)
+        .setInteractive({ useHandCursor: true }).setDepth(51);
+      const txt = this.add.text(400, y, `${i + 1}. ${m.label} - ${m.desc}`, {
+        fontSize: '11px', color: '#ffaaff', fontFamily: 'monospace',
+      }).setOrigin(0.5).setDepth(52);
+      ol.push(row, txt);
+
+      const selectAbility = () => {
+        this.closePicker();
+        this.pendingAbilityId = id;
+        if (m.targeted) {
+          this.pendingAction = 'ability';
+          this.enterTargetingMode();
+          this.promptText.setText(`${member.name}: ${m.label} -- select a target!`).setColor('#ff88ff');
+        } else {
+          // Self/party target: send action immediately with target_id=0.
+          this.recordAction(slot, { slot, type: 'ability', target_id: 0, ability_id: id });
+        }
+      };
+
+      this.pickerItems.push({ action: selectAbility });
+
+      row.on('pointerover', () => { row.setFillStyle(0x663377); txt.setColor('#ffffff'); });
+      row.on('pointerout',  () => { row.setFillStyle(0x442255); txt.setColor('#ffaaff'); });
+      row.on('pointerdown', selectAbility);
+    }
+
+    const cancel = this.add.text(400, 370 + h / 2 - 15, '[ CANCEL / ESC ]', {
+      fontSize: '10px', color: '#888888', fontFamily: 'monospace',
+    }).setOrigin(0.5).setDepth(51).setInteractive({ useHandCursor: true });
+    cancel.on('pointerdown', () => this.closePicker());
     ol.push(cancel);
 
     this.pickerOverlay = ol;
@@ -672,57 +591,30 @@ export class BattleScene extends Phaser.Scene {
 
     // Available items
     const items = [];
-    if (gs.potions > 0)
-      items.push({
-        id: "potion",
-        name: `Potion (${gs.potions})`,
-        type: "heal",
-      });
-    const phoenix = gs.items?.find((i) => i.id === "phoenix_down");
-    if (phoenix)
-      items.push({
-        id: "phoenix_down",
-        name: `Phoenix Down (${phoenix.count})`,
-        type: "revive",
-      });
+    if (gs.potions > 0) items.push({ id: 'potion', name: `Potion (${gs.potions})`, type: 'heal' });
+    const phoenix = gs.items?.find(i => i.id === 'phoenix_down');
+    if (phoenix) items.push({ id: 'phoenix_down', name: `Phoenix Down (${phoenix.count})`, type: 'revive' });
 
     if (items.length === 0) return;
 
     const h = 50 + items.length * 35;
-    const bg = this.add
-      .rectangle(400, 380, 320, h, 0x112211, 0.95)
-      .setStrokeStyle(2, 0x44aa44)
-      .setDepth(50)
-      .setInteractive();
+    const bg = this.add.rectangle(400, 380, 320, h, 0x112211, 0.95)
+      .setStrokeStyle(2, 0x44aa44).setDepth(50).setInteractive();
     ol.push(bg);
 
-    ol.push(
-      this.add
-        .text(400, 380 - h / 2 + 15, "Choose an item:", {
-          fontSize: "12px",
-          color: "#ffffff",
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5)
-        .setDepth(51),
-    );
+    ol.push(this.add.text(400, 380 - h / 2 + 15, 'Choose an item:', {
+      fontSize: '12px', color: '#ffffff', fontFamily: 'monospace',
+    }).setOrigin(0.5).setDepth(51));
 
     this.pickerItems = [];
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const y = 380 - h / 2 + 40 + i * 35;
-      const row = this.add
-        .rectangle(400, y, 280, 28, 0x224422)
-        .setInteractive({ useHandCursor: true })
-        .setDepth(51);
-      const txt = this.add
-        .text(400, y, `${i + 1}. ${item.name}`, {
-          fontSize: "11px",
-          color: "#88ff88",
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5)
-        .setDepth(52);
+      const row = this.add.rectangle(400, y, 280, 28, 0x224422)
+        .setInteractive({ useHandCursor: true }).setDepth(51);
+      const txt = this.add.text(400, y, `${i + 1}. ${item.name}`, {
+        fontSize: '11px', color: '#88ff88', fontFamily: 'monospace',
+      }).setOrigin(0.5).setDepth(52);
       ol.push(row, txt);
 
       const selectItem = () => {
@@ -732,27 +624,15 @@ export class BattleScene extends Phaser.Scene {
 
       this.pickerItems.push({ action: selectItem });
 
-      row.on("pointerover", () => {
-        row.setFillStyle(0x336633);
-        txt.setColor("#ffffff");
-      });
-      row.on("pointerout", () => {
-        row.setFillStyle(0x224422);
-        txt.setColor("#88ff88");
-      });
-      row.on("pointerdown", selectItem);
+      row.on('pointerover', () => { row.setFillStyle(0x336633); txt.setColor('#ffffff'); });
+      row.on('pointerout', () => { row.setFillStyle(0x224422); txt.setColor('#88ff88'); });
+      row.on('pointerdown', selectItem);
     }
 
-    const cancel = this.add
-      .text(400, 380 + h / 2 - 12, "[ CANCEL / ESC ]", {
-        fontSize: "10px",
-        color: "#888888",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5)
-      .setDepth(51)
-      .setInteractive({ useHandCursor: true });
-    cancel.on("pointerdown", () => this.closePicker());
+    const cancel = this.add.text(400, 380 + h / 2 - 12, '[ CANCEL / ESC ]', {
+      fontSize: '10px', color: '#888888', fontFamily: 'monospace',
+    }).setOrigin(0.5).setDepth(51).setInteractive({ useHandCursor: true });
+    cancel.on('pointerdown', () => this.closePicker());
     ol.push(cancel);
 
     this.pickerOverlay = ol;
@@ -766,7 +646,7 @@ export class BattleScene extends Phaser.Scene {
     const targets = [];
     for (let i = 0; i < gs.party.length; i++) {
       const p = gs.party[i];
-      if (item.type === "revive") {
+      if (item.type === 'revive') {
         // Phoenix Down only on dead members
         if (p.hp <= 0) targets.push({ slot: i, ...p });
       } else {
@@ -776,82 +656,53 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (targets.length === 0) {
-      this.promptText.setText("No valid targets!").setColor("#ff4444");
+      this.promptText.setText('No valid targets!').setColor('#ff4444');
       return;
     }
 
     const h = 50 + targets.length * 40;
-    const bg = this.add
-      .rectangle(400, 350, 350, h, 0x112211, 0.95)
-      .setStrokeStyle(2, 0x44aa44)
-      .setDepth(50)
-      .setInteractive();
+    const bg = this.add.rectangle(400, 350, 350, h, 0x112211, 0.95)
+      .setStrokeStyle(2, 0x44aa44).setDepth(50).setInteractive();
     ol.push(bg);
 
-    ol.push(
-      this.add
-        .text(
-          400,
-          350 - h / 2 + 15,
-          `Use ${item.name.split("(")[0].trim()} on:`,
-          {
-            fontSize: "12px",
-            color: "#ffffff",
-            fontFamily: "monospace",
-          },
-        )
-        .setOrigin(0.5)
-        .setDepth(51),
-    );
+    ol.push(this.add.text(400, 350 - h / 2 + 15, `Use ${item.name.split('(')[0].trim()} on:`, {
+      fontSize: '12px', color: '#ffffff', fontFamily: 'monospace',
+    }).setOrigin(0.5).setDepth(51));
 
     this.pickerItems = [];
     for (let i = 0; i < targets.length; i++) {
       const t = targets[i];
       const y = 350 - h / 2 + 45 + i * 40;
-      const hpColor =
-        t.hp <= 0 ? "#ff4444" : t.hp < t.max_hp * 0.5 ? "#ffaa44" : "#44ff44";
-      const hpStr = t.hp <= 0 ? "DEAD" : `${t.hp}/${t.max_hp} HP`;
+      const hpColor = t.hp <= 0 ? '#ff4444' : t.hp < t.max_hp * 0.5 ? '#ffaa44' : '#44ff44';
+      const hpStr = t.hp <= 0 ? 'DEAD' : `${t.hp}/${t.max_hp} HP`;
 
-      const row = this.add
-        .rectangle(400, y, 300, 32, 0x224422)
-        .setInteractive({ useHandCursor: true })
-        .setDepth(51);
-      const txt = this.add
-        .text(400, y, `${i + 1}. ${t.name} (${t.class_name}) - ${hpStr}`, {
-          fontSize: "11px",
-          color: hpColor,
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5)
-        .setDepth(52);
+      const row = this.add.rectangle(400, y, 300, 32, 0x224422)
+        .setInteractive({ useHandCursor: true }).setDepth(51);
+      const txt = this.add.text(400, y, `${i + 1}. ${t.name} (${t.class_name}) - ${hpStr}`, {
+        fontSize: '11px', color: hpColor, fontFamily: 'monospace',
+      }).setOrigin(0.5).setDepth(52);
       ol.push(row, txt);
 
       const selectTarget = () => {
         this.closePicker();
         this.recordAction(slot, {
           slot,
-          type: item.id === "phoenix_down" ? "revive" : "item",
+          type: item.id === 'phoenix_down' ? 'revive' : 'item',
           target_id: t.slot,
         });
       };
 
       this.pickerItems.push({ action: selectTarget });
 
-      row.on("pointerover", () => row.setFillStyle(0x336633));
-      row.on("pointerout", () => row.setFillStyle(0x224422));
-      row.on("pointerdown", selectTarget);
+      row.on('pointerover', () => row.setFillStyle(0x336633));
+      row.on('pointerout', () => row.setFillStyle(0x224422));
+      row.on('pointerdown', selectTarget);
     }
 
-    const cancel = this.add
-      .text(400, 350 + h / 2 - 12, "[ CANCEL / ESC ]", {
-        fontSize: "10px",
-        color: "#888888",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5)
-      .setDepth(51)
-      .setInteractive({ useHandCursor: true });
-    cancel.on("pointerdown", () => this.closePicker());
+    const cancel = this.add.text(400, 350 + h / 2 - 12, '[ CANCEL / ESC ]', {
+      fontSize: '10px', color: '#888888', fontFamily: 'monospace',
+    }).setOrigin(0.5).setDepth(51).setInteractive({ useHandCursor: true });
+    cancel.on('pointerdown', () => this.closePicker());
     ol.push(cancel);
 
     this.pickerOverlay = ol;
@@ -859,7 +710,7 @@ export class BattleScene extends Phaser.Scene {
 
   closePicker() {
     if (this.pickerOverlay) {
-      this.pickerOverlay.forEach((o) => o.destroy());
+      this.pickerOverlay.forEach(o => o.destroy());
       this.pickerOverlay = null;
     }
     this.pickerItems = [];
@@ -867,13 +718,13 @@ export class BattleScene extends Phaser.Scene {
 
   async doFlee() {
     this.animating = true;
-    this.promptText.setText("");
-    const result = await gameAction(this.gameState.id, { type: "flee" });
+    this.promptText.setText('');
+    const result = await gameAction(this.gameState.id, { type: 'flee' });
     this.gameState = result;
     this.time.delayedCall(300, () => {
       this.animating = false;
-      if (result.phase !== "combat") {
-        this.scene.start("World", { gameState: result });
+      if (result.phase !== 'combat') {
+        this.scene.start('World', { gameState: result });
       } else {
         this.scene.restart({ gameState: result });
       }
@@ -882,16 +733,16 @@ export class BattleScene extends Phaser.Scene {
 
   async submitAllActions() {
     this.animating = true;
-    this.promptText.setText("Resolving combat...").setColor("#ffffff");
+    this.promptText.setText('Resolving combat...').setColor('#ffffff');
 
     try {
       const result = await gameAction(this.gameState.id, {
-        type: "combat_round",
+        type: 'combat_round',
         actions: this.memberActions,
       });
 
       if (result.error) {
-        console.error("[Battle] error:", result.error);
+        console.error('[Battle] error:', result.error);
         this.animating = false;
         return;
       }
@@ -904,14 +755,14 @@ export class BattleScene extends Phaser.Scene {
 
       this.time.delayedCall(400, () => {
         this.animating = false;
-        if (this.gameState.phase !== "combat") {
+        if (this.gameState.phase !== 'combat') {
           this.showVictoryResults(this.gameState);
         } else {
           this.scene.restart({ gameState: this.gameState });
         }
       });
     } catch (e) {
-      console.error("[Battle] failed:", e);
+      console.error('[Battle] failed:', e);
       this.animating = false;
     }
   }
@@ -921,10 +772,8 @@ export class BattleScene extends Phaser.Scene {
       // Parse attack: "Hero attacks Goblin[102] for 24 damage"
       const attackMatch = line.match(/^(.+?) attacks (.+?)\[(\d+)\] for (\d+)/);
       // Parse spell: "Mage casts Spark on Goblin[102] for 11 damage"
-      const spellMatch = line.match(
-        /^(.+?) casts (.+?) on (.+?)\[?(\d*)\]? for (\d+)/,
-      );
-      const defeatMatch = line.includes("DEFEATED");
+      const spellMatch = line.match(/^(.+?) casts (.+?) on (.+?)\[?(\d*)\]? for (\d+)/);
+      const defeatMatch = line.includes('DEFEATED');
 
       if (attackMatch) {
         const [, attacker, target, targetId, dmg] = attackMatch;
@@ -934,96 +783,65 @@ export class BattleScene extends Phaser.Scene {
         if (pe) {
           for (const a of this.partyArrows) a.setVisible(false);
           pe.arrow.setVisible(true);
-          this.promptText.setText(`${attacker} attacks!`).setColor("#ff4444");
+          this.promptText.setText(`${attacker} attacks!`).setColor('#ff4444');
           await this.tweenP(pe.sprite, { x: pe.x - 20, duration: 80 });
           await this.tweenP(pe.sprite, { x: pe.x, duration: 80 });
         }
 
         // Hit effect on target -- use ID for correct sprite
-        playSFX("sfx_slash");
-        const ee = targetId
-          ? this.enemySprites[parseInt(targetId)]
-          : Object.values(this.enemySprites).find((e) => e.name === target);
+        playSFX('sfx_slash');
+        const ee = targetId ? this.enemySprites[parseInt(targetId)] : Object.values(this.enemySprites).find(e => e.name === target);
         const pt = this.partySprites[target];
         if (ee) {
-          playSFX(defeatMatch ? "sfx_death" : "sfx_hit");
+          playSFX(defeatMatch ? 'sfx_death' : 'sfx_hit');
           await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch);
-          if (ee.sprite.setTint) {
-            ee.sprite.setTint(0xff4444);
-            this.time.delayedCall(200, () => ee.sprite.clearTint?.());
-          }
+          if (ee.sprite.setTint) { ee.sprite.setTint(0xff4444); this.time.delayedCall(200, () => ee.sprite.clearTint?.()); }
         } else if (pt) {
-          this.promptText
-            .setText(`${attacker} attacks ${target}!`)
-            .setColor("#ff8800");
-          playSFX("sfx_party_hit");
+          this.promptText.setText(`${attacker} attacks ${target}!`).setColor('#ff8800');
+          playSFX('sfx_party_hit');
           await this.hitFx(pt.x, pt.y, dmg, true, false);
-          if (pt.sprite.setTint) {
-            pt.sprite.setTint(0xff4444);
-            this.time.delayedCall(200, () => pt.sprite.clearTint?.());
-          }
+          if (pt.sprite.setTint) { pt.sprite.setTint(0xff4444); this.time.delayedCall(200, () => pt.sprite.clearTint?.()); }
           this.cameras.main.shake(80, 0.005);
         }
         await this.wait(200);
+
       } else if (spellMatch) {
         const [, caster, spell, target, targetId, dmg] = spellMatch;
         const pe = this.partySprites[caster];
         if (pe) {
           for (const a of this.partyArrows) a.setVisible(false);
           pe.arrow.setVisible(true);
-          this.promptText
-            .setText(`${caster} casts ${spell}!`)
-            .setColor("#8888ff");
+          this.promptText.setText(`${caster} casts ${spell}!`).setColor('#8888ff');
         }
 
-        playSFX("sfx_spell");
-        const flash = this.add
-          .rectangle(400, 300, 800, 600, 0x4444ff, 0.2)
-          .setDepth(19);
+        playSFX('sfx_spell');
+        const flash = this.add.rectangle(400, 300, 800, 600, 0x4444ff, 0.2).setDepth(19);
         this.time.delayedCall(200, () => flash.destroy());
 
-        const ee = targetId
-          ? this.enemySprites[parseInt(targetId)]
-          : Object.values(this.enemySprites).find((e) => e.name === target);
+        const ee = targetId ? this.enemySprites[parseInt(targetId)] : Object.values(this.enemySprites).find(e => e.name === target);
         if (ee) {
           for (let j = 0; j < 6; j++) {
             const px = ee.x + Phaser.Math.Between(-25, 25);
             const py = ee.y + Phaser.Math.Between(-25, 25);
             const p = this.add.circle(px, py, 4, 0x8888ff).setDepth(20);
-            this.tweens.add({
-              targets: p,
-              y: py - 30,
-              alpha: 0,
-              duration: 400,
-              onComplete: () => p.destroy(),
-            });
+            this.tweens.add({ targets: p, y: py - 30, alpha: 0, duration: 400, onComplete: () => p.destroy() });
           }
           await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch);
         }
         await this.wait(250);
-      } else if (line.includes("Found:")) {
-        this.promptText.setText(line).setColor("#44ff44");
+
+      } else if (line.includes('Found:')) {
+        this.promptText.setText(line).setColor('#44ff44');
         await this.wait(400);
-      } else if (line.includes("healed")) {
-        this.promptText.setText(line).setColor("#44ff44");
+
+      } else if (line.includes('healed')) {
+        this.promptText.setText(line).setColor('#44ff44');
         const healMatch = line.match(/healed (\d+)/);
         if (healMatch) {
-          const nt = this.add
-            .text(600, 220, `+${healMatch[1]}`, {
-              fontSize: "16px",
-              color: "#44ff44",
-              fontFamily: "monospace",
-              fontStyle: "bold",
-            })
-            .setOrigin(0.5)
-            .setDepth(25);
-          this.tweens.add({
-            targets: nt,
-            y: nt.y - 30,
-            alpha: 0,
-            duration: 700,
-            onComplete: () => nt.destroy(),
-          });
+          const nt = this.add.text(600, 220, `+${healMatch[1]}`, {
+            fontSize: '16px', color: '#44ff44', fontFamily: 'monospace', fontStyle: 'bold',
+          }).setOrigin(0.5).setDepth(25);
+          this.tweens.add({ targets: nt, y: nt.y - 30, alpha: 0, duration: 700, onComplete: () => nt.destroy() });
         }
         await this.wait(300);
       }
@@ -1031,46 +849,23 @@ export class BattleScene extends Phaser.Scene {
   }
 
   hitFx(x, y, dmg, isParty, defeated) {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const g = this.add.graphics().setDepth(20);
       g.lineStyle(3, isParty ? 0xff8800 : 0xffffff, 1);
       g.lineBetween(x - 20, y - 15, x + 20, y + 15);
       this.time.delayedCall(150, () => g.destroy());
 
-      const color = isParty ? "#ff8800" : "#ff4444";
-      const nt = this.add
-        .text(x + Phaser.Math.Between(-10, 10), y - 10, `-${dmg}`, {
-          fontSize: "16px",
-          color,
-          fontFamily: "monospace",
-          fontStyle: "bold",
-        })
-        .setOrigin(0.5)
-        .setDepth(25);
-      this.tweens.add({
-        targets: nt,
-        y: nt.y - 35,
-        alpha: 0,
-        duration: 700,
-        onComplete: () => nt.destroy(),
-      });
+      const color = isParty ? '#ff8800' : '#ff4444';
+      const nt = this.add.text(x + Phaser.Math.Between(-10, 10), y - 10, `-${dmg}`, {
+        fontSize: '16px', color, fontFamily: 'monospace', fontStyle: 'bold',
+      }).setOrigin(0.5).setDepth(25);
+      this.tweens.add({ targets: nt, y: nt.y - 35, alpha: 0, duration: 700, onComplete: () => nt.destroy() });
 
       if (defeated) {
-        const dt = this.add
-          .text(x, y + 20, "DEFEATED!", {
-            fontSize: "11px",
-            color: "#ff4444",
-            fontFamily: "monospace",
-          })
-          .setOrigin(0.5)
-          .setDepth(25);
-        this.tweens.add({
-          targets: dt,
-          alpha: 0,
-          duration: 1000,
-          delay: 300,
-          onComplete: () => dt.destroy(),
-        });
+        const dt = this.add.text(x, y + 20, 'DEFEATED!', {
+          fontSize: '11px', color: '#ff4444', fontFamily: 'monospace',
+        }).setOrigin(0.5).setDepth(25);
+        this.tweens.add({ targets: dt, alpha: 0, duration: 1000, delay: 300, onComplete: () => dt.destroy() });
       }
 
       this.time.delayedCall(150, resolve);
@@ -1078,64 +873,44 @@ export class BattleScene extends Phaser.Scene {
   }
 
   tweenP(target, config) {
-    return new Promise((resolve) =>
-      this.tweens.add({ targets: target, ...config, onComplete: resolve }),
-    );
+    return new Promise(resolve => this.tweens.add({ targets: target, ...config, onComplete: resolve }));
   }
 
   wait(ms) {
-    return new Promise((resolve) => this.time.delayedCall(ms, resolve));
+    return new Promise(resolve => this.time.delayedCall(ms, resolve));
   }
 
   showVictoryResults(gs) {
     this.children.removeAll(true);
     this.add.rectangle(400, 300, 800, 600, 0x0a0a1e);
 
-    const isDefeat = gs.phase === "defeat";
+    const isDefeat = gs.phase === 'defeat';
     stopMusic();
-    playMusic(isDefeat ? "music_defeat" : "music_victory", false);
+    playMusic(isDefeat ? 'music_defeat' : 'music_victory', false);
 
-    this.add
-      .text(400, 30, isDefeat ? "DEFEAT" : "VICTORY!", {
-        fontSize: "32px",
-        color: isDefeat ? "#ff4444" : "#ffff44",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5);
+    this.add.text(400, 30, isDefeat ? 'DEFEAT' : 'VICTORY!', {
+      fontSize: '32px', color: isDefeat ? '#ff4444' : '#ffff44', fontFamily: 'monospace',
+    }).setOrigin(0.5);
 
     if (isDefeat) {
-      this.add
-        .text(400, 100, gs.message || "Your party has fallen.", {
-          fontSize: "14px",
-          color: "#aaaaaa",
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5);
+      this.add.text(400, 100, gs.message || 'Your party has fallen.', {
+        fontSize: '14px', color: '#aaaaaa', fontFamily: 'monospace',
+      }).setOrigin(0.5);
 
       // Defeat options
-      const loadBtn = this.add
-        .text(400, 300, "[ LOAD LAST SAVE ]", {
-          fontSize: "18px",
-          color: "#4488ff",
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5)
-        .setInteractive({ useHandCursor: true });
-      loadBtn.on("pointerover", () => loadBtn.setColor("#88bbff"));
-      loadBtn.on("pointerout", () => loadBtn.setColor("#4488ff"));
-      loadBtn.on("pointerdown", () => this.scene.start("Title"));
+      const loadBtn = this.add.text(400, 300, '[ LOAD LAST SAVE ]', {
+        fontSize: '18px', color: '#4488ff', fontFamily: 'monospace',
+      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      loadBtn.on('pointerover', () => loadBtn.setColor('#88bbff'));
+      loadBtn.on('pointerout', () => loadBtn.setColor('#4488ff'));
+      loadBtn.on('pointerdown', () => this.scene.start('Title'));
 
-      const titleBtn = this.add
-        .text(400, 360, "[ TITLE SCREEN ]", {
-          fontSize: "18px",
-          color: "#aaaaaa",
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5)
-        .setInteractive({ useHandCursor: true });
-      titleBtn.on("pointerover", () => titleBtn.setColor("#cccccc"));
-      titleBtn.on("pointerout", () => titleBtn.setColor("#aaaaaa"));
-      titleBtn.on("pointerdown", () => this.scene.start("Title"));
+      const titleBtn = this.add.text(400, 360, '[ TITLE SCREEN ]', {
+        fontSize: '18px', color: '#aaaaaa', fontFamily: 'monospace',
+      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      titleBtn.on('pointerover', () => titleBtn.setColor('#cccccc'));
+      titleBtn.on('pointerout', () => titleBtn.setColor('#aaaaaa'));
+      titleBtn.on('pointerdown', () => this.scene.start('Title'));
 
       return;
     }
@@ -1145,27 +920,15 @@ export class BattleScene extends Phaser.Scene {
     // Rewards summary (gold, items)
     let y = 60;
     for (const l of log) {
-      if (l.includes("Victory") || l.includes("Found:")) {
-        this.add
-          .text(400, y, l, {
-            fontSize: "11px",
-            color: "#44ff44",
-            fontFamily: "monospace",
-          })
-          .setOrigin(0.5);
+      if (l.includes('Victory') || l.includes('Found:')) {
+        this.add.text(400, y, l, { fontSize: '11px', color: '#44ff44', fontFamily: 'monospace' }).setOrigin(0.5);
         y += 16;
       }
     }
 
     // Quest completions
-    for (const l of log.filter((l) => l.includes("Quest complete"))) {
-      this.add
-        .text(400, y, l, {
-          fontSize: "11px",
-          color: "#44ccff",
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5);
+    for (const l of log.filter(l => l.includes('Quest complete'))) {
+      this.add.text(400, y, l, { fontSize: '11px', color: '#44ccff', fontFamily: 'monospace' }).setOrigin(0.5);
       y += 16;
     }
 
@@ -1180,85 +943,47 @@ export class BattleScene extends Phaser.Scene {
       const prevXP = xpBefore[i] || 0;
 
       // Character sprite + name
-      const cs = CLASS_SPRITES[p.class_id];
+      const cs = CLASS_SPRITES[p.sprite_id || p.class_id];
       if (cs && this.textures.exists(cs)) {
         const sprite = this.add.image(100, y + 20, cs);
-        sprite.setScale((40 / Math.max(sprite.width, sprite.height)) * 2);
+        sprite.setScale(40 / Math.max(sprite.width, sprite.height) * 2);
         if (!alive) sprite.setTint(0x444444);
       }
 
       // Name and level
       this.add.text(140, y, `${p.name}`, {
-        fontSize: "13px",
-        color: alive ? "#ffffff" : "#666666",
-        fontFamily: "monospace",
+        fontSize: '13px', color: alive ? '#ffffff' : '#666666', fontFamily: 'monospace',
       });
-      const levelText = this.add.text(
-        140,
-        y + 16,
-        `${p.class_name} Lv.${p.level}`,
-        {
-          fontSize: "10px",
-          color: "#aaaaaa",
-          fontFamily: "monospace",
-        },
-      );
+      const levelText = this.add.text(140, y + 16, `${p.class_name} Lv.${p.level}`, {
+        fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
+      });
 
       // HP bar
-      this.add.text(300, y, "HP", {
-        fontSize: "9px",
-        color: "#888888",
-        fontFamily: "monospace",
-      });
+      this.add.text(300, y, 'HP', { fontSize: '9px', color: '#888888', fontFamily: 'monospace' });
       this.add.rectangle(300 + barW / 2 + 15, y + 4, barW, 8, 0x333333);
       const hpPct = Math.max(0, p.hp / p.max_hp);
       if (hpPct > 0) {
-        const hpColor =
-          hpPct > 0.5 ? 0x44ff44 : hpPct > 0.25 ? 0xff8800 : 0xff0000;
-        this.add.rectangle(
-          300 + 15 + (barW * hpPct) / 2,
-          y + 4,
-          barW * hpPct,
-          8,
-          hpColor,
-        );
+        const hpColor = hpPct > 0.5 ? 0x44ff44 : hpPct > 0.25 ? 0xff8800 : 0xff0000;
+        this.add.rectangle(300 + 15 + barW * hpPct / 2, y + 4, barW * hpPct, 8, hpColor);
       }
       this.add.text(300 + barW + 20, y, `${p.hp}/${p.max_hp}`, {
-        fontSize: "9px",
-        color: "#cccccc",
-        fontFamily: "monospace",
+        fontSize: '9px', color: '#cccccc', fontFamily: 'monospace',
       });
 
       // XP bar with animation
-      this.add.text(300, y + 18, "XP", {
-        fontSize: "9px",
-        color: "#888888",
-        fontFamily: "monospace",
-      });
-      const xpBarBg = this.add.rectangle(
-        300 + barW / 2 + 15,
-        y + 22,
-        barW,
-        10,
-        0x222244,
-      );
+      this.add.text(300, y + 18, 'XP', { fontSize: '9px', color: '#888888', fontFamily: 'monospace' });
+      const xpBarBg = this.add.rectangle(300 + barW / 2 + 15, y + 22, barW, 10, 0x222244);
       const xpPctStart = p.xp_next > 0 ? Math.min(1, prevXP / p.xp_next) : 0;
       const xpPctEnd = p.xp_next > 0 ? Math.min(1, p.xp / p.xp_next) : 0;
 
-      const xpBarFill = this.add
-        .rectangle(300 + 15, y + 22, 1, 10, 0x4488ff)
-        .setOrigin(0, 0.5);
+      const xpBarFill = this.add.rectangle(
+        300 + 15, y + 22,
+        1, 10, 0x4488ff
+      ).setOrigin(0, 0.5);
 
-      const xpText = this.add.text(
-        300 + barW + 20,
-        y + 17,
-        `${prevXP}/${p.xp_next}`,
-        {
-          fontSize: "9px",
-          color: "#8888ff",
-          fontFamily: "monospace",
-        },
-      );
+      const xpText = this.add.text(300 + barW + 20, y + 17, `${prevXP}/${p.xp_next}`, {
+        fontSize: '9px', color: '#8888ff', fontFamily: 'monospace',
+      });
 
       // Animate the XP bar filling
       const delay = 500 + i * 800;
@@ -1267,63 +992,39 @@ export class BattleScene extends Phaser.Scene {
         width: barW * xpPctEnd,
         duration: 1200,
         delay,
-        ease: "Power2",
+        ease: 'Power2',
         onUpdate: () => {
           // Update XP text as bar fills
           const progress = xpBarFill.width / barW;
-          const currentXP = Math.floor(
-            prevXP + (p.xp - prevXP) * (progress / xpPctEnd || 0),
-          );
+          const currentXP = Math.floor(prevXP + (p.xp - prevXP) * (progress / xpPctEnd || 0));
           xpText.setText(`${Math.min(currentXP, p.xp)}/${p.xp_next}`);
         },
       });
 
       // Check for level up -- flash effect (capture y in closure)
-      const leveledUp = log.some((l) => l.includes(`${p.name} leveled up`));
+      const leveledUp = log.some(l => l.includes(`${p.name} leveled up`));
       if (leveledUp) {
         const memberY = y; // capture current y for this member
         this.time.delayedCall(delay + 1300, () => {
           // Flash on THIS member's row
-          const flash = this.add.rectangle(
-            400,
-            memberY + 20,
-            700,
-            50,
-            0xffff44,
-            0.3,
-          );
-          this.tweens.add({
-            targets: flash,
-            alpha: 0,
-            duration: 600,
-            onComplete: () => flash.destroy(),
-          });
+          const flash = this.add.rectangle(400, memberY + 20, 700, 50, 0xffff44, 0.3);
+          this.tweens.add({ targets: flash, alpha: 0, duration: 600, onComplete: () => flash.destroy() });
 
           // Level up text next to this member
-          const lvlUpText = this.add
-            .text(650, memberY + 12, "LEVEL UP!", {
-              fontSize: "14px",
-              color: "#ffff44",
-              fontFamily: "monospace",
-              fontStyle: "bold",
-            })
-            .setOrigin(0.5)
-            .setAlpha(0);
+          const lvlUpText = this.add.text(650, memberY + 12, 'LEVEL UP!', {
+            fontSize: '14px', color: '#ffff44', fontFamily: 'monospace', fontStyle: 'bold',
+          }).setOrigin(0.5).setAlpha(0);
           this.tweens.add({ targets: lvlUpText, alpha: 1, duration: 300 });
 
           // Update level display
-          levelText
-            .setText(`${p.class_name} Lv.${p.level}`)
-            .setColor("#ffff44");
+          levelText.setText(`${p.class_name} Lv.${p.level}`).setColor('#ffff44');
         });
       }
 
       // Stats row
-      this.add.text(
-        140,
-        y + 35,
+      this.add.text(140, y + 35,
         `STR:${p.str}  AGI:${p.agi}  INT:${p.int_stat}`,
-        { fontSize: "8px", color: "#888888", fontFamily: "monospace" },
+        { fontSize: '8px', color: '#888888', fontFamily: 'monospace' }
       );
 
       y += 65;
@@ -1331,25 +1032,17 @@ export class BattleScene extends Phaser.Scene {
 
     // Gold and items
     y += 5;
-    this.add
-      .text(400, y, `Gold: ${gs.gold}  |  Potions: ${gs.potions}`, {
-        fontSize: "12px",
-        color: "#ffcc44",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5);
+    this.add.text(400, y, `Gold: ${gs.gold}  |  Potions: ${gs.potions}`, {
+      fontSize: '12px', color: '#ffcc44', fontFamily: 'monospace',
+    }).setOrigin(0.5);
 
     // Items found
     if (gs.items && gs.items.length > 0) {
       y += 18;
-      const itemStr = gs.items.map((i) => `${i.name}(${i.count})`).join(", ");
-      this.add
-        .text(400, y, `Items: ${itemStr}`, {
-          fontSize: "10px",
-          color: "#aaaaaa",
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5);
+      const itemStr = gs.items.map(i => `${i.name}(${i.count})`).join(', ');
+      this.add.text(400, y, `Items: ${itemStr}`, {
+        fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
+      }).setOrigin(0.5);
     }
 
     // Delay continue button to let animations play
@@ -1359,22 +1052,13 @@ export class BattleScene extends Phaser.Scene {
   }
 
   addContinueButton(gs) {
-    const btn = this.add
-      .text(400, 545, "[ CONTINUE ]", {
-        fontSize: "20px",
-        color: "#44ff44",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    btn.on("pointerover", () => btn.setColor("#88ff88"));
-    btn.on("pointerout", () => btn.setColor("#44ff44"));
-    btn.on("pointerdown", () => this.scene.start("World", { gameState: gs }));
-    this.input.keyboard.on("keydown-ENTER", () =>
-      this.scene.start("World", { gameState: gs }),
-    );
-    this.input.keyboard.on("keydown-SPACE", () =>
-      this.scene.start("World", { gameState: gs }),
-    );
+    const btn = this.add.text(400, 545, '[ CONTINUE ]', {
+      fontSize: '20px', color: '#44ff44', fontFamily: 'monospace',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    btn.on('pointerover', () => btn.setColor('#88ff88'));
+    btn.on('pointerout', () => btn.setColor('#44ff44'));
+    btn.on('pointerdown', () => this.scene.start('World', { gameState: gs }));
+    this.input.keyboard.on('keydown-ENTER', () => this.scene.start('World', { gameState: gs }));
+    this.input.keyboard.on('keydown-SPACE', () => this.scene.start('World', { gameState: gs }));
   }
 }

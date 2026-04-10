@@ -270,6 +270,295 @@ func TestSleepingCombatantCannotAct(t *testing.T) {
 	}
 }
 
+func TestBrawlerBareHandScaling(t *testing.T) {
+	gd := loadTestData(t)
+	stats := &gd.Stats.Combat
+
+	// Formula (per game_world.go:111-114): base + level*STR/2
+	// Level 1 STR 5  -> 5 + 1*5/2 = 7
+	// Level 20 STR 25 -> 5 + 20*25/2 = 255
+	cases := []struct {
+		level    int
+		str      int
+		wantBare int
+	}{
+		{1, 5, 7},
+		{5, 10, 30},
+		{20, 25, 255},
+	}
+	for _, tc := range cases {
+		bare := 5 + tc.level*tc.str/2
+		if bare != tc.wantBare {
+			t.Fatalf("formula drift: level=%d str=%d got %d want %d", tc.level, tc.str, bare, tc.wantBare)
+		}
+
+		brawler := &combat.Combatant{
+			ID: 1, Name: "Brawler", IsPlayer: true,
+			STR: tc.str, AGI: 10, LCK: 0, HitPct: 10, // single hit
+			MaxHP: 100, CurrentHP: 100,
+			BareHandDamage: bare,
+		}
+		dummy := makeEnemy(2, "Dummy", 1, 1, 1_000_000, 0)
+		dummy.AGI = 0 // guarantee hit
+
+		rng := rand.New(rand.NewPCG(42, 0))
+		actions := []combat.Action{{ActorID: 1, Kind: combat.ActionAttack, TargetID: 2}}
+		results := combat.ResolveTurn(
+			[]*combat.Combatant{brawler},
+			[]*combat.Combatant{dummy},
+			actions, stats, rng,
+		)
+		if len(results) == 0 || results[0].TotalDmg <= 0 {
+			t.Fatalf("level=%d: bare-hand produced no damage", tc.level)
+		}
+		// Sanity: damage is in the same order of magnitude as bare-hand base.
+		if results[0].TotalDmg < bare/2 || results[0].TotalDmg > bare*3 {
+			t.Errorf("level=%d: bare-hand dmg=%d not close to base %d", tc.level, results[0].TotalDmg, bare)
+		}
+	}
+}
+
+func TestFocusBuffIncreasesDamage(t *testing.T) {
+	gd := loadTestData(t)
+	stats := &gd.Stats.Combat
+
+	makeAttacker := func() *combat.Combatant {
+		return &combat.Combatant{
+			ID: 1, Name: "Fighter", IsPlayer: true,
+			STR: 20, AGI: 10, LCK: 0, HitPct: 10, // single hit
+			MaxHP: 100, CurrentHP: 100,
+			WeaponPower: 10,
+		}
+	}
+
+	// Baseline damage across many seeds
+	baseline := 0
+	for seed := uint64(0); seed < 200; seed++ {
+		a := makeAttacker()
+		d := makeEnemy(2, "Dummy", 1, 0, 100_000, 0)
+		rng := rand.New(rand.NewPCG(seed, 0))
+		results := combat.ResolveTurn(
+			[]*combat.Combatant{a},
+			[]*combat.Combatant{d},
+			[]combat.Action{{ActorID: 1, Kind: combat.ActionAttack, TargetID: 2}},
+			stats, rng,
+		)
+		if len(results) > 0 {
+			baseline += results[0].TotalDmg
+		}
+	}
+
+	// Focused damage
+	focused := 0
+	for seed := uint64(0); seed < 200; seed++ {
+		a := makeAttacker()
+		d := makeEnemy(2, "Dummy", 1, 0, 100_000, 0)
+		rng := rand.New(rand.NewPCG(seed, 0))
+
+		// Apply focus via the dispatcher, then attack.
+		// Note: ResolveTurn ticks buffs at end-of-round, so we must cast focus
+		// and attack within the *same* ResolveTurn call for the buff to apply.
+		results := combat.ResolveTurn(
+			[]*combat.Combatant{a},
+			[]*combat.Combatant{d},
+			[]combat.Action{
+				{ActorID: 1, Kind: combat.ActionAbility, TargetID: 1, AbilityID: "focus"},
+			},
+			stats, rng,
+		)
+		if len(results) == 0 {
+			t.Fatalf("focus produced no result")
+		}
+		// Second turn: attack while focus is still active (TurnsLeft 3 -> 2 after tick).
+		rng2 := rand.New(rand.NewPCG(seed, 1))
+		results = combat.ResolveTurn(
+			[]*combat.Combatant{a},
+			[]*combat.Combatant{d},
+			[]combat.Action{{ActorID: 1, Kind: combat.ActionAttack, TargetID: 2}},
+			stats, rng2,
+		)
+		if len(results) > 0 {
+			focused += results[0].TotalDmg
+		}
+	}
+
+	if focused <= baseline {
+		t.Fatalf("focus did not increase damage: baseline=%d focused=%d", baseline, focused)
+	}
+	// Expect roughly 1.3x-1.7x (formula is *1.5 on base damage before mitigation and variance).
+	ratio := float64(focused) / float64(baseline)
+	if ratio < 1.2 || ratio > 1.8 {
+		t.Errorf("focus damage ratio %.2f outside expected band ~1.5", ratio)
+	}
+}
+
+func TestInspireBuffsAllAllies(t *testing.T) {
+	gd := loadTestData(t)
+	stats := &gd.Stats.Combat
+
+	wayfarer := &combat.Combatant{
+		ID: 1, Name: "Wayfarer", IsPlayer: true,
+		STR: 10, AGI: 10, LCK: 0, HitPct: 10,
+		MaxHP: 30, CurrentHP: 30,
+	}
+	ally1 := &combat.Combatant{
+		ID: 2, Name: "Warrior", IsPlayer: true,
+		STR: 20, AGI: 5, HitPct: 10,
+		MaxHP: 35, CurrentHP: 35,
+	}
+	ally2 := &combat.Combatant{
+		ID: 3, Name: "Brawler", IsPlayer: true,
+		STR: 5, AGI: 5, HitPct: 5,
+		MaxHP: 33, CurrentHP: 33, BareHandDamage: 10,
+	}
+	dummy := makeEnemy(9, "Dummy", 1, 0, 1000, 0)
+
+	rng := rand.New(rand.NewPCG(42, 0))
+	results := combat.ResolveTurn(
+		[]*combat.Combatant{wayfarer, ally1, ally2},
+		[]*combat.Combatant{dummy},
+		[]combat.Action{{ActorID: 1, Kind: combat.ActionAbility, TargetID: 1, AbilityID: "inspire"}},
+		stats, rng,
+	)
+	if len(results) != 1 {
+		t.Fatalf("expected 1 inspire result, got %d", len(results))
+	}
+
+	for _, c := range []*combat.Combatant{wayfarer, ally1, ally2} {
+		found := false
+		for _, b := range c.Buffs {
+			if b.Kind == "inspire" && b.DamageMult == 125 {
+				found = true
+				break
+			}
+		}
+		// ResolveTurn ticked at end, so TurnsLeft was decremented from 3 to 2;
+		// buff should still be present.
+		if !found {
+			t.Errorf("%s missing inspire buff (buffs=%+v)", c.Name, c.Buffs)
+		}
+	}
+}
+
+func TestCounterTriggersReactiveAttack(t *testing.T) {
+	gd := loadTestData(t)
+	stats := &gd.Stats.Combat
+
+	brawler := &combat.Combatant{
+		ID: 1, Name: "Brawler", IsPlayer: true,
+		STR: 10, AGI: 20, LCK: 0, HitPct: 10,
+		MaxHP: 100, CurrentHP: 100, BareHandDamage: 25,
+	}
+	enemy := makeEnemy(2, "Orc", 20, 0, 200, 0)
+	enemy.HitPct = 10
+	enemy.AGI = 5 // lower than brawler so brawler acts first
+
+	rng := rand.New(rand.NewPCG(7, 0))
+	results := combat.ResolveTurn(
+		[]*combat.Combatant{brawler},
+		[]*combat.Combatant{enemy},
+		[]combat.Action{
+			{ActorID: 1, Kind: combat.ActionAbility, TargetID: 1, AbilityID: "counter"},
+			{ActorID: 2, Kind: combat.ActionAttack, TargetID: 1},
+		},
+		stats, rng,
+	)
+
+	// Expect 3 results: counter setup, enemy attack, counter-attack from brawler.
+	var sawCounterKind bool
+	var sawEnemyAttack bool
+	for _, r := range results {
+		if r.Kind == combat.ActionCounter {
+			sawCounterKind = true
+		}
+		if r.ActorID == 2 && r.Kind == combat.ActionAttack {
+			sawEnemyAttack = true
+		}
+	}
+	if !sawEnemyAttack {
+		t.Fatalf("enemy did not attack; results=%+v", results)
+	}
+	if !sawCounterKind {
+		t.Fatalf("expected a counter-kind result, got %+v", results)
+	}
+	// Countering flag must be cleared by end of round.
+	if brawler.Countering {
+		t.Error("brawler Countering flag not cleared at end of round")
+	}
+}
+
+func TestBackstabDealsTripleDamage(t *testing.T) {
+	gd := loadTestData(t)
+	stats := &gd.Stats.Combat
+
+	// Run baseline and backstab over many seeds to average out variance.
+	baseline := 0
+	backstab := 0
+	for seed := uint64(0); seed < 200; seed++ {
+		rogue := &combat.Combatant{
+			ID: 1, Name: "Rogue", IsPlayer: true,
+			STR: 10, AGI: 20, LCK: 0, HitPct: 10, // single hit baseline
+			MaxHP: 30, CurrentHP: 30, WeaponPower: 10,
+		}
+		d := makeEnemy(2, "Dummy", 1, 0, 1_000_000, 0)
+		rng := rand.New(rand.NewPCG(seed, 0))
+		results := combat.ResolveTurn(
+			[]*combat.Combatant{rogue},
+			[]*combat.Combatant{d},
+			[]combat.Action{{ActorID: 1, Kind: combat.ActionAttack, TargetID: 2}},
+			stats, rng,
+		)
+		if len(results) > 0 {
+			baseline += results[0].TotalDmg
+		}
+
+		rogue2 := &combat.Combatant{
+			ID: 1, Name: "Rogue", IsPlayer: true,
+			STR: 10, AGI: 20, LCK: 0, HitPct: 100,
+			MaxHP: 30, CurrentHP: 30, WeaponPower: 10,
+		}
+		d2 := makeEnemy(2, "Dummy", 1, 0, 1_000_000, 0)
+		rng2 := rand.New(rand.NewPCG(seed, 0))
+		results2 := combat.ResolveTurn(
+			[]*combat.Combatant{rogue2},
+			[]*combat.Combatant{d2},
+			[]combat.Action{{ActorID: 1, Kind: combat.ActionAbility, TargetID: 2, AbilityID: "backstab"}},
+			stats, rng2,
+		)
+		if len(results2) > 0 {
+			backstab += results2[0].TotalDmg
+		}
+	}
+
+	if baseline == 0 || backstab == 0 {
+		t.Fatalf("no damage recorded: baseline=%d backstab=%d", baseline, backstab)
+	}
+	ratio := float64(backstab) / float64(baseline)
+	// Base damage is tripled; accounting for random roll variance on top of a
+	// 3x base, the expected ratio sits around 3.0 (can drift lower because
+	// the random bonus is baseDmg/2 in both cases, not tripled).
+	if ratio < 2.0 {
+		t.Errorf("backstab/baseline ratio %.2f below expected ~3x", ratio)
+	}
+}
+
+func TestBuffsExpireAfterDuration(t *testing.T) {
+	c := &combat.Combatant{
+		ID: 1, Name: "Test", IsPlayer: true,
+		MaxHP: 10, CurrentHP: 10,
+	}
+	c.Buffs = []combat.CombatBuff{{Kind: "focus", DamageMult: 150, TurnsLeft: 2}}
+
+	combat.TickBuffs([]*combat.Combatant{c}, nil)
+	if len(c.Buffs) != 1 || c.Buffs[0].TurnsLeft != 1 {
+		t.Fatalf("after 1 tick: buffs=%+v", c.Buffs)
+	}
+	combat.TickBuffs([]*combat.Combatant{c}, nil)
+	if len(c.Buffs) != 0 {
+		t.Fatalf("buff should have expired, buffs=%+v", c.Buffs)
+	}
+}
+
 func TestRetargetOnDeadTarget(t *testing.T) {
 	gd := loadTestData(t)
 	stats := &gd.Stats.Combat

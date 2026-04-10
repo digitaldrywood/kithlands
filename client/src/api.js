@@ -51,6 +51,10 @@ export async function gameAction(gameId, action) {
   return apiCall("POST", `/game/${gameId}/action`, action);
 }
 
+export async function promoteParty(gameId, accept) {
+  return apiCall("POST", `/game/${gameId}/promote`, { accept });
+}
+
 export async function healthCheck() {
   return apiCall("GET", "/health");
 }

@@ -168,6 +168,13 @@ func (c *Character) TakeDamage(amount int) {
 	}
 }
 
+// Promote marks the character as promoted. Stat growth, starting equipment,
+// and base-class identifier all stay the same; the class's PromotedName and
+// PromotedSchools become active via game-layer lookups.
+func (c *Character) Promote() {
+	c.Promoted = true
+}
+
 // Heal restores HP up to MaxHP.
 func (c *Character) Heal(amount int) {
 	c.CurrentHP += amount
