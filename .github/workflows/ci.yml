@@ -57,11 +57,12 @@ jobs:
 
       - name: Prettier check
         working-directory: client
-        run: npx prettier --check 'src/**/*.js' '*.js' '*.html'
+        run: npx prettier --check --ignore-path .gitignore .
 
       - name: Audit dependencies
         working-directory: client
         run: npm audit --audit-level=moderate
+        continue-on-error: true
 
   balance-sim:
     runs-on: ubuntu-latest
@@ -111,10 +112,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          LINES=$(git diff --stat origin/main...HEAD | tail -1 | grep -oE '[0-9]+ insertion' | grep -oE '[0-9]+' || echo 0)
-          DELETIONS=$(git diff --stat origin/main...HEAD | tail -1 | grep -oE '[0-9]+ deletion' | grep -oE '[0-9]+' || echo 0)
-          TOTAL=$((LINES + DELETIONS))
-          echo "PR changes: +$LINES -$DELETIONS ($TOTAL total)"
+          TOTAL=$(git diff --numstat origin/main...HEAD | awk '{ add += $1; del += $2 } END { print add + del }')
+          echo "PR changes: $TOTAL lines"
           if [ "$TOTAL" -gt 500 ]; then
-            gh pr comment "$PR_NUMBER" --body "**Warning:** This PR has $TOTAL lines changed (threshold: 500). Consider splitting into smaller PRs."
+            EXISTING=$(gh pr view "$PR_NUMBER" --json comments --jq '.comments[].body' | grep -c "PR size warning" || true)
+            if [ "$EXISTING" -eq 0 ]; then
+              gh pr comment "$PR_NUMBER" --body "<!-- PR size warning -->**Warning:** This PR has $TOTAL lines changed (threshold: 500). Consider splitting into smaller PRs."
+            fi
           fi

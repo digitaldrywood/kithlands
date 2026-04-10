@@ -28,7 +28,7 @@ repos:
     hooks:
       - id: prettier
         name: prettier
-        entry: npx prettier --write --ignore-path .gitignore
+        entry: bash -c 'cd client && npx prettier --write --ignore-path .gitignore "$@"' --
         language: system
         files: '\.(js|css|json|html)$'
         exclude: '(node_modules/|dist/|package-lock\.json)'

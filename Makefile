@@ -53,8 +53,8 @@ lint:
 	cd server && golangci-lint run ./...
 
 fmt:
-	cd server && gofmt -w .
-	cd client && npx prettier --write .
+	cd server && gofmt -w . && goimports -w .
+	cd client && npx prettier --write --ignore-path .gitignore .
 
 pre-commit:
 	pre-commit run --all-files
