@@ -18,23 +18,23 @@ const TILE_COLORS = {
   12: 0xffe082, // sand
 };
 
-export function interactWithDoor(scene) {
+export async function interactWithDoor(scene) {
   if (scene.animating || scene.menuOpen || scene.gameOver) return;
   const spawn = scene.currentDoorSpawn;
   if (!spawn) return;
 
   hideInteractPrompt(scene);
   scene.currentDoorSpawn = null;
+  scene.animating = true;
 
-  // Quest advance when entering any building
+  // Quest advance when entering any building (await so gameState is fresh)
   const gs = scene.gameState;
   if (gs.current_quest < gs.quests.length) {
-    scene.triggerQuestAdvance(spawn.name);
+    await scene.triggerQuestAdvance(spawn.name);
   }
 
   // Transition to interior scene
   playSFX("sfx_door");
-  scene.animating = true;
   scene.cameras.main.fadeOut(300, 0, 0, 0);
   scene.cameras.main.once("camerafadeoutcomplete", () => {
     scene.scene.start("Town", { gameState: scene.gameState, spawn });

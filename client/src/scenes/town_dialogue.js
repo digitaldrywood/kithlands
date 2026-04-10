@@ -116,34 +116,37 @@ export async function openDialogue(scene, spawn) {
     repeat: -1,
   });
 
-  const closeDialogue = () => {
-    overlay.forEach((o) => o.destroy());
-    scene.animating = false;
-    scene.input.keyboard.off("keydown-ENTER", advanceHandler);
-    scene.input.keyboard.off("keydown-SPACE", advanceHandler);
-    scene.input.keyboard.off("keydown-ESC", escHandler);
-  };
+  return new Promise((resolve) => {
+    const closeDialogue = () => {
+      overlay.forEach((o) => o.destroy());
+      scene.animating = false;
+      scene.input.keyboard.off("keydown-ENTER", advanceHandler);
+      scene.input.keyboard.off("keydown-SPACE", advanceHandler);
+      scene.input.keyboard.off("keydown-ESC", escHandler);
+      resolve();
+    };
 
-  const advanceHandler = () => {
-    lineIndex++;
-    if (lineIndex >= lines.length) {
-      closeDialogue();
-    } else {
-      dialogueText.setText(lines[lineIndex]);
-      if (lineIndex === lines.length - 1) {
-        promptText.setText("[CLOSE]");
+    const advanceHandler = () => {
+      lineIndex++;
+      if (lineIndex >= lines.length) {
+        closeDialogue();
+      } else {
+        dialogueText.setText(lines[lineIndex]);
+        if (lineIndex === lines.length - 1) {
+          promptText.setText("[CLOSE]");
+        }
       }
-    }
-  };
+    };
 
-  const escHandler = () => {
-    closeDialogue();
-  };
+    const escHandler = () => {
+      closeDialogue();
+    };
 
-  scene.input.keyboard.on("keydown-ENTER", advanceHandler);
-  scene.input.keyboard.on("keydown-SPACE", advanceHandler);
-  scene.input.keyboard.on("keydown-ESC", escHandler);
+    scene.input.keyboard.on("keydown-ENTER", advanceHandler);
+    scene.input.keyboard.on("keydown-SPACE", advanceHandler);
+    scene.input.keyboard.on("keydown-ESC", escHandler);
 
-  // Also allow clicking the box to advance
-  bg.on("pointerdown", advanceHandler);
+    // Also allow clicking the box to advance
+    bg.on("pointerdown", advanceHandler);
+  });
 }
