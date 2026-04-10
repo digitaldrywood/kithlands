@@ -189,6 +189,75 @@ func (s *Server) handleSaveGame(w http.ResponseWriter, r *http.Request) {
 	jsonResp(w, map[string]string{"status": "saved", "name": ss.Name})
 }
 
+// Autosave trigger event labels for display.
+var autosaveTriggerLabels = map[string]string{
+	"quest_complete": "Quest Complete",
+	"battle_victory": "Battle Victory",
+	"inn_rest":       "Inn Rest",
+	"temple_visit":   "Temple Visit",
+	"pre_combat":     "Before Combat",
+	"level_up":       "Level Up",
+	"purchase":       "Equipment Purchase",
+	"timed":          "Timed",
+}
+
+func (s *Server) handleAutosave(w http.ResponseWriter, r *http.Request) {
+	gameID := r.PathValue("id")
+	game := s.games.GetGame(gameID)
+	if game == nil {
+		httpError(w, "game not found", http.StatusNotFound)
+		return
+	}
+
+	user := auth.UserFromContext(r.Context())
+	if user == nil {
+		httpError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req struct {
+		TriggerEvent string `json:"trigger_event"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		req.TriggerEvent = "timed"
+	}
+	if req.TriggerEvent == "" {
+		req.TriggerEvent = "timed"
+	}
+
+	label := autosaveTriggerLabels[req.TriggerEvent]
+	if label == "" {
+		label = req.TriggerEvent
+	}
+	saveName := fmt.Sprintf("Autosave - %s - %s", label, time.Now().Format("3:04pm"))
+
+	ss, err := game.ToSaveState(saveName, user.ID)
+	if err != nil {
+		httpError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	ss.SaveType = "autosave"
+	ss.TriggerEvent = req.TriggerEvent
+
+	if s.db != nil {
+		s.saveLocality(r.Context(), game, user.ID)
+	}
+
+	saveSvc := save.NewService(s.db)
+	if err := saveSvc.Create(r.Context(), ss); err != nil {
+		httpError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Enforce rolling window: keep at most 3 autosaves
+	if err := saveSvc.DeleteOldestAutosaves(r.Context(), user.ID, 3); err != nil {
+		// Log but don't fail the request
+		fmt.Printf("warning: failed to trim autosaves: %v\n", err)
+	}
+
+	jsonResp(w, map[string]string{"status": "autosaved", "name": saveName})
+}
+
 func (s *Server) handleListSaves(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
@@ -205,13 +274,15 @@ func (s *Server) handleListSaves(w http.ResponseWriter, r *http.Request) {
 
 	// Build summary list
 	type SaveSummary struct {
-		ID         string    `json:"id"`
-		Name       string    `json:"name"`
-		Flavor     string    `json:"flavor"`
-		Difficulty string    `json:"difficulty"`
-		PlayTime   int       `json:"play_time"`
-		UpdatedAt  time.Time `json:"updated_at"`
-		Party      []string  `json:"party"` // party member names
+		ID           string    `json:"id"`
+		Name         string    `json:"name"`
+		SaveType     string    `json:"save_type"`
+		TriggerEvent string    `json:"trigger_event,omitempty"`
+		Flavor       string    `json:"flavor"`
+		Difficulty   string    `json:"difficulty"`
+		PlayTime     int       `json:"play_time"`
+		UpdatedAt    time.Time `json:"updated_at"`
+		Party        []string  `json:"party"` // party member names
 	}
 
 	var summaries []SaveSummary
@@ -225,13 +296,15 @@ func (s *Server) handleListSaves(w http.ResponseWriter, r *http.Request) {
 		}
 
 		summaries = append(summaries, SaveSummary{
-			ID:         sv.ID,
-			Name:       sv.Name,
-			Flavor:     sv.Flavor,
-			Difficulty: sv.Difficulty,
-			PlayTime:   sv.PlayTimeSec,
-			UpdatedAt:  sv.UpdatedAt,
-			Party:      names,
+			ID:           sv.ID,
+			Name:         sv.Name,
+			SaveType:     sv.SaveType,
+			TriggerEvent: sv.TriggerEvent,
+			Flavor:       sv.Flavor,
+			Difficulty:   sv.Difficulty,
+			PlayTime:     sv.PlayTimeSec,
+			UpdatedAt:    sv.UpdatedAt,
+			Party:        names,
 		})
 	}
 

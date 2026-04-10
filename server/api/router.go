@@ -55,6 +55,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 
 	// Save/Load
 	mux.Handle("POST /api/game/{id}/save", s.auth.Middleware(http.HandlerFunc(s.handleSaveGame)))
+	mux.Handle("POST /api/game/{id}/autosave", s.auth.Middleware(http.HandlerFunc(s.handleAutosave)))
 	mux.Handle("GET /api/saves", s.auth.Middleware(http.HandlerFunc(s.handleListSaves)))
 	mux.Handle("POST /api/saves/{saveId}/load", s.auth.Middleware(http.HandlerFunc(s.handleLoadSave)))
 	mux.Handle("DELETE /api/saves/{saveId}", s.auth.Middleware(http.HandlerFunc(s.handleDeleteSave)))

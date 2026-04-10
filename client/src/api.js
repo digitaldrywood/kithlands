@@ -97,3 +97,7 @@ export async function loadSave(saveId) {
 export async function deleteSave(saveId) {
   return apiCall("DELETE", `/saves/${saveId}`);
 }
+
+export async function autosaveGame(gameId, triggerEvent) {
+  return apiCall('POST', `/game/${gameId}/autosave`, { trigger_event: triggerEvent });
+}
