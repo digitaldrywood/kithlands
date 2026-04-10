@@ -32,6 +32,16 @@ export class BattleScene extends Phaser.Scene {
     this.currentMemberIdx = 0;
     this.livingMembers = [];
 
+    // Keyboard targeting state
+    this.targetingMode = false;
+    this.selectedTargetIdx = 0;
+    this.livingEnemies = [];
+    this.enemyNumbers = [];
+    this.targetHighlight = null;
+    this.targetHighlightTween = null;
+    this.pickerOverlay = null;
+    this.pickerItems = [];
+
     const gs = this.gameState;
     if (!gs || gs.phase !== 'combat' || !gs.enemies?.length) {
       if (gs?.combat_log?.length) this.showVictoryResults(gs);
@@ -63,8 +73,102 @@ export class BattleScene extends Phaser.Scene {
       fontSize: '11px', color: '#ffff44', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(5);
 
+    this.setupKeyboard();
+
     // Show first member's turn
     this.showCurrentMemberTurn();
+  }
+
+  setupKeyboard() {
+    // Action hotkeys (A/S/I/F)
+    this.input.keyboard.on('keydown-A', () => {
+      if (this.animating || this.targetingMode || this.pickerOverlay) return;
+      if (this.currentMemberIdx >= this.livingMembers.length) return;
+      const slot = this.livingMembers[this.currentMemberIdx];
+      const member = this.gameState.party[slot];
+      this.pendingAction = 'attack';
+      this.enterTargetingMode();
+      this.promptText.setText(`${member.name}: Select a target to attack!`).setColor('#ff4444');
+    });
+
+    this.input.keyboard.on('keydown-S', () => {
+      if (this.animating || this.targetingMode || this.pickerOverlay) return;
+      if (this.currentMemberIdx >= this.livingMembers.length) return;
+      const slot = this.livingMembers[this.currentMemberIdx];
+      this.showSpellPicker(slot);
+    });
+
+    this.input.keyboard.on('keydown-I', () => {
+      if (this.animating || this.targetingMode || this.pickerOverlay) return;
+      if (this.currentMemberIdx >= this.livingMembers.length) return;
+      const slot = this.livingMembers[this.currentMemberIdx];
+      this.showItemPicker(slot);
+    });
+
+    this.input.keyboard.on('keydown-F', () => {
+      if (this.animating || this.targetingMode || this.pickerOverlay) return;
+      if (this.currentMemberIdx >= this.livingMembers.length) return;
+      this.doFlee();
+    });
+
+    // Number keys 1-9 for target/picker selection
+    const numKeys = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
+    for (let n = 0; n < numKeys.length; n++) {
+      this.input.keyboard.on(`keydown-${numKeys[n]}`, () => {
+        if (this.animating) return;
+        if (this.pickerOverlay && this.pickerItems.length > 0) {
+          if (n < this.pickerItems.length) {
+            this.pickerItems[n].action();
+          }
+          return;
+        }
+        if (this.targetingMode) {
+          if (n < this.livingEnemies.length) {
+            this.exitTargetingMode();
+            this.onEnemyClick(this.livingEnemies[n].id);
+          }
+          return;
+        }
+      });
+    }
+
+    // Arrow keys to cycle targets
+    this.input.keyboard.on('keydown-LEFT', () => {
+      if (!this.targetingMode || this.livingEnemies.length === 0) return;
+      this.selectedTargetIdx = (this.selectedTargetIdx - 1 + this.livingEnemies.length) % this.livingEnemies.length;
+      this.updateTargetHighlight();
+    });
+
+    this.input.keyboard.on('keydown-RIGHT', () => {
+      if (!this.targetingMode || this.livingEnemies.length === 0) return;
+      this.selectedTargetIdx = (this.selectedTargetIdx + 1) % this.livingEnemies.length;
+      this.updateTargetHighlight();
+    });
+
+    // Enter to confirm target
+    this.input.keyboard.on('keydown-ENTER', () => {
+      if (this.targetingMode && this.livingEnemies.length > 0) {
+        const enemy = this.livingEnemies[this.selectedTargetIdx];
+        this.exitTargetingMode();
+        this.onEnemyClick(enemy.id);
+      }
+    });
+
+    // Escape to cancel
+    this.input.keyboard.on('keydown-ESC', () => {
+      if (this.pickerOverlay) {
+        this.closePicker();
+        return;
+      }
+      if (this.targetingMode) {
+        this.exitTargetingMode();
+        this.pendingAction = null;
+        const slot = this.livingMembers[this.currentMemberIdx];
+        const member = this.gameState.party[slot];
+        this.promptText.setText(`${member.name}'s turn -- choose an action`).setColor('#ffff44');
+        return;
+      }
+    });
   }
 
   showCurrentMemberTurn() {
@@ -94,6 +198,7 @@ export class BattleScene extends Phaser.Scene {
     const enemies = gs.enemies;
     const spacing = Math.min(130, 450 / Math.max(enemies.length, 1));
     const sx = 80 + (450 - enemies.length * spacing) / 2;
+    this.enemyNumbers = [];
 
     for (let i = 0; i < enemies.length; i++) {
       const e = enemies[i];
@@ -120,6 +225,12 @@ export class BattleScene extends Phaser.Scene {
       this.add.text(x, y - sz / 2 - 18, e.name, {
         fontSize: '10px', color: '#ffffff', fontFamily: 'monospace',
       }).setOrigin(0.5);
+
+      // Number indicator for keyboard targeting
+      const numText = this.add.text(x, y + sz / 2 + 1, `${i + 1}`, {
+        fontSize: '10px', color: '#ffff44', fontFamily: 'monospace', fontStyle: 'bold',
+      }).setOrigin(0.5).setDepth(10).setAlpha(0.3);
+      this.enemyNumbers.push({ text: numText, enemyId: e.id });
 
       const bw = 65, pct = Math.max(0, e.hp / e.max_hp);
       this.add.rectangle(x, y + sz / 2 + 10, bw, 7, 0x333333);
@@ -201,11 +312,11 @@ export class BattleScene extends Phaser.Scene {
     const member = gs.party[slot];
     const hasSpells = member.spells?.length > 0 && member.spells.some(s => s.charges > 0);
 
-    const btns = [{ label: 'ATTACK', type: 'attack', color: '#ff4444' }];
-    if (hasSpells) btns.push({ label: 'SPELL', type: 'spell', color: '#8888ff' });
+    const btns = [{ label: '[A]TTACK', type: 'attack', color: '#ff4444' }];
+    if (hasSpells) btns.push({ label: '[S]PELL', type: 'spell', color: '#8888ff' });
     const hasItems = gs.potions > 0 || (gs.items && gs.items.some(i => i.id === 'phoenix_down'));
-    if (hasItems) btns.push({ label: 'ITEMS', type: 'item', color: '#44ff44' });
-    btns.push({ label: 'FLEE', type: 'flee', color: '#ffcc44' });
+    if (hasItems) btns.push({ label: '[I]TEMS', type: 'item', color: '#44ff44' });
+    btns.push({ label: '[F]LEE', type: 'flee', color: '#ffcc44' });
 
     const tw = btns.length * 145, sx = 400 - tw / 2 + 72;
     for (let i = 0; i < btns.length; i++) {
@@ -224,7 +335,8 @@ export class BattleScene extends Phaser.Scene {
         if (this.animating) return;
         if (b.type === 'attack') {
           this.pendingAction = 'attack';
-          this.promptText.setText(`${member.name}: Click an enemy to attack!`).setColor('#ff4444');
+          this.enterTargetingMode();
+          this.promptText.setText(`${member.name}: Select a target to attack!`).setColor('#ff4444');
         } else if (b.type === 'spell') {
           this.showSpellPicker(slot);
         } else if (b.type === 'item') {
@@ -239,6 +351,7 @@ export class BattleScene extends Phaser.Scene {
 
   onEnemyClick(enemyId) {
     if (this.animating) return;
+    if (this.targetingMode) this.exitTargetingMode();
     const slot = this.livingMembers[this.currentMemberIdx];
 
     if (this.pendingAction === 'attack') {
@@ -262,6 +375,72 @@ export class BattleScene extends Phaser.Scene {
     this.time.delayedCall(400, () => this.showCurrentMemberTurn());
   }
 
+  enterTargetingMode() {
+    this.targetingMode = true;
+    this.livingEnemies = this.gameState.enemies.filter(e => e.hp > 0);
+    this.selectedTargetIdx = 0;
+
+    // Brighten number indicators
+    for (const en of this.enemyNumbers) {
+      const isLiving = this.livingEnemies.some(e => e.id === en.enemyId);
+      en.text.setAlpha(isLiving ? 1.0 : 0.1);
+    }
+
+    this.updateTargetHighlight();
+  }
+
+  exitTargetingMode() {
+    this.targetingMode = false;
+    this.livingEnemies = [];
+
+    // Dim number indicators
+    for (const en of this.enemyNumbers) {
+      en.text.setAlpha(0.3);
+    }
+
+    // Remove highlight
+    if (this.targetHighlightTween) {
+      this.targetHighlightTween.stop();
+      this.targetHighlightTween = null;
+    }
+    if (this.targetHighlight) {
+      this.targetHighlight.destroy();
+      this.targetHighlight = null;
+    }
+  }
+
+  updateTargetHighlight() {
+    if (!this.targetingMode || this.livingEnemies.length === 0) return;
+
+    const enemy = this.livingEnemies[this.selectedTargetIdx];
+    const es = this.enemySprites[enemy.id];
+    if (!es) return;
+
+    // Remove old highlight
+    if (this.targetHighlightTween) {
+      this.targetHighlightTween.stop();
+      this.targetHighlightTween = null;
+    }
+    if (this.targetHighlight) {
+      this.targetHighlight.destroy();
+    }
+
+    // Create pulsing highlight around selected enemy
+    const sz = enemy.name === 'Dark Knight' ? 90 : 60;
+    this.targetHighlight = this.add.rectangle(es.x, es.y, sz, sz)
+      .setStrokeStyle(2, 0xffff44).setFillStyle(0xffff44, 0.1).setDepth(9);
+
+    this.targetHighlightTween = this.tweens.add({
+      targets: this.targetHighlight,
+      alpha: { from: 1, to: 0.3 },
+      duration: 500,
+      yoyo: true,
+      repeat: -1,
+    });
+
+    this.promptText.setText(`Target: ${enemy.name} [${this.selectedTargetIdx + 1}]`);
+  }
+
   showSpellPicker(slot) {
     const gs = this.gameState;
     const member = gs.party[slot];
@@ -280,31 +459,39 @@ export class BattleScene extends Phaser.Scene {
       fontSize: '12px', color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51));
 
+    this.pickerItems = [];
     for (let i = 0; i < spells.length; i++) {
       const sp = spells[i];
       const y = 380 - h / 2 + 40 + i * 32;
       const row = this.add.rectangle(400, y, 280, 26, 0x222255)
         .setInteractive({ useHandCursor: true }).setDepth(51);
-      const txt = this.add.text(400, y, `${sp.name} (${sp.charges} charges)`, {
+      const txt = this.add.text(400, y, `${i + 1}. ${sp.name} (${sp.charges} charges)`, {
         fontSize: '11px', color: '#aaaaff', fontFamily: 'monospace',
       }).setOrigin(0.5).setDepth(52);
       ol.push(row, txt);
 
-      row.on('pointerover', () => { row.setFillStyle(0x3333aa); txt.setColor('#ffffff'); });
-      row.on('pointerout', () => { row.setFillStyle(0x222255); txt.setColor('#aaaaff'); });
-      row.on('pointerdown', () => {
-        ol.forEach(o => o.destroy());
+      const selectSpell = () => {
+        this.closePicker();
         this.pendingAction = 'spell';
         this.pendingSpellId = sp.id;
-        this.promptText.setText(`${member.name}: Cast ${sp.name} -- click a target!`).setColor('#8888ff');
-      });
+        this.enterTargetingMode();
+        this.promptText.setText(`${member.name}: Cast ${sp.name} -- select a target!`).setColor('#8888ff');
+      };
+
+      this.pickerItems.push({ action: selectSpell });
+
+      row.on('pointerover', () => { row.setFillStyle(0x3333aa); txt.setColor('#ffffff'); });
+      row.on('pointerout', () => { row.setFillStyle(0x222255); txt.setColor('#aaaaff'); });
+      row.on('pointerdown', selectSpell);
     }
 
-    const cancel = this.add.text(400, 380 + h / 2 - 15, '[ CANCEL ]', {
+    const cancel = this.add.text(400, 380 + h / 2 - 15, '[ CANCEL / ESC ]', {
       fontSize: '10px', color: '#888888', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51).setInteractive({ useHandCursor: true });
-    cancel.on('pointerdown', () => ol.forEach(o => o.destroy()));
+    cancel.on('pointerdown', () => this.closePicker());
     ol.push(cancel);
+
+    this.pickerOverlay = ol;
   }
 
   showItemPicker(slot) {
@@ -328,29 +515,36 @@ export class BattleScene extends Phaser.Scene {
       fontSize: '12px', color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51));
 
+    this.pickerItems = [];
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const y = 380 - h / 2 + 40 + i * 35;
       const row = this.add.rectangle(400, y, 280, 28, 0x224422)
         .setInteractive({ useHandCursor: true }).setDepth(51);
-      const txt = this.add.text(400, y, item.name, {
+      const txt = this.add.text(400, y, `${i + 1}. ${item.name}`, {
         fontSize: '11px', color: '#88ff88', fontFamily: 'monospace',
       }).setOrigin(0.5).setDepth(52);
       ol.push(row, txt);
 
+      const selectItem = () => {
+        this.closePicker();
+        this.showPartyTargetPicker(slot, item);
+      };
+
+      this.pickerItems.push({ action: selectItem });
+
       row.on('pointerover', () => { row.setFillStyle(0x336633); txt.setColor('#ffffff'); });
       row.on('pointerout', () => { row.setFillStyle(0x224422); txt.setColor('#88ff88'); });
-      row.on('pointerdown', () => {
-        ol.forEach(o => o.destroy());
-        this.showPartyTargetPicker(slot, item);
-      });
+      row.on('pointerdown', selectItem);
     }
 
-    const cancel = this.add.text(400, 380 + h / 2 - 12, '[ CANCEL ]', {
+    const cancel = this.add.text(400, 380 + h / 2 - 12, '[ CANCEL / ESC ]', {
       fontSize: '10px', color: '#888888', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51).setInteractive({ useHandCursor: true });
-    cancel.on('pointerdown', () => ol.forEach(o => o.destroy()));
+    cancel.on('pointerdown', () => this.closePicker());
     ol.push(cancel);
+
+    this.pickerOverlay = ol;
   }
 
   showPartyTargetPicker(slot, item) {
@@ -384,6 +578,7 @@ export class BattleScene extends Phaser.Scene {
       fontSize: '12px', color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51));
 
+    this.pickerItems = [];
     for (let i = 0; i < targets.length; i++) {
       const t = targets[i];
       const y = 350 - h / 2 + 45 + i * 40;
@@ -392,28 +587,42 @@ export class BattleScene extends Phaser.Scene {
 
       const row = this.add.rectangle(400, y, 300, 32, 0x224422)
         .setInteractive({ useHandCursor: true }).setDepth(51);
-      const txt = this.add.text(400, y, `${t.name} (${t.class_name}) - ${hpStr}`, {
+      const txt = this.add.text(400, y, `${i + 1}. ${t.name} (${t.class_name}) - ${hpStr}`, {
         fontSize: '11px', color: hpColor, fontFamily: 'monospace',
       }).setOrigin(0.5).setDepth(52);
       ol.push(row, txt);
 
-      row.on('pointerover', () => row.setFillStyle(0x336633));
-      row.on('pointerout', () => row.setFillStyle(0x224422));
-      row.on('pointerdown', () => {
-        ol.forEach(o => o.destroy());
+      const selectTarget = () => {
+        this.closePicker();
         this.recordAction(slot, {
           slot,
           type: item.id === 'phoenix_down' ? 'revive' : 'item',
           target_id: t.slot,
         });
-      });
+      };
+
+      this.pickerItems.push({ action: selectTarget });
+
+      row.on('pointerover', () => row.setFillStyle(0x336633));
+      row.on('pointerout', () => row.setFillStyle(0x224422));
+      row.on('pointerdown', selectTarget);
     }
 
-    const cancel = this.add.text(400, 350 + h / 2 - 12, '[ CANCEL ]', {
+    const cancel = this.add.text(400, 350 + h / 2 - 12, '[ CANCEL / ESC ]', {
       fontSize: '10px', color: '#888888', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51).setInteractive({ useHandCursor: true });
-    cancel.on('pointerdown', () => ol.forEach(o => o.destroy()));
+    cancel.on('pointerdown', () => this.closePicker());
     ol.push(cancel);
+
+    this.pickerOverlay = ol;
+  }
+
+  closePicker() {
+    if (this.pickerOverlay) {
+      this.pickerOverlay.forEach(o => o.destroy());
+      this.pickerOverlay = null;
+    }
+    this.pickerItems = [];
   }
 
   async doFlee() {
@@ -636,18 +845,11 @@ export class BattleScene extends Phaser.Scene {
     y += 15;
     const barW = 300;
     const xpBefore = gs.xp_before || [];
-    const levelBefore = gs.level_before || [];
-    const xpThresholds = gs.xp_thresholds || [];
-
-    const animPromises = [];
 
     for (let i = 0; i < gs.party.length; i++) {
       const p = gs.party[i];
       const alive = p.hp > 0;
       const prevXP = xpBefore[i] || 0;
-      const prevLvl = levelBefore[i] || p.level;
-      const thresholds = xpThresholds[i] || [p.xp_next];
-      const levelsGained = p.level - prevLvl;
 
       // Character sprite + name
       const cs = CLASS_SPRITES[p.class_id];
@@ -657,12 +859,11 @@ export class BattleScene extends Phaser.Scene {
         if (!alive) sprite.setTint(0x444444);
       }
 
-      // Name and level (show pre-combat level initially if leveled up)
+      // Name and level
       this.add.text(140, y, `${p.name}`, {
         fontSize: '13px', color: alive ? '#ffffff' : '#666666', fontFamily: 'monospace',
       });
-      const displayLvl = levelsGained > 0 ? prevLvl : p.level;
-      const levelText = this.add.text(140, y + 16, `${p.class_name} Lv.${displayLvl}`, {
+      const levelText = this.add.text(140, y + 16, `${p.class_name} Lv.${p.level}`, {
         fontSize: '10px', color: '#aaaaaa', fontFamily: 'monospace',
       });
 
@@ -680,80 +881,54 @@ export class BattleScene extends Phaser.Scene {
 
       // XP bar with animation
       this.add.text(300, y + 18, 'XP', { fontSize: '9px', color: '#888888', fontFamily: 'monospace' });
-      this.add.rectangle(300 + barW / 2 + 15, y + 22, barW, 10, 0x222244);
-
-      const firstThreshold = thresholds[0] || p.xp_next;
-      const xpPctStart = firstThreshold > 0 ? Math.min(1, prevXP / firstThreshold) : 0;
+      const xpBarBg = this.add.rectangle(300 + barW / 2 + 15, y + 22, barW, 10, 0x222244);
+      const xpPctStart = p.xp_next > 0 ? Math.min(1, prevXP / p.xp_next) : 0;
+      const xpPctEnd = p.xp_next > 0 ? Math.min(1, p.xp / p.xp_next) : 0;
 
       const xpBarFill = this.add.rectangle(
         300 + 15, y + 22,
-        Math.max(1, barW * xpPctStart), 10, 0x4488ff
+        1, 10, 0x4488ff
       ).setOrigin(0, 0.5);
 
-      const xpText = this.add.text(300 + barW + 20, y + 17, `${prevXP}/${firstThreshold}`, {
+      const xpText = this.add.text(300 + barW + 20, y + 17, `${prevXP}/${p.xp_next}`, {
         fontSize: '9px', color: '#8888ff', fontFamily: 'monospace',
       });
 
-      // Animate XP bar with multi-level-up support
-      const memberY = y;
-      const staggerDelay = 500 + i * 800;
-      const scene = this;
+      // Animate the XP bar filling
+      const delay = 500 + i * 800;
+      this.tweens.add({
+        targets: xpBarFill,
+        width: barW * xpPctEnd,
+        duration: 1200,
+        delay,
+        ease: 'Power2',
+        onUpdate: () => {
+          // Update XP text as bar fills
+          const progress = xpBarFill.width / barW;
+          const currentXP = Math.floor(prevXP + (p.xp - prevXP) * (progress / xpPctEnd || 0));
+          xpText.setText(`${Math.min(currentXP, p.xp)}/${p.xp_next}`);
+        },
+      });
 
-      const animPromise = (async () => {
-        await scene.wait(staggerDelay);
+      // Check for level up -- flash effect (capture y in closure)
+      const leveledUp = log.some(l => l.includes(`${p.name} leveled up`));
+      if (leveledUp) {
+        const memberY = y; // capture current y for this member
+        this.time.delayedCall(delay + 1300, () => {
+          // Flash on THIS member's row
+          const flash = this.add.rectangle(400, memberY + 20, 700, 50, 0xffff44, 0.3);
+          this.tweens.add({ targets: flash, alpha: 0, duration: 600, onComplete: () => flash.destroy() });
 
-        // Build segments: one per level boundary crossed, plus final segment
-        const segments = [];
-        for (let s = 0; s <= levelsGained; s++) {
-          const threshold = thresholds[s] || p.xp_next;
-          const startXP = s === 0 ? prevXP : 0;
-          const isLevelUp = s < levelsGained;
-          const endXP = isLevelUp ? threshold : p.xp;
-          segments.push({ startXP, endXP, threshold, isLevelUp, newLevel: prevLvl + s + 1 });
-        }
+          // Level up text next to this member
+          const lvlUpText = this.add.text(650, memberY + 12, 'LEVEL UP!', {
+            fontSize: '14px', color: '#ffff44', fontFamily: 'monospace', fontStyle: 'bold',
+          }).setOrigin(0.5).setAlpha(0);
+          this.tweens.add({ targets: lvlUpText, alpha: 1, duration: 300 });
 
-        for (const seg of segments) {
-          const startPct = seg.threshold > 0 ? Math.min(1, seg.startXP / seg.threshold) : 0;
-          const endPct = seg.threshold > 0 ? Math.min(1, seg.endXP / seg.threshold) : 0;
-
-          xpBarFill.width = Math.max(1, barW * startPct);
-          xpText.setText(`${seg.startXP}/${seg.threshold}`);
-
-          if (Math.abs(endPct - startPct) > 0.001) {
-            await scene.tweenP(xpBarFill, {
-              width: Math.max(1, barW * endPct),
-              duration: 800,
-              ease: 'Power2',
-              onUpdate: () => {
-                const progress = xpBarFill.width / barW;
-                const ratio = endPct > 0 ? progress / endPct : 0;
-                const currentXP = Math.floor(seg.startXP + (seg.endXP - seg.startXP) * Math.min(1, ratio));
-                xpText.setText(`${currentXP}/${seg.threshold}`);
-              },
-            });
-          }
-          xpText.setText(`${seg.endXP}/${seg.threshold}`);
-
-          if (seg.isLevelUp) {
-            // Flash LEVEL UP effect
-            const flash = scene.add.rectangle(400, memberY + 20, 700, 50, 0xffff44, 0.3);
-            scene.tweens.add({ targets: flash, alpha: 0, duration: 600, onComplete: () => flash.destroy() });
-
-            const lvlUpText = scene.add.text(650, memberY + 12, 'LEVEL UP!', {
-              fontSize: '14px', color: '#ffff44', fontFamily: 'monospace', fontStyle: 'bold',
-            }).setOrigin(0.5).setAlpha(0);
-            await scene.tweenP(lvlUpText, { alpha: 1, duration: 300 });
-
-            levelText.setText(`${p.class_name} Lv.${seg.newLevel}`).setColor('#ffff44');
-            await scene.wait(400);
-
-            // Fade out level-up text before next segment
-            scene.tweens.add({ targets: lvlUpText, alpha: 0, duration: 200, onComplete: () => lvlUpText.destroy() });
-          }
-        }
-      })();
-
-      animPromises.push(animPromise);
+          // Update level display
+          levelText.setText(`${p.class_name} Lv.${p.level}`).setColor('#ffff44');
+        });
+      }
 
       // Stats row
       this.add.text(140, y + 35,
@@ -779,9 +954,9 @@ export class BattleScene extends Phaser.Scene {
       }).setOrigin(0.5);
     }
 
-    // Show continue button after all animations complete
-    Promise.all(animPromises).then(() => {
-      this.wait(500).then(() => this.addContinueButton(gs));
+    // Delay continue button to let animations play
+    this.time.delayedCall(500 + gs.party.length * 800 + 1000, () => {
+      this.addContinueButton(gs);
     });
   }
 
