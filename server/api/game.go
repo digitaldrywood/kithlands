@@ -18,10 +18,10 @@ import (
 // Request/response types
 
 type WizardRequest struct {
-	TownName    string              `json:"town_name"`
-	People      []WizardPersonReq   `json:"people"`
-	Places      []string            `json:"places"`
-	BigBuilding string              `json:"big_building"`
+	TownName    string            `json:"town_name"`
+	People      []WizardPersonReq `json:"people"`
+	Places      []string          `json:"places"`
+	BigBuilding string            `json:"big_building"`
 }
 
 type WizardPersonReq struct {
@@ -71,17 +71,18 @@ type PartyMemberReq struct {
 }
 
 type GameActionRequest struct {
-	Type     string              `json:"type"`     // attack, spell, item, flee, encounter, quest_advance
-	TargetID int                 `json:"target_id,omitempty"`
-	SpellID  string              `json:"spell_id,omitempty"`
-	ItemID   string              `json:"item_id,omitempty"`
-	SlotIdx  int                 `json:"slot_idx,omitempty"`
-	Actions  []MemberActionReq   `json:"actions,omitempty"` // per-member actions for combat
+	Type     string            `json:"type"` // attack, spell, item, flee, encounter, quest_advance
+	TargetID int               `json:"target_id,omitempty"`
+	SpellID  string            `json:"spell_id,omitempty"`
+	ItemID   string            `json:"item_id,omitempty"`
+	SlotIdx  int               `json:"slot_idx,omitempty"`
+	NodeID   string            `json:"node_id,omitempty"` // node ID for quest_advance
+	Actions  []MemberActionReq `json:"actions,omitempty"` // per-member actions for combat
 }
 
 type MemberActionReq struct {
-	Slot      int    `json:"slot"`      // party slot 0-3
-	Type      string `json:"type"`      // attack, spell, item, defend, ability
+	Slot      int    `json:"slot"` // party slot 0-3
+	Type      string `json:"type"` // attack, spell, item, defend, ability
 	TargetID  int    `json:"target_id"`
 	SpellID   string `json:"spell_id,omitempty"`
 	AbilityID string `json:"ability_id,omitempty"`
@@ -89,26 +90,27 @@ type MemberActionReq struct {
 
 // GameState is the full state sent to the client.
 type GameState struct {
-	ID        string              `json:"id"`
-	Phase     string              `json:"phase"` // world, combat, quest_complete, victory, defeat
-	XPBefore     []int               `json:"xp_before,omitempty"`      // XP values before combat for victory animation
-	LevelBefore  []int               `json:"level_before,omitempty"`   // levels before combat for victory animation
-	XPThresholds [][]int             `json:"xp_thresholds,omitempty"` // per-character XP thresholds at each level crossed
-	Party     []PartyMemberState  `json:"party"`
-	Enemies   []EnemyState        `json:"enemies,omitempty"`
-	Formation string              `json:"formation,omitempty"`
-	Quests    []QuestState        `json:"quests"`
-	CurrentQ  int                 `json:"current_quest"`
-	Gold      int                 `json:"gold"`
-	Potions   int                 `json:"potions"`
-	Items     []ItemState         `json:"items"`
-	Equipment [4]EquipState       `json:"equipment"`
-	Location  string              `json:"location"`
-	Message   string              `json:"message,omitempty"`
-	CombatLog     []string             `json:"combat_log,omitempty"`
-	CombatActions []CombatActionEntry  `json:"combat_actions,omitempty"`
-	TileMap   *locality.TileMap   `json:"tilemap,omitempty"`
-	ShopItems []ShopItemState     `json:"shop_items,omitempty"`
+	ID            string              `json:"id"`
+	Phase         string              `json:"phase"`                   // world, combat, quest_complete, victory, defeat
+	XPBefore      []int               `json:"xp_before,omitempty"`     // XP values before combat for victory animation
+	LevelBefore   []int               `json:"level_before,omitempty"`  // levels before combat for victory animation
+	XPThresholds  [][]int             `json:"xp_thresholds,omitempty"` // per-character XP thresholds at each level crossed
+	Party         []PartyMemberState  `json:"party"`
+	Enemies       []EnemyState        `json:"enemies,omitempty"`
+	Formation     string              `json:"formation,omitempty"`
+	Quests        []QuestState        `json:"quests"`
+	CurrentQ      int                 `json:"current_quest"`
+	Gold          int                 `json:"gold"`
+	Potions       int                 `json:"potions"`
+	Items         []ItemState         `json:"items"`
+	Equipment     [4]EquipState       `json:"equipment"`
+	KeyItems      []string            `json:"key_items,omitempty"`
+	Location      string              `json:"location"`
+	Message       string              `json:"message,omitempty"`
+	CombatLog     []string            `json:"combat_log,omitempty"`
+	CombatActions []CombatActionEntry `json:"combat_actions,omitempty"`
+	TileMap       *locality.TileMap   `json:"tilemap,omitempty"`
+	ShopItems     []ShopItemState     `json:"shop_items,omitempty"`
 }
 
 type ItemState struct {
@@ -125,31 +127,31 @@ type EquipState struct {
 }
 
 type ShopItemState struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Type     string `json:"type"` // weapon, armor, consumable, spell
-	Price    int    `json:"price"`
-	Power    int    `json:"power,omitempty"`
-	Absorb   int    `json:"absorb,omitempty"`
-	Classes  string `json:"classes,omitempty"`
-	Owned    bool   `json:"owned,omitempty"`
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Type    string `json:"type"` // weapon, armor, consumable, spell
+	Price   int    `json:"price"`
+	Power   int    `json:"power,omitempty"`
+	Absorb  int    `json:"absorb,omitempty"`
+	Classes string `json:"classes,omitempty"`
+	Owned   bool   `json:"owned,omitempty"`
 }
 
 type PartyMemberState struct {
-	Name      string `json:"name"`
-	ClassID   string `json:"class_id"`
-	ClassName string `json:"class_name"`
-	SpriteID  string `json:"sprite_id"`
-	Promoted  bool   `json:"promoted"`
-	Level     int    `json:"level"`
-	HP        int    `json:"hp"`
-	MaxHP     int    `json:"max_hp"`
-	STR       int    `json:"str"`
-	AGI       int    `json:"agi"`
-	INT       int    `json:"int_stat"`
-	XP        int    `json:"xp"`
-	XPNext    int    `json:"xp_next"`
-	Status    string `json:"status"`
+	Name      string       `json:"name"`
+	ClassID   string       `json:"class_id"`
+	ClassName string       `json:"class_name"`
+	SpriteID  string       `json:"sprite_id"`
+	Promoted  bool         `json:"promoted"`
+	Level     int          `json:"level"`
+	HP        int          `json:"hp"`
+	MaxHP     int          `json:"max_hp"`
+	STR       int          `json:"str"`
+	AGI       int          `json:"agi"`
+	INT       int          `json:"int_stat"`
+	XP        int          `json:"xp"`
+	XPNext    int          `json:"xp_next"`
+	Status    string       `json:"status"`
 	Spells    []SpellState `json:"spells,omitempty"`
 	Abilities []string     `json:"abilities,omitempty"`
 }
@@ -172,9 +174,9 @@ type EnemyState struct {
 // CombatActionEntry carries structured metadata for a single combat log line.
 // Sent alongside combat_log so the client can drive animations without parsing text.
 type CombatActionEntry struct {
-	Kind       string `json:"kind"`                     // attack, spell, ability, heal, item, counter, info
-	Element    string `json:"element,omitempty"`         // fire, ice, lightning, holy, dark, none
-	DamageType string `json:"damage_type,omitempty"`     // physical, magical
+	Kind       string `json:"kind"`                  // attack, spell, ability, heal, item, counter, info
+	Element    string `json:"element,omitempty"`     // fire, ice, lightning, holy, dark, none
+	DamageType string `json:"damage_type,omitempty"` // physical, magical
 	ActorID    int    `json:"actor_id,omitempty"`
 	ActorName  string `json:"actor_name,omitempty"`
 	TargetID   int    `json:"target_id,omitempty"`
@@ -192,6 +194,7 @@ type QuestState struct {
 	Completed    bool             `json:"completed"`
 	IsPromotion  bool             `json:"is_promotion,omitempty"`
 	IsSideQuest  bool             `json:"is_side_quest,omitempty"`
+	Hidden       bool             `json:"hidden,omitempty"`
 	GiverName    string           `json:"giver_name,omitempty"`
 	GiverNodeID  string           `json:"giver_node_id,omitempty"`
 	TargetName   string           `json:"target_name,omitempty"`
@@ -206,30 +209,31 @@ type QuestRewardState struct {
 
 // Game holds the live state of one game session.
 type Game struct {
-	id         string
-	gd         *gamedata.GameData
-	rng        *rand.Rand
-	rngSeed    int64
-	loc        *locality.Locality
-	walk       *locality.WalkResult
-	tileMap    *locality.TileMap
-	party      []*character.Character
-	spellBooks map[string]*magic.SpellBook
-	inv        *inventory.Inventory
-	quests     []generator.Quest
-	currentQ   int
-	phase      string // world, combat, quest_complete, victory, defeat
-	enemies    []*combat.Combatant
-	combatLog     []string
-	combatActions []CombatActionEntry
-	message    string
-	diff       balance.Difficulty
-	xpBefore    []int // snapshot before combat for victory animation
-	levelBefore []int // snapshot before combat for victory animation
-	discovered map[string]bool // bestiary: monster IDs encountered
-	formation  string             // current encounter layout type
-	promotionOffered bool        // midpoint promotion has already fired
-	mu         sync.Mutex
+	id               string
+	gd               *gamedata.GameData
+	rng              *rand.Rand
+	rngSeed          int64
+	loc              *locality.Locality
+	walk             *locality.WalkResult
+	tileMap          *locality.TileMap
+	party            []*character.Character
+	spellBooks       map[string]*magic.SpellBook
+	inv              *inventory.Inventory
+	quests           []generator.Quest
+	currentQ         int
+	phase            string // world, combat, quest_complete, victory, defeat
+	enemies          []*combat.Combatant
+	combatLog        []string
+	combatActions    []CombatActionEntry
+	message          string
+	diff             balance.Difficulty
+	xpBefore         []int           // snapshot before combat for victory animation
+	levelBefore      []int           // snapshot before combat for victory animation
+	discovered       map[string]bool // bestiary: monster IDs encountered
+	visitedNodes     map[string]bool // node IDs the player has entered
+	formation        string          // current encounter layout type
+	promotionOffered bool            // midpoint promotion has already fired
+	mu               sync.Mutex
 }
 
 func (g *Game) State() GameState {
@@ -237,11 +241,11 @@ func (g *Game) State() GameState {
 	defer g.mu.Unlock()
 
 	state := GameState{
-		ID:        g.id,
-		Phase:     g.phase,
-		CurrentQ:  g.currentQ,
-		Gold:      g.inv.Gold,
-		Potions:   g.inv.Consumables["potion"],
+		ID:            g.id,
+		Phase:         g.phase,
+		CurrentQ:      g.currentQ,
+		Gold:          g.inv.Gold,
+		Potions:       g.inv.Consumables["potion"],
 		Message:       g.message,
 		CombatLog:     g.combatLog,
 		CombatActions: g.combatActions,
@@ -272,7 +276,7 @@ func (g *Game) State() GameState {
 	}
 
 	for _, q := range g.quests {
-		state.Quests = append(state.Quests, QuestState{
+		qs := QuestState{
 			ID:           q.ID,
 			Name:         q.Name,
 			Description:  q.Description,
@@ -281,12 +285,25 @@ func (g *Game) State() GameState {
 			Completed:    q.Completed,
 			IsPromotion:  q.IsPromotion,
 			IsSideQuest:  q.IsSideQuest,
+			Hidden:       q.Hidden,
 			GiverName:    q.GiverName,
 			GiverNodeID:  q.GiverNodeID,
 			TargetName:   q.TargetName,
 			TargetNodeID: q.TargetNodeID,
 			Reward:       QuestRewardState{XP: q.Reward.XP, Gold: q.Reward.Gold},
-		})
+		}
+		if q.Hidden {
+			qs.Name = "???"
+			qs.Description = "This quest has not yet been revealed."
+			qs.GiverName = ""
+			qs.TargetName = ""
+			qs.Reward = QuestRewardState{}
+		}
+		state.Quests = append(state.Quests, qs)
+	}
+
+	if len(g.inv.KeyItems) > 0 {
+		state.KeyItems = g.inv.KeyItems
 	}
 
 	return state
@@ -444,7 +461,15 @@ func (g *Game) stateUnlocked() GameState {
 		state.Formation = g.formation
 	}
 	for _, q := range g.quests {
-		state.Quests = append(state.Quests, QuestState{Name: q.Name, Description: q.Description, Act: q.Act, Completed: q.Completed})
+		qs := QuestState{Name: q.Name, Description: q.Description, Act: q.Act, Completed: q.Completed, Hidden: q.Hidden}
+		if q.Hidden {
+			qs.Name = "???"
+			qs.Description = "This quest has not yet been revealed."
+		}
+		state.Quests = append(state.Quests, qs)
+	}
+	if len(g.inv.KeyItems) > 0 {
+		state.KeyItems = g.inv.KeyItems
 	}
 	return state
 }

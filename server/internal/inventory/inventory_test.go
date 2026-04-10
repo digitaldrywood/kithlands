@@ -139,6 +139,51 @@ func TestUseConsumable(t *testing.T) {
 	}
 }
 
+func TestKeyItemMethods(t *testing.T) {
+	inv := inventory.New()
+
+	// Initially empty
+	if inv.HasKeyItem("strange_coin") {
+		t.Error("new inventory should not have strange_coin")
+	}
+
+	// Add
+	inv.AddKeyItem("strange_coin")
+	if !inv.HasKeyItem("strange_coin") {
+		t.Error("should have strange_coin after AddKeyItem")
+	}
+
+	// Idempotent add
+	inv.AddKeyItem("strange_coin")
+	count := 0
+	for _, k := range inv.KeyItems {
+		if k == "strange_coin" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("duplicate add: got %d entries, want 1", count)
+	}
+
+	// Multiple items
+	inv.AddKeyItem("ancient_ring")
+	if !inv.HasKeyItem("ancient_ring") {
+		t.Error("should have ancient_ring")
+	}
+
+	// Remove
+	inv.RemoveKeyItem("strange_coin")
+	if inv.HasKeyItem("strange_coin") {
+		t.Error("should not have strange_coin after RemoveKeyItem")
+	}
+	if !inv.HasKeyItem("ancient_ring") {
+		t.Error("ancient_ring should still be present")
+	}
+
+	// Remove nonexistent is safe
+	inv.RemoveKeyItem("nonexistent")
+}
+
 func TestWeaponSwapReturnsPrevious(t *testing.T) {
 	gd := loadTestData(t)
 	inv := inventory.New()

@@ -969,5 +969,21 @@
       "buy_price": 50,
       "sell_price": 25
     }
+  ],
+  "key_items": [
+    {
+      "id": "strange_coin",
+      "name": "Strange Coin",
+      "description": "A coin of unknown origin. It hums faintly.",
+      "buy_price": 5,
+      "sell_price": 1
+    },
+    {
+      "id": "ancient_ring",
+      "name": "Ancient Ring of Power",
+      "description": "A ring that radiates ancient energy. Worth a fortune to the right buyer.",
+      "buy_price": 0,
+      "sell_price": 5000
+    }
   ]
 }

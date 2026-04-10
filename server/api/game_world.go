@@ -6,6 +6,7 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/balance"
 	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/combat"
+	"github.com/digitaldrywood/kithlands/internal/locality"
 )
 
 func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
@@ -46,6 +47,30 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 		}
 
 	case "quest_advance":
+		// Track node visit for soft prerequisites and Strange Coin
+		if req.NodeID != "" {
+			if g.visitedNodes == nil {
+				g.visitedNodes = make(map[string]bool)
+			}
+			g.visitedNodes[req.NodeID] = true
+
+			// Check soft prerequisites: reveal hidden quests
+			for i := range g.quests {
+				if g.quests[i].Hidden && g.quests[i].SoftPrereq == req.NodeID {
+					g.quests[i].Hidden = false
+					g.message += fmt.Sprintf("A hidden quest has been revealed: %s\n", g.quests[i].Name)
+				}
+			}
+
+			// Strange Coin: opens hidden door at natural/wilderness nodes
+			node := g.loc.NodeByID(req.NodeID)
+			if node != nil && node.Kind == locality.NodeNatural && g.inv.HasKeyItem("strange_coin") {
+				g.inv.RemoveKeyItem("strange_coin")
+				g.inv.AddKeyItem("ancient_ring")
+				g.message += "The Strange Coin vibrates... A hidden passage opens!\nFound: Ancient Ring of Power!\n"
+			}
+		}
+
 		// Player entered a quest-relevant location
 		if g.currentQ >= len(g.quests) {
 			g.phase = "victory"

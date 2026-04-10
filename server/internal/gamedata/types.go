@@ -112,6 +112,15 @@ type ItemsData struct {
 	Shields     []Shield     `json:"shields"`
 	Helmets     []Helmet     `json:"helmets"`
 	Consumables []Consumable `json:"consumables"`
+	KeyItems    []KeyItem    `json:"key_items"`
+}
+
+type KeyItem struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	BuyPrice    int    `json:"buy_price"`
+	SellPrice   int    `json:"sell_price"`
 }
 
 type Weapon struct {
@@ -182,9 +191,9 @@ type SpellsData struct {
 }
 
 type ChargeTable struct {
-	Description      string         `json:"description"`
-	Table            map[string][]int `json:"table"`
-	MaxSpellsPerLvl  int            `json:"max_spells_per_level"`
+	Description     string           `json:"description"`
+	Table           map[string][]int `json:"table"`
+	MaxSpellsPerLvl int              `json:"max_spells_per_level"`
 }
 
 type Spell struct {
@@ -206,23 +215,23 @@ type Spell struct {
 // Monsters
 
 type Monster struct {
-	ID              string        `json:"id"`
-	Name            string        `json:"name"`
-	Tier            int           `json:"tier"`
-	Size            string        `json:"size"` // small, medium, large, boss
-	IsBoss          bool          `json:"is_boss"`
-	Stats           MonsterStats  `json:"stats"`
-	HP              int           `json:"hp"`
-	ArmorAbsorb     int           `json:"armor_absorb"`
-	XPReward        int           `json:"xp_reward"`
-	GoldReward      int           `json:"gold_reward"`
-	Weaknesses      []string      `json:"weaknesses"`
-	Resistances     []string      `json:"resistances"`
-	Absorbs         []string      `json:"absorbs"`
-	Drops           []Drop        `json:"drops"`
-	EncounterWeight int           `json:"encounter_weight"`
-	MinGroup        int           `json:"min_group"`
-	MaxGroup        int           `json:"max_group"`
+	ID              string       `json:"id"`
+	Name            string       `json:"name"`
+	Tier            int          `json:"tier"`
+	Size            string       `json:"size"` // small, medium, large, boss
+	IsBoss          bool         `json:"is_boss"`
+	Stats           MonsterStats `json:"stats"`
+	HP              int          `json:"hp"`
+	ArmorAbsorb     int          `json:"armor_absorb"`
+	XPReward        int          `json:"xp_reward"`
+	GoldReward      int          `json:"gold_reward"`
+	Weaknesses      []string     `json:"weaknesses"`
+	Resistances     []string     `json:"resistances"`
+	Absorbs         []string     `json:"absorbs"`
+	Drops           []Drop       `json:"drops"`
+	EncounterWeight int          `json:"encounter_weight"`
+	MinGroup        int          `json:"min_group"`
+	MaxGroup        int          `json:"max_group"`
 }
 
 type MonsterStats struct {

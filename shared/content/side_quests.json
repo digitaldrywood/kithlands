@@ -448,5 +448,22 @@
     "rewards": ["permanent_stat_boost", "gold_1000"],
     "blocks": [],
     "requires": []
+  },
+  {
+    "id": "sq_forgotten_shrine",
+    "name": "The Forgotten Shrine",
+    "category": "side_quest",
+    "flavor_compatibility": ["conquest"],
+    "locality_requirements": [],
+    "act": 2,
+    "difficulty_tier": 2,
+    "rarity": "rare",
+    "tags": ["mystical", "hidden", "sequence_break"],
+    "template": "Q03",
+    "rewards": ["unique_item_tier3", "xp_bonus_medium"],
+    "blocks": [],
+    "requires": [],
+    "hidden": true,
+    "soft_prereq": "_far_node"
   }
 ]
