@@ -16,7 +16,7 @@ import (
 func testServer(t *testing.T) (*api.Server, *httptest.Server) {
 	t.Helper()
 	gd := gamedata.Load("../../shared")
-	srv := api.NewServer(nil, gd) // nil DB -- game manager doesn't need it
+	srv := api.NewServer(nil, gd, "../../shared") // nil DB -- game manager doesn't need it
 
 	mux := http.NewServeMux()
 	// Register routes without auth middleware for testing

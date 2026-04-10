@@ -42,7 +42,7 @@ func main() {
 	})
 
 	// API routes
-	server := api.NewServer(pool, gd)
+	server := api.NewServer(pool, gd, cfg.SharedDir)
 	server.RegisterRoutes(mux)
 
 	// CORS middleware for Phaser client
