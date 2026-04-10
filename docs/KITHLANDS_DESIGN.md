@@ -524,11 +524,13 @@ Hit% is partly a derived stat (gained per level by class) and partly equipment-d
 
 FF1's XP curve is famous for getting essentially flat after level 29 (~32,800 XP per level forever). Kithlands uses a similar shape but caps at level 50 instead of 99 to keep campaigns short and replayable.
 
-**XP-to-next-level formula:**
+**XP-to-next-level formula (approximate):**
 
 ```
 xp(level) = floor(40 * level^1.6) + 30
 ```
+
+The formula above is an approximation. The reference table below is authoritative; intermediate levels are linearly interpolated between sample points. See `shared/stats.json` for the full 50-level table.
 
 Resulting curve:
 

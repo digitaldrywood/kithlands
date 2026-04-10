@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 // GameData holds all loaded game data from shared/.
@@ -110,6 +111,17 @@ func (gd *GameData) validate() {
 
 	if gd.Stats.XPCurve.MaxLevel <= 0 {
 		panic("gamedata: stats.json xp_curve.max_level must be > 0")
+	}
+	prev := 0
+	for lvl := 1; lvl <= gd.Stats.XPCurve.MaxLevel; lvl++ {
+		v, ok := gd.Stats.XPCurve.RefTable[strconv.Itoa(lvl)]
+		if !ok {
+			panic(fmt.Sprintf("gamedata: stats.json xp_curve.reference_table missing level %d", lvl))
+		}
+		if v <= prev {
+			panic(fmt.Sprintf("gamedata: stats.json xp_curve.reference_table not monotonic at level %d: %d <= %d", lvl, v, prev))
+		}
+		prev = v
 	}
 	if gd.Stats.Combat.BaseHitChance <= 0 {
 		panic("gamedata: stats.json combat.base_hit_chance must be > 0")
