@@ -286,6 +286,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 					c.XP += q.Reward.XP
 				}
 			}
+			g.checkLevelUps()
 			g.combatLog = append(g.combatLog, fmt.Sprintf("Quest complete: %s (+%d XP, +%d gold)", q.Name, q.Reward.XP, q.Reward.Gold))
 			g.restParty()
 			g.currentQ++

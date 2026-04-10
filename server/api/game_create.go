@@ -39,7 +39,8 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 	var loc *locality.Locality
 	if req.UseOSM && req.Lat != 0 && req.Lng != 0 {
 		var err error
-		loc, err = locality.BuildFromOSM(context.Background(), req.Lat, req.Lng, req.TownName)
+		radiusM := milesToMeters(req.RadiusMiles)
+		loc, err = locality.BuildFromOSM(context.Background(), req.Lat, req.Lng, radiusM, req.TownName)
 		if err != nil {
 			// Fall back to wizard if OSM fails
 			loc = nil
@@ -132,9 +133,16 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 	}
 
 	// Generate campaign
-	quests := generator.GenerateCampaign(loc, loc.Nodes[0].ID, rng)
-	walk := locality.Walk(loc, loc.Nodes[0].ID)
-	tileMap := locality.GenerateTileMap(loc, loc.Nodes[0].ID)
+	spawnID := loc.Nodes[0].ID
+	if req.SpawnNodeID != "" {
+		// Verify the spawn node exists
+		if n := loc.NodeByID(req.SpawnNodeID); n != nil {
+			spawnID = req.SpawnNodeID
+		}
+	}
+	quests := generator.GenerateCampaign(loc, spawnID, rng)
+	walk := locality.Walk(loc, spawnID)
+	tileMap := locality.GenerateTileMap(loc, spawnID)
 
 	game := &Game{
 		id:         fmt.Sprintf("game_%d", time.Now().UnixNano()),
@@ -165,6 +173,16 @@ func (gm *GameManager) GetGame(id string) *Game {
 	gm.mu.RLock()
 	defer gm.mu.RUnlock()
 	return gm.games[id]
+}
+
+func milesToMeters(miles float64) int {
+	if miles <= 0 {
+		return 2400 // default ~1.5 miles
+	}
+	if miles > 5 {
+		miles = 5 // cap at 5 miles (~8km)
+	}
+	return int(miles * 1609.34)
 }
 
 func buildLocality(req WizardRequest) *locality.Locality {

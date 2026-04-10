@@ -229,6 +229,41 @@ func TestAttacksPerTurn(t *testing.T) {
 	}
 }
 
+func TestMultiLevelUp(t *testing.T) {
+	gd := loadTestData(t)
+	warrior := gd.ClassByID("warrior")
+	curve := &gd.Stats.XPCurve
+
+	c := character.New("Hero", "warrior", warrior)
+	rng := rand.New(rand.NewPCG(42, 0))
+
+	// Level 1 threshold: 70, Level 2 threshold: 151 => total 221 consumed for 2 level-ups
+	c.XP = 300
+
+	levelsGained := 0
+	for character.CanLevelUp(c, curve) {
+		if err := character.LevelUp(c, warrior, &gd.Stats, rng); err != nil {
+			t.Fatalf("LevelUp error at level %d: %v", c.Level, err)
+		}
+		levelsGained++
+	}
+
+	if c.Level != 3 {
+		t.Errorf("level: got %d, want 3", c.Level)
+	}
+	if levelsGained != 2 {
+		t.Errorf("levels gained: got %d, want 2", levelsGained)
+	}
+	// 300 - 70 (lv1->2) - 151 (lv2->3) = 79
+	if c.XP != 79 {
+		t.Errorf("remaining XP: got %d, want 79", c.XP)
+	}
+	// Should not be able to level again (need 259 for lv3->4)
+	if character.CanLevelUp(c, curve) {
+		t.Errorf("should not be able to level up with %d XP (need %d)", c.XP, character.XPToNextLevel(c.Level, curve))
+	}
+}
+
 func TestCanActWithStatus(t *testing.T) {
 	gd := loadTestData(t)
 	warrior := gd.ClassByID("warrior")

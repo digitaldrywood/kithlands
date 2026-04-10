@@ -161,6 +161,29 @@ func TestNewGame(t *testing.T) {
 	t.Logf("Game created: %s, %d quests, %d party members", gs["id"], len(quests), len(party))
 }
 
+func TestNewGameWithSpawnNodeID(t *testing.T) {
+	_, ts := testServer(t)
+	defer ts.Close()
+
+	gs := post(t, ts.URL+"/api/game/new", api.NewGameRequest{
+		TownName:    "Cadott",
+		People:      []api.WizardPersonReq{{Name: "Bob", Relation: "friendly"}},
+		Places:      []string{"School"},
+		BigBuilding: "Town Hall",
+		Party:       []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
+		Difficulty:  "normal",
+		SpawnNodeID: "central",
+		RadiusMiles: 2.0,
+	})
+
+	if gs["error"] != nil {
+		t.Fatalf("new game error: %v", gs["error"])
+	}
+	if gs["phase"] != "world" {
+		t.Errorf("phase: got %v, want world", gs["phase"])
+	}
+}
+
 func TestCombatEncounter(t *testing.T) {
 	_, ts := testServer(t)
 	defer ts.Close()
@@ -568,6 +591,111 @@ func TestFullCampaign(t *testing.T) {
 
 	t.Logf("Reached %d rounds, phase: %v, quest: %v/%d",
 		rounds, gs["phase"], gs["current_quest"], totalQuests)
+}
+
+func TestVictoryXPAnimationData(t *testing.T) {
+	_, ts := testServer(t)
+	defer ts.Close()
+
+	gs := post(t, ts.URL+"/api/game/new", api.NewGameRequest{
+		TownName: "Test", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
+		Places: []string{"X"}, BigBuilding: "Hall",
+		Party:  []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}, {Name: "Mage", ClassID: "cinder"}},
+		Difficulty: "easy",
+	})
+	gameID := gs["id"].(string)
+
+	// Trigger encounter
+	gs = post(t, ts.URL+"/api/game/"+gameID+"/action", api.GameActionRequest{Type: "encounter"})
+	if gs["phase"] != "combat" {
+		t.Fatalf("expected combat, got %v", gs["phase"])
+	}
+
+	// Verify xp_before and level_before are set
+	xpBefore, ok := gs["xp_before"]
+	if !ok || xpBefore == nil {
+		t.Fatal("xp_before missing from encounter state")
+	}
+	levelBefore, ok := gs["level_before"]
+	if !ok || levelBefore == nil {
+		t.Fatal("level_before missing from encounter state")
+	}
+
+	xpBeforeArr := xpBefore.([]any)
+	levelBeforeArr := levelBefore.([]any)
+	if len(xpBeforeArr) != 2 {
+		t.Errorf("xp_before length: got %d, want 2", len(xpBeforeArr))
+	}
+	if len(levelBeforeArr) != 2 {
+		t.Errorf("level_before length: got %d, want 2", len(levelBeforeArr))
+	}
+
+	// Fight until combat ends (victory or defeat)
+	for i := 0; i < 50; i++ {
+		if gs["phase"] != "combat" {
+			break
+		}
+		enemies := gs["enemies"].([]any)
+		if len(enemies) == 0 {
+			break
+		}
+		enemyID := int(enemies[0].(map[string]any)["id"].(float64))
+		gs = post(t, ts.URL+"/api/game/"+gameID+"/action", api.GameActionRequest{
+			Type: "combat_round",
+			Actions: []api.MemberActionReq{
+				{Slot: 0, Type: "attack", TargetID: enemyID},
+				{Slot: 1, Type: "attack", TargetID: enemyID},
+			},
+		})
+	}
+
+	phase := gs["phase"].(string)
+	if phase == "defeat" {
+		t.Log("Party was defeated — skipping animation data checks")
+		return
+	}
+
+	// After victory, check xp_thresholds
+	thresholds, ok := gs["xp_thresholds"]
+	if !ok || thresholds == nil {
+		t.Fatal("xp_thresholds missing from victory state")
+	}
+	thresholdsArr := thresholds.([]any)
+	if len(thresholdsArr) != 2 {
+		t.Fatalf("xp_thresholds length: got %d, want 2", len(thresholdsArr))
+	}
+
+	// Each character should have at least one threshold (their current level's)
+	for i, th := range thresholdsArr {
+		charThresholds := th.([]any)
+		if len(charThresholds) == 0 {
+			t.Errorf("party[%d] xp_thresholds is empty", i)
+		}
+		// First threshold should be positive
+		if charThresholds[0].(float64) <= 0 {
+			t.Errorf("party[%d] first threshold should be positive, got %v", i, charThresholds[0])
+		}
+	}
+
+	// Verify level_before <= current level for each character
+	party := gs["party"].([]any)
+	for i, p := range party {
+		pm := p.(map[string]any)
+		currentLevel := int(pm["level"].(float64))
+		prevLevel := int(levelBeforeArr[i].(float64))
+		if prevLevel > currentLevel {
+			t.Errorf("party[%d]: level_before (%d) > current level (%d)", i, prevLevel, currentLevel)
+		}
+		// Number of thresholds should be (currentLevel - prevLevel + 1)
+		charThresholds := thresholdsArr[i].([]any)
+		expectedLen := currentLevel - prevLevel + 1
+		if len(charThresholds) != expectedLen {
+			t.Errorf("party[%d]: xp_thresholds length: got %d, want %d (levels %d->%d)",
+				i, len(charThresholds), expectedLen, prevLevel, currentLevel)
+		}
+	}
+
+	t.Logf("Victory XP data: xp_before=%v level_before=%v thresholds=%v", xpBefore, levelBefore, thresholds)
 }
 
 func contains(s, sub string) bool {

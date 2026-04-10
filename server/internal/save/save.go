@@ -23,6 +23,8 @@ type SaveState struct {
 	UserID       string          `json:"user_id"`
 	LocalityID   string          `json:"locality_id"`
 	Name         string          `json:"name"`
+	SaveType     string          `json:"save_type"`      // "manual" or "autosave"
+	TriggerEvent string          `json:"trigger_event"`   // e.g. "quest_complete", "inn_rest"
 	Flavor       string          `json:"flavor"`
 	Difficulty   string          `json:"difficulty"`
 	SpawnNodeID  string          `json:"spawn_node_id"`
@@ -38,11 +40,17 @@ type SaveState struct {
 }
 
 func (s *Service) Create(ctx context.Context, state *SaveState) error {
+	saveType := state.SaveType
+	if saveType == "" {
+		saveType = "manual"
+	}
 	_, err := s.db.Exec(ctx,
-		`INSERT INTO saves (id, user_id, locality_id, name, flavor, difficulty, spawn_node_id,
+		`INSERT INTO saves (id, user_id, locality_id, name, save_type, trigger_event,
+		 flavor, difficulty, spawn_node_id,
 		 party, inventory, quest_state, world_state, rng_seed)
-		 VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-		state.UserID, state.LocalityID, state.Name, state.Flavor, state.Difficulty,
+		 VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+		state.UserID, state.LocalityID, state.Name, saveType, state.TriggerEvent,
+		state.Flavor, state.Difficulty,
 		state.SpawnNodeID, state.Party, state.Inventory, state.QuestState, state.WorldState, state.RNGSeed)
 	if err != nil {
 		return fmt.Errorf("creating save: %w", err)
@@ -66,11 +74,13 @@ func (s *Service) Update(ctx context.Context, saveID string, state *SaveState) e
 func (s *Service) Load(ctx context.Context, saveID, userID string) (*SaveState, error) {
 	var state SaveState
 	err := s.db.QueryRow(ctx,
-		`SELECT id, user_id, locality_id, name, flavor, difficulty, spawn_node_id,
+		`SELECT id, user_id, locality_id, name, save_type, trigger_event,
+		 flavor, difficulty, spawn_node_id,
 		 party, inventory, quest_state, world_state, rng_seed,
 		 play_time_seconds, created_at, updated_at, completed_at
 		 FROM saves WHERE id = $1 AND user_id = $2`, saveID, userID).
 		Scan(&state.ID, &state.UserID, &state.LocalityID, &state.Name,
+			&state.SaveType, &state.TriggerEvent,
 			&state.Flavor, &state.Difficulty, &state.SpawnNodeID,
 			&state.Party, &state.Inventory, &state.QuestState, &state.WorldState,
 			&state.RNGSeed, &state.PlayTimeSec, &state.CreatedAt, &state.UpdatedAt,
@@ -83,7 +93,8 @@ func (s *Service) Load(ctx context.Context, saveID, userID string) (*SaveState, 
 
 func (s *Service) ListByUser(ctx context.Context, userID string) ([]SaveState, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT id, user_id, locality_id, name, flavor, difficulty, spawn_node_id,
+		`SELECT id, user_id, locality_id, name, save_type, trigger_event,
+		 flavor, difficulty, spawn_node_id,
 		 party, inventory, quest_state, world_state, rng_seed,
 		 play_time_seconds, created_at, updated_at, completed_at
 		 FROM saves WHERE user_id = $1 ORDER BY updated_at DESC`, userID)
@@ -96,6 +107,7 @@ func (s *Service) ListByUser(ctx context.Context, userID string) ([]SaveState, e
 	for rows.Next() {
 		var s SaveState
 		err := rows.Scan(&s.ID, &s.UserID, &s.LocalityID, &s.Name,
+			&s.SaveType, &s.TriggerEvent,
 			&s.Flavor, &s.Difficulty, &s.SpawnNodeID,
 			&s.Party, &s.Inventory, &s.QuestState, &s.WorldState,
 			&s.RNGSeed, &s.PlayTimeSec, &s.CreatedAt, &s.UpdatedAt,
@@ -106,4 +118,19 @@ func (s *Service) ListByUser(ctx context.Context, userID string) ([]SaveState, e
 		saves = append(saves, s)
 	}
 	return saves, nil
+}
+
+// DeleteOldestAutosaves removes the oldest autosaves for a user, keeping at most keepN.
+func (s *Service) DeleteOldestAutosaves(ctx context.Context, userID string, keepN int) error {
+	_, err := s.db.Exec(ctx,
+		`DELETE FROM saves WHERE id IN (
+			SELECT id FROM saves
+			WHERE user_id = $1 AND save_type = 'autosave'
+			ORDER BY created_at DESC
+			OFFSET $2
+		)`, userID, keepN)
+	if err != nil {
+		return fmt.Errorf("deleting oldest autosaves: %w", err)
+	}
+	return nil
 }

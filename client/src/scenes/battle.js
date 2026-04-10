@@ -12,98 +12,6 @@ const ENEMY_COLORS = {
 const CLASS_SPRITES = {
   'warrior': 'warrior', 'cinder': 'cinder', 'mender': 'mender', 'rogue': 'rogue',
 };
-const SIZE_PX = { small: 48, medium: 64, large: 96, boss: 128 };
-
-function computeFormationPositions(enemies, layout) {
-  const zoneX = 80, zoneW = 450, centerX = zoneX + zoneW / 2, centerY = 230;
-
-  // Helper: lay out a list horizontally centered in the zone
-  function linePositions(list, y) {
-    const spacing = Math.min(130, zoneW / Math.max(list.length, 1));
-    const sx = zoneX + (zoneW - list.length * spacing) / 2;
-    return list.map((_, i) => ({ x: sx + i * spacing, y }));
-  }
-
-  if (layout === 'vshape') {
-    const front = [], back = [], frontIdx = [], backIdx = [];
-    enemies.forEach((e, i) => {
-      if (e.size === 'small') { front.push(e); frontIdx.push(i); }
-      else { back.push(e); backIdx.push(i); }
-    });
-    if (front.length === 0 || back.length === 0) return linePositions(enemies, centerY);
-    const fp = linePositions(front, 260);
-    const bp = linePositions(back, 200);
-    const positions = new Array(enemies.length);
-    frontIdx.forEach((idx, i) => { positions[idx] = fp[i]; });
-    backIdx.forEach((idx, i) => { positions[idx] = bp[i]; });
-    return positions;
-  }
-
-  if (layout === 'triangle') {
-    // Find the largest enemy as the anchor
-    const sizeOrder = { boss: 4, large: 3, medium: 2, small: 1 };
-    let bigIdx = 0;
-    enemies.forEach((e, i) => {
-      if ((sizeOrder[e.size] || 1) > (sizeOrder[enemies[bigIdx].size] || 1)) bigIdx = i;
-    });
-    if (enemies.length < 3) return linePositions(enemies, centerY);
-    const positions = new Array(enemies.length);
-    positions[bigIdx] = { x: centerX, y: 210 };
-    const flankers = enemies.filter((_, i) => i !== bigIdx);
-    const fp = linePositions(flankers, 265);
-    let fi = 0;
-    for (let i = 0; i < enemies.length; i++) {
-      if (i !== bigIdx) { positions[i] = fp[fi++]; }
-    }
-    return positions;
-  }
-
-  if (layout === 'boss_minions') {
-    const bossIdx = enemies.findIndex(e => e.size === 'boss');
-    if (bossIdx === -1) return linePositions(enemies, centerY);
-    const positions = new Array(enemies.length);
-    positions[bossIdx] = { x: 185, y: 220 };
-    const minions = [];
-    for (let i = 0; i < enemies.length; i++) { if (i !== bossIdx) minions.push(i); }
-    const mCount = minions.length;
-    if (mCount === 0) return positions;
-    const mSpacing = Math.min(60, 180 / Math.max(mCount, 1));
-    const mStartY = 220 - (mCount - 1) * mSpacing / 2;
-    minions.forEach((idx, i) => { positions[idx] = { x: 420, y: mStartY + i * mSpacing }; });
-    return positions;
-  }
-
-  if (layout === 'scattered') {
-    const candidates = [];
-    for (let row = 0; row < 3; row++) {
-      for (let col = 0; col < 4; col++) {
-        candidates.push({ x: 100 + col * 110, y: 180 + row * 70 });
-      }
-    }
-    // Deterministic shuffle based on enemy count + HP totals for per-encounter variation
-    let seed = enemies.length;
-    for (const e of enemies) { seed = seed * 31 + (e.max_hp || 0) + (e.id || 0); }
-    seed = Math.abs(seed) | 0;
-    for (let i = candidates.length - 1; i > 0; i--) {
-      const j = ((seed + 1) * (i + 1) * 2654435761 >>> 0) % (i + 1);
-      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
-    }
-    return enemies.map((_, i) => candidates[i % candidates.length]);
-  }
-
-  if (layout === 'rows') {
-    if (enemies.length <= 2) return linePositions(enemies, centerY);
-    const half = Math.ceil(enemies.length / 2);
-    const front = enemies.slice(0, half);
-    const back = enemies.slice(half);
-    const fp = linePositions(front, 265);
-    const bp = linePositions(back, 195);
-    return [...fp, ...bp];
-  }
-
-  // Default: line
-  return linePositions(enemies, centerY);
-}
 
 export class BattleScene extends Phaser.Scene {
   constructor() { super('Battle'); }
@@ -111,6 +19,9 @@ export class BattleScene extends Phaser.Scene {
   init(data) { this.gameState = data.gameState; }
 
   create() {
+    // Clear previous keyboard listeners to prevent duplicates on scene restart
+    this.input.keyboard.removeAllListeners();
+
     this.animating = false;
     this.enemySprites = {};
     this.partySprites = {};
@@ -123,6 +34,16 @@ export class BattleScene extends Phaser.Scene {
     this.memberActions = []; // array of {slot, type, target_id, spell_id}
     this.currentMemberIdx = 0;
     this.livingMembers = [];
+
+    // Keyboard targeting state
+    this.targetingMode = false;
+    this.selectedTargetIdx = 0;
+    this.livingEnemies = [];
+    this.enemyNumbers = [];
+    this.targetHighlight = null;
+    this.targetHighlightTween = null;
+    this.pickerOverlay = null;
+    this.pickerItems = [];
 
     const gs = this.gameState;
     if (!gs || gs.phase !== 'combat' || !gs.enemies?.length) {
@@ -139,8 +60,8 @@ export class BattleScene extends Phaser.Scene {
 
     initAudio(this);
 
-    // Play battle music (boss if any enemy has boss size, normal otherwise)
-    const isBoss = gs.enemies.some(e => e.size === 'boss');
+    // Play battle music (boss if Dark Knight, normal otherwise)
+    const isBoss = gs.enemies.some(e => e.name === 'Dark Knight');
     playMusic(isBoss ? 'music_boss' : 'music_battle');
 
     // Background
@@ -151,18 +72,108 @@ export class BattleScene extends Phaser.Scene {
     this.drawParty(gs);
     this.drawLog(gs);
 
-    // Boss entry effect
-    if (isBoss) {
-      this.cameras.main.flash(500, 80, 0, 0);
-      this.cameras.main.shake(300, 0.012);
-    }
-
     this.promptText = this.add.text(400, 340, '', {
       fontSize: '11px', color: '#ffff44', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(5);
 
+    this.setupKeyboard();
+
     // Show first member's turn
     this.showCurrentMemberTurn();
+  }
+
+  setupKeyboard() {
+    // Action hotkeys (A/S/I/F)
+    this.input.keyboard.on('keydown-A', () => {
+      if (this.animating || this.targetingMode || this.pickerOverlay) return;
+      if (this.currentMemberIdx >= this.livingMembers.length) return;
+      const slot = this.livingMembers[this.currentMemberIdx];
+      const member = this.gameState.party[slot];
+      this.pendingAction = 'attack';
+      this.enterTargetingMode();
+      this.promptText.setText(`${member.name}: Select a target to attack!`).setColor('#ff4444');
+    });
+
+    this.input.keyboard.on('keydown-S', () => {
+      if (this.animating || this.targetingMode || this.pickerOverlay) return;
+      if (this.currentMemberIdx >= this.livingMembers.length) return;
+      const slot = this.livingMembers[this.currentMemberIdx];
+      this.showSpellPicker(slot);
+    });
+
+    this.input.keyboard.on('keydown-I', () => {
+      if (this.animating || this.targetingMode || this.pickerOverlay) return;
+      if (this.currentMemberIdx >= this.livingMembers.length) return;
+      const slot = this.livingMembers[this.currentMemberIdx];
+      this.showItemPicker(slot);
+    });
+
+    this.input.keyboard.on('keydown-F', () => {
+      if (this.animating || this.targetingMode || this.pickerOverlay) return;
+      if (this.currentMemberIdx >= this.livingMembers.length) return;
+      this.doFlee();
+    });
+
+    // Number keys 1-9 for target/picker selection
+    const numKeys = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
+    for (let n = 0; n < numKeys.length; n++) {
+      this.input.keyboard.on(`keydown-${numKeys[n]}`, () => {
+        if (this.animating) return;
+        if (this.pickerOverlay && this.pickerItems.length > 0) {
+          if (n < this.pickerItems.length) {
+            this.pickerItems[n].action();
+          }
+          return;
+        }
+        if (this.targetingMode) {
+          // Match the displayed number (1-based position in full enemy list)
+          const enemies = this.gameState.enemies;
+          if (n < enemies.length && enemies[n].hp > 0) {
+            this.exitTargetingMode();
+            this.onEnemyClick(enemies[n].id);
+          }
+          return;
+        }
+      });
+    }
+
+    // Arrow keys to cycle targets
+    this.input.keyboard.on('keydown-LEFT', () => {
+      if (!this.targetingMode || this.livingEnemies.length === 0) return;
+      this.selectedTargetIdx = (this.selectedTargetIdx - 1 + this.livingEnemies.length) % this.livingEnemies.length;
+      this.updateTargetHighlight();
+    });
+
+    this.input.keyboard.on('keydown-RIGHT', () => {
+      if (!this.targetingMode || this.livingEnemies.length === 0) return;
+      this.selectedTargetIdx = (this.selectedTargetIdx + 1) % this.livingEnemies.length;
+      this.updateTargetHighlight();
+    });
+
+    // Enter to confirm target
+    this.input.keyboard.on('keydown-ENTER', () => {
+      if (this.targetingMode && this.livingEnemies.length > 0) {
+        const enemy = this.livingEnemies[this.selectedTargetIdx];
+        this.exitTargetingMode();
+        this.onEnemyClick(enemy.id);
+      }
+    });
+
+    // Escape to cancel
+    this.input.keyboard.on('keydown-ESC', () => {
+      if (this.pickerOverlay) {
+        this.closePicker();
+        return;
+      }
+      if (this.targetingMode) {
+        this.exitTargetingMode();
+        this.pendingAction = null;
+        const slot = this.livingMembers[this.currentMemberIdx];
+        const member = this.gameState.party[slot];
+        this.promptText.setText(`${member.name}'s turn -- choose an action`).setColor('#ffff44');
+        return;
+      }
+    });
   }
 
   showCurrentMemberTurn() {
@@ -190,12 +201,14 @@ export class BattleScene extends Phaser.Scene {
 
   drawEnemies(gs) {
     const enemies = gs.enemies;
-    const positions = computeFormationPositions(enemies, gs.formation || 'line');
+    const spacing = Math.min(130, 450 / Math.max(enemies.length, 1));
+    const sx = 80 + (450 - enemies.length * spacing) / 2;
+    this.enemyNumbers = [];
 
     for (let i = 0; i < enemies.length; i++) {
       const e = enemies[i];
-      const { x, y } = positions[i];
-      const sz = SIZE_PX[e.size] || SIZE_PX.small;
+      const x = sx + i * spacing, y = 240;
+      const sz = e.name === 'Dark Knight' ? 80 : 50;
 
       const key = ENEMY_SPRITES[e.name];
       let sprite;
@@ -217,6 +230,12 @@ export class BattleScene extends Phaser.Scene {
       this.add.text(x, y - sz / 2 - 18, e.name, {
         fontSize: '10px', color: '#ffffff', fontFamily: 'monospace',
       }).setOrigin(0.5);
+
+      // Number indicator for keyboard targeting
+      const numText = this.add.text(x, y + sz / 2 + 1, `${i + 1}`, {
+        fontSize: '10px', color: '#ffff44', fontFamily: 'monospace', fontStyle: 'bold',
+      }).setOrigin(0.5).setDepth(10).setAlpha(0.3);
+      this.enemyNumbers.push({ text: numText, enemyId: e.id });
 
       const bw = 65, pct = Math.max(0, e.hp / e.max_hp);
       this.add.rectangle(x, y + sz / 2 + 10, bw, 7, 0x333333);
@@ -298,11 +317,11 @@ export class BattleScene extends Phaser.Scene {
     const member = gs.party[slot];
     const hasSpells = member.spells?.length > 0 && member.spells.some(s => s.charges > 0);
 
-    const btns = [{ label: 'ATTACK', type: 'attack', color: '#ff4444' }];
-    if (hasSpells) btns.push({ label: 'SPELL', type: 'spell', color: '#8888ff' });
+    const btns = [{ label: '[A]TTACK', type: 'attack', color: '#ff4444' }];
+    if (hasSpells) btns.push({ label: '[S]PELL', type: 'spell', color: '#8888ff' });
     const hasItems = gs.potions > 0 || (gs.items && gs.items.some(i => i.id === 'phoenix_down'));
-    if (hasItems) btns.push({ label: 'ITEMS', type: 'item', color: '#44ff44' });
-    btns.push({ label: 'FLEE', type: 'flee', color: '#ffcc44' });
+    if (hasItems) btns.push({ label: '[I]TEMS', type: 'item', color: '#44ff44' });
+    btns.push({ label: '[F]LEE', type: 'flee', color: '#ffcc44' });
 
     const tw = btns.length * 145, sx = 400 - tw / 2 + 72;
     for (let i = 0; i < btns.length; i++) {
@@ -321,7 +340,8 @@ export class BattleScene extends Phaser.Scene {
         if (this.animating) return;
         if (b.type === 'attack') {
           this.pendingAction = 'attack';
-          this.promptText.setText(`${member.name}: Click an enemy to attack!`).setColor('#ff4444');
+          this.enterTargetingMode();
+          this.promptText.setText(`${member.name}: Select a target to attack!`).setColor('#ff4444');
         } else if (b.type === 'spell') {
           this.showSpellPicker(slot);
         } else if (b.type === 'item') {
@@ -336,6 +356,7 @@ export class BattleScene extends Phaser.Scene {
 
   onEnemyClick(enemyId) {
     if (this.animating) return;
+    if (this.targetingMode) this.exitTargetingMode();
     const slot = this.livingMembers[this.currentMemberIdx];
 
     if (this.pendingAction === 'attack') {
@@ -359,6 +380,74 @@ export class BattleScene extends Phaser.Scene {
     this.time.delayedCall(400, () => this.showCurrentMemberTurn());
   }
 
+  enterTargetingMode() {
+    this.targetingMode = true;
+    this.livingEnemies = this.gameState.enemies.filter(e => e.hp > 0);
+    this.selectedTargetIdx = 0;
+
+    // Brighten number indicators
+    for (const en of this.enemyNumbers) {
+      const isLiving = this.livingEnemies.some(e => e.id === en.enemyId);
+      en.text.setAlpha(isLiving ? 1.0 : 0.1);
+    }
+
+    this.updateTargetHighlight();
+  }
+
+  exitTargetingMode() {
+    this.targetingMode = false;
+    this.livingEnemies = [];
+
+    // Dim number indicators
+    for (const en of this.enemyNumbers) {
+      en.text.setAlpha(0.3);
+    }
+
+    // Remove highlight
+    if (this.targetHighlightTween) {
+      this.targetHighlightTween.stop();
+      this.targetHighlightTween = null;
+    }
+    if (this.targetHighlight) {
+      this.targetHighlight.destroy();
+      this.targetHighlight = null;
+    }
+  }
+
+  updateTargetHighlight() {
+    if (!this.targetingMode || this.livingEnemies.length === 0) return;
+
+    const enemy = this.livingEnemies[this.selectedTargetIdx];
+    const es = this.enemySprites[enemy.id];
+    if (!es) return;
+
+    // Remove old highlight
+    if (this.targetHighlightTween) {
+      this.targetHighlightTween.stop();
+      this.targetHighlightTween = null;
+    }
+    if (this.targetHighlight) {
+      this.targetHighlight.destroy();
+    }
+
+    // Create pulsing highlight around selected enemy
+    const sz = enemy.name === 'Dark Knight' ? 90 : 60;
+    this.targetHighlight = this.add.rectangle(es.x, es.y, sz, sz)
+      .setStrokeStyle(2, 0xffff44).setFillStyle(0xffff44, 0.1).setDepth(9);
+
+    this.targetHighlightTween = this.tweens.add({
+      targets: this.targetHighlight,
+      alpha: { from: 1, to: 0.3 },
+      duration: 500,
+      yoyo: true,
+      repeat: -1,
+    });
+
+    // Show the position number from the full enemy list (matches displayed number)
+    const fullIdx = this.gameState.enemies.findIndex(e => e.id === enemy.id);
+    this.promptText.setText(`Target: ${enemy.name} [${fullIdx + 1}]`);
+  }
+
   showSpellPicker(slot) {
     const gs = this.gameState;
     const member = gs.party[slot];
@@ -377,31 +466,39 @@ export class BattleScene extends Phaser.Scene {
       fontSize: '12px', color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51));
 
+    this.pickerItems = [];
     for (let i = 0; i < spells.length; i++) {
       const sp = spells[i];
       const y = 380 - h / 2 + 40 + i * 32;
       const row = this.add.rectangle(400, y, 280, 26, 0x222255)
         .setInteractive({ useHandCursor: true }).setDepth(51);
-      const txt = this.add.text(400, y, `${sp.name} (${sp.charges} charges)`, {
+      const txt = this.add.text(400, y, `${i + 1}. ${sp.name} (${sp.charges} charges)`, {
         fontSize: '11px', color: '#aaaaff', fontFamily: 'monospace',
       }).setOrigin(0.5).setDepth(52);
       ol.push(row, txt);
 
-      row.on('pointerover', () => { row.setFillStyle(0x3333aa); txt.setColor('#ffffff'); });
-      row.on('pointerout', () => { row.setFillStyle(0x222255); txt.setColor('#aaaaff'); });
-      row.on('pointerdown', () => {
-        ol.forEach(o => o.destroy());
+      const selectSpell = () => {
+        this.closePicker();
         this.pendingAction = 'spell';
         this.pendingSpellId = sp.id;
-        this.promptText.setText(`${member.name}: Cast ${sp.name} -- click a target!`).setColor('#8888ff');
-      });
+        this.enterTargetingMode();
+        this.promptText.setText(`${member.name}: Cast ${sp.name} -- select a target!`).setColor('#8888ff');
+      };
+
+      this.pickerItems.push({ action: selectSpell });
+
+      row.on('pointerover', () => { row.setFillStyle(0x3333aa); txt.setColor('#ffffff'); });
+      row.on('pointerout', () => { row.setFillStyle(0x222255); txt.setColor('#aaaaff'); });
+      row.on('pointerdown', selectSpell);
     }
 
-    const cancel = this.add.text(400, 380 + h / 2 - 15, '[ CANCEL ]', {
+    const cancel = this.add.text(400, 380 + h / 2 - 15, '[ CANCEL / ESC ]', {
       fontSize: '10px', color: '#888888', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51).setInteractive({ useHandCursor: true });
-    cancel.on('pointerdown', () => ol.forEach(o => o.destroy()));
+    cancel.on('pointerdown', () => this.closePicker());
     ol.push(cancel);
+
+    this.pickerOverlay = ol;
   }
 
   showItemPicker(slot) {
@@ -425,29 +522,36 @@ export class BattleScene extends Phaser.Scene {
       fontSize: '12px', color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51));
 
+    this.pickerItems = [];
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const y = 380 - h / 2 + 40 + i * 35;
       const row = this.add.rectangle(400, y, 280, 28, 0x224422)
         .setInteractive({ useHandCursor: true }).setDepth(51);
-      const txt = this.add.text(400, y, item.name, {
+      const txt = this.add.text(400, y, `${i + 1}. ${item.name}`, {
         fontSize: '11px', color: '#88ff88', fontFamily: 'monospace',
       }).setOrigin(0.5).setDepth(52);
       ol.push(row, txt);
 
+      const selectItem = () => {
+        this.closePicker();
+        this.showPartyTargetPicker(slot, item);
+      };
+
+      this.pickerItems.push({ action: selectItem });
+
       row.on('pointerover', () => { row.setFillStyle(0x336633); txt.setColor('#ffffff'); });
       row.on('pointerout', () => { row.setFillStyle(0x224422); txt.setColor('#88ff88'); });
-      row.on('pointerdown', () => {
-        ol.forEach(o => o.destroy());
-        this.showPartyTargetPicker(slot, item);
-      });
+      row.on('pointerdown', selectItem);
     }
 
-    const cancel = this.add.text(400, 380 + h / 2 - 12, '[ CANCEL ]', {
+    const cancel = this.add.text(400, 380 + h / 2 - 12, '[ CANCEL / ESC ]', {
       fontSize: '10px', color: '#888888', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51).setInteractive({ useHandCursor: true });
-    cancel.on('pointerdown', () => ol.forEach(o => o.destroy()));
+    cancel.on('pointerdown', () => this.closePicker());
     ol.push(cancel);
+
+    this.pickerOverlay = ol;
   }
 
   showPartyTargetPicker(slot, item) {
@@ -481,6 +585,7 @@ export class BattleScene extends Phaser.Scene {
       fontSize: '12px', color: '#ffffff', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51));
 
+    this.pickerItems = [];
     for (let i = 0; i < targets.length; i++) {
       const t = targets[i];
       const y = 350 - h / 2 + 45 + i * 40;
@@ -489,28 +594,42 @@ export class BattleScene extends Phaser.Scene {
 
       const row = this.add.rectangle(400, y, 300, 32, 0x224422)
         .setInteractive({ useHandCursor: true }).setDepth(51);
-      const txt = this.add.text(400, y, `${t.name} (${t.class_name}) - ${hpStr}`, {
+      const txt = this.add.text(400, y, `${i + 1}. ${t.name} (${t.class_name}) - ${hpStr}`, {
         fontSize: '11px', color: hpColor, fontFamily: 'monospace',
       }).setOrigin(0.5).setDepth(52);
       ol.push(row, txt);
 
-      row.on('pointerover', () => row.setFillStyle(0x336633));
-      row.on('pointerout', () => row.setFillStyle(0x224422));
-      row.on('pointerdown', () => {
-        ol.forEach(o => o.destroy());
+      const selectTarget = () => {
+        this.closePicker();
         this.recordAction(slot, {
           slot,
           type: item.id === 'phoenix_down' ? 'revive' : 'item',
           target_id: t.slot,
         });
-      });
+      };
+
+      this.pickerItems.push({ action: selectTarget });
+
+      row.on('pointerover', () => row.setFillStyle(0x336633));
+      row.on('pointerout', () => row.setFillStyle(0x224422));
+      row.on('pointerdown', selectTarget);
     }
 
-    const cancel = this.add.text(400, 350 + h / 2 - 12, '[ CANCEL ]', {
+    const cancel = this.add.text(400, 350 + h / 2 - 12, '[ CANCEL / ESC ]', {
       fontSize: '10px', color: '#888888', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(51).setInteractive({ useHandCursor: true });
-    cancel.on('pointerdown', () => ol.forEach(o => o.destroy()));
+    cancel.on('pointerdown', () => this.closePicker());
     ol.push(cancel);
+
+    this.pickerOverlay = ol;
+  }
+
+  closePicker() {
+    if (this.pickerOverlay) {
+      this.pickerOverlay.forEach(o => o.destroy());
+      this.pickerOverlay = null;
+    }
+    this.pickerItems = [];
   }
 
   async doFlee() {

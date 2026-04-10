@@ -39,6 +39,30 @@ type NewGameRequest struct {
 	UseOSM      bool              `json:"use_osm,omitempty"`
 	Lat         float64           `json:"lat,omitempty"`
 	Lng         float64           `json:"lng,omitempty"`
+	RadiusMiles float64           `json:"radius_miles,omitempty"`
+	SpawnNodeID string            `json:"spawn_node_id,omitempty"`
+}
+
+type OSMPreviewRequest struct {
+	Lat         float64 `json:"lat"`
+	Lng         float64 `json:"lng"`
+	RadiusMiles float64 `json:"radius_miles"`
+}
+
+type OSMPreviewNode struct {
+	ID         string   `json:"id"`
+	Name       string   `json:"name"`
+	Kind       string   `json:"kind"`
+	Lat        float64  `json:"lat"`
+	Lng        float64  `json:"lng"`
+	Tags       []string `json:"tags"`
+	Importance int      `json:"importance"`
+}
+
+type OSMPreviewResponse struct {
+	Nodes       []OSMPreviewNode `json:"nodes"`
+	RadiusMiles float64          `json:"radius_miles"`
+	Cached      bool             `json:"cached"`
 }
 
 type PartyMemberReq struct {
@@ -66,7 +90,9 @@ type MemberActionReq struct {
 type GameState struct {
 	ID        string              `json:"id"`
 	Phase     string              `json:"phase"` // world, combat, quest_complete, victory, defeat
-	XPBefore  []int               `json:"xp_before,omitempty"` // XP values before combat for victory animation
+	XPBefore     []int               `json:"xp_before,omitempty"`      // XP values before combat for victory animation
+	LevelBefore  []int               `json:"level_before,omitempty"`   // levels before combat for victory animation
+	XPThresholds [][]int             `json:"xp_thresholds,omitempty"` // per-character XP thresholds at each level crossed
 	Party     []PartyMemberState  `json:"party"`
 	Enemies   []EnemyState        `json:"enemies,omitempty"`
 	Formation string              `json:"formation,omitempty"`
@@ -163,7 +189,8 @@ type Game struct {
 	combatLog  []string
 	message    string
 	diff       balance.Difficulty
-	xpBefore   []int // snapshot before combat for victory animation
+	xpBefore    []int // snapshot before combat for victory animation
+	levelBefore []int // snapshot before combat for victory animation
 	discovered map[string]bool // bestiary: monster IDs encountered
 	formation  string             // current encounter layout type
 	mu         sync.Mutex
@@ -267,9 +294,21 @@ func (g *Game) ProcessAction(req GameActionRequest) (*GameState, error) {
 }
 
 func (g *Game) fillExtras(state *GameState) {
-	// XP before combat (for victory animation)
+	// XP/level before combat (for victory animation)
 	if len(g.xpBefore) > 0 {
 		state.XPBefore = g.xpBefore
+		state.LevelBefore = g.levelBefore
+		// Build per-character XP thresholds from pre-combat level through current level
+		state.XPThresholds = make([][]int, len(g.party))
+		for i, c := range g.party {
+			startLvl := c.Level
+			if i < len(g.levelBefore) {
+				startLvl = g.levelBefore[i]
+			}
+			for lvl := startLvl; lvl <= c.Level; lvl++ {
+				state.XPThresholds[i] = append(state.XPThresholds[i], character.XPToNextLevel(lvl, &g.gd.Stats.XPCurve))
+			}
+		}
 	}
 }
 
