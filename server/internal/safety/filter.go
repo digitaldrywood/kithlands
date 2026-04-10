@@ -33,7 +33,7 @@ func (f *Filter) CheckInput(text string) string {
 	// Character allowlist: letters, numbers, spaces, basic punctuation
 	for _, r := range text {
 		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && !unicode.IsSpace(r) &&
-			!strings.ContainsRune(".,;:!?'-()&/#@", r) {
+			!strings.ContainsRune(".,;:!?'-()&/#@_+", r) {
 			return "input contains disallowed characters"
 		}
 	}
