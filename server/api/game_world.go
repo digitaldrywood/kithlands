@@ -23,6 +23,21 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 			}
 		}
 
+		// Check if poison killed the entire party before entering combat.
+		allDead := true
+		for _, c := range g.party {
+			if c.IsAlive() {
+				allDead = false
+				break
+			}
+		}
+		if allDead {
+			g.phase = "defeat"
+			g.message = "Your party succumbed to poison. Game over."
+			state := g.stateUnlocked()
+			return &state, nil
+		}
+
 		// Snapshot XP and level before combat for victory screen animation
 		g.xpBefore = make([]int, len(g.party))
 		g.levelBefore = make([]int, len(g.party))

@@ -1486,18 +1486,38 @@ export class BattleScene extends Phaser.Scene {
         }
         await this.wait(300);
       } else if (action.kind === "confusion") {
-        // Confused actor attacks randomly
-        const attacker = action.actor_name;
+        // Confused actor attacks randomly — target may be ally or enemy
         const targetId = action.target_id;
         const dmg = action.damage;
         this.promptText.setText(line).setColor("#dddd44");
         playSFX("sfx_hit");
         const ee = this.enemySprites[targetId];
-        const pt = this.partySprites[attacker];
         if (ee) {
           await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch, "physical");
           if (defeatMatch) await this.enemyDeathFx(ee);
-        } else if (pt) {
+        } else {
+          // Target is a party member — find by slot ID
+          const gs = this.gameState;
+          const targetMember =
+            gs.party && gs.party[targetId]
+              ? this.partySprites[gs.party[targetId].name]
+              : null;
+          if (targetMember) {
+            await this.hitFx(
+              targetMember.x,
+              targetMember.y,
+              dmg,
+              true,
+              false,
+              "physical",
+            );
+            if (targetMember.sprite?.setTint) {
+              targetMember.sprite.setTint(0xff4444);
+              this.time.delayedCall(200, () =>
+                targetMember.sprite.clearTint?.(),
+              );
+            }
+          }
           this.cameras.main.shake(80, 0.005);
         }
         await this.wait(300);
