@@ -163,7 +163,9 @@ export class WorldScene extends Phaser.Scene {
         `player_${this.playerDir}`,
       )
       .setDepth(10)
-      .setScale(SCALE);
+      .setScale(
+        (RENDERED_TILE / Math.max(this.textures.get(`player_${this.playerDir}`).getSourceImage().width, 1)) * SCALE,
+      );
 
     // Camera follows player
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
