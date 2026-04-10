@@ -54,15 +54,18 @@ export class WorldScene extends Phaser.Scene {
   create() {
     this.stepCount = 0;
     this.animating = false;
+    this.gameOver = false;
 
     const gs = this.gameState;
 
     // Handle non-world phases
     if (gs.phase === 'victory') {
+      this.gameOver = true;
       this.showEndScreen('VICTORY!', `${gs.location} is saved!`, '#ffff44', gs);
       return;
     }
     if (gs.phase === 'defeat') {
+      this.gameOver = true;
       this.showEndScreen('DEFEAT', 'Your party has fallen.', '#ff4444', gs);
       return;
     }
@@ -404,7 +407,8 @@ export class WorldScene extends Phaser.Scene {
   }
 
   update(time) {
-    if (this.animating || this.menuOpen) return;
+    if (this.gameOver || this.animating || this.menuOpen) return;
+    if (!this.hudText || !this.player) return; // scene destroyed
     if (time - this.lastMoveTime < this.moveCooldown) return;
 
     let dx = 0, dy = 0;
@@ -647,7 +651,11 @@ export class WorldScene extends Phaser.Scene {
 
   async triggerRandomEncounter() {
     this.animating = true;
-    console.log('[World] random encounter triggered');
+    // Save position before transitioning to battle
+    cachedPlayerX = this.playerX;
+    cachedPlayerY = this.playerY;
+    cachedPlayerDir = this.playerDir;
+    console.log('[World] random encounter triggered at', this.playerX, this.playerY);
 
     this.cameras.main.flash(300, 255, 255, 255);
 
@@ -718,6 +726,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   updateHUD() {
+    if (!this.hudText) return;
     const gs = this.gameState;
     const parts = gs.party.map(p => `${p.name} Lv${p.level} ${p.hp}/${p.max_hp}`);
     this.hudText.setText(`${parts.join(' | ')} | Gold:${gs.gold} Potions:${gs.potions}`);
