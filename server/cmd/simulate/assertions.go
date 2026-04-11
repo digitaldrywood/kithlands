@@ -13,6 +13,10 @@ type AssertionConfig struct {
 	// Issue #110 suggests 0.15 (15%).
 	MaxWipeRate float64
 
+	// MinWipeRate is the lower bound — if any strategy wipes LESS often than
+	// this, combat is too easy and attrition is broken. 0 disables the check.
+	MinWipeRate float64
+
 	// MinVictoryRate is the minimum fraction of runs that must reach victory.
 	// Catches "strategy is broken, dies by Act 2" regressions.
 	MinVictoryRate float64
@@ -45,6 +49,15 @@ func CheckAssertions(summaries map[string]Aggregated, cfg AssertionConfig) []Ass
 				Message: fmt.Sprintf(
 					"wipe rate %.3f exceeds threshold %.3f (%d wipes in %d runs)",
 					agg.WipeRate, cfg.MaxWipeRate, agg.Wipes, agg.Runs),
+			})
+		}
+		if cfg.MinWipeRate > 0 && agg.WipeRate < cfg.MinWipeRate {
+			fails = append(fails, AssertionFailure{
+				Strategy: name,
+				Kind:     "wipe_rate",
+				Message: fmt.Sprintf(
+					"wipe rate %.3f below threshold %.3f (%d wipes in %d runs — combat too easy?)",
+					agg.WipeRate, cfg.MinWipeRate, agg.Wipes, agg.Runs),
 			})
 		}
 		if agg.VictoryRate < cfg.MinVictoryRate {

@@ -74,10 +74,12 @@ func TestVictoryNoXPForDeadMember_QuestCompletion(t *testing.T) {
 	if !state.DiedThisFight[1] {
 		t.Errorf("died_this_fight[1] should be true after quest-completing fight death")
 	}
-	// Confirm restParty() has already run — dead member is healed — yet the
-	// flag still correctly marks them as dead-at-victory.
-	if api.PartyHPForTest(game, 1) == 0 {
-		t.Errorf("restParty() should have healed the dead member, but HP is still 0")
+	// Combat victory does not auto-rest the party — a dead member must stay
+	// dead until the player reaches an inn, tent, or quest_advance node. The
+	// DiedThisFight snapshot is still correct because it's taken at victory-XP
+	// time, before any rest beat.
+	if api.PartyHPForTest(game, 1) != 0 {
+		t.Errorf("dead member HP should stay 0 after combat victory, got %d", api.PartyHPForTest(game, 1))
 	}
 }
 

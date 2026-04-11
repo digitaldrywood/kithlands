@@ -141,6 +141,52 @@ func TestAssertQuestOrderMonotonic(t *testing.T) {
 	}
 }
 
+func TestMinWipeRateFiresBelowThreshold(t *testing.T) {
+	// Combat is too easy: only 5% wipes when we expected at least 15%.
+	agg := Aggregated{
+		Strategy: "aggressive", Runs: 100, Wipes: 5, WipeRate: 0.05,
+		Victories: 95, VictoryRate: 0.95,
+		MeanPromotionLevel: 8, PromotionCount: 100,
+	}
+	fails := CheckAssertions(map[string]Aggregated{"aggressive": agg}, AssertionConfig{
+		MaxWipeRate:       0.30,
+		MinWipeRate:       0.15,
+		MinVictoryRate:    0.60,
+		ExpectedPromoLvl:  8,
+		PromoLvlTolerance: 2,
+	})
+	found := false
+	for _, f := range fails {
+		if f.Kind == "wipe_rate" && f.Strategy == "aggressive" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected wipe_rate failure for too-easy combat, got: %v", fails)
+	}
+}
+
+func TestMinWipeRateSilentAtZero(t *testing.T) {
+	// MinWipeRate=0 disables the check — a 0% wipe rate must not fire.
+	agg := Aggregated{
+		Strategy: "aggressive", Runs: 100, Wipes: 0, WipeRate: 0.0,
+		Victories: 100, VictoryRate: 1.0,
+		MeanPromotionLevel: 8, PromotionCount: 100,
+	}
+	fails := CheckAssertions(map[string]Aggregated{"aggressive": agg}, AssertionConfig{
+		MaxWipeRate:       0.30,
+		MinWipeRate:       0.0,
+		MinVictoryRate:    0.60,
+		ExpectedPromoLvl:  8,
+		PromoLvlTolerance: 2,
+	})
+	for _, f := range fails {
+		if f.Kind == "wipe_rate" {
+			t.Errorf("MinWipeRate=0 should not fire, got: %v", f)
+		}
+	}
+}
+
 func TestIsQuestOrderMonotonic(t *testing.T) {
 	tests := []struct {
 		name      string
