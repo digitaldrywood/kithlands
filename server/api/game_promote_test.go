@@ -118,6 +118,84 @@ func TestPromotionFiresOnlyOnce(t *testing.T) {
 	}
 }
 
+// TestPromotedPartyCompositionBaseSprite locks down the full promotion → sprite
+// composition path: after accepting promotion, every party member's
+// Composition.BaseSprite must equal the promoted class ID so the client can
+// look up the preloaded texture. Regression guard for issue #84.
+func TestPromotedPartyCompositionBaseSprite(t *testing.T) {
+	// One member for each base class with a valid promotes_to target.
+	game := newGameWithParty(t, []api.PartyMemberReq{
+		{Name: "Warr", ClassID: "warrior"},
+		{Name: "Rog", ClassID: "rogue"},
+	})
+	_ = driveToPromotion(t, game)
+	state, err := game.Promote(true)
+	if err != nil {
+		t.Fatalf("promote: %v", err)
+	}
+
+	want := map[string]string{
+		"warrior": "knight",
+		"rogue":   "shadow",
+	}
+	for _, pm := range state.Party {
+		if !pm.Promoted {
+			t.Errorf("%s not marked promoted", pm.Name)
+		}
+		expected, ok := want[pm.ClassID]
+		if !ok {
+			t.Errorf("%s has unexpected class_id %q", pm.Name, pm.ClassID)
+			continue
+		}
+		if pm.Composition.BaseSprite != expected {
+			t.Errorf("%s (class %q) composition.base_sprite = %q, want %q",
+				pm.Name, pm.ClassID, pm.Composition.BaseSprite, expected)
+		}
+		if pm.SpriteID != expected {
+			t.Errorf("%s (class %q) sprite_id = %q, want %q",
+				pm.Name, pm.ClassID, pm.SpriteID, expected)
+		}
+	}
+}
+
+// TestAllBaseClassesPromoteToDistinctSprite covers the remaining 4 base classes
+// not exercised above. Splitting the party keeps each promotion run cheap
+// (driveToPromotion is O(encounters) and grows with party size).
+func TestAllBaseClassesPromoteToDistinctSprite(t *testing.T) {
+	cases := []struct {
+		classID string
+		want    string
+	}{
+		{"mender", "sage"},
+		{"cinder", "pyromancer"},
+		{"brawler", "champion"},
+		{"wayfarer", "wanderer"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.classID, func(t *testing.T) {
+			game := newGameWithParty(t, []api.PartyMemberReq{
+				{Name: "A", ClassID: tc.classID},
+			})
+			_ = driveToPromotion(t, game)
+			state, err := game.Promote(true)
+			if err != nil {
+				t.Fatalf("promote: %v", err)
+			}
+			if len(state.Party) != 1 {
+				t.Fatalf("party size = %d", len(state.Party))
+			}
+			pm := state.Party[0]
+			if !pm.Promoted {
+				t.Fatal("not promoted after accept")
+			}
+			if pm.Composition.BaseSprite != tc.want {
+				t.Errorf("composition.base_sprite = %q, want %q",
+					pm.Composition.BaseSprite, tc.want)
+			}
+		})
+	}
+}
+
 func TestPromotedRogueGainsBlackMagic(t *testing.T) {
 	game := newGameWithParty(t, []api.PartyMemberReq{
 		{Name: "Sneak", ClassID: "rogue"},
