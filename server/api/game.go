@@ -209,8 +209,8 @@ func (g *Game) isMonsterUndead(name string) bool {
 // CombatActionEntry carries structured metadata for a single combat log line.
 // Sent alongside combat_log so the client can drive animations without parsing text.
 type CombatActionEntry struct {
-	Kind       string           `json:"kind"`                 // attack, spell, ability, heal, item, counter, info
-	Element    string           `json:"element,omitempty"`    // fire, ice, lightning, holy, dark, none
+	Kind       string           `json:"kind"`                  // attack, spell, ability, heal, item, counter, info
+	Element    string           `json:"element,omitempty"`     // fire, ice, lightning, holy, dark, none
 	DamageType string           `json:"damage_type,omitempty"` // physical, magical
 	ActorID    int              `json:"actor_id,omitempty"`
 	ActorName  string           `json:"actor_name,omitempty"`
@@ -222,6 +222,7 @@ type CombatActionEntry struct {
 	Missed     bool             `json:"missed,omitempty"`
 	Hits       []CombatHitEntry `json:"hits,omitempty"`
 	SpellName  string           `json:"spell_name,omitempty"`
+	Initiative int              `json:"initiative,omitempty"` // weighted turn-order roll for this actor
 }
 
 // CombatHitEntry represents a single hit within a multi-hit attack.
