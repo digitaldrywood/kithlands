@@ -2,6 +2,7 @@ import { playSFX, playMusic } from "../systems/audio.js";
 import { openDialogue } from "./town_dialogue.js";
 import { openShop } from "./world_shop.js";
 import { isTouchDevice, initTouchControls } from "../systems/input.js";
+import { nextWalkFrame, walkTextureKey } from "./walkFrame.js";
 
 const TILE_SIZE = 16;
 const SCALE = 2;
@@ -187,6 +188,7 @@ export class TownScene extends Phaser.Scene {
     this.playerX = doorX;
     this.playerY = ROOM_H - 2; // one tile above door
     this.playerDir = "up";
+    this.walkFrame = 0;
 
     this.player = this.add
       .image(
@@ -281,10 +283,12 @@ export class TownScene extends Phaser.Scene {
     else if (dx > 0) dir = "right";
     else if (dy < 0) dir = "up";
     else if (dy > 0) dir = "down";
-    if (dir !== this.playerDir) {
-      this.playerDir = dir;
-      this.player.setTexture(`player_${dir}`);
-    }
+    this.playerDir = dir;
+
+    // Advance one walk frame per tile step so the animation is deterministic
+    // and can never get stuck mid-cycle on rapid input or direction changes.
+    this.walkFrame = nextWalkFrame(this.walkFrame);
+    this.player.setTexture(walkTextureKey(this.playerDir, this.walkFrame));
 
     this.tweens.add({
       targets: this.player,
