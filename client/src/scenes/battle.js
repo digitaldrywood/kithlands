@@ -1,6 +1,13 @@
 import { gameAction } from "../api.js";
 import { createComposedSprite } from "../sprites/composedSprite.js";
 import { initAudio, playMusic, playSFX, stopMusic } from "../systems/audio.js";
+import {
+  applyDamage,
+  applyHeal,
+  formatHPLabel,
+  hpBarColorPct,
+  hpBarFillWidth,
+} from "../systems/hpBar.js";
 import { FloatingTextPool } from "../ui/floating_text.js";
 
 const ENEMY_SPRITES = {
@@ -423,8 +430,9 @@ export class BattleScene extends Phaser.Scene {
         .setAlpha(0.3);
       this.enemyNumbers.push({ text: numText, enemyId: e.id });
 
-      const bw = 65,
-        pct = Math.max(0, e.hp / e.max_hp);
+      const bw = 65;
+      const pct = hpBarColorPct(e.hp, e.max_hp);
+      const fillW = hpBarFillWidth(e.hp, e.max_hp, bw);
       const barX = x - bw / 2,
         barY = y + sz / 2 + 10;
       const bc = pct > 0.5 ? 0x44ff44 : pct > 0.25 ? 0xff8800 : 0xff0000;
@@ -433,15 +441,15 @@ export class BattleScene extends Phaser.Scene {
         .setOrigin(0, 0.5)
         .setDepth(8);
       const ghost = this.add
-        .rectangle(barX, barY, bw * pct, 7, 0xff6644)
+        .rectangle(barX, barY, fillW, 7, 0xff6644)
         .setOrigin(0, 0.5)
         .setDepth(9);
       const fill = this.add
-        .rectangle(barX, barY, bw * pct, 7, pct > 0 ? bc : 0x333333)
+        .rectangle(barX, barY, fillW, 7, pct > 0 ? bc : 0x333333)
         .setOrigin(0, 0.5)
         .setDepth(10);
       const hpLabel = this.add
-        .text(x, y + sz / 2 + 22, `${e.hp}/${e.max_hp}`, {
+        .text(x, y + sz / 2 + 22, formatHPLabel(e.hp, e.max_hp), {
           fontSize: "8px",
           color: "#aaaaaa",
           fontFamily: "monospace",
@@ -453,7 +461,10 @@ export class BattleScene extends Phaser.Scene {
         fill,
         label: hpLabel,
         width: bw,
-        currentPct: pct,
+        // currentHP is the authoritative integer HP. animateHPBar reads
+        // this (never `maxHP * currentPct`) so drifted float percentages
+        // cannot resurface a dead enemy with a 1-pixel sliver. Issue #69.
+        currentHP: Math.max(0, e.hp | 0),
         maxHP: e.max_hp,
       };
 
@@ -522,8 +533,9 @@ export class BattleScene extends Phaser.Scene {
         fontFamily: "monospace",
       });
 
-      const bw = 85,
-        hpPct = Math.max(0, p.hp / p.max_hp);
+      const bw = 85;
+      const hpPct = hpBarColorPct(p.hp, p.max_hp);
+      const fillW = hpBarFillWidth(p.hp, p.max_hp, bw);
       const barX = x + 90,
         barY = y + 13;
       const bc = hpPct > 0.5 ? 0x44ff44 : hpPct > 0.25 ? 0xff8800 : 0xff0000;
@@ -532,17 +544,17 @@ export class BattleScene extends Phaser.Scene {
         .setOrigin(0, 0.5)
         .setDepth(8);
       const ghost = this.add
-        .rectangle(barX, barY, bw * hpPct, 6, 0xff6644)
+        .rectangle(barX, barY, fillW, 6, 0xff6644)
         .setOrigin(0, 0.5)
         .setDepth(9);
       const fill = this.add
-        .rectangle(barX, barY, bw * hpPct, 6, hpPct > 0 ? bc : 0x333333)
+        .rectangle(barX, barY, fillW, 6, hpPct > 0 ? bc : 0x333333)
         .setOrigin(0, 0.5)
         .setDepth(10);
       const hpLabel = this.add.text(
         x + 90 + bw + 5,
         y + 8,
-        `${p.hp}/${p.max_hp}`,
+        formatHPLabel(p.hp, p.max_hp),
         {
           fontSize: "8px",
           color: "#cccccc",
@@ -555,7 +567,7 @@ export class BattleScene extends Phaser.Scene {
         fill,
         label: hpLabel,
         width: bw,
-        currentPct: hpPct,
+        currentHP: Math.max(0, p.hp | 0),
         maxHP: p.max_hp,
       };
 
@@ -1312,6 +1324,16 @@ export class BattleScene extends Phaser.Scene {
       const actions = result.combat_actions || [];
       await this.animateCombatLog(log, actions);
 
+      // Reconcile enemy sprites with the authoritative server state BEFORE
+      // we restart the scene. The server only sends living enemies in
+      // result.enemies, so any sprite whose id is missing from that list
+      // has been defeated — even if no action carried `Killed: true` for
+      // it (e.g. a poison-tick kill paired with a parser miss). Without
+      // this pass, the sprite would linger until scene.restart fires,
+      // which is exactly the "enemy with 1 HP after a fatal hit" visual
+      // the user filed in issue #69.
+      await this.reconcileEnemySprites(result.enemies || []);
+
       this.gameState = result;
 
       this.time.delayedCall(400, () => {
@@ -1404,12 +1426,9 @@ export class BattleScene extends Phaser.Scene {
             ee.sprite.setTint(0xff4444);
             this.time.delayedCall(200, () => ee.sprite.clearTint?.());
           }
-          // Animate HP bar drain
+          // Animate HP bar drain — integer math only, see systems/hpBar.js
           if (ee.hpBar) {
-            const newHP = Math.max(
-              0,
-              ee.hpBar.maxHP * ee.hpBar.currentPct - dmg,
-            );
+            const newHP = applyDamage(ee.hpBar.currentHP, dmg);
             this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
           }
           // Enemy death animation
@@ -1431,12 +1450,9 @@ export class BattleScene extends Phaser.Scene {
             pt.sprite.setTint(0xff4444);
             this.time.delayedCall(200, () => pt.sprite.clearTint?.());
           }
-          // Animate party HP bar drain
+          // Animate party HP bar drain — integer math only
           if (pt.hpBar) {
-            const newHP = Math.max(
-              0,
-              pt.hpBar.maxHP * pt.hpBar.currentPct - dmg,
-            );
+            const newHP = applyDamage(pt.hpBar.currentHP, dmg);
             this.animateHPBar(pt.hpBar, newHP, pt.hpBar.maxHP);
           }
           this.cameras.main.shake(80, 0.005);
@@ -1461,10 +1477,7 @@ export class BattleScene extends Phaser.Scene {
             targetKey,
           });
           if (ee.hpBar) {
-            const newHP = Math.max(
-              0,
-              ee.hpBar.maxHP * ee.hpBar.currentPct - dmg,
-            );
+            const newHP = applyDamage(ee.hpBar.currentHP, dmg);
             this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
           }
           if (defeatMatch) await this.enemyDeathFx(ee);
@@ -1546,10 +1559,7 @@ export class BattleScene extends Phaser.Scene {
               { targetKey, element },
             );
             if (ee.hpBar) {
-              const newHP = Math.max(
-                0,
-                ee.hpBar.maxHP * ee.hpBar.currentPct - tgt.dmg,
-              );
+              const newHP = applyDamage(ee.hpBar.currentHP, tgt.dmg);
               this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
             }
             if (tgt.defeated) await this.enemyDeathFx(ee);
@@ -1571,12 +1581,12 @@ export class BattleScene extends Phaser.Scene {
             ? `party_${action.target_name || action.actor_name}`
             : "party_heal";
           this.floatingText.spawn(hx, hy, healMatch[1], "heal", targetKey);
-          // Animate HP bar up
+          // Animate HP bar up — integer math only
           if (healTarget?.hpBar) {
-            const newHP = Math.min(
+            const newHP = applyHeal(
+              healTarget.hpBar.currentHP,
+              healMatch[1],
               healTarget.hpBar.maxHP,
-              healTarget.hpBar.maxHP * healTarget.hpBar.currentPct +
-                parseInt(healMatch[1]),
             );
             this.animateHPBar(healTarget.hpBar, newHP, healTarget.hpBar.maxHP);
           }
@@ -1618,6 +1628,14 @@ export class BattleScene extends Phaser.Scene {
               onComplete: () => nt.destroy(),
             });
           }
+          // Issue #69: poison ticks used to skip the HP bar + death FX
+          // entirely, so a tick that killed an enemy left the bar at the
+          // pre-tick value and the sprite visible. Apply both here.
+          if (sprite.hpBar) {
+            const newHP = applyDamage(sprite.hpBar.currentHP, dmg);
+            this.animateHPBar(sprite.hpBar, newHP, sprite.hpBar.maxHP);
+          }
+          if (ee && defeatMatch) await this.enemyDeathFx(ee);
         }
         await this.wait(300);
       } else if (action.kind === "confusion") {
@@ -1678,10 +1696,7 @@ export class BattleScene extends Phaser.Scene {
               { crit: action.crit, targetKey },
             );
             if (ee.hpBar) {
-              const newHP = Math.max(
-                0,
-                ee.hpBar.maxHP * ee.hpBar.currentPct - action.damage,
-              );
+              const newHP = applyDamage(ee.hpBar.currentHP, action.damage);
               this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
             }
             if (defeatMatch) await this.enemyDeathFx(ee);
@@ -1731,6 +1746,11 @@ export class BattleScene extends Phaser.Scene {
         resolve();
         return;
       }
+      if (ee.dying || ee.dead) {
+        resolve();
+        return;
+      }
+      ee.dying = true;
       this.tweens.add({
         targets: ee.sprite,
         alpha: 0,
@@ -1740,10 +1760,42 @@ export class BattleScene extends Phaser.Scene {
         ease: "Power2",
         onComplete: () => {
           ee.sprite.setVisible(false);
+          ee.dead = true;
+          if (ee.hpBar) {
+            // Nuke the bar visuals so a lingering sliver can't survive
+            // the reconciliation pass.
+            ee.hpBar.fill.width = 0;
+            ee.hpBar.ghost.width = 0;
+            ee.hpBar.currentHP = 0;
+            ee.hpBar.label.setText(formatHPLabel(0, ee.hpBar.maxHP));
+          }
           resolve();
         },
       });
     });
+  }
+
+  // reconcileEnemySprites makes sure every locally-tracked enemy sprite
+  // matches the latest server state. Any sprite whose id is not in
+  // liveEnemies (i.e. the server removed it because CurrentHP <= 0) gets
+  // the death FX immediately, regardless of whether any per-action entry
+  // in the combat log carried `Killed: true` for it. See issue #69 for
+  // the repro — a poison-tick kill or a non-parsed death line could
+  // otherwise leave the sprite visible with a drifted HP sliver.
+  async reconcileEnemySprites(liveEnemies) {
+    const liveIds = new Set(liveEnemies.map((e) => e.id));
+    const fades = [];
+    for (const idStr of Object.keys(this.enemySprites)) {
+      const id = Number(idStr);
+      const ee = this.enemySprites[id];
+      if (!ee || ee.dead || ee.dying) continue;
+      if (!liveIds.has(id)) {
+        fades.push(this.enemyDeathFx(ee));
+      }
+    }
+    if (fades.length > 0) {
+      await Promise.all(fades);
+    }
   }
 
   tweenP(target, config) {
@@ -1758,30 +1810,31 @@ export class BattleScene extends Phaser.Scene {
 
   animateHPBar(hpBarData, newHP, maxHP) {
     if (!hpBarData) return;
-    const newPct = Math.max(0, newHP / maxHP);
-    const oldPct = hpBarData.currentPct;
-    if (newPct === oldPct) return;
+    const clampedHP = Math.max(0, newHP | 0);
+    if (clampedHP === hpBarData.currentHP) return;
 
     const bw = hpBarData.width;
-    const bc = newPct > 0.5 ? 0x44ff44 : newPct > 0.25 ? 0xff8800 : 0xff0000;
+    const fillW = hpBarFillWidth(clampedHP, maxHP, bw);
+    const pct = hpBarColorPct(clampedHP, maxHP);
+    const bc = pct > 0.5 ? 0x44ff44 : pct > 0.25 ? 0xff8800 : 0xff0000;
 
-    // Immediately update fill bar to new value
-    hpBarData.fill.width = bw * newPct;
-    hpBarData.fill.setFillStyle(newPct > 0 ? bc : 0x333333);
+    // Immediately update fill bar — integer pixels, no sub-pixel sliver.
+    hpBarData.fill.width = fillW;
+    hpBarData.fill.setFillStyle(clampedHP > 0 ? bc : 0x333333);
 
-    // Update HP label
-    hpBarData.label.setText(`${Math.max(0, newHP)}/${maxHP}`);
+    // Update HP label — integer-only via formatHPLabel.
+    hpBarData.label.setText(formatHPLabel(clampedHP, maxHP));
 
     // Ghost bar drains after a short delay
     this.tweens.add({
       targets: hpBarData.ghost,
-      width: bw * newPct,
+      width: fillW,
       duration: 250,
       delay: 100,
       ease: "Quad.Out",
     });
 
-    hpBarData.currentPct = newPct;
+    hpBarData.currentHP = clampedHP;
   }
 
   showVictoryResults(gs) {
