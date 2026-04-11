@@ -29,10 +29,11 @@ func main() {
 		// TODO(#115): retune these once balance/progression work lands. They
 		// are intentionally loose right now so real encounters don't trip the
 		// Monte Carlo assertion suite before tuning exists.
-		wipeThresh   = flag.Float64("max-wipe-rate", 0.80, "fail if any strategy wipes more often than this")
-		victoryMin   = flag.Float64("min-victory-rate", 0.05, "fail if any strategy wins fewer runs than this")
-		expectedLvl  = flag.Float64("expected-promo-level", 3.5, "expected mean party level at promotion")
-		lvlTolerance = flag.Float64("promo-level-tolerance", 1.5, "allowed |mean - expected| promotion level")
+		wipeThresh    = flag.Float64("max-wipe-rate", 0.80, "fail if any strategy wipes more often than this")
+		minWipeThresh = flag.Float64("min-wipe-rate", 0.0, "fail if any strategy wipes less often than this (combat too easy); 0 disables")
+		victoryMin    = flag.Float64("min-victory-rate", 0.05, "fail if any strategy wins fewer runs than this")
+		expectedLvl   = flag.Float64("expected-promo-level", 3.5, "expected mean party level at promotion")
+		lvlTolerance  = flag.Float64("promo-level-tolerance", 1.5, "allowed |mean - expected| promotion level")
 	)
 	flag.Parse()
 
@@ -65,6 +66,7 @@ func main() {
 
 	cfg := AssertionConfig{
 		MaxWipeRate:       *wipeThresh,
+		MinWipeRate:       *minWipeThresh,
 		MinVictoryRate:    *victoryMin,
 		ExpectedPromoLvl:  *expectedLvl,
 		PromoLvlTolerance: *lvlTolerance,

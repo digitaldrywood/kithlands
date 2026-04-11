@@ -612,7 +612,9 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 		}
 		g.logCombat(fmt.Sprintf("Victory! +%d XP, +%d gold", totalXP, totalGold), CombatActionEntry{Kind: "info"})
 		g.checkLevelUps()
-		g.restParty()
+		// No auto-rest between fights. Per GDD §8.1, only inns/tents/houses
+		// (and quest completion) restore HP/MP/status — damage must persist
+		// across the encounter chain for attrition to matter.
 		g.enemies = nil
 		g.spellBuffs = nil
 
@@ -774,7 +776,6 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 		g.logCombat("Victory!", CombatActionEntry{Kind: "info"})
 		g.enemies = nil
 		g.spellBuffs = nil
-		g.restParty()
 		g.checkLevelUps()
 		g.phase = "quest_complete"
 		g.resetEncounterStartState()

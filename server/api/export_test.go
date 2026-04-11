@@ -70,6 +70,50 @@ func PartyHPForTest(g *Game, idx int) int {
 	return g.party[idx].CurrentHP
 }
 
+// PartyMaxHPForTest returns the max HP of the party member at idx.
+func PartyMaxHPForTest(g *Game, idx int) int {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.party[idx].MaxHP
+}
+
+// PartyMPForTest returns the current MP of the party member at idx.
+func PartyMPForTest(g *Game, idx int) int {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.party[idx].CurrentMP
+}
+
+// PartyMaxMPForTest returns the max MP of the party member at idx.
+func PartyMaxMPForTest(g *Game, idx int) int {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.party[idx].MaxMP
+}
+
+// PartyStatusForTest returns the current status of the party member at idx.
+func PartyStatusForTest(g *Game, idx int) character.Status {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.party[idx].Status
+}
+
+// DamagePartyMPForTest subtracts n MP from the given party slot without
+// letting it go negative. Used by no-rest tests to verify combat victory
+// does not refill MP.
+func DamagePartyMPForTest(g *Game, slot int, n int) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if slot < 0 || slot >= len(g.party) {
+		return
+	}
+	c := g.party[slot]
+	c.CurrentMP -= n
+	if c.CurrentMP < 0 {
+		c.CurrentMP = 0
+	}
+}
+
 // GiveItemForTest adds n of the given consumable to inventory. Exposed only
 // for tests.
 func GiveItemForTest(g *Game, id string, n int) {

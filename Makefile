@@ -107,7 +107,8 @@ balance-sim:
 # so the party promotes in the 8–12 band per the 15-quest research target.
 simulate:
 	cd server && go run ./cmd/simulate -runs 100 \
-		-expected-promo-level 10.0 -promo-level-tolerance 3.0
+		-expected-promo-level 10.0 -promo-level-tolerance 3.0 \
+		-max-wipe-rate 0.30
 
 validate-data:
 	cd server && go run ./cmd/validate_gamedata -shared=../shared
