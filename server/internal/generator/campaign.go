@@ -7,19 +7,21 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/locality"
 )
 
-// GenerateCampaign produces a full 3-act quest sequence per GDD Section 10.4:
+// GenerateCampaign produces a full 3-act quest sequence per GDD Section 10.4.
+// Per-act quest budgets were widened in issue #123 to push mean run length
+// from ~444 turns into the 800-1500 target band:
 //
-//	Act 1   — 3-5 quests within 2 edges of spawn
+//	Act 1   — 5-8 quests within 2 edges of spawn
 //	Promotion (fixed story beat)
-//	Act 2   — 4-6 quests at distance 3-4
-//	Act 3   — 2-3 quests at distance 4-6
+//	Act 2   — 7-10 quests at distance 3-4
+//	Act 3   — 4-6 quests at distance 4-6
 //	Boss    — final encounter
 //
 // A `sidePool` may be supplied to sprinkle surprise side quests per Section 16.
 // Pass nil to skip side quests (tests or stripped builds).
 //
-// The total main-quest count lands in 11-16; side quests are trimmed so the
-// total campaign size never exceeds `maxQuestsPerCampaign` (15 per issue #10).
+// The total main-quest count lands in 18-26; side quests are trimmed so the
+// total campaign size never exceeds `maxQuestsPerCampaign` (26 per issue #123).
 func GenerateCampaign(loc *locality.Locality, spawnID string, rng *rand.Rand, sidePool []SideQuestEntry) []Quest {
 	walk := locality.Walk(loc, spawnID)
 	if walk.Spawn == nil {
@@ -29,8 +31,8 @@ func GenerateCampaign(loc *locality.Locality, spawnID string, rng *rand.Rand, si
 	var quests []Quest
 	idx := 0
 
-	// Act 1: 3-5 close quests
-	act1Count := 3 + rng.IntN(3)
+	// Act 1: 5-8 close quests
+	act1Count := 5 + rng.IntN(4)
 	act1Templates := templatesForAct(1)
 	for i := 0; i < act1Count; i++ {
 		if len(act1Templates) == 0 {
@@ -45,8 +47,8 @@ func GenerateCampaign(loc *locality.Locality, spawnID string, rng *rand.Rand, si
 	quests = append(quests, instantiatePromotionQuest(walk, loc, idx, rng))
 	idx++
 
-	// Act 2: 4-6 medium quests
-	act2Count := 4 + rng.IntN(3)
+	// Act 2: 7-10 medium quests
+	act2Count := 7 + rng.IntN(4)
 	act2Templates := templatesForAct(2)
 	for i := 0; i < act2Count; i++ {
 		if len(act2Templates) == 0 {
@@ -57,8 +59,8 @@ func GenerateCampaign(loc *locality.Locality, spawnID string, rng *rand.Rand, si
 		idx++
 	}
 
-	// Act 3: 2-3 far quests
-	act3Count := 2 + rng.IntN(2)
+	// Act 3: 4-6 far quests
+	act3Count := 4 + rng.IntN(3)
 	act3Templates := templatesForAct(3)
 	// Drop Q12 from Act 3 template picks — boss is appended separately.
 	filtered := make([]QuestTemplate, 0, len(act3Templates))
@@ -77,10 +79,10 @@ func GenerateCampaign(loc *locality.Locality, spawnID string, rng *rand.Rand, si
 	}
 
 	// Hard cap the main quest count before the boss. The act ranges above can
-	// produce up to 5+1+6+3 = 15 quests; adding the boss would push to 16.
-	// GDD 10.4 says 10-15 per campaign, so trim Act 2 (the fattest bucket)
-	// until the main count leaves room for the boss.
-	const maxQuestsPerCampaign = 15
+	// produce up to 8+1+10+6 = 25 quests; adding the boss makes 26. Issue #123
+	// widened these bands so simulator mean turns lands in the 800-1500 band.
+	// Trim Act 2 (the fattest bucket) first, then Act 3, to keep room for boss.
+	const maxQuestsPerCampaign = 26
 	for len(quests)+1 > maxQuestsPerCampaign {
 		// Drop the last Act 2 quest; fall back to last Act 3 if none.
 		trimmed := false

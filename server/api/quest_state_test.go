@@ -28,8 +28,8 @@ func TestNewGame_QuestLogFields(t *testing.T) {
 	}
 
 	quests := gs["quests"].([]any)
-	if len(quests) < 10 || len(quests) > 15 {
-		t.Errorf("expected 10-15 quests per GDD 10.4, got %d", len(quests))
+	if len(quests) < 18 || len(quests) > 26 {
+		t.Errorf("expected 18-26 quests per issue #123, got %d", len(quests))
 	}
 
 	promoCount := 0
