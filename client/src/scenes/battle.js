@@ -1,4 +1,5 @@
 import { gameAction } from "../api.js";
+import { createComposedSprite } from "../sprites/composedSprite.js";
 import { initAudio, playMusic, playSFX, stopMusic } from "../systems/audio.js";
 import { FloatingTextPool } from "../ui/floating_text.js";
 
@@ -447,21 +448,15 @@ export class BattleScene extends Phaser.Scene {
         .setVisible(false);
       this.partyArrows[i] = arrow;
 
-      const cs = CLASS_SPRITES[p.sprite_id || p.class_id];
-      let sprite;
-      if (cs && this.textures.exists(cs)) {
-        sprite = this.add.image(x + 15, y, cs);
-        sprite.setScale((50 / Math.max(sprite.width, sprite.height)) * 2);
-        if (!alive) sprite.setTint(0x444444);
-      } else {
-        sprite = this.add.rectangle(
-          x + 15,
-          y,
-          35,
-          35,
-          alive ? 0xff5722 : 0x444444,
-        );
-      }
+      const fallbackKey = CLASS_SPRITES[p.sprite_id || p.class_id];
+      const composition = p.composition || {
+        base_sprite: fallbackKey || "",
+      };
+      const sprite = createComposedSprite(this, x + 15, y, composition, {
+        alive,
+        targetSize: 100,
+        fallbackKey,
+      });
       this.partySprites[p.name] = {
         sprite,
         arrow,

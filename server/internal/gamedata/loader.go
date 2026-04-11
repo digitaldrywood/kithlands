@@ -31,6 +31,7 @@ type GameData struct {
 	Monsters   []Monster
 	Formations []Formation
 	Transport  TransportData
+	Palettes   Palettes
 
 	classByID     map[string]*Class
 	weaponByID    map[string]*Weapon
@@ -55,6 +56,7 @@ func Load(sharedDir string) *GameData {
 	gd.Monsters = loadJSON[[]Monster](sharedDir, "monsters.json")
 	gd.Formations = loadJSON[[]Formation](sharedDir, "formations.json")
 	gd.Transport = loadJSON[TransportData](sharedDir, "transport.json")
+	gd.Palettes = loadJSON[Palettes](sharedDir, "palettes.json")
 
 	gd.buildIndexes()
 	gd.validate()

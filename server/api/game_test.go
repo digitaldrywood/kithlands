@@ -352,6 +352,26 @@ func TestEquipWeapon(t *testing.T) {
 	})
 	gameID := gs["id"].(string)
 
+	// Baseline party state: starting warrior has short_sword (T1) + leather_armor (T1).
+	party := gs["party"].([]any)
+	base := party[0].(map[string]any)
+	baseComp, ok := base["composition"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected composition on party[0], got %T", base["composition"])
+	}
+	if baseComp["base_sprite"] != "warrior" {
+		t.Errorf("base composition base_sprite: got %v, want warrior", baseComp["base_sprite"])
+	}
+	if wt, _ := baseComp["weapon_tier"].(float64); wt != 1 {
+		t.Errorf("starting weapon_tier: got %v, want 1", wt)
+	}
+	if at, _ := baseComp["armor_tier"].(float64); at != 1 {
+		t.Errorf("starting armor_tier: got %v, want 1", at)
+	}
+	if baseComp["weapon_accent"] != "#8a8275" {
+		t.Errorf("starting weapon_accent: got %v, want #8a8275", baseComp["weapon_accent"])
+	}
+
 	// Buy iron sword
 	post(t, ts.URL+"/api/game/"+gameID+"/buy", map[string]string{
 		"item_id": "iron_sword", "type": "weapon",
@@ -369,6 +389,20 @@ func TestEquipWeapon(t *testing.T) {
 	eq0 := equipment[0].(map[string]any)
 	if eq0["weapon_name"] != "Iron Sword" {
 		t.Errorf("equipped weapon: got %v, want Iron Sword", eq0["weapon_name"])
+	}
+
+	// Composition should now reflect the equipped iron sword (tier 2).
+	party = gs["party"].([]any)
+	after := party[0].(map[string]any)
+	afterComp, ok := after["composition"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected composition on equipped party[0], got %T", after["composition"])
+	}
+	if wt, _ := afterComp["weapon_tier"].(float64); wt != 2 {
+		t.Errorf("equipped weapon_tier: got %v, want 2", wt)
+	}
+	if afterComp["weapon_accent"] != "#c9a95a" {
+		t.Errorf("equipped weapon_accent: got %v, want #c9a95a", afterComp["weapon_accent"])
 	}
 
 	t.Logf("Equipped: %v", eq0)
