@@ -495,10 +495,20 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 	// 0 HP / StatusDeath back to g.party[i] — we replace that with the
 	// revived state here so the victory/quest XP loop below sees them as
 	// IsAlive() and they correctly share in the reward.
+	//
+	// We also mirror the revive onto combatants[i] because the defeat check
+	// further down (CheckDefeat(combatants)) reads from that slice. Without
+	// this mirror, a revive that lands on the same round the last living
+	// caster dies would still be reported as "all party members defeated"
+	// even though g.party now contains a living revived ally.
 	for i, revived := range revivedThisTurn {
 		if revived {
 			g.party[i].CurrentHP = 1
 			g.party[i].Status = character.StatusNone
+			if i < len(combatants) {
+				combatants[i].CurrentHP = 1
+				combatants[i].Status = character.StatusNone
+			}
 		}
 	}
 

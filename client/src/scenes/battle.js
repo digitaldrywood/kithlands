@@ -1810,9 +1810,18 @@ export class BattleScene extends Phaser.Scene {
       const delay = 500 + i * 800;
 
       if (diedThisFight) {
-        // Dead at victory resolution: no bar fill, no animation. Render a
-        // static "0 XP / no gain" label so the player sees unambiguously
-        // that the dead member did not share in the reward.
+        // Dead at victory resolution: render the bar at the member's pre-fight
+        // XP level (no animation, no gain) and label it with the same value.
+        // We still draw the fill — just static at prevXP — so the bar and the
+        // numeric label agree for a member who entered the fight with non-zero
+        // XP. The contrast with living members (whose bars animate to a higher
+        // value) is what conveys "no XP gained" on its own.
+        const xpPctStatic = p.xp_next > 0 ? Math.min(1, prevXP / p.xp_next) : 0;
+        if (xpPctStatic > 0) {
+          this.add
+            .rectangle(300 + 15, y + 22, barW * xpPctStatic, 10, 0x444466)
+            .setOrigin(0, 0.5);
+        }
         this.add.text(300 + barW + 20, y + 17, `${prevXP}/${p.xp_next}`, {
           fontSize: "9px",
           color: "#666666",
