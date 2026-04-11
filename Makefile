@@ -1,4 +1,4 @@
-.PHONY: play stop run test test-e2e test-scripts build demo migrate setup-db teardown-db balance-sim validate-data client-dev client-build lint vet fmt pre-commit docker-up docker-down
+.PHONY: play stop run test test-e2e test-scripts build demo migrate setup-db teardown-db balance-sim simulate validate-data client-dev client-build lint vet fmt pre-commit docker-up docker-down
 
 # Per-worktree isolation: these are populated by scripts/worktree-env.sh via
 # direnv. Defaults below keep the Makefile usable without direnv (for CI, or
@@ -99,6 +99,16 @@ pre-commit:
 
 balance-sim:
 	cd server && go run ./cmd/balance_sim
+
+# Monte Carlo headless game simulator. Runs N full playthroughs per strategy,
+# collects progression/balance metrics, and fails on statistical assertion
+# violations. Use this as a regression gate for balance and quest logic.
+# NOTE: expected-promo-level is currently 2.5 because promotion fires off the
+# combat-count heuristic, not a proper quest gate. Tightens to ~8 once the
+# FF1-style promotion quest lands (see issue tracker).
+simulate:
+	cd server && go run ./cmd/simulate -runs 100 \
+		-expected-promo-level 2.5 -promo-level-tolerance 1.5
 
 validate-data:
 	cd server && go run ./cmd/validate_gamedata -shared=../shared

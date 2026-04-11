@@ -41,7 +41,10 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 		return nil, fmt.Errorf("party must have 1-4 members")
 	}
 
-	rngSeed := time.Now().UnixNano()
+	rngSeed := req.RNGSeed
+	if rngSeed == 0 {
+		rngSeed = time.Now().UnixNano()
+	}
 	rng := rand.New(rand.NewPCG(uint64(rngSeed), 0))
 
 	// Build locality -- OSM or wizard

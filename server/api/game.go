@@ -43,6 +43,9 @@ type NewGameRequest struct {
 	Lng         float64           `json:"lng,omitempty"`
 	RadiusMiles float64           `json:"radius_miles,omitempty"`
 	SpawnNodeID string            `json:"spawn_node_id,omitempty"`
+	// RNGSeed overrides the default time-based seed. Zero selects time.Now().
+	// Used by cmd/simulate for reproducible Monte Carlo runs.
+	RNGSeed int64 `json:"rng_seed,omitempty"`
 }
 
 type OSMPreviewRequest struct {
