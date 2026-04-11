@@ -1,7 +1,8 @@
 # Environment
 .env
 .env.*
-.envrc
+.envrc.local
+.direnv/
 CLAUDE.local.md
 
 # Go
