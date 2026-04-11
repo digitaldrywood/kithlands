@@ -5,8 +5,23 @@ import (
 
 	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/combat"
+	"github.com/digitaldrywood/kithlands/internal/gamedata"
 	"github.com/digitaldrywood/kithlands/internal/magic"
 )
+
+// isCombatCastableEffect is the single source of truth for which spell
+// effects the combat dispatch switch in processCombatAction handles. The
+// SpellState builder uses this to surface a "castable_in_combat" flag so
+// the client can grey out / reject utility-only spells (Light, Resurrect)
+// without hardcoding its own list. Keep in sync with the switch on
+// spell.Effect in processCombatAction.
+func isCombatCastableEffect(effect string) bool {
+	switch effect {
+	case "damage", "heal", "buff", "status", "cure_status":
+		return true
+	}
+	return false
+}
 
 // toHitEntries converts internal combat.Hit slices to the API-facing CombatHitEntry type.
 func toHitEntries(hits []combat.Hit) []CombatHitEntry {
@@ -50,6 +65,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 			g.message = "Got away safely!"
 			g.enemies = nil
 			g.formation = ""
+			g.spellBuffs = nil
 			state := g.stateUnlocked()
 			return &state, nil
 		}
@@ -207,18 +223,9 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 							}
 						case "heal":
 							amt := magic.ResolveHealSpell(spell, g.rng)
-							var healTarget *character.Character
-							for _, c := range g.party {
-								if c.IsAlive() && (healTarget == nil || c.CurrentHP < healTarget.CurrentHP) {
-									healTarget = c
-								}
-							}
-							if healTarget != nil {
-								healTarget.Heal(amt)
-								g.logCombat(
-									fmt.Sprintf("%s casts %s - healed %d HP", caster.Name, spell.Name, amt),
-									CombatActionEntry{Kind: "heal", ActorID: pc.ID, ActorName: caster.Name, TargetName: healTarget.Name, Damage: amt, SpellName: spell.Name})
-							}
+							g.resolveHealSpell(combatants, pc, caster, spell, ma.TargetID, amt)
+						case "buff":
+							g.resolveBuffSpell(combatants, pc, caster, spell, ma.TargetID)
 						case "status":
 							// Status effect spells (sleep, mute, poison_powder, slow)
 							for _, e := range g.enemies {
@@ -566,6 +573,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 		g.logCombat(fmt.Sprintf("Victory! +%d XP, +%d gold", totalXP, totalGold), CombatActionEntry{Kind: "info"})
 		g.checkLevelUps()
 		g.enemies = nil
+		g.spellBuffs = nil
 
 		// Complete current quest
 		if g.currentQ < len(g.quests) {
@@ -603,6 +611,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 	} else if combat.CheckDefeat(combatants) {
 		g.phase = "defeat"
 		g.message = "Your party has fallen. Game over."
+		g.spellBuffs = nil
 	}
 
 	state := g.stateUnlocked()
@@ -715,6 +724,7 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 	if combat.CheckVictory(g.enemies) {
 		g.logCombat("Victory!", CombatActionEntry{Kind: "info"})
 		g.enemies = nil
+		g.spellBuffs = nil
 		if g.currentQ < len(g.quests) {
 			g.quests[g.currentQ].Completed = true
 			completedIdx := g.currentQ
@@ -737,6 +747,7 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 	} else if combat.CheckDefeat(combatants) {
 		g.phase = "defeat"
 		g.message = "Your party has fallen."
+		g.spellBuffs = nil
 	}
 
 	state := g.stateUnlocked()
@@ -840,4 +851,188 @@ func (g *Game) tryStealFrom(targetID int) (string, string, bool) {
 		itemName = w.Name
 	}
 	return itemID, itemName, true
+}
+
+// resolveHealSpell applies a heal-effect spell to the appropriate target based
+// on spell.Target and the incoming ma.TargetID.
+//
+// Target interpretation:
+//   - single_ally: targetID is a party slot (0..len(party)-1); heal that ally.
+//   - all_allies:  heal every living party member.
+//   - enemy ID (>= 100): Cure on an undead enemy deals damage equal to the
+//     heal amount (per FF1 canon). Non-undead enemies are a no-op.
+//
+// Heals are applied to the combatant, not directly to g.party, so the
+// sync-back in processCombatAction picks them up correctly.
+func (g *Game) resolveHealSpell(
+	combatants []*combat.Combatant,
+	pc *combat.Combatant,
+	caster *character.Character,
+	spell *gamedata.Spell,
+	targetID int,
+	amt int,
+) {
+	// Undead-cure: single_ally heals can be cast on an undead enemy for damage
+	// (FF1 canon). Gate on spell.Target so all_allies heals always loop over
+	// the party even if a bogus targetID slips in.
+	if spell.Target == "single_ally" && targetID >= 100 {
+		var target *combat.Combatant
+		for _, e := range g.enemies {
+			if e.ID == targetID && e.CurrentHP > 0 {
+				target = e
+				break
+			}
+		}
+		if target == nil {
+			g.logCombat(
+				fmt.Sprintf("%s casts %s - target missing!", caster.Name, spell.Name),
+				CombatActionEntry{Kind: "info", ActorID: pc.ID, ActorName: caster.Name, SpellName: spell.Name})
+			return
+		}
+		var monsterDef *gamedata.Monster
+		for i := range g.gd.Monsters {
+			if g.gd.Monsters[i].Name == target.Name {
+				monsterDef = &g.gd.Monsters[i]
+				break
+			}
+		}
+		if monsterDef == nil || !monsterDef.IsUndead {
+			g.logCombat(
+				fmt.Sprintf("%s casts %s on %s - no effect.", caster.Name, spell.Name, target.Name),
+				CombatActionEntry{Kind: "info", ActorID: pc.ID, ActorName: caster.Name, TargetID: target.ID, TargetName: target.Name, SpellName: spell.Name})
+			return
+		}
+		target.CurrentHP -= amt
+		killed := target.CurrentHP <= 0
+		if killed {
+			target.CurrentHP = 0
+		}
+		msg := fmt.Sprintf("%s casts %s on %s[%d] for %d damage", caster.Name, spell.Name, target.Name, target.ID, amt)
+		if killed {
+			msg += " - DEFEATED!"
+		}
+		g.logCombat(msg,
+			CombatActionEntry{Kind: "spell", Element: "holy", DamageType: "magical",
+				ActorID: pc.ID, ActorName: caster.Name, TargetID: target.ID, TargetName: target.Name,
+				Damage: amt, Killed: killed, SpellName: spell.Name})
+		return
+	}
+
+	healAlly := func(slot int) {
+		cb := combatants[slot]
+		cb.CurrentHP += amt
+		if cb.CurrentHP > cb.MaxHP {
+			cb.CurrentHP = cb.MaxHP
+		}
+		g.logCombat(
+			fmt.Sprintf("%s casts %s on %s - healed %d HP", caster.Name, spell.Name, g.party[slot].Name, amt),
+			CombatActionEntry{Kind: "heal", ActorID: pc.ID, ActorName: caster.Name,
+				TargetID: slot, TargetName: g.party[slot].Name, Damage: amt, SpellName: spell.Name})
+	}
+
+	if spell.Target == "all_allies" {
+		for i, c := range g.party {
+			if !c.IsAlive() {
+				continue
+			}
+			healAlly(i)
+		}
+		return
+	}
+
+	// single_ally (default): use targetID as a party slot index.
+	if targetID < 0 || targetID >= len(g.party) || !g.party[targetID].IsAlive() {
+		g.logCombat(
+			fmt.Sprintf("%s casts %s - no valid target!", caster.Name, spell.Name),
+			CombatActionEntry{Kind: "info", ActorID: pc.ID, ActorName: caster.Name, SpellName: spell.Name})
+		return
+	}
+	healAlly(targetID)
+}
+
+// resolveBuffSpell installs a combat-duration stat buff on the targeted ally.
+// Buffs persist across rounds via g.spellBuffs (indexed by party slot) and are
+// re-applied to combatants at the start of each round via makeCombatants.
+// The buff is also applied to the current round's combatant so it affects
+// this round's attack resolution.
+func (g *Game) resolveBuffSpell(
+	combatants []*combat.Combatant,
+	pc *combat.Combatant,
+	caster *character.Character,
+	spell *gamedata.Spell,
+	targetID int,
+) {
+	buff := combat.CombatBuff{Kind: "spell_" + spell.ID, TurnsLeft: 999}
+	switch spell.BuffStat {
+	case "hit_pct":
+		buff.HitPctBonus = spell.Power
+	case "armor_absorb":
+		// Power is expressed as "% bonus over base", so power=100 means +100%
+		// (i.e. double armor -- matches Aegis' "doubles armor" description).
+		buff.ArmorAbsorbMult = 100 + spell.Power
+	default:
+		// Unknown buff_stat: still consume the charge but log a warning line.
+		g.logCombat(
+			fmt.Sprintf("%s casts %s - (no stat effect configured)", caster.Name, spell.Name),
+			CombatActionEntry{Kind: "info", ActorID: pc.ID, ActorName: caster.Name, SpellName: spell.Name})
+		return
+	}
+
+	apply := func(slot int) {
+		if g.spellBuffs == nil {
+			g.spellBuffs = make(map[int][]combat.CombatBuff)
+		}
+		existing := g.spellBuffs[slot]
+		replaced := false
+		for i := range existing {
+			if existing[i].Kind == buff.Kind {
+				existing[i] = buff
+				replaced = true
+				break
+			}
+		}
+		if !replaced {
+			existing = append(existing, buff)
+		}
+		g.spellBuffs[slot] = existing
+		// Apply live to this round's combatant too so the buff takes effect
+		// immediately instead of waiting for next round's makeCombatants().
+		// Replace an existing buff of the same kind rather than stacking,
+		// otherwise a recast doubles the bonus for the current round (the
+		// persistent list already carried one copy in via makeCombatants).
+		live := combatants[slot].Buffs
+		replacedLive := false
+		for i := range live {
+			if live[i].Kind == buff.Kind {
+				live[i] = buff
+				replacedLive = true
+				break
+			}
+		}
+		if !replacedLive {
+			live = append(live, buff)
+		}
+		combatants[slot].Buffs = live
+		g.logCombat(
+			fmt.Sprintf("%s casts %s on %s", caster.Name, spell.Name, g.party[slot].Name),
+			CombatActionEntry{Kind: "spell", ActorID: pc.ID, ActorName: caster.Name,
+				TargetID: slot, TargetName: g.party[slot].Name, SpellName: spell.Name})
+	}
+
+	if spell.Target == "all_allies" {
+		for i, c := range g.party {
+			if c.IsAlive() {
+				apply(i)
+			}
+		}
+		return
+	}
+
+	if targetID < 0 || targetID >= len(g.party) || !g.party[targetID].IsAlive() {
+		g.logCombat(
+			fmt.Sprintf("%s casts %s - no valid target!", caster.Name, spell.Name),
+			CombatActionEntry{Kind: "info", ActorID: pc.ID, ActorName: caster.Name, SpellName: spell.Name})
+		return
+	}
+	apply(targetID)
 }

@@ -174,9 +174,12 @@ type PartyMemberState struct {
 }
 
 type SpellState struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Charges int    `json:"charges"`
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Target   string `json:"target"`
+	Effect   string `json:"effect"`
+	Charges  int    `json:"charges"`
+	Castable bool   `json:"castable_in_combat"`
 }
 
 type EnemyState struct {
@@ -250,6 +253,7 @@ type Game struct {
 	currentQ   int
 	phase      string // world, combat, quest_complete, victory, defeat
 	enemies    []*combat.Combatant
+	spellBuffs map[int][]combat.CombatBuff // slot -> buffs active for current encounter
 	combatLog     []string
 	combatActions []CombatActionEntry
 	message    string
@@ -407,9 +411,12 @@ func (g *Game) buildPartyMemberState(c *character.Character, slot int) PartyMemb
 				sp := g.gd.SpellByID(sid)
 				if sp != nil {
 					pm.Spells = append(pm.Spells, SpellState{
-						ID:      sid,
-						Name:    sp.Name,
-						Charges: sb.Charges[lvl],
+						ID:       sid,
+						Name:     sp.Name,
+						Target:   sp.Target,
+						Effect:   sp.Effect,
+						Charges:  sb.Charges[lvl],
+						Castable: isCombatCastableEffect(sp.Effect),
 					})
 				}
 			}

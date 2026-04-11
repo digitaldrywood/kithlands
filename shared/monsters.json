@@ -86,6 +86,7 @@
     "name": "Skeleton",
     "tier": 2,
     "size": "medium",
+    "is_undead": true,
     "stats": {
       "str": 18,
       "agi": 6,
