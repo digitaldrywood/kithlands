@@ -10,6 +10,7 @@ type Class struct {
 	StartingStats    StartingStats    `json:"starting_stats"`
 	StatGrowthEights StatGrowthEights `json:"stat_growth_eighths"`
 	HPPerLevel       int              `json:"hp_per_level"`
+	MPPerLevel       int              `json:"mp_per_level"`
 	StrongLevelRate  int              `json:"strong_level_rate_pct"`
 	StrongLevelBonus int              `json:"strong_level_bonus_hp"`
 	Equipment        Equipment        `json:"equipment"`
@@ -26,6 +27,7 @@ type StartingStats struct {
 	VIT    int `json:"vit"`
 	LCK    int `json:"lck"`
 	MHP    int `json:"mhp"`
+	MMP    int `json:"mmp"`
 	HitPct int `json:"hit_pct"`
 }
 
@@ -201,6 +203,7 @@ type Spell struct {
 	Name         string `json:"name"`
 	School       string `json:"school"`
 	SpellLevel   int    `json:"spell_level"`
+	MPCost       int    `json:"mp_cost"`
 	Target       string `json:"target"`
 	Effect       string `json:"effect"`
 	Element      string `json:"element"`

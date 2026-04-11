@@ -92,6 +92,13 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		return nil, fmt.Errorf("unmarshaling party: %w", err)
 	}
 
+	// Legacy save migration (GDD §8.1 rewrite): pre-MP saves marshaled
+	// Character without MP/MaxMP, so json.Unmarshal leaves both at zero.
+	// Recompute MaxMP from the class curve for any caster whose class has
+	// a non-zero starting MMP or mp_per_level. Characters saved under the
+	// MP system already have MaxMP > 0 and are skipped.
+	migrateLegacyMP(party, gd)
+
 	var inv inventory.Inventory
 	if err := json.Unmarshal(ss.Inventory, &inv); err != nil {
 		return nil, fmt.Errorf("unmarshaling inventory: %w", err)
@@ -161,6 +168,30 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	}
 
 	return game, nil
+}
+
+// migrateLegacyMP backfills MP fields on characters loaded from pre-MP-pool
+// saves (GDD §8.1 rewrite). Zero MaxMP on a caster class is the signal:
+// new characters always land with MaxMP > 0 during character.New().
+func migrateLegacyMP(party []*character.Character, gd *gamedata.GameData) {
+	for _, c := range party {
+		if c == nil || c.MaxMP != 0 {
+			continue
+		}
+		cls := gd.ClassByID(c.ClassID)
+		if cls == nil {
+			continue
+		}
+		if cls.StartingStats.MMP == 0 && cls.MPPerLevel == 0 {
+			continue
+		}
+		levels := c.Level - 1
+		if levels < 0 {
+			levels = 0
+		}
+		c.MaxMP = cls.StartingStats.MMP + cls.MPPerLevel*levels
+		c.CurrentMP = c.MaxMP
+	}
 }
 
 // Save API handlers

@@ -62,7 +62,14 @@ func (g *Game) promoteParty() {
 			sb = magic.NewSpellBook()
 			g.spellBooks[c.Name] = sb
 		}
-		sb.UpdateCharges(c.Level, cls, &g.gd.Spells, true)
+
+		// Promotion grants a baseline MP pool to late-blooming casters
+		// (Knight, Shadow) and refills existing casters to full. Floor at 10
+		// so promoted warriors/rogues have meaningful first-act magic.
+		if c.MaxMP < 10 {
+			c.MaxMP = 10 + cls.MPPerLevel*max(0, c.Level-1)
+		}
+		c.CurrentMP = c.MaxMP
 
 		// Learn level-1 spells in every school the character can now access.
 		// Merge base + promoted schools so an existing caster gets any new
@@ -86,7 +93,6 @@ func (g *Game) promoteParty() {
 			}
 			_ = sb.LearnSpell(spell.ID, spell.SpellLevel, g.gd.Spells.ChargeTable.MaxSpellsPerLvl)
 		}
-		sb.RestoreAllCharges()
 	}
 }
 

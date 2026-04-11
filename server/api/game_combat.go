@@ -180,8 +180,21 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 				if spell != nil {
 					// Find caster character
 					caster := g.party[ma.Slot]
-					if sb, ok := g.spellBooks[caster.Name]; ok && sb.CanCast(spell) {
-						_ = sb.ConsumeCharge(spell.SpellLevel)
+					if _, ok := g.spellBooks[caster.Name]; !ok {
+						g.logCombat(
+							fmt.Sprintf("%s has no spells!", caster.Name),
+							CombatActionEntry{Kind: "info", ActorID: pc.ID, ActorName: caster.Name})
+						continue
+					}
+					if !magic.CanCast(caster, spell) {
+						g.logCombat(
+							fmt.Sprintf("%s doesn't have enough MP to cast %s (%d/%d)!",
+								caster.Name, spell.Name, caster.CurrentMP, spell.MPCost),
+							CombatActionEntry{Kind: "info", ActorID: pc.ID, ActorName: caster.Name})
+						continue
+					}
+					_ = magic.ConsumeMP(caster, spell)
+					{
 						switch spell.Effect {
 						case "damage":
 							for _, e := range g.enemies {
@@ -603,14 +616,34 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 		return &state, fmt.Errorf("spell not found")
 	}
 
-	// Find caster
+	// Find a caster who knows this spell and can afford the MP cost.
 	var caster *character.Character
 	for _, c := range g.party {
-		if sb, ok := g.spellBooks[c.Name]; ok && sb.CanCast(spell) {
-			caster = c
-			_ = sb.ConsumeCharge(spell.SpellLevel)
-			break
+		sb, ok := g.spellBooks[c.Name]
+		if !ok {
+			continue
 		}
+		known := false
+		for _, ids := range sb.KnownSpells {
+			for _, id := range ids {
+				if id == spell.ID {
+					known = true
+					break
+				}
+			}
+			if known {
+				break
+			}
+		}
+		if !known {
+			continue
+		}
+		if !magic.CanCast(c, spell) {
+			continue
+		}
+		caster = c
+		_ = magic.ConsumeMP(c, spell)
+		break
 	}
 	if caster == nil {
 		state := g.stateUnlocked()

@@ -561,7 +561,7 @@ hp_gain = base_hp[class] + (vit > rand(0,32) ? bonus : 0)
 
 Where `base_hp[class]` is the per-class HP base from Section 4.3, and `bonus` is +20 on a "strong" level (every other level for Warriors, less often for casters). VIT contributes a probabilistic bonus on top.
 
-**MP gain (casters only):** White and Black magic use FF1-style **spell charges per spell level**, not a unified MP pool. Section 8 covers this.
+**MP gain (casters only):** White and Black magic use a **unified MP pool per character** — MaxMP grows from a per-class curve (`mp_per_level` in classes.json), each spell has an `mp_cost`, and inns/tents/houses refill. Section 8.1 covers the full spec.
 
 ## 5.4 Strong vs. weak levels
 
@@ -731,25 +731,24 @@ Each town in the locality has zero or more shops. Shop inventory is generated pr
 
 ## 8.1 Magic system overview
 
-Kithlands uses the **FF1 spell-charge system**, not a unified MP pool. Each magic-using class has 8 spell levels (1–8), and at each level the character has a number of "charges" — that level's spells can be cast that many times before resting.
+Kithlands uses a **unified MP pool** per character (FF4-style), with a flat per-spell cost tied to spell level. Early drafts of the GDD specified the FF1 spell-charge system; that was replaced on 2026-04-11 (issue #100) once we needed auto-battle fallback and tent/inn restore logic to have a single resource to reason about.
 
-This is deliberately old-school. It's tactical (do you burn your level-3 charges on this encounter?), it's legible (you can see exactly what you have left), and it creates a natural pacing rhythm where parties retreat to inns to restore charges.
+Each caster has `CurrentMP` and `MaxMP` on their character sheet. `MaxMP` grows with level from a per-class curve. Every spell has an `mp_cost`; defaults are derived from spell level (L1=2, L2=4, L3=6 … L8=16), and individual spells may override the default in `shared/spells.json`.
 
-**Charges per spell level by character level:**
+**Per-class MP curves** (shared/classes.json):
 
-| Char level | L1 | L2 | L3 | L4 | L5 | L6 | L7 | L8 |
-|---|---|---|---|---|---|---|---|---|
-| 1 | 2 | – | – | – | – | – | – | – |
-| 3 | 3 | 2 | – | – | – | – | – | – |
-| 5 | 4 | 3 | 2 | – | – | – | – | – |
-| 8 | 5 | 4 | 3 | 2 | – | – | – | – |
-| 12 | 6 | 5 | 4 | 3 | 2 | – | – | – |
-| 16 | 7 | 6 | 5 | 4 | 3 | 2 | – | – |
-| 20 | 8 | 7 | 6 | 5 | 4 | 3 | 2 | – |
-| 25 | 9 | 8 | 7 | 6 | 5 | 4 | 3 | 2 |
-| 30+ | 9 | 9 | 9 | 9 | 9 | 9 | 9 | 9 |
+| Class     | Starting MMP | MP per level |
+|-----------|--------------|--------------|
+| Mender    | 10           | 5            |
+| Cinder    | 10           | 5            |
+| Wayfarer  | 5            | 3            |
+| Warrior   | 0            | 1 (post-promotion payoff) |
+| Rogue     | 0            | 1 (post-promotion payoff) |
+| Brawler   | 0            | 0            |
 
-(Values are caps; non-promoted classes are limited to lower spell levels per their class table.)
+Promotion seeds the pool to a minimum of 10 MP (see §8.4 promotion notes) so Knights and Shadows have meaningful first-act magic. Inns, tents, and houses fully restore MP alongside HP.
+
+**Spell cost is still capped by class spell-level access** (Magic.MaxSpellLevel in classes.json): a level-1 cinder still can't cast a level-4 spell even if they could afford the MP, because they don't know it.
 
 ## 8.2 Spell learning
 

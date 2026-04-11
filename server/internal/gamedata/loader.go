@@ -88,6 +88,14 @@ func (gd *GameData) buildIndexes() {
 		gd.armorByID[gd.Items.Armor[i].ID] = &gd.Items.Armor[i]
 	}
 
+	// Backfill MP cost for spells that omit it: cost = spell_level * 2 per GDD §8.1.
+	// Explicit mp_cost in spells.json always wins.
+	for i := range gd.Spells.Spells {
+		if gd.Spells.Spells[i].MPCost == 0 {
+			gd.Spells.Spells[i].MPCost = gd.Spells.Spells[i].SpellLevel * 2
+		}
+	}
+
 	gd.spellByID = make(map[string]*Spell, len(gd.Spells.Spells))
 	for i := range gd.Spells.Spells {
 		gd.spellByID[gd.Spells.Spells[i].ID] = &gd.Spells.Spells[i]

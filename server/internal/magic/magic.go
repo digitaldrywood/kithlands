@@ -3,79 +3,23 @@ package magic
 import (
 	"fmt"
 	"math/rand/v2"
-	"sort"
-	"strconv"
 
 	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
 )
 
-// SpellBook tracks which spells a character knows and how many charges remain.
-// Per Section 8.1: FF1-style spell charges per spell level, not a unified MP pool.
+// SpellBook tracks which spells a character knows. Per GDD §8.1 the party
+// shares a unified MP pool per character (see Character.CurrentMP/MaxMP);
+// this struct is the list of learned spell IDs grouped by spell level.
 type SpellBook struct {
 	// KnownSpells maps spell level (1-8) to up to 3 spell IDs.
 	KnownSpells map[int][]string `json:"known_spells"`
-
-	// Charges maps spell level (1-8) to remaining charges.
-	Charges map[int]int `json:"charges"`
-
-	// MaxCharges maps spell level (1-8) to maximum charges for current character level.
-	MaxCharges map[int]int `json:"max_charges"`
 }
 
 // NewSpellBook creates an empty spell book.
 func NewSpellBook() *SpellBook {
 	return &SpellBook{
 		KnownSpells: make(map[int][]string),
-		Charges:     make(map[int]int),
-		MaxCharges:  make(map[int]int),
-	}
-}
-
-// UpdateCharges recalculates max charges based on character level and class.
-// Uses the charge table from spells.json per Section 8.1.
-func (sb *SpellBook) UpdateCharges(charLevel int, class *gamedata.Class, spells *gamedata.SpellsData, promoted bool) {
-	table := spells.ChargeTable.Table
-
-	// Find the highest table entry <= charLevel
-	var keys []int
-	for k := range table {
-		n, _ := strconv.Atoi(k)
-		keys = append(keys, n)
-	}
-	sort.Ints(keys)
-
-	var row []int
-	for _, k := range keys {
-		if k <= charLevel {
-			row = table[strconv.Itoa(k)]
-		}
-	}
-	if row == nil {
-		return
-	}
-
-	maxSpellLvl := class.Magic.MaxSpellLevel
-	if promoted {
-		maxSpellLvl = class.Magic.PromotedMaxSpellLvl
-	}
-
-	for i, charges := range row {
-		spellLvl := i + 1
-		if spellLvl > maxSpellLvl {
-			break
-		}
-		sb.MaxCharges[spellLvl] = charges
-		if sb.Charges[spellLvl] > charges {
-			sb.Charges[spellLvl] = charges
-		}
-	}
-}
-
-// RestoreAllCharges fills all charges to max (inn rest).
-func (sb *SpellBook) RestoreAllCharges() {
-	for lvl, max := range sb.MaxCharges {
-		sb.Charges[lvl] = max
 	}
 }
 
@@ -94,17 +38,24 @@ func (sb *SpellBook) LearnSpell(spellID string, spellLevel int, maxPerLevel int)
 	return nil
 }
 
-// CanCast returns true if the character has charges at the spell's level.
-func (sb *SpellBook) CanCast(spell *gamedata.Spell) bool {
-	return sb.Charges[spell.SpellLevel] > 0
+// CanCast reports whether the caster has enough MP to cast the spell.
+func CanCast(c *character.Character, spell *gamedata.Spell) bool {
+	if c == nil || spell == nil {
+		return false
+	}
+	return c.CurrentMP >= spell.MPCost
 }
 
-// ConsumeCharge uses one charge at the given spell level.
-func (sb *SpellBook) ConsumeCharge(spellLevel int) error {
-	if sb.Charges[spellLevel] <= 0 {
-		return fmt.Errorf("no charges remaining at spell level %d", spellLevel)
+// ConsumeMP subtracts the spell's MP cost from the caster. Returns an error
+// if the caster cannot afford the cast.
+func ConsumeMP(c *character.Character, spell *gamedata.Spell) error {
+	if c == nil || spell == nil {
+		return fmt.Errorf("nil caster or spell")
 	}
-	sb.Charges[spellLevel]--
+	if c.CurrentMP < spell.MPCost {
+		return fmt.Errorf("%s has %d MP, needs %d", c.Name, c.CurrentMP, spell.MPCost)
+	}
+	c.CurrentMP -= spell.MPCost
 	return nil
 }
 

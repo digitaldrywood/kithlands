@@ -128,11 +128,9 @@ func main() {
 							character.LevelUp(c, cls, &gd.Stats, rng)
 							fmt.Printf("  ** %s leveled up! %d -> %d (HP: %d) **\n", c.Name, oldLevel, c.Level, c.MaxHP)
 
-							// Update spell charges
-							if sb, ok := spellBooks[c.Name]; ok {
-								sb.UpdateCharges(c.Level, cls, &gd.Spells, c.Promoted)
-								sb.RestoreAllCharges()
-							}
+							// MP growth is handled inside character.LevelUp; refill just in case.
+							_ = spellBooks[c.Name]
+							c.CurrentMP = c.MaxMP
 						}
 					}
 				} else {
@@ -182,14 +180,13 @@ func main() {
 		}
 
 		// Heal at inn between quests
-		fmt.Println("  (Resting at the inn... HP and spells restored)")
+		fmt.Println("  (Resting at the inn... HP and MP restored)")
 		for _, c := range party {
 			c.CurrentHP = c.MaxHP
+			c.CurrentMP = c.MaxMP
 			c.Status = character.StatusNone
 		}
-		for _, sb := range spellBooks {
-			sb.RestoreAllCharges()
-		}
+		_ = spellBooks
 
 		// Level up check
 		for _, c := range party {
@@ -326,8 +323,6 @@ func pickParty(gd *gamedata.GameData, rng *rand.Rand) ([]*character.Character, m
 		cls := gd.ClassByID(c.ClassID)
 		if len(cls.Magic.Schools) > 0 {
 			sb := magic.NewSpellBook()
-			sb.UpdateCharges(c.Level, cls, &gd.Spells, false)
-			sb.RestoreAllCharges()
 
 			// Learn starting spells
 			for _, spell := range gd.Spells.Spells {
@@ -473,21 +468,27 @@ func runCombat(partyCombatants, enemies []*combat.Combatant, party []*character.
 					actions = append(actions, combat.Action{ActorID: pc.ID, Kind: combat.ActionAttack, TargetID: targetEnemy.ID})
 					continue
 				}
-				// List available spells
+				var caster *character.Character
+				for _, p := range party {
+					if p.Name == pc.Name {
+						caster = p
+						break
+					}
+				}
+				// List available spells (MP-affordable only).
 				fmt.Println("  Available spells:")
 				var castable []gamedata.Spell
-				for lvl, spellIDs := range sb.KnownSpells {
-					charges := sb.Charges[lvl]
+				for _, spellIDs := range sb.KnownSpells {
 					for _, sid := range spellIDs {
 						sp := gd.SpellByID(sid)
-						if sp != nil && charges > 0 {
+						if sp != nil && magic.CanCast(caster, sp) {
 							castable = append(castable, *sp)
-							fmt.Printf("    %d. %s (L%d, %d charges) - %s\n", len(castable), sp.Name, sp.SpellLevel, charges, sp.Description)
+							fmt.Printf("    %d. %s (L%d, %d MP) - %s\n", len(castable), sp.Name, sp.SpellLevel, sp.MPCost, sp.Description)
 						}
 					}
 				}
 				if len(castable) == 0 {
-					fmt.Println("  No charges remaining. Attacking instead.")
+					fmt.Println("  Not enough MP. Attacking instead.")
 					actions = append(actions, combat.Action{ActorID: pc.ID, Kind: combat.ActionAttack, TargetID: targetEnemy.ID})
 					continue
 				}
@@ -501,7 +502,7 @@ func runCombat(partyCombatants, enemies []*combat.Combatant, party []*character.
 				}
 
 				spell := castable[idx-1]
-				sb.ConsumeCharge(spell.SpellLevel)
+				_ = magic.ConsumeMP(caster, &spell)
 
 				// Resolve spell
 				switch spell.Effect {
