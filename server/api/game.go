@@ -183,12 +183,27 @@ type SpellState struct {
 }
 
 type EnemyState struct {
-	ID     int    `json:"id"`
-	Name   string `json:"name"`
-	HP     int    `json:"hp"`
-	MaxHP  int    `json:"max_hp"`
-	Size   string `json:"size"`
-	Status string `json:"status"`
+	ID       int    `json:"id"`
+	Name     string `json:"name"`
+	HP       int    `json:"hp"`
+	MaxHP    int    `json:"max_hp"`
+	Size     string `json:"size"`
+	Status   string `json:"status"`
+	IsUndead bool   `json:"is_undead"`
+}
+
+// isMonsterUndead looks up a live enemy name against the loaded monster
+// catalog and reports whether it's tagged as undead. Exposed on
+// EnemyState so the client can let heal spells target undead enemies
+// for damage (FF1 canon — resolveHealSpell handles the rest) without
+// hardcoding a name list.
+func (g *Game) isMonsterUndead(name string) bool {
+	for i := range g.gd.Monsters {
+		if g.gd.Monsters[i].Name == name {
+			return g.gd.Monsters[i].IsUndead
+		}
+	}
+	return false
 }
 
 // CombatActionEntry carries structured metadata for a single combat log line.
@@ -304,7 +319,7 @@ func (g *Game) State() GameState {
 		if e.CurrentHP > 0 {
 			state.Enemies = append(state.Enemies, EnemyState{
 				ID: e.ID, Name: e.Name, HP: e.CurrentHP, MaxHP: e.MaxHP, Size: e.Size,
-				Status: string(e.Status),
+				Status: string(e.Status), IsUndead: g.isMonsterUndead(e.Name),
 			})
 		}
 	}
@@ -502,7 +517,7 @@ func (g *Game) stateUnlocked() GameState {
 	}
 	for _, e := range g.enemies {
 		if e.CurrentHP > 0 {
-			state.Enemies = append(state.Enemies, EnemyState{ID: e.ID, Name: e.Name, HP: e.CurrentHP, MaxHP: e.MaxHP, Size: e.Size, Status: string(e.Status)})
+			state.Enemies = append(state.Enemies, EnemyState{ID: e.ID, Name: e.Name, HP: e.CurrentHP, MaxHP: e.MaxHP, Size: e.Size, Status: string(e.Status), IsUndead: g.isMonsterUndead(e.Name)})
 		}
 	}
 	if g.phase == "combat" {
