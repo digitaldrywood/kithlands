@@ -1,327 +1,508 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kithlands - Sprite Gallery (Dev)</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    background: #1a1a2e;
-    color: #e0e0e0;
-    font-family: 'Courier New', monospace;
-    padding: 24px;
-  }
-  h1 {
-    text-align: center;
-    color: #ffd700;
-    font-size: 28px;
-    margin-bottom: 8px;
-    letter-spacing: 2px;
-  }
-  .subtitle {
-    text-align: center;
-    color: #888;
-    font-size: 12px;
-    margin-bottom: 32px;
-  }
-  .controls { text-align: center; margin-bottom: 24px; }
-  .controls label { color: #aaa; margin-right: 8px; }
-  .btn {
-    background: #16213e;
-    color: #ffd700;
-    border: 1px solid #444;
-    padding: 4px 12px;
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 13px;
-    margin: 0 2px;
-  }
-  .btn:hover { background: #1a1a4e; }
-  .btn.active { border-color: #ffd700; background: #2a2a4e; }
-  section { margin-bottom: 40px; }
-  h2 {
-    color: #4fc3f7;
-    font-size: 18px;
-    border-bottom: 1px solid #333;
-    padding-bottom: 6px;
-    margin-bottom: 16px;
-  }
-  h2 .count {
-    color: #666;
-    font-weight: normal;
-    font-size: 13px;
-  }
-  .grid { display: flex; flex-wrap: wrap; gap: 16px; }
-  .sprite-card {
-    background: #16213e;
-    border: 1px solid #333;
-    border-radius: 4px;
-    padding: 12px;
-    text-align: center;
-    transition: border-color 0.2s;
-  }
-  .sprite-card:hover { border-color: #4fc3f7; }
-  .sprite-card img {
-    image-rendering: auto;
-    display: block;
-    margin: 0 auto 8px;
-  }
-  .sprite-card .name {
-    font-size: 11px;
-    color: #ccc;
-    word-break: break-all;
-  }
-  .bg-dark { background-color: #111; display: inline-block; padding: 4px; }
-  .bg-checker {
-    background-image:
-      linear-gradient(45deg, #222 25%, transparent 25%),
-      linear-gradient(-45deg, #222 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, #222 75%),
-      linear-gradient(-45deg, transparent 75%, #222 75%);
-    background-size: 8px 8px;
-    background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
-    display: inline-block;
-    padding: 4px;
-  }
-  .bg-light { background-color: #ddd; display: inline-block; padding: 4px; }
-  .walk-group {
-    display: flex;
-    gap: 4px;
-    justify-content: center;
-    margin-bottom: 8px;
-  }
-  .walk-group img { margin: 0 !important; }
-</style>
-</head>
-<body>
-
-<h1>KITHLANDS SPRITE GALLERY</h1>
-<p class="subtitle">Dev asset browser -- HD Pixel Remaster style</p>
-
-<div class="controls">
-  <label>Background:</label>
-  <button class="btn active" onclick="setBg('dark', event)">Dark</button>
-  <button class="btn" onclick="setBg('checker', event)">Checker</button>
-  <button class="btn" onclick="setBg('light', event)">Light</button>
-</div>
-
-<section>
-  <h2>Class Battle Portraits <span class="count">(12) &mdash; 192x192</span></h2>
-  <div class="grid" id="grid-classes"></div>
-</section>
-
-<section>
-  <h2>Player Directional <span class="count">(4) &mdash; 128x128</span></h2>
-  <div class="grid" id="grid-player"></div>
-</section>
-
-<section>
-  <h2>Walk Animation <span class="count">(4 dirs x 4 frames)</span></h2>
-  <div class="grid" id="grid-walk"></div>
-</section>
-
-<section>
-  <h2>Monsters <span class="count">(18) &mdash; 256x256 / bosses 384x384</span></h2>
-  <div class="grid" id="grid-monsters"></div>
-</section>
-
-<section>
-  <h2>NPCs <span class="count">(6) &mdash; 128x128</span></h2>
-  <div class="grid" id="grid-npcs"></div>
-</section>
-
-<section>
-  <h2>Overworld Tilesets <span class="count">(13) &mdash; 16x16 native, tiled preview at 8x zoom</span></h2>
-  <div class="grid" id="grid-tilesets"></div>
-</section>
-
-<section>
-  <h2>Interior Tilesets <span class="count">(9) &mdash; 16x16 native, tiled preview at 8x zoom</span></h2>
-  <div class="grid" id="grid-interiors"></div>
-</section>
-
-<section>
-  <h2>UI Icons <span class="count">(11) &mdash; 64x64</span></h2>
-  <div class="grid" id="grid-ui-icons"></div>
-</section>
-
-<section>
-  <h2>UI Borders <span class="count">(9) &mdash; 64x64</span></h2>
-  <div class="grid" id="grid-ui-borders"></div>
-</section>
-
-<section>
-  <h2>HP Bar Elements <span class="count">(3) &mdash; 192x192</span></h2>
-  <div class="grid" id="grid-ui-hp"></div>
-</section>
-
-<script>
-let currentBg = 'dark';
-
-const SECTIONS = {
-  classes: {
-    grid: 'grid-classes', base: 'sprites/', display: 160,
-    items: ['warrior','brawler','rogue','mender','cinder','wayfarer',
-            'knight','champion','shadow','sage','pyromancer','wanderer']
-  },
-  player: {
-    grid: 'grid-player', base: 'sprites/', display: 120,
-    items: ['player_down','player_up','player_left','player_right']
-  },
-  walk: {
-    grid: 'grid-walk', base: 'sprites/walk/', display: 72, grouped: true,
-    groups: {
-      'Down':  ['walk_down_0','walk_down_1','walk_down_2','walk_down_3'],
-      'Up':    ['walk_up_0','walk_up_1','walk_up_2','walk_up_3'],
-      'Left':  ['walk_left_0','walk_left_1','walk_left_2','walk_left_3'],
-      'Right': ['walk_right_0','walk_right_1','walk_right_2','walk_right_3'],
-    }
-  },
-  monsters: {
-    grid: 'grid-monsters', base: 'sprites/monsters/', display: 160,
-    items: ['slime','goblin','wolf','skeleton','bat','rat','snake','spider',
-            'orc','ghost','bandit','troll','wyvern','lich','golem','demon',
-            'dark_knight','dragon'],
-    displayOverrides: { dark_knight: 200, dragon: 200 }
-  },
-  npcs: {
-    grid: 'grid-npcs', base: 'sprites/npcs/', display: 120,
-    items: ['elder','merchant','blacksmith','innkeeper','priestess','guard']
-  },
-  tilesets: {
-    grid: 'grid-tilesets', base: 'tilesets/', tiled: true, tilePx: 32, repeats: 4,
-    items: ['grass','path','water','tree','building','door','floor',
-            'rock','bush','dark_grass','forest','hill','sand']
-  },
-  interiors: {
-    grid: 'grid-interiors', base: 'tilesets/interiors/', tiled: true, tilePx: 32, repeats: 4,
-    items: ['shop_floor','inn_floor','temple_floor','wooden_wall','stone_wall',
-            'counter','bookshelf','bed','altar']
-  },
-  'ui-icons': {
-    grid: 'grid-ui-icons', base: 'sprites/ui/', display: 80,
-    items: ['icon_sword','icon_shield','icon_potion','icon_spell','icon_gold',
-            'icon_xp','icon_poison','icon_sleep','icon_mute','icon_slow','icon_paralyze']
-  },
-  'ui-borders': {
-    grid: 'grid-ui-borders', base: 'sprites/ui/', display: 80,
-    items: ['border_tl','border_t','border_tr','border_l','border_fill',
-            'border_r','border_bl','border_b','border_br']
-  },
-  'ui-hp': {
-    grid: 'grid-ui-hp', base: 'sprites/ui/', display: 180,
-    items: ['hp_bar_frame','hp_bar_fill','hp_bar_empty']
-  }
-};
-
-function bgClass() {
-  return currentBg === 'checker' ? 'bg-checker' : currentBg === 'light' ? 'bg-light' : 'bg-dark';
-}
-
-function label(name) { return name.replace(/_/g, ' '); }
-
-function makeCard(src, name, display) {
-  const card = document.createElement('div');
-  card.className = 'sprite-card';
-  const wrap = document.createElement('div');
-  wrap.className = bgClass();
-  const img = document.createElement('img');
-  img.src = src;
-  img.width = display;
-  img.height = display;
-  wrap.appendChild(img);
-  card.appendChild(wrap);
-  const nameDiv = document.createElement('div');
-  nameDiv.className = 'name';
-  nameDiv.textContent = label(name);
-  card.appendChild(nameDiv);
-  return card;
-}
-
-function makeTileCard(src, name, tilePx, repeats) {
-  const card = document.createElement('div');
-  card.className = 'sprite-card';
-  const totalPx = tilePx * repeats;
-  const wrap = document.createElement('div');
-  wrap.className = bgClass();
-  const canvas = document.createElement('canvas');
-  canvas.width = totalPx;
-  canvas.height = totalPx;
-  canvas.style.imageRendering = 'pixelated';
-  canvas.style.display = 'block';
-  const img = new Image();
-  img.onload = function() {
-    const ctx = canvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
-    for (let y = 0; y < repeats; y++) {
-      for (let x = 0; x < repeats; x++) {
-        ctx.drawImage(img, 0, 0, img.width, img.height, x * tilePx, y * tilePx, tilePx, tilePx);
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kithlands - Sprite Gallery (Dev)</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
       }
-    }
-  };
-  img.src = src;
-  wrap.appendChild(canvas);
-  card.appendChild(wrap);
-  const nameDiv = document.createElement('div');
-  nameDiv.className = 'name';
-  nameDiv.textContent = label(name);
-  card.appendChild(nameDiv);
-  return card;
-}
+      body {
+        background: #1a1a2e;
+        color: #e0e0e0;
+        font-family: "Courier New", monospace;
+        padding: 24px;
+      }
+      h1 {
+        text-align: center;
+        color: #ffd700;
+        font-size: 28px;
+        margin-bottom: 8px;
+        letter-spacing: 2px;
+      }
+      .subtitle {
+        text-align: center;
+        color: #888;
+        font-size: 12px;
+        margin-bottom: 32px;
+      }
+      .controls {
+        text-align: center;
+        margin-bottom: 24px;
+      }
+      .controls label {
+        color: #aaa;
+        margin-right: 8px;
+      }
+      .btn {
+        background: #16213e;
+        color: #ffd700;
+        border: 1px solid #444;
+        padding: 4px 12px;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 13px;
+        margin: 0 2px;
+      }
+      .btn:hover {
+        background: #1a1a4e;
+      }
+      .btn.active {
+        border-color: #ffd700;
+        background: #2a2a4e;
+      }
+      section {
+        margin-bottom: 40px;
+      }
+      h2 {
+        color: #4fc3f7;
+        font-size: 18px;
+        border-bottom: 1px solid #333;
+        padding-bottom: 6px;
+        margin-bottom: 16px;
+      }
+      h2 .count {
+        color: #666;
+        font-weight: normal;
+        font-size: 13px;
+      }
+      .grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+      .sprite-card {
+        background: #16213e;
+        border: 1px solid #333;
+        border-radius: 4px;
+        padding: 12px;
+        text-align: center;
+        transition: border-color 0.2s;
+      }
+      .sprite-card:hover {
+        border-color: #4fc3f7;
+      }
+      .sprite-card img {
+        image-rendering: auto;
+        display: block;
+        margin: 0 auto 8px;
+      }
+      .sprite-card .name {
+        font-size: 11px;
+        color: #ccc;
+        word-break: break-all;
+      }
+      .bg-dark {
+        background-color: #111;
+        display: inline-block;
+        padding: 4px;
+      }
+      .bg-checker {
+        background-image:
+          linear-gradient(45deg, #222 25%, transparent 25%),
+          linear-gradient(-45deg, #222 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, #222 75%),
+          linear-gradient(-45deg, transparent 75%, #222 75%);
+        background-size: 8px 8px;
+        background-position:
+          0 0,
+          0 4px,
+          4px -4px,
+          -4px 0px;
+        display: inline-block;
+        padding: 4px;
+      }
+      .bg-light {
+        background-color: #ddd;
+        display: inline-block;
+        padding: 4px;
+      }
+      .walk-group {
+        display: flex;
+        gap: 4px;
+        justify-content: center;
+        margin-bottom: 8px;
+      }
+      .walk-group img {
+        margin: 0 !important;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>KITHLANDS SPRITE GALLERY</h1>
+    <p class="subtitle">Dev asset browser -- HD Pixel Remaster style</p>
 
-function render() {
-  for (const [key, cfg] of Object.entries(SECTIONS)) {
-    const grid = document.getElementById(cfg.grid);
-    if (!grid) continue;
-    grid.innerHTML = '';
+    <div class="controls">
+      <label>Background:</label>
+      <button class="btn active" onclick="setBg('dark', event)">Dark</button>
+      <button class="btn" onclick="setBg('checker', event)">Checker</button>
+      <button class="btn" onclick="setBg('light', event)">Light</button>
+    </div>
 
-    if (cfg.grouped) {
-      for (const [groupName, files] of Object.entries(cfg.groups)) {
-        const card = document.createElement('div');
-        card.className = 'sprite-card';
-        const wrap = document.createElement('div');
+    <section>
+      <h2>
+        Class Battle Portraits <span class="count">(12) &mdash; 192x192</span>
+      </h2>
+      <div class="grid" id="grid-classes"></div>
+    </section>
+
+    <section>
+      <h2>Player Directional <span class="count">(4) &mdash; 128x128</span></h2>
+      <div class="grid" id="grid-player"></div>
+    </section>
+
+    <section>
+      <h2>Walk Animation <span class="count">(4 dirs x 4 frames)</span></h2>
+      <div class="grid" id="grid-walk"></div>
+    </section>
+
+    <section>
+      <h2>
+        Monsters
+        <span class="count">(18) &mdash; 256x256 / bosses 384x384</span>
+      </h2>
+      <div class="grid" id="grid-monsters"></div>
+    </section>
+
+    <section>
+      <h2>NPCs <span class="count">(6) &mdash; 128x128</span></h2>
+      <div class="grid" id="grid-npcs"></div>
+    </section>
+
+    <section>
+      <h2>
+        Overworld Tilesets
+        <span class="count"
+          >(13) &mdash; 16x16 native, tiled preview at 8x zoom</span
+        >
+      </h2>
+      <div class="grid" id="grid-tilesets"></div>
+    </section>
+
+    <section>
+      <h2>
+        Interior Tilesets
+        <span class="count"
+          >(9) &mdash; 16x16 native, tiled preview at 8x zoom</span
+        >
+      </h2>
+      <div class="grid" id="grid-interiors"></div>
+    </section>
+
+    <section>
+      <h2>UI Icons <span class="count">(11) &mdash; 64x64</span></h2>
+      <div class="grid" id="grid-ui-icons"></div>
+    </section>
+
+    <section>
+      <h2>UI Borders <span class="count">(9) &mdash; 64x64</span></h2>
+      <div class="grid" id="grid-ui-borders"></div>
+    </section>
+
+    <section>
+      <h2>HP Bar Elements <span class="count">(3) &mdash; 192x192</span></h2>
+      <div class="grid" id="grid-ui-hp"></div>
+    </section>
+
+    <script>
+      let currentBg = "dark";
+
+      const SECTIONS = {
+        classes: {
+          grid: "grid-classes",
+          base: "sprites/",
+          display: 160,
+          items: [
+            "warrior",
+            "brawler",
+            "rogue",
+            "mender",
+            "cinder",
+            "wayfarer",
+            "knight",
+            "champion",
+            "shadow",
+            "sage",
+            "pyromancer",
+            "wanderer",
+          ],
+        },
+        player: {
+          grid: "grid-player",
+          base: "sprites/",
+          display: 120,
+          items: ["player_down", "player_up", "player_left", "player_right"],
+        },
+        walk: {
+          grid: "grid-walk",
+          base: "sprites/walk/",
+          display: 72,
+          grouped: true,
+          groups: {
+            Down: ["walk_down_0", "walk_down_1", "walk_down_2", "walk_down_3"],
+            Up: ["walk_up_0", "walk_up_1", "walk_up_2", "walk_up_3"],
+            Left: ["walk_left_0", "walk_left_1", "walk_left_2", "walk_left_3"],
+            Right: [
+              "walk_right_0",
+              "walk_right_1",
+              "walk_right_2",
+              "walk_right_3",
+            ],
+          },
+        },
+        monsters: {
+          grid: "grid-monsters",
+          base: "sprites/monsters/",
+          display: 160,
+          items: [
+            "slime",
+            "goblin",
+            "wolf",
+            "skeleton",
+            "bat",
+            "rat",
+            "snake",
+            "spider",
+            "orc",
+            "ghost",
+            "bandit",
+            "troll",
+            "wyvern",
+            "lich",
+            "golem",
+            "demon",
+            "dark_knight",
+            "dragon",
+          ],
+          displayOverrides: { dark_knight: 200, dragon: 200 },
+        },
+        npcs: {
+          grid: "grid-npcs",
+          base: "sprites/npcs/",
+          display: 120,
+          items: [
+            "elder",
+            "merchant",
+            "blacksmith",
+            "innkeeper",
+            "priestess",
+            "guard",
+          ],
+        },
+        tilesets: {
+          grid: "grid-tilesets",
+          base: "tilesets/",
+          tiled: true,
+          tilePx: 32,
+          repeats: 4,
+          items: [
+            "grass",
+            "path",
+            "water",
+            "tree",
+            "building",
+            "door",
+            "floor",
+            "rock",
+            "bush",
+            "dark_grass",
+            "forest",
+            "hill",
+            "sand",
+          ],
+        },
+        interiors: {
+          grid: "grid-interiors",
+          base: "tilesets/interiors/",
+          tiled: true,
+          tilePx: 32,
+          repeats: 4,
+          items: [
+            "shop_floor",
+            "inn_floor",
+            "temple_floor",
+            "wooden_wall",
+            "stone_wall",
+            "counter",
+            "bookshelf",
+            "bed",
+            "altar",
+          ],
+        },
+        "ui-icons": {
+          grid: "grid-ui-icons",
+          base: "sprites/ui/",
+          display: 80,
+          items: [
+            "icon_sword",
+            "icon_shield",
+            "icon_potion",
+            "icon_spell",
+            "icon_gold",
+            "icon_xp",
+            "icon_poison",
+            "icon_sleep",
+            "icon_mute",
+            "icon_slow",
+            "icon_paralyze",
+          ],
+        },
+        "ui-borders": {
+          grid: "grid-ui-borders",
+          base: "sprites/ui/",
+          display: 80,
+          items: [
+            "border_tl",
+            "border_t",
+            "border_tr",
+            "border_l",
+            "border_fill",
+            "border_r",
+            "border_bl",
+            "border_b",
+            "border_br",
+          ],
+        },
+        "ui-hp": {
+          grid: "grid-ui-hp",
+          base: "sprites/ui/",
+          display: 180,
+          items: ["hp_bar_frame", "hp_bar_fill", "hp_bar_empty"],
+        },
+      };
+
+      function bgClass() {
+        return currentBg === "checker"
+          ? "bg-checker"
+          : currentBg === "light"
+            ? "bg-light"
+            : "bg-dark";
+      }
+
+      function label(name) {
+        return name.replace(/_/g, " ");
+      }
+
+      function makeCard(src, name, display) {
+        const card = document.createElement("div");
+        card.className = "sprite-card";
+        const wrap = document.createElement("div");
         wrap.className = bgClass();
-        const groupDiv = document.createElement('div');
-        groupDiv.className = 'walk-group';
-        for (const file of files) {
-          const img = document.createElement('img');
-          img.src = cfg.base + file + '.png';
-          img.width = cfg.display;
-          img.height = cfg.display;
-          groupDiv.appendChild(img);
-        }
-        wrap.appendChild(groupDiv);
+        const img = document.createElement("img");
+        img.src = src;
+        img.width = display;
+        img.height = display;
+        wrap.appendChild(img);
         card.appendChild(wrap);
-        const nameDiv = document.createElement('div');
-        nameDiv.className = 'name';
-        nameDiv.textContent = groupName;
+        const nameDiv = document.createElement("div");
+        nameDiv.className = "name";
+        nameDiv.textContent = label(name);
         card.appendChild(nameDiv);
-        grid.appendChild(card);
+        return card;
       }
-      continue;
-    }
 
-    for (const name of cfg.items) {
-      const src = cfg.base + name + '.png';
-      if (cfg.tiled) {
-        grid.appendChild(makeTileCard(src, name, cfg.tilePx, cfg.repeats));
-      } else {
-        const display = (cfg.displayOverrides && cfg.displayOverrides[name]) || cfg.display;
-        grid.appendChild(makeCard(src, name, display));
+      function makeTileCard(src, name, tilePx, repeats) {
+        const card = document.createElement("div");
+        card.className = "sprite-card";
+        const totalPx = tilePx * repeats;
+        const wrap = document.createElement("div");
+        wrap.className = bgClass();
+        const canvas = document.createElement("canvas");
+        canvas.width = totalPx;
+        canvas.height = totalPx;
+        canvas.style.imageRendering = "pixelated";
+        canvas.style.display = "block";
+        const img = new Image();
+        img.onload = function () {
+          const ctx = canvas.getContext("2d");
+          ctx.imageSmoothingEnabled = false;
+          for (let y = 0; y < repeats; y++) {
+            for (let x = 0; x < repeats; x++) {
+              ctx.drawImage(
+                img,
+                0,
+                0,
+                img.width,
+                img.height,
+                x * tilePx,
+                y * tilePx,
+                tilePx,
+                tilePx,
+              );
+            }
+          }
+        };
+        img.src = src;
+        wrap.appendChild(canvas);
+        card.appendChild(wrap);
+        const nameDiv = document.createElement("div");
+        nameDiv.className = "name";
+        nameDiv.textContent = label(name);
+        card.appendChild(nameDiv);
+        return card;
       }
-    }
-  }
-}
 
-function setBg(mode, evt) {
-  currentBg = mode;
-  document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
-  if (evt && evt.target) evt.target.classList.add('active');
-  render();
-}
+      function render() {
+        for (const [key, cfg] of Object.entries(SECTIONS)) {
+          const grid = document.getElementById(cfg.grid);
+          if (!grid) continue;
+          grid.innerHTML = "";
 
-render();
-</script>
-</body>
+          if (cfg.grouped) {
+            for (const [groupName, files] of Object.entries(cfg.groups)) {
+              const card = document.createElement("div");
+              card.className = "sprite-card";
+              const wrap = document.createElement("div");
+              wrap.className = bgClass();
+              const groupDiv = document.createElement("div");
+              groupDiv.className = "walk-group";
+              for (const file of files) {
+                const img = document.createElement("img");
+                img.src = cfg.base + file + ".png";
+                img.width = cfg.display;
+                img.height = cfg.display;
+                groupDiv.appendChild(img);
+              }
+              wrap.appendChild(groupDiv);
+              card.appendChild(wrap);
+              const nameDiv = document.createElement("div");
+              nameDiv.className = "name";
+              nameDiv.textContent = groupName;
+              card.appendChild(nameDiv);
+              grid.appendChild(card);
+            }
+            continue;
+          }
+
+          for (const name of cfg.items) {
+            const src = cfg.base + name + ".png";
+            if (cfg.tiled) {
+              grid.appendChild(
+                makeTileCard(src, name, cfg.tilePx, cfg.repeats),
+              );
+            } else {
+              const display =
+                (cfg.displayOverrides && cfg.displayOverrides[name]) ||
+                cfg.display;
+              grid.appendChild(makeCard(src, name, display));
+            }
+          }
+        }
+      }
+
+      function setBg(mode, evt) {
+        currentBg = mode;
+        document
+          .querySelectorAll(".btn")
+          .forEach((b) => b.classList.remove("active"));
+        if (evt && evt.target) evt.target.classList.add("active");
+        render();
+      }
+
+      render();
+    </script>
+  </body>
 </html>
