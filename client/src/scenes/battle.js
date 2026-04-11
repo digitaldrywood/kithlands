@@ -590,17 +590,12 @@ export class BattleScene extends Phaser.Scene {
         maxHP: p.max_hp,
       };
 
-      if (p.spells?.length > 0 && alive) {
-        this.add.text(
-          x + 45,
-          y + 22,
-          p.spells.map((s) => `${s.name}(${s.charges})`).join(" "),
-          {
-            fontSize: "7px",
-            color: "#8888ff",
-            fontFamily: "monospace",
-          },
-        );
+      if (p.max_mp > 0 && alive) {
+        this.add.text(x + 45, y + 22, `MP ${p.mp}/${p.max_mp}`, {
+          fontSize: "8px",
+          color: "#88aaff",
+          fontFamily: "monospace",
+        });
       }
 
       // Status effect icon
@@ -636,7 +631,8 @@ export class BattleScene extends Phaser.Scene {
 
     const member = gs.party[slot];
     const hasSpells =
-      member.spells?.length > 0 && member.spells.some((s) => s.charges > 0);
+      member.spells?.length > 0 &&
+      member.spells.some((s) => (member.mp ?? 0) >= (s.mp_cost ?? 0));
     const hasAbilities = member.abilities?.length > 0;
 
     const btns = [{ label: "[A]TTACK", type: "attack", color: "#ff4444" }];
@@ -890,7 +886,8 @@ export class BattleScene extends Phaser.Scene {
     const member = gs.party[slot];
     if (!member?.spells) return;
 
-    const spells = member.spells.filter((s) => s.charges > 0);
+    const currentMP = member.mp ?? 0;
+    const spells = member.spells.filter((s) => currentMP >= (s.mp_cost ?? 0));
     if (!spells.length) return;
 
     const ol = [];
@@ -922,7 +919,7 @@ export class BattleScene extends Phaser.Scene {
         .setInteractive({ useHandCursor: true })
         .setDepth(51);
       const txt = this.add
-        .text(400, y, `${i + 1}. ${sp.name} (${sp.charges} charges)`, {
+        .text(400, y, `${i + 1}. ${sp.name} (${sp.mp_cost} MP)`, {
           fontSize: "11px",
           color: "#aaaaff",
           fontFamily: "monospace",

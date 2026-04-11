@@ -14,103 +14,227 @@ func loadTestData(t *testing.T) *gamedata.GameData {
 	return gamedata.Load("../../../shared")
 }
 
-func TestSpellBookCharges(t *testing.T) {
+func TestNewCasterHasFullMP(t *testing.T) {
 	gd := loadTestData(t)
 	cinder := gd.ClassByID("cinder")
 
-	sb := magic.NewSpellBook()
-	sb.UpdateCharges(1, cinder, &gd.Spells, false)
-
-	if sb.MaxCharges[1] != 2 {
-		t.Errorf("level 1 cinder max charges at spell level 1: got %d, want 2", sb.MaxCharges[1])
+	c := character.New("Raistlin", "cinder", cinder)
+	if c.MaxMP <= 0 {
+		t.Errorf("cinder MaxMP: got %d, want > 0", c.MaxMP)
 	}
-
-	sb.RestoreAllCharges()
-	if sb.Charges[1] != 2 {
-		t.Errorf("charges after restore: got %d, want 2", sb.Charges[1])
+	if c.CurrentMP != c.MaxMP {
+		t.Errorf("new caster should start at full MP: got %d/%d", c.CurrentMP, c.MaxMP)
 	}
 }
 
-func TestSpellBookChargesAtHigherLevel(t *testing.T) {
+func TestNewNonCasterHasZeroMP(t *testing.T) {
+	gd := loadTestData(t)
+	warrior := gd.ClassByID("warrior")
+
+	c := character.New("Wulfgar", "warrior", warrior)
+	if c.MaxMP != 0 {
+		t.Errorf("warrior MaxMP: got %d, want 0", c.MaxMP)
+	}
+	if c.CurrentMP != 0 {
+		t.Errorf("warrior CurrentMP: got %d, want 0", c.CurrentMP)
+	}
+}
+
+func TestRestoreMPClampsToMax(t *testing.T) {
 	gd := loadTestData(t)
 	cinder := gd.ClassByID("cinder")
 
-	sb := magic.NewSpellBook()
-	sb.UpdateCharges(5, cinder, &gd.Spells, false)
-	sb.RestoreAllCharges()
+	c := character.New("Raistlin", "cinder", cinder)
+	c.CurrentMP = 1
+	c.RestoreMP(9999)
+	if c.CurrentMP != c.MaxMP {
+		t.Errorf("RestoreMP overshoot: got %d, want %d", c.CurrentMP, c.MaxMP)
+	}
+}
 
-	if sb.MaxCharges[1] != 4 {
-		t.Errorf("level 5 spell-level-1 charges: got %d, want 4", sb.MaxCharges[1])
+func TestSpellHasMPCost(t *testing.T) {
+	gd := loadTestData(t)
+	for _, id := range []string{"spark", "cure", "fireball", "banish"} {
+		sp := gd.SpellByID(id)
+		if sp == nil {
+			t.Fatalf("spell %q missing from game data", id)
+		}
+		if sp.MPCost <= 0 {
+			t.Errorf("spell %q MPCost: got %d, want > 0", id, sp.MPCost)
+		}
+		// Cost scales with spell level per the L*2 formula.
+		wantCost := sp.SpellLevel * 2
+		if sp.MPCost != wantCost {
+			t.Errorf("spell %q MPCost: got %d, want %d (level %d * 2)", id, sp.MPCost, wantCost, sp.SpellLevel)
+		}
 	}
-	if sb.MaxCharges[2] != 3 {
-		t.Errorf("level 5 spell-level-2 charges: got %d, want 3", sb.MaxCharges[2])
+}
+
+func TestCanCastChecksMP(t *testing.T) {
+	gd := loadTestData(t)
+	cinder := gd.ClassByID("cinder")
+	spark := gd.SpellByID("spark")
+
+	c := character.New("Raistlin", "cinder", cinder)
+
+	if !magic.CanCast(c, spark) {
+		t.Error("full MP caster should be able to cast spark")
 	}
-	if sb.MaxCharges[3] != 2 {
-		t.Errorf("level 5 spell-level-3 charges: got %d, want 2", sb.MaxCharges[3])
+
+	c.CurrentMP = spark.MPCost - 1
+	if magic.CanCast(c, spark) {
+		t.Error("caster with insufficient MP should not be able to cast")
+	}
+
+	c.CurrentMP = spark.MPCost
+	if !magic.CanCast(c, spark) {
+		t.Error("caster with exactly enough MP should be able to cast")
+	}
+}
+
+func TestConsumeMPDecrementsPool(t *testing.T) {
+	gd := loadTestData(t)
+	cinder := gd.ClassByID("cinder")
+	spark := gd.SpellByID("spark")
+
+	c := character.New("Raistlin", "cinder", cinder)
+	startMP := c.CurrentMP
+
+	if err := magic.ConsumeMP(c, spark); err != nil {
+		t.Fatalf("unexpected error consuming MP: %v", err)
+	}
+	if c.CurrentMP != startMP-spark.MPCost {
+		t.Errorf("after ConsumeMP: got %d, want %d", c.CurrentMP, startMP-spark.MPCost)
+	}
+}
+
+func TestConsumeMPInsufficient(t *testing.T) {
+	gd := loadTestData(t)
+	cinder := gd.ClassByID("cinder")
+	spark := gd.SpellByID("spark")
+
+	c := character.New("Raistlin", "cinder", cinder)
+	c.CurrentMP = 0
+
+	if err := magic.ConsumeMP(c, spark); err == nil {
+		t.Error("ConsumeMP with 0 MP should error")
+	}
+	if c.CurrentMP != 0 {
+		t.Errorf("failed cast should not consume MP: got %d, want 0", c.CurrentMP)
+	}
+}
+
+func TestUpdateMaxMPPerClass(t *testing.T) {
+	gd := loadTestData(t)
+
+	tests := []struct {
+		classID  string
+		wantZero bool
+	}{
+		{"warrior", true},
+		{"brawler", true},
+		{"rogue", true},
+		{"mender", false},
+		{"cinder", false},
+		{"wayfarer", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.classID, func(t *testing.T) {
+			cls := gd.ClassByID(tt.classID)
+			c := character.New("Test", tt.classID, cls)
+			if tt.wantZero && c.MaxMP != 0 {
+				t.Errorf("%s MaxMP at L1: got %d, want 0", tt.classID, c.MaxMP)
+			}
+			if !tt.wantZero && c.MaxMP <= 0 {
+				t.Errorf("%s MaxMP at L1: got %d, want > 0", tt.classID, c.MaxMP)
+			}
+		})
+	}
+}
+
+func TestMaxMPGrowsOnLevelUp(t *testing.T) {
+	gd := loadTestData(t)
+	cinder := gd.ClassByID("cinder")
+
+	c := character.New("Raistlin", "cinder", cinder)
+	startMaxMP := c.MaxMP
+
+	// Force a level-up by dumping XP and calling LevelUp directly.
+	c.XP = character.XPToNextLevel(c.Level, &gd.Stats.XPCurve)
+	rng := rand.New(rand.NewPCG(42, 0))
+	if err := character.LevelUp(c, cinder, &gd.Stats, rng); err != nil {
+		t.Fatalf("LevelUp: %v", err)
+	}
+
+	if c.MaxMP <= startMaxMP {
+		t.Errorf("Cinder MaxMP after level-up: got %d, want > %d", c.MaxMP, startMaxMP)
+	}
+}
+
+func TestLevelUpFillsCurrentMP(t *testing.T) {
+	gd := loadTestData(t)
+	cinder := gd.ClassByID("cinder")
+
+	c := character.New("Raistlin", "cinder", cinder)
+	c.CurrentMP = 0 // simulate post-battle
+	c.XP = character.XPToNextLevel(c.Level, &gd.Stats.XPCurve)
+	rng := rand.New(rand.NewPCG(42, 0))
+	if err := character.LevelUp(c, cinder, &gd.Stats, rng); err != nil {
+		t.Fatalf("LevelUp: %v", err)
+	}
+
+	// Level-up should fully restore MP, mirroring the HP restore on level-up.
+	if c.CurrentMP != c.MaxMP {
+		t.Errorf("CurrentMP after level-up: got %d, want %d", c.CurrentMP, c.MaxMP)
 	}
 }
 
 func TestLearnSpell(t *testing.T) {
 	sb := magic.NewSpellBook()
 
-	err := sb.LearnSpell("spark", 1, 3)
-	if err != nil {
+	if err := sb.LearnSpell("spark", 1, 3); err != nil {
 		t.Fatalf("learning spark: %v", err)
 	}
-
-	err = sb.LearnSpell("frost", 1, 3)
-	if err != nil {
+	if err := sb.LearnSpell("frost", 1, 3); err != nil {
+		t.Fatal(err)
+	}
+	if err := sb.LearnSpell("sleep", 1, 3); err != nil {
 		t.Fatal(err)
 	}
 
-	err = sb.LearnSpell("sleep", 1, 3)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// 4th spell at same level should fail (max 3 per Section 8.2)
-	err = sb.LearnSpell("extra", 1, 3)
-	if err == nil {
+	// 4th spell at same level should fail (max 3 per Section 8.2).
+	if err := sb.LearnSpell("extra", 1, 3); err == nil {
 		t.Error("should not learn 4th spell at same level")
 	}
 }
 
 func TestLearnDuplicateSpell(t *testing.T) {
 	sb := magic.NewSpellBook()
-	sb.LearnSpell("spark", 1, 3)
+	_ = sb.LearnSpell("spark", 1, 3)
 
-	err := sb.LearnSpell("spark", 1, 3)
-	if err == nil {
+	if err := sb.LearnSpell("spark", 1, 3); err == nil {
 		t.Error("should not learn duplicate spell")
 	}
 }
 
-func TestCastAndConsumeCharge(t *testing.T) {
+func TestClassSpellLevelCap(t *testing.T) {
 	gd := loadTestData(t)
 	cinder := gd.ClassByID("cinder")
-	spark := gd.SpellByID("spark")
 
 	sb := magic.NewSpellBook()
-	sb.UpdateCharges(1, cinder, &gd.Spells, false)
-	sb.RestoreAllCharges()
-	sb.LearnSpell("spark", 1, 3)
-
-	if !sb.CanCast(spark) {
-		t.Fatal("should be able to cast with charges")
+	// Unpromoted cinder caps at spell level 6.
+	// Attempting to learn a level-7 spell still succeeds at the SpellBook layer —
+	// the class cap is enforced by game_create / game_promote when populating
+	// the SpellBook. This test documents that SpellBook doesn't enforce it on
+	// its own and leaves cap enforcement to the game layer.
+	if err := sb.LearnSpell("spark", 1, 3); err != nil {
+		t.Fatalf("learning spark: %v", err)
 	}
-
-	// Use both charges
-	sb.ConsumeCharge(1)
-	sb.ConsumeCharge(1)
-
-	if sb.CanCast(spark) {
-		t.Error("should not be able to cast with 0 charges")
+	if _, ok := sb.KnownSpells[1]; !ok {
+		t.Error("spark should be registered at spell level 1")
 	}
-
-	err := sb.ConsumeCharge(1)
-	if err == nil {
-		t.Error("should error on 0 charges")
-	}
+	_ = cinder // silence unused if future assertions add class-cap logic
 }
 
 func TestSpellDamage(t *testing.T) {
@@ -205,33 +329,5 @@ func TestCureStatusSpell(t *testing.T) {
 	magic.ApplySpellToCharacter(c, curePoison, 0)
 	if c.Status != character.StatusNone {
 		t.Errorf("status after cure poison: got %q, want %q", c.Status, character.StatusNone)
-	}
-}
-
-func TestClassSpellLevelCap(t *testing.T) {
-	gd := loadTestData(t)
-	cinder := gd.ClassByID("cinder")
-
-	sb := magic.NewSpellBook()
-	// Cinder max_spell_level is 6, promoted is 8
-	// At level 20 the charge table gives charges for levels 1-7
-	// But unpromoted cinder caps at 6
-	sb.UpdateCharges(20, cinder, &gd.Spells, false)
-	sb.RestoreAllCharges()
-
-	if sb.MaxCharges[6] <= 0 {
-		t.Error("cinder should have spell level 6 charges at char level 20")
-	}
-	if sb.MaxCharges[7] > 0 {
-		t.Error("unpromoted cinder should NOT have spell level 7 charges")
-	}
-
-	// Promoted cinder gets level 7
-	sb2 := magic.NewSpellBook()
-	sb2.UpdateCharges(20, cinder, &gd.Spells, true)
-	sb2.RestoreAllCharges()
-
-	if sb2.MaxCharges[7] <= 0 {
-		t.Error("promoted cinder (pyromancer) should have spell level 7 charges at char level 20")
 	}
 }

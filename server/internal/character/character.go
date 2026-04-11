@@ -29,6 +29,10 @@ type Character struct {
 	MaxHP     int `json:"max_hp"`
 	CurrentHP int `json:"current_hp"`
 
+	// MP — unified spell pool (GDD §8.1). Non-caster classes stay at 0.
+	MaxMP     int `json:"max_mp"`
+	CurrentMP int `json:"current_mp"`
+
 	// Status
 	Status Status `json:"status"`
 }
@@ -60,6 +64,8 @@ func New(name, classID string, class *gamedata.Class) *Character {
 		HitPct:    class.StartingStats.HitPct,
 		MaxHP:     class.StartingStats.MHP,
 		CurrentHP: class.StartingStats.MHP,
+		MaxMP:     class.StartingStats.MMP,
+		CurrentMP: class.StartingStats.MMP,
 		Status:    StatusNone,
 	}
 }
@@ -133,6 +139,11 @@ func LevelUp(c *Character, class *gamedata.Class, stats *gamedata.StatsConfig, r
 	c.MaxHP += hpGain
 	c.CurrentHP += hpGain
 
+	// MP gain per GDD §8.1 — unified pool, mirrors HP growth.
+	// Non-casters have MPPerLevel == 0 and stay at 0 MP.
+	c.MaxMP += class.MPPerLevel
+	c.CurrentMP = c.MaxMP
+
 	return nil
 }
 
@@ -187,5 +198,13 @@ func (c *Character) Heal(amount int) {
 	c.CurrentHP += amount
 	if c.CurrentHP > c.MaxHP {
 		c.CurrentHP = c.MaxHP
+	}
+}
+
+// RestoreMP restores MP up to MaxMP.
+func (c *Character) RestoreMP(amount int) {
+	c.CurrentMP += amount
+	if c.CurrentMP > c.MaxMP {
+		c.CurrentMP = c.MaxMP
 	}
 }

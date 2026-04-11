@@ -125,11 +125,9 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 			_, _ = inv.EquipArmor(i, "leather_armor", pm.ClassID, gm.gd)
 		}
 
-		// Spell books for casters
+		// Spell books for casters (unified MP pool lives on Character, GDD §8.1).
 		if len(cls.Magic.Schools) > 0 {
 			sb := magic.NewSpellBook()
-			sb.UpdateCharges(c.Level, cls, &gm.gd.Spells, false)
-			sb.RestoreAllCharges()
 			for _, spell := range gm.gd.Spells.Spells {
 				for _, school := range cls.Magic.Schools {
 					if spell.School == school && spell.SpellLevel == 1 {

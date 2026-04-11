@@ -108,7 +108,7 @@ export function toggleMenu(scene) {
         .text(
           80,
           y + 44,
-          `  Spells: ${p.spells.map((s) => `${s.name}(${s.charges})`).join(", ")}`,
+          `  MP: ${p.mp ?? 0}/${p.max_mp ?? 0}  Spells: ${p.spells.map((s) => `${s.name}(${s.mp_cost}MP)`).join(", ")}`,
           { fontSize: "9px", color: "#8888ff", fontFamily: "monospace" },
         )
         .setScrollFactor(0)

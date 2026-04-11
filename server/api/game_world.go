@@ -273,10 +273,8 @@ func (g *Game) checkLevelUps() {
 func (g *Game) restParty() {
 	for _, c := range g.party {
 		c.CurrentHP = c.MaxHP
+		c.CurrentMP = c.MaxMP
 		c.Status = character.StatusNone
-	}
-	for _, sb := range g.spellBooks {
-		sb.RestoreAllCharges()
 	}
 }
 

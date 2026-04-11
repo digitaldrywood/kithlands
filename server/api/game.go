@@ -163,6 +163,8 @@ type PartyMemberState struct {
 	Level       int                   `json:"level"`
 	HP          int                   `json:"hp"`
 	MaxHP       int                   `json:"max_hp"`
+	MP          int                   `json:"mp"`
+	MaxMP       int                   `json:"max_mp"`
 	STR         int                   `json:"str"`
 	AGI         int                   `json:"agi"`
 	INT         int                   `json:"int_stat"`
@@ -178,7 +180,7 @@ type SpellState struct {
 	Name     string `json:"name"`
 	Target   string `json:"target"`
 	Effect   string `json:"effect"`
-	Charges  int    `json:"charges"`
+	MPCost   int    `json:"mp_cost"`
 	Castable bool   `json:"castable_in_combat"`
 }
 
@@ -410,6 +412,8 @@ func (g *Game) buildPartyMemberState(c *character.Character, slot int) PartyMemb
 		Level:       c.Level,
 		HP:          c.CurrentHP,
 		MaxHP:       c.MaxHP,
+		MP:          c.CurrentMP,
+		MaxMP:       c.MaxMP,
 		STR:         c.STR,
 		AGI:         c.AGI,
 		INT:         c.INT,
@@ -421,7 +425,7 @@ func (g *Game) buildPartyMemberState(c *character.Character, slot int) PartyMemb
 		pm.Abilities = append(pm.Abilities, cls.Abilities...)
 	}
 	if sb, ok := g.spellBooks[c.Name]; ok {
-		for lvl, spellIDs := range sb.KnownSpells {
+		for _, spellIDs := range sb.KnownSpells {
 			for _, sid := range spellIDs {
 				sp := g.gd.SpellByID(sid)
 				if sp != nil {
@@ -430,7 +434,7 @@ func (g *Game) buildPartyMemberState(c *character.Character, slot int) PartyMemb
 						Name:     sp.Name,
 						Target:   sp.Target,
 						Effect:   sp.Effect,
-						Charges:  sb.Charges[lvl],
+						MPCost:   sp.MPCost,
 						Castable: isCombatCastableEffect(sp.Effect),
 					})
 				}

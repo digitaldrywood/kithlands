@@ -125,22 +125,27 @@ func SpellBuffsForTest(g *Game, slot int) []combat.CombatBuff {
 
 // TeachSpellForTest teaches the given party member a spell at the provided
 // spell level so tests can exercise spells outside the member's starting
-// learnset (e.g. all_allies heal spells).
+// learnset (e.g. all_allies heal spells). Also refills the caster to full MP
+// so the test can immediately cast the new spell.
 func TeachSpellForTest(g *Game, slot int, spellID string, spellLevel int) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if slot < 0 || slot >= len(g.party) {
 		return
 	}
-	sb, ok := g.spellBooks[g.party[slot].Name]
+	c := g.party[slot]
+	sb, ok := g.spellBooks[c.Name]
 	if !ok {
 		return
 	}
 	_ = sb.LearnSpell(spellID, spellLevel, 3)
-	if sb.MaxCharges[spellLevel] < 1 {
-		sb.MaxCharges[spellLevel] = 3
+	// Ensure the test caster has enough MP even if the class curve would
+	// normally leave them empty at level 1 (e.g. bare warrior in combat
+	// fixture tests that bolt a cure spell onto any slot).
+	if c.MaxMP < 20 {
+		c.MaxMP = 20
 	}
-	sb.Charges[spellLevel] = sb.MaxCharges[spellLevel]
+	c.CurrentMP = c.MaxMP
 }
 
 // CastBuffSpellLiveBuffsForTest exercises resolveBuffSpell against a fresh
