@@ -38,9 +38,11 @@ export class BootScene extends Phaser.Scene {
 
     // Character sprites
     this.load.image("warrior", "/sprites/warrior.png");
-    this.load.image("cinder", "/sprites/cinder.png");
-    this.load.image("mender", "/sprites/mender.png");
+    this.load.image("brawler", "/sprites/brawler.png");
     this.load.image("rogue", "/sprites/rogue.png");
+    this.load.image("mender", "/sprites/mender.png");
+    this.load.image("cinder", "/sprites/cinder.png");
+    this.load.image("wayfarer", "/sprites/wayfarer.png");
 
     // Status effect icons
     this.load.image("icon_poison", "/sprites/ui/icon_poison.png");
