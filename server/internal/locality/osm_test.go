@@ -142,7 +142,7 @@ func TestClassifyElements(t *testing.T) {
 		{Type: "node", ID: 109, Lat: 44.957, Lon: -91.407},
 	}
 
-	nodes, roads := classifyElements(elements, 44.95, -91.40, 1500)
+	nodes, roads, _ := classifyElements(elements, 44.95, -91.40, 1500)
 
 	// Exactly 3 kept: Town Hall, Church, Java Hut.
 	if len(nodes) != 3 {
@@ -186,7 +186,7 @@ func TestClassifyElementsDeduplication(t *testing.T) {
 		{Type: "node", ID: 102, Lat: 44.97, Lon: -91.42},
 	}
 
-	nodes, _ := classifyElements(elements, 44.95, -91.40, 1500)
+	nodes, _, _ := classifyElements(elements, 44.95, -91.40, 1500)
 
 	// All three kept because they have real names. Deduplication appends
 	// numeric suffixes so each name is unique.
@@ -307,7 +307,7 @@ func TestClassifyElements_DropsGenericBuildingYes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			els := append([]osmElement{skel}, tt.fixture...)
-			nodes, _ := classifyElements(els, 44.95, -91.40, 1500)
+			nodes, _, _ := classifyElements(els, 44.95, -91.40, 1500)
 
 			if len(nodes) != tt.wantLen {
 				t.Errorf("got %d nodes, want %d (names=%v)", len(nodes), tt.wantLen, nodeNames(nodes))
@@ -431,9 +431,9 @@ func TestBoundingBoxScalesWithRadius(t *testing.T) {
 	}
 
 	// With a small radius, this node is far from center
-	nodesSmall, _ := classifyElements(elements, 44.95, -91.40, 500)
+	nodesSmall, _, _ := classifyElements(elements, 44.95, -91.40, 500)
 	// With a large radius, same node is closer to center
-	nodesLarge, _ := classifyElements(elements, 44.95, -91.40, 5000)
+	nodesLarge, _, _ := classifyElements(elements, 44.95, -91.40, 5000)
 
 	// Both should find the node
 	if len(nodesSmall) != 1 {

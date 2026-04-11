@@ -161,24 +161,10 @@ func GenerateTileMap(loc *Locality, spawnID string, walk *WalkResult) *TileMap {
 		}
 	}
 
-	// Draw paths between connected nodes
-	for _, edge := range loc.Edges {
-		var fromPos, toPos *nodePos
-		for i := range nodePositions {
-			if nodePositions[i].nodeID == edge.From {
-				fromPos = &nodePositions[i]
-			}
-			if nodePositions[i].nodeID == edge.To {
-				toPos = &nodePositions[i]
-			}
-		}
-		if fromPos != nil && toPos != nil {
-			drawWidePath(tiles, fromPos.x, fromPos.y+2, toPos.x, toPos.y+2, mapW, mapH)
-		}
-	}
-
 	// Draw OSM roads if available, filtered by highway class.
 	rasterizeRoads(tiles, loc.Roads(), mapW, mapH)
+	// Draw OSM waterways (rivers, streams, canals).
+	rasterizeWaterways(tiles, loc.Waterways(), mapW, mapH)
 
 	// Carve hidden path connecting close-tier to far-tier node
 	hiddenPath := carveHiddenPath(tiles, nodePositions, walk, mapW, mapH, seed)
@@ -356,12 +342,6 @@ func drawWildernessMarker(tiles [][]int, cx, cy, w, h int) {
 	}
 }
 
-// drawWidePath draws a 2-tile wide path between two points. Kept as a thin
-// wrapper for callers that want the historical default width.
-func drawWidePath(tiles [][]int, x1, y1, x2, y2, w, h int) {
-	drawWidePathN(tiles, x1, y1, x2, y2, w, h, 2)
-}
-
 // drawWidePathN draws a path of the given tile width between two points. Width
 // is stamped along the x axis (same as the pre-issue-55 behavior) and must be
 // at least 1.
@@ -437,6 +417,73 @@ func rasterizeRoads(tiles [][]int, roads []Road, mapW, mapH int) {
 			x2 := margin + int(road.Points[j].X*float64(usableW))
 			y2 := margin + int(road.Points[j].Y*float64(usableH))
 			drawWidePathN(tiles, x1, y1, x2, y2, mapW, mapH, width)
+		}
+	}
+}
+
+// waterwayWidth returns the tile width for a given OSM waterway kind.
+func waterwayWidth(kind string) int {
+	switch kind {
+	case "river":
+		return 3
+	case "canal":
+		return 2
+	default: // stream, drain, ditch, unknown
+		return 1
+	}
+}
+
+// rasterizeWaterways stamps linear waterway segments onto the tile grid.
+func rasterizeWaterways(tiles [][]int, waters []Waterway, mapW, mapH int) {
+	if len(waters) == 0 {
+		return
+	}
+	margin := 8
+	usableW := mapW - 2*margin
+	usableH := mapH - 2*margin
+	if usableW <= 0 || usableH <= 0 {
+		return
+	}
+	for _, w := range waters {
+		width := waterwayWidth(w.Kind)
+		for j := 1; j < len(w.Points); j++ {
+			x1 := margin + int(w.Points[j-1].X*float64(usableW))
+			y1 := margin + int(w.Points[j-1].Y*float64(usableH))
+			x2 := margin + int(w.Points[j].X*float64(usableW))
+			y2 := margin + int(w.Points[j].Y*float64(usableH))
+			drawWidePathWater(tiles, x1, y1, x2, y2, mapW, mapH, width)
+		}
+	}
+}
+
+// drawWidePathWater is drawWidePathN but stamps TileWater instead of TilePath.
+// Skips TileBuilding/TileDoor to avoid rivers through houses.
+func drawWidePathWater(tiles [][]int, x1, y1, x2, y2, w, h, width int) {
+	if width < 1 {
+		width = 1
+	}
+	dx := x2 - x1
+	dy := y2 - y1
+	steps := int(math.Max(math.Abs(float64(dx)), math.Abs(float64(dy))))
+	if steps == 0 {
+		return
+	}
+
+	lo := -(width / 2)
+	hi := (width + 1) / 2
+	for i := 0; i <= steps; i++ {
+		t := float64(i) / float64(steps)
+		x := x1 + int(float64(dx)*t)
+		y := y1 + int(float64(dy)*t)
+
+		for pw := lo; pw < hi; pw++ {
+			nx := x + pw
+			if inBounds(nx, y, w, h) {
+				tile := tiles[y][nx]
+				if tile != int(TileBuilding) && tile != int(TileDoor) {
+					tiles[y][nx] = int(TileWater)
+				}
+			}
 		}
 	}
 }

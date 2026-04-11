@@ -159,3 +159,60 @@ func TestParseRoads_PopulatesHighwayClass(t *testing.T) {
 		}
 	}
 }
+
+func TestParseWaterways_PopulatesKind(t *testing.T) {
+	nodes := map[int64]osmNode{
+		1: {lat: 45.0, lon: -91.0},
+		2: {lat: 45.01, lon: -91.01},
+		3: {lat: 45.02, lon: -91.02},
+	}
+	ways := []osmElement{
+		{Type: "way", Nodes: []int64{1, 2}, Tags: map[string]string{"waterway": "river"}},
+		{Type: "way", Nodes: []int64{2, 3}, Tags: map[string]string{"waterway": "stream"}},
+		{Type: "way", Nodes: []int64{1, 3}, Tags: map[string]string{"waterway": "canal"}},
+	}
+	waters := parseWaterways(ways, nodes, 44.9, 45.1, -91.1, -90.9)
+	if len(waters) != 3 {
+		t.Fatalf("expected 3 waterways parsed, got %d", len(waters))
+	}
+	want := []string{"river", "stream", "canal"}
+	for i, w := range want {
+		if waters[i].Kind != w {
+			t.Errorf("waters[%d].Kind = %q, want %q", i, waters[i].Kind, w)
+		}
+	}
+}
+
+// countWaterTiles returns the number of TileWater tiles in the grid.
+func countWaterTiles(tiles [][]int) int {
+	n := 0
+	for _, row := range tiles {
+		for _, t := range row {
+			if t == int(TileWater) {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+func TestRasterizeWaterways_StampsTileWater(t *testing.T) {
+	const mapW, mapH = 40, 40
+	tiles := blankTiles(mapW, mapH)
+
+	// Single river spanning most of the map diagonally.
+	waters := []Waterway{
+		{
+			Kind: "river",
+			Points: []struct{ X, Y float64 }{
+				{X: 0.1, Y: 0.1},
+				{X: 0.9, Y: 0.9},
+			},
+		},
+	}
+	rasterizeWaterways(tiles, waters, mapW, mapH)
+
+	if got := countWaterTiles(tiles); got == 0 {
+		t.Fatalf("expected at least one TileWater tile after rasterizeWaterways, got 0")
+	}
+}
