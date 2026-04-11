@@ -488,12 +488,16 @@ func (g *Game) buildTransportInfo() TransportInfo {
 		return TransportInfo{CurrentTier: g.trans.CurrentTier, TierName: "Unknown", EncounterMult: 1.0}
 	}
 	sprite := td.Name
+	tierName := td.Name
 	if skin, ok := g.gd.Transport.ConquestSkins[td.ID]; ok {
 		sprite = skin.Sprite
+		if skin.Name != "" {
+			tierName = skin.Name
+		}
 	}
 	return TransportInfo{
 		CurrentTier:   td.ID,
-		TierName:      td.Name,
+		TierName:      tierName,
 		Sprite:        sprite,
 		EncounterMult: td.EncounterRateMult,
 		CrossesWater:  td.CrossesWater,
