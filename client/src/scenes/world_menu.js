@@ -2,6 +2,11 @@ import { saveGame, equipItem } from "../api.js";
 import { playSFX } from "../systems/audio.js";
 import { getAutosaveEnabled, setAutosaveEnabled } from "../systems/prefs.js";
 import { showWorldMap } from "./world_interact.js";
+import {
+  filterEquippableItems,
+  computeEquipDelta,
+  formatDeltaLabel,
+} from "./equipPicker.js";
 
 export function toggleMenu(scene) {
   if (scene.menuOpen) {
@@ -272,37 +277,38 @@ export function toggleMenu(scene) {
 }
 
 export async function showEquipPicker(scene, slot, type) {
-  // Close menu first
+  // Tear down the party menu so the picker sits alone. We track the
+  // return target (party menu for now; character detail once #95 lands)
+  // so success AND cancel can restore the caller -- this is the core
+  // fix for issue #96, where the menu used to vanish after every pick.
+  const returnTo = { type: "party" };
   if (scene.menuGroup) {
     scene.menuGroup.forEach((c) => c.destroy());
     scene.menuGroup = null;
   }
+  scene.menuOpen = false;
 
   const gs = scene.gameState;
+  const equipped = gs.equipment ? gs.equipment[slot] : null;
+  const available = filterEquippableItems(gs.items, type);
   const overlay = [];
 
-  // Find available items from inventory
-  const prefix = type === "weapon" ? "wpn_" : "arm_";
-  const available = [];
-
-  // Get items from game state inventory
-  if (gs.items) {
-    for (const item of gs.items) {
-      if (item.id.startsWith(prefix)) {
-        const realId = item.id.substring(prefix.length);
-        available.push({ id: realId, name: item.name, count: item.count });
-      }
+  const reopenCaller = () => {
+    // Matches the existing pattern used by showQuestLog / save button:
+    // set menuOpen=false first, then toggleMenu to rebuild it fresh
+    // against the latest scene.gameState so the new gear line shows.
+    scene.menuOpen = false;
+    if (returnTo.type === "party") {
+      toggleMenu(scene);
     }
-  }
-
-  // Also check consumables for prefixed items
-  // These come through as items in the state
+  };
 
   const bg = scene.add
-    .rectangle(400, 300, 400, 200 + available.length * 30, 0x111144, 0.95)
+    .rectangle(400, 300, 460, 220 + available.length * 30, 0x111144, 0.95)
     .setStrokeStyle(2, 0x4444aa)
     .setScrollFactor(0)
-    .setDepth(50);
+    .setDepth(50)
+    .setInteractive();
   overlay.push(bg);
 
   const title = scene.add
@@ -331,8 +337,11 @@ export async function showEquipPicker(scene, slot, type) {
   } else {
     let y = 255;
     for (const item of available) {
+      const delta = computeEquipDelta(item, equipped, type);
+      const deltaLabel = formatDeltaLabel(delta, type);
+      const label = `${item.name} (x${item.count})   ${deltaLabel.text}`;
       const row = scene.add
-        .text(400, y, `${item.name} (x${item.count})`, {
+        .text(400, y, label, {
           fontSize: "12px",
           color: "#aaaaff",
           fontFamily: "monospace",
@@ -345,14 +354,23 @@ export async function showEquipPicker(scene, slot, type) {
       row.on("pointerout", () => row.setColor("#aaaaff"));
       row.on("pointerdown", async () => {
         const result = await equipItem(gs.id, slot, item.id, type);
+        overlay.forEach((o) => o.destroy());
         if (!result.error) {
           scene.gameState = result;
-          scene.showMessage(`Equipped: ${item.name}`);
           scene.updateHUD();
-          scene.time.delayedCall(1000, () => scene.hideMessage());
+          reopenCaller();
+          scene.showMessage(
+            `Equipped ${item.name} (${deltaLabel.text})`,
+          );
+          scene.time.delayedCall(1500, () => scene.hideMessage());
+          playSFX("sfx_save");
+        } else {
+          // Keep the player in the picker's return target on failure so
+          // they can retry; surface the error as a toast.
+          reopenCaller();
+          scene.showMessage(`Equip failed: ${result.error}`);
+          scene.time.delayedCall(1500, () => scene.hideMessage());
         }
-        overlay.forEach((o) => o.destroy());
-        scene.menuOpen = false;
       });
       overlay.push(row);
       y += 30;
@@ -371,7 +389,7 @@ export async function showEquipPicker(scene, slot, type) {
     .setInteractive({ useHandCursor: true });
   closeBtn.on("pointerdown", () => {
     overlay.forEach((o) => o.destroy());
-    scene.menuOpen = false;
+    reopenCaller();
   });
   overlay.push(closeBtn);
 }

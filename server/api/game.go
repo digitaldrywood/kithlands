@@ -133,13 +133,20 @@ type ItemState struct {
 	ID    string `json:"id"`
 	Name  string `json:"name"`
 	Count int    `json:"count"`
+	// Power is set on weapon items (id starts with "wpn_") so the client
+	// can show equip-delta previews without shipping the weapon catalog.
+	Power int `json:"power,omitempty"`
+	// Absorb is set on armor items (id starts with "arm_") for the same reason.
+	Absorb int `json:"absorb,omitempty"`
 }
 
 type EquipState struct {
-	WeaponID   string `json:"weapon_id"`
-	WeaponName string `json:"weapon_name"`
-	ArmorID    string `json:"armor_id"`
-	ArmorName  string `json:"armor_name"`
+	WeaponID    string `json:"weapon_id"`
+	WeaponName  string `json:"weapon_name"`
+	WeaponPower int    `json:"weapon_power,omitempty"`
+	ArmorID     string `json:"armor_id"`
+	ArmorName   string `json:"armor_name"`
+	ArmorAbsorb int    `json:"armor_absorb,omitempty"`
 }
 
 type ShopItemState struct {
@@ -476,14 +483,22 @@ func (g *Game) fillInventoryState(state *GameState) {
 				break
 			}
 		}
-		// Weapon/armor in inventory
-		if w := g.gd.WeaponByID(strings.TrimPrefix(id, "wpn_")); w != nil && strings.HasPrefix(id, "wpn_") {
-			name = w.Name
+		item := ItemState{ID: id, Name: name, Count: count}
+		// Weapon/armor in inventory -- enrich with Power/Absorb so the
+		// client can compute equip-delta previews (issue #96).
+		if strings.HasPrefix(id, "wpn_") {
+			if w := g.gd.WeaponByID(strings.TrimPrefix(id, "wpn_")); w != nil {
+				item.Name = w.Name
+				item.Power = w.Power
+			}
 		}
-		if a := g.gd.ArmorByID(strings.TrimPrefix(id, "arm_")); a != nil && strings.HasPrefix(id, "arm_") {
-			name = a.Name
+		if strings.HasPrefix(id, "arm_") {
+			if a := g.gd.ArmorByID(strings.TrimPrefix(id, "arm_")); a != nil {
+				item.Name = a.Name
+				item.Absorb = a.Absorb
+			}
 		}
-		state.Items = append(state.Items, ItemState{ID: id, Name: name, Count: count})
+		state.Items = append(state.Items, item)
 	}
 
 	// Equipment per party slot
@@ -492,9 +507,11 @@ func (g *Game) fillInventoryState(state *GameState) {
 		es := EquipState{WeaponID: eq.WeaponID, ArmorID: eq.ArmorID}
 		if w := g.gd.WeaponByID(eq.WeaponID); w != nil {
 			es.WeaponName = w.Name
+			es.WeaponPower = w.Power
 		}
 		if a := g.gd.ArmorByID(eq.ArmorID); a != nil {
 			es.ArmorName = a.Name
+			es.ArmorAbsorb = a.Absorb
 		}
 		state.Equipment[i] = es
 	}
