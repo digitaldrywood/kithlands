@@ -44,6 +44,9 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 		// Snapshot XP and level before combat for victory screen animation
 		g.xpBefore = make([]int, len(g.party))
 		g.levelBefore = make([]int, len(g.party))
+		// Clear per-fight dead-at-victory flags so a prior fight's death
+		// cannot leak into the next victory screen.
+		g.diedThisFight = make([]bool, len(g.party))
 		for i, c := range g.party {
 			g.xpBefore[i] = c.XP
 			g.levelBefore[i] = c.Level
@@ -142,6 +145,7 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 		}
 		g.xpBefore = make([]int, len(g.party))
 		g.levelBefore = make([]int, len(g.party))
+		g.diedThisFight = make([]bool, len(g.party))
 		partyLevels := make([]int, len(g.party))
 		for i, c := range g.party {
 			g.xpBefore[i] = c.XP

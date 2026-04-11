@@ -117,6 +117,14 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 						g.inv.Consumables["phoenix_down"]--
 						g.party[targetIdx].CurrentHP = 1
 						g.party[targetIdx].Status = character.StatusNone
+						// Mirror the revive on the combat-round combatant so the
+						// end-of-round sync-back (see "Sync HP back" below) does
+						// not overwrite the revived HP/status from the stale
+						// pre-turn snapshot.
+						if targetIdx < len(combatants) {
+							combatants[targetIdx].CurrentHP = 1
+							combatants[targetIdx].Status = character.StatusNone
+						}
 						g.logCombat(
 							fmt.Sprintf("%s uses Phoenix Down on %s - revived with 1 HP!",
 								g.party[ma.Slot].Name, g.party[targetIdx].Name),
@@ -499,6 +507,18 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 				itemName = w.Name
 			}
 			g.logCombat(fmt.Sprintf("Found: %s!", itemName), CombatActionEntry{Kind: "info"})
+		}
+		// Snapshot who was dead at victory resolution BEFORE any XP is
+		// distributed and BEFORE restParty() heals them. The client uses this
+		// to render the victory screen correctly — otherwise a member killed
+		// mid-fight is indistinguishable from a survivor once restParty has
+		// run. Phoenix Down (see ~L112) revives mid-combat, so a revived
+		// member is IsAlive() here and correctly receives XP.
+		g.diedThisFight = make([]bool, len(g.party))
+		for i, c := range g.party {
+			if !c.IsAlive() {
+				g.diedThisFight[i] = true
+			}
 		}
 		living := 0
 		for _, c := range g.party {
