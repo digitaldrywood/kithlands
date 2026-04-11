@@ -27,10 +27,12 @@ export async function interactWithDoor(scene) {
   scene.currentDoorSpawn = null;
   scene.animating = true;
 
-  // Quest advance when entering any building (await so gameState is fresh)
+  // Quest advance when entering any building (await so gameState is fresh).
+  // Server requires node_id to validate the player actually reached the quest
+  // target (issue #63).
   const gs = scene.gameState;
   if (gs.current_quest < gs.quests.length) {
-    await scene.triggerQuestAdvance(spawn.name);
+    await scene.triggerQuestAdvance(spawn.name, spawn.node_id);
   }
 
   // Transition to interior scene

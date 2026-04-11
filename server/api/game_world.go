@@ -110,6 +110,13 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 			g.message = fmt.Sprintf("%s is saved! Your adventure is complete.", g.loc.Name)
 		} else {
 			q := &g.quests[g.currentQ]
+			// Only complete the current quest when the player actually reaches
+			// its target node. Empty TargetNodeID falls through to legacy
+			// behavior so edge-case generator output still advances.
+			if q.TargetNodeID != "" && req.NodeID != q.TargetNodeID {
+				state := g.stateUnlocked()
+				return &state, nil
+			}
 			q.Completed = true
 			g.message = fmt.Sprintf("Quest complete: %s\n%s\n+%d XP, +%d gold",
 				q.Name, q.Completion, q.Reward.XP, q.Reward.Gold)

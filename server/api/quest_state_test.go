@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"net/http/httptest"
 	"testing"
 
 	"github.com/digitaldrywood/kithlands/api"
@@ -74,5 +75,119 @@ func TestNewGame_QuestLogFields(t *testing.T) {
 	lastName, _ := last["name"].(string)
 	if len(lastName) < 6 || lastName[:6] != "Defeat" {
 		t.Errorf("expected last quest to be boss (name starts with 'Defeat'), got %q", lastName)
+	}
+}
+
+// newQuestTestGame spins up a server + fresh campaign and returns the state,
+// game id, and the target_node_id of the current main quest. Tests use this
+// to drive quest_advance with a known-good or known-bad location id.
+func newQuestTestGame(t *testing.T) (gs map[string]any, ts *httptest.Server, gameID string, targetNodeID string) {
+	t.Helper()
+	_, ts = testServer(t)
+	t.Cleanup(ts.Close)
+
+	gs = post(t, ts.URL+"/api/game/new", api.NewGameRequest{
+		TownName: "Cadott",
+		People: []api.WizardPersonReq{
+			{Name: "Bob", Relation: "friendly"},
+			{Name: "Eve", Relation: "rival"},
+		},
+		Places:      []string{"School", "Store", "Library"},
+		BigBuilding: "Town Hall",
+		Party:       []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
+		Difficulty:  "normal",
+	})
+	if gs["error"] != nil {
+		t.Fatalf("new game error: %v", gs["error"])
+	}
+	gameID, _ = gs["id"].(string)
+	if gameID == "" {
+		t.Fatalf("new game: missing id in response")
+	}
+	targetNodeID = requireCurrentQuestTargetNodeID(t, gs)
+	return gs, ts, gameID, targetNodeID
+}
+
+// currentQuestTargetNodeID returns the target_node_id of the current main
+// quest. Returns "" if the game has run out of quests or the quest has no
+// target (legacy fixtures); callers that need a guaranteed non-empty id
+// should use requireCurrentQuestTargetNodeID instead.
+func currentQuestTargetNodeID(t *testing.T, gs map[string]any) string {
+	t.Helper()
+	cq, ok := gs["current_quest"].(float64)
+	if !ok {
+		return ""
+	}
+	idx := int(cq)
+	quests, _ := gs["quests"].([]any)
+	if idx < 0 || idx >= len(quests) {
+		return ""
+	}
+	q, _ := quests[idx].(map[string]any)
+	if q == nil {
+		return ""
+	}
+	id, _ := q["target_node_id"].(string)
+	return id
+}
+
+func requireCurrentQuestTargetNodeID(t *testing.T, gs map[string]any) string {
+	t.Helper()
+	id := currentQuestTargetNodeID(t, gs)
+	if id == "" {
+		t.Fatalf("generated current quest has no target_node_id; fixture assumption broken")
+	}
+	return id
+}
+
+// TestQuestAdvanceIgnoresWrongNode is the red test for issue #63 bug 1:
+// entering the wrong building must not advance the current main quest.
+func TestQuestAdvanceIgnoresWrongNode(t *testing.T) {
+	gs, ts, gameID, targetNodeID := newQuestTestGame(t)
+
+	startQuest := int(gs["current_quest"].(float64))
+	startPhase, _ := gs["phase"].(string)
+
+	wrongNode := targetNodeID + "_not_it"
+	gs = post(t, ts.URL+"/api/game/"+gameID+"/action", api.GameActionRequest{
+		Type:   "quest_advance",
+		NodeID: wrongNode,
+	})
+
+	endQuest := int(gs["current_quest"].(float64))
+	if endQuest != startQuest {
+		t.Errorf("current_quest advanced on wrong node: started at %d, got %d (target=%q, sent=%q)",
+			startQuest, endQuest, targetNodeID, wrongNode)
+	}
+	quests := gs["quests"].([]any)
+	q := quests[startQuest].(map[string]any)
+	if completed, _ := q["completed"].(bool); completed {
+		t.Errorf("quest[%d] marked completed on wrong node", startQuest)
+	}
+	if phase, _ := gs["phase"].(string); phase == "quest_complete" || phase == "victory" {
+		t.Errorf("phase transitioned to %q on wrong-node advance (started %q)", phase, startPhase)
+	}
+}
+
+// TestQuestAdvanceCompletesAtTargetNode is the green test for issue #63 bug 1:
+// entering the correct target building must still complete the current quest.
+func TestQuestAdvanceCompletesAtTargetNode(t *testing.T) {
+	gs, ts, gameID, targetNodeID := newQuestTestGame(t)
+	startQuest := int(gs["current_quest"].(float64))
+
+	gs = post(t, ts.URL+"/api/game/"+gameID+"/action", api.GameActionRequest{
+		Type:   "quest_advance",
+		NodeID: targetNodeID,
+	})
+
+	endQuest := int(gs["current_quest"].(float64))
+	if endQuest != startQuest+1 {
+		t.Errorf("current_quest: started %d, expected %d, got %d (target=%q)",
+			startQuest, startQuest+1, endQuest, targetNodeID)
+	}
+	quests := gs["quests"].([]any)
+	q := quests[startQuest].(map[string]any)
+	if completed, _ := q["completed"].(bool); !completed {
+		t.Errorf("quest[%d] not marked completed after reaching target", startQuest)
 	}
 }
