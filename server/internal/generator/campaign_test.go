@@ -45,18 +45,17 @@ func newRng(seed uint64) *rand.Rand {
 func TestGenerateCampaign_QuestCount(t *testing.T) {
 	loc := testLocality(t)
 
-	// Run several seeds and verify count stays within 10-15 per GDD 10.4.
-	// Minimum: 3 act1 + 1 promo + 4 act2 + 2 act3 + 1 boss = 11.
-	// Maximum is hard-capped at 15; Act 2 is trimmed when the roll would
-	// produce more.
+	// Run several seeds and verify count stays within 18-26 per issue #123.
+	// Minimum: 5 act1 + 1 promo + 7 act2 + 4 act3 + 1 boss = 18.
+	// Maximum: 8 act1 + 1 promo + 10 act2 + 6 act3 + 1 boss = 26 (the cap).
 	for seed := uint64(1); seed <= 50; seed++ {
 		rng := newRng(seed)
 		quests := GenerateCampaign(loc, "spawn", rng, nil)
-		if len(quests) < 11 {
-			t.Errorf("seed %d: expected >= 11 quests, got %d", seed, len(quests))
+		if len(quests) < 18 {
+			t.Errorf("seed %d: expected >= 18 quests, got %d", seed, len(quests))
 		}
-		if len(quests) > 15 {
-			t.Errorf("seed %d: expected <= 15 quests (GDD 10.4 cap), got %d", seed, len(quests))
+		if len(quests) > 26 {
+			t.Errorf("seed %d: expected <= 26 quests (issue #123 cap), got %d", seed, len(quests))
 		}
 	}
 }
@@ -175,14 +174,14 @@ func TestGenerateCampaign_ActDistribution(t *testing.T) {
 				act3++
 			}
 		}
-		if act1 < 3 || act1 > 5 {
-			t.Errorf("seed %d: Act 1 count %d outside [3,5]", seed, act1)
+		if act1 < 5 || act1 > 8 {
+			t.Errorf("seed %d: Act 1 count %d outside [5,8]", seed, act1)
 		}
-		if act2 < 4 || act2 > 6 {
-			t.Errorf("seed %d: Act 2 count %d outside [4,6]", seed, act2)
+		if act2 < 7 || act2 > 10 {
+			t.Errorf("seed %d: Act 2 count %d outside [7,10]", seed, act2)
 		}
-		if act3 < 2 || act3 > 3 {
-			t.Errorf("seed %d: Act 3 count %d outside [2,3]", seed, act3)
+		if act3 < 4 || act3 > 6 {
+			t.Errorf("seed %d: Act 3 count %d outside [4,6]", seed, act3)
 		}
 		if boss != 1 {
 			t.Errorf("seed %d: expected exactly 1 boss, got %d", seed, boss)
@@ -228,7 +227,7 @@ func TestGenerateCampaign_NoSpawnReturnsNil(t *testing.T) {
 	}
 }
 
-func TestGenerateCampaign_WithSidePool_CapsAt15(t *testing.T) {
+func TestGenerateCampaign_WithSidePool_CapsAt26(t *testing.T) {
 	loc := testLocality(t)
 	// Minimal supported pool to force insertion.
 	pool := []SideQuestEntry{
@@ -239,8 +238,8 @@ func TestGenerateCampaign_WithSidePool_CapsAt15(t *testing.T) {
 	for seed := uint64(1); seed <= 10; seed++ {
 		rng := newRng(seed)
 		quests := GenerateCampaign(loc, "spawn", rng, pool)
-		if len(quests) > 15 {
-			t.Errorf("seed %d: expected <= 15 with side pool, got %d", seed, len(quests))
+		if len(quests) > 26 {
+			t.Errorf("seed %d: expected <= 26 with side pool, got %d", seed, len(quests))
 		}
 		// Boss must still be last even after side insertion.
 		if quests[len(quests)-1].TemplateID != "Q12" {
