@@ -64,3 +64,12 @@ func RevivePartyMemberForTest(g *Game, idx int) {
 	g.party[idx].CurrentHP = 1
 	g.party[idx].Status = character.StatusNone
 }
+
+// ClearQuestsForTest advances currentQ past the end of g.quests so a subsequent
+// combat victory skips the quest-reward branch entirely and only exercises the
+// monster-XP distribution path. Exposed only for tests.
+func ClearQuestsForTest(g *Game) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.currentQ = len(g.quests)
+}

@@ -11,10 +11,16 @@ import (
 // restParty() heals them back to full HP.
 
 func TestVictoryNoXPForDeadMember_StandaloneEncounter(t *testing.T) {
+	// "Standalone encounter" = victory path that does NOT run the quest-reward
+	// branch at game_combat.go:521-530. We reach this by advancing currentQ
+	// past the end of g.quests before entering combat; the victory block at
+	// :547-553 then transitions straight to phase=victory without awarding any
+	// quest XP. Only the monster-XP path at :509-516 runs.
 	game := newGameWithParty(t, []api.PartyMemberReq{
 		{Name: "Hero", ClassID: "warrior"},
 		{Name: "Mage", ClassID: "cinder"},
 	})
+	api.ClearQuestsForTest(game)
 	enterCombat(t, game)
 
 	xpHeroBefore := api.PartyXPForTest(game, 0)
