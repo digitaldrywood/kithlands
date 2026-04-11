@@ -1,10 +1,13 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   applyDamage,
   applyHeal,
   formatHPLabel,
   hpBarFillWidth,
   hpBarColorPct,
+  barFillWidth,
+  barLabel,
+  tweenBarTo,
 } from "./hpBar.js";
 
 // These tests pin the issue #69 repro: an enemy with max_hp=7 and current
@@ -107,5 +110,46 @@ describe("hpBarColorPct", () => {
 
   it("is capped at 1 for over-max values", () => {
     expect(hpBarColorPct(20, 10)).toBe(1);
+  });
+});
+
+describe("generic bar aliases (issue #94)", () => {
+  it("barFillWidth mirrors hpBarFillWidth exactly", () => {
+    for (const [cur, max, w] of [
+      [0, 10, 100],
+      [3, 7, 65],
+      [1, 999, 65],
+      [10, 10, 65],
+      [50, 100, 200],
+    ]) {
+      expect(barFillWidth(cur, max, w)).toBe(hpBarFillWidth(cur, max, w));
+    }
+  });
+
+  it("barLabel mirrors formatHPLabel exactly", () => {
+    expect(barLabel(3, 7)).toBe(formatHPLabel(3, 7));
+    expect(barLabel(0, 0)).toBe(formatHPLabel(0, 0));
+    expect(barLabel(12, 20)).toBe("12/20");
+  });
+});
+
+describe("tweenBarTo", () => {
+  it("dispatches a tween to the scene targeting the fill rect", () => {
+    const addTween = vi.fn();
+    const scene = { tweens: { add: addTween } };
+    const fillRect = { width: 50 };
+    tweenBarTo(scene, fillRect, 5, 10, 100, { duration: 200 });
+    expect(addTween).toHaveBeenCalledTimes(1);
+    const arg = addTween.mock.calls[0][0];
+    expect(arg.targets).toBe(fillRect);
+    expect(arg.duration).toBe(200);
+    expect(arg.width).toBe(barFillWidth(5, 10, 100));
+  });
+
+  it("returns null and no-ops when scene or fill rect is missing", () => {
+    expect(tweenBarTo(null, { width: 0 }, 5, 10, 100)).toBe(null);
+    expect(tweenBarTo({ tweens: { add: () => {} } }, null, 5, 10, 100)).toBe(
+      null,
+    );
   });
 });

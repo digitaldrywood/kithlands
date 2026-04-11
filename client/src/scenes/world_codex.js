@@ -1,4 +1,5 @@
 import { toggleMenu } from "./world_menu.js";
+import { drawButton } from "../ui/panel.js";
 
 const ENEMY_SPRITES = {
   Slime: "monster_slime",
@@ -387,40 +388,49 @@ export function toggleCodex(scene) {
     tabContent.forEach((c) => scene.codexGroup.push(c));
   };
 
-  // Tab buttons
+  // Tab buttons — drawn-rect style via panel.drawButton, so active state
+  // is a colored stroke instead of a color-swap on raw text. Handles are
+  // stored so renderTab can update the active/inactive look.
   const tabs = [
     { label: "Bestiary", key: "bestiary" },
     { label: "Equipment", key: "equipment" },
     { label: "Spells", key: "spells" },
   ];
-  let tx = 250;
+  const tabHandles = {};
+  const tabW = 140;
+  const tabGap = 20;
+  const totalTabsW = tabs.length * tabW + (tabs.length - 1) * tabGap;
+  let tabCursor = 400 - totalTabsW / 2 + tabW / 2;
   for (const tab of tabs) {
-    const btn = scene.add
-      .text(tx, 85, `[ ${tab.label} ]`, {
-        fontSize: "12px",
-        color: tab.key === activeTab ? "#ffffff" : "#666666",
-        fontFamily: "monospace",
-      })
-      .setScrollFactor(0)
-      .setDepth(41)
-      .setInteractive({ useHandCursor: true });
-    btn.on("pointerdown", () => renderTab(tab.key));
+    const btn = drawButton(
+      scene,
+      tabCursor,
+      90,
+      tabW,
+      30,
+      tab.label,
+      () => {
+        renderTab(tab.key);
+        for (const key of Object.keys(tabHandles)) {
+          tabHandles[key].setActive(key === tab.key);
+        }
+      },
+    );
+    btn.setActive(tab.key === activeTab);
+    tabHandles[tab.key] = btn;
     scene.codexGroup.push(btn);
-    tx += 170;
+    tabCursor += tabW + tabGap;
   }
 
-  // Close button
-  const closeBtn = scene.add
-    .text(400, 545, "[ CLOSE (H/ESC) ]", {
-      fontSize: "13px",
-      color: "#aaaaaa",
-      fontFamily: "monospace",
-    })
-    .setOrigin(0.5)
-    .setScrollFactor(0)
-    .setDepth(41)
-    .setInteractive({ useHandCursor: true });
-  closeBtn.on("pointerdown", () => toggleCodex(scene));
+  const closeBtn = drawButton(
+    scene,
+    400,
+    545,
+    180,
+    32,
+    "CLOSE (H/ESC)",
+    () => toggleCodex(scene),
+  );
   scene.codexGroup.push(closeBtn);
 
   // Show first tab

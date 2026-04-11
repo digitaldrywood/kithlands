@@ -2,19 +2,41 @@ import { saveGame, equipItem } from "../api.js";
 import { playSFX } from "../systems/audio.js";
 import { getAutosaveEnabled, setAutosaveEnabled } from "../systems/prefs.js";
 import { showWorldMap } from "./world_interact.js";
+import { drawPanel, drawButton } from "../ui/panel.js";
+import {
+  barFillWidth,
+  barLabel,
+  hpBarColorPct,
+} from "../systems/hpBar.js";
 import {
   filterEquippableItems,
   computeEquipDelta,
   formatDeltaLabel,
 } from "./equipPicker.js";
 
+// Panel geometry (issue #94). All layout math derives from these constants
+// so the 4-member → 6-member scaling is just `rowH` shrinking; no absolute
+// y-coordinates sprinkled through the body.
+const PANEL_CX = 400;
+const PANEL_CY = 300;
+const PANEL_W = 760;
+const PANEL_H = 540;
+const PANEL_LEFT = PANEL_CX - PANEL_W / 2; // 20
+const PANEL_RIGHT = PANEL_CX + PANEL_W / 2; // 780
+const PANEL_TOP = PANEL_CY - PANEL_H / 2; // 30
+const PANEL_BOTTOM = PANEL_CY + PANEL_H / 2; // 570
+const DEPTH_BG = 40;
+const DEPTH_CONTENT = 41;
+
+// The body region starts below the title strip and ends above the footer
+// button rows. rowH is computed dynamically so 4–6 party members all fit.
+const BODY_TOP = PANEL_TOP + 70; // title area reserved above
+const FOOTER_TOP = PANEL_BOTTOM - 120; // two 30px button rows + margins
+const BODY_H = FOOTER_TOP - BODY_TOP;
+
 export function toggleMenu(scene) {
   if (scene.menuOpen) {
-    if (scene.menuGroup) {
-      scene.menuGroup.forEach((c) => c.destroy());
-      scene.menuGroup = null;
-    }
-    scene.menuOpen = false;
+    closeMenu(scene);
     return;
   }
 
@@ -22,258 +44,326 @@ export function toggleMenu(scene) {
   scene.menuGroup = [];
   const gs = scene.gameState;
 
-  // Background panel (wider for equipment) -- interactive to block clicks through to map
-  const bg = scene.add
-    .rectangle(400, 300, 700, 500, 0x000000, 0.95)
-    .setScrollFactor(0)
-    .setDepth(40)
-    .setInteractive();
-  scene.menuGroup.push(bg);
+  const panel = drawPanel(scene, PANEL_CX, PANEL_CY, PANEL_W, PANEL_H, {
+    depth: DEPTH_BG,
+  });
+  scene.menuGroup.push(panel.bg);
 
   const title = scene.add
-    .text(400, 65, "PARTY MENU", {
-      fontSize: "18px",
+    .text(PANEL_CX, PANEL_TOP + 32, "PARTY MENU", {
+      fontSize: "20px",
       color: "#ffff44",
       fontFamily: "monospace",
     })
     .setOrigin(0.5)
     .setScrollFactor(0)
-    .setDepth(41);
+    .setDepth(DEPTH_CONTENT);
   scene.menuGroup.push(title);
 
-  let y = 95;
-  for (let i = 0; i < gs.party.length; i++) {
-    const p = gs.party[i];
-    const eq = gs.equipment ? gs.equipment[i] : {};
-
-    // Name and stats
-    const line = scene.add
-      .text(
-        80,
-        y,
-        `${p.name} (${p.class_name}) Lv.${p.level}  HP:${p.hp}/${p.max_hp}  STR:${p.str} AGI:${p.agi} INT:${p.int_stat}`,
-        { fontSize: "11px", color: "#ffffff", fontFamily: "monospace" },
-      )
-      .setScrollFactor(0)
-      .setDepth(41);
-    scene.menuGroup.push(line);
-
-    // XP
-    const xpLine = scene.add
-      .text(80, y + 16, `  XP: ${p.xp}/${p.xp_next}`, {
-        fontSize: "10px",
-        color: "#aaaaaa",
-        fontFamily: "monospace",
-      })
-      .setScrollFactor(0)
-      .setDepth(41);
-    scene.menuGroup.push(xpLine);
-
-    // Equipment
-    const weaponName = eq.weapon_name || "None";
-    const armorName = eq.armor_name || "None";
-    const eqLine = scene.add
-      .text(80, y + 30, `  Weapon: ${weaponName}  |  Armor: ${armorName}`, {
-        fontSize: "10px",
-        color: "#ffcc44",
-        fontFamily: "monospace",
-      })
-      .setScrollFactor(0)
-      .setDepth(41);
-    scene.menuGroup.push(eqLine);
-
-    // Equip buttons
-    const eqWpnBtn = scene.add
-      .text(540, y + 28, "[Equip Wpn]", {
-        fontSize: "9px",
-        color: "#44aaff",
-        fontFamily: "monospace",
-      })
-      .setScrollFactor(0)
-      .setDepth(41)
-      .setInteractive({ useHandCursor: true });
-    eqWpnBtn.on("pointerdown", () => showEquipPicker(scene, i, "weapon"));
-    scene.menuGroup.push(eqWpnBtn);
-
-    const eqArmBtn = scene.add
-      .text(630, y + 28, "[Equip Arm]", {
-        fontSize: "9px",
-        color: "#44aaff",
-        fontFamily: "monospace",
-      })
-      .setScrollFactor(0)
-      .setDepth(41)
-      .setInteractive({ useHandCursor: true });
-    eqArmBtn.on("pointerdown", () => showEquipPicker(scene, i, "armor"));
-    scene.menuGroup.push(eqArmBtn);
-
-    // Spells
-    if (p.spells && p.spells.length > 0) {
-      const spells = scene.add
-        .text(
-          80,
-          y + 44,
-          `  MP: ${p.mp ?? 0}/${p.max_mp ?? 0}  Spells: ${p.spells.map((s) => `${s.name}(${s.mp_cost}MP)`).join(", ")}`,
-          { fontSize: "9px", color: "#8888ff", fontFamily: "monospace" },
-        )
-        .setScrollFactor(0)
-        .setDepth(41);
-      scene.menuGroup.push(spells);
-      y += 65;
-    } else {
-      y += 52;
-    }
-  }
-
-  // Gold, potions, items
-  y += 5;
+  // Top-right inventory strip: Gold + Potions. Moved out of the body so
+  // party rows can take the full body width.
   const inv = scene.add
-    .text(80, y, `Gold: ${gs.gold}  |  Potions: ${gs.potions}`, {
-      fontSize: "12px",
-      color: "#ffcc44",
-      fontFamily: "monospace",
-    })
+    .text(
+      PANEL_RIGHT - 20,
+      PANEL_TOP + 32,
+      `Gold: ${gs.gold}   Potions: ${gs.potions}`,
+      { fontSize: "12px", color: "#ffcc44", fontFamily: "monospace" },
+    )
+    .setOrigin(1, 0.5)
     .setScrollFactor(0)
-    .setDepth(41);
+    .setDepth(DEPTH_CONTENT);
   scene.menuGroup.push(inv);
 
-  // Other items
-  if (gs.items && gs.items.length > 0) {
-    y += 18;
-    const itemStr = gs.items.map((i) => `${i.name}(${i.count})`).join(", ");
-    const itemLine = scene.add
-      .text(80, y, `Items: ${itemStr}`, {
-        fontSize: "10px",
-        color: "#aaaaaa",
-        fontFamily: "monospace",
-      })
-      .setScrollFactor(0)
-      .setDepth(41);
-    scene.menuGroup.push(itemLine);
+  // Horizontal divider under the title.
+  const divider = scene.add
+    .rectangle(PANEL_CX, PANEL_TOP + 58, PANEL_W - 40, 1, 0x4488ff, 0.6)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT);
+  scene.menuGroup.push(divider);
+
+  // Body: party rows. Row height scales so 4 or 6 members both fit cleanly.
+  const party = Array.isArray(gs.party) ? gs.party : [];
+  const n = Math.max(1, party.length);
+  const rowH = Math.floor(BODY_H / n);
+  for (let i = 0; i < party.length; i++) {
+    const p = party[i];
+    const eq = gs.equipment ? gs.equipment[i] || {} : {};
+    drawPartyRow(
+      scene,
+      scene.menuGroup,
+      PANEL_LEFT + 20,
+      BODY_TOP + i * rowH,
+      PANEL_W - 40,
+      p,
+      eq,
+      i,
+    );
   }
 
-  // Use potion button
-  if (gs.potions > 0) {
-    const useBtn = scene.add
-      .text(400, y + 35, "[ USE POTION ]", {
-        fontSize: "13px",
-        color: "#44ff44",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(41)
-      .setInteractive({ useHandCursor: true });
-    useBtn.on("pointerover", () => useBtn.setColor("#88ff88"));
-    useBtn.on("pointerout", () => useBtn.setColor("#44ff44"));
-    useBtn.on("pointerdown", () => useOverworldPotion(scene));
-    scene.menuGroup.push(useBtn);
-  }
+  // Footer row A — primary actions.
+  const potionsEnabled = gs.potions > 0;
+  layoutButtonRow(scene, scene.menuGroup, PANEL_CX, FOOTER_TOP + 15, [
+    {
+      label: "CHARACTER",
+      w: 130,
+      onClick: () => {
+        scene.showMessage("Character detail — coming in #95");
+        scene.time.delayedCall(1500, () => scene.hideMessage());
+      },
+    },
+    {
+      label: "EQUIPMENT",
+      w: 130,
+      onClick: () => {
+        scene.showMessage("Equipment screen — coming in #95");
+        scene.time.delayedCall(1500, () => scene.hideMessage());
+      },
+    },
+    {
+      label: "POTION",
+      w: 110,
+      enabled: potionsEnabled,
+      onClick: () => useOverworldPotion(scene),
+    },
+    {
+      label: "QUESTS",
+      w: 110,
+      onClick: () => showQuestLog(scene),
+    },
+    {
+      label: "MAP",
+      w: 90,
+      onClick: () => {
+        closeMenu(scene);
+        showWorldMap(scene);
+      },
+    },
+  ]);
 
-  // Save button (always available on world map)
-  y += 55;
-  const saveBtn = scene.add
-    .text(400, y, "[ SAVE GAME ]", {
-      fontSize: "13px",
-      color: "#4488ff",
-      fontFamily: "monospace",
-    })
-    .setOrigin(0.5)
-    .setScrollFactor(0)
-    .setDepth(41)
-    .setInteractive({ useHandCursor: true });
-  saveBtn.on("pointerover", () => saveBtn.setColor("#88bbff"));
-  saveBtn.on("pointerout", () => saveBtn.setColor("#4488ff"));
-  saveBtn.on("pointerdown", async () => {
-    saveBtn.setText("Saving...");
-    const gss = scene.gameState;
-    const name = `${gss.location} - ${gss.party.map((p) => p.name).join(", ")}`;
-    const result = await saveGame(gss.id, name);
-    playSFX("sfx_save");
-    toggleMenu(scene);
-    if (result.error) {
-      scene.showMessage(`Save failed: ${result.error}`);
-    } else {
-      scene.showMessage("Game saved!");
-    }
-    scene.time.delayedCall(1500, () => scene.hideMessage());
-  });
-  scene.menuGroup.push(saveBtn);
-
-  // World map button
-  const mapBtn = scene.add
-    .text(250, y, "[ WORLD MAP ]", {
-      fontSize: "13px",
-      color: "#ffcc44",
-      fontFamily: "monospace",
-    })
-    .setOrigin(0.5)
-    .setScrollFactor(0)
-    .setDepth(41)
-    .setInteractive({ useHandCursor: true });
-  mapBtn.on("pointerdown", () => {
-    toggleMenu(scene);
-    showWorldMap(scene);
-  });
-  scene.menuGroup.push(mapBtn);
-
-  // Autosave toggle
+  // Footer row B — save / autosave / close.
   const autoEnabled = getAutosaveEnabled();
-  const autoLabel = autoEnabled ? "[ Autosave: ON ]" : "[ Autosave: OFF ]";
-  const autoColor = autoEnabled ? "#44ccff" : "#666666";
-  const autoBtn = scene.add
-    .text(550, y, autoLabel, {
-      fontSize: "13px",
-      color: autoColor,
+  let saveHandle = null;
+  let autoHandle = null;
+  const row = layoutButtonRow(
+    scene,
+    scene.menuGroup,
+    PANEL_CX,
+    FOOTER_TOP + 65,
+    [
+      {
+        label: "SAVE",
+        w: 130,
+        onClick: async () => {
+          if (!saveHandle) return;
+          saveHandle.setLabel("Saving...");
+          const gss = scene.gameState;
+          const saveName = `${gss.location} - ${gss.party.map((pp) => pp.name).join(", ")}`;
+          const result = await saveGame(gss.id, saveName);
+          playSFX("sfx_save");
+          closeMenu(scene);
+          if (result.error) {
+            scene.showMessage(`Save failed: ${result.error}`);
+          } else {
+            scene.showMessage("Game saved!");
+          }
+          scene.time.delayedCall(1500, () => scene.hideMessage());
+        },
+      },
+      {
+        label: autoEnabled ? "Autosave: ON" : "Autosave: OFF",
+        w: 170,
+        onClick: () => {
+          const nowEnabled = !getAutosaveEnabled();
+          setAutosaveEnabled(nowEnabled);
+          if (autoHandle) {
+            autoHandle.setLabel(
+              nowEnabled ? "Autosave: ON" : "Autosave: OFF",
+            );
+          }
+          if (scene.startAutosaveTimer) {
+            if (nowEnabled) scene.startAutosaveTimer();
+            else scene.stopAutosaveTimer();
+          }
+        },
+      },
+      {
+        label: "CLOSE (M/ESC)",
+        w: 160,
+        onClick: () => closeMenu(scene),
+      },
+    ],
+  );
+  [saveHandle, autoHandle] = [row[0], row[1]];
+}
+
+// Close the menu and tear down everything in scene.menuGroup. Button
+// handles (with their destroy()) and raw Phaser objects can both live in
+// the group since both expose a .destroy() method.
+function closeMenu(scene) {
+  if (scene.menuGroup) {
+    scene.menuGroup.forEach((c) => c.destroy());
+    scene.menuGroup = null;
+  }
+  scene.menuOpen = false;
+}
+
+// drawPartyRow renders a single member's block: portrait slot, name /
+// class / level header, HP bar, XP bar, and (for casters) MP bar. All
+// objects it creates are pushed into `group` so closeMenu can tear them
+// down cleanly.
+function drawPartyRow(scene, group, x, y, w, member, _equip, _slot) {
+  const alive = (member.hp || 0) > 0;
+  const textColor = alive ? "#ffffff" : "#666666";
+
+  // Portrait slot (placeholder — #95 wires the composed sprite).
+  const portrait = scene.add
+    .rectangle(x + 30, y + 30, 56, 56, 0x1a2a4a)
+    .setStrokeStyle(1, 0x4488ff)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT);
+  group.push(portrait);
+  const initial = scene.add
+    .text(x + 30, y + 30, (member.class_name || "?")[0] || "?", {
+      fontSize: "22px",
+      color: "#88ccff",
       fontFamily: "monospace",
     })
     .setOrigin(0.5)
     .setScrollFactor(0)
-    .setDepth(41)
-    .setInteractive({ useHandCursor: true });
-  autoBtn.on("pointerdown", () => {
-    const nowEnabled = !getAutosaveEnabled();
-    setAutosaveEnabled(nowEnabled);
-    autoBtn.setText(nowEnabled ? "[ Autosave: ON ]" : "[ Autosave: OFF ]");
-    autoBtn.setColor(nowEnabled ? "#44ccff" : "#666666");
-    // Restart or stop the autosave timer
-    if (scene.startAutosaveTimer) {
-      if (nowEnabled) scene.startAutosaveTimer();
-      else scene.stopAutosaveTimer();
-    }
+    .setDepth(DEPTH_CONTENT + 1);
+  group.push(initial);
+
+  // Line 1 — name + class + level (left-aligned to the info column).
+  const infoX = x + 70;
+  const header = scene.add
+    .text(
+      infoX,
+      y + 4,
+      `${member.name}   ${member.class_name}   Lv.${member.level}`,
+      { fontSize: "13px", color: textColor, fontFamily: "monospace" },
+    )
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT);
+  group.push(header);
+
+  // Bar geometry. HP and MP share line 2; XP gets line 3.
+  const hpBarW = 180;
+  const mpBarW = 120;
+  const xpBarW = 340;
+  const barH = 8;
+
+  const line2Y = y + 26;
+  const line3Y = y + 46;
+
+  // HP bar.
+  drawStatBar(scene, group, {
+    x: infoX,
+    y: line2Y,
+    w: hpBarW,
+    h: barH,
+    cur: member.hp,
+    max: member.max_hp,
+    prefix: "HP",
+    color: hpColorFor(member.hp, member.max_hp),
   });
-  scene.menuGroup.push(autoBtn);
 
-  // Quest log button -- opens full quest log overlay
-  y += 32;
-  const questBtn = scene.add
-    .text(400, y, "[ QUEST LOG ]", {
-      fontSize: "13px",
-      color: "#ffcc44",
+  // MP bar for casters. Uses the MaxMP field #94 added to PartyMemberState
+  // on the server; non-casters report MaxMP=0 and get no bar.
+  if ((member.max_mp || 0) > 0) {
+    drawStatBar(scene, group, {
+      x: infoX + hpBarW + 70,
+      y: line2Y,
+      w: mpBarW,
+      h: barH,
+      cur: member.mp,
+      max: member.max_mp,
+      prefix: "MP",
+      color: 0x88aaff,
+    });
+  }
+
+  // XP bar.
+  drawStatBar(scene, group, {
+    x: infoX,
+    y: line3Y,
+    w: xpBarW,
+    h: barH,
+    cur: member.xp,
+    max: member.xp_next,
+    prefix: "XP",
+    color: 0xffcc44,
+  });
+
+  // Right-side CHARACTER button (stubbed until #95).
+  const btn = drawButton(
+    scene,
+    x + w - 80,
+    y + 30,
+    140,
+    44,
+    "CHARACTER →",
+    () => {
+      scene.showMessage(
+        `${member.name} — character detail coming in #95`,
+      );
+      scene.time.delayedCall(1500, () => scene.hideMessage());
+    },
+  );
+  group.push(btn);
+}
+
+// drawStatBar renders one labeled stat bar (HP/MP/XP). Background track +
+// color fill + "PREFIX cur/max" label to the right.
+function drawStatBar(scene, group, { x, y, w, h, cur, max, prefix, color }) {
+  const fillW = barFillWidth(cur, max, w);
+  const track = scene.add
+    .rectangle(x, y, w, h, 0x222244)
+    .setOrigin(0, 0.5)
+    .setStrokeStyle(1, 0x4488ff)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT);
+  const fill = scene.add
+    .rectangle(x, y, fillW, h, color)
+    .setOrigin(0, 0.5)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT + 1);
+  const label = scene.add
+    .text(x + w + 6, y, `${prefix} ${barLabel(cur, max)}`, {
+      fontSize: "10px",
+      color: "#cccccc",
       fontFamily: "monospace",
     })
-    .setOrigin(0.5)
+    .setOrigin(0, 0.5)
     .setScrollFactor(0)
-    .setDepth(41)
-    .setInteractive({ useHandCursor: true });
-  questBtn.on("pointerover", () => questBtn.setColor("#ffee88"));
-  questBtn.on("pointerout", () => questBtn.setColor("#ffcc44"));
-  questBtn.on("pointerdown", () => showQuestLog(scene));
-  scene.menuGroup.push(questBtn);
+    .setDepth(DEPTH_CONTENT);
+  group.push(track, fill, label);
+}
 
-  // Close
-  const closeBtn = scene.add
-    .text(400, 545, "[ CLOSE (M/ESC) ]", {
-      fontSize: "13px",
-      color: "#aaaaaa",
-      fontFamily: "monospace",
-    })
-    .setOrigin(0.5)
-    .setScrollFactor(0)
-    .setDepth(41)
-    .setInteractive({ useHandCursor: true });
-  closeBtn.on("pointerdown", () => toggleMenu(scene));
-  scene.menuGroup.push(closeBtn);
+function hpColorFor(hp, max) {
+  const pct = hpBarColorPct(hp, max);
+  if (pct > 0.5) return 0x44ff44;
+  if (pct > 0.25) return 0xff8800;
+  if (pct > 0) return 0xff0000;
+  return 0x333333;
+}
+
+// Horizontally layout a row of drawButton specs centered on `cx`. Returns
+// the list of button handles (in order) so the caller can mutate individual
+// ones (setLabel, setEnabled) later. 12px gap between buttons.
+function layoutButtonRow(scene, group, cx, y, specs) {
+  const gap = 12;
+  const totalW = specs.reduce((sum, s) => sum + s.w, 0) + gap * (specs.length - 1);
+  let cursor = cx - totalW / 2;
+  const handles = [];
+  for (const spec of specs) {
+    const bx = cursor + spec.w / 2;
+    const btn = drawButton(scene, bx, y, spec.w, 34, spec.label, spec.onClick);
+    if (spec.enabled === false) btn.setEnabled(false);
+    group.push(btn);
+    handles.push(btn);
+    cursor += spec.w + gap;
+  }
+  return handles;
 }
 
 export async function showEquipPicker(scene, slot, type) {
