@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
-"""Generate game music tracks via Google Lyria 3 API."""
+"""Generate game music tracks via Google Lyria 3 API.
+
+Usage: generate_music.py [track_id ...]
+With no args, regenerates every track. Pass one or more track IDs to
+regenerate only those (e.g. `generate_music.py victory`).
+"""
 
 import json
 import base64
 import os
 import subprocess
+import sys
 import time
 
 API_KEY = os.environ.get("GEMINI_API_KEY", "")
@@ -14,7 +20,7 @@ TRACKS = [
     {
         "id": "victory",
         "model": "lyria-3-clip-preview",
-        "prompt": "Compose a short victory fanfare for a retro JRPG, played after winning a battle. Style: 16-bit era Super Nintendo, triumphant and celebratory. Bright brass-like synth fanfare, ascending melody, resolving on a triumphant major chord. C major. 120 BPM. Should feel like a reward and celebration. Single play with a clear ending, do not loop. No vocals. 10 seconds."
+        "prompt": "INSTRUMENTAL ONLY. ABSOLUTELY NO VOCALS, NO SINGING, NO LYRICS, NO HUMMING, NO CHOIR, NO HUMAN VOICES OF ANY KIND IN ANY LANGUAGE. Purely instrumental synthesized music. Compose a short victory fanfare for a retro JRPG, played after winning a battle. Style: 16-bit era Super Nintendo chiptune, triumphant and celebratory. Bright brass-like synth fanfare, ascending melody, resolving on a triumphant major chord. C major. 120 BPM. Should feel like a reward and celebration. Single play with a clear ending, do not loop. 10 seconds. Remember: instrumental only, zero vocals."
     },
     {
         "id": "defeat",
@@ -111,7 +117,11 @@ def generate_track(track):
         if "inlineData" in part:
             audio_data = base64.b64decode(part["inlineData"]["data"])
             mime = part["inlineData"].get("mimeType", "audio/wav")
-            ext = "wav" if "wav" in mime else "mp3" if "mp3" in mime else "ogg" if "ogg" in mime else "wav"
+            ext = (
+                "mp3" if ("mp3" in mime or "mpeg" in mime)
+                else "ogg" if "ogg" in mime
+                else "wav"
+            )
 
             output_path = os.path.join(OUTPUT_DIR, f"{track['id']}.{ext}")
             with open(output_path, "wb") as f:
@@ -133,17 +143,25 @@ def main():
         return
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    print(f"Generating {len(TRACKS)} music tracks...\n")
+
+    wanted = set(sys.argv[1:])
+    tracks = [t for t in TRACKS if t["id"] in wanted] if wanted else list(TRACKS)
+    if wanted and not tracks:
+        print(f"ERROR: no tracks matched {sorted(wanted)}")
+        print(f"Available: {', '.join(t['id'] for t in TRACKS)}")
+        return
+
+    print(f"Generating {len(tracks)} music tracks...\n")
 
     success = 0
-    for track in TRACKS:
+    for track in tracks:
         print(f"[{track['id']}] ({track['model']})...")
         if generate_track(track):
             success += 1
         # Rate limit: wait between requests
         time.sleep(2)
 
-    print(f"\nDone: {success}/{len(TRACKS)} tracks generated.")
+    print(f"\nDone: {success}/{len(tracks)} tracks generated.")
 
 
 if __name__ == "__main__":
