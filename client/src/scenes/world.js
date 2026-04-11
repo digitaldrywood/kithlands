@@ -524,11 +524,12 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
-  async triggerQuestAdvance(locationName) {
-    console.log("[World] quest advance at:", locationName);
+  async triggerQuestAdvance(locationName, nodeId) {
+    console.log("[World] quest advance at:", locationName, nodeId);
     try {
       const result = await gameAction(this.gameState.id, {
         type: "quest_advance",
+        node_id: nodeId,
       });
       this.gameState = result;
       this.updateHUD();

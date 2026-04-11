@@ -448,9 +448,14 @@ func TestQuestAdvance(t *testing.T) {
 	})
 	gameID := gs["id"].(string)
 	startQuest := int(gs["current_quest"].(float64))
+	targetNodeID := requireCurrentQuestTargetNodeID(t, gs)
 
-	// Advance quest
-	gs = post(t, ts.URL+"/api/game/"+gameID+"/action", api.GameActionRequest{Type: "quest_advance"})
+	// Advance quest by entering the target node (issue #63: wrong-node
+	// advances are now rejected).
+	gs = post(t, ts.URL+"/api/game/"+gameID+"/action", api.GameActionRequest{
+		Type:   "quest_advance",
+		NodeID: targetNodeID,
+	})
 	endQuest := int(gs["current_quest"].(float64))
 
 	if endQuest != startQuest+1 {
@@ -595,8 +600,13 @@ func TestFullCampaign(t *testing.T) {
 
 		switch phase {
 		case "world", "quest_complete":
-			// Advance quest
-			gs = post(t, ts.URL+"/api/game/"+gameID+"/action", api.GameActionRequest{Type: "quest_advance"})
+			// Advance quest. Since issue #63, quest_advance requires the
+			// target node id; read it from the current quest entry.
+			targetNodeID := currentQuestTargetNodeID(t, gs)
+			gs = post(t, ts.URL+"/api/game/"+gameID+"/action", api.GameActionRequest{
+				Type:   "quest_advance",
+				NodeID: targetNodeID,
+			})
 
 		case "combat":
 			enemies := gs["enemies"].([]any)

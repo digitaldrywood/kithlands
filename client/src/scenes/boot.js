@@ -36,13 +36,25 @@ export class BootScene extends Phaser.Scene {
     this.load.image("player_left", "/sprites/player_left.png");
     this.load.image("player_right", "/sprites/player_right.png");
 
-    // Character sprites
-    this.load.image("warrior", "/sprites/warrior.png");
-    this.load.image("brawler", "/sprites/brawler.png");
-    this.load.image("rogue", "/sprites/rogue.png");
-    this.load.image("mender", "/sprites/mender.png");
-    this.load.image("cinder", "/sprites/cinder.png");
-    this.load.image("wayfarer", "/sprites/wayfarer.png");
+    // Character sprites (base + promoted classes — must match CLASS_SPRITES
+    // in battle.js and server's buildPartyMemberState sprite_id output)
+    const CLASS_SPRITE_KEYS = [
+      "warrior",
+      "brawler",
+      "rogue",
+      "mender",
+      "cinder",
+      "wayfarer",
+      "knight",
+      "champion",
+      "shadow",
+      "sage",
+      "pyromancer",
+      "wanderer",
+    ];
+    for (const key of CLASS_SPRITE_KEYS) {
+      this.load.image(key, `/sprites/${key}.png`);
+    }
 
     // Status effect icons
     this.load.image("icon_poison", "/sprites/ui/icon_poison.png");
