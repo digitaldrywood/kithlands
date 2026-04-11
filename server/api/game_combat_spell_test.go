@@ -215,3 +215,99 @@ func ptrState(game *api.Game) *api.GameState {
 	s := game.State()
 	return &s
 }
+
+// TestSpellBlessRecastReplacesLiveBuffInsteadOfStacking guards against a
+// regression where resolveBuffSpell append()-ed a fresh copy of the buff to
+// combatants[slot].Buffs even when the persistent list was replacing an
+// existing entry. On a recast after makeCombatants had preloaded the prior
+// copy, that double-counted HitPctBonus for the current round.
+func TestSpellBlessRecastReplacesLiveBuffInsteadOfStacking(t *testing.T) {
+	game := newGameWithParty(t, menderParty())
+	enterCombat(t, game)
+
+	// First cast via ProcessAction to populate g.spellBuffs as it would be
+	// at the start of a normal post-cast round.
+	_, err := game.ProcessAction(api.GameActionRequest{
+		Type: "attack",
+		Actions: []api.MemberActionReq{
+			{Slot: 0, Type: "spell", SpellID: "bless", TargetID: 1},
+			{Slot: 1, Type: "defend"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("first cast: %v", err)
+	}
+	if len(api.SpellBuffsForTest(game, 1)) != 1 {
+		t.Fatalf("expected 1 persistent bless buff after first cast, got %d",
+			len(api.SpellBuffsForTest(game, 1)))
+	}
+
+	// Now recast bless on a fresh combatants slice (mirroring the start of
+	// the next round). The live combatant list must contain exactly one
+	// spell_bless buff, not two.
+	live := api.CastBuffSpellLiveBuffsForTest(game, 0, 1, "bless")
+	blessCount := 0
+	for _, b := range live {
+		if b.Kind == "spell_bless" {
+			blessCount++
+		}
+	}
+	if blessCount != 1 {
+		t.Errorf("expected 1 live bless buff after recast, got %d (buffs=%+v)",
+			blessCount, live)
+	}
+}
+
+// TestSpellHealAllAlliesIgnoresBogusEnemyTargetID guards against a bypass
+// where an all_allies heal with a crafted enemy-range target_id would fall
+// into the undead-damage branch instead of healing the party.
+func TestSpellHealAllAlliesIgnoresBogusEnemyTargetID(t *testing.T) {
+	game := newGameWithParty(t, menderParty())
+	api.TeachSpellForTest(game, 0, "heal", 2) // all_allies heal
+	enterCombat(t, game)
+	api.ReplaceEnemiesForTest(game, "skeleton")
+
+	// Damage both members lightly so Heal has a visible effect without a
+	// counterattack masking it.
+	api.DamagePartyForTest(game, 0, 5)
+	api.DamagePartyForTest(game, 1, 5)
+
+	state := game.State()
+	var skelID int
+	for _, e := range state.Enemies {
+		if e.Name == "Skeleton" {
+			skelID = e.ID
+			break
+		}
+	}
+	if skelID == 0 {
+		t.Fatalf("no skeleton in encounter")
+	}
+
+	// Cast the all_allies Heal with a crafted enemy target_id. The server
+	// must ignore the bogus id and loop the heal across the party rather
+	// than falling into the single_ally undead-damage branch.
+	result, err := game.ProcessAction(api.GameActionRequest{
+		Type: "attack",
+		Actions: []api.MemberActionReq{
+			{Slot: 0, Type: "spell", SpellID: "heal", TargetID: skelID},
+			{Slot: 1, Type: "defend"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("cast heal: %v", err)
+	}
+
+	// The heal should apply to BOTH party members (all_allies loop), which
+	// means the combat log must contain an explicit heal line naming each.
+	if !hasLogLine(result, "casts Heal on Mira") {
+		t.Errorf("expected heal log targeting Mira; got %v", result.CombatLog)
+	}
+	if !hasLogLine(result, "casts Heal on Tank") {
+		t.Errorf("expected heal log targeting Tank; got %v", result.CombatLog)
+	}
+	// And it must NOT have routed into the undead-damage branch.
+	if hasLogLine(result, "casts Heal on Skeleton") {
+		t.Errorf("all_allies heal incorrectly hit undead damage branch; log=%v", result.CombatLog)
+	}
+}

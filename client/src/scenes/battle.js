@@ -898,6 +898,25 @@ export class BattleScene extends Phaser.Scene {
 
       const selectSpell = () => {
         this.closePicker();
+        // Reject spells the combat resolver doesn't handle (e.g. Light,
+        // Resurrect are utility spells with no combat case). Silently
+        // auto-resolving them would consume a charge for a no-op on the
+        // server; bail here instead so the player can pick a different spell.
+        const combatEffects = [
+          "damage",
+          "heal",
+          "buff",
+          "status",
+          "cure_status",
+        ];
+        if (sp.effect && !combatEffects.includes(sp.effect)) {
+          this.pendingAction = null;
+          this.pendingSpellId = null;
+          this.promptText
+            .setText(`${sp.name} cannot be cast in combat.`)
+            .setColor("#ff8888");
+          return;
+        }
         this.pendingAction = "spell";
         this.pendingSpellId = sp.id;
         const t = sp.target;

@@ -79,3 +79,41 @@ func SpellBuffsForTest(g *Game, slot int) []combat.CombatBuff {
 	}
 	return g.spellBuffs[slot]
 }
+
+// TeachSpellForTest teaches the given party member a spell at the provided
+// spell level so tests can exercise spells outside the member's starting
+// learnset (e.g. all_allies heal spells).
+func TeachSpellForTest(g *Game, slot int, spellID string, spellLevel int) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if slot < 0 || slot >= len(g.party) {
+		return
+	}
+	sb, ok := g.spellBooks[g.party[slot].Name]
+	if !ok {
+		return
+	}
+	_ = sb.LearnSpell(spellID, spellLevel, 3)
+	if sb.MaxCharges[spellLevel] < 1 {
+		sb.MaxCharges[spellLevel] = 3
+	}
+	sb.Charges[spellLevel] = sb.MaxCharges[spellLevel]
+}
+
+// CastBuffSpellLiveBuffsForTest exercises resolveBuffSpell against a fresh
+// combatants slice (mirroring makeCombatants) and returns the live buffs on
+// the target combatant. Used to verify a recast replaces the existing live
+// buff instead of stacking on top of the preloaded persistent copy.
+func CastBuffSpellLiveBuffsForTest(g *Game, casterSlot, targetSlot int, spellID string) []combat.CombatBuff {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	combatants := g.makeCombatants()
+	spell := g.gd.SpellByID(spellID)
+	if spell == nil {
+		return nil
+	}
+	caster := g.party[casterSlot]
+	pc := combatants[casterSlot]
+	g.resolveBuffSpell(combatants, pc, caster, spell, targetSlot)
+	return combatants[targetSlot].Buffs
+}

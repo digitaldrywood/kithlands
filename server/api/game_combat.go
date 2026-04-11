@@ -809,8 +809,10 @@ func (g *Game) resolveHealSpell(
 	targetID int,
 	amt int,
 ) {
-	// Undead-cure: target is an enemy ID (>= 100 since enemy IDs start at 100).
-	if targetID >= 100 {
+	// Undead-cure: single_ally heals can be cast on an undead enemy for damage
+	// (FF1 canon). Gate on spell.Target so all_allies heals always loop over
+	// the party even if a bogus targetID slips in.
+	if spell.Target == "single_ally" && targetID >= 100 {
 		var target *combat.Combatant
 		for _, e := range g.enemies {
 			if e.ID == targetID && e.CurrentHP > 0 {
@@ -932,7 +934,22 @@ func (g *Game) resolveBuffSpell(
 		g.spellBuffs[slot] = existing
 		// Apply live to this round's combatant too so the buff takes effect
 		// immediately instead of waiting for next round's makeCombatants().
-		combatants[slot].Buffs = append(combatants[slot].Buffs, buff)
+		// Replace an existing buff of the same kind rather than stacking,
+		// otherwise a recast doubles the bonus for the current round (the
+		// persistent list already carried one copy in via makeCombatants).
+		live := combatants[slot].Buffs
+		replacedLive := false
+		for i := range live {
+			if live[i].Kind == buff.Kind {
+				live[i] = buff
+				replacedLive = true
+				break
+			}
+		}
+		if !replacedLive {
+			live = append(live, buff)
+		}
+		combatants[slot].Buffs = live
 		g.logCombat(
 			fmt.Sprintf("%s casts %s on %s", caster.Name, spell.Name, g.party[slot].Name),
 			CombatActionEntry{Kind: "spell", ActorID: pc.ID, ActorName: caster.Name,
