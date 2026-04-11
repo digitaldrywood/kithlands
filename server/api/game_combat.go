@@ -66,6 +66,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 			g.enemies = nil
 			g.formation = ""
 			g.spellBuffs = nil
+			g.resetEncounterStartState()
 			state := g.stateUnlocked()
 			return &state, nil
 		}
@@ -77,6 +78,11 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 	if req.Type == "item" {
 		return g.processCombatItem(req)
 	}
+
+	// "wait" is submitted by the client when the party is stunned for a
+	// round (e.g. the first round of an ambush). The party contributes no
+	// actions; enemies act normally.
+	skipParty := req.Type == "wait"
 
 	combatants := g.makeCombatants()
 
@@ -91,7 +97,9 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 	// g.party AFTER the end-of-round sync-back below.
 	var revivedThisTurn []bool
 
-	if len(req.Actions) > 0 {
+	if skipParty {
+		// Party is frozen this round (ambush). Build no actions.
+	} else if len(req.Actions) > 0 {
 		// Per-member actions from client
 		for _, ma := range req.Actions {
 			if ma.Slot < 0 || ma.Slot >= len(combatants) {
@@ -366,14 +374,26 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 		}
 	}
 
+	// Defensive: if the encounter started with an ambush, strip any party
+	// actions the client may have submitted for round 1. The UI auto-sends
+	// a "wait" action in this case, but drop stragglers server-side.
+	if g.combatRound == 0 && g.encounterStart == combat.EncounterStartAmbush {
+		actions = actions[:0]
+	}
+
+	// Preemptive round: enemies take zero actions on round 1.
+	skipEnemies := g.combatRound == 0 && g.encounterStart == combat.EncounterStartPreemptive
+
 	// Enemy attacks
-	for _, e := range g.enemies {
-		if e.CurrentHP <= 0 || e.Status == character.StatusSleep || e.Status == character.StatusStone || e.Status == character.StatusDeath {
-			continue
-		}
-		target := combat.SelectEnemyTarget(combatants, g.rng)
-		if target != nil {
-			actions = append(actions, combat.Action{ActorID: e.ID, Kind: combat.ActionAttack, TargetID: target.ID})
+	if !skipEnemies {
+		for _, e := range g.enemies {
+			if e.CurrentHP <= 0 || e.Status == character.StatusSleep || e.Status == character.StatusStone || e.Status == character.StatusDeath {
+				continue
+			}
+			target := combat.SelectEnemyTarget(combatants, g.rng)
+			if target != nil {
+				actions = append(actions, combat.Action{ActorID: e.ID, Kind: combat.ActionAttack, TargetID: target.ID})
+			}
 		}
 	}
 
@@ -387,6 +407,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 	}
 
 	results := combat.ResolveTurn(combatants, g.enemies, actions, stats, g.rng)
+	g.combatRound++
 	for _, r := range results {
 		switch r.Kind {
 		case combat.ActionPoisonTick:
@@ -582,10 +603,12 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 		// The victory screen (phase=quest_complete) is acknowledged by the
 		// client via the "advance" action, which returns the party to world.
 		g.phase = "quest_complete"
+		g.resetEncounterStartState()
 	} else if combat.CheckDefeat(combatants) {
 		g.phase = "defeat"
 		g.message = "Your party has fallen. Game over."
 		g.spellBuffs = nil
+		g.resetEncounterStartState()
 	}
 
 	state := g.stateUnlocked()
@@ -702,10 +725,12 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 		g.restParty()
 		g.checkLevelUps()
 		g.phase = "quest_complete"
+		g.resetEncounterStartState()
 	} else if combat.CheckDefeat(combatants) {
 		g.phase = "defeat"
 		g.message = "Your party has fallen."
 		g.spellBuffs = nil
+		g.resetEncounterStartState()
 	}
 
 	state := g.stateUnlocked()
