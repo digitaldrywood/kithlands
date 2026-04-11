@@ -1,388 +1,327 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Kithlands - Sprite Gallery (Dev)</title>
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-      body {
-        background: #1a1a2e;
-        color: #e0e0e0;
-        font-family: "Courier New", monospace;
-        padding: 24px;
-      }
-      h1 {
-        text-align: center;
-        color: #ffd700;
-        font-size: 28px;
-        margin-bottom: 8px;
-        letter-spacing: 2px;
-      }
-      .subtitle {
-        text-align: center;
-        color: #888;
-        font-size: 12px;
-        margin-bottom: 32px;
-      }
-      section {
-        margin-bottom: 40px;
-      }
-      h2 {
-        color: #4fc3f7;
-        font-size: 18px;
-        border-bottom: 1px solid #333;
-        padding-bottom: 6px;
-        margin-bottom: 16px;
-      }
-      h2 .count {
-        color: #666;
-        font-weight: normal;
-        font-size: 13px;
-      }
-      .comparison-row {
-        display: flex;
-        gap: 32px;
-        margin-bottom: 24px;
-        align-items: flex-start;
-      }
-      .comparison-card {
-        background: #16213e;
-        border: 1px solid #333;
-        border-radius: 8px;
-        padding: 16px;
-        text-align: center;
-        flex: 1;
-        max-width: 400px;
-      }
-      .comparison-card.highlight {
-        border-color: #ffd700;
-        box-shadow: 0 0 12px rgba(255, 215, 0, 0.15);
-      }
-      .comparison-card img {
-        image-rendering: auto;
-        display: block;
-        margin: 0 auto 12px;
-        max-width: 100%;
-      }
-      .comparison-card .label {
-        font-size: 14px;
-        color: #ffd700;
-        margin-bottom: 4px;
-        font-weight: bold;
-      }
-      .comparison-card .name {
-        font-size: 12px;
-        color: #ccc;
-      }
-      .comparison-card .meta {
-        font-size: 11px;
-        color: #666;
-        margin-top: 4px;
-      }
-      .verdict {
-        background: #1a2a1a;
-        border: 1px solid #2a5a2a;
-        border-radius: 4px;
-        padding: 12px 16px;
-        color: #8f8;
-        font-size: 13px;
-        margin-bottom: 24px;
-      }
-      .grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 16px;
-      }
-      .sprite-card {
-        background: #16213e;
-        border: 1px solid #333;
-        border-radius: 4px;
-        padding: 12px;
-        text-align: center;
-        transition: border-color 0.2s;
-      }
-      .sprite-card:hover {
-        border-color: #4fc3f7;
-      }
-      .sprite-card img {
-        image-rendering: auto;
-        display: block;
-        margin: 0 auto 8px;
-      }
-      .sprite-card .name {
-        font-size: 11px;
-        color: #ccc;
-        word-break: break-all;
-      }
-      .sprite-card .meta {
-        font-size: 10px;
-        color: #666;
-        margin-top: 2px;
-      }
-      .checkerboard {
-        background-image:
-          linear-gradient(45deg, #222 25%, transparent 25%),
-          linear-gradient(-45deg, #222 25%, transparent 25%),
-          linear-gradient(45deg, transparent 75%, #222 75%),
-          linear-gradient(-45deg, transparent 75%, #222 75%);
-        background-size: 8px 8px;
-        background-position:
-          0 0,
-          0 4px,
-          4px -4px,
-          -4px 0px;
-        display: inline-block;
-        padding: 4px;
-      }
-      .walk-group {
-        display: flex;
-        gap: 4px;
-        justify-content: center;
-        margin-bottom: 8px;
-      }
-    </style>
-  </head>
-  <body>
-    <h1>KITHLANDS SPRITE GALLERY</h1>
-    <p class="subtitle">
-      Dev asset browser -- HD Pixel Remaster style comparison
-    </p>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kithlands - Sprite Gallery (Dev)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Courier New', monospace;
+    padding: 24px;
+  }
+  h1 {
+    text-align: center;
+    color: #ffd700;
+    font-size: 28px;
+    margin-bottom: 8px;
+    letter-spacing: 2px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #888;
+    font-size: 12px;
+    margin-bottom: 32px;
+  }
+  .controls { text-align: center; margin-bottom: 24px; }
+  .controls label { color: #aaa; margin-right: 8px; }
+  .btn {
+    background: #16213e;
+    color: #ffd700;
+    border: 1px solid #444;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    margin: 0 2px;
+  }
+  .btn:hover { background: #1a1a4e; }
+  .btn.active { border-color: #ffd700; background: #2a2a4e; }
+  section { margin-bottom: 40px; }
+  h2 {
+    color: #4fc3f7;
+    font-size: 18px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 6px;
+    margin-bottom: 16px;
+  }
+  h2 .count {
+    color: #666;
+    font-weight: normal;
+    font-size: 13px;
+  }
+  .grid { display: flex; flex-wrap: wrap; gap: 16px; }
+  .sprite-card {
+    background: #16213e;
+    border: 1px solid #333;
+    border-radius: 4px;
+    padding: 12px;
+    text-align: center;
+    transition: border-color 0.2s;
+  }
+  .sprite-card:hover { border-color: #4fc3f7; }
+  .sprite-card img {
+    image-rendering: auto;
+    display: block;
+    margin: 0 auto 8px;
+  }
+  .sprite-card .name {
+    font-size: 11px;
+    color: #ccc;
+    word-break: break-all;
+  }
+  .bg-dark { background-color: #111; display: inline-block; padding: 4px; }
+  .bg-checker {
+    background-image:
+      linear-gradient(45deg, #222 25%, transparent 25%),
+      linear-gradient(-45deg, #222 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #222 75%),
+      linear-gradient(-45deg, transparent 75%, #222 75%);
+    background-size: 8px 8px;
+    background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+    display: inline-block;
+    padding: 4px;
+  }
+  .bg-light { background-color: #ddd; display: inline-block; padding: 4px; }
+  .walk-group {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+  .walk-group img { margin: 0 !important; }
+</style>
+</head>
+<body>
 
-    <section>
-      <h2>HD Pixel Remaster Test -- Current vs Proposed</h2>
-      <div class="verdict">
-        Comparing current chunky sprites (left) against HD Pixel Remaster
-        regeneration (right). The HD versions are 4x resolution with LANCZOS
-        smoothing and refined style prompts.
-      </div>
+<h1>KITHLANDS SPRITE GALLERY</h1>
+<p class="subtitle">Dev asset browser -- HD Pixel Remaster style</p>
 
-      <h3 style="color: #aaa; margin-bottom: 12px">Warrior (Class Portrait)</h3>
-      <div class="comparison-row">
-        <div class="comparison-card">
-          <div class="label">Current (48x48)</div>
-          <div class="checkerboard">
-            <img src="sprites/warrior.png" width="192" height="192" />
-          </div>
-          <div class="meta">48x48 native, shown at 4x -- visible pixels</div>
-        </div>
-        <div class="comparison-card highlight">
-          <div class="label">HD Pixel Remaster (192x192)</div>
-          <div class="checkerboard">
-            <img src="sprites/test_warrior_hd.png" width="192" height="192" />
-          </div>
-          <div class="meta">192x192 native -- fine detail, smooth shading</div>
-        </div>
-      </div>
+<div class="controls">
+  <label>Background:</label>
+  <button class="btn active" onclick="setBg('dark', event)">Dark</button>
+  <button class="btn" onclick="setBg('checker', event)">Checker</button>
+  <button class="btn" onclick="setBg('light', event)">Light</button>
+</div>
 
-      <h3 style="color: #aaa; margin-bottom: 12px">Slime (Monster)</h3>
-      <div class="comparison-row">
-        <div class="comparison-card">
-          <div class="label">Current (64x64)</div>
-          <div class="checkerboard">
-            <img src="sprites/monsters/slime.png" width="256" height="256" />
-          </div>
-          <div class="meta">64x64 native, shown at 4x -- visible pixels</div>
-        </div>
-        <div class="comparison-card highlight">
-          <div class="label">HD Pixel Remaster (256x256)</div>
-          <div class="checkerboard">
-            <img src="sprites/test_slime_hd.png" width="256" height="256" />
-          </div>
-          <div class="meta">
-            256x256 native -- translucent detail, smooth gradients
-          </div>
-        </div>
-      </div>
+<section>
+  <h2>Class Battle Portraits <span class="count">(12) &mdash; 192x192</span></h2>
+  <div class="grid" id="grid-classes"></div>
+</section>
 
-      <h3 style="color: #aaa; margin-bottom: 12px">Player (Overworld)</h3>
-      <div class="comparison-row">
-        <div class="comparison-card">
-          <div class="label">Current (32x32)</div>
-          <div class="checkerboard">
-            <img src="sprites/player_down.png" width="128" height="128" />
-          </div>
-          <div class="meta">32x32 native, shown at 4x -- visible pixels</div>
-        </div>
-        <div class="comparison-card highlight">
-          <div class="label">HD Pixel Remaster (128x128)</div>
-          <div class="checkerboard">
-            <img src="sprites/test_player_hd.png" width="128" height="128" />
-          </div>
-          <div class="meta">
-            128x128 native -- fine detail at same display size
-          </div>
-        </div>
-      </div>
-    </section>
+<section>
+  <h2>Player Directional <span class="count">(4) &mdash; 128x128</span></h2>
+  <div class="grid" id="grid-player"></div>
+</section>
 
-    <section>
-      <h2>All Current Sprites</h2>
+<section>
+  <h2>Walk Animation <span class="count">(4 dirs x 4 frames)</span></h2>
+  <div class="grid" id="grid-walk"></div>
+</section>
 
-      <h3 style="color: #aaa; margin: 16px 0 12px">Class Battle Portraits</h3>
-      <div class="grid" id="grid-classes"></div>
+<section>
+  <h2>Monsters <span class="count">(18) &mdash; 256x256 / bosses 384x384</span></h2>
+  <div class="grid" id="grid-monsters"></div>
+</section>
 
-      <h3 style="color: #aaa; margin: 16px 0 12px">Player Directional</h3>
-      <div class="grid" id="grid-player"></div>
+<section>
+  <h2>NPCs <span class="count">(6) &mdash; 128x128</span></h2>
+  <div class="grid" id="grid-npcs"></div>
+</section>
 
-      <h3 style="color: #aaa; margin: 16px 0 12px">Monsters</h3>
-      <div class="grid" id="grid-monsters"></div>
+<section>
+  <h2>Overworld Tilesets <span class="count">(13) &mdash; 16x16 native, tiled preview at 8x zoom</span></h2>
+  <div class="grid" id="grid-tilesets"></div>
+</section>
 
-      <h3 style="color: #aaa; margin: 16px 0 12px">NPCs</h3>
-      <div class="grid" id="grid-npcs"></div>
+<section>
+  <h2>Interior Tilesets <span class="count">(9) &mdash; 16x16 native, tiled preview at 8x zoom</span></h2>
+  <div class="grid" id="grid-interiors"></div>
+</section>
 
-      <h3 style="color: #aaa; margin: 16px 0 12px">Walk Animation</h3>
-      <div class="grid" id="grid-walk"></div>
+<section>
+  <h2>UI Icons <span class="count">(11) &mdash; 64x64</span></h2>
+  <div class="grid" id="grid-ui-icons"></div>
+</section>
 
-      <h3 style="color: #aaa; margin: 16px 0 12px">UI Icons</h3>
-      <div class="grid" id="grid-ui"></div>
-    </section>
+<section>
+  <h2>UI Borders <span class="count">(9) &mdash; 64x64</span></h2>
+  <div class="grid" id="grid-ui-borders"></div>
+</section>
 
-    <script>
-      function makeCard(src, name, nativeSize, displaySize) {
-        const card = document.createElement("div");
-        card.className = "sprite-card";
-        card.innerHTML = `
-    <div class="checkerboard">
-      <img src="${src}" width="${displaySize}" height="${displaySize}">
-    </div>
-    <div class="name">${name.replace(".png", "").replace(/_/g, " ")}</div>
-    <div class="meta">${nativeSize}x${nativeSize}</div>
-  `;
-        return card;
+<section>
+  <h2>HP Bar Elements <span class="count">(3) &mdash; 192x192</span></h2>
+  <div class="grid" id="grid-ui-hp"></div>
+</section>
+
+<script>
+let currentBg = 'dark';
+
+const SECTIONS = {
+  classes: {
+    grid: 'grid-classes', base: 'sprites/', display: 160,
+    items: ['warrior','brawler','rogue','mender','cinder','wayfarer',
+            'knight','champion','shadow','sage','pyromancer','wanderer']
+  },
+  player: {
+    grid: 'grid-player', base: 'sprites/', display: 120,
+    items: ['player_down','player_up','player_left','player_right']
+  },
+  walk: {
+    grid: 'grid-walk', base: 'sprites/walk/', display: 72, grouped: true,
+    groups: {
+      'Down':  ['walk_down_0','walk_down_1','walk_down_2','walk_down_3'],
+      'Up':    ['walk_up_0','walk_up_1','walk_up_2','walk_up_3'],
+      'Left':  ['walk_left_0','walk_left_1','walk_left_2','walk_left_3'],
+      'Right': ['walk_right_0','walk_right_1','walk_right_2','walk_right_3'],
+    }
+  },
+  monsters: {
+    grid: 'grid-monsters', base: 'sprites/monsters/', display: 160,
+    items: ['slime','goblin','wolf','skeleton','bat','rat','snake','spider',
+            'orc','ghost','bandit','troll','wyvern','lich','golem','demon',
+            'dark_knight','dragon'],
+    displayOverrides: { dark_knight: 200, dragon: 200 }
+  },
+  npcs: {
+    grid: 'grid-npcs', base: 'sprites/npcs/', display: 120,
+    items: ['elder','merchant','blacksmith','innkeeper','priestess','guard']
+  },
+  tilesets: {
+    grid: 'grid-tilesets', base: 'tilesets/', tiled: true, tilePx: 32, repeats: 4,
+    items: ['grass','path','water','tree','building','door','floor',
+            'rock','bush','dark_grass','forest','hill','sand']
+  },
+  interiors: {
+    grid: 'grid-interiors', base: 'tilesets/interiors/', tiled: true, tilePx: 32, repeats: 4,
+    items: ['shop_floor','inn_floor','temple_floor','wooden_wall','stone_wall',
+            'counter','bookshelf','bed','altar']
+  },
+  'ui-icons': {
+    grid: 'grid-ui-icons', base: 'sprites/ui/', display: 80,
+    items: ['icon_sword','icon_shield','icon_potion','icon_spell','icon_gold',
+            'icon_xp','icon_poison','icon_sleep','icon_mute','icon_slow','icon_paralyze']
+  },
+  'ui-borders': {
+    grid: 'grid-ui-borders', base: 'sprites/ui/', display: 80,
+    items: ['border_tl','border_t','border_tr','border_l','border_fill',
+            'border_r','border_bl','border_b','border_br']
+  },
+  'ui-hp': {
+    grid: 'grid-ui-hp', base: 'sprites/ui/', display: 180,
+    items: ['hp_bar_frame','hp_bar_fill','hp_bar_empty']
+  }
+};
+
+function bgClass() {
+  return currentBg === 'checker' ? 'bg-checker' : currentBg === 'light' ? 'bg-light' : 'bg-dark';
+}
+
+function label(name) { return name.replace(/_/g, ' '); }
+
+function makeCard(src, name, display) {
+  const card = document.createElement('div');
+  card.className = 'sprite-card';
+  const wrap = document.createElement('div');
+  wrap.className = bgClass();
+  const img = document.createElement('img');
+  img.src = src;
+  img.width = display;
+  img.height = display;
+  wrap.appendChild(img);
+  card.appendChild(wrap);
+  const nameDiv = document.createElement('div');
+  nameDiv.className = 'name';
+  nameDiv.textContent = label(name);
+  card.appendChild(nameDiv);
+  return card;
+}
+
+function makeTileCard(src, name, tilePx, repeats) {
+  const card = document.createElement('div');
+  card.className = 'sprite-card';
+  const totalPx = tilePx * repeats;
+  const wrap = document.createElement('div');
+  wrap.className = bgClass();
+  const canvas = document.createElement('canvas');
+  canvas.width = totalPx;
+  canvas.height = totalPx;
+  canvas.style.imageRendering = 'pixelated';
+  canvas.style.display = 'block';
+  const img = new Image();
+  img.onload = function() {
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    for (let y = 0; y < repeats; y++) {
+      for (let x = 0; x < repeats; x++) {
+        ctx.drawImage(img, 0, 0, img.width, img.height, x * tilePx, y * tilePx, tilePx, tilePx);
       }
+    }
+  };
+  img.src = src;
+  wrap.appendChild(canvas);
+  card.appendChild(wrap);
+  const nameDiv = document.createElement('div');
+  nameDiv.className = 'name';
+  nameDiv.textContent = label(name);
+  card.appendChild(nameDiv);
+  return card;
+}
 
-      const sections = {
-        classes: {
-          grid: "grid-classes",
-          base: "sprites/",
-          display: 128,
-          items: [
-            "warrior",
-            "brawler",
-            "rogue",
-            "mender",
-            "cinder",
-            "wayfarer",
-            "knight",
-            "champion",
-            "shadow",
-            "sage",
-            "pyromancer",
-            "wanderer",
-          ],
-        },
-        player: {
-          grid: "grid-player",
-          base: "sprites/",
-          display: 96,
-          items: ["player_down", "player_up", "player_left", "player_right"],
-        },
-        monsters: {
-          grid: "grid-monsters",
-          base: "sprites/monsters/",
-          display: 128,
-          items: [
-            "slime",
-            "goblin",
-            "wolf",
-            "skeleton",
-            "bat",
-            "rat",
-            "snake",
-            "spider",
-            "orc",
-            "ghost",
-            "bandit",
-            "troll",
-            "wyvern",
-            "lich",
-            "golem",
-            "demon",
-            "dark_knight",
-            "dragon",
-          ],
-        },
-        npcs: {
-          grid: "grid-npcs",
-          base: "sprites/npcs/",
-          display: 96,
-          items: [
-            "elder",
-            "merchant",
-            "blacksmith",
-            "innkeeper",
-            "priestess",
-            "guard",
-          ],
-        },
-        walk: {
-          grid: "grid-walk",
-          base: "sprites/walk/",
-          display: 64,
-          items: [
-            "walk_down_0",
-            "walk_down_1",
-            "walk_down_2",
-            "walk_down_3",
-            "walk_left_0",
-            "walk_left_1",
-            "walk_left_2",
-            "walk_left_3",
-            "walk_right_0",
-            "walk_right_1",
-            "walk_right_2",
-            "walk_right_3",
-            "walk_up_0",
-            "walk_up_1",
-            "walk_up_2",
-            "walk_up_3",
-          ],
-        },
-        ui: {
-          grid: "grid-ui",
-          base: "sprites/ui/",
-          display: 48,
-          items: [
-            "icon_sword",
-            "icon_shield",
-            "icon_potion",
-            "icon_spell",
-            "icon_gold",
-            "icon_xp",
-            "icon_poison",
-            "icon_sleep",
-            "icon_mute",
-            "icon_slow",
-            "icon_paralyze",
-            "border_tl",
-            "border_t",
-            "border_tr",
-            "border_l",
-            "border_fill",
-            "border_r",
-            "border_bl",
-            "border_b",
-            "border_br",
-            "hp_bar_frame",
-            "hp_bar_fill",
-            "hp_bar_empty",
-          ],
-        },
-      };
+function render() {
+  for (const [key, cfg] of Object.entries(SECTIONS)) {
+    const grid = document.getElementById(cfg.grid);
+    if (!grid) continue;
+    grid.innerHTML = '';
 
-      for (const [key, cfg] of Object.entries(sections)) {
-        const grid = document.getElementById(cfg.grid);
-        for (const name of cfg.items) {
-          grid.appendChild(
-            makeCard(cfg.base + name + ".png", name, "?", cfg.display),
-          );
+    if (cfg.grouped) {
+      for (const [groupName, files] of Object.entries(cfg.groups)) {
+        const card = document.createElement('div');
+        card.className = 'sprite-card';
+        const wrap = document.createElement('div');
+        wrap.className = bgClass();
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'walk-group';
+        for (const file of files) {
+          const img = document.createElement('img');
+          img.src = cfg.base + file + '.png';
+          img.width = cfg.display;
+          img.height = cfg.display;
+          groupDiv.appendChild(img);
         }
+        wrap.appendChild(groupDiv);
+        card.appendChild(wrap);
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'name';
+        nameDiv.textContent = groupName;
+        card.appendChild(nameDiv);
+        grid.appendChild(card);
       }
-    </script>
-  </body>
+      continue;
+    }
+
+    for (const name of cfg.items) {
+      const src = cfg.base + name + '.png';
+      if (cfg.tiled) {
+        grid.appendChild(makeTileCard(src, name, cfg.tilePx, cfg.repeats));
+      } else {
+        const display = (cfg.displayOverrides && cfg.displayOverrides[name]) || cfg.display;
+        grid.appendChild(makeCard(src, name, display));
+      }
+    }
+  }
+}
+
+function setBg(mode, evt) {
+  currentBg = mode;
+  document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+  if (evt && evt.target) evt.target.classList.add('active');
+  render();
+}
+
+render();
+</script>
+</body>
 </html>
