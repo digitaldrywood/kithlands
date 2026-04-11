@@ -50,10 +50,11 @@ type CombatBuff struct {
 
 // Action represents a combat action chosen by a combatant.
 type Action struct {
-	ActorID   int
-	Kind      ActionKind
-	TargetID  int
-	AbilityID string // populated when Kind == ActionAbility
+	ActorID    int
+	Kind       ActionKind
+	TargetID   int
+	AbilityID  string // populated when Kind == ActionAbility
+	Initiative int    // weighted initiative roll, assigned by ResolveTurn
 }
 
 type ActionKind string
@@ -70,14 +71,15 @@ const (
 
 // ResolvedAction is a single combat action after server resolution.
 type ResolvedAction struct {
-	ActorID   int        `json:"actor_id"`
-	ActorName string     `json:"actor_name"`
-	Kind      ActionKind `json:"kind"`
-	TargetID  int        `json:"target_id"`
-	Hits      []Hit      `json:"hits"`
-	TotalDmg  int        `json:"total_damage"`
-	TargetHP  int        `json:"target_hp"`
-	Killed    bool       `json:"killed"`
+	ActorID    int        `json:"actor_id"`
+	ActorName  string     `json:"actor_name"`
+	Kind       ActionKind `json:"kind"`
+	TargetID   int        `json:"target_id"`
+	Hits       []Hit      `json:"hits"`
+	TotalDmg   int        `json:"total_damage"`
+	TargetHP   int        `json:"target_hp"`
+	Killed     bool       `json:"killed"`
+	Initiative int        `json:"initiative,omitempty"`
 }
 
 type Hit struct {
@@ -86,8 +88,21 @@ type Hit struct {
 	Missed bool `json:"missed"`
 }
 
+// RollInitiative returns a weighted initiative value: the combatant's AGI plus
+// a variable bonus scaled to AGI. Expected value grows with AGI so faster
+// combatants still tend to act first, but the distributions overlap enough
+// that slower combatants can occasionally land an upset first-strike. See
+// GDD §6.1.
+func RollInitiative(agi int, rng *rand.Rand) int {
+	if agi < 0 {
+		agi = 0
+	}
+	return agi + rng.IntN(agi/2+10)
+}
+
 // ResolveTurn resolves one round of combat per Section 6.1.
-// Actions are sorted by AGI (ties broken by random roll), then resolved in order.
+// Each combatant rolls a weighted initiative (AGI + rand spread) once per
+// round and actions are sorted descending by that roll, ties broken randomly.
 func ResolveTurn(
 	party []*Combatant,
 	enemies []*Combatant,
@@ -127,12 +142,16 @@ func ResolveTurn(
 		}
 	}
 
-	// Sort actions by actor AGI descending, random tiebreak
+	// Roll a weighted initiative for each acting combatant once per round,
+	// then sort descending by that roll. Ties still break on a coin flip.
+	for i := range actions {
+		if actor := allCombatants[actions[i].ActorID]; actor != nil {
+			actions[i].Initiative = RollInitiative(actor.AGI, rng)
+		}
+	}
 	sort.Slice(actions, func(i, j int) bool {
-		ai := allCombatants[actions[i].ActorID]
-		aj := allCombatants[actions[j].ActorID]
-		if ai.AGI != aj.AGI {
-			return ai.AGI > aj.AGI
+		if actions[i].Initiative != actions[j].Initiative {
+			return actions[i].Initiative > actions[j].Initiative
 		}
 		return rng.IntN(2) == 0
 	})
@@ -155,6 +174,7 @@ func ResolveTurn(
 			confuseTarget := allLiving[rng.IntN(len(allLiving))]
 			resolved := resolveAttack(actor, confuseTarget, stats, rng)
 			resolved.Kind = ActionConfusion
+			resolved.Initiative = action.Initiative
 			results = append(results, resolved)
 			// Wake sleeping targets hit by confusion attack.
 			if resolved.TotalDmg > 0 && confuseTarget.Status == character.StatusSleep {
@@ -176,6 +196,7 @@ func ResolveTurn(
 		switch action.Kind {
 		case ActionAttack:
 			resolved := resolveAttack(actor, target, stats, rng)
+			resolved.Initiative = action.Initiative
 			results = append(results, resolved)
 			// Wake sleeping targets on damage per Section 6.5.
 			if resolved.TotalDmg > 0 && target.Status == character.StatusSleep {
@@ -191,13 +212,15 @@ func ResolveTurn(
 			}
 		case ActionDefend:
 			results = append(results, ResolvedAction{
-				ActorID:   actor.ID,
-				ActorName: actor.Name,
-				Kind:      ActionDefend,
+				ActorID:    actor.ID,
+				ActorName:  actor.Name,
+				Kind:       ActionDefend,
+				Initiative: action.Initiative,
 			})
 		case ActionAbility:
 			allies := alliesOf(actor, party, enemies)
 			resolved := ResolveAbility(actor, target, allies, action.AbilityID, stats, rng)
+			resolved.Initiative = action.Initiative
 			results = append(results, resolved)
 			// Wake sleeping targets hit by abilities (e.g. backstab).
 			if resolved.TotalDmg > 0 && target != nil && target.Status == character.StatusSleep {

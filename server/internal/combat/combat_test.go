@@ -294,12 +294,12 @@ func TestBrawlerBareHandScaling(t *testing.T) {
 
 		brawler := &combat.Combatant{
 			ID: 1, Name: "Brawler", IsPlayer: true,
-			STR: tc.str, AGI: 10, LCK: 0, HitPct: 10, // single hit
+			STR: tc.str, AGI: 10, LCK: 0, HitPct: 31, // single hit, toHit > 100
 			MaxHP: 100, CurrentHP: 100,
 			BareHandDamage: bare,
 		}
 		dummy := makeEnemy(2, "Dummy", 1, 1, 1_000_000, 0)
-		dummy.AGI = 0 // guarantee hit
+		dummy.AGI = 0 // guaranteed hit together with HitPct 31
 
 		rng := rand.New(rand.NewPCG(42, 0))
 		actions := []combat.Action{{ActorID: 1, Kind: combat.ActionAttack, TargetID: 2}}
@@ -661,8 +661,9 @@ func TestSleepWakesOnDamage(t *testing.T) {
 
 	attacker := makeWarrior("Hero", 10, 0)
 	attacker.AGI = 50
+	attacker.HitPct = 31 // single hit, toHit > 100
 
-	enemy := makeEnemy(2, "Sleeper", 5, 1, 100, 0)
+	enemy := makeEnemy(2, "Sleeper", 5, 0, 100, 0)
 	enemy.Status = character.StatusSleep
 
 	rng := rand.New(rand.NewPCG(42, 0))
@@ -794,5 +795,156 @@ func TestConfusedCombatantNotSkipped(t *testing.T) {
 	// Confused actor should still act (not be skipped like sleep/stone)
 	if len(results) == 0 {
 		t.Fatal("confused combatant should still produce an action")
+	}
+}
+
+// firstAttackerID returns the ActorID of the first non-poison-tick result,
+// which is the combatant that won initiative for the round.
+func firstAttackerID(results []combat.ResolvedAction) int {
+	for _, r := range results {
+		if r.Kind == combat.ActionPoisonTick {
+			continue
+		}
+		return r.ActorID
+	}
+	return 0
+}
+
+func TestInitiativeExposedInResolvedAction(t *testing.T) {
+	gd := loadTestData(t)
+	stats := &gd.Stats.Combat
+
+	p := makeWarrior("Hero", 10, 0)
+	p.ID = 1
+	e := makeEnemy(2, "Goblin", 5, 4, 50, 0)
+
+	rng := rand.New(rand.NewPCG(1, 2))
+	actions := []combat.Action{
+		{ActorID: 1, Kind: combat.ActionAttack, TargetID: 2},
+		{ActorID: 2, Kind: combat.ActionAttack, TargetID: 1},
+	}
+	results := combat.ResolveTurn(
+		[]*combat.Combatant{p},
+		[]*combat.Combatant{e},
+		actions, stats, rng,
+	)
+
+	seen := 0
+	for _, r := range results {
+		if r.Kind == combat.ActionPoisonTick {
+			continue
+		}
+		if r.Initiative <= 0 {
+			t.Errorf("expected Initiative > 0 on %s result, got %d", r.Kind, r.Initiative)
+		}
+		seen++
+	}
+	if seen == 0 {
+		t.Fatal("expected at least one resolved action carrying an initiative value")
+	}
+}
+
+func TestInitiativeFavorsHighAGI(t *testing.T) {
+	gd := loadTestData(t)
+	stats := &gd.Stats.Combat
+
+	const trials = 400
+	highWins := 0
+
+	for i := 0; i < trials; i++ {
+		high := makeEnemy(1, "Rogue", 5, 15, 100, 0)
+		high.IsPlayer = true
+		low := makeEnemy(2, "Warrior", 5, 5, 100, 0)
+		low.IsPlayer = false
+
+		rng := rand.New(rand.NewPCG(uint64(i), 42))
+		actions := []combat.Action{
+			{ActorID: 2, Kind: combat.ActionAttack, TargetID: 1},
+			{ActorID: 1, Kind: combat.ActionAttack, TargetID: 2},
+		}
+		results := combat.ResolveTurn(
+			[]*combat.Combatant{high},
+			[]*combat.Combatant{low},
+			actions, stats, rng,
+		)
+		if firstAttackerID(results) == 1 {
+			highWins++
+		}
+	}
+
+	// Per the GDD tightening: high-AGI should dominate but not be deterministic.
+	// With AGI 15 vs AGI 5 the distributions barely overlap, so we expect
+	// high-AGI to win at least 80% of rolls.
+	if highWins < trials*8/10 {
+		t.Errorf("high-AGI win rate too low: %d/%d (<80%%)", highWins, trials)
+	}
+}
+
+func TestInitiativeAllowsUpsets(t *testing.T) {
+	gd := loadTestData(t)
+	stats := &gd.Stats.Combat
+
+	const trials = 400
+	lowerWins := 0
+
+	for i := 0; i < trials; i++ {
+		// Close matchup so the rolls can overlap.
+		fast := makeEnemy(1, "Skirmisher", 5, 8, 100, 0)
+		fast.IsPlayer = true
+		slow := makeEnemy(2, "Bruiser", 5, 6, 100, 0)
+		slow.IsPlayer = false
+
+		rng := rand.New(rand.NewPCG(uint64(i), 99))
+		actions := []combat.Action{
+			{ActorID: 1, Kind: combat.ActionAttack, TargetID: 2},
+			{ActorID: 2, Kind: combat.ActionAttack, TargetID: 1},
+		}
+		results := combat.ResolveTurn(
+			[]*combat.Combatant{fast},
+			[]*combat.Combatant{slow},
+			actions, stats, rng,
+		)
+		if firstAttackerID(results) == 2 {
+			lowerWins++
+		}
+	}
+
+	// With AGI 8 vs AGI 6 the slower combatant should still land first
+	// sometimes — this is the whole point of the randomized roll.
+	if lowerWins == 0 {
+		t.Error("lower-AGI combatant never went first across 400 close-matchup trials")
+	}
+}
+
+func TestInitiativeVariesAcrossRounds(t *testing.T) {
+	gd := loadTestData(t)
+	stats := &gd.Stats.Combat
+
+	// Stable roster, stable AGI, fresh rolls each round. Turn order must
+	// not be locked in by a strict AGI sort.
+	ally := makeEnemy(1, "A", 5, 7, 10_000, 0)
+	ally.IsPlayer = true
+	foe := makeEnemy(2, "B", 5, 7, 10_000, 0)
+	foe.IsPlayer = false
+
+	rng := rand.New(rand.NewPCG(7, 7))
+	seenFirst := map[int]bool{}
+	for round := 0; round < 40; round++ {
+		ally.CurrentHP, foe.CurrentHP = 10_000, 10_000
+		ally.Status, foe.Status = character.StatusNone, character.StatusNone
+		actions := []combat.Action{
+			{ActorID: 1, Kind: combat.ActionAttack, TargetID: 2},
+			{ActorID: 2, Kind: combat.ActionAttack, TargetID: 1},
+		}
+		results := combat.ResolveTurn(
+			[]*combat.Combatant{ally},
+			[]*combat.Combatant{foe},
+			actions, stats, rng,
+		)
+		seenFirst[firstAttackerID(results)] = true
+	}
+
+	if len(seenFirst) < 2 {
+		t.Errorf("expected both combatants to win initiative at least once, saw %v", seenFirst)
 	}
 }
