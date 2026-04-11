@@ -2,6 +2,7 @@ import { saveGame, equipItem } from "../api.js";
 import { playSFX } from "../systems/audio.js";
 import { getAutosaveEnabled, setAutosaveEnabled } from "../systems/prefs.js";
 import { showWorldMap } from "./world_interact.js";
+import { openCharacterDetail } from "./character_detail.js";
 import { drawPanel, drawButton } from "../ui/panel.js";
 import {
   barFillWidth,
@@ -107,8 +108,10 @@ export function toggleMenu(scene) {
       label: "CHARACTER",
       w: 130,
       onClick: () => {
-        scene.showMessage("Character detail — coming in #95");
-        scene.time.delayedCall(1500, () => scene.hideMessage());
+        // Footer button opens the detail for the party lead. Per-row
+        // CHARACTER → buttons in drawPartyRow handle the specific hero.
+        closeMenu(scene);
+        openCharacterDetail(scene, 0);
       },
     },
     {
@@ -211,7 +214,7 @@ function closeMenu(scene) {
 // class / level header, HP bar, XP bar, and (for casters) MP bar. All
 // objects it creates are pushed into `group` so closeMenu can tear them
 // down cleanly.
-function drawPartyRow(scene, group, x, y, w, member, _equip, _slot) {
+function drawPartyRow(scene, group, x, y, w, member, _equip, slot) {
   const alive = (member.hp || 0) > 0;
   const textColor = alive ? "#ffffff" : "#666666";
 
@@ -294,7 +297,8 @@ function drawPartyRow(scene, group, x, y, w, member, _equip, _slot) {
     color: 0xffcc44,
   });
 
-  // Right-side CHARACTER button (stubbed until #95).
+  // Right-side CHARACTER button — opens the full detail overlay (#95)
+  // for this specific hero.
   const btn = drawButton(
     scene,
     x + w - 80,
@@ -303,10 +307,8 @@ function drawPartyRow(scene, group, x, y, w, member, _equip, _slot) {
     44,
     "CHARACTER →",
     () => {
-      scene.showMessage(
-        `${member.name} — character detail coming in #95`,
-      );
-      scene.time.delayedCall(1500, () => scene.hideMessage());
+      closeMenu(scene);
+      openCharacterDetail(scene, slot);
     },
   );
   group.push(btn);
@@ -366,12 +368,13 @@ function layoutButtonRow(scene, group, cx, y, specs) {
   return handles;
 }
 
-export async function showEquipPicker(scene, slot, type) {
-  // Tear down the party menu so the picker sits alone. We track the
-  // return target (party menu for now; character detail once #95 lands)
-  // so success AND cancel can restore the caller -- this is the core
-  // fix for issue #96, where the menu used to vanish after every pick.
-  const returnTo = { type: "party" };
+export async function showEquipPicker(scene, slot, type, opts = {}) {
+  // Tear down the party menu so the picker sits alone. returnTo picks
+  // where the picker sends the player on success OR cancel -- defaults
+  // to the party menu, but the character detail screen (#95) passes
+  // { type: "character", index } so the picker hands control back to
+  // the detail screen it was opened from.
+  const returnTo = opts.returnTo || { type: "party" };
   if (scene.menuGroup) {
     scene.menuGroup.forEach((c) => c.destroy());
     scene.menuGroup = null;
@@ -385,10 +388,12 @@ export async function showEquipPicker(scene, slot, type) {
 
   const reopenCaller = () => {
     // Matches the existing pattern used by showQuestLog / save button:
-    // set menuOpen=false first, then toggleMenu to rebuild it fresh
-    // against the latest scene.gameState so the new gear line shows.
+    // set menuOpen=false first, then re-open the caller fresh against
+    // the latest scene.gameState so new gear / stats show.
     scene.menuOpen = false;
-    if (returnTo.type === "party") {
+    if (returnTo.type === "character") {
+      openCharacterDetail(scene, returnTo.index);
+    } else {
       toggleMenu(scene);
     }
   };
