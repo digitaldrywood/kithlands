@@ -742,6 +742,76 @@ func TestVictoryXPAnimationData(t *testing.T) {
 	t.Logf("Victory XP data: xp_before=%v level_before=%v thresholds=%v", xpBefore, levelBefore, thresholds)
 }
 
+// TestEquipStateIncludesPowerAndAbsorb pins the enriched ItemState and
+// EquipState fields added for issue #96 so the client can render stat-delta
+// previews without shipping the weapon/armor catalog. A weapon in inventory
+// must expose Power, a weapon equipped must expose WeaponPower, and the same
+// shape must hold for armor/Absorb.
+func TestEquipStateIncludesPowerAndAbsorb(t *testing.T) {
+	_, ts := testServer(t)
+	defer ts.Close()
+
+	gs := post(t, ts.URL+"/api/game/new", api.NewGameRequest{
+		TownName: "Test", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
+		Places: []string{"X"}, BigBuilding: "Hall",
+		Party:      []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
+		Difficulty: "normal",
+	})
+	gameID := gs["id"].(string)
+
+	// The starting warrior has short_sword (tier 1, power 5) and
+	// leather_armor (tier 1, absorb 2) equipped, so the EquipState
+	// entries should already expose WeaponPower > 0 and ArmorAbsorb > 0.
+	equipment := gs["equipment"].([]any)
+	eq0 := equipment[0].(map[string]any)
+	wpStart, _ := eq0["weapon_power"].(float64)
+	if wpStart <= 0 {
+		t.Errorf("starting weapon_power: got %v, want > 0", eq0["weapon_power"])
+	}
+	absStart, _ := eq0["armor_absorb"].(float64)
+	if absStart <= 0 {
+		t.Errorf("starting armor_absorb: got %v, want > 0", eq0["armor_absorb"])
+	}
+
+	// Buy an iron sword (power 12). After buying, it sits in inventory
+	// as "wpn_iron_sword" and state.items should include Power=12.
+	gs = post(t, ts.URL+"/api/game/"+gameID+"/buy", map[string]string{
+		"item_id": "iron_sword", "type": "weapon",
+	})
+	if gs["error"] != nil {
+		t.Fatalf("buy error: %v", gs["error"])
+	}
+	items := gs["items"].([]any)
+	var found map[string]any
+	for _, it := range items {
+		m := it.(map[string]any)
+		if m["id"] == "wpn_iron_sword" {
+			found = m
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("wpn_iron_sword not in items, got: %v", items)
+	}
+	if power, _ := found["power"].(float64); power != 12 {
+		t.Errorf("iron_sword ItemState.Power: got %v, want 12", found["power"])
+	}
+
+	// Equip the iron sword and verify EquipState.WeaponPower matches the
+	// catalog (12) instead of the starting short sword's power (5).
+	gs = post(t, ts.URL+"/api/game/"+gameID+"/equip", map[string]any{
+		"slot": 0, "item_id": "iron_sword", "type": "weapon",
+	})
+	if gs["error"] != nil {
+		t.Fatalf("equip error: %v", gs["error"])
+	}
+	equipment = gs["equipment"].([]any)
+	eq0 = equipment[0].(map[string]any)
+	if wp, _ := eq0["weapon_power"].(float64); wp != 12 {
+		t.Errorf("equipped weapon_power: got %v, want 12", eq0["weapon_power"])
+	}
+}
+
 func contains(s, sub string) bool {
 	for i := 0; i <= len(s)-len(sub); i++ {
 		if s[i:i+len(sub)] == sub {
