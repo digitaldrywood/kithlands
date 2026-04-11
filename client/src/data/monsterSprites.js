@@ -42,4 +42,5 @@ export const ENEMY_SPRITES = {
   "Elder Dragon": "monster_dragon",
   "Siege Commander": "monster_lich",
   "Dragon Lord": "monster_dragon",
+  "Trial Guardian": "monster_dark_knight",
 };
