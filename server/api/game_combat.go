@@ -572,42 +572,16 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 		}
 		g.logCombat(fmt.Sprintf("Victory! +%d XP, +%d gold", totalXP, totalGold), CombatActionEntry{Kind: "info"})
 		g.checkLevelUps()
+		g.restParty()
 		g.enemies = nil
 		g.spellBuffs = nil
 
-		// Complete current quest
-		if g.currentQ < len(g.quests) {
-			q := &g.quests[g.currentQ]
-			q.Completed = true
-			g.inv.Gold += q.Reward.Gold
-			for _, c := range g.party {
-				if c.IsAlive() {
-					c.XP += q.Reward.XP
-				}
-			}
-			g.checkLevelUps()
-			g.logCombat(
-				fmt.Sprintf("Quest complete: %s (+%d XP, +%d gold)", q.Name, q.Reward.XP, q.Reward.Gold),
-				CombatActionEntry{Kind: "info"})
-			g.restParty()
-			completedIdx := g.currentQ
-			g.currentQ++
-			if promoMsg := g.applyPromotionIfNeeded(completedIdx); promoMsg != "" {
-				g.logCombat(promoMsg, CombatActionEntry{Kind: "info"})
-				g.message = promoMsg
-			}
-			if tierName := g.checkTransportUnlocks(); tierName != "" {
-				g.logCombat(fmt.Sprintf("Transport upgraded: %s!", tierName), CombatActionEntry{Kind: "info"})
-			}
-		}
-
-		if g.currentQ >= len(g.quests) {
-			g.phase = "victory"
-			g.message = fmt.Sprintf("%s is saved!", g.loc.Name)
-		} else {
-			g.phase = "quest_complete"
-			g.maybeTriggerPromotion()
-		}
+		// Combat victory never advances quests (issue #86). Quests only
+		// advance when the party enters the quest's target building via
+		// processWorldAction's "quest_advance" branch in game_world.go.
+		// The victory screen (phase=quest_complete) is acknowledged by the
+		// client via the "advance" action, which returns the party to world.
+		g.phase = "quest_complete"
 	} else if combat.CheckDefeat(combatants) {
 		g.phase = "defeat"
 		g.message = "Your party has fallen. Game over."
@@ -725,25 +699,9 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 		g.logCombat("Victory!", CombatActionEntry{Kind: "info"})
 		g.enemies = nil
 		g.spellBuffs = nil
-		if g.currentQ < len(g.quests) {
-			g.quests[g.currentQ].Completed = true
-			completedIdx := g.currentQ
-			g.currentQ++
-			if promoMsg := g.applyPromotionIfNeeded(completedIdx); promoMsg != "" {
-				g.logCombat(promoMsg, CombatActionEntry{Kind: "info"})
-				g.message = promoMsg
-			}
-			if tierName := g.checkTransportUnlocks(); tierName != "" {
-				g.logCombat(fmt.Sprintf("Transport upgraded: %s!", tierName), CombatActionEntry{Kind: "info"})
-			}
-		}
 		g.restParty()
 		g.checkLevelUps()
-		if g.currentQ >= len(g.quests) {
-			g.phase = "victory"
-		} else {
-			g.phase = "quest_complete"
-		}
+		g.phase = "quest_complete"
 	} else if combat.CheckDefeat(combatants) {
 		g.phase = "defeat"
 		g.message = "Your party has fallen."

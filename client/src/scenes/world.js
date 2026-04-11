@@ -749,7 +749,12 @@ export class WorldScene extends Phaser.Scene {
   updateQuestDisplay() {
     const gs = this.gameState;
     if (gs.current_quest < gs.quests.length) {
-      this.questText.setText(`Quest: ${gs.quests[gs.current_quest].name}`);
+      const q = gs.quests[gs.current_quest];
+      const lines = [`Quest: ${q.name}`];
+      if (q.target_name) {
+        lines.push(`Go to: ${q.target_name}`);
+      }
+      this.questText.setText(lines.join("\n"));
     } else {
       this.questText.setText("All quests complete!");
     }

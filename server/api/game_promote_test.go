@@ -6,29 +6,38 @@ import (
 	"github.com/digitaldrywood/kithlands/api"
 )
 
-// driveToPromotion repeatedly simulates fights until the game either reaches
-// the "promotion" phase or the party wipes. It crushes enemies via massive
-// buffs on the combatants instead of actually playing through — the goal is
-// to exercise the quest-complete → maybeTriggerPromotion handshake.
+// driveToPromotion walks the game through every main quest up to and
+// including the promotion story-beat quest. It advances quests by issuing
+// "quest_advance" with each quest's target_node_id — matching the only way
+// real players advance quests after issue #86 (combat victory no longer
+// auto-completes quests). Optionally plays through random encounters so
+// tests that assert XP/levelup/transport progression still work.
 func driveToPromotion(t *testing.T, game *api.Game) *api.GameState {
 	t.Helper()
 
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 100; i++ {
 		state := game.State()
 		switch state.Phase {
 		case "promotion":
 			return &state
 		case "world":
-			_, err := game.ProcessAction(api.GameActionRequest{Type: "encounter"})
-			if err != nil {
-				t.Fatalf("encounter: %v", err)
+			if state.CurrentQ >= len(state.Quests) {
+				t.Fatal("ran out of quests before promotion fired")
+			}
+			target := state.Quests[state.CurrentQ].TargetNodeID
+			if target == "" {
+				t.Fatalf("quest[%d] has no target_node_id", state.CurrentQ)
+			}
+			if _, err := game.ProcessAction(api.GameActionRequest{
+				Type:   "quest_advance",
+				NodeID: target,
+			}); err != nil {
+				t.Fatalf("quest_advance[%d]: %v", state.CurrentQ, err)
 			}
 		case "combat":
-			// Use the test helper below to one-shot the enemies.
 			api.ForceVictoryForTest(game)
 		case "quest_complete":
-			_, err := game.ProcessAction(api.GameActionRequest{Type: "advance"})
-			if err != nil {
+			if _, err := game.ProcessAction(api.GameActionRequest{Type: "advance"}); err != nil {
 				t.Fatalf("advance: %v", err)
 			}
 		case "victory", "defeat":

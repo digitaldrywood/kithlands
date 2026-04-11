@@ -37,7 +37,10 @@ func TestTransportUpgradeThroughFullGame(t *testing.T) {
 
 	seen := map[string]bool{}
 
-	for i := 0; i < 100; i++ {
+	// Advance main quests by entering each quest's target node. Combat
+	// victory no longer auto-completes quests (issue #86), so the only way
+	// to progress the campaign is quest_advance from the world phase.
+	for i := 0; i < 200; i++ {
 		state := game.State()
 		seen[state.Transport.CurrentTier] = true
 
@@ -47,9 +50,18 @@ func TestTransportUpgradeThroughFullGame(t *testing.T) {
 
 		switch state.Phase {
 		case "world":
-			_, err := game.ProcessAction(api.GameActionRequest{Type: "encounter"})
-			if err != nil {
-				t.Fatalf("encounter: %v", err)
+			if state.CurrentQ >= len(state.Quests) {
+				t.Fatalf("no more quests but phase still world")
+			}
+			target := state.Quests[state.CurrentQ].TargetNodeID
+			if target == "" {
+				t.Fatalf("quest[%d] has no target_node_id", state.CurrentQ)
+			}
+			if _, err := game.ProcessAction(api.GameActionRequest{
+				Type:   "quest_advance",
+				NodeID: target,
+			}); err != nil {
+				t.Fatalf("quest_advance: %v", err)
 			}
 		case "combat":
 			api.ForceVictoryForTest(game)
