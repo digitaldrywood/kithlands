@@ -293,30 +293,43 @@ func instantiateBossQuest(walk *locality.WalkResult, loc *locality.Locality, idx
 }
 
 // pickTargetNode chooses an appropriate node for the quest's act. Falls back
-// to the nearest tier available if the preferred tier is empty.
+// to the nearest tier available if the preferred tier is empty. Natural nodes
+// are filtered out because the client only emits quest_advance via door/
+// building interaction — a natural-node target would leave the quest
+// uncompletable (issue #86).
 func pickTargetNode(walk *locality.WalkResult, act int, rng *rand.Rand) *locality.Node {
-	var preferred []*locality.Node
+	var tiers [][]*locality.Node
 	switch act {
 	case 1:
-		preferred = walk.Close
+		tiers = [][]*locality.Node{walk.Close, walk.Medium, walk.Far}
 	case 2:
-		preferred = walk.Medium
-		if len(preferred) == 0 {
-			preferred = walk.Close
-		}
+		tiers = [][]*locality.Node{walk.Medium, walk.Close, walk.Far}
 	case 3:
-		preferred = walk.Far
-		if len(preferred) == 0 {
-			preferred = walk.Medium
-		}
-		if len(preferred) == 0 {
-			preferred = walk.Close
+		tiers = [][]*locality.Node{walk.Far, walk.Medium, walk.Close}
+	}
+	for _, tier := range tiers {
+		filtered := filterEnterableNodes(tier)
+		if len(filtered) > 0 {
+			return filtered[rng.IntN(len(filtered))]
 		}
 	}
-	if len(preferred) == 0 {
+	if walk.Spawn != nil && walk.Spawn.Kind != locality.NodeNatural {
 		return walk.Spawn
 	}
-	return preferred[rng.IntN(len(preferred))]
+	return walk.Spawn
+}
+
+// filterEnterableNodes returns only nodes the player can actually enter via
+// building/door interaction — i.e. excludes wilderness/natural nodes.
+func filterEnterableNodes(nodes []*locality.Node) []*locality.Node {
+	out := make([]*locality.Node, 0, len(nodes))
+	for _, n := range nodes {
+		if n == nil || n.Kind == locality.NodeNatural {
+			continue
+		}
+		out = append(out, n)
+	}
+	return out
 }
 
 // pickGiverNode returns the first close-distance person node, falling back to

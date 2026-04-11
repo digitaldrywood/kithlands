@@ -81,6 +81,36 @@ func TestCombatVictoryDoesNotFirePromotion(t *testing.T) {
 	}
 }
 
+// TestActionResponseKeepsQuestTargetFields guards against a regression where
+// processAction responses were built via a thinner serializer that stripped
+// target_name / target_node_id. The client HUD and minimap marker rely on
+// those fields persisting across every action response, not just /new.
+func TestActionResponseKeepsQuestTargetFields(t *testing.T) {
+	gs, ts, gameID, targetNodeID := newQuestTestGame(t)
+	startQuest := int(gs["current_quest"].(float64))
+
+	// Sanity: /new response has target fields.
+	if targetNodeID == "" {
+		t.Fatal("precondition: /new response missing target_node_id")
+	}
+
+	// Fire any action — the response must still carry target_name and
+	// target_node_id for the active quest so the HUD can render "Go to: X"
+	// and the minimap can highlight the target spawn.
+	resp := post(t, ts.URL+"/api/game/"+gameID+"/action", api.GameActionRequest{
+		Type:   "quest_advance",
+		NodeID: targetNodeID + "_not_it", // wrong node, so quest does NOT advance
+	})
+	quests := resp["quests"].([]any)
+	q := quests[startQuest].(map[string]any)
+	if name, _ := q["target_name"].(string); name == "" {
+		t.Errorf("action response quest[%d].target_name is empty", startQuest)
+	}
+	if id, _ := q["target_node_id"].(string); id == "" {
+		t.Errorf("action response quest[%d].target_node_id is empty", startQuest)
+	}
+}
+
 // TestPromotionFiresWhenReachingPromotionQuest drives Act 1 via quest_advance
 // and asserts promotion phase fires exactly when currentQ lands on the
 // IsPromotion story beat — not earlier.

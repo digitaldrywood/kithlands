@@ -509,7 +509,21 @@ func (g *Game) stateUnlocked() GameState {
 		state.Formation = g.formation
 	}
 	for _, q := range g.quests {
-		state.Quests = append(state.Quests, QuestState{Name: q.Name, Description: q.Description, Act: q.Act, Completed: q.Completed})
+		state.Quests = append(state.Quests, QuestState{
+			ID:           q.ID,
+			Name:         q.Name,
+			Description:  q.Description,
+			Completion:   q.Completion,
+			Act:          q.Act,
+			Completed:    q.Completed,
+			IsPromotion:  q.IsPromotion,
+			IsSideQuest:  q.IsSideQuest,
+			GiverName:    q.GiverName,
+			GiverNodeID:  q.GiverNodeID,
+			TargetName:   q.TargetName,
+			TargetNodeID: q.TargetNodeID,
+			Reward:       QuestRewardState{XP: q.Reward.XP, Gold: q.Reward.Gold},
+		})
 	}
 	return state
 }
