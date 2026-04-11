@@ -59,6 +59,15 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 		}
 		encLvl := balance.EncounterLevel(partyLevels, "normal", 0, g.currentQ)
 		result := balance.GenerateFormationEncounter(g.gd, encLvl, g.diff, g.rng)
+		if len(result.Combatants) == 0 {
+			// Formation generation can legitimately return zero combatants
+			// (unknown monster IDs in data, or every slot clipped to zero by
+			// SizeMaxPerEncounter). Stay in world phase rather than shipping
+			// phase="combat" with no enemies — otherwise the client plays the
+			// encounter flash and the Battle scene never starts (issue #114).
+			state := g.stateUnlocked()
+			return &state, nil
+		}
 		g.enemies = result.Combatants
 		g.formation = result.Layout
 		g.phase = "combat"
@@ -163,6 +172,11 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 		}
 		encLvl := balance.EncounterLevel(partyLevels, "normal", 0, g.currentQ)
 		result := balance.GenerateFormationEncounter(g.gd, encLvl, g.diff, g.rng)
+		if len(result.Combatants) == 0 {
+			// See note on the "encounter" branch above (issue #114).
+			state := g.stateUnlocked()
+			return &state, nil
+		}
 		g.enemies = result.Combatants
 		g.formation = result.Layout
 		g.phase = "combat"

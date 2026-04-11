@@ -15,6 +15,7 @@ import {
   showInteractPrompt,
   hideInteractPrompt,
 } from "./world_interact.js";
+import { shouldStartBattle } from "./encounterFlow.js";
 import { initTouchControls } from "../systems/input.js";
 
 const ENEMY_SPRITES = {
@@ -508,35 +509,38 @@ export class WorldScene extends Phaser.Scene {
     cachedPlayerX = this.playerX;
     cachedPlayerY = this.playerY;
     cachedPlayerDir = this.playerDir;
-    playSFX("sfx_encounter");
     console.log(
       "[World] random encounter triggered at",
       this.playerX,
       this.playerY,
     );
 
-    this.cameras.main.flash(300, 255, 255, 255);
+    try {
+      // Autosave before combat starts (await to avoid racing the encounter mutation)
+      await this.triggerAutosave("pre_combat");
 
-    this.time.delayedCall(400, async () => {
-      try {
-        // Autosave before combat starts (await to avoid racing the encounter mutation)
-        await this.triggerAutosave("pre_combat");
+      const result = await gameAction(this.gameState.id, {
+        type: "encounter",
+      });
+      this.gameState = result;
 
-        const result = await gameAction(this.gameState.id, {
-          type: "encounter",
-        });
-        this.gameState = result;
-
-        if (result.phase === "combat" && result.enemies?.length > 0) {
+      // Only play flash/SFX once the server confirms a real fight. Otherwise
+      // (phase=world fallback when generation produced no enemies, phase=defeat
+      // from overworld poison) the player would see an orphan flash with no
+      // battle — issue #114.
+      if (shouldStartBattle(result)) {
+        playSFX("sfx_encounter");
+        this.cameras.main.flash(300, 255, 255, 255);
+        this.time.delayedCall(400, () => {
           this.scene.start("Battle", { gameState: result });
-        } else {
-          this.animating = false;
-        }
-      } catch (e) {
-        console.error("[World] encounter failed:", e);
+        });
+      } else {
         this.animating = false;
       }
-    });
+    } catch (e) {
+      console.error("[World] encounter failed:", e);
+      this.animating = false;
+    }
   }
 
   async triggerQuestAdvance(locationName, nodeId) {

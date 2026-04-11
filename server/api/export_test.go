@@ -4,7 +4,28 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/balance"
 	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/combat"
+	"github.com/digitaldrywood/kithlands/internal/gamedata"
 )
+
+// OverrideFormationsForTest replaces the game's formation pool with a
+// synthetic set so tests can drive GenerateFormationEncounter into edge
+// cases (e.g. slots that reference unknown monster IDs and therefore
+// produce zero combatants — the pinned regression for issue #114).
+func OverrideFormationsForTest(g *Game, formations []gamedata.Formation) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.gd.Formations = formations
+}
+
+// ForceWorldPhaseForTest drops the game back into the "world" phase and
+// clears enemies. Used by tests that need to stage a fresh encounter
+// request without completing the previous fight.
+func ForceWorldPhaseForTest(g *Game) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.phase = "world"
+	g.enemies = nil
+}
 
 // ForceVictoryForTest kills every enemy in the current encounter and runs
 // the normal combat-victory path so the game transitions into the post-fight
