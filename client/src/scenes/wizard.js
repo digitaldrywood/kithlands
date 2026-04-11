@@ -39,11 +39,7 @@ export class WizardScene extends Phaser.Scene {
   shouldSkipNPCStep() {
     if (!this.wizardData.use_osm) return false;
     const pois = this.wizardData.osm_preview || [];
-    // Only count POIs that had real OSM names (not auto-generated ones)
-    const generated =
-      /^(Building|House|Shed|Farmland|Water|Church|School|Parking|Fuel|Shelter|Place Of Worship|Fire Station|Restaurant|Cafe|Bar|Fast Food|Commercial|Retail|Civic|Government)( \d+)?$/;
-    const namedPOIs = pois.filter((p) => p.name && !generated.test(p.name));
-    return namedPOIs.length >= 5;
+    return pois.filter((p) => p.name).length >= 5;
   }
 
   clearContent() {
@@ -161,12 +157,12 @@ export class WizardScene extends Phaser.Scene {
     return t;
   }
 
-  addInput(y, placeholder, width = 300) {
+  addInput(y, placeholder, width = 300, x = this.cx) {
     const el = document.createElement("input");
     el.type = "text";
     el.placeholder = placeholder;
     el.style.cssText = `font-size:16px;padding:6px 12px;width:${width}px;text-align:center;background:#222;color:#fff;border:2px solid #555;outline:none;font-family:monospace;`;
-    return this.add.dom(this.cx, y, el);
+    return this.add.dom(x, y, el);
   }
 
   addBackButton(y) {
@@ -551,13 +547,99 @@ export class WizardScene extends Phaser.Scene {
     });
   }
 
+  addClassPicker(x, y, initialClassId, classList, onChange) {
+    let idx = Math.max(0, classList.indexOf(initialClassId));
+    if (idx < 0) idx = 0;
+
+    const labelStyle = {
+      fontSize: "14px",
+      color: "#44ff44",
+      fontFamily: "monospace",
+    };
+    const arrowStyle = {
+      fontSize: "18px",
+      color: "#aaaaaa",
+      fontFamily: "monospace",
+    };
+
+    const leftArrow = this.add
+      .text(x - 70, y, "<", arrowStyle)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    const label = this.add
+      .text(x, y, classList[idx], labelStyle)
+      .setOrigin(0.5);
+    const rightArrow = this.add
+      .text(x + 70, y, ">", arrowStyle)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+
+    leftArrow.on("pointerover", () => leftArrow.setColor("#ffffff"));
+    leftArrow.on("pointerout", () => leftArrow.setColor("#aaaaaa"));
+    rightArrow.on("pointerover", () => rightArrow.setColor("#ffffff"));
+    rightArrow.on("pointerout", () => rightArrow.setColor("#aaaaaa"));
+
+    const cycle = (delta) => {
+      idx = (idx + delta + classList.length) % classList.length;
+      label.setText(classList[idx]);
+      if (onChange) onChange(classList[idx]);
+    };
+    leftArrow.on("pointerdown", () => cycle(-1));
+    rightArrow.on("pointerdown", () => cycle(1));
+
+    this.contentGroup.add(leftArrow);
+    this.contentGroup.add(label);
+    this.contentGroup.add(rightArrow);
+
+    return {
+      getClassId: () => classList[idx],
+    };
+  }
+
+  addPartyRow(rowY, slot, classList) {
+    const avatarX = this.cx - 220;
+    const nameX = this.cx - 80;
+    const pickerX = this.cx + 130;
+
+    const avatar = this.add
+      .image(avatarX, rowY, slot.class_id)
+      .setDisplaySize(48, 48)
+      .setOrigin(0.5);
+    this.contentGroup.add(avatar);
+
+    const nameInput = this.addInput(rowY, `Name (${slot.defName})`, 140, nameX);
+    if (slot.name) nameInput.node.value = slot.name;
+    this.contentGroup.add(nameInput);
+
+    const picker = this.addClassPicker(
+      pickerX,
+      rowY,
+      slot.class_id,
+      classList,
+      (newClassId) => avatar.setTexture(newClassId),
+    );
+
+    return {
+      nameInput,
+      getClassId: picker.getClassId,
+    };
+  }
+
   showPartyStep() {
     this.addTitle("PICK YOUR PARTY");
     this.addLabel(
       60,
-      "Choose up to 4 party members.\nClasses: warrior, brawler, rogue, mender, cinder, wayfarer\nLeave a slot blank to skip it.",
+      "Choose up to 4 party members.\n< and > cycle class. Leave a name blank to skip.",
     );
 
+    const classList = [
+      "warrior",
+      "brawler",
+      "rogue",
+      "mender",
+      "cinder",
+      "wayfarer",
+    ];
     const prevParty = this.wizardData.party || [];
     const defaults = [
       { defName: "Hero", defClass: "warrior" },
@@ -565,47 +647,33 @@ export class WizardScene extends Phaser.Scene {
       { defName: "Lark", defClass: "rogue" },
       { defName: "Willow", defClass: "mender" },
     ];
-    const slots = defaults.map((d, i) => ({
-      defName: prevParty[i]?.name || d.defName,
-      defClass: prevParty[i]?.class_id || d.defClass,
-    }));
 
-    const inputs = [];
-    const rowHeight = 80;
+    const rows = [];
     const firstRowY = 150;
+    const rowHeight = 80;
     for (let i = 0; i < 4; i++) {
       const rowY = firstRowY + i * rowHeight;
-      this.addLabel(rowY, `Slot ${i + 1}:`);
-      const nameInput = this.addInput(
-        rowY + 20,
-        `Name (${slots[i].defName})`,
-        180,
-      );
-      const classInput = this.addInput(
-        rowY + 50,
-        `Class (${slots[i].defClass})`,
-        180,
-      );
-      if (prevParty[i]) {
-        nameInput.node.value = prevParty[i].name;
-        classInput.node.value = prevParty[i].class_id;
-      }
-      inputs.push({ nameInput, classInput, def: slots[i] });
+      const def = defaults[i];
+      const prev = prevParty[i];
+      const slot = {
+        name: prev?.name || "",
+        class_id: prev?.class_id || def.defClass,
+        defName: def.defName,
+      };
+      rows.push(this.addPartyRow(rowY, slot, classList));
     }
 
     const buttonY = firstRowY + 4 * rowHeight + 10;
     this.addBackButton(buttonY);
     this.addButton(buttonY, "NEXT", () => {
       const party = [];
-      inputs.forEach((inp, i) => {
-        const name = inp.nameInput.node.value.trim();
-        const cls = inp.classInput.node.value.trim().toLowerCase();
-        // Always keep slot 0 (use defaults if blank). Later slots are optional:
-        // only include them if the player typed something.
-        if (i === 0 || name || cls) {
+      rows.forEach((row, i) => {
+        const name = row.nameInput.node.value.trim();
+        const cls = row.getClassId();
+        if (i === 0 || name) {
           party.push({
-            name: name || inp.def.defName,
-            class_id: cls || inp.def.defClass,
+            name: name || defaults[i].defName,
+            class_id: cls,
           });
         }
       });

@@ -1,9 +1,6 @@
 package api
 
-import (
-	"github.com/digitaldrywood/kithlands/internal/balance"
-	"github.com/digitaldrywood/kithlands/internal/combat"
-)
+import "github.com/digitaldrywood/kithlands/internal/character"
 
 // ForceVictoryForTest kills every enemy in the current encounter and runs
 // the normal combat-victory path so the game transitions into the post-fight
@@ -23,97 +20,44 @@ func ForceVictoryForTest(g *Game) {
 	})
 }
 
-// DamagePartyForTest subtracts `dmg` HP from the given party slot without
-// killing the character (floors at 1). Used by spell tests that need a
-// damaged ally to verify heal effects.
-func DamagePartyForTest(g *Game, slot int, dmg int) {
+// KillPartyMemberForTest drops the party member at idx to 0 HP and marks
+// them dead. Exposed only for tests.
+func KillPartyMemberForTest(g *Game, idx int) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if slot < 0 || slot >= len(g.party) {
-		return
-	}
-	c := g.party[slot]
-	c.CurrentHP -= dmg
-	if c.CurrentHP < 1 {
-		c.CurrentHP = 1
-	}
+	g.party[idx].CurrentHP = 0
+	g.party[idx].Status = character.StatusDeath
 }
 
-// PartyCurrentHPForTest returns the party member's current HP. Reads through
-// the same field the spell handlers write to, so tests can assert on heal
-// amounts without going through the full GameState serialization.
-func PartyCurrentHPForTest(g *Game, slot int) int {
+// PartyXPForTest returns the raw XP of the party member at idx. Exposed only
+// for tests.
+func PartyXPForTest(g *Game, idx int) int {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if slot < 0 || slot >= len(g.party) {
-		return -1
-	}
-	return g.party[slot].CurrentHP
+	return g.party[idx].XP
 }
 
-// ReplaceEnemiesForTest clears the current encounter and installs a single
-// scaled instance of the named monster. Used to set up deterministic fights
-// (e.g. skeleton-only for undead-cure tests).
-func ReplaceEnemiesForTest(g *Game, monsterID string) {
+// PartyHPForTest returns the current HP of the party member at idx. Exposed
+// only for tests.
+func PartyHPForTest(g *Game, idx int) int {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	for i := range g.gd.Monsters {
-		m := &g.gd.Monsters[i]
-		if m.ID != monsterID {
-			continue
-		}
-		c := balance.ScaleMonster(m, 100, 1, g.diff)
-		c.MonsterID = m.ID
-		c.Size = m.Size
-		g.enemies = []*combat.Combatant{c}
-		return
-	}
+	return g.party[idx].CurrentHP
 }
 
-// SpellBuffsForTest returns the active spell buffs on the given party slot.
-func SpellBuffsForTest(g *Game, slot int) []combat.CombatBuff {
+// GiveItemForTest adds n of the given consumable to inventory. Exposed only
+// for tests.
+func GiveItemForTest(g *Game, id string, n int) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if g.spellBuffs == nil {
-		return nil
-	}
-	return g.spellBuffs[slot]
+	g.inv.Consumables[id] += n
 }
 
-// TeachSpellForTest teaches the given party member a spell at the provided
-// spell level so tests can exercise spells outside the member's starting
-// learnset (e.g. all_allies heal spells).
-func TeachSpellForTest(g *Game, slot int, spellID string, spellLevel int) {
+// ClearQuestsForTest advances currentQ past the end of g.quests so a subsequent
+// combat victory skips the quest-reward branch entirely and only exercises the
+// monster-XP distribution path. Exposed only for tests.
+func ClearQuestsForTest(g *Game) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if slot < 0 || slot >= len(g.party) {
-		return
-	}
-	sb, ok := g.spellBooks[g.party[slot].Name]
-	if !ok {
-		return
-	}
-	_ = sb.LearnSpell(spellID, spellLevel, 3)
-	if sb.MaxCharges[spellLevel] < 1 {
-		sb.MaxCharges[spellLevel] = 3
-	}
-	sb.Charges[spellLevel] = sb.MaxCharges[spellLevel]
-}
-
-// CastBuffSpellLiveBuffsForTest exercises resolveBuffSpell against a fresh
-// combatants slice (mirroring makeCombatants) and returns the live buffs on
-// the target combatant. Used to verify a recast replaces the existing live
-// buff instead of stacking on top of the preloaded persistent copy.
-func CastBuffSpellLiveBuffsForTest(g *Game, casterSlot, targetSlot int, spellID string) []combat.CombatBuff {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	combatants := g.makeCombatants()
-	spell := g.gd.SpellByID(spellID)
-	if spell == nil {
-		return nil
-	}
-	caster := g.party[casterSlot]
-	pc := combatants[casterSlot]
-	g.resolveBuffSpell(combatants, pc, caster, spell, targetSlot)
-	return combatants[targetSlot].Buffs
+	g.currentQ = len(g.quests)
 }

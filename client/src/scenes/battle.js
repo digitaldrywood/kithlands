@@ -1,4 +1,5 @@
 import { gameAction } from "../api.js";
+import { createComposedSprite } from "../sprites/composedSprite.js";
 import { initAudio, playMusic, playSFX, stopMusic } from "../systems/audio.js";
 import { FloatingTextPool } from "../ui/floating_text.js";
 
@@ -483,21 +484,15 @@ export class BattleScene extends Phaser.Scene {
         .setVisible(false);
       this.partyArrows[i] = arrow;
 
-      const cs = CLASS_SPRITES[p.sprite_id || p.class_id];
-      let sprite;
-      if (cs && this.textures.exists(cs)) {
-        sprite = this.add.image(x + 15, y, cs);
-        sprite.setScale((50 / Math.max(sprite.width, sprite.height)) * 2);
-        if (!alive) sprite.setTint(0x444444);
-      } else {
-        sprite = this.add.rectangle(
-          x + 15,
-          y,
-          35,
-          35,
-          alive ? 0xff5722 : 0x444444,
-        );
-      }
+      const fallbackKey = CLASS_SPRITES[p.sprite_id || p.class_id];
+      const composition = p.composition || {
+        base_sprite: fallbackKey || "",
+      };
+      const sprite = createComposedSprite(this, x + 15, y, composition, {
+        alive,
+        targetSize: 100,
+        fallbackKey,
+      });
       this.partySprites[p.name] = {
         sprite,
         arrow,
@@ -1875,10 +1870,15 @@ export class BattleScene extends Phaser.Scene {
     y += 15;
     const barW = 300;
     const xpBefore = gs.xp_before || [];
+    const diedFlags = gs.died_this_fight || [];
 
     for (let i = 0; i < gs.party.length; i++) {
       const p = gs.party[i];
-      const alive = p.hp > 0;
+      // A member who died mid-fight gets healed by restParty() before the
+      // state reaches the client, so p.hp is back at full. died_this_fight
+      // is the authoritative signal for victory-screen presentation.
+      const diedThisFight = diedFlags[i] === true;
+      const alive = !diedThisFight && p.hp > 0;
       const prevXP = xpBefore[i] || 0;
 
       // Character sprite + name
@@ -1895,6 +1895,14 @@ export class BattleScene extends Phaser.Scene {
         color: alive ? "#ffffff" : "#666666",
         fontFamily: "monospace",
       });
+      if (diedThisFight) {
+        this.add.text(140 + p.name.length * 8 + 6, y, "— DEFEATED", {
+          fontSize: "11px",
+          color: "#ff4444",
+          fontFamily: "monospace",
+          fontStyle: "bold",
+        });
+      }
       const levelText = this.add.text(
         140,
         y + 16,
@@ -1934,54 +1942,62 @@ export class BattleScene extends Phaser.Scene {
       // XP bar with animation
       this.add.text(300, y + 18, "XP", {
         fontSize: "9px",
-        color: "#888888",
+        color: diedThisFight ? "#555555" : "#888888",
         fontFamily: "monospace",
       });
-      const xpBarBg = this.add.rectangle(
-        300 + barW / 2 + 15,
-        y + 22,
-        barW,
-        10,
-        0x222244,
-      );
-      const xpPctStart = p.xp_next > 0 ? Math.min(1, prevXP / p.xp_next) : 0;
-      const xpPctEnd = p.xp_next > 0 ? Math.min(1, p.xp / p.xp_next) : 0;
+      this.add.rectangle(300 + barW / 2 + 15, y + 22, barW, 10, 0x222244);
 
-      const xpBarFill = this.add
-        .rectangle(300 + 15, y + 22, 1, 10, 0x4488ff)
-        .setOrigin(0, 0.5);
-
-      const xpText = this.add.text(
-        300 + barW + 20,
-        y + 17,
-        `${prevXP}/${p.xp_next}`,
-        {
-          fontSize: "9px",
-          color: "#8888ff",
-          fontFamily: "monospace",
-        },
-      );
-
-      // Animate the XP bar filling
       const delay = 500 + i * 800;
-      this.tweens.add({
-        targets: xpBarFill,
-        width: barW * xpPctEnd,
-        duration: 1200,
-        delay,
-        ease: "Power2",
-        onUpdate: () => {
-          // Update XP text as bar fills
-          const progress = xpBarFill.width / barW;
-          const currentXP = Math.floor(
-            prevXP + (p.xp - prevXP) * (progress / xpPctEnd || 0),
-          );
-          xpText.setText(`${Math.min(currentXP, p.xp)}/${p.xp_next}`);
-        },
-      });
+
+      if (diedThisFight) {
+        // Dead at victory resolution: no bar fill, no animation. Render a
+        // static "0 XP / no gain" label so the player sees unambiguously
+        // that the dead member did not share in the reward.
+        this.add.text(300 + barW + 20, y + 17, `${prevXP}/${p.xp_next}`, {
+          fontSize: "9px",
+          color: "#666666",
+          fontFamily: "monospace",
+        });
+      } else {
+        const xpPctEnd = p.xp_next > 0 ? Math.min(1, p.xp / p.xp_next) : 0;
+
+        const xpBarFill = this.add
+          .rectangle(300 + 15, y + 22, 1, 10, 0x4488ff)
+          .setOrigin(0, 0.5);
+
+        const xpText = this.add.text(
+          300 + barW + 20,
+          y + 17,
+          `${prevXP}/${p.xp_next}`,
+          {
+            fontSize: "9px",
+            color: "#8888ff",
+            fontFamily: "monospace",
+          },
+        );
+
+        // Animate the XP bar filling
+        this.tweens.add({
+          targets: xpBarFill,
+          width: barW * xpPctEnd,
+          duration: 1200,
+          delay,
+          ease: "Power2",
+          onUpdate: () => {
+            // Update XP text as bar fills
+            const progress = xpBarFill.width / barW;
+            const currentXP = Math.floor(
+              prevXP + (p.xp - prevXP) * (progress / xpPctEnd || 0),
+            );
+            xpText.setText(`${Math.min(currentXP, p.xp)}/${p.xp_next}`);
+          },
+        });
+      }
 
       // Check for level up -- flash effect (capture y in closure)
-      const leveledUp = log.some((l) => l.includes(`${p.name} leveled up`));
+      // A dead-at-victory member cannot have leveled up, so skip the check.
+      const leveledUp =
+        !diedThisFight && log.some((l) => l.includes(`${p.name} leveled up`));
       if (leveledUp) {
         const memberY = y; // capture current y for this member
         this.time.delayedCall(delay + 1300, () => {

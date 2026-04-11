@@ -1,6 +1,7 @@
 package locality
 
 import (
+	"regexp"
 	"testing"
 )
 
@@ -31,9 +32,9 @@ func TestGeneratePOIName(t *testing.T) {
 			want: "Church",
 		},
 		{
-			name: "building yes fallback",
+			name: "building yes has no generated name",
 			tags: map[string]string{"building": "yes"},
-			want: "Building",
+			want: "",
 		},
 		{
 			name: "landuse tag",
@@ -48,7 +49,7 @@ func TestGeneratePOIName(t *testing.T) {
 		{
 			name: "empty tags fallback",
 			tags: map[string]string{},
-			want: "Building",
+			want: "",
 		},
 		{
 			name: "named entry returns name",
@@ -79,28 +80,28 @@ func TestGeneratePOIName(t *testing.T) {
 
 func TestClassifyElements(t *testing.T) {
 	elements := []osmElement{
-		// A named building (way)
+		// A named building (way) — KEEP
 		{
-			Type: "way",
-			ID:   1,
-			Tags: map[string]string{"building": "yes", "name": "Town Hall", "amenity": "townhall"},
+			Type:  "way",
+			ID:    1,
+			Tags:  map[string]string{"building": "yes", "name": "Town Hall", "amenity": "townhall"},
 			Nodes: []int64{100, 101},
 		},
-		// An unnamed building (way) -- should now be included
+		// An unnamed building with specific type — KEEP (building=church)
 		{
-			Type: "way",
-			ID:   2,
-			Tags: map[string]string{"building": "church"},
+			Type:  "way",
+			ID:    2,
+			Tags:  map[string]string{"building": "church"},
 			Nodes: []int64{102, 103},
 		},
 		// A road (should be returned as road element)
 		{
-			Type: "way",
-			ID:   3,
-			Tags: map[string]string{"highway": "residential"},
+			Type:  "way",
+			ID:    3,
+			Tags:  map[string]string{"highway": "residential"},
 			Nodes: []int64{104, 105},
 		},
-		// An amenity node with name
+		// A named amenity node — KEEP
 		{
 			Type: "node",
 			ID:   4,
@@ -108,7 +109,7 @@ func TestClassifyElements(t *testing.T) {
 			Lon:  -91.40,
 			Tags: map[string]string{"amenity": "cafe", "name": "Java Hut"},
 		},
-		// An amenity node without name -- should now be included
+		// Unnamed amenity node — DROP (pure category)
 		{
 			Type: "node",
 			ID:   5,
@@ -116,159 +117,263 @@ func TestClassifyElements(t *testing.T) {
 			Lon:  -91.401,
 			Tags: map[string]string{"amenity": "fire_station"},
 		},
-		// A farmland way
+		// Unnamed farmland — DROP
 		{
-			Type: "way",
-			ID:   6,
-			Tags: map[string]string{"landuse": "farmland"},
+			Type:  "way",
+			ID:    6,
+			Tags:  map[string]string{"landuse": "farmland"},
 			Nodes: []int64{106, 107},
 		},
-		// A natural feature way
+		// Unnamed natural feature — DROP
 		{
-			Type: "way",
-			ID:   7,
-			Tags: map[string]string{"natural": "wood"},
+			Type:  "way",
+			ID:    7,
+			Tags:  map[string]string{"natural": "wood"},
 			Nodes: []int64{108, 109},
 		},
-		// A skeleton node (no tags, just coordinates for ways)
-		{
-			Type: "node",
-			ID:   100,
-			Lat:  44.95,
-			Lon:  -91.40,
-		},
-		{
-			Type: "node",
-			ID:   101,
-			Lat:  44.951,
-			Lon:  -91.401,
-		},
-		{
-			Type: "node",
-			ID:   102,
-			Lat:  44.952,
-			Lon:  -91.402,
-		},
-		{
-			Type: "node",
-			ID:   103,
-			Lat:  44.953,
-			Lon:  -91.403,
-		},
-		{
-			Type: "node",
-			ID:   106,
-			Lat:  44.954,
-			Lon:  -91.404,
-		},
-		{
-			Type: "node",
-			ID:   107,
-			Lat:  44.955,
-			Lon:  -91.405,
-		},
-		{
-			Type: "node",
-			ID:   108,
-			Lat:  44.956,
-			Lon:  -91.406,
-		},
-		{
-			Type: "node",
-			ID:   109,
-			Lat:  44.957,
-			Lon:  -91.407,
-		},
+		// Skeleton nodes for way geometry
+		{Type: "node", ID: 100, Lat: 44.95, Lon: -91.40},
+		{Type: "node", ID: 101, Lat: 44.951, Lon: -91.401},
+		{Type: "node", ID: 102, Lat: 44.952, Lon: -91.402},
+		{Type: "node", ID: 103, Lat: 44.953, Lon: -91.403},
+		{Type: "node", ID: 106, Lat: 44.954, Lon: -91.404},
+		{Type: "node", ID: 107, Lat: 44.955, Lon: -91.405},
+		{Type: "node", ID: 108, Lat: 44.956, Lon: -91.406},
+		{Type: "node", ID: 109, Lat: 44.957, Lon: -91.407},
 	}
 
-	nodes, roads := classifyElements(elements, 44.95, -91.40, 1500)
+	nodes, roads, _ := classifyElements(elements, 44.95, -91.40, 1500)
 
-	// Should have at least 5 classified nodes (Town Hall, Church, Java Hut, Fire Station, Farmland, Wood)
-	if len(nodes) < 5 {
-		t.Errorf("classifyElements: got %d nodes, want >= 5", len(nodes))
+	// Exactly 3 kept: Town Hall, Church, Java Hut.
+	if len(nodes) != 3 {
+		t.Errorf("classifyElements: got %d nodes, want 3", len(nodes))
 	}
 
-	// Should have 1 road element
 	if len(roads) != 1 {
 		t.Errorf("classifyElements: got %d roads, want 1", len(roads))
 	}
 
-	// Verify named building is included
-	found := false
+	names := map[string]bool{}
 	for _, n := range nodes {
-		if n.Name == "Town Hall" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("classifyElements: expected 'Town Hall' node not found")
+		names[n.Name] = true
 	}
 
-	// Verify unnamed building got a generated name
-	foundChurch := false
-	for _, n := range nodes {
-		if n.Name == "Church" {
-			foundChurch = true
-			break
+	want := []string{"Town Hall", "Church", "Java Hut"}
+	for _, w := range want {
+		if !names[w] {
+			t.Errorf("classifyElements: expected node %q not found", w)
 		}
-	}
-	if !foundChurch {
-		t.Error("classifyElements: expected unnamed building to get name 'Church'")
 	}
 
-	// Verify unnamed amenity got a generated name
-	foundFireStation := false
-	for _, n := range nodes {
-		if n.Name == "Fire Station" {
-			foundFireStation = true
-			break
+	dontWant := []string{"Fire Station", "Farmland", "Wood"}
+	for _, d := range dontWant {
+		if names[d] {
+			t.Errorf("classifyElements: unnamed generic %q should have been dropped", d)
 		}
-	}
-	if !foundFireStation {
-		t.Error("classifyElements: expected unnamed amenity to get name 'Fire Station'")
-	}
-
-	// Verify farmland is included
-	foundFarmland := false
-	for _, n := range nodes {
-		if n.Name == "Farmland" {
-			foundFarmland = true
-			break
-		}
-	}
-	if !foundFarmland {
-		t.Error("classifyElements: expected farmland node not found")
 	}
 }
 
 func TestClassifyElementsDeduplication(t *testing.T) {
-	// Create multiple unnamed farmland elements -- should get numeric suffixes
+	// Two named buildings that share a name — the second should be dropped
+	// as a duplicate-named amenity (see amenity loop) OR kept with a suffix
+	// for buildings/nature. Use buildings to exercise the nature-style dedup path.
 	elements := []osmElement{
-		{Type: "way", ID: 1, Tags: map[string]string{"landuse": "farmland"}, Nodes: []int64{100}},
-		{Type: "way", ID: 2, Tags: map[string]string{"landuse": "farmland"}, Nodes: []int64{101}},
-		{Type: "way", ID: 3, Tags: map[string]string{"landuse": "farmland"}, Nodes: []int64{102}},
+		{Type: "way", ID: 1, Tags: map[string]string{"building": "yes", "name": "Smith Farm"}, Nodes: []int64{100}},
+		{Type: "way", ID: 2, Tags: map[string]string{"building": "yes", "name": "Smith Farm"}, Nodes: []int64{101}},
+		{Type: "way", ID: 3, Tags: map[string]string{"building": "yes", "name": "Smith Farm"}, Nodes: []int64{102}},
 		{Type: "node", ID: 100, Lat: 44.95, Lon: -91.40},
 		{Type: "node", ID: 101, Lat: 44.96, Lon: -91.41},
 		{Type: "node", ID: 102, Lat: 44.97, Lon: -91.42},
 	}
 
-	nodes, _ := classifyElements(elements, 44.95, -91.40, 1500)
+	nodes, _, _ := classifyElements(elements, 44.95, -91.40, 1500)
 
-	// Should have 3 farmland nodes with unique names
-	names := make(map[string]bool)
-	for _, n := range nodes {
-		names[n.Name] = true
-	}
-
+	// All three kept because they have real names. Deduplication appends
+	// numeric suffixes so each name is unique.
 	if len(nodes) != 3 {
 		t.Errorf("expected 3 nodes, got %d", len(nodes))
 	}
 
-	// All names should be unique
+	names := make(map[string]bool)
+	for _, n := range nodes {
+		names[n.Name] = true
+	}
 	if len(names) != len(nodes) {
 		t.Errorf("expected unique names, got duplicates: %v", names)
 	}
+}
+
+// TestClassifyElements_DropsGenericBuildingYes covers the acceptance criteria
+// for issue #53: unnamed building=yes entries must never appear in the
+// discovered-locations list, while named places and buildings with a
+// meaningful secondary tag survive.
+func TestClassifyElements_DropsGenericBuildingYes(t *testing.T) {
+	// Shared skeleton node — every fixture way reuses it so wayCenter works.
+	skel := osmElement{Type: "node", ID: 999, Lat: 44.95, Lon: -91.40}
+
+	tests := []struct {
+		name     string
+		fixture  []osmElement
+		wantLen  int
+		wantName string // if non-empty, assert presence; if "-", assert absence of Building N
+	}{
+		{
+			name: "single unnamed building=yes is dropped",
+			fixture: []osmElement{
+				{Type: "way", ID: 1, Tags: map[string]string{"building": "yes"}, Nodes: []int64{999}},
+			},
+			wantLen: 0,
+		},
+		{
+			name: "ten unnamed building=yes all dropped — no Building N entries",
+			fixture: func() []osmElement {
+				var out []osmElement
+				for i := int64(1); i <= 10; i++ {
+					out = append(out, osmElement{
+						Type: "way", ID: i,
+						Tags:  map[string]string{"building": "yes"},
+						Nodes: []int64{999},
+					})
+				}
+				return out
+			}(),
+			wantLen:  0,
+			wantName: "-",
+		},
+		{
+			name: "named building=yes is kept",
+			fixture: []osmElement{
+				{Type: "way", ID: 1, Tags: map[string]string{"building": "yes", "name": "Town Hall"}, Nodes: []int64{999}},
+			},
+			wantLen:  1,
+			wantName: "Town Hall",
+		},
+		{
+			name: "unnamed building=yes with civic amenity is kept",
+			fixture: []osmElement{
+				{Type: "way", ID: 1, Tags: map[string]string{"building": "yes", "amenity": "fire_station"}, Nodes: []int64{999}},
+			},
+			wantLen: 1,
+		},
+		{
+			name: "unnamed building=church is kept (specific type)",
+			fixture: []osmElement{
+				{Type: "way", ID: 1, Tags: map[string]string{"building": "church"}, Nodes: []int64{999}},
+			},
+			wantLen:  1,
+			wantName: "Church",
+		},
+		{
+			name: "unnamed amenity=restaurant node dropped",
+			fixture: []osmElement{
+				{Type: "node", ID: 1, Lat: 44.95, Lon: -91.40, Tags: map[string]string{"amenity": "restaurant"}},
+			},
+			wantLen: 0,
+		},
+		{
+			name: "unnamed amenity=school node dropped (pure category)",
+			fixture: []osmElement{
+				{Type: "node", ID: 1, Lat: 44.95, Lon: -91.40, Tags: map[string]string{"amenity": "school"}},
+			},
+			wantLen: 0,
+		},
+		{
+			name: "named amenity=restaurant node kept",
+			fixture: []osmElement{
+				{Type: "node", ID: 1, Lat: 44.95, Lon: -91.40, Tags: map[string]string{"amenity": "restaurant", "name": "Chippewa Family Restaurant"}},
+			},
+			wantLen:  1,
+			wantName: "Chippewa Family Restaurant",
+		},
+		{
+			name: "unnamed landuse=farmland dropped",
+			fixture: []osmElement{
+				{Type: "way", ID: 1, Tags: map[string]string{"landuse": "farmland"}, Nodes: []int64{999}},
+			},
+			wantLen: 0,
+		},
+		{
+			name: "named landuse=farmland kept",
+			fixture: []osmElement{
+				{Type: "way", ID: 1, Tags: map[string]string{"landuse": "farmland", "name": "Johnson Fields"}, Nodes: []int64{999}},
+			},
+			wantLen:  1,
+			wantName: "Johnson Fields",
+		},
+	}
+
+	genericBuilding := regexp.MustCompile(`^Building( \d+)?$`)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			els := append([]osmElement{skel}, tt.fixture...)
+			nodes, _, _ := classifyElements(els, 44.95, -91.40, 1500)
+
+			if len(nodes) != tt.wantLen {
+				t.Errorf("got %d nodes, want %d (names=%v)", len(nodes), tt.wantLen, nodeNames(nodes))
+			}
+
+			for _, n := range nodes {
+				if genericBuilding.MatchString(n.Name) {
+					t.Errorf("generic %q must never be returned", n.Name)
+				}
+			}
+
+			if tt.wantName != "" && tt.wantName != "-" {
+				found := false
+				for _, n := range nodes {
+					if n.Name == tt.wantName {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("expected node %q, got %v", tt.wantName, nodeNames(nodes))
+				}
+			}
+		})
+	}
+}
+
+func TestKeepBuildingUnnamed(t *testing.T) {
+	tests := []struct {
+		name string
+		tags map[string]string
+		want bool
+	}{
+		{"empty tags", map[string]string{}, false},
+		{"building=yes alone", map[string]string{"building": "yes"}, false},
+		{"building=yes with civic amenity", map[string]string{"building": "yes", "amenity": "fire_station"}, true},
+		{"building=yes with hospital amenity", map[string]string{"building": "yes", "amenity": "hospital"}, true},
+		{"building=yes with school amenity", map[string]string{"building": "yes", "amenity": "school"}, true},
+		{"building=yes with place_of_worship amenity", map[string]string{"building": "yes", "amenity": "place_of_worship"}, true},
+		{"building=yes with unimportant amenity", map[string]string{"building": "yes", "amenity": "bench"}, false},
+		{"building=church", map[string]string{"building": "church"}, true},
+		{"building=school", map[string]string{"building": "school"}, true},
+		{"building=commercial", map[string]string{"building": "commercial"}, true},
+		{"building=retail", map[string]string{"building": "retail"}, true},
+		{"building=civic", map[string]string{"building": "civic"}, true},
+		{"building=government", map[string]string{"building": "government"}, true},
+		{"building=hospital", map[string]string{"building": "hospital"}, true},
+		{"building=industrial", map[string]string{"building": "industrial"}, true},
+		{"building=train_station", map[string]string{"building": "train_station"}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := keepBuildingUnnamed(tt.tags); got != tt.want {
+				t.Errorf("keepBuildingUnnamed(%v) = %v, want %v", tt.tags, got, tt.want)
+			}
+		})
+	}
+}
+
+func nodeNames(nodes []Node) []string {
+	out := make([]string, 0, len(nodes))
+	for _, n := range nodes {
+		out = append(out, n.Name)
+	}
+	return out
 }
 
 func TestClassifyBuildingEdgeCases(t *testing.T) {
@@ -326,9 +431,9 @@ func TestBoundingBoxScalesWithRadius(t *testing.T) {
 	}
 
 	// With a small radius, this node is far from center
-	nodesSmall, _ := classifyElements(elements, 44.95, -91.40, 500)
+	nodesSmall, _, _ := classifyElements(elements, 44.95, -91.40, 500)
 	// With a large radius, same node is closer to center
-	nodesLarge, _ := classifyElements(elements, 44.95, -91.40, 5000)
+	nodesLarge, _, _ := classifyElements(elements, 44.95, -91.40, 5000)
 
 	// Both should find the node
 	if len(nodesSmall) != 1 {

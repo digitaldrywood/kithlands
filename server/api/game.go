@@ -13,6 +13,7 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/inventory"
 	"github.com/digitaldrywood/kithlands/internal/locality"
 	"github.com/digitaldrywood/kithlands/internal/magic"
+	"github.com/digitaldrywood/kithlands/internal/sprites"
 	"github.com/digitaldrywood/kithlands/internal/transport"
 )
 
@@ -96,6 +97,10 @@ type GameState struct {
 	XPBefore     []int               `json:"xp_before,omitempty"`      // XP values before combat for victory animation
 	LevelBefore  []int               `json:"level_before,omitempty"`   // levels before combat for victory animation
 	XPThresholds [][]int             `json:"xp_thresholds,omitempty"` // per-character XP thresholds at each level crossed
+	// DiedThisFight[i] is true for any party member whose IsAlive() was false
+	// at the moment victory-XP was distributed. Survives restParty() so the
+	// client can render the victory screen correctly. Reset at encounter start.
+	DiedThisFight []bool              `json:"died_this_fight,omitempty"`
 	Party     []PartyMemberState  `json:"party"`
 	Enemies   []EnemyState        `json:"enemies,omitempty"`
 	Formation string              `json:"formation,omitempty"`
@@ -149,22 +154,23 @@ type ShopItemState struct {
 }
 
 type PartyMemberState struct {
-	Name      string `json:"name"`
-	ClassID   string `json:"class_id"`
-	ClassName string `json:"class_name"`
-	SpriteID  string `json:"sprite_id"`
-	Promoted  bool   `json:"promoted"`
-	Level     int    `json:"level"`
-	HP        int    `json:"hp"`
-	MaxHP     int    `json:"max_hp"`
-	STR       int    `json:"str"`
-	AGI       int    `json:"agi"`
-	INT       int    `json:"int_stat"`
-	XP        int    `json:"xp"`
-	XPNext    int    `json:"xp_next"`
-	Status    string `json:"status"`
-	Spells    []SpellState `json:"spells,omitempty"`
-	Abilities []string     `json:"abilities,omitempty"`
+	Name        string                `json:"name"`
+	ClassID     string                `json:"class_id"`
+	ClassName   string                `json:"class_name"`
+	SpriteID    string                `json:"sprite_id"`
+	Composition sprites.Composition   `json:"composition"`
+	Promoted    bool                  `json:"promoted"`
+	Level       int                   `json:"level"`
+	HP          int                   `json:"hp"`
+	MaxHP       int                   `json:"max_hp"`
+	STR         int                   `json:"str"`
+	AGI         int                   `json:"agi"`
+	INT         int                   `json:"int_stat"`
+	XP          int                   `json:"xp"`
+	XPNext      int                   `json:"xp_next"`
+	Status      string                `json:"status"`
+	Spells      []SpellState          `json:"spells,omitempty"`
+	Abilities   []string              `json:"abilities,omitempty"`
 }
 
 type SpellState struct {
@@ -254,6 +260,10 @@ type Game struct {
 	diff       balance.Difficulty
 	xpBefore    []int // snapshot before combat for victory animation
 	levelBefore []int // snapshot before combat for victory animation
+	// diedThisFight is captured at the exact moment the combat-victory block
+	// distributes XP (before restParty heals dead members). Exposed to the
+	// client via GameState.DiedThisFight.
+	diedThisFight []bool
 	discovered   map[string]bool // bestiary: monster IDs encountered
 	visitedNodes map[string]bool // node IDs the player has entered (sequence-break tracking)
 	formation  string             // current encounter layout type
@@ -286,8 +296,8 @@ func (g *Game) State() GameState {
 	g.fillInventoryState(&state)
 	g.fillExtras(&state)
 
-	for _, c := range g.party {
-		state.Party = append(state.Party, g.buildPartyMemberState(c))
+	for i, c := range g.party {
+		state.Party = append(state.Party, g.buildPartyMemberState(c, i))
 	}
 
 	for _, e := range g.enemies {
@@ -346,10 +356,13 @@ func (g *Game) ProcessAction(req GameActionRequest) (*GameState, error) {
 
 // buildPartyMemberState renders a single character into the state payload,
 // honoring promotion (display name + sprite swap) and surfacing class abilities.
-func (g *Game) buildPartyMemberState(c *character.Character) PartyMemberState {
+// The slot argument is the party-slot index; it is used to look up the
+// character's equipment in g.inv for sprite composition.
+func (g *Game) buildPartyMemberState(c *character.Character, slot int) PartyMemberState {
 	cls := g.gd.ClassByID(c.ClassID)
 	className := ""
 	spriteID := c.ClassID
+	promotesTo := ""
 	if cls != nil {
 		className = cls.Name
 		if c.Promoted && cls.PromotedName != "" {
@@ -357,23 +370,37 @@ func (g *Game) buildPartyMemberState(c *character.Character) PartyMemberState {
 		}
 		if c.Promoted && cls.PromotesTo != "" {
 			spriteID = cls.PromotesTo
+			promotesTo = cls.PromotesTo
 		}
 	}
+	var equip inventory.EquipmentSlots
+	if g.inv != nil && slot >= 0 && slot < len(g.inv.Equipment) {
+		equip = g.inv.Equipment[slot]
+	}
+	composition := sprites.Compose(sprites.Input{
+		ClassID:    c.ClassID,
+		Promoted:   c.Promoted,
+		PromotesTo: promotesTo,
+		Equip:      equip,
+		Palettes:   &g.gd.Palettes,
+		Lookup:     sprites.LookupFromGameData(g.gd),
+	})
 	pm := PartyMemberState{
-		Name:      c.Name,
-		ClassID:   c.ClassID,
-		ClassName: className,
-		SpriteID:  spriteID,
-		Promoted:  c.Promoted,
-		Level:     c.Level,
-		HP:        c.CurrentHP,
-		MaxHP:     c.MaxHP,
-		STR:       c.STR,
-		AGI:       c.AGI,
-		INT:       c.INT,
-		XP:        c.XP,
-		XPNext:    character.XPToNextLevel(c.Level, &g.gd.Stats.XPCurve),
-		Status:    string(c.Status),
+		Name:        c.Name,
+		ClassID:     c.ClassID,
+		ClassName:   className,
+		SpriteID:    spriteID,
+		Composition: composition,
+		Promoted:    c.Promoted,
+		Level:       c.Level,
+		HP:          c.CurrentHP,
+		MaxHP:       c.MaxHP,
+		STR:         c.STR,
+		AGI:         c.AGI,
+		INT:         c.INT,
+		XP:          c.XP,
+		XPNext:      character.XPToNextLevel(c.Level, &g.gd.Stats.XPCurve),
+		Status:      string(c.Status),
 	}
 	if cls != nil && len(cls.Abilities) > 0 {
 		pm.Abilities = append(pm.Abilities, cls.Abilities...)
@@ -414,6 +441,9 @@ func (g *Game) fillExtras(state *GameState) {
 				state.XPThresholds[i] = append(state.XPThresholds[i], character.XPToNextLevel(lvl, &g.gd.Stats.XPCurve))
 			}
 		}
+	}
+	if len(g.diedThisFight) > 0 {
+		state.DiedThisFight = append([]bool(nil), g.diedThisFight...)
 	}
 }
 
@@ -467,8 +497,8 @@ func (g *Game) stateUnlocked() GameState {
 	state.Transport = g.buildTransportInfo()
 	g.fillInventoryState(&state)
 	g.fillExtras(&state)
-	for _, c := range g.party {
-		state.Party = append(state.Party, g.buildPartyMemberState(c))
+	for i, c := range g.party {
+		state.Party = append(state.Party, g.buildPartyMemberState(c, i))
 	}
 	for _, e := range g.enemies {
 		if e.CurrentHP > 0 {
