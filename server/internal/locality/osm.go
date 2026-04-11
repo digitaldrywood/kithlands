@@ -335,6 +335,7 @@ func deduplicateName(name string, seen map[string]int) string {
 // Road represents a simplified road segment for tilemap rendering.
 type Road struct {
 	Points []struct{ X, Y float64 } // normalized 0-1 coordinates
+	Class  string                   // raw OSM `highway` tag value (motorway, primary, residential, footway, ...)
 }
 
 // roads stores parsed road data (not exported in JSON, used by tilemap)
@@ -553,6 +554,7 @@ func parseRoads(roads []osmElement, nodeMap map[int64]osmNode, minLat, maxLat, m
 	var result []Road
 	for _, r := range roads {
 		var road Road
+		road.Class = r.Tags["highway"]
 		for _, nid := range r.Nodes {
 			if n, ok := nodeMap[nid]; ok {
 				x := (n.lon - minLng) / (maxLng - minLng)

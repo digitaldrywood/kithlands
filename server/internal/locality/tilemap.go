@@ -24,6 +24,49 @@ const (
 	TileSand      TileType = 12
 )
 
+// majorHighway is the set of OSM highway classes that are always rasterized
+// onto the world map. Everything else (residential, service, footway, path,
+// track, cycleway, steps, ...) is treated as minor and filtered out so the
+// TAB-key world map stays readable. Link variants are included so on/off-ramps
+// aren't orphaned when their parent route is drawn.
+var majorHighway = map[string]bool{
+	"motorway":       true,
+	"trunk":          true,
+	"primary":        true,
+	"secondary":      true,
+	"tertiary":       true,
+	"motorway_link":  true,
+	"trunk_link":     true,
+	"primary_link":   true,
+	"secondary_link": true,
+	"tertiary_link":  true,
+}
+
+// fallbackHighway is the tier used when no majorHighway roads are present in a
+// locality (tiny villages, hamlets). It keeps the world map from ending up
+// completely roadless when a town only has residential streets.
+var fallbackHighway = map[string]bool{
+	"residential":   true,
+	"unclassified":  true,
+	"living_street": true,
+}
+
+// roadWidth returns the tile width used when rasterizing a road of the given
+// OSM highway class. Width scales with road importance so primary routes stand
+// out against the residential fallback tier.
+func roadWidth(class string) int {
+	switch class {
+	case "motorway", "trunk", "primary":
+		return 3
+	case "secondary", "tertiary",
+		"motorway_link", "trunk_link", "primary_link",
+		"secondary_link", "tertiary_link":
+		return 2
+	default:
+		return 1
+	}
+}
+
 // HiddenPathInfo records a carved secret path between two node areas.
 type HiddenPathInfo struct {
 	FromNodeID string   `json:"from_node_id"`
@@ -134,21 +177,8 @@ func GenerateTileMap(loc *Locality, spawnID string, walk *WalkResult) *TileMap {
 		}
 	}
 
-	// Draw OSM roads if available
-	if len(loc.Roads()) > 0 {
-		margin := 8
-		usableW := mapW - 2*margin
-		usableH := mapH - 2*margin
-		for _, road := range loc.Roads() {
-			for j := 1; j < len(road.Points); j++ {
-				x1 := margin + int(road.Points[j-1].X*float64(usableW))
-				y1 := margin + int(road.Points[j-1].Y*float64(usableH))
-				x2 := margin + int(road.Points[j].X*float64(usableW))
-				y2 := margin + int(road.Points[j].Y*float64(usableH))
-				drawWidePath(tiles, x1, y1, x2, y2, mapW, mapH)
-			}
-		}
-	}
+	// Draw OSM roads if available, filtered by highway class.
+	rasterizeRoads(tiles, loc.Roads(), mapW, mapH)
 
 	// Carve hidden path connecting close-tier to far-tier node
 	hiddenPath := carveHiddenPath(tiles, nodePositions, walk, mapW, mapH, seed)
@@ -326,9 +356,19 @@ func drawWildernessMarker(tiles [][]int, cx, cy, w, h int) {
 	}
 }
 
-// drawWidePath draws a 2-tile wide path between two points.
+// drawWidePath draws a 2-tile wide path between two points. Kept as a thin
+// wrapper for callers that want the historical default width.
 func drawWidePath(tiles [][]int, x1, y1, x2, y2, w, h int) {
-	// Bresenham-like walk with width
+	drawWidePathN(tiles, x1, y1, x2, y2, w, h, 2)
+}
+
+// drawWidePathN draws a path of the given tile width between two points. Width
+// is stamped along the x axis (same as the pre-issue-55 behavior) and must be
+// at least 1.
+func drawWidePathN(tiles [][]int, x1, y1, x2, y2, w, h, width int) {
+	if width < 1 {
+		width = 1
+	}
 	dx := x2 - x1
 	dy := y2 - y1
 	steps := int(math.Max(math.Abs(float64(dx)), math.Abs(float64(dy))))
@@ -336,13 +376,14 @@ func drawWidePath(tiles [][]int, x1, y1, x2, y2, w, h int) {
 		return
 	}
 
+	lo := -(width / 2)
+	hi := (width + 1) / 2
 	for i := 0; i <= steps; i++ {
 		t := float64(i) / float64(steps)
 		x := x1 + int(float64(dx)*t)
 		y := y1 + int(float64(dy)*t)
 
-		// 2-tile wide path
-		for pw := -1; pw <= 0; pw++ {
+		for pw := lo; pw < hi; pw++ {
 			nx := x + pw
 			if inBounds(nx, y, w, h) {
 				tile := tiles[y][nx]
@@ -350,6 +391,52 @@ func drawWidePath(tiles [][]int, x1, y1, x2, y2, w, h int) {
 					tiles[y][nx] = int(TilePath)
 				}
 			}
+		}
+	}
+}
+
+// rasterizeRoads stamps OSM road segments onto the tile grid, filtering minor
+// roads by highway class. Only majorHighway classes are drawn in the base
+// case; when a locality has no major routes at all (tiny hamlets) the
+// fallbackHighway tier is drawn instead so the map is never completely empty.
+// Roads whose class is in neither set (footway, service, path, track, ...) are
+// skipped entirely. This is the fix for issue #55: the world map used to draw
+// every highway tag identically and became an unreadable tan grid.
+func rasterizeRoads(tiles [][]int, roads []Road, mapW, mapH int) {
+	if len(roads) == 0 {
+		return
+	}
+
+	margin := 8
+	usableW := mapW - 2*margin
+	usableH := mapH - 2*margin
+	if usableW <= 0 || usableH <= 0 {
+		return
+	}
+
+	var selected []int
+	for i, r := range roads {
+		if majorHighway[r.Class] {
+			selected = append(selected, i)
+		}
+	}
+	if len(selected) == 0 {
+		for i, r := range roads {
+			if fallbackHighway[r.Class] {
+				selected = append(selected, i)
+			}
+		}
+	}
+
+	for _, idx := range selected {
+		road := roads[idx]
+		width := roadWidth(road.Class)
+		for j := 1; j < len(road.Points); j++ {
+			x1 := margin + int(road.Points[j-1].X*float64(usableW))
+			y1 := margin + int(road.Points[j-1].Y*float64(usableH))
+			x2 := margin + int(road.Points[j].X*float64(usableW))
+			y2 := margin + int(road.Points[j].Y*float64(usableH))
+			drawWidePathN(tiles, x1, y1, x2, y2, mapW, mapH, width)
 		}
 	}
 }
