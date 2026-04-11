@@ -114,6 +114,37 @@ export function showWorldMap(scene) {
     ol.push(label);
   }
 
+  // Quest target marker (issue #86). Highlights the current main quest's
+  // target building so the player can see where to go.
+  const gs = scene.gameState;
+  if (gs && gs.quests && gs.current_quest < gs.quests.length) {
+    const current = gs.quests[gs.current_quest];
+    const targetNodeID = current && current.target_node_id;
+    if (targetNodeID) {
+      const target = scene.spawns.find((s) => s.node_id === targetNodeID);
+      if (target) {
+        const tx = mmX + target.x * scaleX;
+        const ty = mmY + target.y * scaleY;
+        const marker = scene.add
+          .circle(tx, ty, 7, 0xffff00, 0)
+          .setStrokeStyle(2, 0xffff00, 1)
+          .setScrollFactor(0)
+          .setDepth(52);
+        ol.push(marker);
+        const star = scene.add
+          .text(tx, ty, "★", {
+            fontSize: "11px",
+            color: "#ffff44",
+            fontFamily: "monospace",
+          })
+          .setOrigin(0.5)
+          .setScrollFactor(0)
+          .setDepth(53);
+        ol.push(star);
+      }
+    }
+  }
+
   // Player position
   const px = mmX + scene.playerX * scaleX;
   const py = mmY + scene.playerY * scaleY;

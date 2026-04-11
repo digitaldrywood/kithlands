@@ -90,13 +90,17 @@ func (g *Game) promoteParty() {
 	}
 }
 
-// maybeTriggerPromotion sets phase="promotion" exactly once, after the party
-// clears Act 1 (currentQ reaches 2). Caller must already hold g.mu.
+// maybeTriggerPromotion sets phase="promotion" exactly once, when the party's
+// next main quest is the campaign's IsPromotion story beat (i.e. all Act 1
+// quests have been completed). Caller must already hold g.mu.
 func (g *Game) maybeTriggerPromotion() {
 	if g.promotionOffered {
 		return
 	}
-	if g.currentQ < 2 {
+	if g.currentQ < 0 || g.currentQ >= len(g.quests) {
+		return
+	}
+	if !g.quests[g.currentQ].IsPromotion {
 		return
 	}
 	// Only trigger if there are still non-promoted characters with a
