@@ -54,3 +54,24 @@ export function hpBarColorPct(currentHP, maxHP) {
   if (max <= 0 || hp <= 0) return 0;
   return Math.min(1, hp / max);
 }
+
+// Generic aliases for HP/MP/XP bars so call sites read naturally. Same
+// integer-safe math — the party menu (#94) uses these for all three stats.
+export const barFillWidth = hpBarFillWidth;
+export const barLabel = formatHPLabel;
+
+// Animate a fill rectangle from its current width to the width that would
+// represent `next` out of `max` on a bar `totalWidth` pixels wide. Used by
+// the party menu to echo the battle scene's damage/heal/xp tweens. Returns
+// the Phaser tween so callers can cancel it on menu-close.
+export function tweenBarTo(scene, fillRect, next, max, totalWidth, opts = {}) {
+  const { duration = 400, ease = "Sine.easeOut" } = opts;
+  const target = hpBarFillWidth(next, max, totalWidth);
+  if (!scene || !scene.tweens || !fillRect) return null;
+  return scene.tweens.add({
+    targets: fillRect,
+    width: target,
+    duration,
+    ease,
+  });
+}
