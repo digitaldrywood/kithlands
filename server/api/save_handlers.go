@@ -114,7 +114,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	}
 
 	walk := locality.Walk(loc, loc.Nodes[0].ID)
-	tileMap := locality.GenerateTileMap(loc, loc.Nodes[0].ID)
+	tileMap := locality.GenerateTileMap(loc, loc.Nodes[0].ID, walk)
 
 	rng := rand.New(rand.NewPCG(uint64(ss.RNGSeed), 0))
 
