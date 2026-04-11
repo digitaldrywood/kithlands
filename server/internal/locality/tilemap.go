@@ -422,14 +422,18 @@ func rasterizeRoads(tiles [][]int, roads []Road, mapW, mapH int) {
 }
 
 // waterwayWidth returns the tile width for a given OSM waterway kind.
+// Returns 0 for kinds we intentionally skip (drains, ditches, unknown),
+// since stamping a roadside ditch as blocking water fragments layouts.
 func waterwayWidth(kind string) int {
 	switch kind {
 	case "river":
 		return 3
 	case "canal":
 		return 2
-	default: // stream, drain, ditch, unknown
+	case "stream":
 		return 1
+	default: // drain, ditch, wash, unknown — not rendered
+		return 0
 	}
 }
 
@@ -446,6 +450,9 @@ func rasterizeWaterways(tiles [][]int, waters []Waterway, mapW, mapH int) {
 	}
 	for _, w := range waters {
 		width := waterwayWidth(w.Kind)
+		if width == 0 {
+			continue
+		}
 		for j := 1; j < len(w.Points); j++ {
 			x1 := margin + int(w.Points[j-1].X*float64(usableW))
 			y1 := margin + int(w.Points[j-1].Y*float64(usableH))
@@ -457,7 +464,9 @@ func rasterizeWaterways(tiles [][]int, waters []Waterway, mapW, mapH int) {
 }
 
 // drawWidePathWater is drawWidePathN but stamps TileWater instead of TilePath.
-// Skips TileBuilding/TileDoor to avoid rivers through houses.
+// Skips TileBuilding/TileDoor (rivers don't flow through houses) and
+// TilePath (road/river intersections stay walkable — the path tile reads as
+// a bridge interrupting the water line).
 func drawWidePathWater(tiles [][]int, x1, y1, x2, y2, w, h, width int) {
 	if width < 1 {
 		width = 1
@@ -480,7 +489,7 @@ func drawWidePathWater(tiles [][]int, x1, y1, x2, y2, w, h, width int) {
 			nx := x + pw
 			if inBounds(nx, y, w, h) {
 				tile := tiles[y][nx]
-				if tile != int(TileBuilding) && tile != int(TileDoor) {
+				if tile != int(TileBuilding) && tile != int(TileDoor) && tile != int(TilePath) {
 					tiles[y][nx] = int(TileWater)
 				}
 			}
