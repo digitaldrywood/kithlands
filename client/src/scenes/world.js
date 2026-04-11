@@ -16,6 +16,7 @@ import {
   hideInteractPrompt,
 } from "./world_interact.js";
 import { initTouchControls } from "../systems/input.js";
+import { nextWalkFrame, walkTextureKey } from "./walkFrame.js";
 
 const ENEMY_SPRITES = {
   Slime: "monster_slime",
@@ -185,6 +186,7 @@ export class WorldScene extends Phaser.Scene {
 
     // Player sprite (directional, restore cached direction)
     this.playerDir = cachedPlayerDir;
+    this.walkFrame = 0;
     this.player = this.add
       .image(
         this.playerX * RENDERED_TILE + RENDERED_TILE / 2,
@@ -442,10 +444,12 @@ export class WorldScene extends Phaser.Scene {
     else if (dx > 0) dir = "right";
     else if (dy < 0) dir = "up";
     else if (dy > 0) dir = "down";
-    if (dir !== this.playerDir) {
-      this.playerDir = dir;
-      this.player.setTexture(`player_${dir}`);
-    }
+    this.playerDir = dir;
+
+    // Advance one walk frame per tile step so the animation is deterministic
+    // and can never get stuck mid-cycle on rapid input or direction changes.
+    this.walkFrame = nextWalkFrame(this.walkFrame);
+    this.player.setTexture(walkTextureKey(this.playerDir, this.walkFrame));
 
     // Cache position for scene transitions
     cachedPlayerX = this.playerX;

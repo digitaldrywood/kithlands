@@ -32,11 +32,18 @@ export class BootScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    // Player directional sprites
+    // Player directional sprites (idle pose)
     this.load.image("player_down", "/sprites/player_down.png");
     this.load.image("player_up", "/sprites/player_up.png");
     this.load.image("player_left", "/sprites/player_left.png");
     this.load.image("player_right", "/sprites/player_right.png");
+
+    // Player walk frames (4 per direction, advanced one per tile step)
+    for (const dir of ["down", "up", "left", "right"]) {
+      for (let i = 0; i < 4; i++) {
+        this.load.image(`walk_${dir}_${i}`, `/sprites/walk/walk_${dir}_${i}.png`);
+      }
+    }
 
     // Character sprites (base + promoted classes — must match CLASS_SPRITES
     // in battle.js and server's buildPartyMemberState sprite_id output)
