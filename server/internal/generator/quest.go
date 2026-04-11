@@ -42,6 +42,12 @@ type Quest struct {
 	Completed    bool          `json:"completed"`
 	Hidden       bool          `json:"hidden,omitempty"`
 	SoftPrereq   string        `json:"soft_prereq,omitempty"` // node ID that reveals this quest
+	// FF1/DQ3-style promotion quest fields. Populated only when IsPromotion.
+	ProofItemID    string `json:"proof_item_id,omitempty"`     // key item dropped by the trial guardian
+	BossMonsterID  string `json:"boss_monster_id,omitempty"`   // scripted guardian spawned at DungeonNodeID
+	DungeonNodeID  string `json:"dungeon_node_id,omitempty"`   // node where the trial guardian waits
+	DungeonName    string `json:"dungeon_name,omitempty"`      // display name for the trial dungeon
+	PromoStage     int    `json:"promo_stage,omitempty"`       // 0=seek giver, 1=clear trial, 2=turn in
 }
 
 type QuestReward struct {

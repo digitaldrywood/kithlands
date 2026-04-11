@@ -260,7 +260,16 @@ type QuestState struct {
 	GiverNodeID  string           `json:"giver_node_id,omitempty"`
 	TargetName   string           `json:"target_name,omitempty"`
 	TargetNodeID string           `json:"target_node_id,omitempty"`
-	Reward       QuestRewardState `json:"reward"`
+	// Promotion-quest fields. DungeonNodeID/DungeonName are the trial-dungeon
+	// target; PromoStage drives the three-stage HUD (0=seek giver, 1=find
+	// proof, 2=return to giver). ProofItemID is the key item the turn-in
+	// consumes.
+	DungeonNodeID string           `json:"dungeon_node_id,omitempty"`
+	DungeonName   string           `json:"dungeon_name,omitempty"`
+	ProofItemID   string           `json:"proof_item_id,omitempty"`
+	BossMonsterID string           `json:"boss_monster_id,omitempty"`
+	PromoStage    int              `json:"promo_stage,omitempty"`
+	Reward        QuestRewardState `json:"reward"`
 }
 
 type QuestRewardState struct {
@@ -305,6 +314,12 @@ type Game struct {
 	// the first-round side-skip enforced by encounterStart.
 	combatRound      int
 	promotionOffered bool        // midpoint promotion has already fired
+	// scriptedBoss marks the currently running combat as a scripted quest
+	// encounter (today: the promotion trial guardian). The victory handler in
+	// game_combat.go uses this to drop the proof item, advance promo_stage,
+	// and return directly to the world phase instead of showing a
+	// quest-complete screen for a fight that didn't complete a quest.
+	scriptedBoss bool
 	trans      *transport.State   // current transport tier & unlocks
 	mu         sync.Mutex
 }
@@ -353,24 +368,36 @@ func (g *Game) State() GameState {
 	}
 
 	for _, q := range g.quests {
-		state.Quests = append(state.Quests, QuestState{
-			ID:           q.ID,
-			Name:         q.Name,
-			Description:  q.Description,
-			Completion:   q.Completion,
-			Act:          q.Act,
-			Completed:    q.Completed,
-			IsPromotion:  q.IsPromotion,
-			IsSideQuest:  q.IsSideQuest,
-			GiverName:    q.GiverName,
-			GiverNodeID:  q.GiverNodeID,
-			TargetName:   q.TargetName,
-			TargetNodeID: q.TargetNodeID,
-			Reward:       QuestRewardState{XP: q.Reward.XP, Gold: q.Reward.Gold},
-		})
+		state.Quests = append(state.Quests, questToState(&q))
 	}
 
 	return state
+}
+
+// questToState converts a generator.Quest to a wire-level QuestState,
+// preserving all promotion-quest metadata so the client HUD can drive the
+// three-stage flow without inspecting server internals.
+func questToState(q *generator.Quest) QuestState {
+	return QuestState{
+		ID:            q.ID,
+		Name:          q.Name,
+		Description:   q.Description,
+		Completion:    q.Completion,
+		Act:           q.Act,
+		Completed:     q.Completed,
+		IsPromotion:   q.IsPromotion,
+		IsSideQuest:   q.IsSideQuest,
+		GiverName:     q.GiverName,
+		GiverNodeID:   q.GiverNodeID,
+		TargetName:    q.TargetName,
+		TargetNodeID:  q.TargetNodeID,
+		DungeonNodeID: q.DungeonNodeID,
+		DungeonName:   q.DungeonName,
+		ProofItemID:   q.ProofItemID,
+		BossMonsterID: q.BossMonsterID,
+		PromoStage:    q.PromoStage,
+		Reward:        QuestRewardState{XP: q.Reward.XP, Gold: q.Reward.Gold},
+	}
 }
 
 func (g *Game) ProcessAction(req GameActionRequest) (*GameState, error) {
@@ -564,21 +591,7 @@ func (g *Game) stateUnlocked() GameState {
 		}
 	}
 	for _, q := range g.quests {
-		state.Quests = append(state.Quests, QuestState{
-			ID:           q.ID,
-			Name:         q.Name,
-			Description:  q.Description,
-			Completion:   q.Completion,
-			Act:          q.Act,
-			Completed:    q.Completed,
-			IsPromotion:  q.IsPromotion,
-			IsSideQuest:  q.IsSideQuest,
-			GiverName:    q.GiverName,
-			GiverNodeID:  q.GiverNodeID,
-			TargetName:   q.TargetName,
-			TargetNodeID: q.TargetNodeID,
-			Reward:       QuestRewardState{XP: q.Reward.XP, Gold: q.Reward.Gold},
-		})
+		state.Quests = append(state.Quests, questToState(&q))
 	}
 	return state
 }

@@ -614,13 +614,25 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 		g.enemies = nil
 		g.spellBuffs = nil
 
-		// Combat victory never advances quests (issue #86). Quests only
-		// advance when the party enters the quest's target building via
-		// processWorldAction's "quest_advance" branch in game_world.go.
-		// The victory screen (phase=quest_complete) is acknowledged by the
-		// client via the "advance" action, which returns the party to world.
-		g.phase = "quest_complete"
-		g.resetEncounterStartState()
+		if g.scriptedBoss {
+			// Scripted quest encounter (today: the promotion trial
+			// guardian). Drop the proof item, advance promo_stage, and
+			// bypass the quest-complete screen because no quest actually
+			// finished — the player still has to return to the giver.
+			g.scriptedBoss = false
+			g.advancePromotionStageAfterTrial()
+			g.phase = "world"
+			g.resetEncounterStartState()
+		} else {
+			// Combat victory never advances quests (issue #86). Quests only
+			// advance when the party enters the quest's target building via
+			// processWorldAction's "quest_advance" branch in game_world.go.
+			// The victory screen (phase=quest_complete) is acknowledged by
+			// the client via the "advance" action, which returns the party
+			// to world.
+			g.phase = "quest_complete"
+			g.resetEncounterStartState()
+		}
 	} else if combat.CheckDefeat(combatants) {
 		g.phase = "defeat"
 		g.message = "Your party has fallen. Game over."

@@ -188,59 +188,115 @@ func instantiateQuest(template QuestTemplate, walk *locality.WalkResult, loc *lo
 	}
 }
 
-// instantiatePromotionQuest builds the fixed story-beat quest inserted between
-// Act 1 and Act 2. Completing it is what flips `character.Promoted = true` in
-// the game loop (see game_world.go / game_combat.go).
+// instantiatePromotionQuest builds the FF1/DQ3-style promotion story beat: a
+// named giver sends the party to a trial dungeon, where a scripted guardian
+// drops a proof item that must be turned in to the giver before the promotion
+// offer fires. Quest progression is driven by three `promo_stage` values,
+// see server/api/game_world.go for the stage machine.
 func instantiatePromotionQuest(walk *locality.WalkResult, loc *locality.Locality, idx int, rng *rand.Rand) Quest {
-	// Prefer a medium-distance landmark for the trial; fall back to close, then spawn.
-	var target *locality.Node
-	switch {
-	case len(walk.Medium) > 0:
-		target = walk.Medium[rng.IntN(len(walk.Medium))]
-	case len(walk.Close) > 0:
-		target = walk.Close[rng.IntN(len(walk.Close))]
-	default:
-		target = walk.Spawn
-	}
+	dungeon := pickDungeonNode(walk, rng)
 
-	targetName := "the ancient trial grounds"
-	targetID := ""
-	if target != nil {
-		targetName = target.Name
-		targetID = target.ID
+	dungeonName := "the ancient trial grounds"
+	dungeonID := ""
+	if dungeon != nil {
+		dungeonName = dungeon.Name
+		dungeonID = dungeon.ID
 	}
 
 	giverName := "the elder"
 	giverID := ""
-	if g := pickGiverNode(walk); g != nil {
+	if g := pickPromotionGiverNode(walk, dungeonID); g != nil {
 		giverName = g.Name
 		giverID = g.ID
 	}
 
-	desc, completion := fallbackDialogue("promotion", giverName, targetName, "", rng)
+	desc, completion := fallbackDialogue("promotion", giverName, dungeonName, "", rng)
 
 	actions := []QuestAction{
-		{Type: ActionGoto, Location: targetID, Detail: targetName},
-		{Type: ActionKill, Target: "trial guardian", Location: targetID},
+		{Type: ActionGoto, Location: giverID, Detail: giverName},
+		{Type: ActionGoto, Location: dungeonID, Detail: dungeonName},
+		{Type: ActionKill, Target: "trial_guardian", Location: dungeonID},
+		{Type: ActionGet, Target: "proof_of_courage", Location: dungeonID},
 		{Type: ActionGoto, Location: giverID, Detail: giverName},
 		{Type: ActionReport, Target: giverID, Detail: giverName},
 	}
 
+	// Stage 0: HUD points at the giver so the player learns about the trial.
 	return Quest{
-		ID:           fmt.Sprintf("quest_promotion_%d", idx),
-		TemplateID:   "promotion",
-		Name:         fmt.Sprintf("Trial of Mastery: %s", targetName),
-		Description:  desc,
-		Completion:   completion,
-		GiverNodeID:  giverID,
-		GiverName:    giverName,
-		TargetNodeID: targetID,
-		TargetName:   targetName,
-		Actions:      actions,
-		Reward:       QuestReward{XP: 200, Gold: 100},
-		Act:          1,
-		IsPromotion:  true,
+		ID:            fmt.Sprintf("quest_promotion_%d", idx),
+		TemplateID:    "promotion",
+		Name:          fmt.Sprintf("Trial of Mastery: %s", dungeonName),
+		Description:   desc,
+		Completion:    completion,
+		GiverNodeID:   giverID,
+		GiverName:     giverName,
+		TargetNodeID:  giverID, // stage 0 objective: seek the giver
+		TargetName:    giverName,
+		DungeonNodeID: dungeonID,
+		DungeonName:   dungeonName,
+		ProofItemID:   "proof_of_courage",
+		BossMonsterID: "trial_guardian",
+		PromoStage:    0,
+		Actions:       actions,
+		Reward:        QuestReward{XP: 200, Gold: 100},
+		Act:           1,
+		IsPromotion:   true,
 	}
+}
+
+// pickDungeonNode prefers nodes tagged "dungeon" at medium distance, then
+// close, then far. Falls back to the first enterable medium/close landmark if
+// no dungeon-tagged node exists.
+func pickDungeonNode(walk *locality.WalkResult, rng *rand.Rand) *locality.Node {
+	for _, tier := range [][]*locality.Node{walk.Medium, walk.Close, walk.Far} {
+		var dungeons []*locality.Node
+		for _, n := range tier {
+			if n == nil || n.Kind == locality.NodeNatural {
+				continue
+			}
+			for _, tag := range n.Tags {
+				if tag == "dungeon" {
+					dungeons = append(dungeons, n)
+					break
+				}
+			}
+		}
+		if len(dungeons) > 0 {
+			return dungeons[rng.IntN(len(dungeons))]
+		}
+	}
+	// Fallback: any enterable medium/close/far node, in that order.
+	for _, tier := range [][]*locality.Node{walk.Medium, walk.Close, walk.Far} {
+		filtered := filterEnterableNodes(tier)
+		if len(filtered) > 0 {
+			return filtered[rng.IntN(len(filtered))]
+		}
+	}
+	return walk.Spawn
+}
+
+// pickPromotionGiverNode returns a giver distinct from the trial dungeon so
+// the quest has real travel between stages. Prefers person nodes close to
+// spawn; falls back to any close node that isn't the dungeon.
+func pickPromotionGiverNode(walk *locality.WalkResult, dungeonID string) *locality.Node {
+	for _, n := range walk.Close {
+		if n == nil || n.ID == dungeonID {
+			continue
+		}
+		if n.Kind == locality.NodePerson {
+			return n
+		}
+	}
+	for _, n := range walk.Close {
+		if n == nil || n.ID == dungeonID {
+			continue
+		}
+		return n
+	}
+	if walk.Spawn != nil && walk.Spawn.ID != dungeonID {
+		return walk.Spawn
+	}
+	return pickGiverNode(walk)
 }
 
 // instantiateBossQuest builds the final Act 3 boss encounter.

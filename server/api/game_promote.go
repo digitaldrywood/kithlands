@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 
+	"github.com/digitaldrywood/kithlands/internal/generator"
 	"github.com/digitaldrywood/kithlands/internal/magic"
 )
 
@@ -96,17 +97,21 @@ func (g *Game) promoteParty() {
 	}
 }
 
-// maybeTriggerPromotion sets phase="promotion" exactly once, when the party's
-// next main quest is the campaign's IsPromotion story beat (i.e. all Act 1
-// quests have been completed). Caller must already hold g.mu.
-func (g *Game) maybeTriggerPromotion() {
+// promotionSoftLevelFloor is the party-level floor the FF1/DQ3-style trial
+// uses as flavor guidance. The story gate (trial + proof item turn-in) is
+// the real gate; the floor only drives a warning message.
+const promotionSoftLevelFloor = 6
+
+// maybeTriggerPromotion sets phase="promotion" exactly once, immediately
+// after the player turns in the Proof of Courage at the promotion giver. The
+// caller (game_world.go's quest_advance handler) passes the quest that was
+// just completed so we don't need to rely on currentQ pointing at the
+// promotion quest at all. Caller must already hold g.mu.
+func (g *Game) maybeTriggerPromotion(completed *generator.Quest) {
 	if g.promotionOffered {
 		return
 	}
-	if g.currentQ < 0 || g.currentQ >= len(g.quests) {
-		return
-	}
-	if !g.quests[g.currentQ].IsPromotion {
+	if completed == nil || !completed.IsPromotion {
 		return
 	}
 	// Only trigger if there are still non-promoted characters with a
@@ -127,5 +132,22 @@ func (g *Game) maybeTriggerPromotion() {
 	}
 	g.promotionOffered = true
 	g.phase = "promotion"
-	g.message = "Act 1 complete. A surge of power courses through the party..."
+	msg := "The elder lays the Proof of Courage on the altar. A surge of power courses through the party..."
+	if g.averagePartyLevel() < promotionSoftLevelFloor {
+		msg += fmt.Sprintf(" (Party is below the recommended level %d — the trial honors you anyway.)", promotionSoftLevelFloor)
+	}
+	g.message = msg
+}
+
+// averagePartyLevel is the integer-truncated mean level of every living or
+// dead party member. Used by the promotion soft level floor.
+func (g *Game) averagePartyLevel() int {
+	if len(g.party) == 0 {
+		return 0
+	}
+	sum := 0
+	for _, c := range g.party {
+		sum += c.Level
+	}
+	return sum / len(g.party)
 }

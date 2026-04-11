@@ -10,7 +10,8 @@ import (
 // testLocality builds a minimal but walkable locality with enough close,
 // medium, and far nodes to exercise the 3-act generator. The graph is a
 // linear chain so distances are predictable: spawn -> c1 -> c2 -> m1 -> m2
-// -> f1 -> f2.
+// -> f1 -> f2. m2 is tagged "dungeon" so the promotion quest has a valid
+// trial target.
 func testLocality(t *testing.T) *locality.Locality {
 	t.Helper()
 	loc := &locality.Locality{
@@ -21,7 +22,7 @@ func testLocality(t *testing.T) *locality.Locality {
 			{ID: "c1", Kind: locality.NodePerson, Name: "Baker", Importance: 5},
 			{ID: "c2", Kind: locality.NodePlace, Name: "Old Mill", Importance: 15},
 			{ID: "m1", Kind: locality.NodePlace, Name: "Crossroads", Importance: 20},
-			{ID: "m2", Kind: locality.NodeLandmark, Name: "Stone Circle", Importance: 30},
+			{ID: "m2", Kind: locality.NodeLandmark, Name: "Stone Circle", Tags: []string{"dungeon"}, Importance: 30},
 			{ID: "f1", Kind: locality.NodePlace, Name: "Old Ruins", Importance: 40},
 			{ID: "f2", Kind: locality.NodeLandmark, Name: "Dark Tower", Importance: 80},
 		},
@@ -56,6 +57,61 @@ func TestGenerateCampaign_QuestCount(t *testing.T) {
 		}
 		if len(quests) > 15 {
 			t.Errorf("seed %d: expected <= 15 quests (GDD 10.4 cap), got %d", seed, len(quests))
+		}
+	}
+}
+
+func TestGenerateCampaign_PromotionQuestHasTrialFields(t *testing.T) {
+	loc := testLocality(t)
+	for seed := uint64(1); seed <= 20; seed++ {
+		rng := newRng(seed)
+		quests := GenerateCampaign(loc, "spawn", rng, nil)
+		var promo *Quest
+		for i := range quests {
+			if quests[i].IsPromotion {
+				promo = &quests[i]
+				break
+			}
+		}
+		if promo == nil {
+			t.Fatalf("seed %d: no promotion quest generated", seed)
+		}
+		if promo.GiverNodeID == "" {
+			t.Errorf("seed %d: promotion quest missing GiverNodeID", seed)
+		}
+		if promo.DungeonNodeID == "" {
+			t.Errorf("seed %d: promotion quest missing DungeonNodeID", seed)
+		}
+		if promo.GiverNodeID == promo.DungeonNodeID {
+			t.Errorf("seed %d: promotion giver and dungeon are the same node %q", seed, promo.GiverNodeID)
+		}
+		if promo.ProofItemID != "proof_of_courage" {
+			t.Errorf("seed %d: ProofItemID = %q, want proof_of_courage", seed, promo.ProofItemID)
+		}
+		if promo.BossMonsterID != "trial_guardian" {
+			t.Errorf("seed %d: BossMonsterID = %q, want trial_guardian", seed, promo.BossMonsterID)
+		}
+		if promo.TargetNodeID != promo.GiverNodeID {
+			t.Errorf("seed %d: stage-0 TargetNodeID = %q, want GiverNodeID %q", seed, promo.TargetNodeID, promo.GiverNodeID)
+		}
+		if promo.PromoStage != 0 {
+			t.Errorf("seed %d: PromoStage = %d, want 0", seed, promo.PromoStage)
+		}
+		// The dungeon node must actually be tagged "dungeon" when one exists in the locality.
+		dungeonNode := loc.NodeByID(promo.DungeonNodeID)
+		if dungeonNode == nil {
+			t.Errorf("seed %d: DungeonNodeID %q not in locality", seed, promo.DungeonNodeID)
+			continue
+		}
+		hasDungeonTag := false
+		for _, tag := range dungeonNode.Tags {
+			if tag == "dungeon" {
+				hasDungeonTag = true
+				break
+			}
+		}
+		if !hasDungeonTag {
+			t.Errorf("seed %d: chose node %q as dungeon but it is not tagged", seed, dungeonNode.ID)
 		}
 	}
 }
