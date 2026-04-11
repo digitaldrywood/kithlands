@@ -183,10 +183,6 @@ func ResolveTurn(
 				counter.Kind = ActionCounter
 				target.Countering = false
 				results = append(results, counter)
-				// Wake sleeping actors hit by counter.
-				if counter.TotalDmg > 0 && actor.Status == character.StatusSleep {
-					ProcessSleepOnDamage(actor)
-				}
 			}
 		case ActionDefend:
 			results = append(results, ResolvedAction{

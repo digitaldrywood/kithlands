@@ -178,7 +178,13 @@ export class WorldScene extends Phaser.Scene {
       )
       .setDepth(10)
       .setScale(
-        (RENDERED_TILE / Math.max(this.textures.get(`player_${this.playerDir}`).getSourceImage().width, 1)) * SCALE,
+        (RENDERED_TILE /
+          Math.max(
+            this.textures.get(`player_${this.playerDir}`).getSourceImage()
+              .width,
+            1,
+          )) *
+          SCALE,
       );
 
     // Vehicle indicator circle behind player (T2+)
@@ -680,14 +686,27 @@ export class WorldScene extends Phaser.Scene {
   }
 
   updateVehicleIndicator() {
-    const tier = this.gameState.transport?.current_tier || "T1";
-    const color = VEHICLE_COLORS[tier];
+    const tr = this.gameState.transport;
+    const tier = tr?.current_tier || "T1";
+    const spriteKey = tr?.sprite;
 
     if (this.vehicleIndicator) {
       this.vehicleIndicator.destroy();
       this.vehicleIndicator = null;
     }
 
+    // Prefer a real vehicle sprite when the asset exists (e.g. horse, ship,
+    // galleon, airship). Fall back to a colored ring so the player still gets
+    // visual feedback even without art assets loaded.
+    if (spriteKey && this.textures.exists(`vehicle_${spriteKey}`)) {
+      this.vehicleIndicator = this.add
+        .image(this.player.x, this.player.y, `vehicle_${spriteKey}`)
+        .setDepth(9)
+        .setScale(SCALE);
+      return;
+    }
+
+    const color = VEHICLE_COLORS[tier];
     if (color == null) return; // T1 has no indicator
 
     this.vehicleIndicator = this.add

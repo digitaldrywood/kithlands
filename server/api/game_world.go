@@ -9,31 +9,34 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/locality"
 )
 
+// tickOverworldPoisonAndCheckDefeat applies -1 HP poison damage per Section 6.5
+// to each poisoned party member and returns true if the entire party has been
+// defeated, meaning the caller should transition to the defeat phase instead of
+// entering combat.
+func (g *Game) tickOverworldPoisonAndCheckDefeat() bool {
+	for _, c := range g.party {
+		if c.Status == character.StatusPoison && c.CurrentHP > 0 {
+			c.CurrentHP--
+			if c.CurrentHP <= 0 {
+				c.CurrentHP = 0
+				c.Status = character.StatusDeath
+			}
+		}
+	}
+	for _, c := range g.party {
+		if c.IsAlive() {
+			return false
+		}
+	}
+	g.phase = "defeat"
+	g.message = "Your party succumbed to poison. Game over."
+	return true
+}
+
 func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 	switch req.Type {
 	case "encounter":
-		// Poison tick per Section 6.5: -1 HP per step on world map.
-		for _, c := range g.party {
-			if c.Status == character.StatusPoison && c.CurrentHP > 0 {
-				c.CurrentHP--
-				if c.CurrentHP <= 0 {
-					c.CurrentHP = 0
-					c.Status = character.StatusDeath
-				}
-			}
-		}
-
-		// Check if poison killed the entire party before entering combat.
-		allDead := true
-		for _, c := range g.party {
-			if c.IsAlive() {
-				allDead = false
-				break
-			}
-		}
-		if allDead {
-			g.phase = "defeat"
-			g.message = "Your party succumbed to poison. Game over."
+		if g.tickOverworldPoisonAndCheckDefeat() {
 			state := g.stateUnlocked()
 			return &state, nil
 		}
@@ -133,6 +136,10 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 
 	default:
 		// Legacy "advance" -- trigger encounter
+		if g.tickOverworldPoisonAndCheckDefeat() {
+			state := g.stateUnlocked()
+			return &state, nil
+		}
 		g.xpBefore = make([]int, len(g.party))
 		g.levelBefore = make([]int, len(g.party))
 		partyLevels := make([]int, len(g.party))
