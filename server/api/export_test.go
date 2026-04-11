@@ -150,6 +150,12 @@ func TeachSpellForTest(g *Game, slot int, spellID string, spellLevel int) {
 func CastBuffSpellLiveBuffsForTest(g *Game, casterSlot, targetSlot int, spellID string) []combat.CombatBuff {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if casterSlot < 0 || casterSlot >= len(g.party) {
+		return nil
+	}
+	if targetSlot < 0 || targetSlot >= len(g.party) {
+		return nil
+	}
 	combatants := g.makeCombatants()
 	spell := g.gd.SpellByID(spellID)
 	if spell == nil {

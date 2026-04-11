@@ -82,6 +82,20 @@ describe("hpBarFillWidth", () => {
   it("handles max HP of 0 gracefully", () => {
     expect(hpBarFillWidth(5, 0, 65)).toBe(0);
   });
+
+  it("guarantees at least 1 pixel for any positive HP so low-HP combatants are not invisible", () => {
+    // Regression for the "floor-the-ratio" bug: 1 HP out of 100 on the
+    // 65px enemy bar would naively floor to 0.65 → 0 pixels, making a
+    // living enemy look dead. Same for 1/200 on the 85px party bar.
+    expect(hpBarFillWidth(1, 100, 65)).toBeGreaterThanOrEqual(1);
+    expect(hpBarFillWidth(1, 200, 85)).toBeGreaterThanOrEqual(1);
+    expect(hpBarFillWidth(1, 999, 65)).toBeGreaterThanOrEqual(1);
+  });
+
+  it("returns 0 when total width is 0 or negative", () => {
+    expect(hpBarFillWidth(5, 10, 0)).toBe(0);
+    expect(hpBarFillWidth(5, 10, -1)).toBe(0);
+  });
 });
 
 describe("hpBarColorPct", () => {

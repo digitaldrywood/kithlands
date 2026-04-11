@@ -33,13 +33,16 @@ export function formatHPLabel(currentHP, maxHP) {
 
 // Compute a bar fill width (pixels) from integer HP / max HP / total width.
 // Returns an integer; a dead bar is exactly 0 pixels wide so there is no
-// sub-pixel sliver left behind.
+// sub-pixel sliver left behind, but any positive HP renders at least
+// 1 pixel so legitimately low-HP combatants (1/100 on a 65px bar would
+// floor to 0) don't visually read as dead.
 export function hpBarFillWidth(currentHP, maxHP, totalWidth) {
   const hp = toInt(currentHP);
   const max = toInt(maxHP);
-  if (max <= 0 || hp <= 0) return 0;
+  const width = toInt(totalWidth);
+  if (max <= 0 || hp <= 0 || width <= 0) return 0;
   const pct = Math.min(1, hp / max);
-  return Math.max(0, Math.floor(pct * toInt(totalWidth)));
+  return Math.max(1, Math.floor(pct * width));
 }
 
 // Proportion of HP remaining, clamped to [0, 1]. Used to pick the fill
