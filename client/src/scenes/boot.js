@@ -108,6 +108,18 @@ export class BootScene extends Phaser.Scene {
     this.load.image("tile_stone_wall", "/tilesets/interiors/stone_wall.png");
     this.load.image("tile_wooden_wall", "/tilesets/interiors/wooden_wall.png");
 
+    // Overworld terrain tilesets
+    this.load.image("tile_grass", "/tilesets/grass.png");
+    this.load.image("tile_path", "/tilesets/path.png");
+    this.load.image("tile_water", "/tilesets/water.png");
+    this.load.image("tile_tree", "/tilesets/tree.png");
+    this.load.image("tile_rock", "/tilesets/rock.png");
+    this.load.image("tile_bush", "/tilesets/bush.png");
+    this.load.image("tile_dark_grass", "/tilesets/dark_grass.png");
+    this.load.image("tile_forest", "/tilesets/forest.png");
+    this.load.image("tile_hill", "/tilesets/hill.png");
+    this.load.image("tile_sand", "/tilesets/sand.png");
+
     // NPC sprites
     this.load.image("npc_priestess", "/sprites/npcs/priestess.png");
     this.load.image("npc_merchant", "/sprites/npcs/merchant.png");

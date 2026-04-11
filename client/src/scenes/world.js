@@ -42,6 +42,21 @@ const TILE_COLORS = {
   12: 0xffe082, // sand
 };
 
+// Sprite keys for overworld tile types. Ids 4/5/6 (building/door/floor) intentionally
+// omitted — they still render via TILE_COLORS fillRect in drawMap(). See issue #73.
+const TILE_SPRITE_KEYS = {
+  0: "tile_grass",
+  1: "tile_path",
+  2: "tile_water",
+  3: "tile_tree",
+  7: "tile_rock",
+  8: "tile_bush",
+  9: "tile_dark_grass",
+  10: "tile_forest",
+  11: "tile_hill",
+  12: "tile_sand",
+};
+
 const TILE_WALKABLE = {
   0: true, // grass
   1: true, // path
@@ -561,17 +576,33 @@ export class WorldScene extends Phaser.Scene {
 
   drawMap() {
     this.tileGraphics.clear();
+
+    // Destroy any prior sprite container so re-draws are clean.
+    if (this.tileSprites) {
+      this.tileSprites.destroy(true);
+    }
+    this.tileSprites = this.add.container(0, 0);
+    this.tileSprites.setDepth(0);
+
     for (let y = 0; y < this.mapH; y++) {
       for (let x = 0; x < this.mapW; x++) {
         const tile = this.tileData[y][x];
-        const color = TILE_COLORS[tile] || 0x000000;
-        this.tileGraphics.fillStyle(color, 1);
-        this.tileGraphics.fillRect(
-          x * RENDERED_TILE,
-          y * RENDERED_TILE,
-          RENDERED_TILE,
-          RENDERED_TILE,
-        );
+        const px = x * RENDERED_TILE;
+        const py = y * RENDERED_TILE;
+        const spriteKey = TILE_SPRITE_KEYS[tile];
+
+        if (spriteKey) {
+          const img = this.add
+            .image(px, py, spriteKey)
+            .setOrigin(0, 0)
+            .setDisplaySize(RENDERED_TILE, RENDERED_TILE);
+          this.tileSprites.add(img);
+        } else {
+          // building (4), door (5), floor (6) — keep the existing color fallback
+          const color = TILE_COLORS[tile] || 0x000000;
+          this.tileGraphics.fillStyle(color, 1);
+          this.tileGraphics.fillRect(px, py, RENDERED_TILE, RENDERED_TILE);
+        }
       }
     }
   }

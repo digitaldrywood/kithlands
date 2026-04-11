@@ -159,3 +159,115 @@ func TestParseRoads_PopulatesHighwayClass(t *testing.T) {
 		}
 	}
 }
+
+func TestParseWaterways_PopulatesKind(t *testing.T) {
+	nodes := map[int64]osmNode{
+		1: {lat: 45.0, lon: -91.0},
+		2: {lat: 45.01, lon: -91.01},
+		3: {lat: 45.02, lon: -91.02},
+	}
+	ways := []osmElement{
+		{Type: "way", Nodes: []int64{1, 2}, Tags: map[string]string{"waterway": "river"}},
+		{Type: "way", Nodes: []int64{2, 3}, Tags: map[string]string{"waterway": "stream"}},
+		{Type: "way", Nodes: []int64{1, 3}, Tags: map[string]string{"waterway": "canal"}},
+	}
+	waters := parseWaterways(ways, nodes, 44.9, 45.1, -91.1, -90.9)
+	if len(waters) != 3 {
+		t.Fatalf("expected 3 waterways parsed, got %d", len(waters))
+	}
+	want := []string{"river", "stream", "canal"}
+	for i, w := range want {
+		if waters[i].Kind != w {
+			t.Errorf("waters[%d].Kind = %q, want %q", i, waters[i].Kind, w)
+		}
+	}
+}
+
+// countWaterTiles returns the number of TileWater tiles in the grid.
+func countWaterTiles(tiles [][]int) int {
+	n := 0
+	for _, row := range tiles {
+		for _, t := range row {
+			if t == int(TileWater) {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+func TestRasterizeWaterways_StampsTileWater(t *testing.T) {
+	const mapW, mapH = 40, 40
+	tiles := blankTiles(mapW, mapH)
+
+	// Single river spanning most of the map diagonally.
+	waters := []Waterway{
+		{
+			Kind: "river",
+			Points: []struct{ X, Y float64 }{
+				{X: 0.1, Y: 0.1},
+				{X: 0.9, Y: 0.9},
+			},
+		},
+	}
+	rasterizeWaterways(tiles, waters, mapW, mapH)
+
+	if got := countWaterTiles(tiles); got == 0 {
+		t.Fatalf("expected at least one TileWater tile after rasterizeWaterways, got 0")
+	}
+}
+
+// Drains and ditches should NOT be rendered as blocking water — they clutter
+// town maps with tiny drainage lines the issue never asked for.
+func TestRasterizeWaterways_SkipsDrainAndDitch(t *testing.T) {
+	const mapW, mapH = 40, 40
+	tiles := blankTiles(mapW, mapH)
+
+	diag := []struct{ X, Y float64 }{{X: 0.1, Y: 0.1}, {X: 0.9, Y: 0.9}}
+	waters := []Waterway{
+		{Kind: "drain", Points: diag},
+		{Kind: "ditch", Points: diag},
+		{Kind: "wash", Points: diag},
+	}
+	rasterizeWaterways(tiles, waters, mapW, mapH)
+
+	if got := countWaterTiles(tiles); got != 0 {
+		t.Fatalf("expected 0 TileWater tiles for drain/ditch/wash, got %d", got)
+	}
+}
+
+// Roads already rasterized before rasterizeWaterways runs must remain TilePath
+// at crossings so players (and quest routing) can still traverse bridges.
+func TestRasterizeWaterways_PreservesRoadCrossings(t *testing.T) {
+	const mapW, mapH = 40, 40
+	tiles := blankTiles(mapW, mapH)
+
+	// Horizontal road across the middle of the map.
+	roadY := 20
+	for x := 0; x < mapW; x++ {
+		tiles[roadY][x] = int(TilePath)
+	}
+
+	// Vertical river straight down the middle, guaranteed to cross the road.
+	waters := []Waterway{
+		{
+			Kind: "river",
+			Points: []struct{ X, Y float64 }{
+				{X: 0.5, Y: 0.0},
+				{X: 0.5, Y: 1.0},
+			},
+		},
+	}
+	rasterizeWaterways(tiles, waters, mapW, mapH)
+
+	// The entire road row must remain TilePath — no water stamped over it.
+	for x := 0; x < mapW; x++ {
+		if tiles[roadY][x] != int(TilePath) {
+			t.Fatalf("road row %d clobbered at x=%d: got tile %d, want TilePath", roadY, x, tiles[roadY][x])
+		}
+	}
+	// The river should still exist elsewhere (not a no-op test).
+	if countWaterTiles(tiles) == 0 {
+		t.Fatal("expected river to stamp water tiles outside the road row")
+	}
+}

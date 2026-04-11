@@ -22,7 +22,7 @@ func BuildFromOSM(ctx context.Context, lat, lng float64, radiusM int, townName s
 		return nil, fmt.Errorf("overpass query: %w", err)
 	}
 
-	nodes, roadElements := classifyElements(elements, lat, lng, radiusM)
+	nodes, roadElements, waterwayElements := classifyElements(elements, lat, lng, radiusM)
 
 	// Auto-widen: if fewer than namedNodeThreshold real-named nodes, double
 	// radius and re-query. nodes now holds only entries with real OSM names
@@ -34,7 +34,7 @@ func BuildFromOSM(ctx context.Context, lat, lng float64, radiusM int, townName s
 			if err != nil {
 				return nil, fmt.Errorf("overpass query (widened): %w", err)
 			}
-			nodes, roadElements = classifyElements(elements, lat, lng, wider)
+			nodes, roadElements, waterwayElements = classifyElements(elements, lat, lng, wider)
 			radiusM = wider
 		}
 	}
@@ -130,6 +130,7 @@ func BuildFromOSM(ctx context.Context, lat, lng float64, radiusM int, townName s
 
 	// Store road data for tilemap rendering
 	loc.roads = parseRoads(roadElements, nodeMap, minLat, maxLat, minLng, maxLng)
+	loc.waterways = parseWaterways(waterwayElements, nodeMap, minLat, maxLat, minLng, maxLng)
 
 	return loc, nil
 }
@@ -142,7 +143,7 @@ func PreviewOSM(ctx context.Context, lat, lng float64, radiusM int) ([]Node, int
 		return nil, radiusM, fmt.Errorf("overpass query: %w", err)
 	}
 
-	nodes, _ := classifyElements(elements, lat, lng, radiusM)
+	nodes, _, _ := classifyElements(elements, lat, lng, radiusM)
 
 	if len(nodes) < namedNodeThreshold {
 		wider := min(radiusM*2, 48280)
@@ -151,7 +152,7 @@ func PreviewOSM(ctx context.Context, lat, lng float64, radiusM int) ([]Node, int
 			if err != nil {
 				return nil, radiusM, fmt.Errorf("overpass query (widened): %w", err)
 			}
-			nodes, _ = classifyElements(elements, lat, lng, wider)
+			nodes, _, _ = classifyElements(elements, lat, lng, wider)
 			radiusM = wider
 		}
 	}
@@ -171,10 +172,11 @@ const namedNodeThreshold = 8
 // entries (building=yes, amenity=restaurant without a name, unnamed farmland)
 // are dropped at ingest — they add noise to the discovery screen and bury real
 // places. See issue #53.
-func classifyElements(elements []osmElement, lat, lng float64, radiusM int) ([]Node, []osmElement) {
+func classifyElements(elements []osmElement, lat, lng float64, radiusM int) ([]Node, []osmElement, []osmElement) {
 	nodeMap := make(map[int64]osmNode)
 	var buildings []osmElement
 	var roads []osmElement
+	var waterways []osmElement
 	var amenities []osmElement
 	var nature []osmElement
 
@@ -195,6 +197,8 @@ func classifyElements(elements []osmElement, lat, lng float64, radiusM int) ([]N
 				buildings = append(buildings, el)
 			} else if el.Tags["highway"] != "" {
 				roads = append(roads, el)
+			} else if el.Tags["waterway"] != "" {
+				waterways = append(waterways, el)
 			} else if el.Tags["natural"] != "" || el.Tags["leisure"] == "park" {
 				nature = append(nature, el)
 			} else if el.Tags["landuse"] == "farmland" {
@@ -300,15 +304,15 @@ func classifyElements(elements []osmElement, lat, lng float64, radiusM int) ([]N
 	for _, n := range nodes {
 		keptNames = append(keptNames, n.Name)
 	}
-	log.Printf("osm: classify radius=%dm buildings=%d(dropped=%d) amenities=%d(dropped=%d) nature=%d(dropped=%d) roads=%d kept=%d names=%v",
+	log.Printf("osm: classify radius=%dm buildings=%d(dropped=%d) amenities=%d(dropped=%d) nature=%d(dropped=%d) roads=%d waterways=%d kept=%d names=%v",
 		radiusM,
 		len(buildings), dropBuildings,
 		len(amenities), dropAmenities,
 		len(nature), dropNature,
-		len(roads), len(nodes), keptNames,
+		len(roads), len(waterways), len(nodes), keptNames,
 	)
 
-	return nodes, roads
+	return nodes, roads, waterways
 }
 
 // keepBuildingUnnamed reports whether a building way without a `name` tag
@@ -389,6 +393,11 @@ func (l *Locality) Roads() []Road {
 	return l.roads
 }
 
+// Waterways returns the parsed OSM waterway segments for tilemap rendering.
+func (l *Locality) Waterways() []Waterway {
+	return l.waterways
+}
+
 // queryOverpass fetches OSM data around a point.
 func queryOverpass(ctx context.Context, lat, lng float64, radiusM int) ([]osmElement, error) {
 	query := fmt.Sprintf(`[out:json][timeout:25][maxsize:8388608];
@@ -401,8 +410,10 @@ func queryOverpass(ctx context.Context, lat, lng float64, radiusM int) ([]osmEle
   way["natural"](around:%d,%f,%f);
   way["leisure"="park"](around:%d,%f,%f);
   way["landuse"="farmland"](around:%d,%f,%f);
+  way["waterway"](around:%d,%f,%f);
 );
 out body; >; out skel qt;`,
+		radiusM, lat, lng,
 		radiusM, lat, lng,
 		radiusM, lat, lng,
 		radiusM, lat, lng,
@@ -644,6 +655,31 @@ func parseRoads(roads []osmElement, nodeMap map[int64]osmNode, minLat, maxLat, m
 		}
 		if len(road.Points) >= 2 {
 			result = append(result, road)
+		}
+	}
+	return result
+}
+
+// Waterway represents a simplified waterway (river, stream, canal) segment for tilemap rendering.
+type Waterway struct {
+	Points []struct{ X, Y float64 }
+	Kind   string // raw OSM `waterway` tag value: river, stream, canal, drain, ditch, ...
+}
+
+func parseWaterways(ways []osmElement, nodeMap map[int64]osmNode, minLat, maxLat, minLng, maxLng float64) []Waterway {
+	var result []Waterway
+	for _, w := range ways {
+		var wr Waterway
+		wr.Kind = w.Tags["waterway"]
+		for _, nid := range w.Nodes {
+			if n, ok := nodeMap[nid]; ok {
+				x := (n.lon - minLng) / (maxLng - minLng)
+				y := 1 - (n.lat-minLat)/(maxLat-minLat)
+				wr.Points = append(wr.Points, struct{ X, Y float64 }{x, y})
+			}
+		}
+		if len(wr.Points) >= 2 {
+			result = append(result, wr)
 		}
 	}
 	return result
