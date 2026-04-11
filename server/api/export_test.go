@@ -1,5 +1,7 @@
 package api
 
+import "github.com/digitaldrywood/kithlands/internal/character"
+
 // ForceVictoryForTest kills every enemy in the current encounter and runs
 // the normal combat-victory path so the game transitions into the post-fight
 // quest_complete / promotion phases. Exposed only for tests.
@@ -16,4 +18,46 @@ func ForceVictoryForTest(g *Game) {
 			{Slot: 0, Type: "defend"},
 		},
 	})
+}
+
+// KillPartyMemberForTest drops the party member at idx to 0 HP and marks
+// them dead. Exposed only for tests.
+func KillPartyMemberForTest(g *Game, idx int) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.party[idx].CurrentHP = 0
+	g.party[idx].Status = character.StatusDeath
+}
+
+// PartyXPForTest returns the raw XP of the party member at idx. Exposed only
+// for tests.
+func PartyXPForTest(g *Game, idx int) int {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.party[idx].XP
+}
+
+// PartyHPForTest returns the current HP of the party member at idx. Exposed
+// only for tests.
+func PartyHPForTest(g *Game, idx int) int {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.party[idx].CurrentHP
+}
+
+// GiveItemForTest adds n of the given consumable to inventory. Exposed only
+// for tests.
+func GiveItemForTest(g *Game, id string, n int) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.inv.Consumables[id] += n
+}
+
+// ClearQuestsForTest advances currentQ past the end of g.quests so a subsequent
+// combat victory skips the quest-reward branch entirely and only exercises the
+// monster-XP distribution path. Exposed only for tests.
+func ClearQuestsForTest(g *Game) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.currentQ = len(g.quests)
 }

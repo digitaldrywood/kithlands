@@ -97,6 +97,10 @@ type GameState struct {
 	XPBefore     []int               `json:"xp_before,omitempty"`      // XP values before combat for victory animation
 	LevelBefore  []int               `json:"level_before,omitempty"`   // levels before combat for victory animation
 	XPThresholds [][]int             `json:"xp_thresholds,omitempty"` // per-character XP thresholds at each level crossed
+	// DiedThisFight[i] is true for any party member whose IsAlive() was false
+	// at the moment victory-XP was distributed. Survives restParty() so the
+	// client can render the victory screen correctly. Reset at encounter start.
+	DiedThisFight []bool              `json:"died_this_fight,omitempty"`
 	Party     []PartyMemberState  `json:"party"`
 	Enemies   []EnemyState        `json:"enemies,omitempty"`
 	Formation string              `json:"formation,omitempty"`
@@ -252,6 +256,10 @@ type Game struct {
 	diff       balance.Difficulty
 	xpBefore    []int // snapshot before combat for victory animation
 	levelBefore []int // snapshot before combat for victory animation
+	// diedThisFight is captured at the exact moment the combat-victory block
+	// distributes XP (before restParty heals dead members). Exposed to the
+	// client via GameState.DiedThisFight.
+	diedThisFight []bool
 	discovered   map[string]bool // bestiary: monster IDs encountered
 	visitedNodes map[string]bool // node IDs the player has entered (sequence-break tracking)
 	formation  string             // current encounter layout type
@@ -426,6 +434,9 @@ func (g *Game) fillExtras(state *GameState) {
 				state.XPThresholds[i] = append(state.XPThresholds[i], character.XPToNextLevel(lvl, &g.gd.Stats.XPCurve))
 			}
 		}
+	}
+	if len(g.diedThisFight) > 0 {
+		state.DiedThisFight = append([]bool(nil), g.diedThisFight...)
 	}
 }
 
