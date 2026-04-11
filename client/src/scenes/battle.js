@@ -1,6 +1,7 @@
 import { gameAction } from "../api.js";
 import { createComposedSprite } from "../sprites/composedSprite.js";
 import { initAudio, playMusic, playSFX, stopMusic } from "../systems/audio.js";
+import { shouldAcceptEnemySpriteClick } from "../systems/battleTargeting.js";
 import {
   applyDamage,
   applyHeal,
@@ -85,6 +86,7 @@ export class BattleScene extends Phaser.Scene {
     this.partyArrows = [];
     this.pendingAction = null;
     this.pendingSpellId = null;
+    this.pendingSpellEffect = null;
     this.actionBtns = null;
 
     // Per-member action collection
@@ -339,6 +341,8 @@ export class BattleScene extends Phaser.Scene {
       if (this.targetingMode) {
         this.exitTargetingMode();
         this.pendingAction = null;
+        this.pendingSpellId = null;
+        this.pendingSpellEffect = null;
         const slot = this.livingMembers[this.currentMemberIdx];
         const member = this.gameState.party[slot];
         this.promptText
@@ -369,6 +373,8 @@ export class BattleScene extends Phaser.Scene {
       .setText(`${member.name}'s turn -- choose an action`)
       .setColor("#ffff44");
     this.pendingAction = null;
+    this.pendingSpellId = null;
+    this.pendingSpellEffect = null;
 
     // Draw action buttons for this member
     this.drawActions(gs, slot);
@@ -401,10 +407,29 @@ export class BattleScene extends Phaser.Scene {
         );
       }
       sprite.setInteractive({ useHandCursor: true });
-      sprite.on("pointerdown", () => this.onEnemyClick(e.id));
+      sprite.on("pointerdown", () => {
+        if (
+          shouldAcceptEnemySpriteClick(
+            this.targetingMode,
+            this.pendingSpellEffect,
+            e.is_undead,
+          )
+        ) {
+          this.onEnemyClick(e.id);
+        }
+      });
       sprite.on("pointerover", () => {
         sprite.setAlpha(0.7);
-        if (this.pendingAction) this.promptText.setText(`Target: ${e.name}`);
+        if (
+          this.pendingAction &&
+          shouldAcceptEnemySpriteClick(
+            this.targetingMode,
+            this.pendingSpellEffect,
+            e.is_undead,
+          )
+        ) {
+          this.promptText.setText(`Target: ${e.name}`);
+        }
       });
       sprite.on("pointerout", () => sprite.setAlpha(1));
       this.enemySprites[e.id] = { sprite, x, y, name: e.name };
@@ -677,6 +702,15 @@ export class BattleScene extends Phaser.Scene {
 
   onEnemyClick(enemyId) {
     if (this.animating) return;
+    // Defensive: if we're still in party targeting mode here, the only
+    // legal caller is an undead-heal sprite click (see sprite handler
+    // above). Everything else would be a stale click bleed-through.
+    if (this.targetingMode === "party") {
+      const enemy = this.gameState.enemies.find((en) => en.id === enemyId);
+      if (!(this.pendingSpellEffect === "heal" && enemy && enemy.is_undead)) {
+        return;
+      }
+    }
     if (this.targetingMode) this.exitTargetingMode();
     const slot = this.livingMembers[this.currentMemberIdx];
 
@@ -912,6 +946,7 @@ export class BattleScene extends Phaser.Scene {
         if (sp.castable_in_combat === false) {
           this.pendingAction = null;
           this.pendingSpellId = null;
+          this.pendingSpellEffect = null;
           this.promptText
             .setText(`${sp.name} cannot be cast in combat.`)
             .setColor("#ff8888");
@@ -919,6 +954,7 @@ export class BattleScene extends Phaser.Scene {
         }
         this.pendingAction = "spell";
         this.pendingSpellId = sp.id;
+        this.pendingSpellEffect = sp.effect;
         const t = sp.target;
         if (t === "single_ally") {
           this.enterPartyTargetingMode();
