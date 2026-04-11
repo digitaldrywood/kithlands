@@ -1,0 +1,15 @@
+# Copy to .envrc.local for worktree-local secrets. This file is committed as
+# a reference; .envrc.local is gitignored.
+#
+# .envrc (committed) automatically sources this file via `.envrc.local` if it
+# exists, after computing PORT / VITE_PORT / DATABASE_URL / DB_NAME from
+# scripts/worktree-env.sh. Values set here override those defaults.
+
+# Exposes the game on your tailnet (used by `make play` to print a second URL).
+# export TAILSCALE_HOSTNAME="prometheus"
+
+# Required by server features that call out to Gemini.
+# export GEMINI_API_KEY=""
+
+# Override the auto-computed database URL (e.g. to point at a remote DB).
+# export DATABASE_URL="postgres://kithlands:kithlands@localhost:5432/kithlands?sslmode=disable"
