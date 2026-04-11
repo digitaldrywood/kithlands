@@ -39,11 +39,7 @@ export class WizardScene extends Phaser.Scene {
   shouldSkipNPCStep() {
     if (!this.wizardData.use_osm) return false;
     const pois = this.wizardData.osm_preview || [];
-    // Only count POIs that had real OSM names (not auto-generated ones)
-    const generated =
-      /^(Building|House|Shed|Farmland|Water|Church|School|Parking|Fuel|Shelter|Place Of Worship|Fire Station|Restaurant|Cafe|Bar|Fast Food|Commercial|Retail|Civic|Government)( \d+)?$/;
-    const namedPOIs = pois.filter((p) => p.name && !generated.test(p.name));
-    return namedPOIs.length >= 5;
+    return pois.filter((p) => p.name).length >= 5;
   }
 
   clearContent() {

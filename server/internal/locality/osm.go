@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"net/http"
 	"strings"
@@ -23,8 +24,10 @@ func BuildFromOSM(ctx context.Context, lat, lng float64, radiusM int, townName s
 
 	nodes, roadElements := classifyElements(elements, lat, lng, radiusM)
 
-	// Auto-widen: if fewer than 5 classified nodes, double radius and re-query
-	if len(nodes) < 5 {
+	// Auto-widen: if fewer than namedNodeThreshold real-named nodes, double
+	// radius and re-query. nodes now holds only entries with real OSM names
+	// (or meaningful secondary tags), so this is a named-count check.
+	if len(nodes) < namedNodeThreshold {
 		wider := min(radiusM*2, 48280)
 		if wider > radiusM {
 			elements, err = queryOverpass(ctx, lat, lng, wider)
@@ -141,8 +144,7 @@ func PreviewOSM(ctx context.Context, lat, lng float64, radiusM int) ([]Node, int
 
 	nodes, _ := classifyElements(elements, lat, lng, radiusM)
 
-	// Auto-widen: if fewer than 5 classified nodes, double radius and re-query
-	if len(nodes) < 5 {
+	if len(nodes) < namedNodeThreshold {
 		wider := min(radiusM*2, 48280)
 		if wider > radiusM {
 			elements, err = queryOverpass(ctx, lat, lng, wider)
@@ -157,10 +159,18 @@ func PreviewOSM(ctx context.Context, lat, lng float64, radiusM int) ([]Node, int
 	return nodes, radiusM, nil
 }
 
+// namedNodeThreshold is the minimum number of real-named POIs we want back
+// from a classify pass before we accept the result without auto-widening
+// the radius.
+const namedNodeThreshold = 8
+
 // classifyElements parses raw OSM elements into locality Nodes and road elements.
-// It handles buildings, amenities, farmland, natural features, and religious sites.
-// Unnamed POIs receive generated names via generatePOIName, with numeric suffixes
-// for deduplication.
+// It only keeps entries with a real OSM `name` tag, except for buildings whose
+// type tag is specific (building=church, building=school, …) or which carry a
+// civic amenity tag (fire_station, hospital, townhall, …). Generic unnamed
+// entries (building=yes, amenity=restaurant without a name, unnamed farmland)
+// are dropped at ingest — they add noise to the discovery screen and bury real
+// places. See issue #53.
 func classifyElements(elements []osmElement, lat, lng float64, radiusM int) ([]Node, []osmElement) {
 	nodeMap := make(map[int64]osmNode)
 	var buildings []osmElement
@@ -196,9 +206,14 @@ func classifyElements(elements []osmElement, lat, lng float64, radiusM int) ([]N
 	seen := make(map[string]int) // name -> count for deduplication
 	var nodes []Node
 	nodeIdx := 0
+	dropBuildings, dropAmenities, dropNature := 0, 0, 0
 
 	// Convert buildings to locality nodes
 	for _, b := range buildings {
+		if b.Tags["name"] == "" && !keepBuildingUnnamed(b.Tags) {
+			dropBuildings++
+			continue
+		}
 		name := b.Tags["name"]
 		if name == "" {
 			name = generatePOIName(b.Tags)
@@ -225,20 +240,18 @@ func classifyElements(elements []osmElement, lat, lng float64, radiusM int) ([]N
 		}
 	}
 
-	// Convert amenities
+	// Convert amenities — must have a real name; pure-category unnamed nodes
+	// (Restaurant, Convenience Shop, Fire Station…) are dropped.
 	for _, a := range amenities {
+		if a.Tags["name"] == "" {
+			dropAmenities++
+			continue
+		}
 		name := a.Tags["name"]
-		if name == "" {
-			name = generatePOIName(a.Tags)
-		}
-		if seen[name] > 0 && a.Tags["name"] == "" {
-			// Only deduplicate generated names; skip exact duplicate named POIs
-			name = deduplicateName(name, seen)
-		} else if seen[name] > 0 {
+		if seen[name] > 0 {
 			continue // skip duplicate named amenities
-		} else {
-			seen[name]++
 		}
+		seen[name]++
 
 		kind := classifyAmenity(a.Tags)
 		tags := amenityTags(a.Tags)
@@ -258,13 +271,14 @@ func classifyElements(elements []osmElement, lat, lng float64, radiusM int) ([]N
 		}
 	}
 
-	// Convert nature/landuse elements
+	// Convert nature/landuse elements — must have a real name; unnamed
+	// Farmland/Wood/Water drop.
 	for _, n := range nature {
-		name := n.Tags["name"]
-		if name == "" {
-			name = generatePOIName(n.Tags)
+		if n.Tags["name"] == "" {
+			dropNature++
+			continue
 		}
-		name = deduplicateName(name, seen)
+		name := deduplicateName(n.Tags["name"], seen)
 
 		nLat, nLng := wayCenter(n, nodeMap)
 		nodes = append(nodes, Node{
@@ -282,10 +296,41 @@ func classifyElements(elements []osmElement, lat, lng float64, radiusM int) ([]N
 		}
 	}
 
+	keptNames := make([]string, 0, len(nodes))
+	for _, n := range nodes {
+		keptNames = append(keptNames, n.Name)
+	}
+	log.Printf("osm: classify radius=%dm buildings=%d(dropped=%d) amenities=%d(dropped=%d) nature=%d(dropped=%d) roads=%d kept=%d names=%v",
+		radiusM,
+		len(buildings), dropBuildings,
+		len(amenities), dropAmenities,
+		len(nature), dropNature,
+		len(roads), len(nodes), keptNames,
+	)
+
 	return nodes, roads
 }
 
+// keepBuildingUnnamed reports whether a building way without a `name` tag
+// carries enough signal to be worth showing in the discovery list. Unnamed
+// building=yes with no civic amenity is noise; unnamed building=church or
+// building=yes+amenity=fire_station is a real place.
+func keepBuildingUnnamed(tags map[string]string) bool {
+	if b := tags["building"]; b != "" && b != "yes" {
+		return true
+	}
+	switch tags["amenity"] {
+	case "school", "hospital", "fire_station", "police",
+		"place_of_worship", "library", "townhall",
+		"university", "college", "clinic", "courthouse":
+		return true
+	}
+	return false
+}
+
 // generatePOIName creates a display name from OSM tags when no name tag exists.
+// Returns an empty string if no tag yields a meaningful label — callers must
+// handle the empty case (usually by dropping the element).
 func generatePOIName(tags map[string]string) string {
 	if tags["name"] != "" {
 		return tags["name"]
@@ -308,7 +353,7 @@ func generatePOIName(tags map[string]string) string {
 	if v := tags["religion"]; v != "" {
 		return titleCase(v)
 	}
-	return "Building"
+	return ""
 }
 
 // titleCase converts an underscore-separated string to Title Case.
@@ -394,6 +439,41 @@ out body; >; out skel qt;`,
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("parsing overpass response: %w", err)
 	}
+
+	var nodes, ways, waysBuilding, waysHighway, waysNatural, waysLanduse, nodeAmenity, nodeShop int
+	for _, el := range result.Elements {
+		switch el.Type {
+		case "node":
+			nodes++
+			if el.Tags != nil {
+				if el.Tags["amenity"] != "" {
+					nodeAmenity++
+				}
+				if el.Tags["shop"] != "" {
+					nodeShop++
+				}
+			}
+		case "way":
+			ways++
+			if el.Tags != nil {
+				switch {
+				case el.Tags["building"] != "":
+					waysBuilding++
+				case el.Tags["highway"] != "":
+					waysHighway++
+				case el.Tags["natural"] != "" || el.Tags["leisure"] == "park":
+					waysNatural++
+				case el.Tags["landuse"] == "farmland":
+					waysLanduse++
+				}
+			}
+		}
+	}
+	log.Printf("osm: overpass fetch lat=%f lng=%f radius=%dm elements=%d nodes=%d ways=%d ways_building=%d ways_highway=%d ways_natural=%d ways_landuse=%d nodes_amenity=%d nodes_shop=%d",
+		lat, lng, radiusM, len(result.Elements),
+		nodes, ways, waysBuilding, waysHighway, waysNatural, waysLanduse,
+		nodeAmenity, nodeShop,
+	)
 
 	return result.Elements, nil
 }
