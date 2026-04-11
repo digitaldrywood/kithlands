@@ -51,6 +51,14 @@ func ScaleMonster(m *gamedata.Monster, id int, encounterLevel int, diff Difficul
 		str = 1
 	}
 
+	// XP scales with encounter level (+50% per level above tier) and applies
+	// the per-difficulty XPGainMult. Floored at the raw base so low-difficulty
+	// or under-tier encounters never pay less than the JSON value — issue #121.
+	xpReward := int(float64(m.XPReward) * (1.0 + 0.5*float64(levelScale)) * diff.XPGainMult)
+	if xpReward < m.XPReward {
+		xpReward = m.XPReward
+	}
+
 	return &combat.Combatant{
 		ID:          id,
 		Name:        m.Name,
@@ -65,6 +73,7 @@ func ScaleMonster(m *gamedata.Monster, id int, encounterLevel int, diff Difficul
 		CurrentHP:   hp,
 		WeaponPower: 0,
 		ArmorAbsorb: m.ArmorAbsorb,
+		XPReward:    xpReward,
 	}
 }
 

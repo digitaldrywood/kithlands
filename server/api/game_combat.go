@@ -551,9 +551,11 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 		totalXP, totalGold := 0, 0
 		var drops []string
 		for _, e := range g.enemies {
+			// XP comes straight off the scaled combatant — issue #121. Gold
+			// and drops still need the base Monster record.
+			totalXP += e.XPReward
 			for _, m := range g.gd.Monsters {
 				if m.Name == e.Name {
-					totalXP += m.XPReward
 					totalGold += m.GoldReward
 					// Roll drops
 					for _, drop := range m.Drops {
