@@ -84,10 +84,14 @@ export class BattleScene extends Phaser.Scene {
     this.currentMemberIdx = 0;
     this.livingMembers = [];
 
-    // Keyboard targeting state
+    // Keyboard targeting state. `targetingMode` is false when not targeting,
+    // "enemy" when picking an enemy (attack, damage spell), or "party" when
+    // picking an ally (heal, buff, cure-status).
     this.targetingMode = false;
     this.selectedTargetIdx = 0;
+    this.selectedPartyIdx = 0;
     this.livingEnemies = [];
+    this.livingPartyTargets = [];
     this.enemyNumbers = [];
     this.targetHighlight = null;
     this.targetHighlightTween = null;
@@ -249,7 +253,7 @@ export class BattleScene extends Phaser.Scene {
           }
           return;
         }
-        if (this.targetingMode) {
+        if (this.targetingMode === "enemy") {
           // Match the displayed number (1-based position in full enemy list)
           const enemies = this.gameState.enemies;
           if (n < enemies.length && enemies[n].hp > 0) {
@@ -258,31 +262,63 @@ export class BattleScene extends Phaser.Scene {
           }
           return;
         }
+        if (this.targetingMode === "party") {
+          const party = this.gameState.party;
+          if (n < party.length && party[n].hp > 0) {
+            this.exitTargetingMode();
+            this.onPartyClick(n);
+          }
+          return;
+        }
       });
     }
 
     // Arrow keys to cycle targets
     this.input.keyboard.on("keydown-LEFT", () => {
-      if (!this.targetingMode || this.livingEnemies.length === 0) return;
-      this.selectedTargetIdx =
-        (this.selectedTargetIdx - 1 + this.livingEnemies.length) %
-        this.livingEnemies.length;
-      this.updateTargetHighlight();
+      if (this.targetingMode === "enemy" && this.livingEnemies.length > 0) {
+        this.selectedTargetIdx =
+          (this.selectedTargetIdx - 1 + this.livingEnemies.length) %
+          this.livingEnemies.length;
+        this.updateTargetHighlight();
+      } else if (
+        this.targetingMode === "party" &&
+        this.livingPartyTargets.length > 0
+      ) {
+        this.selectedPartyIdx =
+          (this.selectedPartyIdx - 1 + this.livingPartyTargets.length) %
+          this.livingPartyTargets.length;
+        this.updatePartyTargetHighlight();
+      }
     });
 
     this.input.keyboard.on("keydown-RIGHT", () => {
-      if (!this.targetingMode || this.livingEnemies.length === 0) return;
-      this.selectedTargetIdx =
-        (this.selectedTargetIdx + 1) % this.livingEnemies.length;
-      this.updateTargetHighlight();
+      if (this.targetingMode === "enemy" && this.livingEnemies.length > 0) {
+        this.selectedTargetIdx =
+          (this.selectedTargetIdx + 1) % this.livingEnemies.length;
+        this.updateTargetHighlight();
+      } else if (
+        this.targetingMode === "party" &&
+        this.livingPartyTargets.length > 0
+      ) {
+        this.selectedPartyIdx =
+          (this.selectedPartyIdx + 1) % this.livingPartyTargets.length;
+        this.updatePartyTargetHighlight();
+      }
     });
 
     // Enter to confirm target
     this.input.keyboard.on("keydown-ENTER", () => {
-      if (this.targetingMode && this.livingEnemies.length > 0) {
+      if (this.targetingMode === "enemy" && this.livingEnemies.length > 0) {
         const enemy = this.livingEnemies[this.selectedTargetIdx];
         this.exitTargetingMode();
         this.onEnemyClick(enemy.id);
+      } else if (
+        this.targetingMode === "party" &&
+        this.livingPartyTargets.length > 0
+      ) {
+        const member = this.livingPartyTargets[this.selectedPartyIdx];
+        this.exitTargetingMode();
+        this.onPartyClick(member.slot);
       }
     });
 
@@ -471,6 +507,15 @@ export class BattleScene extends Phaser.Scene {
         slot: i,
       };
 
+      if (alive) {
+        sprite.setInteractive({ useHandCursor: true });
+        sprite.on("pointerdown", () => {
+          if (this.targetingMode === "party") {
+            this.onPartyClick(i);
+          }
+        });
+      }
+
       this.add.text(x + 45, y - 18, p.name, {
         fontSize: "11px",
         color: alive ? "#ffffff" : "#666666",
@@ -650,6 +695,22 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
+  onPartyClick(targetSlot) {
+    if (this.animating) return;
+    if (this.targetingMode) this.exitTargetingMode();
+    const slot = this.livingMembers[this.currentMemberIdx];
+
+    if (this.pendingAction === "spell") {
+      this.pendingAction = null;
+      this.recordAction(slot, {
+        slot,
+        type: "spell",
+        target_id: targetSlot,
+        spell_id: this.pendingSpellId,
+      });
+    }
+  }
+
   recordAction(slot, action) {
     const member = this.gameState.party[slot];
     const actionName =
@@ -670,7 +731,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   enterTargetingMode() {
-    this.targetingMode = true;
+    this.targetingMode = "enemy";
     this.livingEnemies = this.gameState.enemies.filter((e) => e.hp > 0);
     this.selectedTargetIdx = 0;
 
@@ -683,11 +744,26 @@ export class BattleScene extends Phaser.Scene {
     this.updateTargetHighlight();
   }
 
+  enterPartyTargetingMode() {
+    this.targetingMode = "party";
+    this.livingPartyTargets = this.gameState.party
+      .map((p, idx) => ({ ...p, slot: idx }))
+      .filter((p) => p.hp > 0);
+    // Default to the caster themselves if they're in the list.
+    const casterSlot = this.livingMembers[this.currentMemberIdx];
+    const casterIdx = this.livingPartyTargets.findIndex(
+      (p) => p.slot === casterSlot,
+    );
+    this.selectedPartyIdx = casterIdx >= 0 ? casterIdx : 0;
+    this.updatePartyTargetHighlight();
+  }
+
   exitTargetingMode() {
     this.targetingMode = false;
     this.livingEnemies = [];
+    this.livingPartyTargets = [];
 
-    // Dim number indicators
+    // Dim enemy number indicators
     for (const en of this.enemyNumbers) {
       en.text.setAlpha(0.3);
     }
@@ -704,7 +780,8 @@ export class BattleScene extends Phaser.Scene {
   }
 
   updateTargetHighlight() {
-    if (!this.targetingMode || this.livingEnemies.length === 0) return;
+    if (this.targetingMode !== "enemy" || this.livingEnemies.length === 0)
+      return;
 
     const enemy = this.livingEnemies[this.selectedTargetIdx];
     const es = this.enemySprites[enemy.id];
@@ -738,6 +815,39 @@ export class BattleScene extends Phaser.Scene {
     // Show the position number from the full enemy list (matches displayed number)
     const fullIdx = this.gameState.enemies.findIndex((e) => e.id === enemy.id);
     this.promptText.setText(`Target: ${enemy.name} [${fullIdx + 1}]`);
+  }
+
+  updatePartyTargetHighlight() {
+    if (this.targetingMode !== "party" || this.livingPartyTargets.length === 0)
+      return;
+
+    const target = this.livingPartyTargets[this.selectedPartyIdx];
+    const ps = this.partySprites[target.name];
+    if (!ps) return;
+
+    if (this.targetHighlightTween) {
+      this.targetHighlightTween.stop();
+      this.targetHighlightTween = null;
+    }
+    if (this.targetHighlight) {
+      this.targetHighlight.destroy();
+    }
+
+    this.targetHighlight = this.add
+      .rectangle(ps.x, ps.y, 60, 60)
+      .setStrokeStyle(2, 0x44ff44)
+      .setFillStyle(0x44ff44, 0.15)
+      .setDepth(9);
+
+    this.targetHighlightTween = this.tweens.add({
+      targets: this.targetHighlight,
+      alpha: { from: 1, to: 0.3 },
+      duration: 500,
+      yoyo: true,
+      repeat: -1,
+    });
+
+    this.promptText.setText(`Target: ${target.name} [${target.slot + 1}]`);
   }
 
   showSpellPicker(slot) {
@@ -790,10 +900,28 @@ export class BattleScene extends Phaser.Scene {
         this.closePicker();
         this.pendingAction = "spell";
         this.pendingSpellId = sp.id;
-        this.enterTargetingMode();
-        this.promptText
-          .setText(`${member.name}: Cast ${sp.name} -- select a target!`)
-          .setColor("#8888ff");
+        const t = sp.target;
+        if (t === "single_ally") {
+          this.enterPartyTargetingMode();
+          this.promptText
+            .setText(`${member.name}: Cast ${sp.name} on an ally`)
+            .setColor("#88ff88");
+        } else if (t === "all_allies" || t === "party") {
+          // No target picker needed -- resolve immediately.
+          this.pendingAction = null;
+          this.recordAction(slot, {
+            slot,
+            type: "spell",
+            target_id: -1,
+            spell_id: sp.id,
+          });
+        } else {
+          // single_enemy, all_enemies (or missing target field): enemy picker.
+          this.enterTargetingMode();
+          this.promptText
+            .setText(`${member.name}: Cast ${sp.name} -- select a target!`)
+            .setColor("#8888ff");
+        }
       };
 
       this.pickerItems.push({ action: selectSpell });

@@ -35,12 +35,17 @@ type Combatant struct {
 	Size      string // small, medium, large, boss
 }
 
-// CombatBuff is a short-duration damage multiplier applied to a combatant.
+// CombatBuff is a short-duration stat bonus applied to a combatant.
 // DamageMult is expressed as a percentage (100 = unchanged, 150 = +50%).
+// HitPctBonus and ArmorAbsorbBonus are flat additions; ArmorAbsorbMult is a
+// percentage multiplier (100 = unchanged, 200 = doubled) used by Aegis.
 type CombatBuff struct {
-	Kind       string
-	DamageMult int
-	TurnsLeft  int
+	Kind             string
+	DamageMult       int
+	HitPctBonus      int
+	ArmorAbsorbBonus int
+	ArmorAbsorbMult  int
+	TurnsLeft        int
 }
 
 // Action represents a combat action chosen by a combatant.
@@ -332,16 +337,44 @@ func damageMultiplier(c *Combatant) int {
 	return mult
 }
 
+// EffectiveHitPct returns base HitPct plus any flat bonuses from active buffs.
+func EffectiveHitPct(c *Combatant) int {
+	pct := c.HitPct
+	for _, b := range c.Buffs {
+		pct += b.HitPctBonus
+	}
+	return pct
+}
+
+// EffectiveArmorAbsorb returns base armor absorb with multiplicative buffs
+// applied first (Aegis doubles armor) and additive bonuses added on top.
+func EffectiveArmorAbsorb(c *Combatant) int {
+	armor := c.ArmorAbsorb
+	mult := 100
+	bonus := 0
+	for _, b := range c.Buffs {
+		if b.ArmorAbsorbMult > mult {
+			mult = b.ArmorAbsorbMult
+		}
+		bonus += b.ArmorAbsorbBonus
+	}
+	if mult != 100 {
+		armor = armor * mult / 100
+	}
+	return armor + bonus
+}
+
 // resolveAttack implements the damage formula from Section 6.2.
 func resolveAttack(attacker, defender *Combatant, stats *gamedata.CombatConfig, rng *rand.Rand) ResolvedAction {
-	numHits := 1 + attacker.HitPct/32
+	attackerHitPct := EffectiveHitPct(attacker)
+	numHits := 1 + attackerHitPct/32
 
 	var hits []Hit
 	totalDmg := 0
 
 	for i := 0; i < numHits; i++ {
 		// Hit check per Section 6.3
-		toHit := stats.BaseHitChance + attacker.HitPct - defender.AGI*2
+		toHit := stats.BaseHitChance + attackerHitPct - defender.AGI*2
 		roll := rng.IntN(100) + 1
 		if roll > toHit {
 			hits = append(hits, Hit{Missed: true})
@@ -357,7 +390,7 @@ func resolveAttack(attacker, defender *Combatant, stats *gamedata.CombatConfig, 
 		if mult := damageMultiplier(attacker); mult != 100 {
 			baseDamage = baseDamage * mult / 100
 		}
-		mitigation := defender.ArmorAbsorb
+		mitigation := EffectiveArmorAbsorb(defender)
 		dmg := baseDamage - mitigation + rng.IntN(max(1, baseDamage/2)+1)
 		if dmg < stats.MinDamagePerHit {
 			dmg = stats.MinDamagePerHit
@@ -408,7 +441,7 @@ func resolveBackstab(attacker, defender *Combatant, stats *gamedata.CombatConfig
 	}
 	baseDamage *= 3
 
-	mitigation := defender.ArmorAbsorb
+	mitigation := EffectiveArmorAbsorb(defender)
 	dmg := baseDamage - mitigation + rng.IntN(max(1, baseDamage/2)+1)
 	if dmg < stats.MinDamagePerHit {
 		dmg = stats.MinDamagePerHit

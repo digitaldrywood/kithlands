@@ -220,6 +220,7 @@ type Monster struct {
 	Tier            int          `json:"tier"`
 	Size            string       `json:"size"` // small, medium, large, boss
 	IsBoss          bool         `json:"is_boss"`
+	IsUndead        bool         `json:"is_undead,omitempty"`
 	Stats           MonsterStats `json:"stats"`
 	HP              int          `json:"hp"`
 	ArmorAbsorb     int          `json:"armor_absorb"`

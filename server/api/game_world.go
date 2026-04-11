@@ -59,6 +59,7 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 		g.enemies = result.Combatants
 		g.formation = result.Layout
 		g.phase = "combat"
+		g.spellBuffs = nil
 
 		// Track discovered monsters
 		if g.discovered == nil {
@@ -153,6 +154,7 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 		g.enemies = result.Combatants
 		g.formation = result.Layout
 		g.phase = "combat"
+		g.spellBuffs = nil
 		g.logCombat("Enemies appear!", CombatActionEntry{Kind: "info"})
 		for _, e := range g.enemies {
 			g.logCombat(fmt.Sprintf("  %s (HP: %d)", e.Name, e.MaxHP), CombatActionEntry{Kind: "info"})
@@ -215,7 +217,7 @@ func (g *Game) makeCombatants() []*combat.Combatant {
 		if cls.BareHand != nil {
 			bareHand = cls.BareHand.BaseDamage + c.Level*c.STR/2
 		}
-		result = append(result, &combat.Combatant{
+		cb := &combat.Combatant{
 			ID: i, Name: c.Name, IsPlayer: true,
 			STR: c.STR, AGI: c.AGI, INT: c.INT, VIT: c.VIT, LCK: c.LCK,
 			HitPct: c.HitPct, MaxHP: c.MaxHP, CurrentHP: c.CurrentHP,
@@ -223,7 +225,11 @@ func (g *Game) makeCombatants() []*combat.Combatant {
 			WeaponPower:    g.inv.WeaponPower(i, g.gd),
 			ArmorAbsorb:    g.inv.TotalAbsorb(i, g.gd),
 			BareHandDamage: bareHand,
-		})
+		}
+		if buffs, ok := g.spellBuffs[i]; ok {
+			cb.Buffs = append(cb.Buffs, buffs...)
+		}
+		result = append(result, cb)
 	}
 	return result
 }

@@ -170,6 +170,8 @@ type PartyMemberState struct {
 type SpellState struct {
 	ID      string `json:"id"`
 	Name    string `json:"name"`
+	Target  string `json:"target"`
+	Effect  string `json:"effect"`
 	Charges int    `json:"charges"`
 }
 
@@ -244,6 +246,7 @@ type Game struct {
 	currentQ   int
 	phase      string // world, combat, quest_complete, victory, defeat
 	enemies    []*combat.Combatant
+	spellBuffs map[int][]combat.CombatBuff // slot -> buffs active for current encounter
 	combatLog     []string
 	combatActions []CombatActionEntry
 	message    string
@@ -382,6 +385,8 @@ func (g *Game) buildPartyMemberState(c *character.Character) PartyMemberState {
 					pm.Spells = append(pm.Spells, SpellState{
 						ID:      sid,
 						Name:    sp.Name,
+						Target:  sp.Target,
+						Effect:  sp.Effect,
 						Charges: sb.Charges[lvl],
 					})
 				}
