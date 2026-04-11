@@ -15,8 +15,8 @@ func TestTransportInNewGame(t *testing.T) {
 	if state.Transport.CurrentTier != "T1" {
 		t.Errorf("transport tier: got %s, want T1", state.Transport.CurrentTier)
 	}
-	if state.Transport.TierName != "Foot" {
-		t.Errorf("transport name: got %s, want Foot", state.Transport.TierName)
+	if state.Transport.TierName != "On foot" {
+		t.Errorf("transport name: got %s, want On foot", state.Transport.TierName)
 	}
 	if state.Transport.EncounterMult != 1.0 {
 		t.Errorf("encounter rate: got %f, want 1.0", state.Transport.EncounterMult)
