@@ -40,16 +40,20 @@ func findSpellTarget(t *testing.T, state *api.GameState, memberSlot int, spellID
 }
 
 // TestSpellStateExposesTargetAndEffect verifies the client receives the
-// spell.target and spell.effect fields it needs to route targeting.
+// spell.target, spell.effect, and castable_in_combat fields it needs to
+// route targeting and grey out non-combat spells.
 func TestSpellStateExposesTargetAndEffect(t *testing.T) {
 	game := newGameWithParty(t, menderParty())
+	api.TeachSpellForTest(game, 0, "resurrect", 4) // utility, single_ally
 	state := game.State()
 
-	var cure *api.SpellState
+	var cure, resurrect *api.SpellState
 	for i := range state.Party[0].Spells {
-		if state.Party[0].Spells[i].ID == "cure" {
+		switch state.Party[0].Spells[i].ID {
+		case "cure":
 			cure = &state.Party[0].Spells[i]
-			break
+		case "resurrect":
+			resurrect = &state.Party[0].Spells[i]
 		}
 	}
 	if cure == nil {
@@ -60,6 +64,15 @@ func TestSpellStateExposesTargetAndEffect(t *testing.T) {
 	}
 	if cure.Effect != "heal" {
 		t.Errorf("cure.Effect = %q, want heal", cure.Effect)
+	}
+	if !cure.Castable {
+		t.Errorf("cure.Castable = false, want true (heal effect is dispatchable)")
+	}
+	if resurrect == nil {
+		t.Fatalf("resurrect should be teachable")
+	}
+	if resurrect.Castable {
+		t.Errorf("resurrect.Castable = true, want false (utility effect has no combat handler)")
 	}
 }
 

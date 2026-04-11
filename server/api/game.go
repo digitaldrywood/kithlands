@@ -168,11 +168,12 @@ type PartyMemberState struct {
 }
 
 type SpellState struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Target  string `json:"target"`
-	Effect  string `json:"effect"`
-	Charges int    `json:"charges"`
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Target   string `json:"target"`
+	Effect   string `json:"effect"`
+	Charges  int    `json:"charges"`
+	Castable bool   `json:"castable_in_combat"`
 }
 
 type EnemyState struct {
@@ -383,11 +384,12 @@ func (g *Game) buildPartyMemberState(c *character.Character) PartyMemberState {
 				sp := g.gd.SpellByID(sid)
 				if sp != nil {
 					pm.Spells = append(pm.Spells, SpellState{
-						ID:      sid,
-						Name:    sp.Name,
-						Target:  sp.Target,
-						Effect:  sp.Effect,
-						Charges: sb.Charges[lvl],
+						ID:       sid,
+						Name:     sp.Name,
+						Target:   sp.Target,
+						Effect:   sp.Effect,
+						Charges:  sb.Charges[lvl],
+						Castable: isCombatCastableEffect(sp.Effect),
 					})
 				}
 			}

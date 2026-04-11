@@ -9,6 +9,20 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/magic"
 )
 
+// isCombatCastableEffect is the single source of truth for which spell
+// effects the combat dispatch switch in processCombatAction handles. The
+// SpellState builder uses this to surface a "castable_in_combat" flag so
+// the client can grey out / reject utility-only spells (Light, Resurrect)
+// without hardcoding its own list. Keep in sync with the switch on
+// spell.Effect in processCombatAction.
+func isCombatCastableEffect(effect string) bool {
+	switch effect {
+	case "damage", "heal", "buff", "status", "cure_status":
+		return true
+	}
+	return false
+}
+
 // toHitEntries converts internal combat.Hit slices to the API-facing CombatHitEntry type.
 func toHitEntries(hits []combat.Hit) []CombatHitEntry {
 	if len(hits) == 0 {
