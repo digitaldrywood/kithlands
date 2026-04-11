@@ -148,6 +148,117 @@ func TeachSpellForTest(g *Game, slot int, spellID string, spellLevel int) {
 	c.CurrentMP = c.MaxMP
 }
 
+// SetEncounterStartForTest overrides the current encounter's start outcome
+// and resets the round counter so combat tests can deterministically exercise
+// the preemptive/ambush first-round paths without fighting RNG.
+func SetEncounterStartForTest(g *Game, s combat.EncounterStart) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.encounterStart = s
+	g.combatRound = 0
+}
+
+// EncounterStartForTest returns the encounter-start marker currently on the
+// Game. Used by tests to assert that combat-exit paths reset the state.
+func EncounterStartForTest(g *Game) combat.EncounterStart {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.encounterStart
+}
+
+// CombatRoundForTest returns the current round counter. Used alongside
+// SetEncounterStartForTest to verify that round gating releases after round 1.
+func CombatRoundForTest(g *Game) int {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.combatRound
+}
+
+// EnemyHPForTest returns the total HP of live enemies. Used to assert that
+// preemptive first rounds leave enemies unharmed or that ambush first rounds
+// spare them.
+func EnemyHPForTest(g *Game) int {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	total := 0
+	for _, e := range g.enemies {
+		if e.CurrentHP > 0 {
+			total += e.CurrentHP
+		}
+	}
+	return total
+}
+
+// PartyTotalHPForTest returns the summed HP of the party. Used symmetrically
+// to EnemyHPForTest for ambush/preemptive assertions.
+func PartyTotalHPForTest(g *Game) int {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	total := 0
+	for _, c := range g.party {
+		if c.CurrentHP > 0 {
+			total += c.CurrentHP
+		}
+	}
+	return total
+}
+
+// ReplaceEnemiesScaledForTest installs a deterministic enemy team. Similar
+// to ReplaceEnemiesForTest but lets the test pass its own ID list so we can
+// stage multi-enemy ambush/preemptive fights.
+func ReplaceEnemiesScaledForTest(g *Game, monsterIDs []string, level int) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.enemies = g.enemies[:0]
+	for _, id := range monsterIDs {
+		for i := range g.gd.Monsters {
+			m := &g.gd.Monsters[i]
+			if m.ID != id {
+				continue
+			}
+			c := balance.ScaleMonster(m, level, 1, g.diff)
+			c.MonsterID = m.ID
+			c.Size = m.Size
+			g.enemies = append(g.enemies, c)
+			break
+		}
+	}
+}
+
+// ApplyStatusToEnemyForTest marks enemy 0 with the given status so poison-tick
+// assertions can fire on a single known target.
+func ApplyStatusToEnemyForTest(g *Game, status character.Status) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if len(g.enemies) > 0 {
+		g.enemies[0].Status = status
+	}
+}
+
+// ApplyStatusToPartyForTest marks the party member at slot with the given
+// status so ambush-poison-tick assertions can fire deterministically.
+func ApplyStatusToPartyForTest(g *Game, slot int, status character.Status) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if slot >= 0 && slot < len(g.party) {
+		g.party[slot].Status = status
+	}
+}
+
+// EnterCombatForTest forces the game into a combat phase with a single
+// deterministic encounter. Bypasses the random roll by clearing the start
+// marker and round counter; tests should follow up with
+// SetEncounterStartForTest to pick the outcome under test.
+func EnterCombatForTest(g *Game, monsterIDs []string, level int) {
+	ReplaceEnemiesScaledForTest(g, monsterIDs, level)
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.phase = "combat"
+	g.spellBuffs = nil
+	g.encounterStart = combat.EncounterStartNormal
+	g.combatRound = 0
+}
+
 // CastBuffSpellLiveBuffsForTest exercises resolveBuffSpell against a fresh
 // combatants slice (mirroring makeCombatants) and returns the live buffs on
 // the target combatant. Used to verify a recast replaces the existing live

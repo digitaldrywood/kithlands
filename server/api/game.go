@@ -104,6 +104,9 @@ type GameState struct {
 	Party     []PartyMemberState  `json:"party"`
 	Enemies   []EnemyState        `json:"enemies,omitempty"`
 	Formation string              `json:"formation,omitempty"`
+	// EncounterStart is "preemptive" or "ambush" when the current encounter
+	// started with one side getting a free first round. Empty for normal.
+	EncounterStart string         `json:"encounter_start,omitempty"`
 	Quests    []QuestState        `json:"quests"`
 	CurrentQ  int                 `json:"current_quest"`
 	Gold      int                 `json:"gold"`
@@ -292,6 +295,12 @@ type Game struct {
 	discovered   map[string]bool // bestiary: monster IDs encountered
 	visitedNodes map[string]bool // node IDs the player has entered (sequence-break tracking)
 	formation  string             // current encounter layout type
+	// encounterStart records preemptive/ambush state for the current fight so
+	// the first call to ResolveTurn can skip one side's actions.
+	encounterStart combat.EncounterStart
+	// combatRound is 0 until the first ResolveTurn completes; used to gate
+	// the first-round side-skip enforced by encounterStart.
+	combatRound      int
 	promotionOffered bool        // midpoint promotion has already fired
 	trans      *transport.State   // current transport tier & unlocks
 	mu         sync.Mutex
@@ -335,6 +344,9 @@ func (g *Game) State() GameState {
 	}
 	if g.phase == "combat" {
 		state.Formation = g.formation
+		if g.encounterStart != combat.EncounterStartNormal {
+			state.EncounterStart = string(g.encounterStart)
+		}
 	}
 
 	for _, q := range g.quests {
@@ -544,6 +556,9 @@ func (g *Game) stateUnlocked() GameState {
 	}
 	if g.phase == "combat" {
 		state.Formation = g.formation
+		if g.encounterStart != combat.EncounterStartNormal {
+			state.EncounterStart = string(g.encounterStart)
+		}
 	}
 	for _, q := range g.quests {
 		state.Quests = append(state.Quests, QuestState{
@@ -597,4 +612,44 @@ func (g *Game) buildTransportInfo() TransportInfo {
 func (g *Game) logCombat(text string, action CombatActionEntry) {
 	g.combatLog = append(g.combatLog, text)
 	g.combatActions = append(g.combatActions, action)
+}
+
+// resetEncounterStartState clears the preemptive/ambush marker and round
+// counter. Called at every combat-exit point (victory, defeat, successful
+// flee) so the next encounter starts clean.
+func (g *Game) resetEncounterStartState() {
+	g.encounterStart = combat.EncounterStartNormal
+	g.combatRound = 0
+}
+
+// rollEncounterStartForNewFight resets the round counter and picks the
+// preemptive/ambush/normal outcome for a freshly-generated encounter. AGI
+// averages use only living combatants so a poisoned-down party or a softened
+// enemy group still biases the roll sensibly. Must be called after g.enemies
+// is populated.
+func (g *Game) rollEncounterStartForNewFight() {
+	g.combatRound = 0
+	partyAGIs := make([]int, 0, len(g.party))
+	for _, c := range g.party {
+		if c != nil && c.CurrentHP > 0 {
+			partyAGIs = append(partyAGIs, c.AGI)
+		}
+	}
+	enemyAGIs := make([]int, 0, len(g.enemies))
+	for _, e := range g.enemies {
+		if e != nil && e.CurrentHP > 0 {
+			enemyAGIs = append(enemyAGIs, e.AGI)
+		}
+	}
+	g.encounterStart = combat.RollEncounterStart(
+		combat.AverageAGI(partyAGIs),
+		combat.AverageAGI(enemyAGIs),
+		g.rng,
+	)
+	switch g.encounterStart {
+	case combat.EncounterStartPreemptive:
+		g.logCombat("Preemptive strike!", CombatActionEntry{Kind: "info"})
+	case combat.EncounterStartAmbush:
+		g.logCombat("Ambushed!", CombatActionEntry{Kind: "info"})
+	}
 }

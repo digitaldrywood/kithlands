@@ -63,6 +63,7 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 		g.formation = result.Layout
 		g.phase = "combat"
 		g.spellBuffs = nil
+		g.rollEncounterStartForNewFight()
 
 		// Track discovered monsters
 		if g.discovered == nil {
@@ -166,6 +167,7 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 		g.formation = result.Layout
 		g.phase = "combat"
 		g.spellBuffs = nil
+		g.rollEncounterStartForNewFight()
 		g.logCombat("Enemies appear!", CombatActionEntry{Kind: "info"})
 		for _, e := range g.enemies {
 			g.logCombat(fmt.Sprintf("  %s (HP: %d)", e.Name, e.MaxHP), CombatActionEntry{Kind: "info"})

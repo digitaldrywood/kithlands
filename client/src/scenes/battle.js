@@ -188,10 +188,117 @@ export class BattleScene extends Phaser.Scene {
       });
       this.time.delayedCall(1000, () => {
         this.animating = false;
-        this.showCurrentMemberTurn();
+        this.startTurnOrBanner();
       });
     } else {
+      this.startTurnOrBanner();
+    }
+  }
+
+  // startTurnOrBanner routes the post-intro flow based on encounter_start.
+  // Preemptive: show banner, then hand control to the player (enemies skip).
+  // Ambush: show banner, then auto-submit a wait turn (party skips).
+  // Normal: go straight to player input.
+  startTurnOrBanner() {
+    const kind = this.gameState?.encounter_start || "";
+    if (kind !== "preemptive" && kind !== "ambush") {
       this.showCurrentMemberTurn();
+      return;
+    }
+    this.animating = true;
+    this.showEncounterStartBanner(kind, () => {
+      this.animating = false;
+      if (kind === "ambush") {
+        this.submitWaitAction();
+      } else {
+        this.showCurrentMemberTurn();
+      }
+    });
+  }
+
+  // showEncounterStartBanner renders a one-shot full-screen banner declaring
+  // the surprise outcome. Clones the boss-intro structure: dim overlay,
+  // Back.easeOut zoom-in text, hold, fade. Gold/triumphant for preemptive,
+  // red/alarm for ambush. Fires onComplete after ~1.2s.
+  showEncounterStartBanner(kind, onComplete) {
+    const isPreemptive = kind === "preemptive";
+    const label = isPreemptive ? "PREEMPTIVE STRIKE!" : "AMBUSHED!";
+    const color = isPreemptive ? "#ffcc00" : "#ff4444";
+    const stroke = isPreemptive ? "#442200" : "#440000";
+
+    const overlay = this.add
+      .rectangle(400, 300, 800, 600, 0x000000, 0.6)
+      .setDepth(9000);
+    const text = this.add
+      .text(400, 300, label, {
+        fontFamily: "monospace",
+        fontSize: "40px",
+        color,
+        stroke,
+        strokeThickness: 6,
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5)
+      .setDepth(9001)
+      .setScale(0.3)
+      .setAlpha(0);
+
+    this.cameras.main.shake(
+      isPreemptive ? 180 : 320,
+      isPreemptive ? 0.006 : 0.012,
+    );
+
+    this.tweens.add({
+      targets: text,
+      scale: 1,
+      alpha: 1,
+      duration: 350,
+      ease: "Back.easeOut",
+      onComplete: () => {
+        this.time.delayedCall(700, () => {
+          this.tweens.add({
+            targets: [text, overlay],
+            alpha: 0,
+            duration: 250,
+            onComplete: () => {
+              text.destroy();
+              overlay.destroy();
+              if (onComplete) onComplete();
+            },
+          });
+        });
+      },
+    });
+  }
+
+  // submitWaitAction posts a server-authoritative "wait" turn so the party
+  // sits out round 1 of an ambush. Server runs enemy actions only.
+  async submitWaitAction() {
+    this.animating = true;
+    this.promptText.setText("You have been ambushed...").setColor("#ff4444");
+    try {
+      const result = await gameAction(this.gameState.id, { type: "wait" });
+      if (result.error) {
+        console.error("[Battle] wait error:", result.error);
+        this.animating = false;
+        return;
+      }
+      const log = result.combat_log || [];
+      const actions = result.combat_actions || [];
+      await this.animateCombatLog(log, actions);
+      await this.reconcileEnemySprites(result.enemies || []);
+      this.gameState = result;
+      this.time.delayedCall(400, () => {
+        this.animating = false;
+        if (this.gameState.phase !== "combat") {
+          this.showVictoryResults(this.gameState);
+        } else {
+          this.scene.restart({ gameState: this.gameState });
+        }
+      });
+    } catch (e) {
+      console.error("[Battle] wait failed:", e);
+      this.animating = false;
     }
   }
 
