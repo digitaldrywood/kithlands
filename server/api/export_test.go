@@ -53,18 +53,6 @@ func GiveItemForTest(g *Game, id string, n int) {
 	g.inv.Consumables[id] += n
 }
 
-// RevivePartyMemberForTest simulates a mid-combat revive (Phoenix Down, raise
-// spell, etc.) by setting the member to 1 HP with no status. The in-game
-// Phoenix Down path at game_combat.go:112 has a sync-back bug that overwrites
-// this mutation from the combatants snapshot; tests that only need to verify
-// "alive at victory gets XP" should use this helper to bypass it.
-func RevivePartyMemberForTest(g *Game, idx int) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	g.party[idx].CurrentHP = 1
-	g.party[idx].Status = character.StatusNone
-}
-
 // ClearQuestsForTest advances currentQ past the end of g.quests so a subsequent
 // combat victory skips the quest-reward branch entirely and only exercises the
 // monster-XP distribution path. Exposed only for tests.

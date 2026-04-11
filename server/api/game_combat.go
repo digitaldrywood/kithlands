@@ -67,6 +67,14 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 	// Build party actions from per-member actions if provided
 	var actions []combat.Action
 
+	// Revives (Phoenix Down / raise) that fire during the per-member loop.
+	// We deliberately do NOT mutate combatants[targetIdx] — that would let a
+	// dead member's own queued action slip into ResolveTurn this round, which
+	// breaks JRPG convention ("revived allies sit out the turn they're
+	// revived on"). Instead we record the revive here and re-apply it to
+	// g.party AFTER the end-of-round sync-back below.
+	var revivedThisTurn []bool
+
 	if len(req.Actions) > 0 {
 		// Per-member actions from client
 		for _, ma := range req.Actions {
@@ -110,26 +118,36 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 				continue
 
 			case "revive":
-				// Use Phoenix Down on dead party member
-				if g.inv.Consumables["phoenix_down"] > 0 {
-					targetIdx := ma.TargetID
-					if targetIdx >= 0 && targetIdx < len(g.party) && !g.party[targetIdx].IsAlive() {
-						g.inv.Consumables["phoenix_down"]--
-						g.party[targetIdx].CurrentHP = 1
-						g.party[targetIdx].Status = character.StatusNone
-						// Mirror the revive on the combat-round combatant so the
-						// end-of-round sync-back (see "Sync HP back" below) does
-						// not overwrite the revived HP/status from the stale
-						// pre-turn snapshot.
-						if targetIdx < len(combatants) {
-							combatants[targetIdx].CurrentHP = 1
-							combatants[targetIdx].Status = character.StatusNone
-						}
-						g.logCombat(
-							fmt.Sprintf("%s uses Phoenix Down on %s - revived with 1 HP!",
-								g.party[ma.Slot].Name, g.party[targetIdx].Name),
-							CombatActionEntry{Kind: "item", ActorID: pc.ID, ActorName: g.party[ma.Slot].Name, TargetID: targetIdx, TargetName: g.party[targetIdx].Name})
+				// Use Phoenix Down on dead party member. We only record the
+				// revive here; the actual HP/status mutation happens AFTER
+				// ResolveTurn's sync-back loop. See the matching apply block
+				// below. This keeps combatants[targetIdx] dead during the
+				// current round so (a) the revived member cannot act this
+				// round, matching JRPG convention, and (b) no subsequent
+				// per-member action for that slot can slip through the
+				// "pc.CurrentHP <= 0" guard at the top of this loop.
+				if g.inv.Consumables["phoenix_down"] <= 0 {
+					continue
+				}
+				targetIdx := ma.TargetID
+				if targetIdx < 0 || targetIdx >= len(g.party) {
+					continue
+				}
+				if !g.party[targetIdx].IsAlive() {
+					if len(revivedThisTurn) == 0 {
+						revivedThisTurn = make([]bool, len(g.party))
 					}
+					// Guard against double-consumption if the client queues
+					// two revives targeting the same slot in one round.
+					if revivedThisTurn[targetIdx] {
+						continue
+					}
+					g.inv.Consumables["phoenix_down"]--
+					revivedThisTurn[targetIdx] = true
+					g.logCombat(
+						fmt.Sprintf("%s uses Phoenix Down on %s - revived with 1 HP!",
+							g.party[ma.Slot].Name, g.party[targetIdx].Name),
+						CombatActionEntry{Kind: "item", ActorID: pc.ID, ActorName: g.party[ma.Slot].Name, TargetID: targetIdx, TargetName: g.party[targetIdx].Name})
 				}
 				continue
 
@@ -471,6 +489,17 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 	for i, pc := range combatants {
 		g.party[i].CurrentHP = pc.CurrentHP
 		g.party[i].Status = pc.Status
+	}
+	// Apply mid-round revives AFTER the sync-back. A revived member sat out
+	// ResolveTurn (their combatant stayed dead), so the sync-back just wrote
+	// 0 HP / StatusDeath back to g.party[i] — we replace that with the
+	// revived state here so the victory/quest XP loop below sees them as
+	// IsAlive() and they correctly share in the reward.
+	for i, revived := range revivedThisTurn {
+		if revived {
+			g.party[i].CurrentHP = 1
+			g.party[i].Status = character.StatusNone
+		}
 	}
 
 	if combat.CheckVictory(g.enemies) {

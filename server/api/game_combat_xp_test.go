@@ -88,24 +88,37 @@ func TestVictoryXPForPhoenixRevivedMember(t *testing.T) {
 	// convention and keeps the server rule simple: "eligible == IsAlive() at
 	// the moment XP is distributed".
 	//
-	// This test bypasses the in-game Phoenix Down action because that path
-	// has an unrelated sync-back bug at game_combat.go:463-466 (combatants
-	// snapshot overwrites the revive) — out of scope for issue #68. What we
-	// care about is the rule at the XP-distribution site, which we exercise
-	// by reviving via a test helper and then forcing victory.
+	// Exercises the real in-game revive path at game_combat.go:112 (not a
+	// test helper) so we actually cover the mid-round revive → sync-back →
+	// victory pipeline end to end.
 	game := newGameWithParty(t, []api.PartyMemberReq{
 		{Name: "Hero", ClassID: "warrior"},
 		{Name: "Mage", ClassID: "cinder"},
 	})
 	enterCombat(t, game)
+	api.GiveItemForTest(game, "phoenix_down", 1)
 
 	xpMageBefore := api.PartyXPForTest(game, 1)
 	api.KillPartyMemberForTest(game, 1)
-	api.RevivePartyMemberForTest(game, 1) // simulates successful Phoenix Down
+
+	// Round 1 — Hero uses Phoenix Down on Mage. Mage is dead at the start
+	// of the round and per JRPG convention sits out this turn (see
+	// TestReviveDoesNotAllowSameRoundAction below). After the round, Mage
+	// should be alive at 1 HP.
+	if _, err := game.ProcessAction(api.GameActionRequest{
+		Type: "combat_round",
+		Actions: []api.MemberActionReq{
+			{Slot: 0, Type: "revive", TargetID: 1},
+		},
+	}); err != nil {
+		t.Fatalf("revive combat round: %v", err)
+	}
 	if hp := api.PartyHPForTest(game, 1); hp <= 0 {
-		t.Fatalf("precondition: revive helper failed, hp=%d", hp)
+		t.Fatalf("precondition: in-game revive did not persist, hp=%d", hp)
 	}
 
+	// Round 2 — force the victory so the XP block runs. Mage is alive now
+	// (revived) and must share in the XP reward.
 	api.ForceVictoryForTest(game)
 
 	if got := api.PartyXPForTest(game, 1); got <= xpMageBefore {
@@ -114,6 +127,59 @@ func TestVictoryXPForPhoenixRevivedMember(t *testing.T) {
 	state := game.State()
 	if state.DiedThisFight[1] {
 		t.Errorf("died_this_fight[1] should be false for a member revived before victory")
+	}
+}
+
+func TestReviveDoesNotAllowSameRoundAction(t *testing.T) {
+	// Regression guard for the revive sync-back rewrite. Prior to this fix,
+	// an attempt to persist the revive across the end-of-round combatants→
+	// party sync-back by mirroring onto combatants[targetIdx] had the side
+	// effect of making the dead member's combatant look alive mid-loop,
+	// which let a queued action for that slot slip past the
+	// "pc.CurrentHP <= 0" guard and be executed in the same round. JRPG
+	// convention (and every prior version of this code) has a Phoenix
+	// Down'd ally sit out the round they're revived on.
+	game := newGameWithParty(t, []api.PartyMemberReq{
+		{Name: "Hero", ClassID: "warrior"},
+		{Name: "Mage", ClassID: "cinder"},
+	})
+	enterCombat(t, game)
+	api.GiveItemForTest(game, "phoenix_down", 1)
+	api.KillPartyMemberForTest(game, 1)
+
+	state := game.State()
+	if len(state.Enemies) == 0 {
+		t.Fatal("expected enemies in encounter")
+	}
+	enemyID := state.Enemies[0].ID
+
+	// Client submits: slot 0 revives slot 1, slot 1 ALSO tries to attack
+	// the enemy in the same round. The server must silently drop the
+	// attack — Mage is dead at the start of the round.
+	if _, err := game.ProcessAction(api.GameActionRequest{
+		Type: "combat_round",
+		Actions: []api.MemberActionReq{
+			{Slot: 0, Type: "revive", TargetID: 1},
+			{Slot: 1, Type: "attack", TargetID: enemyID},
+		},
+	}); err != nil {
+		t.Fatalf("combat round: %v", err)
+	}
+
+	// Mage must be alive (revive fired) but must NOT have acted.
+	if hp := api.PartyHPForTest(game, 1); hp != 1 {
+		t.Errorf("revived member should be at 1 HP, got %d", hp)
+	}
+
+	state = game.State()
+	for _, act := range state.CombatActions {
+		if act.ActorName != "Mage" {
+			continue
+		}
+		switch act.Kind {
+		case "attack", "ability", "spell", "counter", "confusion":
+			t.Errorf("Mage must not act the turn she was revived, got action: %+v", act)
+		}
 	}
 }
 
