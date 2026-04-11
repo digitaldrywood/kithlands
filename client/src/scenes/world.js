@@ -178,7 +178,13 @@ export class WorldScene extends Phaser.Scene {
       )
       .setDepth(10)
       .setScale(
-        (RENDERED_TILE / Math.max(this.textures.get(`player_${this.playerDir}`).getSourceImage().width, 1)) * SCALE,
+        (RENDERED_TILE /
+          Math.max(
+            this.textures.get(`player_${this.playerDir}`).getSourceImage()
+              .width,
+            1,
+          )) *
+          SCALE,
       );
 
     // Vehicle indicator circle behind player (T2+)
