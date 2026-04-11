@@ -18,6 +18,13 @@ type RunOptions struct {
 
 	// Difficulty is the difficulty id (normal, hard, etc). Empty = normal.
 	Difficulty string
+
+	// EncounterRollsPerQuest is how many {type:"encounter"} actions the sim
+	// injects between each strategy-issued quest_advance. Models the 6-12
+	// fights a real walk from town to town produces via the client's
+	// step-based rolls in world.js. Zero falls back to the default; pass -1
+	// to explicitly disable (legacy teleport-only path for tests).
+	EncounterRollsPerQuest int
 }
 
 // DefaultRunOptions returns the standard options used by main and the tests.
@@ -30,7 +37,8 @@ func DefaultRunOptions() RunOptions {
 			{Name: "Paladine", ClassID: "mender"},
 			{Name: "Shadow", ClassID: "rogue"},
 		},
-		Difficulty: "normal",
+		Difficulty:             "normal",
+		EncounterRollsPerQuest: 8,
 	}
 }
 
@@ -46,6 +54,12 @@ func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strat Strategy,
 	}
 	if opts.Difficulty == "" {
 		opts.Difficulty = "normal"
+	}
+	if opts.EncounterRollsPerQuest == 0 {
+		opts.EncounterRollsPerQuest = DefaultRunOptions().EncounterRollsPerQuest
+	}
+	if opts.EncounterRollsPerQuest < 0 {
+		opts.EncounterRollsPerQuest = 0
 	}
 
 	gm := api.NewGameManager(gd, sharedDir)
@@ -77,6 +91,13 @@ func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strat Strategy,
 	questsSeen := len(state.Quests)
 	result.LevelsAtQuestComplete = make([]int, questsSeen)
 	prevQuestIdx := state.CurrentQ
+	// pendingRolls gates how many {type:"encounter"} actions still remain on
+	// the current walking beat. Refilled whenever CurrentQ increments (a
+	// real quest advanced, triggering a fresh walk to the next target).
+	// Note: the server also uses phase="quest_complete" as a post-combat
+	// victory-screen state, so we cannot refill on phase transitions alone.
+	pendingRolls := opts.EncounterRollsPerQuest
+	walkedQuestIdx := state.CurrentQ
 
 	for turn := 0; turn < opts.MaxTurns; turn++ {
 		result.TurnsElapsed = turn + 1
@@ -95,6 +116,17 @@ func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strat Strategy,
 				key = "normal"
 			}
 			result.EncounterStarts[key]++
+			result.EncountersTriggered++
+		}
+
+		// Refill walking rolls at the start of each overworld leg. A leg
+		// starts when CurrentQ advances — i.e. the bot just completed a
+		// quest and is now walking to the next target. Refilling on phase
+		// transitions does NOT work: the server uses phase="quest_complete"
+		// as the post-combat victory screen, which fires on every fight.
+		if state.CurrentQ > walkedQuestIdx {
+			pendingRolls = opts.EncounterRollsPerQuest
+			walkedQuestIdx = state.CurrentQ
 		}
 
 		// Promotion phase takes a dedicated API call — not ProcessAction.
@@ -116,13 +148,22 @@ func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strat Strategy,
 		var req api.GameActionRequest
 		switch state.Phase {
 		case "world":
-			req = strat.ChooseWorldAction(&state)
+			// Walk sim: spend encounter rolls before letting the strategy
+			// teleport to the next quest node. Each roll lets the server
+			// generate a real combat against its seeded RNG.
+			if pendingRolls > 0 {
+				req = api.GameActionRequest{Type: "encounter"}
+				pendingRolls--
+			} else {
+				req = strat.ChooseWorldAction(&state)
+			}
 		case "combat":
 			req = api.GameActionRequest{Actions: strat.ChooseCombatActions(&state)}
 			if len(req.Actions) == 0 {
 				// Everyone is dead but we're still in combat — force a flee
 				// to unstick. Server handles the rest.
 				req = api.GameActionRequest{Type: "flee"}
+				result.FledCount++
 			}
 		case "quest_complete":
 			req = api.GameActionRequest{Type: "advance"}

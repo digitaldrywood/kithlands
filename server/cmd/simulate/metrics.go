@@ -23,6 +23,17 @@ type RunResult struct {
 	// EncounterStarts counts how many fights started in each EncounterStart
 	// mode (empty string → "normal").
 	EncounterStarts map[string]int `json:"encounter_starts,omitempty"`
+
+	// EncountersTriggered counts how many combat transitions fired this run.
+	// Always equal to the sum of EncounterStarts, stored separately so the
+	// aggregator can average it without iterating the map.
+	EncountersTriggered int `json:"encounters_triggered,omitempty"`
+
+	// FledCount counts forced-flee fall-throughs — combat rounds where the
+	// strategy returned zero actions because every party member was down.
+	// Useful for spotting runs that wipe mid-combat without ever reaching
+	// terminal "defeat" phase cleanly.
+	FledCount int `json:"fled_count,omitempty"`
 }
 
 // Wiped reports whether the playthrough ended in a party wipe.
@@ -46,7 +57,9 @@ type Aggregated struct {
 
 	QuestOrderBrokenCount int `json:"quest_order_broken_count"`
 
-	EncounterStarts map[string]int `json:"encounter_starts"`
+	EncounterStarts      map[string]int `json:"encounter_starts"`
+	MeanEncountersPerRun float64        `json:"mean_encounters_per_run"`
+	MeanFledPerRun       float64        `json:"mean_fled_per_run"`
 }
 
 // Aggregate rolls a slice of RunResult into an Aggregated summary.
@@ -64,6 +77,8 @@ func Aggregate(runs []RunResult) Aggregated {
 
 	var totalTurns int
 	var totalPromoLvl int
+	var totalEncounters int
+	var totalFled int
 
 	for _, r := range runs {
 		if r.Wiped() {
@@ -83,11 +98,15 @@ func Aggregate(runs []RunResult) Aggregated {
 		for k, v := range r.EncounterStarts {
 			agg.EncounterStarts[k] += v
 		}
+		totalEncounters += r.EncountersTriggered
+		totalFled += r.FledCount
 	}
 
 	agg.WipeRate = float64(agg.Wipes) / float64(agg.Runs)
 	agg.VictoryRate = float64(agg.Victories) / float64(agg.Runs)
 	agg.MeanTurns = float64(totalTurns) / float64(agg.Runs)
+	agg.MeanEncountersPerRun = float64(totalEncounters) / float64(agg.Runs)
+	agg.MeanFledPerRun = float64(totalFled) / float64(agg.Runs)
 	if agg.PromotionCount > 0 {
 		agg.MeanPromotionLevel = float64(totalPromoLvl) / float64(agg.PromotionCount)
 	}
