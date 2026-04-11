@@ -1,3 +1,5 @@
+import { MONSTER_SPRITE_LOAD } from "../data/monsterSprites.js";
+
 export class BootScene extends Phaser.Scene {
   constructor() {
     super("Boot");
@@ -64,12 +66,11 @@ export class BootScene extends Phaser.Scene {
     this.load.image("icon_slow", "/sprites/ui/icon_slow.png");
     this.load.image("icon_confuse", "/sprites/ui/icon_confuse.png");
 
-    // Monster sprites
-    this.load.image("monster_slime", "/sprites/monsters/slime.png");
-    this.load.image("monster_goblin", "/sprites/monsters/goblin.png");
-    this.load.image("monster_wolf", "/sprites/monsters/wolf.png");
-    this.load.image("monster_skeleton", "/sprites/monsters/skeleton.png");
-    this.load.image("monster_dark_knight", "/sprites/monsters/dark_knight.png");
+    // Monster sprites — see client/src/data/monsterSprites.js for the
+    // single source of truth shared with battle.js ENEMY_SPRITES.
+    for (const { key, path } of MONSTER_SPRITE_LOAD) {
+      this.load.image(key, path);
+    }
 
     // Music
     this.load.audio("music_title", "/audio/music/title.mp3");

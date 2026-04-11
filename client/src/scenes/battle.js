@@ -9,14 +9,8 @@ import {
   hpBarFillWidth,
 } from "../systems/hpBar.js";
 import { FloatingTextPool } from "../ui/floating_text.js";
+import { ENEMY_SPRITES } from "../data/monsterSprites.js";
 
-const ENEMY_SPRITES = {
-  Slime: "monster_slime",
-  Goblin: "monster_goblin",
-  Wolf: "monster_wolf",
-  Skeleton: "monster_skeleton",
-  "Dark Knight": "monster_dark_knight",
-};
 const ENEMY_COLORS = {
   Slime: 0x42a5f5,
   Goblin: 0x66bb6a,
