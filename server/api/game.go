@@ -77,6 +77,7 @@ type GameActionRequest struct {
 	SpellID  string              `json:"spell_id,omitempty"`
 	ItemID   string              `json:"item_id,omitempty"`
 	SlotIdx  int                 `json:"slot_idx,omitempty"`
+	NodeID   string              `json:"node_id,omitempty"` // node ID for quest_advance / sequence-break checks
 	Actions  []MemberActionReq   `json:"actions,omitempty"` // per-member actions for combat
 }
 
@@ -249,7 +250,8 @@ type Game struct {
 	diff       balance.Difficulty
 	xpBefore    []int // snapshot before combat for victory animation
 	levelBefore []int // snapshot before combat for victory animation
-	discovered map[string]bool // bestiary: monster IDs encountered
+	discovered   map[string]bool // bestiary: monster IDs encountered
+	visitedNodes map[string]bool // node IDs the player has entered (sequence-break tracking)
 	formation  string             // current encounter layout type
 	promotionOffered bool        // midpoint promotion has already fired
 	trans      *transport.State   // current transport tier & unlocks

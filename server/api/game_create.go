@@ -151,7 +151,7 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 	}
 	quests := generator.GenerateCampaign(loc, spawnID, rng, gm.sidePool)
 	walk := locality.Walk(loc, spawnID)
-	tileMap := locality.GenerateTileMap(loc, spawnID)
+	tileMap := locality.GenerateTileMap(loc, spawnID, walk)
 
 	game := &Game{
 		id:         fmt.Sprintf("game_%d", time.Now().UnixNano()),
