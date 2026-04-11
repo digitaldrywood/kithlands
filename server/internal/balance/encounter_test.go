@@ -158,6 +158,78 @@ func TestFallbackWhenNoEligible(t *testing.T) {
 	}
 }
 
+func TestScaleMonster_XPScalesWithEncounterLevel(t *testing.T) {
+	// Issue #121: XP must scale with encounter level the same way HP/STR do.
+	// A party fighting scaled late-game encounters needs proportionally higher
+	// XP to actually progress through the 15-quest campaign.
+	m := &gamedata.Monster{
+		Name:     "tester",
+		Tier:     1,
+		HP:       10,
+		XPReward: 20,
+	}
+	diff := balance.GetDifficulty("normal")
+
+	base := balance.ScaleMonster(m, 1, 1, diff)
+	mid := balance.ScaleMonster(m, 2, 5, diff)
+	high := balance.ScaleMonster(m, 3, 9, diff)
+
+	if base.XPReward != 20 {
+		t.Errorf("level 1 (tier 1) should award base XP, got %d want 20", base.XPReward)
+	}
+	if mid.XPReward <= base.XPReward {
+		t.Errorf("level 5 encounter should award more XP than level 1: got %d <= %d", mid.XPReward, base.XPReward)
+	}
+	if high.XPReward <= mid.XPReward {
+		t.Errorf("level 9 encounter should award more XP than level 5: got %d <= %d", high.XPReward, mid.XPReward)
+	}
+	// 0.5 per level above tier: levelScale=8 → 1 + 8*0.5 = 5x
+	if high.XPReward < 5*m.XPReward-1 {
+		t.Errorf("level 9 (tier 1) should award ~5x base XP, got %d want ~%d", high.XPReward, 5*m.XPReward)
+	}
+}
+
+func TestScaleMonster_XPAppliesDifficultyMult(t *testing.T) {
+	// XPGainMult on Difficulty was dead code until #121. Easy should give more
+	// XP per fight than Classic at the same encounter level, so players on
+	// lower difficulty don't stall on the progression curve.
+	m := &gamedata.Monster{
+		Name:     "tester",
+		Tier:     1,
+		HP:       10,
+		XPReward: 100,
+	}
+	easy := balance.GetDifficulty("easy")
+	classic := balance.GetDifficulty("classic")
+
+	easyScaled := balance.ScaleMonster(m, 1, 5, easy)
+	classicScaled := balance.ScaleMonster(m, 2, 5, classic)
+
+	if easyScaled.XPReward <= classicScaled.XPReward {
+		t.Errorf("easy XP (%d) must exceed classic XP (%d) at same encounter level",
+			easyScaled.XPReward, classicScaled.XPReward)
+	}
+}
+
+func TestScaleMonster_XPFloorsAtBase(t *testing.T) {
+	// Low-difficulty or low-level encounters must never pay less than the raw
+	// JSON value — the floor keeps base rewards predictable for tuning.
+	m := &gamedata.Monster{
+		Name:     "tester",
+		Tier:     5,
+		HP:       10,
+		XPReward: 100,
+	}
+	classic := balance.GetDifficulty("classic") // XPGainMult 0.8
+
+	// Encounter level below tier → levelScale clamps to 0 → multiplier is
+	// 1.0 * 0.8 = 0.8, which would drop reward below base without a floor.
+	scaled := balance.ScaleMonster(m, 1, 1, classic)
+	if scaled.XPReward < m.XPReward {
+		t.Errorf("XP reward should floor at base %d, got %d", m.XPReward, scaled.XPReward)
+	}
+}
+
 func TestCombatantFieldsPopulated(t *testing.T) {
 	gd := loadTestData(t)
 	diff := balance.GetDifficulty("normal")

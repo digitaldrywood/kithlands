@@ -103,13 +103,11 @@ balance-sim:
 # Monte Carlo headless game simulator. Runs N full playthroughs per strategy,
 # collects progression/balance metrics, and fails on statistical assertion
 # violations. Use this as a regression gate for balance and quest logic.
-# NOTE: issue #118 landed encounter interleaving, and issue #123 widened
-# campaign length (mean turns 800-1500); both feed more XP into bots so the
-# promotion level naturally floats around 4.5-5.0. Once issue #121 fixes the
-# XP curve this target should tighten to 7.0 ± 2.0 per GDD expectations.
+# Post-#121: bots interleave encounters and XP scales with encounter level,
+# so the party promotes in the 8–12 band per the 15-quest research target.
 simulate:
 	cd server && go run ./cmd/simulate -runs 100 \
-		-expected-promo-level 4.5 -promo-level-tolerance 1.0
+		-expected-promo-level 10.0 -promo-level-tolerance 3.0
 
 validate-data:
 	cd server && go run ./cmd/validate_gamedata -shared=../shared

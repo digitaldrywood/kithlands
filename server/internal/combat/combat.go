@@ -33,6 +33,12 @@ type Combatant struct {
 
 	MonsterID string // source monster ID for lookups
 	Size      string // small, medium, large, boss
+
+	// XPReward is the scaled XP this combatant pays out when defeated.
+	// Set by balance.ScaleMonster at encounter-generation time so victory
+	// resolution can read it directly instead of re-looking up the base
+	// Monster by Name. Zero for player combatants.
+	XPReward int
 }
 
 // CombatBuff is a short-duration stat bonus applied to a combatant.

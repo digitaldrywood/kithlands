@@ -245,8 +245,11 @@ func TestMultiLevelUp(t *testing.T) {
 	c := character.New("Hero", "warrior", warrior)
 	rng := rand.New(rand.NewPCG(42, 0))
 
-	// Level 1 threshold: 70, Level 2 threshold: 151 => total 221 consumed for 2 level-ups
-	c.XP = 300
+	// Post-#121 flattened curve:
+	//   Level 1→2: 70, Level 2→3: 95, Level 3→4: 116
+	// Give just enough XP for 3 level-ups: 70+95+116 = 281, plus 5 leftover.
+	startXP := 70 + 95 + 116 + 5
+	c.XP = startXP
 
 	levelsGained := 0
 	for character.CanLevelUp(c, curve) {
@@ -256,17 +259,16 @@ func TestMultiLevelUp(t *testing.T) {
 		levelsGained++
 	}
 
-	if c.Level != 3 {
-		t.Errorf("level: got %d, want 3", c.Level)
+	if c.Level != 4 {
+		t.Errorf("level: got %d, want 4", c.Level)
 	}
-	if levelsGained != 2 {
-		t.Errorf("levels gained: got %d, want 2", levelsGained)
+	if levelsGained != 3 {
+		t.Errorf("levels gained: got %d, want 3", levelsGained)
 	}
-	// 300 - 70 (lv1->2) - 151 (lv2->3) = 79
-	if c.XP != 79 {
-		t.Errorf("remaining XP: got %d, want 79", c.XP)
+	if c.XP != 5 {
+		t.Errorf("remaining XP: got %d, want 5", c.XP)
 	}
-	// Should not be able to level again (need 263 for lv3->4)
+	// Level 4→5 needs 136; only 5 XP left.
 	if character.CanLevelUp(c, curve) {
 		t.Errorf("should not be able to level up with %d XP (need %d)", c.XP, character.XPToNextLevel(c.Level, curve))
 	}
