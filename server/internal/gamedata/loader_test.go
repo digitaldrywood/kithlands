@@ -101,6 +101,27 @@ func TestMonsterSizesValid(t *testing.T) {
 	}
 }
 
+func TestPalettesLoaded(t *testing.T) {
+	gd := gamedata.Load("../../../shared")
+	if len(gd.Palettes.WeaponTiers) == 0 {
+		t.Fatal("expected weapon tier palette entries")
+	}
+	if len(gd.Palettes.ArmorTiers) == 0 {
+		t.Fatal("expected armor tier palette entries")
+	}
+	// Every item tier present in items.json should have a palette entry.
+	for _, w := range gd.Items.Weapons {
+		if _, ok := gd.Palettes.WeaponTiers[w.Tier]; !ok {
+			t.Errorf("weapon %q tier %d missing from WeaponTiers palette", w.ID, w.Tier)
+		}
+	}
+	for _, a := range gd.Items.Armor {
+		if _, ok := gd.Palettes.ArmorTiers[a.Tier]; !ok {
+			t.Errorf("armor %q tier %d missing from ArmorTiers palette", a.ID, a.Tier)
+		}
+	}
+}
+
 func TestLoadPanicsOnMissingDir(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {
