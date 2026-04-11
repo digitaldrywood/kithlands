@@ -7,15 +7,16 @@ import (
 )
 
 // driveToPromotion walks the game through every main quest up to and
-// including the promotion story-beat quest. It advances quests by issuing
-// "quest_advance" with each quest's target_node_id — matching the only way
-// real players advance quests after issue #86 (combat victory no longer
-// auto-completes quests). Optionally plays through random encounters so
-// tests that assert XP/levelup/transport progression still work.
+// including the FF1/DQ3-style promotion turn-in. For non-promotion quests
+// it issues quest_advance to each target_node_id; for the promotion quest
+// it walks the three-stage machine (seek giver → find proof → return),
+// force-victorying the scripted guardian fight. Force-victories any
+// random-encounter combat that fires in between. Real players after issue
+// #86 advance quests the same way.
 func driveToPromotion(t *testing.T, game *api.Game) *api.GameState {
 	t.Helper()
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 200; i++ {
 		state := game.State()
 		switch state.Phase {
 		case "promotion":
@@ -202,6 +203,97 @@ func TestAllBaseClassesPromoteToDistinctSprite(t *testing.T) {
 					pm.Composition.BaseSprite, tc.want)
 			}
 		})
+	}
+}
+
+// TestPromotionRequiresProofItemAtGiver verifies that visiting the giver
+// after Act 1 completes — but before defeating the trial guardian — does
+// NOT fire promotion. The player must hold proof_of_courage on the turn-in
+// step.
+func TestPromotionRequiresProofItemAtGiver(t *testing.T) {
+	game := newGameWithParty(t, []api.PartyMemberReq{
+		{Name: "Sneak", ClassID: "rogue"},
+		{Name: "Tank", ClassID: "warrior"},
+	})
+
+	// Walk Act 1 quests up to (but not through) the promotion quest.
+	state := game.State()
+	promoIdx := -1
+	for i, q := range state.Quests {
+		if q.IsPromotion {
+			promoIdx = i
+			break
+		}
+	}
+	if promoIdx <= 0 {
+		t.Fatalf("expected promotion quest after some Act 1 quests, got index %d", promoIdx)
+	}
+	for i := 0; i < promoIdx; i++ {
+		if game.State().Phase == "quest_complete" {
+			_, _ = game.ProcessAction(api.GameActionRequest{Type: "advance"})
+		}
+		target := game.State().Quests[i].TargetNodeID
+		if _, err := game.ProcessAction(api.GameActionRequest{Type: "quest_advance", NodeID: target}); err != nil {
+			t.Fatalf("quest_advance[%d]: %v", i, err)
+		}
+		if game.State().Phase == "combat" {
+			api.ForceVictoryForTest(game)
+		}
+	}
+	if game.State().Phase == "quest_complete" {
+		_, _ = game.ProcessAction(api.GameActionRequest{Type: "advance"})
+	}
+	promo := game.State().Quests[promoIdx]
+
+	// Visit giver (stage 0 → 1). Promotion must not fire.
+	if _, err := game.ProcessAction(api.GameActionRequest{Type: "quest_advance", NodeID: promo.GiverNodeID}); err != nil {
+		t.Fatalf("visit giver: %v", err)
+	}
+	if game.State().Phase == "promotion" {
+		t.Fatalf("promotion fired after visiting giver with no proof item")
+	}
+
+	// Attempt to visit giver again without proof. Must still not fire.
+	if _, err := game.ProcessAction(api.GameActionRequest{Type: "quest_advance", NodeID: promo.GiverNodeID}); err != nil {
+		t.Fatalf("revisit giver: %v", err)
+	}
+	if game.State().Phase == "promotion" {
+		t.Fatalf("promotion fired on giver revisit without proof item")
+	}
+	if api.PromotionOfferedForTest(game) {
+		t.Fatalf("promotionOffered flipped without proof-item turn-in")
+	}
+}
+
+// TestCombatVictoryAloneNeverPromotes runs ~10 random combat victories in
+// the middle of Act 1 and asserts the promotion offer never fires. Combat
+// victory is decoupled from quest advance since issue #86; this is the
+// regression guard for the FF1/DQ3 rewrite keeping that invariant.
+func TestCombatVictoryAloneNeverPromotes(t *testing.T) {
+	game := newGameWithParty(t, []api.PartyMemberReq{
+		{Name: "Sneak", ClassID: "rogue"},
+		{Name: "Tank", ClassID: "warrior"},
+	})
+
+	for i := 0; i < 10; i++ {
+		if _, err := game.ProcessAction(api.GameActionRequest{Type: "encounter"}); err != nil {
+			t.Fatalf("encounter[%d]: %v", i, err)
+		}
+		if game.State().Phase != "combat" {
+			t.Fatalf("encounter[%d]: phase=%q want combat", i, game.State().Phase)
+		}
+		api.ForceVictoryForTest(game)
+		if game.State().Phase == "promotion" {
+			t.Fatalf("promotion fired after %d random victories alone", i+1)
+		}
+		if game.State().Phase == "quest_complete" {
+			if _, err := game.ProcessAction(api.GameActionRequest{Type: "advance"}); err != nil {
+				t.Fatalf("advance ack: %v", err)
+			}
+		}
+	}
+	if api.PromotionOfferedForTest(game) {
+		t.Fatalf("promotionOffered flipped from combat-only victories")
 	}
 }
 

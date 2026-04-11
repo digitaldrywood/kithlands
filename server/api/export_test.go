@@ -78,6 +78,31 @@ func GiveItemForTest(g *Game, id string, n int) {
 	g.inv.Consumables[id] += n
 }
 
+// KeyItemsForTest returns a copy of the party's key-item list. Exposed only
+// for tests (the client doesn't need a full inventory dump).
+func KeyItemsForTest(g *Game) []string {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	out := make([]string, len(g.inv.KeyItems))
+	copy(out, g.inv.KeyItems)
+	return out
+}
+
+// HasKeyItemForTest checks whether the party holds the named key item.
+func HasKeyItemForTest(g *Game, id string) bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.inv.HasKeyItem(id)
+}
+
+// PromotionOfferedForTest reports whether the midpoint promotion offer has
+// already fired once on this game.
+func PromotionOfferedForTest(g *Game) bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.promotionOffered
+}
+
 // ClearQuestsForTest advances currentQ past the end of g.quests so a subsequent
 // combat victory skips the quest-reward branch entirely and only exercises the
 // monster-XP distribution path. Exposed only for tests.

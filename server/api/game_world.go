@@ -6,6 +6,7 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/balance"
 	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/combat"
+	"github.com/digitaldrywood/kithlands/internal/generator"
 	"github.com/digitaldrywood/kithlands/internal/locality"
 )
 
@@ -120,14 +121,37 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 			g.message = fmt.Sprintf("%s is saved! Your adventure is complete.", g.loc.Name)
 		} else {
 			q := &g.quests[g.currentQ]
-			// Only complete the current quest when the player actually reaches
-			// its target node. Empty TargetNodeID falls through to legacy
-			// behavior so edge-case generator output still advances.
-			if q.TargetNodeID != "" && req.NodeID != q.TargetNodeID {
+			// Promotion quests walk a three-stage story gate (seek giver,
+			// find proof, return to giver). The handler mutates q in place
+			// and reports whether it handled this quest_advance entirely.
+			// Stage 2 + proof-item held falls through to the normal
+			// completion path below so the promotion offer can fire.
+			if q.IsPromotion {
+				handled, spawnedFight, state := g.advancePromotionQuest(q, req.NodeID)
+				if state != nil {
+					return state, nil
+				}
+				if spawnedFight {
+					// Scripted guardian fight in progress; game_combat.go
+					// handles the victory path (drops proof, advances to
+					// stage 2, returns to world).
+					s := g.stateUnlocked()
+					return &s, nil
+				}
+				if handled {
+					s := g.stateUnlocked()
+					return &s, nil
+				}
+				// Fall through: stage 2, at the giver, with proof in hand.
+			} else if q.TargetNodeID != "" && req.NodeID != q.TargetNodeID {
+				// Non-promotion quests: only complete when the player
+				// reaches the target node. Empty TargetNodeID falls through
+				// so edge-case generator output still advances.
 				state := g.stateUnlocked()
 				return &state, nil
 			}
 			q.Completed = true
+			completedCopy := *q // capture for maybeTriggerPromotion below
 			g.message = fmt.Sprintf("Quest complete: %s\n%s\n+%d XP, +%d gold",
 				q.Name, q.Completion, q.Reward.XP, q.Reward.Gold)
 			g.inv.Gold += q.Reward.Gold
@@ -138,11 +162,7 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 			}
 			g.checkLevelUps()
 			g.restParty()
-			completedIdx := g.currentQ
 			g.currentQ++
-			if promoMsg := g.applyPromotionIfNeeded(completedIdx); promoMsg != "" {
-				g.message += "\n" + promoMsg
-			}
 			if tierName := g.checkTransportUnlocks(); tierName != "" {
 				g.message += fmt.Sprintf("\nTransport upgraded: %s!", tierName)
 			}
@@ -151,7 +171,7 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 				g.message = fmt.Sprintf("%s is saved! Your adventure is complete.", g.loc.Name)
 			} else {
 				g.phase = "quest_complete"
-				g.maybeTriggerPromotion()
+				g.maybeTriggerPromotion(&completedCopy)
 			}
 		}
 
@@ -192,41 +212,161 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 	return &state, nil
 }
 
-// applyPromotionIfNeeded checks whether the quest at the given index is the
-// promotion story beat; if so, flips Promoted = true on every party member
-// and returns a display message describing the class promotions. The caller
-// should append the message to g.message (or g.combatLog).
-func (g *Game) applyPromotionIfNeeded(questIdx int) string {
-	if questIdx < 0 || questIdx >= len(g.quests) {
-		return ""
-	}
-	if !g.quests[questIdx].IsPromotion {
-		return ""
-	}
-	var names []string
-	for _, c := range g.party {
-		if c.Promoted {
-			continue
+// advancePromotionQuest runs the FF1/DQ3-style three-stage machine for the
+// promotion quest. Returns (handled, spawnedFight, overrideState):
+//
+//   - handled=true means the handler fully processed this quest_advance and
+//     the caller should return g.stateUnlocked() without touching q further.
+//   - spawnedFight=true means the scripted guardian fight has been spawned
+//     (phase is now "combat"); game_combat.go's victory path will advance
+//     the stage and drop the proof item.
+//   - overrideState is non-nil if the handler wants the caller to short
+//     circuit and return a specific state (e.g. early no-op reached a
+//     non-objective node).
+//
+// When the function returns (false, false, nil), stage 2 is complete (proof
+// item held + at giver) and the caller should fall through to the normal
+// quest-completion path, which removes the proof item and fires the
+// promotion offer via maybeTriggerPromotion.
+func (g *Game) advancePromotionQuest(q *generator.Quest, nodeID string) (handled, spawnedFight bool, overrideState *GameState) {
+	switch q.PromoStage {
+	case 0:
+		// Seek the giver.
+		if nodeID != q.GiverNodeID {
+			s := g.stateUnlocked()
+			return false, false, &s
 		}
-		c.Promoted = true
-		cls := g.gd.ClassByID(c.ClassID)
-		if cls != nil && cls.PromotedName != "" {
-			names = append(names, fmt.Sprintf("%s is now a %s", c.Name, cls.PromotedName))
-		} else {
-			names = append(names, fmt.Sprintf("%s has been promoted", c.Name))
+		q.PromoStage = 1
+		q.TargetNodeID = q.DungeonNodeID
+		q.TargetName = q.DungeonName
+		g.message = fmt.Sprintf("%s tells you of the trial: seek the Proof of Courage at %s.",
+			q.GiverName, q.DungeonName)
+		return true, false, nil
+	case 1:
+		// Clear the trial.
+		if nodeID != q.DungeonNodeID {
+			s := g.stateUnlocked()
+			return false, false, &s
 		}
-	}
-	if len(names) == 0 {
-		return ""
-	}
-	msg := "Your party has been promoted! "
-	for i, n := range names {
-		if i > 0 {
-			msg += ", "
+		if g.inv.HasKeyItem(q.ProofItemID) {
+			// Shouldn't happen (stage should already be 2), but be defensive.
+			q.PromoStage = 2
+			q.TargetNodeID = q.GiverNodeID
+			q.TargetName = q.GiverName
+			s := g.stateUnlocked()
+			return false, false, &s
 		}
-		msg += n
+		if err := g.spawnScriptedBoss(q.BossMonsterID); err != nil {
+			// Fall back to non-scripted behavior: mark stage as if the
+			// trial were cleared so the game doesn't hard-stick. Log the
+			// error so balance tests surface missing monster data.
+			g.logCombat(fmt.Sprintf("scripted boss spawn failed: %v", err), CombatActionEntry{Kind: "info"})
+			g.inv.AddKeyItem(q.ProofItemID)
+			q.PromoStage = 2
+			q.TargetNodeID = q.GiverNodeID
+			q.TargetName = q.GiverName
+			s := g.stateUnlocked()
+			return false, false, &s
+		}
+		return false, true, nil
+	case 2:
+		// Return to the giver. The caller handles quest completion only
+		// when the player is at the giver AND holds the proof item.
+		if nodeID != q.GiverNodeID {
+			s := g.stateUnlocked()
+			return false, false, &s
+		}
+		if !g.inv.HasKeyItem(q.ProofItemID) {
+			g.message = fmt.Sprintf("%s: \"Return with the Proof of Courage.\"", q.GiverName)
+			s := g.stateUnlocked()
+			return false, false, &s
+		}
+		// Consume the proof item right before falling through to the
+		// normal completion path. The completion path increments currentQ
+		// and calls maybeTriggerPromotion with a copy of the quest.
+		g.inv.RemoveKeyItem(q.ProofItemID)
+		return false, false, nil
 	}
-	return msg + "."
+	// Unknown stage — degrade gracefully by refusing to advance.
+	s := g.stateUnlocked()
+	return false, false, &s
+}
+
+// advancePromotionStageAfterTrial is called from the scripted-boss victory
+// branch in game_combat.go. It finds the active promotion quest, adds the
+// proof item, promotes the quest to stage 2, and retargets the HUD at the
+// giver so the bot/player knows to return.
+func (g *Game) advancePromotionStageAfterTrial() {
+	if g.currentQ < 0 || g.currentQ >= len(g.quests) {
+		return
+	}
+	q := &g.quests[g.currentQ]
+	if !q.IsPromotion {
+		return
+	}
+	if q.ProofItemID != "" {
+		g.inv.AddKeyItem(q.ProofItemID)
+	}
+	q.PromoStage = 2
+	q.TargetNodeID = q.GiverNodeID
+	q.TargetName = q.GiverName
+	g.message = fmt.Sprintf("The %s falls. You claim the Proof of Courage. Return to %s.",
+		g.guardianDisplayName(q), q.GiverName)
+}
+
+// guardianDisplayName returns the display name of the quest's scripted boss
+// monster. Falls back to "guardian" if the monster is missing from
+// gamedata.
+func (g *Game) guardianDisplayName(q *generator.Quest) string {
+	if m := g.gd.MonsterByID(q.BossMonsterID); m != nil {
+		return m.Name
+	}
+	return "guardian"
+}
+
+// spawnScriptedBoss sets up a single-enemy scripted fight against the named
+// monster. Used by the promotion trial. The scriptedBoss flag signals
+// game_combat.go's victory path to drop the quest's proof item and bypass
+// the normal quest-complete transition.
+func (g *Game) spawnScriptedBoss(monsterID string) error {
+	m := g.gd.MonsterByID(monsterID)
+	if m == nil {
+		return fmt.Errorf("monster %q not found", monsterID)
+	}
+	partyLevels := make([]int, len(g.party))
+	for i, c := range g.party {
+		partyLevels[i] = c.Level
+	}
+	encLvl := balance.EncounterLevel(partyLevels, "normal", 0, g.currentQ)
+
+	// Snapshot XP/level for the victory screen animation, same as random
+	// encounters do in the "encounter" branch above.
+	g.xpBefore = make([]int, len(g.party))
+	g.levelBefore = make([]int, len(g.party))
+	g.diedThisFight = make([]bool, len(g.party))
+	for i, c := range g.party {
+		g.xpBefore[i] = c.XP
+		g.levelBefore[i] = c.Level
+	}
+
+	c := balance.ScaleMonster(m, 100, encLvl, g.diff)
+	c.MonsterID = m.ID
+	c.Size = m.Size
+	g.enemies = []*combat.Combatant{c}
+	g.formation = "boss_minions"
+	g.phase = "combat"
+	g.spellBuffs = nil
+	g.scriptedBoss = true
+	g.rollEncounterStartForNewFight()
+
+	if g.discovered == nil {
+		g.discovered = make(map[string]bool)
+	}
+	g.discovered[m.ID] = true
+
+	g.logCombat(fmt.Sprintf("%s emerges from the shadows!", m.Name), CombatActionEntry{Kind: "info"})
+	g.logCombat(fmt.Sprintf("  %s (HP: %d)", c.Name, c.MaxHP), CombatActionEntry{Kind: "info"})
+	return nil
 }
 
 func (g *Game) processAdvance(req GameActionRequest) (*GameState, error) {

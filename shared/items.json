@@ -984,6 +984,13 @@
       "description": "A ring that radiates ancient energy. Worth a fortune to the right buyer.",
       "buy_price": 0,
       "sell_price": 5000
+    },
+    {
+      "id": "proof_of_courage",
+      "name": "Proof of Courage",
+      "description": "A sigil wrested from the trial guardian. Proof of your right to ascend.",
+      "buy_price": 0,
+      "sell_price": 0
     }
   ]
 }

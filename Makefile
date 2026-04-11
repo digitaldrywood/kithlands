@@ -103,12 +103,14 @@ balance-sim:
 # Monte Carlo headless game simulator. Runs N full playthroughs per strategy,
 # collects progression/balance metrics, and fails on statistical assertion
 # violations. Use this as a regression gate for balance and quest logic.
-# NOTE: expected-promo-level is currently 2.5 because promotion fires off the
-# combat-count heuristic, not a proper quest gate. Tightens to ~8 once the
-# FF1-style promotion quest lands (see issue tracker).
+# NOTE: expected-promo-level is 3.5 because the current simulator bot
+# strategies don't interleave random encounters — they only earn XP from
+# quest rewards, so promotion fires at ~level 3-4. Issue #118 adds encounter
+# interleaving so bots level naturally; once that lands this target should
+# tighten to 7.0 ± 2.0 per GDD expectations.
 simulate:
 	cd server && go run ./cmd/simulate -runs 100 \
-		-expected-promo-level 2.5 -promo-level-tolerance 1.5
+		-expected-promo-level 3.5 -promo-level-tolerance 1.0
 
 validate-data:
 	cd server && go run ./cmd/validate_gamedata -shared=../shared

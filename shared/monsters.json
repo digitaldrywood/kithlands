@@ -443,5 +443,31 @@
     "encounter_weight": 0,
     "min_group": 1,
     "max_group": 1
+  },
+  {
+    "id": "trial_guardian",
+    "name": "Trial Guardian",
+    "tier": 2,
+    "size": "boss",
+    "is_boss": true,
+    "stats": {
+      "str": 14,
+      "agi": 8,
+      "int": 6,
+      "vit": 12,
+      "lck": 5,
+      "hit_pct": 12
+    },
+    "hp": 90,
+    "armor_absorb": 4,
+    "xp_reward": 180,
+    "gold_reward": 100,
+    "weaknesses": ["holy"],
+    "resistances": [],
+    "absorbs": [],
+    "drops": [],
+    "encounter_weight": 0,
+    "min_group": 1,
+    "max_group": 1
   }
 ]
