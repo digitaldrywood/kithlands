@@ -51,13 +51,13 @@ play: stop setup-db
 	@echo "  Stop:   make stop"
 	@echo "========================================="
 
-# Stop the play processes started from this worktree. Filters on the
-# worktree-specific log paths so other worktrees' servers keep running.
+# Stop only the processes listening on this worktree's ports. This keeps
+# parallel worktrees isolated without broad process-name kills.
 stop:
-	@-pkill -f "go run ./cmd/kithlands" 2>/dev/null || true
-	@-pkill -f "go-build.*kithlands" 2>/dev/null || true
-	@-pkill -f "vite.*--port $(VITE_PORT)" 2>/dev/null || true
-	@-pkill -f "node.*vite.*client" 2>/dev/null || true
+	@-server_pid=$$(lsof -tiTCP:$(PORT) -sTCP:LISTEN 2>/dev/null | head -1); \
+	if [ -n "$$server_pid" ]; then kill $$server_pid 2>/dev/null || true; fi
+	@-client_pid=$$(lsof -tiTCP:$(VITE_PORT) -sTCP:LISTEN 2>/dev/null | head -1); \
+	if [ -n "$$client_pid" ]; then kill $$client_pid 2>/dev/null || true; fi
 
 run:
 	cd server && PORT=$(PORT) DATABASE_URL='$(DATABASE_URL)' go run ./cmd/kithlands
