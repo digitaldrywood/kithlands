@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveAction } from "./auto_battle.js";
+import { resolveAction, buildAutoBattleActions } from "./auto_battle.js";
 
 // Shared test fixtures — minimal game state objects that satisfy the resolver.
 
@@ -387,5 +387,38 @@ describe("edge cases", () => {
       target_id: 2,
       spell_id: "cure",
     });
+  });
+});
+
+describe("buildAutoBattleActions", () => {
+  it("defaults to basic attacks when no remembered round exists", () => {
+    const gs = makeState();
+    const actions = buildAutoBattleActions(null, gs, [0, 1, 2, 3]);
+    expect(actions).toEqual([
+      { slot: 0, type: "attack", target_id: 1 },
+      { slot: 1, type: "attack", target_id: 1 },
+      { slot: 2, type: "attack", target_id: 1 },
+      { slot: 3, type: "attack", target_id: 1 },
+    ]);
+  });
+
+  it("reuses remembered actions when available and falls back per slot otherwise", () => {
+    const gs = makeState({
+      enemies: [makeEnemy(1, 0), makeEnemy(2, 50)],
+    });
+    const actions = buildAutoBattleActions(
+      [
+        { slot: 0, type: "spell", target_id: 1, spell_id: "fire" },
+        { slot: 2, type: "attack", target_id: 1 },
+      ],
+      gs,
+      [0, 1, 2, 3],
+    );
+    expect(actions).toEqual([
+      { slot: 0, type: "spell", target_id: 2, spell_id: "fire" },
+      { slot: 1, type: "attack", target_id: 2 },
+      { slot: 2, type: "attack", target_id: 2 },
+      { slot: 3, type: "attack", target_id: 2 },
+    ]);
   });
 });
