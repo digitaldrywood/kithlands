@@ -28,6 +28,27 @@ make test-visual
 `make test-visual` runs every Playwright spec under `client/e2e`, including the
 working party-menu equip flow.
 
+## Sprite debugger
+
+The sprite debugger is served by the same Vite dev server as the game:
+
+```sh
+source scripts/worktree-env.sh
+echo "http://localhost:${VITE_PORT}/sprites.html"
+```
+
+If you use `make play`, it now prints the sprite debugger URL alongside the
+game URL. If `TAILSCALE_HOSTNAME=prometheus` is set, the network form is:
+
+```sh
+http://prometheus:${VITE_PORT}/sprites.html
+```
+
+The old `http://prometheus:5173/sprites.html` expectation is stale. This repo
+has used an explicit Vite port instead of Vite's default for a long time, and
+since the per-worktree infra change each worktree gets its own derived
+`VITE_PORT` from `scripts/worktree-env.sh`.
+
 Each browser run should use a worktree-local profile so concurrent tmux/worktree
 sessions do not collide. This worktree defaults to
 `client/tmp/playwright-chromium-profile`. Override with
