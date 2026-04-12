@@ -59,12 +59,14 @@ export class BootScene extends Phaser.Scene {
     }
 
     // Per-class walk sprite sheets (#127). 4 rows (down/up/left/right) x
-    // 4 cols (frame 0-3), 128px per cell. Only enqueue sheets we know are
-    // on disk to avoid the noisy "Failed to process file" console spam
-    // that happens when Phaser tries to parse a missing spritesheet as
-    // 128x128 cells. Remaining classes use the static player_{dir}
-    // fallback in world/town scenes until their sheets are generated.
-    const CLASSES_WITH_WALK_SHEETS = ["warrior"];
+    // 4 cols (frame 0-3), 128px per cell. Manifest is currently empty:
+    // the warrior POC from PR #135 is BROKEN — all 16 frames depict the
+    // warrior facing forward rather than down/up/left/right, so enabling
+    // it produces sprites that walk sideways/backward as if they were
+    // facing the camera. See #140 for the asset regeneration plan.
+    // Every class falls back to the static player_{dir} images which
+    // have correct directional poses.
+    const CLASSES_WITH_WALK_SHEETS = [];
     for (const key of CLASSES_WITH_WALK_SHEETS) {
       this.load.spritesheet(`${key}_walk`, `/sprites/walk/${key}_walk.png`, {
         frameWidth: 128,
