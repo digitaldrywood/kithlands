@@ -10,6 +10,7 @@ import {
   hpBarColorPct,
   hpBarFillWidth,
 } from "../systems/hpBar.js";
+import { buildVictoryXPSegments } from "../systems/victoryXp.js";
 import { FloatingTextPool } from "../ui/floating_text.js";
 import { ENEMY_SPRITES } from "../data/monsterSprites.js";
 import {
@@ -82,7 +83,9 @@ export class BattleScene extends Phaser.Scene {
   init(data) {
     this.gameState = data.gameState;
     this._lastRoundActions =
-      data.lastRoundActions || getBattlePlanMemory(data.gameState?.party) || null;
+      data.lastRoundActions ||
+      getBattlePlanMemory(data.gameState?.party) ||
+      null;
     this._autoMode = data.autoMode || false;
   }
 
@@ -987,7 +990,11 @@ export class BattleScene extends Phaser.Scene {
         // No previous action for this member — default to attack
         const target = gs.enemies.find((e) => e.hp > 0);
         if (target) {
-          this.memberActions.push({ slot, type: "attack", target_id: target.id });
+          this.memberActions.push({
+            slot,
+            type: "attack",
+            target_id: target.id,
+          });
         }
         continue;
       }
@@ -2141,6 +2148,7 @@ export class BattleScene extends Phaser.Scene {
     y += 15;
     const barW = 300;
     const xpBefore = gs.xp_before || [];
+    const xpThresholds = gs.xp_thresholds || [];
     const diedFlags = gs.died_this_fight || [];
 
     for (let i = 0; i < gs.party.length; i++) {
@@ -2230,16 +2238,25 @@ export class BattleScene extends Phaser.Scene {
           fontFamily: "monospace",
         });
       } else {
-        const xpPctEnd = p.xp_next > 0 ? Math.min(1, p.xp / p.xp_next) : 0;
+        const segments = buildVictoryXPSegments({
+          prevXP,
+          currentXP: p.xp,
+          xpNext: p.xp_next,
+          xpThresholds: xpThresholds[i] || [],
+        });
+        const firstSegment = segments[0] || null;
+        const firstMax = firstSegment?.max || p.xp_next;
+        const firstWidth =
+          firstMax > 0 ? (barW * firstSegment.start) / firstMax : 0;
 
         const xpBarFill = this.add
-          .rectangle(300 + 15, y + 22, 1, 10, 0x4488ff)
+          .rectangle(300 + 15, y + 22, firstWidth, 10, 0x4488ff)
           .setOrigin(0, 0.5);
 
         const xpText = this.add.text(
           300 + barW + 20,
           y + 17,
-          `${prevXP}/${p.xp_next}`,
+          `${firstSegment?.start ?? prevXP}/${firstMax || p.xp_next}`,
           {
             fontSize: "9px",
             color: "#8888ff",
@@ -2247,25 +2264,65 @@ export class BattleScene extends Phaser.Scene {
           },
         );
 
-        // Animate the XP bar filling
-        const xpTween = this.tweens.add({
-          targets: xpBarFill,
-          width: barW * xpPctEnd,
-          duration: 1200,
-          delay,
-          ease: "Power2",
-          onUpdate: () => {
-            // Update XP text as bar fills
-            const progress = xpBarFill.width / barW;
-            const currentXP = Math.floor(
-              prevXP + (p.xp - prevXP) * (progress / xpPctEnd || 0),
-            );
-            xpText.setText(`${Math.min(currentXP, p.xp)}/${p.xp_next}`);
+        const xpTweens = [];
+        const animateSegment = (segmentIdx) => {
+          if (segmentIdx >= segments.length) {
+            xpBarFill.width = p.xp_next > 0 ? (barW * p.xp) / p.xp_next : 0;
+            xpText.setText(`${p.xp}/${p.xp_next}`);
+            return;
+          }
+
+          const segment = segments[segmentIdx];
+          const startWidth =
+            segment.max > 0 ? (barW * segment.start) / segment.max : 0;
+          const endWidth =
+            segment.max > 0 ? (barW * segment.end) / segment.max : 0;
+          xpBarFill.width = startWidth;
+          xpText.setText(`${segment.start}/${segment.max}`);
+
+          if (segment.start === segment.end) {
+            xpText.setText(`${segment.end}/${segment.max}`);
+            animateSegment(segmentIdx + 1);
+            return;
+          }
+
+          const tween = this.tweens.add({
+            targets: xpBarFill,
+            width: endWidth,
+            duration: Math.max(150, Math.floor(1200 / segments.length)),
+            ease: "Power2",
+            onUpdate: () => {
+              const denom = endWidth - startWidth;
+              const progress =
+                denom === 0 ? 1 : (xpBarFill.width - startWidth) / denom;
+              const currentXP = Math.floor(
+                segment.start + (segment.end - segment.start) * progress,
+              );
+              xpText.setText(
+                `${Math.min(currentXP, segment.end)}/${segment.max}`,
+              );
+            },
+            onComplete: () => {
+              xpBarFill.width = endWidth;
+              xpText.setText(`${segment.end}/${segment.max}`);
+              animateSegment(segmentIdx + 1);
+            },
+          });
+          xpTweens.push(tween);
+        };
+
+        const xpTimer = this.time.delayedCall(delay, () => animateSegment(0));
+        this.victoryPendingTimers.push({
+          timer: xpTimer,
+          finalize: () => {
+            for (const tween of xpTweens) tween.stop();
+            xpBarFill.width = p.xp_next > 0 ? (barW * p.xp) / p.xp_next : 0;
+            xpText.setText(`${p.xp}/${p.xp_next}`);
           },
         });
         this.victoryFinalizers.push(() => {
-          xpTween.stop();
-          xpBarFill.width = barW * xpPctEnd;
+          for (const tween of xpTweens) tween.stop();
+          xpBarFill.width = p.xp_next > 0 ? (barW * p.xp) / p.xp_next : 0;
           xpText.setText(`${p.xp}/${p.xp_next}`);
         });
       }
