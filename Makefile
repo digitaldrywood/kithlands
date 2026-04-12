@@ -119,10 +119,12 @@ balance-sim:
 # violations. Use this as a regression gate for balance and quest logic.
 # Post-#121: bots interleave encounters and XP scales with encounter level,
 # so the party promotes in the 8–12 band per the 15-quest research target.
+# Post-#156: dead members stay dead between fights (FF behavior), so the
+# aggressive strategy wipes ~40%. Threshold widened from 0.30 to 0.45.
 simulate:
 	cd server && go run ./cmd/simulate -runs 100 \
 		-expected-promo-level 10.0 -promo-level-tolerance 3.0 \
-		-max-wipe-rate 0.30 \
+		-max-wipe-rate 0.45 \
 		$(if $(CAPTURE),-capture-seed $(or $(CAPTURE_SEED),1) -capture-turn $(or $(CAPTURE_TURN),-1) -capture-out $(or $(CAPTURE_OUT),./sim-capture),)
 
 validate-data:
