@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import { drawPanel, drawButton } from "./panel.js";
+import { drawPanel, drawButton, drawProgressBar } from "./panel.js";
+import { barFillWidth } from "../systems/hpBar.js";
 
 // Fake scene shim — Phaser objects are just dumb recorders so we can assert
 // on fills, labels, handlers, and lifetime without instantiating Phaser.
@@ -39,6 +40,20 @@ function makeRectangle() {
       rect.interactive = false;
       return rect;
     },
+    setOrigin(ox, oy) {
+      rect.originX = ox;
+      rect.originY = oy;
+      return rect;
+    },
+    setSize(w, h) {
+      rect.w = w;
+      rect.h = h;
+      return rect;
+    },
+    setVisible(v) {
+      rect.visible = !!v;
+      return rect;
+    },
     on(event, fn) {
       handlers[event] = fn;
       return rect;
@@ -47,6 +62,7 @@ function makeRectangle() {
       rect.destroyed = true;
     },
   };
+  rect.visible = true;
   return rect;
 }
 
@@ -208,5 +224,93 @@ describe("drawButton", () => {
     btn.destroy();
     expect(btn.bg.destroyed).toBe(true);
     expect(btn.label.destroyed).toBe(true);
+  });
+});
+
+describe("drawProgressBar", () => {
+  it("creates a track + fill rect and a cur/max text label", () => {
+    const scene = freshScene();
+    const bar = drawProgressBar(scene, 100, 200, 200, 14, 3, 6);
+    expect(bar.track).toBeDefined();
+    expect(bar.fill).toBeDefined();
+    expect(bar.label).toBeDefined();
+    expect(bar.track.w).toBe(200);
+    expect(bar.track.h).toBe(14);
+    expect(bar.track.originX).toBe(0);
+    expect(bar.fill.originX).toBe(0);
+    expect(bar.label.text).toBe("3/6");
+  });
+
+  it("fill width matches barFillWidth for the initial value", () => {
+    const scene = freshScene();
+    const bar = drawProgressBar(scene, 0, 0, 200, 14, 3, 6);
+    expect(bar.fill.w).toBe(barFillWidth(3, 6, 200));
+  });
+
+  it("at max value, fill width equals full track width", () => {
+    const scene = freshScene();
+    const bar = drawProgressBar(scene, 0, 0, 200, 14, 6, 6);
+    expect(bar.fill.w).toBe(200);
+    expect(bar.label.text).toBe("6/6");
+  });
+
+  it("at zero value, fill is hidden", () => {
+    const scene = freshScene();
+    const bar = drawProgressBar(scene, 0, 0, 200, 14, 0, 6);
+    expect(bar.fill.visible).toBe(false);
+    expect(bar.label.text).toBe("0/6");
+  });
+
+  it("setValue updates fill width and label text", () => {
+    const scene = freshScene();
+    const bar = drawProgressBar(scene, 0, 0, 200, 14, 2, 6);
+    bar.setValue(5);
+    expect(bar.fill.w).toBe(barFillWidth(5, 6, 200));
+    expect(bar.label.text).toBe("5/6");
+    bar.setValue(1);
+    expect(bar.fill.w).toBe(barFillWidth(1, 6, 200));
+    expect(bar.label.text).toBe("1/6");
+  });
+
+  it("setFocused swaps the track stroke color", () => {
+    const scene = freshScene();
+    const bar = drawProgressBar(scene, 0, 0, 200, 14, 3, 6);
+    expect(bar.track.stroke).toBe(0x4488ff);
+    bar.setFocused(true);
+    expect(bar.track.stroke).toBe(0xffcc44);
+    expect(bar.isFocused()).toBe(true);
+    bar.setFocused(false);
+    expect(bar.track.stroke).toBe(0x4488ff);
+    expect(bar.isFocused()).toBe(false);
+  });
+
+  it("destroy tears down track, fill, and label together", () => {
+    const scene = freshScene();
+    const bar = drawProgressBar(scene, 0, 0, 200, 14, 3, 6);
+    bar.destroy();
+    expect(bar.track.destroyed).toBe(true);
+    expect(bar.fill.destroyed).toBe(true);
+    expect(bar.label.destroyed).toBe(true);
+  });
+
+  it("omits the label when showLabel is false", () => {
+    const scene = freshScene();
+    const bar = drawProgressBar(scene, 0, 0, 200, 14, 3, 6, {
+      showLabel: false,
+    });
+    expect(bar.label).toBe(null);
+    expect(() => bar.setValue(4)).not.toThrow();
+    expect(() => bar.destroy()).not.toThrow();
+  });
+
+  it("walk-speed bar (max 3) tracks fill width correctly across its range", () => {
+    const scene = freshScene();
+    const bar = drawProgressBar(scene, 0, 0, 200, 14, 1, 3);
+    expect(bar.fill.w).toBe(barFillWidth(1, 3, 200));
+    bar.setValue(2);
+    expect(bar.fill.w).toBe(barFillWidth(2, 3, 200));
+    bar.setValue(3);
+    expect(bar.fill.w).toBe(200);
+    expect(bar.label.text).toBe("3/3");
   });
 });
