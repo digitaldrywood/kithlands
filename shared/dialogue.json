@@ -1,0 +1,148 @@
+{
+  "archetypes": {
+    "merchant": {
+      "lines": [
+        {"text": "Take a look around -- you won't find better prices anywhere.", "mood": "friendly"},
+        {"text": "Every item here has a story. Want to hear one?", "mood": "friendly"},
+        {"text": "I've traded with folk from every corner of the realm.", "mood": "neutral"},
+        {"text": "Supply caravans have been late. Strange things on the roads.", "mood": "mysterious"},
+        {"text": "Stock up now. You never know what's waiting out there.", "mood": "neutral"},
+        {"text": "A well-equipped adventurer is a living adventurer.", "mood": "friendly"},
+        {"text": "I got a shipment in from the coast -- rare stuff.", "mood": "friendly"},
+        {"text": "Heard rumors of ancient treasures in the old ruins nearby.", "mood": "mysterious"},
+        {"text": "Business has been good lately. Lots of travelers passing through.", "mood": "neutral"},
+        {"text": "I don't ask where the gold comes from. Saves everyone trouble.", "mood": "neutral"},
+        {"text": "Some of my finest wares came from a wandering peddler. Odd fellow.", "mood": "mysterious"},
+        {"text": "The blacksmith and I have an arrangement -- good steel, fair price.", "mood": "friendly"},
+        {"text": "Word of advice: never venture out without potions.", "mood": "friendly"},
+        {"text": "There's a buyer for everything. Even monster parts, if you can stomach it.", "mood": "neutral"},
+        {"text": "Travelers bring news from far places. Not all of it good.", "mood": "mysterious"},
+        {"text": "I've seen adventurers come and go. The smart ones stock up first.", "mood": "neutral"},
+        {"text": "If you find anything unusual out there, bring it to me. I pay well.", "mood": "friendly"},
+        {"text": "The roads used to be safer. Something has changed.", "mood": "mysterious"},
+        {"text": "Gold spent on good gear is gold well spent.", "mood": "friendly"},
+        {"text": "Had a customer last week who swore he saw lights in the forest at night.", "mood": "mysterious"}
+      ]
+    },
+    "priestess": {
+      "lines": [
+        {"text": "The light watches over all who walk in faith.", "mood": "friendly"},
+        {"text": "Your spirit carries the weight of many battles. Rest here.", "mood": "friendly"},
+        {"text": "The temple doors are always open to those in need.", "mood": "neutral"},
+        {"text": "I sense a great trial ahead of you. Stay vigilant.", "mood": "mysterious"},
+        {"text": "Prayer alone cannot shield you -- but it helps.", "mood": "neutral"},
+        {"text": "The old wards around town have been weakening. I renew them each dawn.", "mood": "mysterious"},
+        {"text": "Even the strongest warriors need healing. There is no shame in it.", "mood": "friendly"},
+        {"text": "Something stirs in the dark places of the world. The temple senses it.", "mood": "mysterious"},
+        {"text": "May your path be lit and your heart be steady.", "mood": "friendly"},
+        {"text": "The sacred texts speak of heroes who rose in times like these.", "mood": "neutral"},
+        {"text": "I have tended wounds that no blade could have made. Be careful.", "mood": "mysterious"},
+        {"text": "Faith is a shield, but wisdom is the hand that holds it.", "mood": "neutral"},
+        {"text": "The fallen can be restored, but the cost weighs on the soul.", "mood": "neutral"},
+        {"text": "There are places in this land where the light does not reach.", "mood": "mysterious"},
+        {"text": "You carry a spark of something rare. Guard it well.", "mood": "mysterious"},
+        {"text": "The temple has stood here for generations. It will stand for generations more.", "mood": "neutral"},
+        {"text": "Come to me when you are weary. Restoration is my calling.", "mood": "friendly"},
+        {"text": "Dreams have troubled the acolytes lately. Visions of shadow and flame.", "mood": "mysterious"},
+        {"text": "Blessings are freely given. The light asks nothing in return.", "mood": "friendly"},
+        {"text": "The balance between light and dark is thinner than most realize.", "mood": "mysterious"}
+      ]
+    },
+    "elder": {
+      "lines": [
+        {"text": "I've lived here longer than most can remember.", "mood": "neutral"},
+        {"text": "The young ones don't listen, but the land remembers everything.", "mood": "mysterious"},
+        {"text": "There's wisdom in the old stories, if you know how to listen.", "mood": "neutral"},
+        {"text": "I've seen this town through hard times before. We endure.", "mood": "friendly"},
+        {"text": "The forest wasn't always dangerous. Something woke up out there.", "mood": "mysterious"},
+        {"text": "Every stranger who passes through changes this place a little.", "mood": "neutral"},
+        {"text": "When I was young, the roads were safe and the nights were quiet.", "mood": "neutral"},
+        {"text": "There are tunnels beneath the old ruins. Best not to explore them alone.", "mood": "mysterious"},
+        {"text": "The harvest festival is coming. Good to have something to celebrate.", "mood": "friendly"},
+        {"text": "I've buried too many friends who thought they were invincible.", "mood": "neutral"},
+        {"text": "An old map in the archives shows passages that don't appear on any modern chart.", "mood": "mysterious"},
+        {"text": "Trust the people here. We look after our own.", "mood": "friendly"},
+        {"text": "The river changed course twenty years ago. Nobody knows why.", "mood": "mysterious"},
+        {"text": "Patience and preparation will take you further than any blade.", "mood": "neutral"},
+        {"text": "My grandmother spoke of a time when the stars shifted. Strange days followed.", "mood": "mysterious"},
+        {"text": "Welcome, traveler. It's good to see new faces.", "mood": "friendly"},
+        {"text": "The town council meets at the hall. Politics, mostly. But sometimes real trouble.", "mood": "neutral"},
+        {"text": "There's a well at the edge of town. They say it grants visions to the worthy.", "mood": "mysterious"},
+        {"text": "If you need direction, ask anyone here. We're a helpful lot.", "mood": "friendly"},
+        {"text": "History has a way of repeating itself. I hope this time we're ready.", "mood": "mysterious"}
+      ]
+    },
+    "innkeeper": {
+      "lines": [
+        {"text": "Rest your feet. You look like you've traveled far.", "mood": "friendly"},
+        {"text": "A warm meal and a soft bed -- that's what we do best.", "mood": "friendly"},
+        {"text": "The ale's fresh and the fire's warm. What more could you want?", "mood": "friendly"},
+        {"text": "Had a strange group pass through last night. Wouldn't say where they were headed.", "mood": "mysterious"},
+        {"text": "Every adventurer who's come through here has a story. Some of them even true.", "mood": "neutral"},
+        {"text": "You'd be surprised what people tell a barkeep after a few drinks.", "mood": "neutral"},
+        {"text": "The room at the end of the hall is always cold. No one books it anymore.", "mood": "mysterious"},
+        {"text": "Business picks up when the roads get dangerous. Funny how that works.", "mood": "neutral"},
+        {"text": "I keep a stew going all day. Adventurers eat at odd hours.", "mood": "friendly"},
+        {"text": "Someone left a journal here last week. Full of sketches of creatures I've never seen.", "mood": "mysterious"},
+        {"text": "The walls here are thick. Good for sleeping through storms -- and other things.", "mood": "neutral"},
+        {"text": "I hear things, running this place. Not all of it makes sense.", "mood": "mysterious"},
+        {"text": "A traveler from the south warned me to bar the doors after sundown.", "mood": "mysterious"},
+        {"text": "You're welcome to stay as long as you need. We've got room.", "mood": "friendly"},
+        {"text": "The locals come here for news as much as for drink.", "mood": "neutral"},
+        {"text": "I've seen all sorts walk through that door. You seem like good sorts.", "mood": "friendly"},
+        {"text": "Some nights, the wind carries sounds from the old ruins. Best not to think on it.", "mood": "mysterious"},
+        {"text": "My grandfather built this inn. Said a good inn holds a town together.", "mood": "neutral"},
+        {"text": "Eat well and sleep deep. You'll need your strength for what's out there.", "mood": "friendly"},
+        {"text": "Last full moon, a wolf sat outside the door all night. Just watching.", "mood": "mysterious"}
+      ]
+    },
+    "guard": {
+      "lines": [
+        {"text": "Keep to the main roads and you'll be fine. Mostly.", "mood": "neutral"},
+        {"text": "We patrol the walls day and night. This town is safe.", "mood": "friendly"},
+        {"text": "Seen some odd tracks near the perimeter lately. Stay sharp.", "mood": "mysterious"},
+        {"text": "Adventurers are welcome here, long as they don't cause trouble.", "mood": "neutral"},
+        {"text": "The captain doubled the night watch last week. Won't say why.", "mood": "mysterious"},
+        {"text": "If you're heading out, watch for bandits on the eastern road.", "mood": "neutral"},
+        {"text": "We had a break-in at the storehouse. Nothing taken. Just... moved.", "mood": "mysterious"},
+        {"text": "The townsfolk sleep easy knowing we're on watch.", "mood": "friendly"},
+        {"text": "I trained with the king's army before coming here. Quieter posting, usually.", "mood": "neutral"},
+        {"text": "Report anything unusual to the guard post. We take threats seriously.", "mood": "neutral"},
+        {"text": "Something set the hounds off last night. Couldn't find what it was.", "mood": "mysterious"},
+        {"text": "Safe travels, adventurer. Come back in one piece.", "mood": "friendly"},
+        {"text": "The old watchtower has a clear view of the surrounding lands. Useful to know.", "mood": "neutral"},
+        {"text": "We don't get many visitors this time of year. Curious.", "mood": "neutral"},
+        {"text": "I've stood this post for years. You learn to read the wind.", "mood": "neutral"},
+        {"text": "There's a bounty board by the gate if you're looking for work.", "mood": "friendly"},
+        {"text": "The forests are crawling with creatures. Don't wander off alone.", "mood": "neutral"},
+        {"text": "One of our scouts went missing two nights ago. Just... gone.", "mood": "mysterious"},
+        {"text": "Keep your weapon close and your wits closer.", "mood": "neutral"},
+        {"text": "I've heard tell of ancient ruins to the north. Dangerous place.", "mood": "mysterious"}
+      ]
+    },
+    "blacksmith": {
+      "lines": [
+        {"text": "Steel and fire -- that's all I need to make something worth carrying.", "mood": "friendly"},
+        {"text": "Bring me materials and I'll forge something worthy of a hero.", "mood": "friendly"},
+        {"text": "I can tell a good blade by the ring it makes. Yours has seen some use.", "mood": "neutral"},
+        {"text": "The ore from the northern mines has a strange shimmer to it.", "mood": "mysterious"},
+        {"text": "A weapon is only as good as the hand that wields it.", "mood": "neutral"},
+        {"text": "I've been forging since I could lift a hammer. It's in the blood.", "mood": "neutral"},
+        {"text": "Some metals don't behave the way they should. Old metals, from old places.", "mood": "mysterious"},
+        {"text": "Good armor saves lives. Don't skimp on protection.", "mood": "friendly"},
+        {"text": "The merchant sells my work at twice what I charge. Go figure.", "mood": "neutral"},
+        {"text": "I found a strange symbol etched into an ingot last week. Never seen its like.", "mood": "mysterious"},
+        {"text": "Every blade I forge, I test myself. Nothing leaves here that I wouldn't trust my life to.", "mood": "friendly"},
+        {"text": "Heat, hammer, patience. That's the secret to a good edge.", "mood": "neutral"},
+        {"text": "A traveler once brought me a shard of metal that sang when I struck it.", "mood": "mysterious"},
+        {"text": "War is good for business, but bad for the soul. I'd rather forge plowshares.", "mood": "neutral"},
+        {"text": "The old forge-masters knew techniques we've lost. I'm trying to rediscover them.", "mood": "mysterious"},
+        {"text": "Come back when your gear needs mending. I do honest work.", "mood": "friendly"},
+        {"text": "I temper blades under the full moon. Old habit. Might be superstition, might not.", "mood": "mysterious"},
+        {"text": "The guard captain keeps me busy. Lots of repairs lately.", "mood": "neutral"},
+        {"text": "There's a vein of dark iron under the hills. Nobody dares mine it.", "mood": "mysterious"},
+        {"text": "A strong shield has turned more battles than any magic spell.", "mood": "neutral"}
+      ]
+    }
+  }
+}

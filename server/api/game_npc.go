@@ -1,8 +1,11 @@
 package api
 
 import (
+	"hash/fnv"
+	"math/rand/v2"
 	"net/http"
 
+	"github.com/digitaldrywood/kithlands/internal/gamedata"
 	"github.com/digitaldrywood/kithlands/internal/locality"
 )
 
@@ -45,10 +48,45 @@ func (g *Game) GetNPCDialogue(nodeID string) *NPCDialogueResponse {
 		return nil
 	}
 
-	return buildDialogue(node, g.loc.Name)
+	return buildDialogue(node, g.loc.Name, g.id, g.gd.Dialogue)
 }
 
-func buildDialogue(node *locality.Node, townName string) *NPCDialogueResponse {
+// pickLines selects n lines deterministically from the archetype pool using
+// hash(gameID + nodeID) as seed. The same NPC always says the same things
+// within a save, but different saves produce different selections.
+func pickLines(archetype string, pool gamedata.DialoguePool, gameID, nodeID string, n int) []string {
+	arch, ok := pool.Archetypes[archetype]
+	if !ok || len(arch.Lines) == 0 {
+		return nil
+	}
+
+	h := fnv.New64a()
+	h.Write([]byte(gameID))
+	h.Write([]byte(nodeID))
+	seed := h.Sum64()
+
+	rng := rand.New(rand.NewPCG(seed, 0))
+
+	// Fisher-Yates shuffle on indices, pick first n.
+	indices := make([]int, len(arch.Lines))
+	for i := range indices {
+		indices[i] = i
+	}
+	rng.Shuffle(len(indices), func(i, j int) {
+		indices[i], indices[j] = indices[j], indices[i]
+	})
+
+	if n > len(indices) {
+		n = len(indices)
+	}
+	lines := make([]string, n)
+	for i := 0; i < n; i++ {
+		lines[i] = arch.Lines[indices[i]].Text
+	}
+	return lines
+}
+
+func buildDialogue(node *locality.Node, townName, gameID string, pool gamedata.DialoguePool) *NPCDialogueResponse {
 	tags := node.Tags
 	tagSet := make(map[string]bool, len(tags))
 	for _, t := range tags {
@@ -57,71 +95,61 @@ func buildDialogue(node *locality.Node, townName string) *NPCDialogueResponse {
 
 	switch {
 	case tagSet["shop"] || tagSet["commerce"] && !tagSet["rest"]:
+		lines := []string{"Welcome to " + node.Name + "!"}
+		lines = append(lines, pickLines("merchant", pool, gameID, node.ID, 2)...)
 		return &NPCDialogueResponse{
 			NPCName: "Merchant",
 			Sprite:  "npc_merchant",
-			Lines: []string{
-				"Welcome to " + node.Name + "!",
-				"We have the finest goods in " + townName + ".",
-				"Browse our wares -- you'll find weapons, armor, and supplies.",
-				"Come back any time, adventurer!",
-			},
+			Lines:   lines,
 		}
 
 	case tagSet["rest"]:
+		lines := []string{"Welcome to " + node.Name + ", weary traveler."}
+		lines = append(lines, pickLines("innkeeper", pool, gameID, node.ID, 2)...)
 		return &NPCDialogueResponse{
 			NPCName: "Innkeeper",
 			Sprite:  "npc_innkeeper",
-			Lines: []string{
-				"Welcome to " + node.Name + ", weary traveler.",
-				"A warm bed and hot meal await you here.",
-				"Rest well -- the road ahead is long.",
-			},
+			Lines:   lines,
 		}
 
 	case tagSet["temple"] || tagSet["revive"]:
+		lines := []string{"Blessings upon you, child of light."}
+		lines = append(lines, pickLines("priestess", pool, gameID, node.ID, 2)...)
 		return &NPCDialogueResponse{
 			NPCName: "Priestess",
 			Sprite:  "npc_priestess",
-			Lines: []string{
-				"Blessings upon you, child of light.",
-				"The temple watches over " + townName + ".",
-				"May your wounds be healed and your spirit renewed.",
-			},
+			Lines:   lines,
+		}
+
+	case tagSet["blacksmith"] || tagSet["forge"]:
+		lines := []string{"Welcome to the forge."}
+		lines = append(lines, pickLines("blacksmith", pool, gameID, node.ID, 2)...)
+		return &NPCDialogueResponse{
+			NPCName: "Blacksmith",
+			Sprite:  "npc_blacksmith",
+			Lines:   lines,
 		}
 
 	case node.Kind == locality.NodePerson:
 		name := node.Name
+		lines := []string{"Greetings! I'm " + name + "."}
 		if node.Personality != "" {
-			return &NPCDialogueResponse{
-				NPCName: name,
-				Sprite:  "npc_elder",
-				Lines: []string{
-					"Greetings! I'm " + name + ".",
-					node.Personality,
-					"Good luck on your journey through " + townName + "!",
-				},
-			}
+			lines = append(lines, node.Personality)
 		}
+		lines = append(lines, pickLines("elder", pool, gameID, node.ID, 2)...)
 		return &NPCDialogueResponse{
 			NPCName: name,
 			Sprite:  "npc_elder",
-			Lines: []string{
-				"Greetings! I'm " + name + ".",
-				"Things have been strange around " + townName + " lately...",
-				"Be careful out there, adventurer.",
-			},
+			Lines:   lines,
 		}
 
 	default:
+		lines := []string{"Welcome to " + node.Name + "."}
+		lines = append(lines, pickLines("guard", pool, gameID, node.ID, 2)...)
 		return &NPCDialogueResponse{
 			NPCName: "Guard",
 			Sprite:  "npc_guard",
-			Lines: []string{
-				"Welcome to " + node.Name + ".",
-				"Keep your wits about you in " + townName + ".",
-				"Safe travels, adventurer.",
-			},
+			Lines:   lines,
 		}
 	}
 }
