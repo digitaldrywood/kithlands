@@ -82,6 +82,7 @@ func BuildFromWizard(input WizardInput) *Locality {
 	}{
 		{"inn", "The Wayward Inn", NodeBusiness, []string{"commerce", "rest"}, 50},
 		{"shop", "General Store", NodeBusiness, []string{"commerce", "shop"}, 55},
+		{"smithy", "Iron Anvil Smithy", NodeBusiness, []string{"commerce", "blacksmith"}, 50},
 		{"temple", "Temple of Light", NodeLandmark, []string{"temple", "revive"}, 50},
 		{"wilderness_1", "Dark Forest", NodeNatural, []string{"wilderness", "danger"}, 40},
 		{"wilderness_2", "Old Ruins", NodeLandmark, []string{"wilderness", "dungeon"}, 45},
@@ -109,6 +110,7 @@ func BuildFromWizard(input WizardInput) *Locality {
 		Edge{From: centralID, To: "temple", Kind: EdgeProximity, Weight: 0.6},
 		Edge{From: centralID, To: "inn", Kind: EdgeProximity, Weight: 0.7},
 		Edge{From: centralID, To: "shop", Kind: EdgeProximity, Weight: 0.7},
+		Edge{From: centralID, To: "smithy", Kind: EdgeProximity, Weight: 0.6},
 	)
 
 	// People connect to places and to each other

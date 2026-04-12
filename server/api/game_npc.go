@@ -94,6 +94,15 @@ func buildDialogue(node *locality.Node, townName, gameID string, pool gamedata.D
 	}
 
 	switch {
+	case tagSet["blacksmith"] || tagSet["forge"]:
+		lines := []string{"Welcome to the forge."}
+		lines = append(lines, pickLines("blacksmith", pool, gameID, node.ID, 2)...)
+		return &NPCDialogueResponse{
+			NPCName: "Blacksmith",
+			Sprite:  "npc_blacksmith",
+			Lines:   lines,
+		}
+
 	case tagSet["shop"] || tagSet["commerce"] && !tagSet["rest"]:
 		lines := []string{"Welcome to " + node.Name + "!"}
 		lines = append(lines, pickLines("merchant", pool, gameID, node.ID, 2)...)
@@ -118,15 +127,6 @@ func buildDialogue(node *locality.Node, townName, gameID string, pool gamedata.D
 		return &NPCDialogueResponse{
 			NPCName: "Priestess",
 			Sprite:  "npc_priestess",
-			Lines:   lines,
-		}
-
-	case tagSet["blacksmith"] || tagSet["forge"]:
-		lines := []string{"Welcome to the forge."}
-		lines = append(lines, pickLines("blacksmith", pool, gameID, node.ID, 2)...)
-		return &NPCDialogueResponse{
-			NPCName: "Blacksmith",
-			Sprite:  "npc_blacksmith",
 			Lines:   lines,
 		}
 

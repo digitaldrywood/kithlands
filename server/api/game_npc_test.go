@@ -122,12 +122,29 @@ func TestGetNPCDialogue_DefaultGuard(t *testing.T) {
 	}
 }
 
+func TestGetNPCDialogue_Blacksmith(t *testing.T) {
+	game := newTestGame(t)
+	resp := game.GetNPCDialogue("smithy")
+	if resp == nil {
+		t.Fatal("expected dialogue for smithy node, got nil")
+	}
+	if resp.NPCName != "Blacksmith" {
+		t.Errorf("npc_name = %q, want Blacksmith", resp.NPCName)
+	}
+	if resp.Sprite != "npc_blacksmith" {
+		t.Errorf("sprite = %q, want npc_blacksmith", resp.Sprite)
+	}
+	if len(resp.Lines) < 3 {
+		t.Errorf("expected at least 3 dialogue lines, got %d", len(resp.Lines))
+	}
+}
+
 // TestGetNPCDialogue_Deterministic verifies the same game+node always
 // produces identical dialogue lines (deterministic seed).
 func TestGetNPCDialogue_Deterministic(t *testing.T) {
 	game := newTestGame(t)
 
-	for _, nodeID := range []string{"shop", "inn", "temple", "person_0", "central"} {
+	for _, nodeID := range []string{"shop", "inn", "temple", "smithy", "person_0", "central"} {
 		first := game.GetNPCDialogue(nodeID)
 		second := game.GetNPCDialogue(nodeID)
 		if first == nil || second == nil {
@@ -183,8 +200,14 @@ func TestGetNPCDialogue_Variety(t *testing.T) {
 	baseline := games[0].GetNPCDialogue("shop")
 	for _, g := range games[1:] {
 		resp := g.GetNPCDialogue("shop")
-		if len(resp.Lines) > 1 && len(baseline.Lines) > 1 && resp.Lines[1] != baseline.Lines[1] {
-			sawDifferent = true
+		// Compare all pool-selected lines (skip index 0 which is the fixed greeting).
+		for i := 1; i < len(resp.Lines) && i < len(baseline.Lines); i++ {
+			if resp.Lines[i] != baseline.Lines[i] {
+				sawDifferent = true
+				break
+			}
+		}
+		if sawDifferent {
 			break
 		}
 	}

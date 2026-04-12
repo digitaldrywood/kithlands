@@ -224,6 +224,7 @@ func (gd *GameData) validate() {
 		}
 	}
 
+	validMoods := map[string]bool{"friendly": true, "neutral": true, "mysterious": true}
 	requiredArchetypes := []string{"merchant", "priestess", "elder", "innkeeper", "guard", "blacksmith"}
 	for _, arch := range requiredArchetypes {
 		a, ok := gd.Dialogue.Archetypes[arch]
@@ -236,6 +237,9 @@ func (gd *GameData) validate() {
 		for i, l := range a.Lines {
 			if l.Text == "" {
 				panic(fmt.Sprintf("gamedata: dialogue.json archetype %q line %d has empty text", arch, i))
+			}
+			if !validMoods[l.Mood] {
+				panic(fmt.Sprintf("gamedata: dialogue.json archetype %q line %d has invalid mood %q", arch, i, l.Mood))
 			}
 		}
 	}
