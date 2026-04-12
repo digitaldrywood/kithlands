@@ -53,6 +53,12 @@ function fallbackAttack(enemies) {
   return { type: "attack", target_id: target.id };
 }
 
+function defaultActionForSlot(slot, actor, gameState) {
+  if (!actor || actor.hp <= 0) return null;
+  const fb = fallbackAttack(gameState.enemies);
+  return fb ? { slot, ...fb } : null;
+}
+
 // ---------------------------------------------------------------------------
 // Main resolver
 // ---------------------------------------------------------------------------
@@ -94,6 +100,22 @@ export function resolveAction(action, actor, gameState) {
 
   // Unknown action type — fall back to basic attack
   return { slot, ...fallbackAttack(enemies) };
+}
+
+export function buildAutoBattleActions(lastRoundActions, gameState, livingSlots) {
+  const remembered = Array.isArray(lastRoundActions) ? lastRoundActions : [];
+  const actions = [];
+
+  for (const slot of livingSlots) {
+    const actor = gameState.party[slot];
+    const prev = remembered.find((a) => a.slot === slot);
+    const resolved = prev
+      ? resolveAction(prev, actor, gameState)
+      : defaultActionForSlot(slot, actor, gameState);
+    if (resolved) actions.push(resolved);
+  }
+
+  return actions;
 }
 
 // ---------------------------------------------------------------------------

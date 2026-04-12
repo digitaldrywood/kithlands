@@ -58,15 +58,13 @@ export class BootScene extends Phaser.Scene {
       this.load.image(key, `/sprites/${key}.png`);
     }
 
-    // Per-class walk sprite sheets (#127). 4 rows (down/up/left/right) x
-    // 4 cols (frame 0-3), 128px per cell. Manifest is currently empty:
-    // the warrior POC from PR #135 is BROKEN — all 16 frames depict the
-    // warrior facing forward rather than down/up/left/right, so enabling
-    // it produces sprites that walk sideways/backward as if they were
-    // facing the camera. See #140 for the asset regeneration plan.
-    // Every class falls back to the static player_{dir} images which
-    // have correct directional poses.
-    const CLASSES_WITH_WALK_SHEETS = CLASS_SPRITE_KEYS;
+    // Per-class walk sprite sheets (#127/#140). The current generated sheets
+    // are still not reliable enough to enable globally: cell-by-cell
+    // inspection shows mismatched directional rows, so using them renders the
+    // wrong art while moving. Keep the runtime manifest empty until validated
+    // replacements exist; the static player_{dir} sprites are directionally
+    // correct even though they do not animate.
+    const CLASSES_WITH_WALK_SHEETS = [];
     for (const key of CLASSES_WITH_WALK_SHEETS) {
       this.load.spritesheet(`${key}_walk`, `/sprites/walk/${key}_walk.png`, {
         frameWidth: 128,

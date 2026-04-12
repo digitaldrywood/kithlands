@@ -14,7 +14,7 @@ import { FloatingTextPool } from "../ui/floating_text.js";
 import { ENEMY_SPRITES } from "../data/monsterSprites.js";
 import { battleSpeedMul, messageCharMs } from "../systems/prefs.js";
 import { toggleDebugPanel, closeDebugPanel } from "./debug_panel.js";
-import { resolveAction } from "../systems/auto_battle.js";
+import { buildAutoBattleActions } from "../systems/auto_battle.js";
 
 const ENEMY_COLORS = {
   Slime: 0x42a5f5,
@@ -72,7 +72,8 @@ export class BattleScene extends Phaser.Scene {
 
   init(data) {
     this.gameState = data.gameState;
-    this._lastRoundActions = data.lastRoundActions || null;
+    this._lastRoundActions =
+      data.lastRoundActions || data.gameState?.last_round_actions || null;
     this._autoMode = data.autoMode || false;
   }
 
@@ -368,7 +369,6 @@ export class BattleScene extends Phaser.Scene {
     // Toggle AUTO-BATTLE mode (issue #99)
     this.input.keyboard.on("keydown-Q", () => {
       if (this.animating || this.targetingMode || this.pickerOverlay) return;
-      if (!this.lastRoundActions) return;
       this.autoMode = !this.autoMode;
       if (this.autoMode) {
         this.executeRepeat();
@@ -816,12 +816,12 @@ export class BattleScene extends Phaser.Scene {
     btns.push({ label: "[F]LEE", type: "flee", color: "#ffcc44" });
     if (this.lastRoundActions) {
       btns.push({ label: "[R]EPEAT", type: "repeat", color: "#44ccff" });
-      btns.push({
-        label: this.autoMode ? "[Q] AUTO*" : "[Q] AUTO",
-        type: "auto",
-        color: this.autoMode ? "#ffaa44" : "#ff8844",
-      });
     }
+    btns.push({
+      label: this.autoMode ? "[Q] AUTO*" : "[Q] AUTO",
+      type: "auto",
+      color: this.autoMode ? "#ffaa44" : "#ff8844",
+    });
 
     const tw = btns.length * 145,
       sx = 400 - tw / 2 + 72;
@@ -955,27 +955,11 @@ export class BattleScene extends Phaser.Scene {
   // resolver, then submit the round immediately. Used by both REPEAT and AUTO.
   executeRepeat() {
     const gs = this.gameState;
-    this.memberActions = [];
-    for (const slot of this.livingMembers) {
-      // Find the previous action for this slot, if any
-      const prev = this.lastRoundActions.find((a) => a.slot === slot);
-      if (!prev) {
-        // No previous action for this member — default to attack
-        const target = gs.enemies.find((e) => e.hp > 0);
-        if (target) {
-          this.memberActions.push({
-            slot,
-            type: "attack",
-            target_id: target.id,
-          });
-        }
-        continue;
-      }
-      const resolved = resolveAction(prev, gs.party[slot], gs);
-      if (resolved) {
-        this.memberActions.push(resolved);
-      }
-    }
+    this.memberActions = buildAutoBattleActions(
+      this.lastRoundActions,
+      gs,
+      this.livingMembers,
+    );
 
     if (this.memberActions.length === 0) {
       // Nothing valid to submit — cancel auto-mode and let player choose
