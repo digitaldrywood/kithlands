@@ -34,6 +34,9 @@ func main() {
 		victoryMin    = flag.Float64("min-victory-rate", 0.05, "fail if any strategy wins fewer runs than this")
 		expectedLvl   = flag.Float64("expected-promo-level", 3.5, "expected mean party level at promotion")
 		lvlTolerance  = flag.Float64("promo-level-tolerance", 1.5, "allowed |mean - expected| promotion level")
+		captureSeed   = flag.Int64("capture-seed", 0, "seed to capture per-turn snapshots from (0 disables capture)")
+		captureTurn   = flag.Int("capture-turn", -1, "turn index to capture (-1 = every turn of -capture-seed)")
+		captureOut    = flag.String("capture-out", "", "directory for TurnSnapshot JSON artifacts (requires -capture-seed)")
 	)
 	flag.Parse()
 
@@ -51,10 +54,33 @@ func main() {
 
 	fmt.Printf("simulate: runs=%d strategies=%d seed=%d\n", *runs, len(strategies), *seed)
 
-	allResults := runAll(gd, *sharedDir, *seed, *runs, strategies, RunOptions{
+	runOpts := RunOptions{
 		MaxTurns:               *maxTurns,
 		EncounterRollsPerQuest: *encPerQuest,
-	})
+	}
+	if *captureOut != "" {
+		if *captureSeed == 0 {
+			fmt.Fprintln(os.Stderr, "error: -capture-out requires -capture-seed (no seed 0 captures)")
+			os.Exit(2)
+		}
+		hook, err := NewCaptureHook(CaptureConfig{
+			TargetSeed: *captureSeed,
+			TargetTurn: *captureTurn,
+			OutDir:     *captureOut,
+		})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "capture: %v\n", err)
+			os.Exit(2)
+		}
+		runOpts.PauseHook = hook
+		if *captureTurn >= 0 {
+			fmt.Printf("capture: seed=%d turn=%d out=%s\n", *captureSeed, *captureTurn, *captureOut)
+		} else {
+			fmt.Printf("capture: seed=%d all turns out=%s\n", *captureSeed, *captureOut)
+		}
+	}
+
+	allResults := runAll(gd, *sharedDir, *seed, *runs, strategies, runOpts)
 
 	groups := GroupByStrategy(allResults)
 	summaries := make(map[string]Aggregated, len(groups))

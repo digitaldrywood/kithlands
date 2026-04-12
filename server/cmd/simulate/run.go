@@ -7,6 +7,32 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
 )
 
+// HookPhase distinguishes before-action and after-action PauseHook callbacks.
+type HookPhase string
+
+const (
+	HookBeforeAction HookPhase = "before"
+	HookAfterAction  HookPhase = "after"
+)
+
+// PauseEvent is passed to a PauseHook once per phase per turn. On Before,
+// State is the pre-action state and Action is the request that is about to
+// be submitted to game.ProcessAction. On After, State is the post-action
+// state (nil if ProcessAction errored) and Err is set if the action failed.
+type PauseEvent struct {
+	Phase    HookPhase
+	Seed     int64
+	Strategy string
+	Turn     int
+	State    *api.GameState
+	Action   *api.GameActionRequest
+	Err      error
+}
+
+// PauseHook is an optional callback for per-turn inspection. Returning an
+// error aborts the current run and propagates the error out of RunOne.
+type PauseHook func(PauseEvent) error
+
 // RunOptions tunes a single playthrough.
 type RunOptions struct {
 	// MaxTurns is the hard upper bound on action iterations before the run
@@ -25,6 +51,12 @@ type RunOptions struct {
 	// step-based rolls in world.js. Zero falls back to the default; pass -1
 	// to explicitly disable (legacy teleport-only path for tests).
 	EncounterRollsPerQuest int
+
+	// PauseHook, if non-nil, is invoked before and after every ProcessAction
+	// call with a PauseEvent describing the turn, action, and state. Nil (the
+	// default) is a zero-overhead fast path. The promotion branch does NOT
+	// route through ProcessAction and is intentionally not captured.
+	PauseHook PauseHook
 }
 
 // DefaultRunOptions returns the standard options used by main and the tests.
@@ -172,7 +204,37 @@ func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strat Strategy,
 			req = api.GameActionRequest{Type: "advance"}
 		}
 
+		if opts.PauseHook != nil {
+			preState := state
+			if err := opts.PauseHook(PauseEvent{
+				Phase:    HookBeforeAction,
+				Seed:     seed,
+				Strategy: strat.Name(),
+				Turn:     turn,
+				State:    &preState,
+				Action:   &req,
+			}); err != nil {
+				return result, fmt.Errorf("pause hook before @ turn %d: %w", turn, err)
+			}
+		}
+
 		next, err := game.ProcessAction(req)
+		if opts.PauseHook != nil {
+			ev := PauseEvent{
+				Phase:    HookAfterAction,
+				Seed:     seed,
+				Strategy: strat.Name(),
+				Turn:     turn,
+				Action:   &req,
+				Err:      err,
+			}
+			if next != nil {
+				ev.State = next
+			}
+			if hookErr := opts.PauseHook(ev); hookErr != nil {
+				return result, fmt.Errorf("pause hook after @ turn %d: %w", turn, hookErr)
+			}
+		}
 		if err != nil {
 			return result, fmt.Errorf("action @ turn %d phase %s: %w", turn, state.Phase, err)
 		}

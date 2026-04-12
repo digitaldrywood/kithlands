@@ -108,7 +108,8 @@ balance-sim:
 simulate:
 	cd server && go run ./cmd/simulate -runs 100 \
 		-expected-promo-level 10.0 -promo-level-tolerance 3.0 \
-		-max-wipe-rate 0.30
+		-max-wipe-rate 0.30 \
+		$(if $(CAPTURE),-capture-seed $(or $(CAPTURE_SEED),1) -capture-turn $(or $(CAPTURE_TURN),-1) -capture-out $(or $(CAPTURE_OUT),./sim-capture),)
 
 validate-data:
 	cd server && go run ./cmd/validate_gamedata -shared=../shared
