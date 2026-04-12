@@ -22,6 +22,22 @@ type SkinEntry struct {
 	Sprite string `json:"sprite"`
 }
 
+// DialogueLine is a single NPC dialogue line with mood metadata.
+type DialogueLine struct {
+	Text string `json:"text"`
+	Mood string `json:"mood"` // friendly, neutral, mysterious
+}
+
+// DialogueArchetype holds the line pool for one NPC archetype.
+type DialogueArchetype struct {
+	Lines []DialogueLine `json:"lines"`
+}
+
+// DialoguePool holds all archetype dialogue pools loaded from dialogue.json.
+type DialoguePool struct {
+	Archetypes map[string]DialogueArchetype `json:"archetypes"`
+}
+
 // GameData holds all loaded game data from shared/.
 type GameData struct {
 	Classes    []Class
@@ -32,6 +48,7 @@ type GameData struct {
 	Formations []Formation
 	Transport  TransportData
 	Palettes   Palettes
+	Dialogue   DialoguePool
 
 	classByID     map[string]*Class
 	weaponByID    map[string]*Weapon
@@ -57,6 +74,7 @@ func Load(sharedDir string) *GameData {
 	gd.Formations = loadJSON[[]Formation](sharedDir, "formations.json")
 	gd.Transport = loadJSON[TransportData](sharedDir, "transport.json")
 	gd.Palettes = loadJSON[Palettes](sharedDir, "palettes.json")
+	gd.Dialogue = loadJSON[DialoguePool](sharedDir, "dialogue.json")
 
 	gd.buildIndexes()
 	gd.validate()
@@ -203,6 +221,22 @@ func (gd *GameData) validate() {
 		}
 		if ki.BuyPrice < 0 {
 			panic(fmt.Sprintf("gamedata: key_item %q has negative buy_price", ki.ID))
+		}
+	}
+
+	requiredArchetypes := []string{"merchant", "priestess", "elder", "innkeeper", "guard", "blacksmith"}
+	for _, arch := range requiredArchetypes {
+		a, ok := gd.Dialogue.Archetypes[arch]
+		if !ok {
+			panic(fmt.Sprintf("gamedata: dialogue.json missing archetype %q", arch))
+		}
+		if len(a.Lines) < 15 {
+			panic(fmt.Sprintf("gamedata: dialogue.json archetype %q has %d lines, need >= 15", arch, len(a.Lines)))
+		}
+		for i, l := range a.Lines {
+			if l.Text == "" {
+				panic(fmt.Sprintf("gamedata: dialogue.json archetype %q line %d has empty text", arch, i))
+			}
 		}
 	}
 
