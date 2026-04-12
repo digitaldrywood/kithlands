@@ -22,7 +22,12 @@ import {
 } from "./world_interact.js";
 import { shouldStartBattle } from "./encounterFlow.js";
 import { initTouchControls } from "../systems/input.js";
-import { nextWalkFrame, walkSheetKey, walkFrameIndex } from "./walkFrame.js";
+import {
+  nextWalkFrame,
+  walkSheetKey,
+  walkFrameIndex,
+  nextLeaderIndex,
+} from "./walkFrame.js";
 import { isWorldInputLocked } from "../systems/modalLock.js";
 
 const ENEMY_SPRITES = {
@@ -104,6 +109,14 @@ let cachedTileMap = null;
 let cachedPlayerX = null;
 let cachedPlayerY = null;
 let cachedPlayerDir = "down";
+let cachedLeaderIndex = 0;
+
+export function getLeaderIndex() {
+  return cachedLeaderIndex;
+}
+export function setLeaderIndex(i) {
+  cachedLeaderIndex = i;
+}
 
 export class WorldScene extends Phaser.Scene {
   constructor() {
@@ -197,8 +210,13 @@ export class WorldScene extends Phaser.Scene {
     // image.
     this.playerDir = cachedPlayerDir;
     this.walkFrame = 0;
-    this.leaderClass =
-      gs?.party?.[0]?.sprite_id || gs?.party?.[0]?.class_id || "warrior";
+    // Validate cached leader index: clamp to party size and skip dead members
+    if (cachedLeaderIndex >= (gs?.party?.length || 1)) cachedLeaderIndex = 0;
+    if (gs?.party?.[cachedLeaderIndex]?.hp <= 0) {
+      cachedLeaderIndex = nextLeaderIndex(gs.party, cachedLeaderIndex - 1 < 0 ? gs.party.length - 1 : cachedLeaderIndex - 1);
+    }
+    const leader = gs?.party?.[cachedLeaderIndex] || gs?.party?.[0];
+    this.leaderClass = leader?.sprite_id || leader?.class_id || "warrior";
     this.hasWalkSheet = this.textures.exists(walkSheetKey(this.leaderClass));
 
     const playerCx = this.playerX * RENDERED_TILE + RENDERED_TILE / 2;
@@ -262,11 +280,36 @@ export class WorldScene extends Phaser.Scene {
     this.codexOpen = false;
     this.codexGroup = null;
 
-    // Enter/Space to interact with doors
+    // Enter to interact with doors, Space to interact OR cycle leader
     this.currentDoorSpawn = null;
     this.interactPrompt = null;
     this.input.keyboard.on("keydown-ENTER", () => interactWithDoor(this));
-    this.input.keyboard.on("keydown-SPACE", () => interactWithDoor(this));
+    this.input.keyboard.on("keydown-SPACE", () => {
+      if (this.currentDoorSpawn) {
+        interactWithDoor(this);
+        return;
+      }
+      if (this.animating || this.menuOpen || this.gameOver) return;
+      const party = this.gameState?.party;
+      if (!party || party.length <= 1) return;
+      const next = nextLeaderIndex(party, cachedLeaderIndex);
+      if (next === cachedLeaderIndex) return;
+      cachedLeaderIndex = next;
+      const member = party[cachedLeaderIndex];
+      this.leaderClass = member.sprite_id || member.class_id || "warrior";
+      this.hasWalkSheet = this.textures.exists(walkSheetKey(this.leaderClass));
+      if (this.hasWalkSheet) {
+        this.walkFrame = 0;
+        this.player.setTexture(
+          walkSheetKey(this.leaderClass),
+          walkFrameIndex(this.playerDir, 0),
+        );
+      } else {
+        this.player.setTexture(`player_${this.playerDir}`);
+      }
+      playSFX("sfx_cursor");
+      this.updateHUD();
+    });
 
     // TAB for world map
     this.input.keyboard.on("keydown-TAB", (e) => {
