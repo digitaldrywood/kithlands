@@ -17,7 +17,7 @@ import {
 } from "./world_interact.js";
 import { shouldStartBattle } from "./encounterFlow.js";
 import { initTouchControls } from "../systems/input.js";
-// walkFrame helpers disabled — see #127 (inconsistent walk frame assets).
+import { nextWalkFrame, walkSheetKey, walkFrameIndex } from "./walkFrame.js";
 
 const ENEMY_SPRITES = {
   Slime: "monster_slime",
@@ -185,25 +185,42 @@ export class WorldScene extends Phaser.Scene {
     // Location labels
     this.drawLabels();
 
-    // Player sprite (directional, restore cached direction)
+    // Player sprite (directional, restore cached direction). When the party
+    // leader's class has a walk sprite sheet loaded (#127) we use it for the
+    // per-step 4-frame cycle, otherwise fall back to the static player_{dir}
+    // image.
     this.playerDir = cachedPlayerDir;
     this.walkFrame = 0;
-    this.player = this.add
-      .image(
-        this.playerX * RENDERED_TILE + RENDERED_TILE / 2,
-        this.playerY * RENDERED_TILE + RENDERED_TILE / 2,
-        `player_${this.playerDir}`,
-      )
-      .setDepth(10)
-      .setScale(
-        (RENDERED_TILE /
-          Math.max(
-            this.textures.get(`player_${this.playerDir}`).getSourceImage()
-              .width,
-            1,
-          )) *
-          SCALE,
-      );
+    this.leaderClass =
+      gs?.party?.[0]?.sprite_id || gs?.party?.[0]?.class_id || "warrior";
+    this.hasWalkSheet = this.textures.exists(walkSheetKey(this.leaderClass));
+
+    const playerCx = this.playerX * RENDERED_TILE + RENDERED_TILE / 2;
+    const playerCy = this.playerY * RENDERED_TILE + RENDERED_TILE / 2;
+    if (this.hasWalkSheet) {
+      this.player = this.add
+        .sprite(
+          playerCx,
+          playerCy,
+          walkSheetKey(this.leaderClass),
+          walkFrameIndex(this.playerDir, 0),
+        )
+        .setDepth(10)
+        .setScale((RENDERED_TILE / 128) * SCALE);
+    } else {
+      this.player = this.add
+        .image(playerCx, playerCy, `player_${this.playerDir}`)
+        .setDepth(10)
+        .setScale(
+          (RENDERED_TILE /
+            Math.max(
+              this.textures.get(`player_${this.playerDir}`).getSourceImage()
+                .width,
+              1,
+            )) *
+            SCALE,
+        );
+    }
 
     // Vehicle indicator circle behind player (T2+)
     this.vehicleIndicator = null;
@@ -448,19 +465,25 @@ export class WorldScene extends Phaser.Scene {
     this.playerX = nx;
     this.playerY = ny;
 
-    // Update facing direction
+    // Update facing direction. Direction changes immediately reset to
+    // frame 0 of the new direction (#127 acceptance criterion 3).
     let dir = this.playerDir;
     if (dx < 0) dir = "left";
     else if (dx > 0) dir = "right";
     else if (dy < 0) dir = "up";
     else if (dy > 0) dir = "down";
+    const dirChanged = dir !== this.playerDir;
     this.playerDir = dir;
 
-    // Walk frame animation disabled — the generated walk_*_N frames are
-    // inconsistent (different characters per frame) and look broken. Use
-    // static per-direction sprites until a consistent 4-frame sheet is
-    // commissioned (issue #127). Direction still flips sprite on turn.
-    this.player.setTexture(`player_${this.playerDir}`);
+    if (this.hasWalkSheet) {
+      this.walkFrame = dirChanged ? 0 : nextWalkFrame(this.walkFrame);
+      this.player.setTexture(
+        walkSheetKey(this.leaderClass),
+        walkFrameIndex(this.playerDir, this.walkFrame),
+      );
+    } else {
+      this.player.setTexture(`player_${this.playerDir}`);
+    }
 
     // Cache position for scene transitions
     cachedPlayerX = this.playerX;

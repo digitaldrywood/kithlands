@@ -2,7 +2,7 @@ import { playSFX, playMusic } from "../systems/audio.js";
 import { openDialogue } from "./town_dialogue.js";
 import { openShop } from "./world_shop.js";
 import { isTouchDevice, initTouchControls } from "../systems/input.js";
-// walkFrame helpers disabled — see #127 (inconsistent walk frame assets).
+import { nextWalkFrame, walkSheetKey, walkFrameIndex } from "./walkFrame.js";
 
 const TILE_SIZE = 16;
 const SCALE = 2;
@@ -189,15 +189,32 @@ export class TownScene extends Phaser.Scene {
     this.playerY = ROOM_H - 2; // one tile above door
     this.playerDir = "up";
     this.walkFrame = 0;
+    this.leaderClass =
+      this.gameState?.party?.[0]?.sprite_id ||
+      this.gameState?.party?.[0]?.class_id ||
+      "warrior";
+    this.hasWalkSheet = this.textures.exists(walkSheetKey(this.leaderClass));
 
-    this.player = this.add
-      .image(
-        this.offsetX + this.playerX * RENDERED_TILE + RENDERED_TILE / 2,
-        this.offsetY + this.playerY * RENDERED_TILE + RENDERED_TILE / 2,
-        `player_${this.playerDir}`,
-      )
-      .setScale(SCALE)
-      .setDepth(10);
+    const playerCx =
+      this.offsetX + this.playerX * RENDERED_TILE + RENDERED_TILE / 2;
+    const playerCy =
+      this.offsetY + this.playerY * RENDERED_TILE + RENDERED_TILE / 2;
+    if (this.hasWalkSheet) {
+      this.player = this.add
+        .sprite(
+          playerCx,
+          playerCy,
+          walkSheetKey(this.leaderClass),
+          walkFrameIndex(this.playerDir, 0),
+        )
+        .setScale((RENDERED_TILE / 128) * SCALE)
+        .setDepth(10);
+    } else {
+      this.player = this.add
+        .image(playerCx, playerCy, `player_${this.playerDir}`)
+        .setScale(SCALE)
+        .setDepth(10);
+    }
 
     // Input
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -277,18 +294,25 @@ export class TownScene extends Phaser.Scene {
     this.playerX = nx;
     this.playerY = ny;
 
-    // Update facing direction
+    // Update facing direction. Direction changes reset to frame 0 of the
+    // new direction (#127 acceptance criterion 3).
     let dir = this.playerDir;
     if (dx < 0) dir = "left";
     else if (dx > 0) dir = "right";
     else if (dy < 0) dir = "up";
     else if (dy > 0) dir = "down";
+    const dirChanged = dir !== this.playerDir;
     this.playerDir = dir;
 
-    // Walk frame animation disabled — generated walk_*_N frames are
-    // inconsistent characters per frame (issue #127). Fall back to static
-    // per-direction sprites until a consistent sheet is commissioned.
-    this.player.setTexture(`player_${this.playerDir}`);
+    if (this.hasWalkSheet) {
+      this.walkFrame = dirChanged ? 0 : nextWalkFrame(this.walkFrame);
+      this.player.setTexture(
+        walkSheetKey(this.leaderClass),
+        walkFrameIndex(this.playerDir, this.walkFrame),
+      );
+    } else {
+      this.player.setTexture(`player_${this.playerDir}`);
+    }
 
     this.tweens.add({
       targets: this.player,
