@@ -6,7 +6,11 @@ import {
   toggleMute,
   isMuted,
 } from "../systems/audio.js";
-import { getAutosaveEnabled, getAutosaveInterval } from "../systems/prefs.js";
+import {
+  getAutosaveEnabled,
+  getAutosaveInterval,
+  walkStepMs,
+} from "../systems/prefs.js";
 import { toggleMenu } from "./world_menu.js";
 import { toggleCodex } from "./world_codex.js";
 import {
@@ -492,11 +496,12 @@ export class WorldScene extends Phaser.Scene {
 
     const destX = nx * RENDERED_TILE + RENDERED_TILE / 2;
     const destY = ny * RENDERED_TILE + RENDERED_TILE / 2;
+    const stepMs = walkStepMs();
     this.tweens.add({
       targets: this.player,
       x: destX,
       y: destY,
-      duration: 100,
+      duration: stepMs,
       ease: "Linear",
     });
     if (this.vehicleIndicator) {
@@ -504,7 +509,7 @@ export class WorldScene extends Phaser.Scene {
         targets: this.vehicleIndicator,
         x: destX,
         y: destY,
-        duration: 100,
+        duration: stepMs,
         ease: "Linear",
       });
     }
