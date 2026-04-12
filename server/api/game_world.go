@@ -430,8 +430,24 @@ func (g *Game) checkLevelUps() {
 
 func (g *Game) restParty() {
 	for _, c := range g.party {
+		if !c.IsAlive() {
+			continue
+		}
 		c.CurrentHP = c.MaxHP
 		c.CurrentMP = c.MaxMP
+		c.Status = character.StatusNone
+	}
+}
+
+// restPartyPercent restores pct% of each living member's MaxHP and MaxMP.
+// Used by consumables like Tent that give a partial rest.
+func (g *Game) restPartyPercent(pct int) {
+	for _, c := range g.party {
+		if !c.IsAlive() {
+			continue
+		}
+		c.Heal(c.MaxHP * pct / 100)
+		c.RestoreMP(c.MaxMP * pct / 100)
 		c.Status = character.StatusNone
 	}
 }
