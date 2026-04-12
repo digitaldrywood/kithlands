@@ -17,7 +17,7 @@ import {
 } from "./world_interact.js";
 import { shouldStartBattle } from "./encounterFlow.js";
 import { initTouchControls } from "../systems/input.js";
-import { nextWalkFrame, walkTextureKey } from "./walkFrame.js";
+// walkFrame helpers disabled — see #127 (inconsistent walk frame assets).
 
 const ENEMY_SPRITES = {
   Slime: "monster_slime",
@@ -447,10 +447,11 @@ export class WorldScene extends Phaser.Scene {
     else if (dy > 0) dir = "down";
     this.playerDir = dir;
 
-    // Advance one walk frame per tile step so the animation is deterministic
-    // and can never get stuck mid-cycle on rapid input or direction changes.
-    this.walkFrame = nextWalkFrame(this.walkFrame);
-    this.player.setTexture(walkTextureKey(this.playerDir, this.walkFrame));
+    // Walk frame animation disabled — the generated walk_*_N frames are
+    // inconsistent (different characters per frame) and look broken. Use
+    // static per-direction sprites until a consistent 4-frame sheet is
+    // commissioned (issue #127). Direction still flips sprite on turn.
+    this.player.setTexture(`player_${this.playerDir}`);
 
     // Cache position for scene transitions
     cachedPlayerX = this.playerX;

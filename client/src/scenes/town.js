@@ -2,7 +2,7 @@ import { playSFX, playMusic } from "../systems/audio.js";
 import { openDialogue } from "./town_dialogue.js";
 import { openShop } from "./world_shop.js";
 import { isTouchDevice, initTouchControls } from "../systems/input.js";
-import { nextWalkFrame, walkTextureKey } from "./walkFrame.js";
+// walkFrame helpers disabled — see #127 (inconsistent walk frame assets).
 
 const TILE_SIZE = 16;
 const SCALE = 2;
@@ -285,10 +285,10 @@ export class TownScene extends Phaser.Scene {
     else if (dy > 0) dir = "down";
     this.playerDir = dir;
 
-    // Advance one walk frame per tile step so the animation is deterministic
-    // and can never get stuck mid-cycle on rapid input or direction changes.
-    this.walkFrame = nextWalkFrame(this.walkFrame);
-    this.player.setTexture(walkTextureKey(this.playerDir, this.walkFrame));
+    // Walk frame animation disabled — generated walk_*_N frames are
+    // inconsistent characters per frame (issue #127). Fall back to static
+    // per-direction sprites until a consistent sheet is commissioned.
+    this.player.setTexture(`player_${this.playerDir}`);
 
     this.tweens.add({
       targets: this.player,
