@@ -1,4 +1,5 @@
 import { getNpcDialogue } from "../api.js";
+import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 
 // Default dialogue lines used when the server call fails.
 const FALLBACK_DIALOGUE = {
@@ -41,6 +42,7 @@ function fallbackForTags(tags) {
 }
 
 export async function openDialogue(scene, spawn) {
+  pauseWorldFor(scene, "dialogue");
   scene.animating = true;
 
   let dialogue;
@@ -120,6 +122,7 @@ export async function openDialogue(scene, spawn) {
     const closeDialogue = () => {
       overlay.forEach((o) => o.destroy());
       scene.animating = false;
+      resumeWorldFor(scene, "dialogue");
       scene.input.keyboard.off("keydown-ENTER", advanceHandler);
       scene.input.keyboard.off("keydown-SPACE", advanceHandler);
       scene.input.keyboard.off("keydown-ESC", escHandler);

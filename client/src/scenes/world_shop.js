@@ -1,7 +1,9 @@
 import { getShop, buyItem, autosaveGame } from "../api.js";
 import { getAutosaveEnabled } from "../systems/prefs.js";
+import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 
 export async function openShop(scene, spawn) {
+  pauseWorldFor(scene, "shop");
   scene.animating = true;
   const gs = scene.gameState;
 
@@ -11,6 +13,7 @@ export async function openShop(scene, spawn) {
   } catch (e) {
     console.error("[World] shop fetch failed:", e);
     scene.animating = false;
+    resumeWorldFor(scene, "shop");
     return;
   }
 
@@ -20,6 +23,7 @@ export async function openShop(scene, spawn) {
     scene.time.delayedCall(1500, () => {
       scene.hideMessage();
       scene.animating = false;
+      resumeWorldFor(scene, "shop");
     });
     return;
   }
@@ -206,6 +210,7 @@ export async function openShop(scene, spawn) {
     overlay.forEach((o) => o.destroy());
     listGroup.forEach((o) => o.destroy());
     scene.animating = false;
+    resumeWorldFor(scene, "shop");
   });
   overlay.push(closeBtn);
 
@@ -214,6 +219,7 @@ export async function openShop(scene, spawn) {
     overlay.forEach((o) => o.destroy());
     listGroup.forEach((o) => o.destroy());
     scene.animating = false;
+    resumeWorldFor(scene, "shop");
     scene.input.keyboard.off("keydown-ESC", escHandler);
   });
 

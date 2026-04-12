@@ -4,6 +4,7 @@ import { openShop } from "./world_shop.js";
 import { isTouchDevice, initTouchControls } from "../systems/input.js";
 import { nextWalkFrame, walkSheetKey, walkFrameIndex } from "./walkFrame.js";
 import { walkStepMs } from "../systems/prefs.js";
+import { isWorldInputLocked } from "../systems/modalLock.js";
 
 const TILE_SIZE = 16;
 const SCALE = 2;
@@ -264,7 +265,7 @@ export class TownScene extends Phaser.Scene {
   }
 
   update(time) {
-    if (this.animating) return;
+    if (isWorldInputLocked(this)) return;
     if (time - this.lastMoveTime < this.moveCooldown) return;
 
     let dx = 0,
@@ -345,7 +346,7 @@ export class TownScene extends Phaser.Scene {
   }
 
   async interact() {
-    if (this.animating) return;
+    if (isWorldInputLocked(this)) return;
     if (!this.nearNpc) return;
 
     this.hideInteractPrompt();

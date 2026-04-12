@@ -7,6 +7,7 @@ import {
   getWalkSpeed,
   setWalkSpeed,
 } from "../systems/prefs.js";
+import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 import { toggleMenu } from "./world_menu.js";
 
 // FF-style options overlay (issue #129). Modal over the party menu: a
@@ -51,6 +52,7 @@ const ROWS = [
 ];
 
 export function showOptions(scene) {
+  pauseWorldFor(scene, "options");
   const overlay = [];
 
   const panel = drawPanel(scene, PANEL_CX, PANEL_CY, PANEL_W, PANEL_H, {
@@ -134,6 +136,7 @@ export function showOptions(scene) {
       scene.input.keyboard.off("keydown-ESC", scene.optionsEscHandler);
       scene.optionsEscHandler = null;
     }
+    resumeWorldFor(scene, "options");
     // Reopen the party menu so the player lands back where they came from.
     toggleMenu(scene);
   };
