@@ -169,8 +169,9 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 		phase:      "world",
 		diff:       balance.GetDifficulty(req.Difficulty),
 		rngSeed:    rngSeed,
-		discovered: make(map[string]bool),
-		trans:      transport.NewState(),
+		discovered:           make(map[string]bool),
+		collectedHiddenItems: make(map[string]bool),
+		trans:                transport.NewState(),
 	}
 
 	gm.mu.Lock()

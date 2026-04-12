@@ -120,6 +120,14 @@ export async function learnSpell(gameId, charName, spellId) {
   });
 }
 
+export async function collectHiddenItem(gameId, nodeId, itemKey, tags) {
+  return apiCall("POST", `/game/${gameId}/town/collect`, {
+    node_id: nodeId,
+    item_key: itemKey,
+    tags,
+  });
+}
+
 export async function geocode(query) {
   return apiCall("POST", "/geocode", { query });
 }

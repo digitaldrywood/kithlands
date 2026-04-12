@@ -1,4 +1,5 @@
 import { playSFX, playMusic } from "../systems/audio.js";
+import { collectHiddenItem } from "../api.js";
 import { openDialogue } from "./town_dialogue.js";
 import { openShop } from "./world_shop.js";
 import { isTouchDevice, initTouchControls } from "../systems/input.js";
@@ -343,6 +344,54 @@ function validateLayout(tiles, roomW, roomH, npcPositions) {
   return true;
 }
 
+// djb2 hash — same algorithm as server's hashString, using 32-bit wrapping
+// to stay within safe JS integer range.
+function djb2(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h * 33) ^ str.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
+// Generate 1-3 hidden item positions deterministically from the node ID.
+// Only places items on walkable floor tiles, avoiding the NPC, door, and
+// player start positions.
+function generateHiddenItems(nodeId, tiles, npcX, npcY) {
+  const seed = djb2(nodeId);
+  const count = (seed % 3) + 1; // 1-3 items
+  const doorX = Math.floor(ROOM_W / 2);
+  const playerStartY = ROOM_H - 2;
+
+  // Collect all valid floor tiles
+  const floors = [];
+  for (let y = 1; y < ROOM_H - 1; y++) {
+    for (let x = 1; x < ROOM_W - 1; x++) {
+      if (tiles[y][x] !== T_FLOOR) continue;
+      if (x === npcX && y === npcY) continue;
+      if (x === doorX && y === playerStartY) continue;
+      floors.push({ x, y });
+    }
+  }
+
+  const items = [];
+  let s = seed;
+  const used = new Set();
+  for (let i = 0; i < count && floors.length > 0; i++) {
+    s = ((s * 1103515245 + 12345) & 0x7fffffff) >>> 0;
+    let idx = s % floors.length;
+    // Skip already-used positions
+    while (used.has(idx) && used.size < floors.length) {
+      idx = (idx + 1) % floors.length;
+    }
+    if (used.has(idx)) break;
+    used.add(idx);
+    const pos = floors[idx];
+    items.push({ key: nodeId + "_" + i, tileX: pos.x, tileY: pos.y });
+  }
+  return items;
+}
+
 export class TownScene extends Phaser.Scene {
   constructor() {
     super("Town");
@@ -479,6 +528,19 @@ export class TownScene extends Phaser.Scene {
     this.wasd = this.input.keyboard.addKeys("W,A,S,D");
     this.lastMoveTime = 0;
     this.moveCooldown = 150;
+
+    // Hidden items — deterministic positions filtered by already-collected set
+    const collected = new Set(
+      Object.keys(this.gameState?.collected_hidden_items || {}),
+    );
+    this.hiddenItems = generateHiddenItems(
+      this.spawn.node_id,
+      this.tiles,
+      this.npcTileX,
+      this.npcTileY,
+    ).filter((h) => !collected.has(h.key));
+    this.nearHiddenItem = null;
+    this.searchPrompt = null;
 
     // Interact with NPC
     this.nearNpcIndex = -1;
@@ -654,10 +716,53 @@ export class TownScene extends Phaser.Scene {
       this.nearNpcIndex = -1;
       this.hideInteractPrompt();
     }
+
+    // Check proximity to hidden items (Manhattan distance <= 1)
+    let closestHidden = null;
+    for (const h of this.hiddenItems) {
+      const dist =
+        Math.abs(this.playerX - h.tileX) + Math.abs(this.playerY - h.tileY);
+      if (dist <= 1) {
+        closestHidden = h;
+        break;
+      }
+    }
+    if (closestHidden) {
+      if (this.nearHiddenItem !== closestHidden) {
+        this.nearHiddenItem = closestHidden;
+        this.showSearchPrompt();
+      }
+    } else if (this.nearHiddenItem) {
+      this.nearHiddenItem = null;
+      this.hideSearchPrompt();
+    }
   }
 
   async interact() {
     if (isWorldInputLocked(this)) return;
+    // Hidden item pickup takes priority
+    if (this.nearHiddenItem) {
+      this.hideSearchPrompt();
+      const item = this.nearHiddenItem;
+      const result = await collectHiddenItem(
+        this.gameState.id,
+        this.spawn.node_id,
+        item.key,
+        this.spawn.tags || [],
+      );
+      if (result && !result.error) {
+        // Remove from local list so it won't trigger again
+        this.hiddenItems = this.hiddenItems.filter((h) => h.key !== item.key);
+        this.nearHiddenItem = null;
+        // Merge updated game state
+        Object.assign(this.gameState, result);
+        playSFX("sfx_heal");
+        this.showMessage(result.message || "Found an item!");
+        this.time.delayedCall(1500, () => this.hideMessage());
+      }
+      return;
+    }
+
     if (this.nearNpcIndex < 0) return;
 
     this.hideInteractPrompt();
@@ -746,6 +851,28 @@ export class TownScene extends Phaser.Scene {
     if (this.interactPrompt) {
       this.interactPrompt.destroy();
       this.interactPrompt = null;
+    }
+  }
+
+  showSearchPrompt() {
+    this.hideSearchPrompt();
+    const label = isTouchDevice() ? "[ TAP A ] ?" : "?";
+    this.searchPrompt = this.add
+      .text(this.player.x, this.player.y - 25, label, {
+        fontSize: "14px",
+        color: "#ffff44",
+        fontFamily: "monospace",
+        backgroundColor: "#000000cc",
+        padding: { x: 6, y: 3 },
+      })
+      .setOrigin(0.5)
+      .setDepth(15);
+  }
+
+  hideSearchPrompt() {
+    if (this.searchPrompt) {
+      this.searchPrompt.destroy();
+      this.searchPrompt = null;
     }
   }
 

@@ -55,11 +55,12 @@ func (g *Game) ToSaveState(name, userID string) (*save.SaveState, error) {
 	}
 
 	worldState := map[string]any{
-		"current_quest": g.currentQ,
-		"phase":         g.phase,
-		"discovered":    g.discovered,
-		"spell_books":   g.spellBooks,
-		"transport":     g.trans,
+		"current_quest":        g.currentQ,
+		"phase":                g.phase,
+		"discovered":           g.discovered,
+		"spell_books":          g.spellBooks,
+		"transport":            g.trans,
+		"collected_hidden_items": g.collectedHiddenItems,
 	}
 	worldJSON, err := json.Marshal(worldState)
 	if err != nil {
@@ -110,11 +111,12 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	}
 
 	var worldState struct {
-		CurrentQ   int                         `json:"current_quest"`
-		Phase      string                      `json:"phase"`
-		Discovered map[string]bool             `json:"discovered"`
-		SpellBooks map[string]*magic.SpellBook `json:"spell_books"`
-		Transport  *transport.State            `json:"transport"`
+		CurrentQ             int                         `json:"current_quest"`
+		Phase                string                      `json:"phase"`
+		Discovered           map[string]bool             `json:"discovered"`
+		SpellBooks           map[string]*magic.SpellBook `json:"spell_books"`
+		Transport            *transport.State            `json:"transport"`
+		CollectedHiddenItems map[string]bool             `json:"collected_hidden_items"`
 	}
 	if err := json.Unmarshal(ss.WorldState, &worldState); err != nil {
 		return nil, fmt.Errorf("unmarshaling world state: %w", err)
@@ -133,6 +135,11 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	discovered := worldState.Discovered
 	if discovered == nil {
 		discovered = make(map[string]bool)
+	}
+
+	collectedHidden := worldState.CollectedHiddenItems
+	if collectedHidden == nil {
+		collectedHidden = make(map[string]bool)
 	}
 
 	legacyTransport := worldState.Transport == nil
@@ -155,9 +162,10 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		quests:     quests,
 		currentQ:   worldState.CurrentQ,
 		phase:      "world", // always resume in world
-		diff:       balance.GetDifficulty(ss.Difficulty),
-		discovered: discovered,
-		trans:      trans,
+		diff:                 balance.GetDifficulty(ss.Difficulty),
+		discovered:           discovered,
+		collectedHiddenItems: collectedHidden,
+		trans:                trans,
 	}
 
 	// Saves written before the transport pipeline landed have no transport
