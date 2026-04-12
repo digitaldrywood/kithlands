@@ -627,4 +627,18 @@ describe("battle action buttons", () => {
     expect(buttons.some((button) => button.type === "smart")).toBe(true);
     expect(buttons.some((button) => button.type === "repeat")).toBe(false);
   });
+
+  it("shows Repeat and Auto from round 1 when a prior plan exists", () => {
+    const gs = makeState();
+    const buttons = buildBattleActionButtons({
+      member: gs.party[0],
+      gameState: gs,
+      hasLastRound: true,
+      autoMode: false,
+    });
+
+    expect(buttons.some((button) => button.type === "repeat")).toBe(true);
+    expect(buttons.some((button) => button.type === "auto")).toBe(true);
+    expect(buttons.some((button) => button.type === "smart")).toBe(true);
+  });
 });
