@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/digitaldrywood/kithlands/internal/auth"
@@ -184,6 +185,13 @@ func (s *Server) handleGameAction(w http.ResponseWriter, r *http.Request) {
 
 	result, err := game.ProcessAction(req)
 	if err != nil {
+		if errors.Is(err, ErrInternalAction) {
+			// Server-side panic: surface a 500 with a proper JSON body
+			// (issue #138). Do not echo the panic message verbatim — the
+			// full stack is in the server log.
+			httpError(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
 		httpError(w, err.Error(), http.StatusBadRequest)
 		return
 	}

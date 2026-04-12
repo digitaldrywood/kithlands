@@ -1,7 +1,11 @@
 package api
 
 import (
+	"errors"
+	"fmt"
+	"log"
 	"math/rand/v2"
+	"runtime/debug"
 	"strings"
 	"sync"
 
@@ -16,6 +20,12 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/sprites"
 	"github.com/digitaldrywood/kithlands/internal/transport"
 )
+
+// ErrInternalAction is returned by ProcessAction when the action handler
+// panics. The HTTP layer uses errors.Is to map this to a 500 response with
+// a JSON body so the client can recover instead of seeing an empty 500 body
+// (issue #138).
+var ErrInternalAction = errors.New("internal action error")
 
 // Request/response types
 
@@ -400,9 +410,25 @@ func questToState(q *generator.Quest) QuestState {
 	}
 }
 
-func (g *Game) ProcessAction(req GameActionRequest) (*GameState, error) {
+func (g *Game) ProcessAction(req GameActionRequest) (result *GameState, err error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+
+	// Panic recovery. A nil-deref or index-out-of-bounds inside the action
+	// handler used to surface as an HTTP 500 with an empty body (Go's default
+	// ServeMux behavior): the client's JSON parse then threw
+	// "Unexpected end of JSON input" and the Battle scene locked up because
+	// it had no gameState to react to (issue #138). Recovering here lets us
+	// log a full stack trace server-side AND return a typed error so the
+	// HTTP handler can emit a proper JSON error body.
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("panic in ProcessAction (phase=%q type=%q): %v\n%s",
+				g.phase, req.Type, r, debug.Stack())
+			result = nil
+			err = fmt.Errorf("%w: %v", ErrInternalAction, r)
+		}
+	}()
 
 	g.combatLog = nil
 	g.combatActions = nil

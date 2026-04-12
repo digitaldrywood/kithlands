@@ -44,8 +44,18 @@ func testServer(t *testing.T) (*api.Server, *httptest.Server) {
 		json.NewDecoder(r.Body).Decode(&req)
 		result, err := game.ProcessAction(req)
 		if err != nil {
-			w.WriteHeader(400)
-			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			// Mirror the production handler in router.go: map recovered
+			// panics (ErrInternalAction) to 500 with a JSON body so the
+			// client can parse an error message instead of getting an
+			// empty 500 — the regression captured on issue #138.
+			status := http.StatusBadRequest
+			body := err.Error()
+			if api.IsErrInternalAction(err) {
+				status = http.StatusInternalServerError
+				body = "internal server error"
+			}
+			w.WriteHeader(status)
+			json.NewEncoder(w).Encode(map[string]string{"error": body})
 			return
 		}
 		json.NewEncoder(w).Encode(result)
