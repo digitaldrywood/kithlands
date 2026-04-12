@@ -1,21 +1,50 @@
 import { describe, it, expect } from "vitest";
-import { resolveAction, buildAutoBattleActions } from "./auto_battle.js";
+import {
+  buildBattleActionButtons,
+  planSmartRound,
+  resolveAction,
+} from "./auto_battle.js";
 
 // Shared test fixtures — minimal game state objects that satisfy the resolver.
 
-function makeEnemy(id, hp, maxHp = 100) {
-  return { id, name: `Enemy${id}`, hp, max_hp: maxHp };
+function makeEnemy(id, hp, maxHp = 100, overrides = {}) {
+  return {
+    id,
+    name: `Enemy${id}`,
+    hp,
+    max_hp: maxHp,
+    size: "small",
+    status: "",
+    weaknesses: [],
+    resistances: [],
+    is_undead: false,
+    ...overrides,
+  };
 }
 
-function makeMember(slot, hp, maxHp = 100, mp = 0, maxMp = 0, spells = []) {
+function makeMember(
+  slot,
+  hp,
+  maxHp = 100,
+  mp = 0,
+  maxMp = 0,
+  spells = [],
+  overrides = {},
+) {
   return {
     name: `Member${slot}`,
     class_id: "warrior",
+    level: 8,
     hp,
     max_hp: maxHp,
     mp,
     max_mp: maxMp,
+    str: 16,
+    int_stat: 6,
     spells,
+    abilities: [],
+    status: "",
+    ...overrides,
   };
 }
 
@@ -357,7 +386,7 @@ describe("revive", () => {
 // Ability
 // -----------------------------------------------------------------------
 describe("ability", () => {
-  it("keeps original target if alive", () => {
+  it("normalizes self-target abilities to target_id 0", () => {
     const gs = makeState();
     const actor = gs.party[0];
     const action = {
@@ -370,7 +399,7 @@ describe("ability", () => {
     expect(result).toEqual({
       slot: 0,
       type: "ability",
-      target_id: 1,
+      target_id: 0,
       ability_id: "focus",
     });
   });
@@ -451,35 +480,151 @@ describe("edge cases", () => {
   });
 });
 
-describe("buildAutoBattleActions", () => {
-  it("defaults to basic attacks when no remembered round exists", () => {
-    const gs = makeState();
-    const actions = buildAutoBattleActions(null, gs, [0, 1, 2, 3]);
-    expect(actions).toEqual([
-      { slot: 0, type: "attack", target_id: 1 },
-      { slot: 1, type: "attack", target_id: 1 },
-      { slot: 2, type: "attack", target_id: 1 },
-      { slot: 3, type: "attack", target_id: 1 },
+describe("smart attack planner", () => {
+  it("healer revives a fallen ally before attacking", () => {
+    const gs = makeState({
+      party: [
+        makeMember(0, 72, 100, 18, 30, [
+          { id: "cure", name: "Cure", target: "single_ally", effect: "heal", mp_cost: 4, power: 16, castable_in_combat: true },
+        ], {
+          class_id: "mender",
+          int_stat: 18,
+          str: 6,
+        }),
+        makeMember(1, 0, 100, 0, 0, [], { class_id: "warrior", str: 20 }),
+        makeMember(2, 90, 100),
+      ],
+    });
+
+    const plan = planSmartRound(gs, [0]);
+    expect(plan.actions).toEqual([
+      { slot: 0, type: "revive", target_id: 1, item_id: "phoenix_down" },
     ]);
   });
 
-  it("reuses remembered actions when available and falls back per slot otherwise", () => {
+  it("healer picks a heal spell for a critically hurt ally", () => {
     const gs = makeState({
-      enemies: [makeEnemy(1, 0), makeEnemy(2, 50)],
-    });
-    const actions = buildAutoBattleActions(
-      [
-        { slot: 0, type: "spell", target_id: 1, spell_id: "fire" },
-        { slot: 2, type: "attack", target_id: 1 },
+      party: [
+        makeMember(0, 70, 100, 20, 30, [
+          { id: "cure", name: "Cure", target: "single_ally", effect: "heal", mp_cost: 4, power: 16, castable_in_combat: true },
+          { id: "bless", name: "Bless", target: "single_ally", effect: "buff", mp_cost: 2, power: 10, buff_stat: "hit_pct", castable_in_combat: true },
+        ], {
+          class_id: "mender",
+          int_stat: 19,
+          str: 5,
+        }),
+        makeMember(1, 18, 100, 0, 0, [], { class_id: "warrior", str: 20 }),
+        makeMember(2, 100, 100),
       ],
-      gs,
-      [0, 1, 2, 3],
-    );
-    expect(actions).toEqual([
-      { slot: 0, type: "spell", target_id: 2, spell_id: "fire" },
-      { slot: 1, type: "attack", target_id: 2 },
-      { slot: 2, type: "attack", target_id: 2 },
-      { slot: 3, type: "attack", target_id: 2 },
+    });
+
+    const plan = planSmartRound(gs, [0]);
+    expect(plan.actions[0]).toEqual({
+      slot: 0,
+      type: "spell",
+      target_id: 1,
+      spell_id: "cure",
+    });
+  });
+
+  it("offensive caster exploits elemental weakness deterministically", () => {
+    const gs = makeState({
+      enemies: [
+        makeEnemy(1, 70, 100, {
+          name: "Skeleton",
+          weaknesses: ["fire"],
+          resistances: ["ice"],
+          is_undead: true,
+        }),
+        makeEnemy(2, 70, 100, {
+          name: "Wolf",
+          weaknesses: ["ice"],
+        }),
+      ],
+      party: [
+        makeMember(0, 60, 80, 22, 30, [
+          { id: "spark", name: "Spark", target: "single_enemy", effect: "damage", mp_cost: 4, power: 10, element: "fire", castable_in_combat: true },
+          { id: "frost", name: "Frost", target: "single_enemy", effect: "damage", mp_cost: 4, power: 10, element: "ice", castable_in_combat: true },
+        ], {
+          class_id: "cinder",
+          str: 4,
+          int_stat: 24,
+        }),
+      ],
+    });
+
+    const planA = planSmartRound(gs, [0]);
+    const planB = planSmartRound(gs, [0]);
+    expect(planA.actions).toEqual([
+      { slot: 0, type: "spell", target_id: 1, spell_id: "spark" },
     ]);
+    expect(planB).toEqual(planA);
+  });
+
+  it("prefers an all-enemies spell when total value beats single-target damage", () => {
+    const gs = makeState({
+      enemies: [
+        makeEnemy(1, 80, 80, { name: "Goblin" }),
+        makeEnemy(2, 80, 80, { name: "Goblin B" }),
+        makeEnemy(3, 80, 80, { name: "Goblin C" }),
+      ],
+      party: [
+        makeMember(0, 60, 80, 30, 30, [
+          { id: "spark", name: "Spark", target: "single_enemy", effect: "damage", mp_cost: 4, power: 10, element: "fire", castable_in_combat: true },
+          { id: "ember", name: "Ember", target: "all_enemies", effect: "damage", mp_cost: 6, power: 12, element: "fire", castable_in_combat: true },
+        ], {
+          class_id: "cinder",
+          str: 4,
+          int_stat: 22,
+        }),
+      ],
+    });
+
+    const plan = planSmartRound(gs, [0]);
+    expect(plan.actions[0]).toMatchObject({
+      slot: 0,
+      type: "spell",
+      spell_id: "ember",
+    });
+  });
+
+  it("physical classes prefer high-value physical abilities over support actions", () => {
+    const gs = makeState({
+      enemies: [
+        makeEnemy(1, 50, 90, { name: "Bandit", size: "medium" }),
+        makeEnemy(2, 140, 140, { name: "Ogre", size: "large" }),
+      ],
+      party: [
+        makeMember(0, 88, 100, 0, 0, [], {
+          class_id: "rogue",
+          str: 21,
+          int_stat: 6,
+          abilities: ["steal", "backstab"],
+        }),
+      ],
+    });
+
+    const plan = planSmartRound(gs, [0]);
+    expect(plan.actions[0]).toEqual({
+      slot: 0,
+      type: "ability",
+      ability_id: "backstab",
+      target_id: 2,
+    });
+  });
+});
+
+describe("battle action buttons", () => {
+  it("shows Smart Attack from round 1 even without saved actions", () => {
+    const gs = makeState();
+    const buttons = buildBattleActionButtons({
+      member: gs.party[0],
+      gameState: gs,
+      hasLastRound: false,
+      autoMode: false,
+    });
+
+    expect(buttons.some((button) => button.type === "smart")).toBe(true);
+    expect(buttons.some((button) => button.type === "repeat")).toBe(false);
   });
 });

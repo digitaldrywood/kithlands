@@ -120,25 +120,25 @@ type GameState struct {
 	Formation     string             `json:"formation,omitempty"`
 	// EncounterStart is "preemptive" or "ambush" when the current encounter
 	// started with one side getting a free first round. Empty for normal.
-	EncounterStart      string              `json:"encounter_start,omitempty"`
-	Quests              []QuestState        `json:"quests"`
-	CurrentQ            int                 `json:"current_quest"`
-	Gold                int                 `json:"gold"`
-	Potions             int                 `json:"potions"`
-	Ethers              int                 `json:"ethers"`
-	HiEthers            int                 `json:"hi_ethers"`
-	XEthers             int                 `json:"x_ethers"`
-	Items               []ItemState         `json:"items"`
-	Equipment           [4]EquipState       `json:"equipment"`
-	Location            string              `json:"location"`
-	Message             string              `json:"message,omitempty"`
-	CombatLog           []string            `json:"combat_log,omitempty"`
-	CombatActions       []CombatActionEntry `json:"combat_actions,omitempty"`
-	LastRoundActions    []MemberActionReq   `json:"last_round_actions,omitempty"`
-	TileMap             *locality.TileMap   `json:"tilemap,omitempty"`
-	ShopItems           []ShopItemState     `json:"shop_items,omitempty"`
-	Transport           TransportInfo       `json:"transport"`
-	CollectedHiddenItems map[string]bool    `json:"collected_hidden_items,omitempty"`
+	EncounterStart       string              `json:"encounter_start,omitempty"`
+	Quests               []QuestState        `json:"quests"`
+	CurrentQ             int                 `json:"current_quest"`
+	Gold                 int                 `json:"gold"`
+	Potions              int                 `json:"potions"`
+	Ethers               int                 `json:"ethers"`
+	HiEthers             int                 `json:"hi_ethers"`
+	XEthers              int                 `json:"x_ethers"`
+	Items                []ItemState         `json:"items"`
+	Equipment            [4]EquipState       `json:"equipment"`
+	Location             string              `json:"location"`
+	Message              string              `json:"message,omitempty"`
+	CombatLog            []string            `json:"combat_log,omitempty"`
+	CombatActions        []CombatActionEntry `json:"combat_actions,omitempty"`
+	LastRoundActions     []MemberActionReq   `json:"last_round_actions,omitempty"`
+	TileMap              *locality.TileMap   `json:"tilemap,omitempty"`
+	ShopItems            []ShopItemState     `json:"shop_items,omitempty"`
+	Transport            TransportInfo       `json:"transport"`
+	CollectedHiddenItems map[string]bool     `json:"collected_hidden_items,omitempty"`
 }
 
 // TransportInfo is the transport tier state sent to the client.
@@ -213,22 +213,29 @@ type PartyMemberState struct {
 }
 
 type SpellState struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Target   string `json:"target"`
-	Effect   string `json:"effect"`
-	MPCost   int    `json:"mp_cost"`
-	Castable bool   `json:"castable_in_combat"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Target       string `json:"target"`
+	Effect       string `json:"effect"`
+	MPCost       int    `json:"mp_cost"`
+	Power        int    `json:"power,omitempty"`
+	Element      string `json:"element,omitempty"`
+	StatusEffect string `json:"status_effect,omitempty"`
+	CuresStatus  string `json:"cures_status,omitempty"`
+	BuffStat     string `json:"buff_stat,omitempty"`
+	Castable     bool   `json:"castable_in_combat"`
 }
 
 type EnemyState struct {
-	ID       int    `json:"id"`
-	Name     string `json:"name"`
-	HP       int    `json:"hp"`
-	MaxHP    int    `json:"max_hp"`
-	Size     string `json:"size"`
-	Status   string `json:"status"`
-	IsUndead bool   `json:"is_undead"`
+	ID          int      `json:"id"`
+	Name        string   `json:"name"`
+	HP          int      `json:"hp"`
+	MaxHP       int      `json:"max_hp"`
+	Size        string   `json:"size"`
+	Status      string   `json:"status"`
+	IsUndead    bool     `json:"is_undead"`
+	Weaknesses  []string `json:"weaknesses,omitempty"`
+	Resistances []string `json:"resistances,omitempty"`
 }
 
 // isMonsterUndead looks up a live enemy name against the loaded monster
@@ -237,12 +244,36 @@ type EnemyState struct {
 // for damage (FF1 canon — resolveHealSpell handles the rest) without
 // hardcoding a name list.
 func (g *Game) isMonsterUndead(name string) bool {
-	for i := range g.gd.Monsters {
-		if g.gd.Monsters[i].Name == name {
-			return g.gd.Monsters[i].IsUndead
-		}
+	if m := g.monsterByName(name); m != nil {
+		return m.IsUndead
 	}
 	return false
+}
+
+func (g *Game) monsterByName(name string) *gamedata.Monster {
+	for i := range g.gd.Monsters {
+		if g.gd.Monsters[i].Name == name {
+			return &g.gd.Monsters[i]
+		}
+	}
+	return nil
+}
+
+func (g *Game) buildEnemyState(e *combat.Combatant) EnemyState {
+	state := EnemyState{
+		ID:       e.ID,
+		Name:     e.Name,
+		HP:       e.CurrentHP,
+		MaxHP:    e.MaxHP,
+		Size:     e.Size,
+		Status:   string(e.Status),
+		IsUndead: g.isMonsterUndead(e.Name),
+	}
+	if m := g.monsterByName(e.Name); m != nil {
+		state.Weaknesses = append([]string(nil), m.Weaknesses...)
+		state.Resistances = append([]string(nil), m.Resistances...)
+	}
+	return state
 }
 
 // CombatActionEntry carries structured metadata for a single combat log line.
@@ -327,12 +358,12 @@ type Game struct {
 	// diedThisFight is captured at the exact moment the combat-victory block
 	// distributes XP (before restParty heals dead members). Exposed to the
 	// client via GameState.DiedThisFight.
-	diedThisFight       []bool
-	discovered          map[string]bool // bestiary: monster IDs encountered
+	diedThisFight        []bool
+	discovered           map[string]bool // bestiary: monster IDs encountered
 	collectedHiddenItems map[string]bool // town hidden-item keys already picked up
-	visitedNodes        map[string]bool // node IDs the player has entered (sequence-break tracking)
-	formation           string          // current encounter layout type
-	lastRoundActions    []MemberActionReq
+	visitedNodes         map[string]bool // node IDs the player has entered (sequence-break tracking)
+	formation            string          // current encounter layout type
+	lastRoundActions     []MemberActionReq
 	// encounterStart records preemptive/ambush state for the current fight so
 	// the first call to ResolveTurn can skip one side's actions.
 	encounterStart combat.EncounterStart
@@ -385,10 +416,7 @@ func (g *Game) State() GameState {
 
 	for _, e := range g.enemies {
 		if e.CurrentHP > 0 {
-			state.Enemies = append(state.Enemies, EnemyState{
-				ID: e.ID, Name: e.Name, HP: e.CurrentHP, MaxHP: e.MaxHP, Size: e.Size,
-				Status: string(e.Status), IsUndead: g.isMonsterUndead(e.Name),
-			})
+			state.Enemies = append(state.Enemies, g.buildEnemyState(e))
 		}
 	}
 	if g.phase == "combat" {
@@ -540,12 +568,17 @@ func (g *Game) buildPartyMemberState(c *character.Character, slot int) PartyMemb
 				sp := g.gd.SpellByID(sid)
 				if sp != nil {
 					pm.Spells = append(pm.Spells, SpellState{
-						ID:       sid,
-						Name:     sp.Name,
-						Target:   sp.Target,
-						Effect:   sp.Effect,
-						MPCost:   sp.MPCost,
-						Castable: isCombatCastableEffect(sp.Effect),
+						ID:           sid,
+						Name:         sp.Name,
+						Target:       sp.Target,
+						Effect:       sp.Effect,
+						MPCost:       sp.MPCost,
+						Power:        sp.Power,
+						Element:      sp.Element,
+						StatusEffect: sp.StatusEffect,
+						CuresStatus:  sp.CuresStatus,
+						BuffStat:     sp.BuffStat,
+						Castable:     isCombatCastableEffect(sp.Effect),
 					})
 				}
 			}
@@ -656,7 +689,7 @@ func (g *Game) stateUnlocked() GameState {
 	}
 	for _, e := range g.enemies {
 		if e.CurrentHP > 0 {
-			state.Enemies = append(state.Enemies, EnemyState{ID: e.ID, Name: e.Name, HP: e.CurrentHP, MaxHP: e.MaxHP, Size: e.Size, Status: string(e.Status), IsUndead: g.isMonsterUndead(e.Name)})
+			state.Enemies = append(state.Enemies, g.buildEnemyState(e))
 		}
 	}
 	if g.phase == "combat" {
