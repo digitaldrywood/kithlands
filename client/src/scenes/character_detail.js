@@ -1,6 +1,7 @@
 import { drawPanel, drawButton } from "../ui/panel.js";
 import { barFillWidth, barLabel, hpBarColorPct } from "../systems/hpBar.js";
 import { showEquipPicker } from "./world_menu.js";
+import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 
 // Depth layering. The party menu panel sits at 40-41; character detail
 // sits above it at 60+ so it can be opened over the menu or standalone
@@ -30,6 +31,7 @@ export function openCharacterDetail(scene, partyIndex) {
   if (!member) return;
   const equip = (gs.equipment && gs.equipment[partyIndex]) || {};
 
+  pauseWorldFor(scene, "character_detail");
   scene.characterDetailGroup = [];
   scene.characterDetailIndex = partyIndex;
   const group = scene.characterDetailGroup;
@@ -128,6 +130,7 @@ export function closeCharacterDetail(scene) {
     );
     scene.characterDetailEscHandler = null;
   }
+  resumeWorldFor(scene, "character_detail");
 }
 
 // handOffToEquipPicker closes the detail screen, opens the equip picker

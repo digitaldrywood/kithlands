@@ -8,6 +8,7 @@ import { interactWithDoor } from "../scenes/world_interact.js";
 import { toggleMenu } from "../scenes/world_menu.js";
 import { toggleCodex } from "../scenes/world_codex.js";
 import { toggleMute, isMuted } from "./audio.js";
+import { isWorldInputLocked } from "./modalLock.js";
 
 // Tile walkability (mirrored from world.js to avoid circular dependency)
 const TILE_WALKABLE = {
@@ -127,13 +128,7 @@ function startAutoWalk(scene, path) {
     delay: 160,
     loop: true,
     callback: () => {
-      if (
-        idx >= path.length ||
-        scene.animating ||
-        scene.menuOpen ||
-        scene.codexOpen ||
-        scene.gameOver
-      ) {
+      if (idx >= path.length || isWorldInputLocked(scene)) {
         cancelAutoWalk(scene);
         return;
       }
@@ -181,8 +176,7 @@ function setupTapToMove(scene) {
   let pendingTap = null;
 
   scene.input.on("pointerdown", (pointer) => {
-    if (scene.animating || scene.menuOpen || scene.codexOpen || scene.gameOver)
-      return;
+    if (isWorldInputLocked(scene)) return;
     if (!scene.tileData) return;
     if (isControlArea(pointer.x, pointer.y)) return;
 
@@ -287,13 +281,7 @@ function createDpad(scene) {
         delay: 150,
         loop: true,
         callback: () => {
-          if (
-            scene.animating ||
-            scene.menuOpen ||
-            scene.codexOpen ||
-            scene.gameOver
-          )
-            return;
+          if (isWorldInputLocked(scene)) return;
           scene.tryMove(dir.dx, dir.dy);
         },
       });
