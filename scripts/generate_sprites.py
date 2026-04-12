@@ -7,7 +7,7 @@ outputs transparent PNGs ready for Phaser.
 Usage:
     GEMINI_API_KEY=... python3 scripts/generate_sprites.py [--category CATEGORY]
 
-Categories: all, classes, walk, monsters, npcs, tilesets, interiors, ui
+Categories: all, classes, walk, walk_sheets, monsters, npcs, tilesets, interiors, ui
 Default: all
 """
 
@@ -127,25 +127,40 @@ WALK_SPRITES = [
 ]
 
 # Walk cycle animation frames (4 directions x 4 frames)
+# Legacy per-frame walk cycle assets — removed in #127 after the
+# character-morphing bug proved that generating each frame independently
+# produces inconsistent characters. Replaced by WALK_SHEETS below (one
+# sprite sheet per class).
 WALK_ANIMATION_FRAMES = []
-for direction in ["down", "up", "left", "right"]:
-    facing = {
-        "down": "toward the viewer (front view)",
-        "up": "away from the viewer (back view)",
-        "left": "left (side view)",
-        "right": "right (side view)",
-    }[direction]
-    for frame in range(4):
-        step = ["standing still feet together",
-                "stepping with left foot forward",
-                "standing still feet together",
-                "stepping with right foot forward"][frame]
-        WALK_ANIMATION_FRAMES.append((
-            f"walk/walk_{direction}_{frame}.png", 128,
-            f"Single pixel art sprite of a small JRPG adventurer character "
-            f"facing {facing}, {step}. Brown hair, blue tunic. Walk cycle "
-            f"frame {frame + 1} of 4. Full body visible. {STYLE}"
-        ))
+
+
+# Per-class walk sprite sheets (#127). One PNG per class, laid out as a
+# 4 row x 4 column grid. Rows are directions (down, up, left, right). Cols
+# are walk cycle frames (idle, step-L, idle, step-R). 128px per cell so
+# each sheet is 512x512. Passed to Phaser as a spritesheet.
+#
+# This PR scaffolds the manifest with a warrior proof-of-concept. Follow-up
+# work will add prompts for the remaining 11 classes (brawler, rogue,
+# mender, cinder, wayfarer, knight, champion, shadow, sage, pyromancer,
+# wanderer) — see issue #127 follow-up / #128.
+WALK_SHEETS = [
+    # (filename, size, description)
+    ("walk/warrior_walk.png", 512,
+     f"Top-down JRPG pixel art character sprite sheet. A strict 4 row by "
+     f"4 column grid. Each of the 16 cells is exactly 128x128 pixels. Row 1 "
+     f"shows the character facing DOWN (toward the viewer, front view). "
+     f"Row 2 shows the character facing UP (away from the viewer, back "
+     f"view). Row 3 shows the character facing LEFT (profile view). Row 4 "
+     f"shows the character facing RIGHT (profile view). Within each row, "
+     f"column 1 is idle (both feet together), column 2 is left foot "
+     f"forward, column 3 is idle again (both feet together), column 4 is "
+     f"right foot forward. CRITICAL REQUIREMENT: the exact same character "
+     f"appears in every single one of the 16 cells — identical silver plate "
+     f"armor, blue cape, short sword, brown hair, same proportions, same "
+     f"color palette. No grid lines, no labels, no text, no numbers, just "
+     f"the 16 sprites on a solid bright magenta #FF00FF background. "
+     f"JRPG warrior knight. {STYLE}"),
+]
 
 MONSTER_SPRITES = [
     # Existing (regenerated for consistency)
@@ -483,25 +498,48 @@ def generate_classes():
 
 
 def generate_walk():
-    """Generate player directional sprites and walk cycle frames."""
+    """Generate the static player_{dir} directional fallback sprites.
+
+    Per-class walk cycles are generated separately via `walk_sheets` (#127).
+    """
     print("\n=== Player Walk Sprites ===\n")
     os.makedirs(os.path.join(SPRITES_DIR, "walk"), exist_ok=True)
     success = 0
-
-    # Static directional sprites (overwrite existing)
     for filename, size, prompt in WALK_SPRITES:
         path = os.path.join(SPRITES_DIR, filename)
         if generate_and_process(prompt, path, size):
             success += 1
+    print(f"  Walk: {success}/{len(WALK_SPRITES)}")
+    return success
 
-    # Walk cycle animation frames
-    for filename, size, prompt in WALK_ANIMATION_FRAMES:
+
+def generate_walk_sheets():
+    """Generate per-class walk sprite sheets (#127).
+
+    Unlike single sprites, a sheet must preserve the full 4x4 cell layout,
+    so we skip the `crop_to_content` pass (which would crop to the bounding
+    box of visible pixels and shift rows/columns). We still chromakey-remove
+    the magenta background and force the final output to a square of the
+    target pixel size.
+    """
+    print("\n=== Per-Class Walk Sheets (#127) ===\n")
+    _ensure_pil()
+    os.makedirs(os.path.join(SPRITES_DIR, "walk"), exist_ok=True)
+    success = 0
+    for filename, size, prompt in WALK_SHEETS:
         path = os.path.join(SPRITES_DIR, filename)
-        if generate_and_process(prompt, path, size):
-            success += 1
-
-    total = len(WALK_SPRITES) + len(WALK_ANIMATION_FRAMES)
-    print(f"  Walk: {success}/{total}")
+        print(f"  Generating: {os.path.basename(path)}...")
+        img = generate_image(prompt)
+        if img is None:
+            continue
+        img = remove_background(img)
+        # No crop_to_content — sheets must keep cell positions intact.
+        img = resize_to_square(img, size)
+        img.save(path, "PNG")
+        kb = os.path.getsize(path) // 1024
+        print(f"  Saved: {path} ({kb} KB, {size}x{size})")
+        success += 1
+    print(f"  Walk sheets: {success}/{len(WALK_SHEETS)}")
     return success
 
 
@@ -579,6 +617,7 @@ def generate_ui():
 CATEGORIES = {
     "classes": generate_classes,
     "walk": generate_walk,
+    "walk_sheets": generate_walk_sheets,
     "monsters": generate_monsters,
     "npcs": generate_npcs,
     "tilesets": generate_tilesets,
@@ -608,6 +647,7 @@ def main():
             ("Class Portraits", [(f, s) for f, s, _ in CLASS_SPRITES]),
             ("Walk Sprites", [(f, s) for f, s, _ in WALK_SPRITES]),
             ("Walk Frames", [(f, s) for f, s, _ in WALK_ANIMATION_FRAMES]),
+            ("Walk Sheets (#127)", [(f, s) for f, s, _ in WALK_SHEETS]),
             ("Monsters", [(f, s) for f, s, _ in MONSTER_SPRITES]),
             ("NPCs", [(f, s) for f, s, _ in NPC_SPRITES]),
             ("Overworld Tiles", [(f, 16) for f, _ in OVERWORLD_TILESETS]),
@@ -647,6 +687,7 @@ def main():
 
     total_assets = (
         len(CLASS_SPRITES) + len(WALK_SPRITES) + len(WALK_ANIMATION_FRAMES)
+        + len(WALK_SHEETS)
         + len(MONSTER_SPRITES) + len(NPC_SPRITES)
         + len(OVERWORLD_TILESETS) + len(INTERIOR_TILESETS)
         + len(UI_ICONS) + len(UI_ELEMENTS)

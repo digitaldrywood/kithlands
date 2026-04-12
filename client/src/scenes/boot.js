@@ -32,18 +32,11 @@ export class BootScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    // Player directional sprites (idle pose)
+    // Player directional sprites (idle pose, fallback when no class walk sheet)
     this.load.image("player_down", "/sprites/player_down.png");
     this.load.image("player_up", "/sprites/player_up.png");
     this.load.image("player_left", "/sprites/player_left.png");
     this.load.image("player_right", "/sprites/player_right.png");
-
-    // Player walk frames (4 per direction, advanced one per tile step)
-    for (const dir of ["down", "up", "left", "right"]) {
-      for (let i = 0; i < 4; i++) {
-        this.load.image(`walk_${dir}_${i}`, `/sprites/walk/walk_${dir}_${i}.png`);
-      }
-    }
 
     // Character sprites (base + promoted classes — must match CLASS_SPRITES
     // in battle.js and server's buildPartyMemberState sprite_id output)
@@ -64,6 +57,24 @@ export class BootScene extends Phaser.Scene {
     for (const key of CLASS_SPRITE_KEYS) {
       this.load.image(key, `/sprites/${key}.png`);
     }
+
+    // Per-class walk sprite sheets (#127). 4 rows (down/up/left/right) x
+    // 4 cols (frame 0-3), 128px per cell. Missing sheets fall back to the
+    // static player_{dir} sprite in world/town scenes — silence the 404 so
+    // development works while sheets are still being generated.
+    for (const key of CLASS_SPRITE_KEYS) {
+      this.load.spritesheet(`${key}_walk`, `/sprites/walk/${key}_walk.png`, {
+        frameWidth: 128,
+        frameHeight: 128,
+      });
+    }
+    this.load.on("loaderror", (file) => {
+      if (file && typeof file.key === "string" && file.key.endsWith("_walk")) {
+        // Expected while class walk sheets are being generated — remove the
+        // failed entry so Phaser doesn't keep a broken texture reference.
+        this.textures.remove(file.key);
+      }
+    });
 
     // Status effect icons
     this.load.image("icon_poison", "/sprites/ui/icon_poison.png");
