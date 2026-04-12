@@ -14,6 +14,7 @@ import { FloatingTextPool } from "../ui/floating_text.js";
 import { ENEMY_SPRITES } from "../data/monsterSprites.js";
 import { battleSpeedMul, messageCharMs } from "../systems/prefs.js";
 import { toggleDebugPanel, closeDebugPanel } from "./debug_panel.js";
+import { resolveAction } from "../systems/auto_battle.js";
 
 const ENEMY_COLORS = {
   Slime: 0x42a5f5,
@@ -71,6 +72,8 @@ export class BattleScene extends Phaser.Scene {
 
   init(data) {
     this.gameState = data.gameState;
+    this._lastRoundActions = data.lastRoundActions || null;
+    this._autoMode = data.autoMode || false;
   }
 
   create() {
@@ -90,6 +93,10 @@ export class BattleScene extends Phaser.Scene {
     this.memberActions = []; // array of {slot, type, target_id, spell_id}
     this.currentMemberIdx = 0;
     this.livingMembers = [];
+
+    // Auto-battle / repeat-last-round state (issue #99)
+    this.lastRoundActions = this._lastRoundActions;
+    this.autoMode = this._autoMode;
 
     // Keyboard targeting state. `targetingMode` is false when not targeting,
     // "enemy" when picking an enemy (attack, damage spell), or "party" when
@@ -306,10 +313,11 @@ export class BattleScene extends Phaser.Scene {
   }
 
   setupKeyboard() {
-    // Action hotkeys (A/S/I/F)
+    // Action hotkeys (A/S/I/F) — any manual action cancels auto-mode (#99)
     this.input.keyboard.on("keydown-A", () => {
       if (this.animating || this.targetingMode || this.pickerOverlay) return;
       if (this.currentMemberIdx >= this.livingMembers.length) return;
+      this.autoMode = false;
       const slot = this.livingMembers[this.currentMemberIdx];
       const member = this.gameState.party[slot];
       this.pendingAction = "attack";
@@ -322,6 +330,7 @@ export class BattleScene extends Phaser.Scene {
     this.input.keyboard.on("keydown-S", () => {
       if (this.animating || this.targetingMode || this.pickerOverlay) return;
       if (this.currentMemberIdx >= this.livingMembers.length) return;
+      this.autoMode = false;
       const slot = this.livingMembers[this.currentMemberIdx];
       this.showSpellPicker(slot);
     });
@@ -329,6 +338,7 @@ export class BattleScene extends Phaser.Scene {
     this.input.keyboard.on("keydown-I", () => {
       if (this.animating || this.targetingMode || this.pickerOverlay) return;
       if (this.currentMemberIdx >= this.livingMembers.length) return;
+      this.autoMode = false;
       const slot = this.livingMembers[this.currentMemberIdx];
       this.showItemPicker(slot);
     });
@@ -336,6 +346,7 @@ export class BattleScene extends Phaser.Scene {
     this.input.keyboard.on("keydown-B", () => {
       if (this.animating || this.targetingMode || this.pickerOverlay) return;
       if (this.currentMemberIdx >= this.livingMembers.length) return;
+      this.autoMode = false;
       const slot = this.livingMembers[this.currentMemberIdx];
       this.showAbilityPicker(slot);
     });
@@ -343,7 +354,29 @@ export class BattleScene extends Phaser.Scene {
     this.input.keyboard.on("keydown-F", () => {
       if (this.animating || this.targetingMode || this.pickerOverlay) return;
       if (this.currentMemberIdx >= this.livingMembers.length) return;
+      this.autoMode = false;
       this.doFlee();
+    });
+
+    // REPEAT last round's actions (issue #99)
+    this.input.keyboard.on("keydown-R", () => {
+      if (this.animating || this.targetingMode || this.pickerOverlay) return;
+      if (!this.lastRoundActions) return;
+      this.executeRepeat();
+    });
+
+    // Toggle AUTO-BATTLE mode (issue #99)
+    this.input.keyboard.on("keydown-Q", () => {
+      if (this.animating || this.targetingMode || this.pickerOverlay) return;
+      if (!this.lastRoundActions) return;
+      this.autoMode = !this.autoMode;
+      if (this.autoMode) {
+        this.executeRepeat();
+      } else {
+        // Redraw buttons to update AUTO label
+        const slot = this.livingMembers[this.currentMemberIdx];
+        if (slot !== undefined) this.drawActions(this.gameState, slot);
+      }
     });
 
     // Number keys 1-9 for target/picker selection
@@ -471,6 +504,12 @@ export class BattleScene extends Phaser.Scene {
     if (this.currentMemberIdx >= this.livingMembers.length) {
       // All members have chosen -- send all actions to server
       this.submitAllActions();
+      return;
+    }
+
+    // Auto-mode: auto-submit REPEAT every round (issue #99)
+    if (this.autoMode && this.lastRoundActions) {
+      this.executeRepeat();
       return;
     }
 
@@ -775,6 +814,14 @@ export class BattleScene extends Phaser.Scene {
     if (hasItems)
       btns.push({ label: "[I]TEMS", type: "item", color: "#44ff44" });
     btns.push({ label: "[F]LEE", type: "flee", color: "#ffcc44" });
+    if (this.lastRoundActions) {
+      btns.push({ label: "[R]EPEAT", type: "repeat", color: "#44ccff" });
+      btns.push({
+        label: this.autoMode ? "[Q] AUTO*" : "[Q] AUTO",
+        type: "auto",
+        color: this.autoMode ? "#ffaa44" : "#ff8844",
+      });
+    }
 
     const tw = btns.length * 145,
       sx = 400 - tw / 2 + 72;
@@ -799,6 +846,14 @@ export class BattleScene extends Phaser.Scene {
       bg.on("pointerout", () => bg.setFillStyle(0x1a1a44));
       bg.on("pointerdown", () => {
         if (this.animating) return;
+        // Any manual action cancels auto-mode (issue #99)
+        if (
+          b.type !== "repeat" &&
+          b.type !== "auto" &&
+          this.autoMode
+        ) {
+          this.autoMode = false;
+        }
         if (b.type === "attack") {
           this.pendingAction = "attack";
           this.enterTargetingMode();
@@ -814,6 +869,16 @@ export class BattleScene extends Phaser.Scene {
         } else if (b.type === "flee") {
           // Flee sends immediately (whole party flees)
           this.doFlee();
+        } else if (b.type === "repeat") {
+          this.executeRepeat();
+        } else if (b.type === "auto") {
+          this.autoMode = !this.autoMode;
+          if (this.autoMode) {
+            this.executeRepeat();
+          } else {
+            // Redraw buttons to update AUTO label
+            this.drawActions(gs, slot);
+          }
         }
       });
     }
@@ -888,6 +953,48 @@ export class BattleScene extends Phaser.Scene {
 
     // Brief pause then show next member's turn
     this.scaledDelay(400, () => this.showCurrentMemberTurn());
+  }
+
+  // Resolve all living members' previous actions through the smart fallback
+  // resolver, then submit the round immediately. Used by both REPEAT and AUTO.
+  executeRepeat() {
+    const gs = this.gameState;
+    this.memberActions = [];
+    for (const slot of this.livingMembers) {
+      // Find the previous action for this slot, if any
+      const prev = this.lastRoundActions.find((a) => a.slot === slot);
+      if (!prev) {
+        // No previous action for this member — default to attack
+        const target = gs.enemies.find((e) => e.hp > 0);
+        if (target) {
+          this.memberActions.push({ slot, type: "attack", target_id: target.id });
+        }
+        continue;
+      }
+      const resolved = resolveAction(prev, gs.party[slot], gs);
+      if (resolved) {
+        this.memberActions.push(resolved);
+      }
+    }
+
+    if (this.memberActions.length === 0) {
+      // Nothing valid to submit — cancel auto-mode and let player choose
+      this.autoMode = false;
+      this.showCurrentMemberTurn();
+      return;
+    }
+
+    // Remove old action buttons
+    if (this.actionBtns) {
+      this.actionBtns.forEach((o) => o.destroy());
+      this.actionBtns = [];
+    }
+
+    this.promptText
+      .setText(this.autoMode ? "AUTO-BATTLE..." : "REPEAT!")
+      .setColor(this.autoMode ? "#ff8844" : "#44ccff");
+    this.currentMemberIdx = this.livingMembers.length; // skip per-member UI
+    this.submitAllActions();
   }
 
   enterTargetingMode() {
@@ -1329,12 +1436,20 @@ export class BattleScene extends Phaser.Scene {
 
       this.gameState = result;
 
+      // Persist this round's actions for REPEAT / AUTO next round (issue #99)
+      const savedActions = [...this.memberActions];
+
       this.scaledDelay(400, () => {
         this.animating = false;
         if (this.gameState.phase !== "combat") {
+          this.autoMode = false;
           this.showVictoryResults(this.gameState);
         } else {
-          this.scene.restart({ gameState: this.gameState });
+          this.scene.restart({
+            gameState: this.gameState,
+            lastRoundActions: savedActions,
+            autoMode: this.autoMode,
+          });
         }
       });
     } catch (e) {
