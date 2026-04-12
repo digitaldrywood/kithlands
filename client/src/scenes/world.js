@@ -243,15 +243,24 @@ export class WorldScene extends Phaser.Scene {
     // Touch controls (D-pad, tap-to-move with pathfinding, pinch-to-zoom, swipe gestures)
     initTouchControls(this);
 
-    // HUD
+    // HUD — two-line footer: party on top, resources/transport below.
+    // Single-line layout overflowed viewport with 4-member parties (#issue screenshot).
     this.add
-      .rectangle(400, 585, 800, 30, 0x000000, 0.8)
+      .rectangle(400, 580, 800, 40, 0x000000, 0.8)
       .setScrollFactor(0)
       .setDepth(20);
     this.hudText = this.add
-      .text(10, 575, "", {
+      .text(10, 564, "", {
         fontSize: "12px",
         color: "#ffffff",
+        fontFamily: "monospace",
+      })
+      .setScrollFactor(0)
+      .setDepth(21);
+    this.hudFooter = this.add
+      .text(10, 582, "", {
+        fontSize: "12px",
+        color: "#ffcc66",
         fontFamily: "monospace",
       })
       .setScrollFactor(0)
@@ -712,9 +721,12 @@ export class WorldScene extends Phaser.Scene {
       (p) => `${p.name} Lv${p.level} ${p.hp}/${p.max_hp}`,
     );
     const tierName = gs.transport?.tier_name || "Foot";
-    this.hudText.setText(
-      `[${tierName}] ${parts.join(" | ")} | Gold:${gs.gold} Potions:${gs.potions}`,
-    );
+    this.hudText.setText(parts.join(" | "));
+    if (this.hudFooter) {
+      this.hudFooter.setText(
+        `[${tierName}]   Gold: ${gs.gold}   Potions: ${gs.potions}`,
+      );
+    }
   }
 
   canWalkTile(tile) {
