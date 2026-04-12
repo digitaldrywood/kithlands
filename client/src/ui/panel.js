@@ -4,6 +4,8 @@
 // with proper hover/press states. Kept framework-light so a fake scene
 // shim (see panel.test.js) can exercise the wiring without Phaser.
 
+import { barFillWidth, barLabel } from "../systems/hpBar.js";
+
 const DEFAULT_BUTTON_STYLE = {
   fontSize: "12px",
   fontFamily: "monospace",
@@ -147,6 +149,98 @@ export function drawButton(scene, x, y, w, h, label, onClick, opts = {}) {
     destroy() {
       bg.destroy();
       text.destroy();
+    },
+  };
+}
+
+const DEFAULT_PROGRESS_BAR_STYLE = {
+  track: 0x1a2a4a,
+  fill: 0x4488ff,
+  stroke: 0x4488ff,
+  strokeFocus: 0xffcc44,
+  strokeWidth: 2,
+  depth: 41,
+  labelColor: "#ffcc44",
+  labelFontSize: "14px",
+  labelFontFamily: "monospace",
+  labelOffset: 12,
+  showLabel: true,
+};
+
+// Draw a horizontal progress bar — a track rectangle plus a fill rectangle
+// that grows from the left. Built for the options screen (#142) so speed
+// settings show visual "X of max" instead of a bare number, but kept
+// generic so other menus can reuse it. Math reuses `barFillWidth` from
+// systems/hpBar.js (already integer-safe and unit-tested there).
+//
+//   const bar = drawProgressBar(scene, 400, 300, 200, 14, 3, 6);
+//   bar.setValue(4);        // grows the fill and rewrites "4/6"
+//   bar.setFocused(true);   // swaps stroke to strokeFocus for kbd focus
+//   bar.destroy();          // tears down track, fill, and label together
+//
+// The fill rect uses origin (0, 0.5) so resizing it via setSize keeps the
+// left edge anchored at the track's left edge.
+export function drawProgressBar(scene, x, y, w, h, cur, max, opts = {}) {
+  const style = { ...DEFAULT_PROGRESS_BAR_STYLE, ...opts };
+
+  const track = scene.add
+    .rectangle(x, y, w, h, style.track, 1)
+    .setOrigin(0, 0.5)
+    .setStrokeStyle(style.strokeWidth, style.stroke)
+    .setScrollFactor(0)
+    .setDepth(style.depth);
+
+  const fillW = barFillWidth(cur, max, w);
+  const fill = scene.add
+    .rectangle(x, y, Math.max(1, fillW), h, style.fill, 1)
+    .setOrigin(0, 0.5)
+    .setScrollFactor(0)
+    .setDepth(style.depth + 1);
+  if (fillW <= 0) fill.setVisible(false);
+
+  let label = null;
+  if (style.showLabel) {
+    label = scene.add
+      .text(x + w + style.labelOffset, y, barLabel(cur, max), {
+        fontSize: style.labelFontSize,
+        color: style.labelColor,
+        fontFamily: style.labelFontFamily,
+      })
+      .setOrigin(0, 0.5)
+      .setScrollFactor(0)
+      .setDepth(style.depth + 1);
+  }
+
+  const state = { focused: false };
+
+  return {
+    track,
+    fill,
+    label,
+    setValue(nextCur) {
+      const nextW = barFillWidth(nextCur, max, w);
+      if (nextW <= 0) {
+        fill.setVisible(false);
+      } else {
+        fill.setVisible(true);
+        fill.setSize(nextW, h);
+      }
+      if (label) label.setText(barLabel(nextCur, max));
+    },
+    setFocused(on) {
+      state.focused = !!on;
+      track.setStrokeStyle(
+        style.strokeWidth,
+        state.focused ? style.strokeFocus : style.stroke,
+      );
+    },
+    isFocused() {
+      return state.focused;
+    },
+    destroy() {
+      track.destroy();
+      fill.destroy();
+      if (label) label.destroy();
     },
   };
 }
