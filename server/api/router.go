@@ -42,6 +42,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/auth/login", s.handleLogin)
 	mux.HandleFunc("GET /api/data/classes", s.handleGetClasses)
 	mux.HandleFunc("GET /api/data/stats", s.handleGetStats)
+	mux.HandleFunc("GET /api/data/items", s.handleGetItems)
 
 	// Protected (auth required)
 	mux.Handle("POST /api/osm/preview", s.auth.Middleware(http.HandlerFunc(s.handleOSMPreview)))
@@ -63,6 +64,13 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /api/saves", s.auth.Middleware(http.HandlerFunc(s.handleListSaves)))
 	mux.Handle("POST /api/saves/{saveId}/load", s.auth.Middleware(http.HandlerFunc(s.handleLoadSave)))
 	mux.Handle("DELETE /api/saves/{saveId}", s.auth.Middleware(http.HandlerFunc(s.handleDeleteSave)))
+
+	// Dev-only feature-trigger API. Registered only when KITHLANDS_DEBUG=1,
+	// so production deployments never expose it. Routes still sit behind the
+	// auth middleware as a second line of defense.
+	if DebugEnabled() && s.auth != nil {
+		s.registerDebugRoutes(mux)
+	}
 }
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {

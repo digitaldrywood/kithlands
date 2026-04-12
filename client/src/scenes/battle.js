@@ -13,6 +13,7 @@ import {
 import { FloatingTextPool } from "../ui/floating_text.js";
 import { ENEMY_SPRITES } from "../data/monsterSprites.js";
 import { battleSpeedMul, messageCharMs } from "../systems/prefs.js";
+import { toggleDebugPanel, closeDebugPanel } from "./debug_panel.js";
 
 const ENEMY_COLORS = {
   Slime: 0x42a5f5,
@@ -437,6 +438,10 @@ export class BattleScene extends Phaser.Scene {
 
     // Escape to cancel
     this.input.keyboard.on("keydown-ESC", () => {
+      if (this.debugPanelOpen) {
+        closeDebugPanel(this);
+        return;
+      }
       if (this.pickerOverlay) {
         this.closePicker();
         return;
@@ -454,6 +459,11 @@ export class BattleScene extends Phaser.Scene {
         return;
       }
     });
+
+    // Dev-only debug panel (#145). See world.js for the gating rationale.
+    if (import.meta.env && import.meta.env.DEV) {
+      this.input.keyboard.on("keydown-BACKTICK", () => toggleDebugPanel(this));
+    }
   }
 
   showCurrentMemberTurn() {
