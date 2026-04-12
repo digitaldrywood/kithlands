@@ -88,12 +88,35 @@ type TileMap struct {
 
 // MapSpawn marks where a locality node appears on the map.
 type MapSpawn struct {
-	NodeID string   `json:"node_id"`
-	Name   string   `json:"name"`
-	Kind   string   `json:"kind"`
-	Tags   []string `json:"tags"`
-	X      int      `json:"x"`
-	Y      int      `json:"y"`
+	NodeID       string   `json:"node_id"`
+	Name         string   `json:"name"`
+	Kind         string   `json:"kind"`
+	Tags         []string `json:"tags"`
+	X            int      `json:"x"`
+	Y            int      `json:"y"`
+	BuildingType string   `json:"building_type"`
+	InteriorSeed int64    `json:"interior_seed"`
+}
+
+// BuildingTypeFromTags derives a building category string from a node's tags.
+// Priority: "rest" → "inn"; "shop"/"commerce" → "shop"; "temple"/"revive" → "temple"; default → "house".
+func BuildingTypeFromTags(tags []string) string {
+	for _, t := range tags {
+		if t == "rest" {
+			return "inn"
+		}
+	}
+	for _, t := range tags {
+		if t == "shop" || t == "commerce" {
+			return "shop"
+		}
+	}
+	for _, t := range tags {
+		if t == "temple" || t == "revive" {
+			return "temple"
+		}
+	}
+	return "house"
 }
 
 // GenerateTileMap creates a large procedural map from a locality graph.
@@ -134,12 +157,14 @@ func GenerateTileMap(loc *Locality, spawnID string, walk *WalkResult) *TileMap {
 		x, y := np.x, np.y
 
 		spawns = append(spawns, MapSpawn{
-			NodeID: node.ID,
-			Name:   node.Name,
-			Kind:   string(node.Kind),
-			Tags:   node.Tags,
-			X:      x,
-			Y:      y,
+			NodeID:       node.ID,
+			Name:         node.Name,
+			Kind:         string(node.Kind),
+			Tags:         node.Tags,
+			X:            x,
+			Y:            y,
+			BuildingType: BuildingTypeFromTags(node.Tags),
+			InteriorSeed: int64(hashString(node.ID)),
 		})
 
 		if node.ID == spawnID {

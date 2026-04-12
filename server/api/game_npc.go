@@ -4,6 +4,7 @@ import (
 	"hash/fnv"
 	"math/rand/v2"
 	"net/http"
+	"strings"
 
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
 	"github.com/digitaldrywood/kithlands/internal/locality"
@@ -35,6 +36,9 @@ func (s *Server) handleNPCTalk(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetNPCDialogue returns dialogue for the NPC at the given node.
+// nodeID may include a sub-NPC suffix like "_npc1" to allow multiple NPCs in
+// the same building to have distinct dialogue. The suffix is stripped for the
+// node lookup but retained as the seed key so each NPC gets unique lines.
 func (g *Game) GetNPCDialogue(nodeID string) *NPCDialogueResponse {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -43,12 +47,31 @@ func (g *Game) GetNPCDialogue(nodeID string) *NPCDialogueResponse {
 		return nil
 	}
 
-	node := g.loc.NodeByID(nodeID)
+	// Support sub-NPC indices: "inn_npc1" → base "inn", seedID stays "inn_npc1".
+	baseID := nodeID
+	if idx := strings.LastIndex(nodeID, "_npc"); idx > 0 {
+		suffix := nodeID[idx+4:]
+		if len(suffix) > 0 && isDigits(suffix) {
+			baseID = nodeID[:idx]
+		}
+	}
+
+	node := g.loc.NodeByID(baseID)
 	if node == nil {
 		return nil
 	}
 
-	return buildDialogue(node, g.loc.Name, g.id, g.gd.Dialogue)
+	return buildDialogue(node, g.loc.Name, g.id, g.gd.Dialogue, nodeID)
+}
+
+// isDigits reports whether s consists entirely of ASCII decimal digits.
+func isDigits(s string) bool {
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // pickLines selects n lines deterministically from the archetype pool using
@@ -86,7 +109,10 @@ func pickLines(archetype string, pool gamedata.DialoguePool, gameID, nodeID stri
 	return lines
 }
 
-func buildDialogue(node *locality.Node, townName, gameID string, pool gamedata.DialoguePool) *NPCDialogueResponse {
+// buildDialogue constructs an NPCDialogueResponse for the given node. seedID is
+// used as the RNG seed key; it may differ from node.ID when a sub-NPC suffix
+// like "_npc1" is present, ensuring distinct lines per NPC in the same building.
+func buildDialogue(node *locality.Node, townName, gameID string, pool gamedata.DialoguePool, seedID string) *NPCDialogueResponse {
 	tags := node.Tags
 	tagSet := make(map[string]bool, len(tags))
 	for _, t := range tags {
@@ -96,7 +122,7 @@ func buildDialogue(node *locality.Node, townName, gameID string, pool gamedata.D
 	switch {
 	case tagSet["shop"] || tagSet["commerce"] && !tagSet["rest"]:
 		lines := []string{"Welcome to " + node.Name + "!"}
-		lines = append(lines, pickLines("merchant", pool, gameID, node.ID, 2)...)
+		lines = append(lines, pickLines("merchant", pool, gameID, seedID, 2)...)
 		return &NPCDialogueResponse{
 			NPCName: "Merchant",
 			Sprite:  "npc_merchant",
@@ -105,7 +131,7 @@ func buildDialogue(node *locality.Node, townName, gameID string, pool gamedata.D
 
 	case tagSet["rest"]:
 		lines := []string{"Welcome to " + node.Name + ", weary traveler."}
-		lines = append(lines, pickLines("innkeeper", pool, gameID, node.ID, 2)...)
+		lines = append(lines, pickLines("innkeeper", pool, gameID, seedID, 2)...)
 		return &NPCDialogueResponse{
 			NPCName: "Innkeeper",
 			Sprite:  "npc_innkeeper",
@@ -114,7 +140,7 @@ func buildDialogue(node *locality.Node, townName, gameID string, pool gamedata.D
 
 	case tagSet["temple"] || tagSet["revive"]:
 		lines := []string{"Blessings upon you, child of light."}
-		lines = append(lines, pickLines("priestess", pool, gameID, node.ID, 2)...)
+		lines = append(lines, pickLines("priestess", pool, gameID, seedID, 2)...)
 		return &NPCDialogueResponse{
 			NPCName: "Priestess",
 			Sprite:  "npc_priestess",
@@ -123,7 +149,7 @@ func buildDialogue(node *locality.Node, townName, gameID string, pool gamedata.D
 
 	case tagSet["blacksmith"] || tagSet["forge"]:
 		lines := []string{"Welcome to the forge."}
-		lines = append(lines, pickLines("blacksmith", pool, gameID, node.ID, 2)...)
+		lines = append(lines, pickLines("blacksmith", pool, gameID, seedID, 2)...)
 		return &NPCDialogueResponse{
 			NPCName: "Blacksmith",
 			Sprite:  "npc_blacksmith",
@@ -136,7 +162,7 @@ func buildDialogue(node *locality.Node, townName, gameID string, pool gamedata.D
 		if node.Personality != "" {
 			lines = append(lines, node.Personality)
 		}
-		lines = append(lines, pickLines("elder", pool, gameID, node.ID, 2)...)
+		lines = append(lines, pickLines("elder", pool, gameID, seedID, 2)...)
 		return &NPCDialogueResponse{
 			NPCName: name,
 			Sprite:  "npc_elder",
@@ -145,7 +171,7 @@ func buildDialogue(node *locality.Node, townName, gameID string, pool gamedata.D
 
 	default:
 		lines := []string{"Welcome to " + node.Name + "."}
-		lines = append(lines, pickLines("guard", pool, gameID, node.ID, 2)...)
+		lines = append(lines, pickLines("guard", pool, gameID, seedID, 2)...)
 		return &NPCDialogueResponse{
 			NPCName: "Guard",
 			Sprite:  "npc_guard",
