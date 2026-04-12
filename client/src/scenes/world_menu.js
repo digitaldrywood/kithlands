@@ -3,12 +3,9 @@ import { playSFX } from "../systems/audio.js";
 import { getAutosaveEnabled, setAutosaveEnabled } from "../systems/prefs.js";
 import { showWorldMap } from "./world_interact.js";
 import { openCharacterDetail } from "./character_detail.js";
+import { showOptions } from "./options.js";
 import { drawPanel, drawButton } from "../ui/panel.js";
-import {
-  barFillWidth,
-  barLabel,
-  hpBarColorPct,
-} from "../systems/hpBar.js";
+import { barFillWidth, barLabel, hpBarColorPct } from "../systems/hpBar.js";
 import {
   filterEquippableItems,
   computeEquipDelta,
@@ -179,14 +176,20 @@ export function toggleMenu(scene) {
           const nowEnabled = !getAutosaveEnabled();
           setAutosaveEnabled(nowEnabled);
           if (autoHandle) {
-            autoHandle.setLabel(
-              nowEnabled ? "Autosave: ON" : "Autosave: OFF",
-            );
+            autoHandle.setLabel(nowEnabled ? "Autosave: ON" : "Autosave: OFF");
           }
           if (scene.startAutosaveTimer) {
             if (nowEnabled) scene.startAutosaveTimer();
             else scene.stopAutosaveTimer();
           }
+        },
+      },
+      {
+        label: "OPTIONS",
+        w: 110,
+        onClick: () => {
+          closeMenu(scene);
+          showOptions(scene);
         },
       },
       {
@@ -354,7 +357,8 @@ function hpColorFor(hp, max) {
 // ones (setLabel, setEnabled) later. 12px gap between buttons.
 function layoutButtonRow(scene, group, cx, y, specs) {
   const gap = 12;
-  const totalW = specs.reduce((sum, s) => sum + s.w, 0) + gap * (specs.length - 1);
+  const totalW =
+    specs.reduce((sum, s) => sum + s.w, 0) + gap * (specs.length - 1);
   let cursor = cx - totalW / 2;
   const handles = [];
   for (const spec of specs) {
@@ -454,9 +458,7 @@ export async function showEquipPicker(scene, slot, type, opts = {}) {
           scene.gameState = result;
           scene.updateHUD();
           reopenCaller();
-          scene.showMessage(
-            `Equipped ${item.name} (${deltaLabel.text})`,
-          );
+          scene.showMessage(`Equipped ${item.name} (${deltaLabel.text})`);
           scene.time.delayedCall(1500, () => scene.hideMessage());
           playSFX("sfx_save");
         } else {

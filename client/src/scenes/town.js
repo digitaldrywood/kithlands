@@ -3,6 +3,7 @@ import { openDialogue } from "./town_dialogue.js";
 import { openShop } from "./world_shop.js";
 import { isTouchDevice, initTouchControls } from "../systems/input.js";
 import { nextWalkFrame, walkSheetKey, walkFrameIndex } from "./walkFrame.js";
+import { walkStepMs } from "../systems/prefs.js";
 
 const TILE_SIZE = 16;
 const SCALE = 2;
@@ -318,7 +319,7 @@ export class TownScene extends Phaser.Scene {
       targets: this.player,
       x: this.offsetX + nx * RENDERED_TILE + RENDERED_TILE / 2,
       y: this.offsetY + ny * RENDERED_TILE + RENDERED_TILE / 2,
-      duration: 100,
+      duration: walkStepMs(),
       ease: "Linear",
     });
 

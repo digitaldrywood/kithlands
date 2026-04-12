@@ -11,6 +11,7 @@ import {
 } from "../systems/hpBar.js";
 import { FloatingTextPool } from "../ui/floating_text.js";
 import { ENEMY_SPRITES } from "../data/monsterSprites.js";
+import { battleSpeedMul, messageCharMs } from "../systems/prefs.js";
 
 const ENEMY_COLORS = {
   Slime: 0x42a5f5,
@@ -865,7 +866,7 @@ export class BattleScene extends Phaser.Scene {
     this.currentMemberIdx++;
 
     // Brief pause then show next member's turn
-    this.time.delayedCall(400, () => this.showCurrentMemberTurn());
+    this.scaledDelay(400, () => this.showCurrentMemberTurn());
   }
 
   enterTargetingMode() {
@@ -1427,7 +1428,7 @@ export class BattleScene extends Phaser.Scene {
     this.promptText.setText("");
     const result = await gameAction(this.gameState.id, { type: "flee" });
     this.gameState = result;
-    this.time.delayedCall(300, () => {
+    this.scaledDelay(300, () => {
       this.animating = false;
       if (result.phase !== "combat") {
         this.scene.start("World", { gameState: result });
@@ -1470,7 +1471,7 @@ export class BattleScene extends Phaser.Scene {
 
       this.gameState = result;
 
-      this.time.delayedCall(400, () => {
+      this.scaledDelay(400, () => {
         this.animating = false;
         if (this.gameState.phase !== "combat") {
           this.showVictoryResults(this.gameState);
@@ -1517,7 +1518,7 @@ export class BattleScene extends Phaser.Scene {
         if (pe && ee) {
           for (const a of this.partyArrows) a.setVisible(false);
           pe.arrow.setVisible(true);
-          this.promptText.setText(`${attacker} attacks!`).setColor("#ff4444");
+          this.revealLine(`${attacker} attacks!`, "#ff4444");
           // Lunge toward enemy position
           const dx = ee.x - pe.x,
             dy = ee.y - pe.y;
@@ -1538,7 +1539,7 @@ export class BattleScene extends Phaser.Scene {
         } else if (pe) {
           for (const a of this.partyArrows) a.setVisible(false);
           pe.arrow.setVisible(true);
-          this.promptText.setText(`${attacker} attacks!`).setColor("#ff4444");
+          this.revealLine(`${attacker} attacks!`, "#ff4444");
           await this.tweenP(pe.sprite, { x: pe.x - 30, duration: 150 });
           await this.tweenP(pe.sprite, { x: pe.x, duration: 100 });
         }
@@ -1558,7 +1559,7 @@ export class BattleScene extends Phaser.Scene {
           });
           if (ee.sprite.setTint) {
             ee.sprite.setTint(0xff4444);
-            this.time.delayedCall(200, () => ee.sprite.clearTint?.());
+            this.scaledDelay(200, () => ee.sprite.clearTint?.());
           }
           // Animate HP bar drain — integer math only, see systems/hpBar.js
           if (ee.hpBar) {
@@ -1571,9 +1572,7 @@ export class BattleScene extends Phaser.Scene {
           const targetKey = `party_${action.target_name || attackMatch?.[2]}`;
           const atkName = action.actor_name || attackMatch?.[1] || attacker;
           const tgtName = action.target_name || attackMatch?.[2] || "";
-          this.promptText
-            .setText(`${atkName} attacks ${tgtName}!`)
-            .setColor("#ff8800");
+          this.revealLine(`${atkName} attacks ${tgtName}!`, "#ff8800");
           playSFX("sfx_party_hit");
           await this.hitFx(pt.x, pt.y, dmg, true, false, dmgType, {
             crit: action.crit,
@@ -1582,7 +1581,7 @@ export class BattleScene extends Phaser.Scene {
           });
           if (pt.sprite.setTint) {
             pt.sprite.setTint(0xff4444);
-            this.time.delayedCall(200, () => pt.sprite.clearTint?.());
+            this.scaledDelay(200, () => pt.sprite.clearTint?.());
           }
           // Animate party HP bar drain — integer math only
           if (pt.hpBar) {
@@ -1600,7 +1599,7 @@ export class BattleScene extends Phaser.Scene {
         const dmg =
           action.damage || (counterMatch && parseInt(counterMatch[5]));
         const dmgType = action.damage_type || "physical";
-        this.promptText.setText(line).setColor("#ff8800");
+        this.revealLine(line, "#ff8800");
         playSFX("sfx_slash");
         const ee = this.enemySprites[targetId];
         if (ee) {
@@ -1642,7 +1641,7 @@ export class BattleScene extends Phaser.Scene {
         const flash = this.add
           .rectangle(400, 300, 800, 600, flashColor, 0.2)
           .setDepth(19);
-        this.time.delayedCall(200, () => flash.destroy());
+        this.scaledDelay(200, () => flash.destroy());
 
         // Check for multi-target: group consecutive entries with same caster + spell
         const targets = [{ targetId, dmg, defeated: defeatMatch }];
@@ -1702,7 +1701,7 @@ export class BattleScene extends Phaser.Scene {
         }
         await this.wait(250);
       } else if (action.kind === "heal" || line.includes("healed")) {
-        this.promptText.setText(line).setColor("#44ff44");
+        this.revealLine(line, "#44ff44");
         const healMatch = line.match(/healed (\d+)/);
         if (healMatch) {
           playSFX("sfx_heal");
@@ -1727,20 +1726,20 @@ export class BattleScene extends Phaser.Scene {
         }
         await this.wait(300);
       } else if (line.includes("Found:")) {
-        this.promptText.setText(line).setColor("#44ff44");
+        this.revealLine(line, "#44ff44");
         await this.wait(400);
       } else if (action.kind === "poison_tick") {
         // Poison damage at start of round
         const targetId = action.target_id;
         const dmg = action.damage || action.total_damage;
-        this.promptText.setText(line).setColor("#44bb44");
+        this.revealLine(line, "#44bb44");
         const ee = this.enemySprites[targetId];
         const pt = this.partySprites[action.actor_name];
         const sprite = ee || pt;
         if (sprite) {
           if (sprite.sprite?.setTint) {
             sprite.sprite.setTint(0x44bb44);
-            this.time.delayedCall(300, () => sprite.sprite.clearTint?.());
+            this.scaledDelay(300, () => sprite.sprite.clearTint?.());
           }
           const px = sprite.x || sprite.sprite?.x;
           const py = sprite.y || sprite.sprite?.y;
@@ -1776,7 +1775,7 @@ export class BattleScene extends Phaser.Scene {
         // Confused actor attacks randomly — target may be ally or enemy
         const targetId = action.target_id;
         const dmg = action.damage;
-        this.promptText.setText(line).setColor("#dddd44");
+        this.revealLine(line, "#dddd44");
         playSFX("sfx_hit");
         const ee = this.enemySprites[targetId];
         if (ee) {
@@ -1800,9 +1799,7 @@ export class BattleScene extends Phaser.Scene {
             );
             if (targetMember.sprite?.setTint) {
               targetMember.sprite.setTint(0xff4444);
-              this.time.delayedCall(200, () =>
-                targetMember.sprite.clearTint?.(),
-              );
+              this.scaledDelay(200, () => targetMember.sprite.clearTint?.());
             }
           }
           this.cameras.main.shake(80, 0.005);
@@ -1810,10 +1807,10 @@ export class BattleScene extends Phaser.Scene {
         await this.wait(300);
       } else if (action.kind === "status_effect") {
         // Status spell landed or resisted
-        this.promptText.setText(line).setColor("#cc88ff");
+        this.revealLine(line, "#cc88ff");
         await this.wait(400);
       } else if (action.kind === "ability") {
-        this.promptText.setText(line).setColor("#ff88ff");
+        this.revealLine(line, "#ff88ff");
         // Backstab with damage gets hit effect
         if (action.damage > 0) {
           playSFX("sfx_slash");
@@ -1847,7 +1844,7 @@ export class BattleScene extends Phaser.Scene {
       const g = this.add.graphics().setDepth(20);
       g.lineStyle(3, isParty ? 0xff8800 : 0xffffff, 1);
       g.lineBetween(x - 20, y - 15, x + 20, y + 15);
-      this.time.delayedCall(150, () => g.destroy());
+      this.scaledDelay(150, () => g.destroy());
 
       const targetKey = opts.targetKey || `pos_${x}_${y}`;
 
@@ -1870,7 +1867,7 @@ export class BattleScene extends Phaser.Scene {
         this.floatingText.spawn(x, y + 30, 0, "defeated", targetKey);
       }
 
-      this.time.delayedCall(150, resolve);
+      this.scaledDelay(150, resolve);
     });
   }
 
@@ -1933,13 +1930,67 @@ export class BattleScene extends Phaser.Scene {
   }
 
   tweenP(target, config) {
+    const mul = battleSpeedMul();
+    const scaled = { ...config };
+    if (typeof config.duration === "number") {
+      scaled.duration = Math.max(0, config.duration * mul);
+    }
     return new Promise((resolve) =>
-      this.tweens.add({ targets: target, ...config, onComplete: resolve }),
+      this.tweens.add({ targets: target, ...scaled, onComplete: resolve }),
     );
   }
 
   wait(ms) {
-    return new Promise((resolve) => this.time.delayedCall(ms, resolve));
+    const scaled = Math.max(0, ms * battleSpeedMul());
+    return new Promise((resolve) => this.time.delayedCall(scaled, resolve));
+  }
+
+  // scaledDelay wraps time.delayedCall with the battle speed multiplier.
+  // Use for raw pacing delays that aren't routed through wait() (e.g.
+  // fire-and-forget tint clears inside animateCombatLog).
+  scaledDelay(ms, cb) {
+    const scaled = Math.max(0, ms * battleSpeedMul());
+    return this.time.delayedCall(scaled, cb);
+  }
+
+  // revealLine shows `line` on this.promptText with an optional
+  // typewriter effect keyed off messageSpeed. Callers do NOT need to
+  // await the returned promise — if a new reveal starts while the prior
+  // one is still running, the prior line is flushed to its full value
+  // immediately so the player never sees a half-complete previous line.
+  // At messageSpeed 6 (0ms/char) the reveal is instant, matching the
+  // pre-issue-#129 behavior.
+  revealLine(line, color = "#ffffff") {
+    if (this.revealEvent) {
+      this.revealEvent.remove(false);
+      this.revealEvent = null;
+      if (this.revealLastLine) {
+        this.promptText.setText(this.revealLastLine);
+      }
+    }
+    const charMs = messageCharMs();
+    this.promptText.setColor(color);
+    this.revealLastLine = line || "";
+    if (!line || charMs <= 0) {
+      this.promptText.setText(line || "");
+      return Promise.resolve();
+    }
+    this.promptText.setText("");
+    return new Promise((resolve) => {
+      let idx = 0;
+      this.revealEvent = this.time.addEvent({
+        delay: charMs,
+        repeat: line.length - 1,
+        callback: () => {
+          idx++;
+          this.promptText.setText(line.slice(0, idx));
+          if (idx >= line.length) {
+            this.revealEvent = null;
+            resolve();
+          }
+        },
+      });
+    });
   }
 
   animateHPBar(hpBarData, newHP, maxHP) {
