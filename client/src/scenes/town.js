@@ -11,6 +11,7 @@ import {
 import { getLeaderIndex } from "./world.js";
 import { walkStepMs } from "../systems/prefs.js";
 import { isWorldInputLocked } from "../systems/modalLock.js";
+import { getNpcDialogue } from "../api.js";
 
 const TILE_SIZE = 16;
 const SCALE = 2;
@@ -25,6 +26,15 @@ const T_SHELF = 4;
 const T_BED = 5;
 const T_ALTAR = 6;
 const T_DESK = 7;
+const T_RUG = 8;
+const T_FIREPLACE = 9;
+const T_CRATE = 10;
+const T_CANDLE = 11;
+const T_STATUE = 12;
+const T_PEW = 13;
+const T_BOOKSHELF = 14;
+const T_CHAIR = 15;
+const T_TABLE = 16;
 
 const TILE_COLORS = {
   [T_WALL]: 0x5d4037,
@@ -35,6 +45,15 @@ const TILE_COLORS = {
   [T_BED]: 0x7986cb,
   [T_ALTAR]: 0xffd54f,
   [T_DESK]: 0x8d6e63,
+  [T_RUG]: 0xc62828,
+  [T_FIREPLACE]: 0xff6f00,
+  [T_CRATE]: 0xa1887f,
+  [T_CANDLE]: 0xfff176,
+  [T_STATUE]: 0x90a4ae,
+  [T_PEW]: 0x6d4c41,
+  [T_BOOKSHELF]: 0x4e342e,
+  [T_CHAIR]: 0x795548,
+  [T_TABLE]: 0x8d6e63,
 };
 
 const TILE_WALKABLE = {
@@ -46,13 +65,62 @@ const TILE_WALKABLE = {
   [T_BED]: false,
   [T_ALTAR]: false,
   [T_DESK]: false,
+  [T_RUG]: true,
+  [T_FIREPLACE]: false,
+  [T_CRATE]: false,
+  [T_CANDLE]: false,
+  [T_STATUE]: false,
+  [T_PEW]: false,
+  [T_BOOKSHELF]: false,
+  [T_CHAIR]: false,
+  [T_TABLE]: false,
 };
 
-// Room dimensions (tiles)
-const ROOM_W = 12;
-const ROOM_H = 10;
+// Seeded PRNG (mulberry32). Returns a () => float [0,1) closure.
+function mulberry32(seed) {
+  let s = seed | 0;
+  return function () {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
-// NPC sprite mapping by building tags
+// Room dimensions by building type
+function roomDimensions(buildingType, seed) {
+  switch (buildingType) {
+    case "inn":
+      return { w: 8, h: 8 };
+    case "shop":
+      return { w: 10, h: 8 };
+    case "temple":
+      return { w: 12, h: 10 };
+    default: {
+      // house: random in [8..12] x [6..10]
+      const rng = mulberry32(seed);
+      const w = 8 + Math.floor(rng() * 5); // 8-12
+      const h = 6 + Math.floor(rng() * 5); // 6-10
+      return { w, h };
+    }
+  }
+}
+
+// NPC count by building type (2-4 per spec)
+function npcCount(buildingType) {
+  switch (buildingType) {
+    case "inn":
+      return 3;
+    case "shop":
+      return 2;
+    case "temple":
+      return 4;
+    default:
+      return 2;
+  }
+}
+
+// NPC sprite mapping by building tags (proprietor)
 function npcSpriteForTags(tags) {
   const tagSet = new Set(tags || []);
   if (tagSet.has("shop") || tagSet.has("commerce")) return "npc_merchant";
@@ -61,14 +129,102 @@ function npcSpriteForTags(tags) {
   return "npc_elder";
 }
 
-// Generate interior layout based on building type
-function generateInterior(tags) {
+// Proprietor NPC position (first NPC, behind key furniture)
+function proprietorPosition(buildingType, roomW, roomH) {
+  const cx = Math.floor(roomW / 2);
+  switch (buildingType) {
+    case "shop":
+      return { x: cx, y: Math.floor(roomH / 2) - 1 }; // behind counter
+    case "inn":
+      return { x: cx, y: 1 }; // behind desk
+    case "temple":
+      return { x: cx, y: 1 }; // behind altar
+    default:
+      return { x: cx, y: 1 }; // behind desk
+  }
+}
+
+// Weighted furniture pools per building type
+const FURNITURE_POOLS = {
+  inn: [
+    { tile: T_BED, weight: 3 },
+    { tile: T_TABLE, weight: 2 },
+    { tile: T_RUG, weight: 2 },
+    { tile: T_FIREPLACE, weight: 1 },
+  ],
+  shop: [
+    { tile: T_SHELF, weight: 3 },
+    { tile: T_COUNTER, weight: 2 },
+    { tile: T_CRATE, weight: 2 },
+  ],
+  temple: [
+    { tile: T_ALTAR, weight: 1 },
+    { tile: T_CANDLE, weight: 3 },
+    { tile: T_STATUE, weight: 1 },
+    { tile: T_PEW, weight: 3 },
+  ],
+  house: [
+    { tile: T_BED, weight: 1 },
+    { tile: T_TABLE, weight: 1 },
+    { tile: T_CHAIR, weight: 2 },
+    { tile: T_BOOKSHELF, weight: 1 },
+  ],
+};
+
+// Pick a tile from the weighted pool using a random value [0,1)
+function pickFromPool(pool, randVal) {
+  const totalWeight = pool.reduce((sum, item) => sum + item.weight, 0);
+  let acc = 0;
+  for (const item of pool) {
+    acc += item.weight / totalWeight;
+    if (randVal < acc) return item.tile;
+  }
+  return pool[pool.length - 1].tile;
+}
+
+// Flood-fill reachability check from (startX, startY).
+// Returns a Set of "x,y" keys for all reachable walkable tiles.
+function floodFill(tiles, roomW, roomH, startX, startY, npcPositions) {
+  const npcSet = new Set(npcPositions.map((p) => `${p.x},${p.y}`));
+  const visited = new Set();
+  const queue = [{ x: startX, y: startY }];
+  visited.add(`${startX},${startY}`);
+
+  while (queue.length > 0) {
+    const { x, y } = queue.shift();
+    for (const [dx, dy] of [
+      [0, 1],
+      [0, -1],
+      [1, 0],
+      [-1, 0],
+    ]) {
+      const nx = x + dx;
+      const ny = y + dy;
+      const key = `${nx},${ny}`;
+      if (
+        nx >= 0 &&
+        nx < roomW &&
+        ny >= 0 &&
+        ny < roomH &&
+        !visited.has(key) &&
+        TILE_WALKABLE[tiles[ny][nx]] &&
+        !npcSet.has(key)
+      ) {
+        visited.add(key);
+        queue.push({ x: nx, y: ny });
+      }
+    }
+  }
+  return visited;
+}
+
+// Generate interior layout based on building type with seeded randomization
+function generateInterior(buildingType, roomW, roomH, seed) {
   const tiles = [];
-  for (let y = 0; y < ROOM_H; y++) {
+  for (let y = 0; y < roomH; y++) {
     tiles[y] = [];
-    for (let x = 0; x < ROOM_W; x++) {
-      // Walls on border
-      if (y === 0 || y === ROOM_H - 1 || x === 0 || x === ROOM_W - 1) {
+    for (let x = 0; x < roomW; x++) {
+      if (y === 0 || y === roomH - 1 || x === 0 || x === roomW - 1) {
         tiles[y][x] = T_WALL;
       } else {
         tiles[y][x] = T_FLOOR;
@@ -77,56 +233,114 @@ function generateInterior(tags) {
   }
 
   // Door at bottom center
-  const doorX = Math.floor(ROOM_W / 2);
-  tiles[ROOM_H - 1][doorX] = T_DOOR;
+  const doorX = Math.floor(roomW / 2);
+  tiles[roomH - 1][doorX] = T_DOOR;
 
-  const tagSet = new Set(tags || []);
+  const rng = mulberry32(seed);
+  const pool = FURNITURE_POOLS[buildingType] || FURNITURE_POOLS.house;
 
-  if (tagSet.has("shop") || tagSet.has("commerce")) {
-    // Shop: counter across the middle
-    for (let x = 2; x <= ROOM_W - 3; x++) {
-      tiles[4][x] = T_COUNTER;
+  // Place type-specific anchor furniture first
+  placeAnchorFurniture(tiles, buildingType, roomW, roomH);
+
+  // Place random furniture from weighted pool
+  const interiorArea = (roomW - 2) * (roomH - 2);
+  const furnitureCount = Math.floor(interiorArea * 0.2) + 2; // ~20% coverage + 2
+
+  for (let i = 0; i < furnitureCount; i++) {
+    const tile = pickFromPool(pool, rng());
+    // Try up to 10 random positions
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const fx = 1 + Math.floor(rng() * (roomW - 2));
+      const fy = 1 + Math.floor(rng() * (roomH - 2));
+      // Only place on empty floor, not on door row, not adjacent to door
+      if (
+        tiles[fy][fx] === T_FLOOR &&
+        fy !== roomH - 1 &&
+        !(fy === roomH - 2 && fx === doorX)
+      ) {
+        tiles[fy][fx] = tile;
+        break;
+      }
     }
-    // Shelves along top wall
-    for (let x = 2; x <= ROOM_W - 3; x += 2) {
-      tiles[1][x] = T_SHELF;
-    }
-  } else if (tagSet.has("rest")) {
-    // Inn: beds along walls
-    for (let y = 2; y <= 5; y += 2) {
-      tiles[y][1] = T_BED;
-      tiles[y][ROOM_W - 2] = T_BED;
-    }
-    // Desk/reception near top
-    tiles[2][Math.floor(ROOM_W / 2)] = T_DESK;
-  } else if (tagSet.has("temple") || tagSet.has("revive")) {
-    // Temple: altar at top center
-    tiles[2][Math.floor(ROOM_W / 2)] = T_ALTAR;
-    tiles[2][Math.floor(ROOM_W / 2) - 1] = T_ALTAR;
-    tiles[2][Math.floor(ROOM_W / 2) + 1] = T_ALTAR;
-  } else {
-    // Generic building: desk and bookshelf
-    tiles[2][Math.floor(ROOM_W / 2)] = T_DESK;
-    tiles[1][2] = T_SHELF;
-    tiles[1][ROOM_W - 3] = T_SHELF;
   }
 
   return tiles;
 }
 
-// NPC position based on building type (just behind furniture)
-function npcPosition(tags) {
-  const tagSet = new Set(tags || []);
-  if (tagSet.has("shop") || tagSet.has("commerce")) {
-    return { x: Math.floor(ROOM_W / 2), y: 3 }; // behind counter
+// Place signature furniture for each building type
+function placeAnchorFurniture(tiles, buildingType, roomW, roomH) {
+  const cx = Math.floor(roomW / 2);
+
+  switch (buildingType) {
+    case "shop": {
+      // Counter across the middle
+      const counterRow = Math.floor(roomH / 2);
+      for (let x = 2; x <= roomW - 3; x++) {
+        if (counterRow > 0 && counterRow < roomH - 1) {
+          tiles[counterRow][x] = T_COUNTER;
+        }
+      }
+    }
+      break;
+    case "inn":
+      // Desk/reception near top
+      if (2 < roomH - 1) tiles[2][cx] = T_DESK;
+      // Fireplace on one side
+      if (1 < roomW - 1 && 1 < roomH - 1) tiles[1][1] = T_FIREPLACE;
+      break;
+    case "temple":
+      // Altar at top center
+      if (2 < roomH - 1) {
+        tiles[2][cx] = T_ALTAR;
+        if (cx - 1 >= 1) tiles[2][cx - 1] = T_ALTAR;
+        if (cx + 1 < roomW - 1) tiles[2][cx + 1] = T_ALTAR;
+      }
+      break;
+    default:
+      // House: desk and bookshelf
+      if (2 < roomH - 1) tiles[2][cx] = T_DESK;
+      if (2 < roomW - 1 && 1 < roomH - 1) tiles[1][2] = T_BOOKSHELF;
+      break;
   }
-  if (tagSet.has("rest")) {
-    return { x: Math.floor(ROOM_W / 2), y: 1 }; // behind desk
+}
+
+// Validate that door and all NPC positions are reachable from the player
+// start position. Returns true if valid.
+function validateLayout(tiles, roomW, roomH, npcPositions) {
+  const doorX = Math.floor(roomW / 2);
+  const playerStartX = doorX;
+  const playerStartY = roomH - 2;
+
+  const reachable = floodFill(
+    tiles,
+    roomW,
+    roomH,
+    playerStartX,
+    playerStartY,
+    [],
+  );
+
+  // Check door is reachable
+  if (!reachable.has(`${doorX},${roomH - 1}`)) return false;
+
+  // Check all NPC positions are adjacent to a reachable tile
+  for (const npc of npcPositions) {
+    let npcReachable = false;
+    for (const [dx, dy] of [
+      [0, 1],
+      [0, -1],
+      [1, 0],
+      [-1, 0],
+    ]) {
+      if (reachable.has(`${npc.x + dx},${npc.y + dy}`)) {
+        npcReachable = true;
+        break;
+      }
+    }
+    if (!npcReachable) return false;
   }
-  if (tagSet.has("temple") || tagSet.has("revive")) {
-    return { x: Math.floor(ROOM_W / 2), y: 1 }; // behind altar
-  }
-  return { x: Math.floor(ROOM_W / 2), y: 1 }; // behind desk
+
+  return true;
 }
 
 export class TownScene extends Phaser.Scene {
@@ -144,6 +358,14 @@ export class TownScene extends Phaser.Scene {
 
     const tags = this.spawn.tags || [];
     const tagSet = new Set(tags);
+    const buildingType =
+      this.spawn.building_type || buildingTypeFromTags(tags);
+    const interiorSeed = this.spawn.interior_seed || hashCode(this.spawn.node_id || "default");
+
+    // Determine room dimensions
+    const dims = roomDimensions(buildingType, interiorSeed);
+    this.roomW = dims.w;
+    this.roomH = dims.h;
 
     // Pick music
     if (tagSet.has("shop") || tagSet.has("commerce")) {
@@ -154,12 +376,31 @@ export class TownScene extends Phaser.Scene {
       playMusic("music_overworld");
     }
 
-    // Generate interior
-    this.tiles = generateInterior(tags);
+    // Generate interior first, then place NPCs on walkable tiles
+    const numNpcs = npcCount(buildingType);
+    let tiles;
+    let npcPositions;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      tiles = generateInterior(
+        buildingType,
+        this.roomW,
+        this.roomH,
+        interiorSeed + attempt,
+      );
+      npcPositions = this.placeNPCs(
+        buildingType,
+        tags,
+        numNpcs,
+        interiorSeed + attempt,
+        tiles,
+      );
+      if (validateLayout(tiles, this.roomW, this.roomH, npcPositions)) break;
+    }
+    this.tiles = tiles;
 
     // Center the room on screen
-    const roomPixelW = ROOM_W * RENDERED_TILE;
-    const roomPixelH = ROOM_H * RENDERED_TILE;
+    const roomPixelW = this.roomW * RENDERED_TILE;
+    const roomPixelH = this.roomH * RENDERED_TILE;
     this.offsetX = Math.floor((800 - roomPixelW) / 2);
     this.offsetY = Math.floor((600 - roomPixelH) / 2);
 
@@ -177,24 +418,33 @@ export class TownScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(5);
 
-    // Place NPC
-    const npcPos = npcPosition(tags);
-    const npcSprite = npcSpriteForTags(tags);
-    this.npc = this.add
-      .image(
-        this.offsetX + npcPos.x * RENDERED_TILE + RENDERED_TILE / 2,
-        this.offsetY + npcPos.y * RENDERED_TILE + RENDERED_TILE / 2,
-        npcSprite,
-      )
-      .setScale(SCALE)
-      .setDepth(10);
-    this.npcTileX = npcPos.x;
-    this.npcTileY = npcPos.y;
+    // Place NPCs
+    this.npcs = [];
+    for (let i = 0; i < npcPositions.length; i++) {
+      const pos = npcPositions[i];
+      const sprite =
+        i === 0 ? npcSpriteForTags(tags) : "npc_elder";
+      const npcImage = this.add
+        .image(
+          this.offsetX + pos.x * RENDERED_TILE + RENDERED_TILE / 2,
+          this.offsetY + pos.y * RENDERED_TILE + RENDERED_TILE / 2,
+          sprite,
+        )
+        .setScale(SCALE)
+        .setDepth(10);
+      this.npcs.push({
+        x: pos.x,
+        y: pos.y,
+        image: npcImage,
+        isProprietor: i === 0,
+        index: i,
+      });
+    }
 
     // Player starts near door
-    const doorX = Math.floor(ROOM_W / 2);
+    const doorX = Math.floor(this.roomW / 2);
     this.playerX = doorX;
-    this.playerY = ROOM_H - 2; // one tile above door
+    this.playerY = this.roomH - 2;
     this.playerDir = "up";
     this.walkFrame = 0;
     const leaderIdx = getLeaderIndex();
@@ -231,7 +481,7 @@ export class TownScene extends Phaser.Scene {
     this.moveCooldown = 150;
 
     // Interact with NPC
-    this.nearNpc = false;
+    this.nearNpcIndex = -1;
     this.interactPrompt = null;
     this.input.keyboard.on("keydown-ENTER", () => this.interact());
     this.input.keyboard.on("keydown-SPACE", () => this.interact());
@@ -270,6 +520,50 @@ export class TownScene extends Phaser.Scene {
       .setDepth(5);
   }
 
+  // Place NPCs: proprietor at anchor position, extras on walkable floor tiles.
+  // tiles array is used to ensure NPCs only land on walkable tiles.
+  placeNPCs(buildingType, tags, count, seed, tiles) {
+    const positions = [];
+    const rng = mulberry32(seed + 999);
+
+    // Proprietor always at the standard position
+    const propPos = proprietorPosition(buildingType, this.roomW, this.roomH);
+    positions.push(propPos);
+
+    // Extra NPCs on random walkable interior tiles
+    const occupied = new Set([`${propPos.x},${propPos.y}`]);
+    const doorX = Math.floor(this.roomW / 2);
+    // Also block the player start tile and the door
+    occupied.add(`${doorX},${this.roomH - 2}`);
+    occupied.add(`${doorX},${this.roomH - 1}`);
+
+    for (let i = 1; i < count; i++) {
+      let placed = false;
+      for (let attempt = 0; attempt < 30; attempt++) {
+        const x = 1 + Math.floor(rng() * (this.roomW - 2));
+        const y = 1 + Math.floor(rng() * (this.roomH - 2));
+        const key = `${x},${y}`;
+        // Must be on a walkable tile, not occupied, not on bottom two rows
+        if (
+          !occupied.has(key) &&
+          y < this.roomH - 2 &&
+          TILE_WALKABLE[tiles[y][x]]
+        ) {
+          occupied.add(key);
+          positions.push({ x, y });
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        // Fallback: skip this NPC
+        break;
+      }
+    }
+
+    return positions;
+  }
+
   update(time) {
     if (isWorldInputLocked(this)) return;
     if (time - this.lastMoveTime < this.moveCooldown) return;
@@ -290,12 +584,14 @@ export class TownScene extends Phaser.Scene {
   tryMove(dx, dy) {
     const nx = this.playerX + dx;
     const ny = this.playerY + dy;
-    if (nx < 0 || nx >= ROOM_W || ny < 0 || ny >= ROOM_H) return;
+    if (nx < 0 || nx >= this.roomW || ny < 0 || ny >= this.roomH) return;
 
     const tile = this.tiles[ny][nx];
 
-    // Walking into NPC position is blocked
-    if (nx === this.npcTileX && ny === this.npcTileY) return;
+    // Walking into any NPC position is blocked
+    for (const npc of this.npcs) {
+      if (nx === npc.x && ny === npc.y) return;
+    }
 
     if (!TILE_WALKABLE[tile]) return;
 
@@ -336,68 +632,98 @@ export class TownScene extends Phaser.Scene {
       return;
     }
 
-    // Check proximity to NPC
-    const distToNpc =
-      Math.abs(this.playerX - this.npcTileX) +
-      Math.abs(this.playerY - this.npcTileY);
-    if (distToNpc <= 2) {
-      if (!this.nearNpc) {
-        this.nearNpc = true;
+    // Check proximity to nearest NPC
+    let closestIdx = -1;
+    let closestDist = Infinity;
+    for (let i = 0; i < this.npcs.length; i++) {
+      const dist =
+        Math.abs(this.playerX - this.npcs[i].x) +
+        Math.abs(this.playerY - this.npcs[i].y);
+      if (dist <= 2 && dist < closestDist) {
+        closestDist = dist;
+        closestIdx = i;
+      }
+    }
+
+    if (closestIdx >= 0) {
+      if (this.nearNpcIndex !== closestIdx) {
+        this.nearNpcIndex = closestIdx;
         this.showInteractPrompt();
       }
-    } else if (this.nearNpc) {
-      this.nearNpc = false;
+    } else if (this.nearNpcIndex >= 0) {
+      this.nearNpcIndex = -1;
       this.hideInteractPrompt();
     }
   }
 
   async interact() {
     if (isWorldInputLocked(this)) return;
-    if (!this.nearNpc) return;
+    if (this.nearNpcIndex < 0) return;
 
     this.hideInteractPrompt();
 
+    const npc = this.npcs[this.nearNpcIndex];
     const tags = this.spawn.tags || [];
     const tagSet = new Set(tags);
 
-    if (tagSet.has("shop") || tagSet.has("commerce")) {
-      // Shop NPC opens the shop UI
-      openShop(this, this.spawn);
-    } else if (tagSet.has("rest")) {
-      // Inn NPC restores party HP + MP
-      this.gameState.party.forEach((p) => {
-        if (p.hp > 0) {
-          p.hp = p.max_hp;
-          p.mp = p.max_mp;
-        }
-      });
-      playSFX("sfx_heal");
-      await openDialogue(this, this.spawn);
-      this.showMessage("HP and spells restored!");
-      this.time.delayedCall(1500, () => this.hideMessage());
-    } else if (tagSet.has("temple") || tagSet.has("revive")) {
-      // Temple NPC heals or revives
-      const dead = this.gameState.party.filter((p) => p.hp <= 0);
-      if (dead.length > 0) {
-        dead.forEach((p) => {
-          p.hp = 1;
-          p.status = "";
-        });
-      } else {
+    if (npc.isProprietor) {
+      // Proprietor NPC: special behavior by building type
+      if (tagSet.has("shop") || tagSet.has("commerce")) {
+        openShop(this, this.spawn);
+      } else if (tagSet.has("rest")) {
         this.gameState.party.forEach((p) => {
-          p.hp = p.max_hp;
+          if (p.hp > 0) {
+            p.hp = p.max_hp;
+            p.mp = p.max_mp;
+          }
         });
+        playSFX("sfx_heal");
+        await openDialogue(this, this.spawn);
+        this.showMessage("HP and spells restored!");
+        this.time.delayedCall(1500, () => this.hideMessage());
+      } else if (tagSet.has("temple") || tagSet.has("revive")) {
+        const dead = this.gameState.party.filter((p) => p.hp <= 0);
+        if (dead.length > 0) {
+          dead.forEach((p) => {
+            p.hp = 1;
+            p.status = "";
+          });
+        } else {
+          this.gameState.party.forEach((p) => {
+            p.hp = p.max_hp;
+          });
+        }
+        playSFX("sfx_heal");
+        await openDialogue(this, this.spawn);
+      } else {
+        await openDialogue(this, this.spawn);
       }
-      playSFX("sfx_heal");
-      await openDialogue(this, this.spawn);
     } else {
-      // Generic NPC just talks
-      await openDialogue(this, this.spawn);
+      // Extra NPC: just talk (with sub-NPC dialogue)
+      const subNodeId =
+        this.spawn.node_id + "_npc" + npc.index;
+      await this.openExtraNpcDialogue(subNodeId);
     }
 
-    // Re-show talk prompt if still near NPC
-    if (this.nearNpc) {
+    // Re-show talk prompt if still near an NPC
+    if (this.nearNpcIndex >= 0) {
       this.showInteractPrompt();
+    }
+  }
+
+  // Fetch and display dialogue for a sub-NPC (non-proprietor)
+  async openExtraNpcDialogue(subNodeId) {
+    try {
+      const resp = await getNpcDialogue(this.gameState.id, subNodeId);
+      if (resp && resp.lines && resp.lines.length > 0) {
+        // Use the dialogue system with a synthetic spawn
+        const synthSpawn = { ...this.spawn, node_id: subNodeId };
+        await openDialogue(this, synthSpawn);
+      } else {
+        await openDialogue(this, this.spawn);
+      }
+    } catch {
+      await openDialogue(this, this.spawn);
     }
   }
 
@@ -447,8 +773,8 @@ export class TownScene extends Phaser.Scene {
 
   drawRoom() {
     this.tileGraphics.clear();
-    for (let y = 0; y < ROOM_H; y++) {
-      for (let x = 0; x < ROOM_W; x++) {
+    for (let y = 0; y < this.roomH; y++) {
+      for (let x = 0; x < this.roomW; x++) {
         const tile = this.tiles[y][x];
         const color = TILE_COLORS[tile] || 0x000000;
         this.tileGraphics.fillStyle(color, 1);
@@ -470,4 +796,22 @@ export class TownScene extends Phaser.Scene {
       }
     }
   }
+}
+
+// Client-side fallback for building type derivation (when server doesn't provide it)
+function buildingTypeFromTags(tags) {
+  const tagSet = new Set(tags || []);
+  if (tagSet.has("rest")) return "inn";
+  if (tagSet.has("shop") || tagSet.has("commerce")) return "shop";
+  if (tagSet.has("temple") || tagSet.has("revive")) return "temple";
+  return "house";
+}
+
+// Simple string hash for seed fallback (unsigned)
+function hashCode(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) {
+    h = (h * 33 + str.charCodeAt(i)) | 0;
+  }
+  return h >>> 0;
 }

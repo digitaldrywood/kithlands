@@ -193,6 +193,59 @@ func TestGetNPCDialogue_Variety(t *testing.T) {
 	}
 }
 
+// TestGetNPCDialogue_SubNPC verifies that "inn_npc1" resolves to the inn node
+// and returns Innkeeper dialogue.
+func TestGetNPCDialogue_SubNPC(t *testing.T) {
+	game := newTestGame(t)
+	resp := game.GetNPCDialogue("inn_npc1")
+	if resp == nil {
+		t.Fatal("expected dialogue for inn_npc1, got nil")
+	}
+	if resp.NPCName != "Innkeeper" {
+		t.Errorf("npc_name = %q, want Innkeeper", resp.NPCName)
+	}
+	if resp.Sprite != "npc_innkeeper" {
+		t.Errorf("sprite = %q, want npc_innkeeper", resp.Sprite)
+	}
+	if len(resp.Lines) < 3 {
+		t.Errorf("expected at least 3 dialogue lines, got %d", len(resp.Lines))
+	}
+}
+
+// TestGetNPCDialogue_SubNPC_Distinct verifies that "inn", "inn_npc1", and
+// "inn_npc2" each produce different pool-selected lines (index 1+).
+func TestGetNPCDialogue_SubNPC_Distinct(t *testing.T) {
+	game := newTestGame(t)
+
+	base := game.GetNPCDialogue("inn")
+	npc1 := game.GetNPCDialogue("inn_npc1")
+	npc2 := game.GetNPCDialogue("inn_npc2")
+
+	for _, r := range []*api.NPCDialogueResponse{base, npc1, npc2} {
+		if r == nil {
+			t.Fatal("expected non-nil dialogue response")
+		}
+		if len(r.Lines) < 2 {
+			t.Fatalf("expected at least 2 lines, got %d", len(r.Lines))
+		}
+	}
+
+	allSame := base.Lines[1] == npc1.Lines[1] && npc1.Lines[1] == npc2.Lines[1]
+	if allSame {
+		t.Error("expected inn, inn_npc1, inn_npc2 to produce different pool lines, but all matched")
+	}
+}
+
+// TestGetNPCDialogue_SubNPC_InvalidBase verifies that a _npcN suffix on a
+// non-existent base node returns nil.
+func TestGetNPCDialogue_SubNPC_InvalidBase(t *testing.T) {
+	game := newTestGame(t)
+	resp := game.GetNPCDialogue("nonexistent_npc1")
+	if resp != nil {
+		t.Errorf("expected nil for nonexistent_npc1, got %+v", resp)
+	}
+}
+
 // TestDialoguePoolSize validates that dialogue.json has >= 15 lines per archetype.
 func TestDialoguePoolSize(t *testing.T) {
 	gd := gamedata.Load("../../shared")
