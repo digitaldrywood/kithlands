@@ -74,11 +74,10 @@ export function canUseOnTarget(item, target) {
 
 function hasValidTarget(item, party) {
   if (item.effect === "rest") {
-    // Tent should be usable if any member is not at full HP/MP.
+    // Tent should be usable if any living member is not at full HP/MP.
     for (const p of party) {
       if (p.hp > 0 && p.hp < p.max_hp) return true;
-      if ((p.max_mp || 0) > 0 && (p.mp || 0) < p.max_mp) return true;
-      if (p.hp <= 0) return true;
+      if (p.hp > 0 && (p.max_mp || 0) > 0 && (p.mp || 0) < p.max_mp) return true;
     }
     return false;
   }

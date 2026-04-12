@@ -74,3 +74,38 @@ func TestCombatVictoryDoesNotClearDeadMemberStatus(t *testing.T) {
 		t.Errorf("dead member status should stay StatusDeath after combat victory, got %v", s)
 	}
 }
+
+// TestRestPartySkipsDeadMembers verifies that restParty() (used by quest
+// completion and inns) does not revive dead members or restore their HP/MP.
+func TestRestPartySkipsDeadMembers(t *testing.T) {
+	game := newGameWithParty(t, []api.PartyMemberReq{
+		{Name: "Hero", ClassID: "warrior"},
+		{Name: "Mage", ClassID: "cinder"},
+	})
+
+	// Damage the hero and drain mage MP, then kill the mage.
+	api.DamagePartyForTest(game, 0, 10)
+	maxMP := api.PartyMaxMPForTest(game, 1)
+	if maxMP > 0 {
+		api.DamagePartyMPForTest(game, 1, maxMP)
+	}
+	api.KillPartyMemberForTest(game, 1)
+
+	api.RestPartyForTest(game)
+
+	// Living hero should be fully restored.
+	if hp := api.PartyHPForTest(game, 0); hp != api.PartyMaxHPForTest(game, 0) {
+		t.Errorf("hero HP after restParty: got %d, want %d", hp, api.PartyMaxHPForTest(game, 0))
+	}
+
+	// Dead mage must remain dead with 0 HP and 0 MP.
+	if hp := api.PartyHPForTest(game, 1); hp != 0 {
+		t.Errorf("dead mage HP after restParty: got %d, want 0", hp)
+	}
+	if mp := api.PartyMPForTest(game, 1); mp != 0 {
+		t.Errorf("dead mage MP after restParty: got %d, want 0", mp)
+	}
+	if s := api.PartyStatusForTest(game, 1); s != character.StatusDeath {
+		t.Errorf("dead mage status after restParty: got %q, want death", s)
+	}
+}

@@ -380,6 +380,14 @@ func ApplyStatusToEnemyForTest(g *Game, status character.Status) {
 	}
 }
 
+// RestPartyForTest calls the internal restParty method so tests can verify
+// dead-member handling outside the quest-completion or tent paths.
+func RestPartyForTest(g *Game) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.restParty()
+}
+
 // ApplyStatusToPartyForTest marks the party member at slot with the given
 // status so ambush-poison-tick assertions can fire deterministically.
 func ApplyStatusToPartyForTest(g *Game, slot int, status character.Status) {

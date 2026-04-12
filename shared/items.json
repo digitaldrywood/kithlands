@@ -1016,10 +1016,10 @@
       "id": "tent",
       "name": "Tent",
       "effect": "rest",
-      "value": 0,
+      "value": 50,
       "buy_price": 50,
       "sell_price": 25,
-      "description": "Restores the party's HP and MP. Field use only.",
+      "description": "Restores 50% HP and MP to all living party members. Field use only.",
       "combat_usable": false,
       "world_usable": true
     }

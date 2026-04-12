@@ -120,8 +120,8 @@ func TestAntidoteInWorldCuresPoison(t *testing.T) {
 	}
 }
 
-// TestTentInWorldRestsParty verifies Tent restores HP + MP on every party
-// member. Tent is world-only.
+// TestTentInWorldRestsParty verifies Tent restores 50% HP + MP on every
+// living party member. Tent is world-only.
 func TestTentInWorldRestsParty(t *testing.T) {
 	game := newGameWithParty(t, []api.PartyMemberReq{
 		{Name: "Hero", ClassID: "warrior"},
@@ -129,8 +129,10 @@ func TestTentInWorldRestsParty(t *testing.T) {
 	})
 	api.GiveItemForTest(game, "tent", 1)
 
-	api.DamagePartyForTest(game, 0, 10)
-	api.DamagePartyForTest(game, 1, 10)
+	// Damage heavily so 50% restore doesn't cap at max.
+	maxHP0 := api.PartyMaxHPForTest(game, 0)
+	api.DamagePartyForTest(game, 0, maxHP0) // floors at 1 HP
+	api.DamagePartyForTest(game, 1, api.PartyMaxHPForTest(game, 1))
 	maxMP := api.PartyMaxMPForTest(game, 1)
 	if maxMP > 0 {
 		api.DamagePartyMPForTest(game, 1, maxMP)
@@ -143,14 +145,67 @@ func TestTentInWorldRestsParty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("world tent: %v", err)
 	}
-	if api.PartyHPForTest(game, 0) != api.PartyMaxHPForTest(game, 0) {
-		t.Errorf("hero HP after tent: not full")
+
+	// 50% of MaxHP restored (additive from 1 HP).
+	wantHP := 1 + maxHP0*50/100
+	if wantHP > maxHP0 {
+		wantHP = maxHP0
 	}
-	if api.PartyHPForTest(game, 1) != api.PartyMaxHPForTest(game, 1) {
-		t.Errorf("mage HP after tent: not full")
+	if got := api.PartyHPForTest(game, 0); got != wantHP {
+		t.Errorf("hero HP after tent: got %d, want %d", got, wantHP)
 	}
-	if maxMP > 0 && api.PartyMPForTest(game, 1) != maxMP {
-		t.Errorf("mage MP after tent: got %d, want %d", api.PartyMPForTest(game, 1), maxMP)
+
+	// Mage HP: partial restore from 1 HP.
+	maxHP1 := api.PartyMaxHPForTest(game, 1)
+	wantHP1 := 1 + maxHP1*50/100
+	if wantHP1 > maxHP1 {
+		wantHP1 = maxHP1
+	}
+	if got := api.PartyHPForTest(game, 1); got != wantHP1 {
+		t.Errorf("mage HP after tent: got %d, want %d", got, wantHP1)
+	}
+
+	// 50% of MaxMP restored (additive from 0).
+	if maxMP > 0 {
+		wantMP := maxMP * 50 / 100
+		if got := api.PartyMPForTest(game, 1); got != wantMP {
+			t.Errorf("mage MP after tent: got %d, want %d", got, wantMP)
+		}
+	}
+}
+
+// TestTentSkipsDeadMembers verifies that using a Tent does not restore HP or
+// MP on dead party members, and does not revive them.
+func TestTentSkipsDeadMembers(t *testing.T) {
+	game := newGameWithParty(t, []api.PartyMemberReq{
+		{Name: "Hero", ClassID: "warrior"},
+		{Name: "Mage", ClassID: "cinder"},
+	})
+	api.GiveItemForTest(game, "tent", 1)
+
+	// Damage the hero, kill the mage.
+	api.DamagePartyForTest(game, 0, 10)
+	api.KillPartyMemberForTest(game, 1)
+
+	_, err := game.ProcessAction(api.GameActionRequest{
+		Type:   "item",
+		ItemID: "tent",
+	})
+	if err != nil {
+		t.Fatalf("world tent: %v", err)
+	}
+
+	// Dead mage must remain dead.
+	if hp := api.PartyHPForTest(game, 1); hp != 0 {
+		t.Errorf("dead mage HP after tent: got %d, want 0", hp)
+	}
+	if s := api.PartyStatusForTest(game, 1); s != character.StatusDeath {
+		t.Errorf("dead mage status after tent: got %q, want death", s)
+	}
+
+	// Living hero should have been partially restored.
+	if hp := api.PartyHPForTest(game, 0); hp <= api.PartyMaxHPForTest(game, 0)-10 {
+		t.Errorf("hero HP after tent: got %d, expected partial restore", hp)
 	}
 }
 

@@ -113,8 +113,9 @@ func (g *Game) applyWorldConsumableEffect(c *gamedata.Consumable, targetIdx int)
 		}
 
 	case "rest":
-		// Tent: fully restores the whole party.
-		g.restParty()
+		// Tent: partially restores every living party member (percentage
+		// given by the consumable's Value field, e.g. 50 → 50% HP+MP).
+		g.restPartyPercent(c.Value)
 
 	default:
 		return fmt.Errorf("effect %q not usable in the field", c.Effect)

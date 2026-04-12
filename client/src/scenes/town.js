@@ -364,9 +364,12 @@ export class TownScene extends Phaser.Scene {
       // Shop NPC opens the shop UI
       openShop(this, this.spawn);
     } else if (tagSet.has("rest")) {
-      // Inn NPC restores party HP
+      // Inn NPC restores party HP + MP
       this.gameState.party.forEach((p) => {
-        if (p.hp > 0) p.hp = p.max_hp;
+        if (p.hp > 0) {
+          p.hp = p.max_hp;
+          p.mp = p.max_mp;
+        }
       });
       playSFX("sfx_heal");
       await openDialogue(this, this.spawn);
