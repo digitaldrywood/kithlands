@@ -379,7 +379,11 @@ func (g *Game) State() GameState {
 	}
 	if g.phase == "combat" {
 		state.Formation = g.formation
-		if g.encounterStart != combat.EncounterStartNormal {
+		// Only advertise the opening surprise outcome on round 0 — the
+		// client's battle scene triggers the banner + auto-wait handler
+		// whenever encounter_start is populated, so leaking it into
+		// round 1+ loops into infinite ambushes (issue raised by player).
+		if g.combatRound == 0 && g.encounterStart != combat.EncounterStartNormal {
 			state.EncounterStart = string(g.encounterStart)
 		}
 	}
@@ -629,7 +633,11 @@ func (g *Game) stateUnlocked() GameState {
 	}
 	if g.phase == "combat" {
 		state.Formation = g.formation
-		if g.encounterStart != combat.EncounterStartNormal {
+		// Only advertise the opening surprise outcome on round 0 — the
+		// client's battle scene triggers the banner + auto-wait handler
+		// whenever encounter_start is populated, so leaking it into
+		// round 1+ loops into infinite ambushes (issue raised by player).
+		if g.combatRound == 0 && g.encounterStart != combat.EncounterStartNormal {
 			state.EncounterStart = string(g.encounterStart)
 		}
 	}

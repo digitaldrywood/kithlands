@@ -123,6 +123,41 @@ func TestAmbush_FirstRoundPartySkips(t *testing.T) {
 	}
 }
 
+// TestEncounterStart_NotEmittedAfterRound0 pins the infinite-ambush bug
+// reported by the player: the client's battle scene restarts after every
+// round, and if the server keeps emitting encounter_start on round 1+
+// the client fires the ambush banner + auto-wait forever. State must
+// only carry encounter_start while combatRound == 0.
+func TestEncounterStart_NotEmittedAfterRound0(t *testing.T) {
+	for _, kind := range []combat.EncounterStart{combat.EncounterStartAmbush, combat.EncounterStartPreemptive} {
+		t.Run(string(kind), func(t *testing.T) {
+			game := stageFight(t, kind)
+			state0 := game.State()
+			if state0.EncounterStart != string(kind) {
+				t.Fatalf("round 0 EncounterStart = %q, want %q", state0.EncounterStart, kind)
+			}
+			// Advance round 0 — ambush: wait, preemptive: attack.
+			var req api.GameActionRequest
+			if kind == combat.EncounterStartAmbush {
+				req = waitRound()
+			} else {
+				req = attackRound()
+			}
+			state1, err := game.ProcessAction(req)
+			if err != nil {
+				t.Fatalf("round 0 action: %v", err)
+			}
+			if state1.EncounterStart != "" {
+				t.Errorf("round 1 EncounterStart = %q, want empty — leaking causes infinite %s loop on client",
+					state1.EncounterStart, kind)
+			}
+			if api.CombatRoundForTest(game) != 1 {
+				t.Errorf("combatRound = %d, want 1", api.CombatRoundForTest(game))
+			}
+		})
+	}
+}
+
 func TestAmbush_DefensiveStripsPartyAttack(t *testing.T) {
 	// Simulates a buggy client that submits attack actions despite ambush.
 	// Server must strip them on round 0 so enemies take no damage.
