@@ -919,7 +919,10 @@
       "effect": "heal",
       "value": 30,
       "buy_price": 20,
-      "sell_price": 10
+      "sell_price": 10,
+      "description": "Restores 30 HP to a single ally.",
+      "combat_usable": true,
+      "world_usable": true
     },
     {
       "id": "hi_potion",
@@ -927,7 +930,10 @@
       "effect": "heal",
       "value": 120,
       "buy_price": 100,
-      "sell_price": 50
+      "sell_price": 50,
+      "description": "Restores 120 HP to a single ally.",
+      "combat_usable": true,
+      "world_usable": true
     },
     {
       "id": "ether",
@@ -935,7 +941,10 @@
       "effect": "restore_mp",
       "value": 20,
       "buy_price": 60,
-      "sell_price": 30
+      "sell_price": 30,
+      "description": "Restores 20 MP to a single ally.",
+      "combat_usable": true,
+      "world_usable": true
     },
     {
       "id": "hi_ether",
@@ -943,7 +952,10 @@
       "effect": "restore_mp",
       "value": 50,
       "buy_price": 180,
-      "sell_price": 90
+      "sell_price": 90,
+      "description": "Restores 50 MP to a single ally.",
+      "combat_usable": true,
+      "world_usable": true
     },
     {
       "id": "x_ether",
@@ -951,7 +963,10 @@
       "effect": "restore_mp",
       "value": 150,
       "buy_price": 500,
-      "sell_price": 250
+      "sell_price": 250,
+      "description": "Restores 150 MP to a single ally.",
+      "combat_usable": true,
+      "world_usable": true
     },
     {
       "id": "antidote",
@@ -959,7 +974,10 @@
       "effect": "cure_poison",
       "value": 0,
       "buy_price": 15,
-      "sell_price": 7
+      "sell_price": 7,
+      "description": "Cures Poison from one ally.",
+      "combat_usable": true,
+      "world_usable": true
     },
     {
       "id": "echo_herb",
@@ -967,7 +985,10 @@
       "effect": "cure_silence",
       "value": 0,
       "buy_price": 30,
-      "sell_price": 15
+      "sell_price": 15,
+      "description": "Cures Silence from one ally.",
+      "combat_usable": true,
+      "world_usable": true
     },
     {
       "id": "soft",
@@ -975,7 +996,10 @@
       "effect": "cure_stone",
       "value": 0,
       "buy_price": 200,
-      "sell_price": 100
+      "sell_price": 100,
+      "description": "Cures Stone from one ally.",
+      "combat_usable": true,
+      "world_usable": true
     },
     {
       "id": "phoenix_down",
@@ -983,7 +1007,10 @@
       "effect": "revive",
       "value": 1,
       "buy_price": 500,
-      "sell_price": 250
+      "sell_price": 250,
+      "description": "Revives a KO'd ally with 1 HP.",
+      "combat_usable": true,
+      "world_usable": true
     },
     {
       "id": "tent",
@@ -991,7 +1018,10 @@
       "effect": "rest",
       "value": 0,
       "buy_price": 50,
-      "sell_price": 25
+      "sell_price": 25,
+      "description": "Restores the party's HP and MP. Field use only.",
+      "combat_usable": false,
+      "world_usable": true
     }
   ],
   "key_items": [

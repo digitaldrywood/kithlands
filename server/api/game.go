@@ -158,6 +158,14 @@ type ItemState struct {
 	Power int `json:"power,omitempty"`
 	// Absorb is set on armor items (id starts with "arm_") for the same reason.
 	Absorb int `json:"absorb,omitempty"`
+	// Consumable metadata (issue #144). Populated for every entry in
+	// shared/items.json consumables so the FF-style Item menu can render
+	// descriptions, filter tabs, and grey out unusable items without the
+	// client shipping a duplicate catalog.
+	Description  string `json:"description,omitempty"`
+	Effect       string `json:"effect,omitempty"`
+	CombatUsable bool   `json:"combat_usable,omitempty"`
+	WorldUsable  bool   `json:"world_usable,omitempty"`
 }
 
 type EquipState struct {
@@ -554,25 +562,26 @@ func (g *Game) fillExtras(state *GameState) {
 }
 
 func (g *Game) fillInventoryState(state *GameState) {
-	// Items (non-potion consumables and weapons in inventory).
-	// Potions and ethers are exposed via dedicated flat fields on GameState
-	// so the combat item picker can read them without scanning Items.
+	// Items: every consumable (potions, ethers, cures, tent, revive, …) AND
+	// any weapons/armor stored in the inventory map. Potions and ethers
+	// are ALSO exposed on flat fields for HUD/shop code predating #144, but
+	// the FF-style Item menu relies on the unified Items slice as the single
+	// source of truth.
 	for id, count := range g.inv.Consumables {
 		if count <= 0 {
 			continue
 		}
-		switch id {
-		case "potion", "ether", "hi_ether", "x_ether":
-			continue
-		}
 		name := id
-		for _, c := range g.gd.Items.Consumables {
-			if c.ID == id {
-				name = c.Name
-				break
-			}
-		}
 		item := ItemState{ID: id, Name: name, Count: count}
+		// Enrich consumables with the full metadata the client needs to
+		// render descriptions, filter tabs, and grey out unusable items.
+		if c := g.findConsumable(id); c != nil {
+			item.Name = c.Name
+			item.Description = c.Description
+			item.Effect = c.Effect
+			item.CombatUsable = c.CombatUsable
+			item.WorldUsable = c.WorldUsable
+		}
 		// Weapon/armor in inventory -- enrich with Power/Absorb so the
 		// client can compute equip-delta previews (issue #96).
 		if strings.HasPrefix(id, "wpn_") {

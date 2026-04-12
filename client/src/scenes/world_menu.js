@@ -5,6 +5,7 @@ import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 import { showWorldMap } from "./world_interact.js";
 import { openCharacterDetail } from "./character_detail.js";
 import { showOptions } from "./options.js";
+import { showItemMenu } from "./item_menu.js";
 import { drawPanel, drawButton } from "../ui/panel.js";
 import { barFillWidth, barLabel, hpBarColorPct } from "../systems/hpBar.js";
 import {
@@ -101,7 +102,9 @@ export function toggleMenu(scene) {
   }
 
   // Footer row A — primary actions.
-  const potionsEnabled = gs.potions > 0;
+  const itemsEnabled = Array.isArray(gs.items)
+    ? gs.items.some((i) => i && i.effect && i.count > 0)
+    : false;
   layoutButtonRow(scene, scene.menuGroup, PANEL_CX, FOOTER_TOP + 15, [
     {
       label: "CHARACTER",
@@ -122,10 +125,19 @@ export function toggleMenu(scene) {
       },
     },
     {
-      label: "POTION",
+      label: "ITEM",
       w: 110,
-      enabled: potionsEnabled,
-      onClick: () => useOverworldPotion(scene),
+      enabled: itemsEnabled,
+      onClick: () => {
+        // Close the party menu first so the Item overlay can paint at the
+        // normal depth. On close, reopen the party menu via toggleMenu so the
+        // HUD refreshes with the post-use HP/MP/stack counts.
+        closeMenu(scene);
+        showItemMenu(scene, {
+          mode: "world",
+          onClose: () => toggleMenu(scene),
+        });
+      },
     },
     {
       label: "QUESTS",
@@ -775,30 +787,3 @@ function wrapText(s, width) {
   return lines.join("\n");
 }
 
-export function useOverworldPotion(scene) {
-  const gs = scene.gameState;
-  if (gs.potions <= 0) return;
-
-  // Find most damaged living party member
-  let target = null;
-  for (const p of gs.party) {
-    if (p.hp > 0 && p.hp < p.max_hp) {
-      if (!target || p.hp < target.hp) target = p;
-    }
-  }
-  if (!target) {
-    scene.showMessage("No one needs healing.");
-    scene.time.delayedCall(1500, () => scene.hideMessage());
-    return;
-  }
-
-  // Apply locally (server will validate on next action)
-  target.hp = Math.min(target.max_hp, target.hp + 30);
-  gs.potions--;
-  scene.showMessage(
-    `${target.name} used a Potion. HP: ${target.hp}/${target.max_hp}`,
-  );
-  scene.time.delayedCall(1500, () => scene.hideMessage());
-  toggleMenu(scene); // close and reopen to refresh
-  scene.updateHUD();
-}

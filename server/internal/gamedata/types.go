@@ -177,12 +177,15 @@ type Helmet struct {
 }
 
 type Consumable struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Effect    string `json:"effect"`
-	Value     int    `json:"value"`
-	BuyPrice  int    `json:"buy_price"`
-	SellPrice int    `json:"sell_price"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Effect       string `json:"effect"`
+	Value        int    `json:"value"`
+	BuyPrice     int    `json:"buy_price"`
+	SellPrice    int    `json:"sell_price"`
+	Description  string `json:"description,omitempty"`
+	CombatUsable bool   `json:"combat_usable,omitempty"`
+	WorldUsable  bool   `json:"world_usable,omitempty"`
 }
 
 // Spells
