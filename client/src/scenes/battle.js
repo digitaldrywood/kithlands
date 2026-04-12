@@ -2,6 +2,7 @@ import { gameAction, getGame } from "../api.js";
 import { createComposedSprite } from "../sprites/composedSprite.js";
 import { initAudio, playMusic, playSFX, stopMusic } from "../systems/audio.js";
 import { shouldAcceptEnemySpriteClick } from "../systems/battleTargeting.js";
+import { showItemMenu } from "./item_menu.js";
 import {
   applyDamage,
   applyHeal,
@@ -1235,226 +1236,27 @@ export class BattleScene extends Phaser.Scene {
   }
 
   showItemPicker(slot) {
-    const gs = this.gameState;
-    const ol = [];
-
-    // Available items
-    const items = [];
-    if (gs.potions > 0)
-      items.push({
-        id: "potion",
-        name: `Potion (${gs.potions})`,
-        type: "heal",
-      });
-    if (gs.ethers > 0)
-      items.push({
-        id: "ether",
-        name: `Ether (${gs.ethers})`,
-        type: "restore_mp",
-      });
-    if (gs.hi_ethers > 0)
-      items.push({
-        id: "hi_ether",
-        name: `Hi-Ether (${gs.hi_ethers})`,
-        type: "restore_mp",
-      });
-    if (gs.x_ethers > 0)
-      items.push({
-        id: "x_ether",
-        name: `X-Ether (${gs.x_ethers})`,
-        type: "restore_mp",
-      });
-    const phoenix = gs.items?.find((i) => i.id === "phoenix_down");
-    if (phoenix)
-      items.push({
-        id: "phoenix_down",
-        name: `Phoenix Down (${phoenix.count})`,
-        type: "revive",
-      });
-
-    if (items.length === 0) return;
-
-    const h = 50 + items.length * 35;
-    const bg = this.add
-      .rectangle(400, 380, 320, h, 0x112211, 0.95)
-      .setStrokeStyle(2, 0x44aa44)
-      .setDepth(50)
-      .setInteractive();
-    ol.push(bg);
-
-    ol.push(
-      this.add
-        .text(400, 380 - h / 2 + 15, "Choose an item:", {
-          fontSize: "12px",
-          color: "#ffffff",
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5)
-        .setDepth(51),
-    );
-
+    // Delegate to the shared FF-style Item menu (issue #144). It renders
+    // the scrollable list + filter tabs + description line + target picker,
+    // then calls back once the player has committed a choice. We pipe that
+    // into recordAction so the existing per-member submit flow below is
+    // untouched.
     this.pickerItems = [];
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      const y = 380 - h / 2 + 40 + i * 35;
-      const row = this.add
-        .rectangle(400, y, 280, 28, 0x224422)
-        .setInteractive({ useHandCursor: true })
-        .setDepth(51);
-      const txt = this.add
-        .text(400, y, `${i + 1}. ${item.name}`, {
-          fontSize: "11px",
-          color: "#88ff88",
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5)
-        .setDepth(52);
-      ol.push(row, txt);
-
-      const selectItem = () => {
-        this.closePicker();
-        this.showPartyTargetPicker(slot, item);
-      };
-
-      this.pickerItems.push({ action: selectItem });
-
-      row.on("pointerover", () => {
-        row.setFillStyle(0x336633);
-        txt.setColor("#ffffff");
-      });
-      row.on("pointerout", () => {
-        row.setFillStyle(0x224422);
-        txt.setColor("#88ff88");
-      });
-      row.on("pointerdown", selectItem);
-    }
-
-    const cancel = this.add
-      .text(400, 380 + h / 2 - 12, "[ CANCEL / ESC ]", {
-        fontSize: "10px",
-        color: "#888888",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5)
-      .setDepth(51)
-      .setInteractive({ useHandCursor: true });
-    cancel.on("pointerdown", () => this.closePicker());
-    ol.push(cancel);
-
-    this.pickerOverlay = ol;
-  }
-
-  showPartyTargetPicker(slot, item) {
-    const gs = this.gameState;
-    const ol = [];
-
-    // Filter targets based on item type
-    const targets = [];
-    for (let i = 0; i < gs.party.length; i++) {
-      const p = gs.party[i];
-      if (item.type === "revive") {
-        // Phoenix Down only on dead members
-        if (p.hp <= 0) targets.push({ slot: i, ...p });
-      } else if (item.type === "restore_mp") {
-        // Ether tiers only on living casters (max_mp > 0)
-        if (p.hp > 0 && (p.max_mp || 0) > 0) targets.push({ slot: i, ...p });
-      } else {
-        // Potions on living members
-        if (p.hp > 0) targets.push({ slot: i, ...p });
-      }
-    }
-
-    if (targets.length === 0) {
-      this.promptText.setText("No valid targets!").setColor("#ff4444");
-      return;
-    }
-
-    const h = 50 + targets.length * 40;
-    const bg = this.add
-      .rectangle(400, 350, 350, h, 0x112211, 0.95)
-      .setStrokeStyle(2, 0x44aa44)
-      .setDepth(50)
-      .setInteractive();
-    ol.push(bg);
-
-    ol.push(
-      this.add
-        .text(
-          400,
-          350 - h / 2 + 15,
-          `Use ${item.name.split("(")[0].trim()} on:`,
-          {
-            fontSize: "12px",
-            color: "#ffffff",
-            fontFamily: "monospace",
-          },
-        )
-        .setOrigin(0.5)
-        .setDepth(51),
-    );
-
-    this.pickerItems = [];
-    for (let i = 0; i < targets.length; i++) {
-      const t = targets[i];
-      const y = 350 - h / 2 + 45 + i * 40;
-      const showMP = item.type === "restore_mp";
-      const hpColor = showMP
-        ? "#88aaff"
-        : t.hp <= 0
-          ? "#ff4444"
-          : t.hp < t.max_hp * 0.5
-            ? "#ffaa44"
-            : "#44ff44";
-      const hpStr = showMP
-        ? `${t.mp}/${t.max_mp} MP`
-        : t.hp <= 0
-          ? "DEAD"
-          : `${t.hp}/${t.max_hp} HP`;
-
-      const row = this.add
-        .rectangle(400, y, 300, 32, 0x224422)
-        .setInteractive({ useHandCursor: true })
-        .setDepth(51);
-      const txt = this.add
-        .text(400, y, `${i + 1}. ${t.name} (${t.class_name}) - ${hpStr}`, {
-          fontSize: "11px",
-          color: hpColor,
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5)
-        .setDepth(52);
-      ol.push(row, txt);
-
-      const selectTarget = () => {
-        this.closePicker();
+    const handle = showItemMenu(this, {
+      mode: "combat",
+      onConfirm: (item, targetSlot) => {
         this.recordAction(slot, {
           slot,
           type: item.id === "phoenix_down" ? "revive" : "item",
-          target_id: t.slot,
+          target_id: targetSlot,
           item_id: item.id,
         });
-      };
-
-      this.pickerItems.push({ action: selectTarget });
-
-      row.on("pointerover", () => row.setFillStyle(0x336633));
-      row.on("pointerout", () => row.setFillStyle(0x224422));
-      row.on("pointerdown", selectTarget);
-    }
-
-    const cancel = this.add
-      .text(400, 350 + h / 2 - 12, "[ CANCEL / ESC ]", {
-        fontSize: "10px",
-        color: "#888888",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5)
-      .setDepth(51)
-      .setInteractive({ useHandCursor: true });
-    cancel.on("pointerdown", () => this.closePicker());
-    ol.push(cancel);
-
-    this.pickerOverlay = ol;
+      },
+    });
+    // Route closePicker() through the overlay handle so ESC/cancel paths
+    // upstream of this method still tear it down. closePicker walks
+    // pickerOverlay with .forEach((o) => o.destroy()).
+    this.pickerOverlay = [{ destroy: () => handle.close() }];
   }
 
   closePicker() {

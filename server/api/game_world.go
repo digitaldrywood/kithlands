@@ -36,6 +36,8 @@ func (g *Game) tickOverworldPoisonAndCheckDefeat() bool {
 
 func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 	switch req.Type {
+	case "item":
+		return g.processWorldItem(req)
 	case "encounter":
 		if g.tickOverworldPoisonAndCheckDefeat() {
 			state := g.stateUnlocked()

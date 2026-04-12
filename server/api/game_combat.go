@@ -116,6 +116,14 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 				if itemID == "" {
 					itemID = "potion"
 				}
+				// Peek at the consumable so we can reject non-battle items
+				// (e.g. Tent) before debiting inventory.
+				if def := g.findConsumable(itemID); def != nil && !def.CombatUsable {
+					g.logCombat(
+						fmt.Sprintf("%s cannot be used in battle!", def.Name),
+						CombatActionEntry{Kind: "info", ActorID: pc.ID, ActorName: g.party[ma.Slot].Name})
+					continue
+				}
 				consumable, useErr := g.inv.UseConsumable(itemID, g.gd)
 				if useErr != nil {
 					continue
@@ -154,6 +162,12 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 						fmt.Sprintf("%s uses %s on %s - restored %d MP (%d/%d)",
 							actorName, consumable.Name, target.Name, restored, target.CurrentMP, target.MaxMP),
 						CombatActionEntry{Kind: "item", ActorID: pc.ID, ActorName: actorName, TargetName: target.Name, Damage: restored})
+				case "cure_poison":
+					g.applyCombatCure(combatants, pc, ma.Slot, targetIdx, consumable, character.StatusPoison, itemID)
+				case "cure_silence":
+					g.applyCombatCure(combatants, pc, ma.Slot, targetIdx, consumable, character.StatusSilence, itemID)
+				case "cure_stone":
+					g.applyCombatCure(combatants, pc, ma.Slot, targetIdx, consumable, character.StatusStone, itemID)
 				}
 				continue
 
@@ -826,6 +840,12 @@ func (g *Game) processCombatItem(req GameActionRequest) (*GameState, error) {
 		state := g.stateUnlocked()
 		return &state, fmt.Errorf("unknown item %q", itemID)
 	}
+	// Reject items that cannot be used in battle (e.g. Tent). Don't consume
+	// the item on reject so the player keeps what they tried to spend.
+	if !consumable.CombatUsable {
+		state := g.stateUnlocked()
+		return &state, fmt.Errorf("%s cannot be used in battle", consumable.Name)
+	}
 	// For restore_mp, reject the request if the best target is already full
 	// so the player doesn't burn an ether on a caster at full MP.
 	if consumable.Effect == "restore_mp" {
@@ -844,9 +864,10 @@ func (g *Game) processCombatItem(req GameActionRequest) (*GameState, error) {
 		delete(g.inv.Consumables, itemID)
 	}
 
+	targetIdx := req.TargetID
 	switch consumable.Effect {
 	case "heal":
-		target := pickHealTarget(g.party, -1)
+		target := pickHealTarget(g.party, targetIdx)
 		if target != nil {
 			target.Heal(consumable.Value)
 			g.logCombat(
@@ -854,13 +875,31 @@ func (g *Game) processCombatItem(req GameActionRequest) (*GameState, error) {
 				CombatActionEntry{Kind: "item", ActorName: target.Name})
 		}
 	case "restore_mp":
-		target := pickMPTarget(g.party, -1)
+		target := pickMPTarget(g.party, targetIdx)
 		if target != nil {
 			before := target.CurrentMP
 			target.RestoreMP(consumable.Value)
 			g.logCombat(
 				fmt.Sprintf("%s uses %s - restored %d MP (MP:%d/%d)", target.Name, consumable.Name, target.CurrentMP-before, target.CurrentMP, target.MaxMP),
 				CombatActionEntry{Kind: "item", ActorName: target.Name})
+		}
+	case "cure_poison":
+		g.applyTopLevelCombatCure(targetIdx, consumable, character.StatusPoison)
+	case "cure_silence":
+		g.applyTopLevelCombatCure(targetIdx, consumable, character.StatusSilence)
+	case "cure_stone":
+		g.applyTopLevelCombatCure(targetIdx, consumable, character.StatusStone)
+	case "revive":
+		if targetIdx >= 0 && targetIdx < len(g.party) && !g.party[targetIdx].IsAlive() {
+			t := g.party[targetIdx]
+			t.Status = character.StatusNone
+			t.CurrentHP = consumable.Value
+			if t.CurrentHP < 1 {
+				t.CurrentHP = 1
+			}
+			g.logCombat(
+				fmt.Sprintf("%s uses Phoenix Down - revived with %d HP!", t.Name, t.CurrentHP),
+				CombatActionEntry{Kind: "item", ActorName: t.Name})
 		}
 	}
 
@@ -897,6 +936,61 @@ func (g *Game) processCombatItem(req GameActionRequest) (*GameState, error) {
 
 	state := g.stateUnlocked()
 	return &state, nil
+}
+
+// applyCombatCure clears the given status from the targeted party member
+// during a per-member item action. Refunds the item when the target is
+// invalid or not afflicted (matches the restore_mp refund pattern above).
+// combatants is the live turn slice — we MUST mutate the combatant in place
+// too, otherwise the end-of-round sync-back at
+// `g.party[i].Status = pc.Status` would overwrite the cure.
+// pc is the combatant view of the *actor*; targetIdx is the party slot being
+// cured.
+func (g *Game) applyCombatCure(combatants []*combat.Combatant, pc *combat.Combatant, actorSlot, targetIdx int, consumable *gamedata.Consumable, status character.Status, itemID string) {
+	actorName := g.party[actorSlot].Name
+	if targetIdx < 0 || targetIdx >= len(g.party) {
+		g.inv.Consumables[itemID]++
+		return
+	}
+	target := g.party[targetIdx]
+	if target.Status != status {
+		g.inv.Consumables[itemID]++
+		g.logCombat(
+			fmt.Sprintf("%s is not afflicted with %s!", target.Name, status),
+			CombatActionEntry{Kind: "info", ActorID: pc.ID, ActorName: actorName, TargetName: target.Name})
+		return
+	}
+	target.Status = character.StatusNone
+	if targetIdx < len(combatants) && combatants[targetIdx] != nil {
+		combatants[targetIdx].Status = character.StatusNone
+	}
+	g.logCombat(
+		fmt.Sprintf("%s uses %s on %s - cured %s!",
+			actorName, consumable.Name, target.Name, status),
+		CombatActionEntry{Kind: "item", ActorID: pc.ID, ActorName: actorName, TargetName: target.Name})
+}
+
+// applyTopLevelCombatCure handles cure_* effects for the single-action
+// top-level `{type:"item"}` combat request path used by processCombatItem.
+// The inventory is already debited by the caller; on invalid target we
+// refund so the player doesn't lose the item.
+func (g *Game) applyTopLevelCombatCure(targetIdx int, consumable *gamedata.Consumable, status character.Status) {
+	if targetIdx < 0 || targetIdx >= len(g.party) {
+		g.inv.Consumables[consumable.ID]++
+		return
+	}
+	target := g.party[targetIdx]
+	if target.Status != status {
+		g.inv.Consumables[consumable.ID]++
+		g.logCombat(
+			fmt.Sprintf("%s is not afflicted with %s!", target.Name, status),
+			CombatActionEntry{Kind: "info", ActorName: target.Name})
+		return
+	}
+	target.Status = character.StatusNone
+	g.logCombat(
+		fmt.Sprintf("%s uses %s - cured %s!", target.Name, consumable.Name, status),
+		CombatActionEntry{Kind: "item", ActorName: target.Name})
 }
 
 // pickHealTarget returns the party member to heal with an HP consumable.
