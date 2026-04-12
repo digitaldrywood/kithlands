@@ -1,4 +1,4 @@
-.PHONY: play stop run test test-e2e test-scripts build demo migrate setup-db teardown-db balance-sim simulate validate-data client-dev client-build lint vet fmt pre-commit docker-up docker-down
+.PHONY: play stop run test test-e2e test-scripts test-visual test-visual-update build demo migrate setup-db teardown-db balance-sim simulate validate-data client-dev client-build lint vet fmt pre-commit docker-up docker-down
 
 # Per-worktree isolation: these are populated by scripts/worktree-env.sh via
 # direnv. Defaults below keep the Makefile usable without direnv (for CI, or
@@ -83,6 +83,20 @@ test-e2e: setup-db
 # Shell-level tests for scripts/ (currently: worktree-env.sh).
 test-scripts:
 	@bash scripts/worktree-env_test.sh
+
+# Playwright visual regression suite (issue #145 Part D). Assumes
+# server + client are already running with KITHLANDS_DEBUG=1 — start
+# them with `KITHLANDS_DEBUG=1 make play` first. Requires Playwright
+# browser binaries: `cd client && npx playwright install chromium`.
+# Suite is currently scaffolded with test.skip markers; see
+# client/e2e/README.md for the one-time baseline capture procedure.
+test-visual:
+	@cd client && VITE_PORT=$(VITE_PORT) npx playwright test --config=e2e/playwright.config.js
+
+# Refresh baselines after an intentional UI change. Only run this
+# after visually reviewing every diff.
+test-visual-update:
+	@cd client && VITE_PORT=$(VITE_PORT) npx playwright test --config=e2e/playwright.config.js --update-snapshots
 
 vet:
 	cd server && go vet ./...

@@ -13,6 +13,7 @@ import {
 } from "../systems/prefs.js";
 import { toggleMenu } from "./world_menu.js";
 import { toggleCodex } from "./world_codex.js";
+import { toggleDebugPanel, closeDebugPanel } from "./debug_panel.js";
 import {
   interactWithDoor,
   showWorldMap,
@@ -247,9 +248,17 @@ export class WorldScene extends Phaser.Scene {
     this.input.keyboard.on("keydown-M", () => toggleMenu(this));
     this.input.keyboard.on("keydown-H", () => toggleCodex(this));
     this.input.keyboard.on("keydown-ESC", () => {
-      if (this.codexOpen) toggleCodex(this);
+      if (this.debugPanelOpen) closeDebugPanel(this);
+      else if (this.codexOpen) toggleCodex(this);
       else if (this.menuOpen) toggleMenu(this);
     });
+
+    // Dev-only debug panel (#145). Vite tree-shakes the branch out of
+    // production builds because import.meta.env.DEV is a compile-time
+    // constant there.
+    if (import.meta.env && import.meta.env.DEV) {
+      this.input.keyboard.on("keydown-BACKTICK", () => toggleDebugPanel(this));
+    }
     this.codexOpen = false;
     this.codexGroup = null;
 

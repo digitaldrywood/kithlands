@@ -141,6 +141,39 @@ func HasKeyItemForTest(g *Game, id string) bool {
 	return g.inv.HasKeyItem(id)
 }
 
+// HasPhoenixDownForTest reports whether any Phoenix Down is currently held.
+// Used by the debug handler tests that verify /api/debug/.../give-item.
+func HasPhoenixDownForTest(g *Game) bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.inv.Consumables["phoenix_down"] > 0
+}
+
+// CurrentQuestForTest returns g.currentQ so tests can verify warp-quest
+// side effects.
+func CurrentQuestForTest(g *Game) int {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.currentQ
+}
+
+// QuestCountForTest returns len(g.quests) so warp-quest clamping tests
+// don't have to reach into the wire state.
+func QuestCountForTest(g *Game) int {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return len(g.quests)
+}
+
+// SetCurrentQuestForTest advances g.currentQ to idx (without clamping).
+// Used by the promotion/feature-trigger integration tests to warp the
+// party to a specific quest beat.
+func SetCurrentQuestForTest(g *Game, idx int) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.currentQ = idx
+}
+
 // PromotionOfferedForTest reports whether the midpoint promotion offer has
 // already fired once on this game.
 func PromotionOfferedForTest(g *Game) bool {

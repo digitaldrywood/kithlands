@@ -39,6 +39,44 @@ export async function getClasses() {
   return apiCall("GET", "/data/classes");
 }
 
+export async function getItems() {
+  return apiCall("GET", "/data/items");
+}
+
+// Dev-only feature-trigger API (registered only when KITHLANDS_DEBUG=1 on
+// the server). The client debug panel uses these to reproduce specific
+// game states deterministically; they should never be called from a
+// production build.
+export async function debugForceEncounterStart(gameId, start) {
+  return apiCall("POST", `/debug/game/${gameId}/force-encounter-start`, {
+    start,
+  });
+}
+
+export async function debugForceEncounter(gameId, monsterIds, level) {
+  return apiCall("POST", `/debug/game/${gameId}/force-encounter`, {
+    monster_ids: monsterIds,
+    level,
+  });
+}
+
+export async function debugGiveItem(gameId, itemId, qty) {
+  return apiCall("POST", `/debug/game/${gameId}/give-item`, {
+    item_id: itemId,
+    qty,
+  });
+}
+
+export async function debugHealParty(gameId) {
+  return apiCall("POST", `/debug/game/${gameId}/heal-party`, {});
+}
+
+export async function debugWarpQuest(gameId, questIdx) {
+  return apiCall("POST", `/debug/game/${gameId}/warp-quest`, {
+    quest_idx: questIdx,
+  });
+}
+
 export async function newGame(data) {
   return apiCall("POST", "/game/new", data);
 }
