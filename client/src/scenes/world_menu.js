@@ -4,11 +4,7 @@ import { getAutosaveEnabled, setAutosaveEnabled } from "../systems/prefs.js";
 import { showWorldMap } from "./world_interact.js";
 import { openCharacterDetail } from "./character_detail.js";
 import { drawPanel, drawButton } from "../ui/panel.js";
-import {
-  barFillWidth,
-  barLabel,
-  hpBarColorPct,
-} from "../systems/hpBar.js";
+import { barFillWidth, barLabel, hpBarColorPct } from "../systems/hpBar.js";
 import {
   filterEquippableItems,
   computeEquipDelta,
@@ -67,7 +63,7 @@ export function toggleMenu(scene) {
     .text(
       PANEL_RIGHT - 20,
       PANEL_TOP + 32,
-      `Gold: ${gs.gold}   Potions: ${gs.potions}`,
+      `Gold: ${gs.gold}   Potions: ${gs.potions}   Ether: ${(gs.ethers || 0) + (gs.hi_ethers || 0) + (gs.x_ethers || 0)}`,
       { fontSize: "12px", color: "#ffcc44", fontFamily: "monospace" },
     )
     .setOrigin(1, 0.5)
@@ -179,9 +175,7 @@ export function toggleMenu(scene) {
           const nowEnabled = !getAutosaveEnabled();
           setAutosaveEnabled(nowEnabled);
           if (autoHandle) {
-            autoHandle.setLabel(
-              nowEnabled ? "Autosave: ON" : "Autosave: OFF",
-            );
+            autoHandle.setLabel(nowEnabled ? "Autosave: ON" : "Autosave: OFF");
           }
           if (scene.startAutosaveTimer) {
             if (nowEnabled) scene.startAutosaveTimer();
@@ -249,19 +243,19 @@ function drawPartyRow(scene, group, x, y, w, member, _equip, slot) {
     .setDepth(DEPTH_CONTENT);
   group.push(header);
 
-  // Bar geometry. HP and MP share line 2; XP gets line 3.
+  // Bar geometry. HP on line 2, MP stacked directly beneath for casters
+  // (issue #136), XP on line 3.
   const hpBarW = 180;
-  const mpBarW = 120;
-  const xpBarW = 340;
   const barH = 8;
 
-  const line2Y = y + 26;
-  const line3Y = y + 46;
+  const hpY = y + 24;
+  const mpY = y + 36;
+  const xpY = y + 48;
 
   // HP bar.
   drawStatBar(scene, group, {
     x: infoX,
-    y: line2Y,
+    y: hpY,
     w: hpBarW,
     h: barH,
     cur: member.hp,
@@ -270,26 +264,28 @@ function drawPartyRow(scene, group, x, y, w, member, _equip, slot) {
     color: hpColorFor(member.hp, member.max_hp),
   });
 
-  // MP bar for casters. Uses the MaxMP field #94 added to PartyMemberState
-  // on the server; non-casters report MaxMP=0 and get no bar.
+  // MP bar for casters — stacked directly beneath HP (same width, same x)
+  // so players read HP/MP as a paired vitality block. Uses the MaxMP field
+  // #94 added to PartyMemberState on the server; non-casters report
+  // MaxMP=0 and get no bar (the row just has empty space where MP would be).
   if ((member.max_mp || 0) > 0) {
     drawStatBar(scene, group, {
-      x: infoX + hpBarW + 70,
-      y: line2Y,
-      w: mpBarW,
+      x: infoX,
+      y: mpY,
+      w: hpBarW,
       h: barH,
       cur: member.mp,
       max: member.max_mp,
       prefix: "MP",
-      color: 0x88aaff,
+      color: 0x4488ff,
     });
   }
 
-  // XP bar.
+  // XP bar (full-width).
   drawStatBar(scene, group, {
     x: infoX,
-    y: line3Y,
-    w: xpBarW,
+    y: xpY,
+    w: 340,
     h: barH,
     cur: member.xp,
     max: member.xp_next,
@@ -354,7 +350,8 @@ function hpColorFor(hp, max) {
 // ones (setLabel, setEnabled) later. 12px gap between buttons.
 function layoutButtonRow(scene, group, cx, y, specs) {
   const gap = 12;
-  const totalW = specs.reduce((sum, s) => sum + s.w, 0) + gap * (specs.length - 1);
+  const totalW =
+    specs.reduce((sum, s) => sum + s.w, 0) + gap * (specs.length - 1);
   let cursor = cx - totalW / 2;
   const handles = [];
   for (const spec of specs) {
@@ -454,9 +451,7 @@ export async function showEquipPicker(scene, slot, type, opts = {}) {
           scene.gameState = result;
           scene.updateHUD();
           reopenCaller();
-          scene.showMessage(
-            `Equipped ${item.name} (${deltaLabel.text})`,
-          );
+          scene.showMessage(`Equipped ${item.name} (${deltaLabel.text})`);
           scene.time.delayedCall(1500, () => scene.hideMessage());
           playSFX("sfx_save");
         } else {

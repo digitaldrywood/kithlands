@@ -697,10 +697,20 @@ export class BattleScene extends Phaser.Scene {
         maxHP: p.max_hp,
       };
 
-      if (p.max_mp > 0 && alive) {
-        this.add.text(x + 45, y + 22, `MP ${p.mp}/${p.max_mp}`, {
+      if (p.max_mp > 0) {
+        const mpBarY = barY + 8;
+        const mpFillW = hpBarFillWidth(p.mp, p.max_mp, bw);
+        this.add
+          .rectangle(barX, mpBarY, bw, 4, 0x112244)
+          .setOrigin(0, 0.5)
+          .setDepth(8);
+        this.add
+          .rectangle(barX, mpBarY, mpFillW, 4, alive ? 0x4488ff : 0x222244)
+          .setOrigin(0, 0.5)
+          .setDepth(10);
+        this.add.text(x + 90 + bw + 5, y + 18, `${p.mp}/${p.max_mp}`, {
           fontSize: "8px",
-          color: "#88aaff",
+          color: alive ? "#88aaff" : "#444466",
           fontFamily: "monospace",
         });
       }
@@ -1235,6 +1245,24 @@ export class BattleScene extends Phaser.Scene {
         name: `Potion (${gs.potions})`,
         type: "heal",
       });
+    if (gs.ethers > 0)
+      items.push({
+        id: "ether",
+        name: `Ether (${gs.ethers})`,
+        type: "restore_mp",
+      });
+    if (gs.hi_ethers > 0)
+      items.push({
+        id: "hi_ether",
+        name: `Hi-Ether (${gs.hi_ethers})`,
+        type: "restore_mp",
+      });
+    if (gs.x_ethers > 0)
+      items.push({
+        id: "x_ether",
+        name: `X-Ether (${gs.x_ethers})`,
+        type: "restore_mp",
+      });
     const phoenix = gs.items?.find((i) => i.id === "phoenix_down");
     if (phoenix)
       items.push({
@@ -1326,6 +1354,9 @@ export class BattleScene extends Phaser.Scene {
       if (item.type === "revive") {
         // Phoenix Down only on dead members
         if (p.hp <= 0) targets.push({ slot: i, ...p });
+      } else if (item.type === "restore_mp") {
+        // Ether tiers only on living casters (max_mp > 0)
+        if (p.hp > 0 && (p.max_mp || 0) > 0) targets.push({ slot: i, ...p });
       } else {
         // Potions on living members
         if (p.hp > 0) targets.push({ slot: i, ...p });
@@ -1365,9 +1396,19 @@ export class BattleScene extends Phaser.Scene {
     for (let i = 0; i < targets.length; i++) {
       const t = targets[i];
       const y = 350 - h / 2 + 45 + i * 40;
-      const hpColor =
-        t.hp <= 0 ? "#ff4444" : t.hp < t.max_hp * 0.5 ? "#ffaa44" : "#44ff44";
-      const hpStr = t.hp <= 0 ? "DEAD" : `${t.hp}/${t.max_hp} HP`;
+      const showMP = item.type === "restore_mp";
+      const hpColor = showMP
+        ? "#88aaff"
+        : t.hp <= 0
+          ? "#ff4444"
+          : t.hp < t.max_hp * 0.5
+            ? "#ffaa44"
+            : "#44ff44";
+      const hpStr = showMP
+        ? `${t.mp}/${t.max_mp} MP`
+        : t.hp <= 0
+          ? "DEAD"
+          : `${t.hp}/${t.max_hp} HP`;
 
       const row = this.add
         .rectangle(400, y, 300, 32, 0x224422)
@@ -1389,6 +1430,7 @@ export class BattleScene extends Phaser.Scene {
           slot,
           type: item.id === "phoenix_down" ? "revive" : "item",
           target_id: t.slot,
+          item_id: item.id,
         });
       };
 
@@ -2237,11 +2279,16 @@ export class BattleScene extends Phaser.Scene {
     // Gold and items
     y += 5;
     this.add
-      .text(400, y, `Gold: ${gs.gold}  |  Potions: ${gs.potions}`, {
-        fontSize: "12px",
-        color: "#ffcc44",
-        fontFamily: "monospace",
-      })
+      .text(
+        400,
+        y,
+        `Gold: ${gs.gold}  |  Potions: ${gs.potions}  |  Ether: ${(gs.ethers || 0) + (gs.hi_ethers || 0) + (gs.x_ethers || 0)}`,
+        {
+          fontSize: "12px",
+          color: "#ffcc44",
+          fontFamily: "monospace",
+        },
+      )
       .setOrigin(0.5);
 
     // Items found

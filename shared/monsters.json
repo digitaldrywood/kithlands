@@ -325,6 +325,8 @@
     "absorbs": ["dark"],
     "drops": [
       { "item_id": "phoenix_down", "chance_pct": 10 },
+      { "item_id": "ether", "chance_pct": 12 },
+      { "item_id": "hi_ether", "chance_pct": 6 },
       { "item_id": "venom_dagger", "chance_pct": 2 }
     ],
     "encounter_weight": 8,
@@ -381,6 +383,7 @@
     "absorbs": [],
     "drops": [
       { "item_id": "phoenix_down", "chance_pct": 15 },
+      { "item_id": "hi_ether", "chance_pct": 10 },
       { "item_id": "rune_blade", "chance_pct": 2 }
     ],
     "encounter_weight": 4,
@@ -438,7 +441,8 @@
     "absorbs": [],
     "drops": [
       { "item_id": "rune_blade", "chance_pct": 100 },
-      { "item_id": "phoenix_down", "chance_pct": 50 }
+      { "item_id": "phoenix_down", "chance_pct": 50 },
+      { "item_id": "x_ether", "chance_pct": 100 }
     ],
     "encounter_weight": 0,
     "min_group": 1,

@@ -91,6 +91,7 @@ type MemberActionReq struct {
 	TargetID  int    `json:"target_id"`
 	SpellID   string `json:"spell_id,omitempty"`
 	AbilityID string `json:"ability_id,omitempty"`
+	ItemID    string `json:"item_id,omitempty"` // consumable id for type=item (potion, ether, ...)
 }
 
 // GameState is the full state sent to the client.
@@ -114,6 +115,9 @@ type GameState struct {
 	CurrentQ  int                 `json:"current_quest"`
 	Gold      int                 `json:"gold"`
 	Potions   int                 `json:"potions"`
+	Ethers    int                 `json:"ethers"`
+	HiEthers  int                 `json:"hi_ethers"`
+	XEthers   int                 `json:"x_ethers"`
 	Items     []ItemState         `json:"items"`
 	Equipment [4]EquipState       `json:"equipment"`
 	Location  string              `json:"location"`
@@ -329,11 +333,14 @@ func (g *Game) State() GameState {
 	defer g.mu.Unlock()
 
 	state := GameState{
-		ID:        g.id,
-		Phase:     g.phase,
-		CurrentQ:  g.currentQ,
-		Gold:      g.inv.Gold,
-		Potions:   g.inv.Consumables["potion"],
+		ID:            g.id,
+		Phase:         g.phase,
+		CurrentQ:      g.currentQ,
+		Gold:          g.inv.Gold,
+		Potions:       g.inv.Consumables["potion"],
+		Ethers:        g.inv.Consumables["ether"],
+		HiEthers:      g.inv.Consumables["hi_ether"],
+		XEthers:       g.inv.Consumables["x_ether"],
 		Message:       g.message,
 		CombatLog:     g.combatLog,
 		CombatActions: g.combatActions,
@@ -517,9 +524,15 @@ func (g *Game) fillExtras(state *GameState) {
 }
 
 func (g *Game) fillInventoryState(state *GameState) {
-	// Items (non-potion consumables and weapons in inventory)
+	// Items (non-potion consumables and weapons in inventory).
+	// Potions and ethers are exposed via dedicated flat fields on GameState
+	// so the combat item picker can read them without scanning Items.
 	for id, count := range g.inv.Consumables {
-		if id == "potion" || count <= 0 {
+		if count <= 0 {
+			continue
+		}
+		switch id {
+		case "potion", "ether", "hi_ether", "x_ether":
 			continue
 		}
 		name := id
@@ -566,8 +579,12 @@ func (g *Game) fillInventoryState(state *GameState) {
 func (g *Game) stateUnlocked() GameState {
 	state := GameState{
 		ID: g.id, Phase: g.phase, CurrentQ: g.currentQ,
-		Gold: g.inv.Gold, Potions: g.inv.Consumables["potion"],
-		Message: g.message, CombatLog: g.combatLog, CombatActions: g.combatActions,
+		Gold:     g.inv.Gold,
+		Potions:  g.inv.Consumables["potion"],
+		Ethers:   g.inv.Consumables["ether"],
+		HiEthers: g.inv.Consumables["hi_ether"],
+		XEthers:  g.inv.Consumables["x_ether"],
+		Message:  g.message, CombatLog: g.combatLog, CombatActions: g.combatActions,
 	}
 	if g.loc != nil {
 		state.Location = g.loc.Name
