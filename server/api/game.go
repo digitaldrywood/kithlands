@@ -136,7 +136,8 @@ type GameState struct {
 	CombatActions []CombatActionEntry  `json:"combat_actions,omitempty"`
 	TileMap   *locality.TileMap   `json:"tilemap,omitempty"`
 	ShopItems []ShopItemState     `json:"shop_items,omitempty"`
-	Transport TransportInfo        `json:"transport"`
+	Transport            TransportInfo  `json:"transport"`
+	CollectedHiddenItems map[string]bool `json:"collected_hidden_items,omitempty"`
 }
 
 // TransportInfo is the transport tier state sent to the client.
@@ -326,7 +327,8 @@ type Game struct {
 	// distributes XP (before restParty heals dead members). Exposed to the
 	// client via GameState.DiedThisFight.
 	diedThisFight []bool
-	discovered   map[string]bool // bestiary: monster IDs encountered
+	discovered          map[string]bool // bestiary: monster IDs encountered
+	collectedHiddenItems map[string]bool // town hidden-item keys already picked up
 	visitedNodes map[string]bool // node IDs the player has entered (sequence-break tracking)
 	formation  string             // current encounter layout type
 	// encounterStart records preemptive/ambush state for the current fight so
@@ -370,6 +372,7 @@ func (g *Game) State() GameState {
 	}
 
 	state.Transport = g.buildTransportInfo()
+	state.CollectedHiddenItems = g.collectedHiddenItems
 	g.fillInventoryState(&state)
 	g.fillExtras(&state)
 
@@ -630,6 +633,7 @@ func (g *Game) stateUnlocked() GameState {
 	}
 
 	state.Transport = g.buildTransportInfo()
+	state.CollectedHiddenItems = g.collectedHiddenItems
 	g.fillInventoryState(&state)
 	g.fillExtras(&state)
 	for i, c := range g.party {
