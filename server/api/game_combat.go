@@ -112,32 +112,48 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 
 			switch ma.Type {
 			case "item":
-				// Use potion on targeted party member
-				if g.inv.Consumables["potion"] > 0 {
-					g.inv.Consumables["potion"]--
-					targetIdx := ma.TargetID
-					if targetIdx >= 0 && targetIdx < len(g.party) && g.party[targetIdx].IsAlive() {
-						g.party[targetIdx].Heal(30)
+				itemID := ma.ItemID
+				if itemID == "" {
+					itemID = "potion"
+				}
+				consumable, useErr := g.inv.UseConsumable(itemID, g.gd)
+				if useErr != nil {
+					continue
+				}
+				actorName := g.party[ma.Slot].Name
+				targetIdx := ma.TargetID
+				switch consumable.Effect {
+				case "heal":
+					target := pickHealTarget(g.party, targetIdx)
+					if target != nil {
+						target.Heal(consumable.Value)
 						g.logCombat(
-							fmt.Sprintf("%s uses Potion on %s - healed 30 HP (%d/%d)",
-								g.party[ma.Slot].Name, g.party[targetIdx].Name, g.party[targetIdx].CurrentHP, g.party[targetIdx].MaxHP),
-							CombatActionEntry{Kind: "item", ActorID: pc.ID, ActorName: g.party[ma.Slot].Name, TargetID: targetIdx, TargetName: g.party[targetIdx].Name, Damage: 30})
-					} else {
-						// Fallback: heal most damaged
-						var healTarget *character.Character
-						for _, c := range g.party {
-							if c.IsAlive() && (healTarget == nil || c.CurrentHP < healTarget.CurrentHP) {
-								healTarget = c
-							}
-						}
-						if healTarget != nil {
-							healTarget.Heal(30)
-							g.logCombat(
-								fmt.Sprintf("%s uses Potion on %s - healed 30 HP (%d/%d)",
-									g.party[ma.Slot].Name, healTarget.Name, healTarget.CurrentHP, healTarget.MaxHP),
-								CombatActionEntry{Kind: "item", ActorID: pc.ID, ActorName: g.party[ma.Slot].Name, TargetName: healTarget.Name, Damage: 30})
-						}
+							fmt.Sprintf("%s uses %s on %s - healed %d HP (%d/%d)",
+								actorName, consumable.Name, target.Name, consumable.Value, target.CurrentHP, target.MaxHP),
+							CombatActionEntry{Kind: "item", ActorID: pc.ID, ActorName: actorName, TargetName: target.Name, Damage: consumable.Value})
 					}
+				case "restore_mp":
+					target := pickMPTarget(g.party, targetIdx)
+					if target == nil {
+						// No valid caster target — refund item.
+						g.inv.Consumables[itemID]++
+						continue
+					}
+					if target.CurrentMP >= target.MaxMP {
+						// Full MP — refund item, do not consume turn's side effects.
+						g.inv.Consumables[itemID]++
+						g.logCombat(
+							fmt.Sprintf("%s's MP is already full!", target.Name),
+							CombatActionEntry{Kind: "info", ActorID: pc.ID, ActorName: actorName, TargetName: target.Name})
+						continue
+					}
+					before := target.CurrentMP
+					target.RestoreMP(consumable.Value)
+					restored := target.CurrentMP - before
+					g.logCombat(
+						fmt.Sprintf("%s uses %s on %s - restored %d MP (%d/%d)",
+							actorName, consumable.Name, target.Name, restored, target.CurrentMP, target.MaxMP),
+						CombatActionEntry{Kind: "item", ActorID: pc.ID, ActorName: actorName, TargetName: target.Name, Damage: restored})
 				}
 				continue
 
@@ -791,24 +807,61 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 }
 
 func (g *Game) processCombatItem(req GameActionRequest) (*GameState, error) {
-	if g.inv.Consumables["potion"] <= 0 {
-		state := g.stateUnlocked()
-		return &state, fmt.Errorf("no potions")
+	itemID := req.ItemID
+	if itemID == "" {
+		itemID = "potion"
 	}
-	g.inv.Consumables["potion"]--
-
-	// Heal most damaged party member
-	var target *character.Character
-	for _, c := range g.party {
-		if c.IsAlive() && (target == nil || c.CurrentHP < target.CurrentHP) {
-			target = c
+	if g.inv.Consumables[itemID] <= 0 {
+		state := g.stateUnlocked()
+		return &state, fmt.Errorf("no %s", itemID)
+	}
+	var consumable *gamedata.Consumable
+	for i := range g.gd.Items.Consumables {
+		if g.gd.Items.Consumables[i].ID == itemID {
+			consumable = &g.gd.Items.Consumables[i]
+			break
 		}
 	}
-	if target != nil {
-		target.Heal(30)
-		g.logCombat(
-			fmt.Sprintf("%s uses Potion - healed 30 HP (HP:%d/%d)", target.Name, target.CurrentHP, target.MaxHP),
-			CombatActionEntry{Kind: "item", ActorName: target.Name})
+	if consumable == nil {
+		state := g.stateUnlocked()
+		return &state, fmt.Errorf("unknown item %q", itemID)
+	}
+	// For restore_mp, reject the request if the best target is already full
+	// so the player doesn't burn an ether on a caster at full MP.
+	if consumable.Effect == "restore_mp" {
+		target := pickMPTarget(g.party, -1)
+		if target == nil {
+			state := g.stateUnlocked()
+			return &state, fmt.Errorf("no valid target")
+		}
+		if target.CurrentMP >= target.MaxMP {
+			state := g.stateUnlocked()
+			return &state, fmt.Errorf("MP already full")
+		}
+	}
+	g.inv.Consumables[itemID]--
+	if g.inv.Consumables[itemID] == 0 {
+		delete(g.inv.Consumables, itemID)
+	}
+
+	switch consumable.Effect {
+	case "heal":
+		target := pickHealTarget(g.party, -1)
+		if target != nil {
+			target.Heal(consumable.Value)
+			g.logCombat(
+				fmt.Sprintf("%s uses %s - healed %d HP (HP:%d/%d)", target.Name, consumable.Name, consumable.Value, target.CurrentHP, target.MaxHP),
+				CombatActionEntry{Kind: "item", ActorName: target.Name})
+		}
+	case "restore_mp":
+		target := pickMPTarget(g.party, -1)
+		if target != nil {
+			before := target.CurrentMP
+			target.RestoreMP(consumable.Value)
+			g.logCombat(
+				fmt.Sprintf("%s uses %s - restored %d MP (MP:%d/%d)", target.Name, consumable.Name, target.CurrentMP-before, target.CurrentMP, target.MaxMP),
+				CombatActionEntry{Kind: "item", ActorName: target.Name})
+		}
 	}
 
 	// Enemy turn
@@ -844,6 +897,44 @@ func (g *Game) processCombatItem(req GameActionRequest) (*GameState, error) {
 
 	state := g.stateUnlocked()
 	return &state, nil
+}
+
+// pickHealTarget returns the party member to heal with an HP consumable.
+// If targetIdx names a living member, prefer it. Otherwise fall back to the
+// most-damaged living member. Returns nil when no valid target exists.
+func pickHealTarget(party []*character.Character, targetIdx int) *character.Character {
+	if targetIdx >= 0 && targetIdx < len(party) && party[targetIdx].IsAlive() {
+		return party[targetIdx]
+	}
+	var best *character.Character
+	for _, c := range party {
+		if c.IsAlive() && (best == nil || c.CurrentHP < best.CurrentHP) {
+			best = c
+		}
+	}
+	return best
+}
+
+// pickMPTarget returns the party member to restore MP for. If targetIdx names
+// a living caster (MaxMP > 0), prefer it. Otherwise fall back to the caster
+// with the lowest MP fraction. Skips non-casters and dead members.
+func pickMPTarget(party []*character.Character, targetIdx int) *character.Character {
+	if targetIdx >= 0 && targetIdx < len(party) && party[targetIdx].IsAlive() && party[targetIdx].MaxMP > 0 {
+		return party[targetIdx]
+	}
+	var best *character.Character
+	var bestFrac float64
+	for _, c := range party {
+		if !c.IsAlive() || c.MaxMP <= 0 {
+			continue
+		}
+		frac := float64(c.CurrentMP) / float64(c.MaxMP)
+		if best == nil || frac < bestFrac {
+			best = c
+			bestFrac = frac
+		}
+	}
+	return best
 }
 
 // tryStealFrom rolls the enemy's drop table for the Rogue Steal ability.

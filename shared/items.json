@@ -930,6 +930,30 @@
       "sell_price": 50
     },
     {
+      "id": "ether",
+      "name": "Ether",
+      "effect": "restore_mp",
+      "value": 20,
+      "buy_price": 60,
+      "sell_price": 30
+    },
+    {
+      "id": "hi_ether",
+      "name": "Hi-Ether",
+      "effect": "restore_mp",
+      "value": 50,
+      "buy_price": 180,
+      "sell_price": 90
+    },
+    {
+      "id": "x_ether",
+      "name": "X-Ether",
+      "effect": "restore_mp",
+      "value": 150,
+      "buy_price": 500,
+      "sell_price": 250
+    },
+    {
       "id": "antidote",
       "name": "Antidote",
       "effect": "cure_poison",

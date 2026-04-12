@@ -748,14 +748,17 @@ export class WorldScene extends Phaser.Scene {
   updateHUD() {
     if (!this.hudText) return;
     const gs = this.gameState;
-    const parts = gs.party.map(
-      (p) => `${p.name} Lv${p.level} ${p.hp}/${p.max_hp}`,
-    );
+    const parts = gs.party.map((p) => {
+      const base = `${p.name} Lv${p.level} ${p.hp}/${p.max_hp}`;
+      return p.max_mp > 0 ? `${base} MP:${p.mp}/${p.max_mp}` : base;
+    });
     const tierName = gs.transport?.tier_name || "Foot";
     this.hudText.setText(parts.join(" | "));
     if (this.hudFooter) {
+      const etherTotal =
+        (gs.ethers || 0) + (gs.hi_ethers || 0) + (gs.x_ethers || 0);
       this.hudFooter.setText(
-        `[${tierName}]   Gold: ${gs.gold}   Potions: ${gs.potions}`,
+        `[${tierName}]   Gold: ${gs.gold}   Potions: ${gs.potions}   Ether: ${etherTotal}`,
       );
     }
   }
