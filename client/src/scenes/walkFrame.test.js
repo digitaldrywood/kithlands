@@ -3,6 +3,7 @@ import {
   nextWalkFrame,
   walkSheetKey,
   walkFrameIndex,
+  nextLeaderIndex,
   WALK_FRAME_COUNT,
   WALK_DIRS,
   WALK_DIR_INDEX,
@@ -75,5 +76,50 @@ describe("walkFrameIndex", () => {
     expect(seen.size).toBe(WALK_DIRS.length * WALK_FRAME_COUNT);
     expect(Math.min(...seen)).toBe(0);
     expect(Math.max(...seen)).toBe(WALK_DIRS.length * WALK_FRAME_COUNT - 1);
+  });
+});
+
+describe("nextLeaderIndex", () => {
+  const alive = (hp = 100) => ({ hp });
+  const dead = () => ({ hp: 0 });
+
+  it("cycles 0 -> 1 -> 2 -> 3 -> 0 with all alive", () => {
+    const party = [alive(), alive(), alive(), alive()];
+    expect(nextLeaderIndex(party, 0)).toBe(1);
+    expect(nextLeaderIndex(party, 1)).toBe(2);
+    expect(nextLeaderIndex(party, 2)).toBe(3);
+    expect(nextLeaderIndex(party, 3)).toBe(0);
+  });
+
+  it("skips dead member at slot 1", () => {
+    const party = [alive(), dead(), alive(), alive()];
+    expect(nextLeaderIndex(party, 0)).toBe(2);
+  });
+
+  it("skips multiple consecutive dead members", () => {
+    const party = [alive(), dead(), dead(), alive()];
+    expect(nextLeaderIndex(party, 0)).toBe(3);
+  });
+
+  it("wraps around skipping dead members at the end", () => {
+    const party = [alive(), alive(), dead(), dead()];
+    expect(nextLeaderIndex(party, 1)).toBe(0);
+  });
+
+  it("returns 0 for single-member party", () => {
+    expect(nextLeaderIndex([alive()], 0)).toBe(0);
+  });
+
+  it("stays on current when all others are dead", () => {
+    const party = [alive(), dead(), dead(), dead()];
+    expect(nextLeaderIndex(party, 0)).toBe(0);
+  });
+
+  it("returns 0 for null party", () => {
+    expect(nextLeaderIndex(null, 0)).toBe(0);
+  });
+
+  it("returns 0 for empty party", () => {
+    expect(nextLeaderIndex([], 0)).toBe(0);
   });
 });

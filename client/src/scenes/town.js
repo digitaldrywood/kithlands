@@ -2,7 +2,13 @@ import { playSFX, playMusic } from "../systems/audio.js";
 import { openDialogue } from "./town_dialogue.js";
 import { openShop } from "./world_shop.js";
 import { isTouchDevice, initTouchControls } from "../systems/input.js";
-import { nextWalkFrame, walkSheetKey, walkFrameIndex } from "./walkFrame.js";
+import {
+  nextWalkFrame,
+  walkSheetKey,
+  walkFrameIndex,
+  nextLeaderIndex,
+} from "./walkFrame.js";
+import { getLeaderIndex } from "./world.js";
 import { walkStepMs } from "../systems/prefs.js";
 import { isWorldInputLocked } from "../systems/modalLock.js";
 
@@ -191,10 +197,10 @@ export class TownScene extends Phaser.Scene {
     this.playerY = ROOM_H - 2; // one tile above door
     this.playerDir = "up";
     this.walkFrame = 0;
-    this.leaderClass =
-      this.gameState?.party?.[0]?.sprite_id ||
-      this.gameState?.party?.[0]?.class_id ||
-      "warrior";
+    const leaderIdx = getLeaderIndex();
+    const leader =
+      this.gameState?.party?.[leaderIdx] || this.gameState?.party?.[0];
+    this.leaderClass = leader?.sprite_id || leader?.class_id || "warrior";
     this.hasWalkSheet = this.textures.exists(walkSheetKey(this.leaderClass));
 
     const playerCx =
