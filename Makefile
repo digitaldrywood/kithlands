@@ -40,7 +40,9 @@ play: stop setup-db
 	@echo "  KITHLANDS is running!"
 	@echo ""
 	@echo "  Game:   http://localhost:$(VITE_PORT)"
+	@echo "  Sprites: http://localhost:$(VITE_PORT)/sprites.html"
 	@if [ -n "$${TAILSCALE_HOSTNAME}" ]; then echo "  Network: http://$${TAILSCALE_HOSTNAME}:$(VITE_PORT)"; fi
+	@if [ -n "$${TAILSCALE_HOSTNAME}" ]; then echo "  Sprites: http://$${TAILSCALE_HOSTNAME}:$(VITE_PORT)/sprites.html"; fi
 	@echo ""
 	@echo "  API:    http://localhost:$(PORT)"
 	@if [ -n "$${TAILSCALE_HOSTNAME}" ]; then echo "  API:    http://$${TAILSCALE_HOSTNAME}:$(PORT)"; fi
