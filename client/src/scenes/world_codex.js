@@ -1,5 +1,6 @@
 import { toggleMenu } from "./world_menu.js";
 import { drawButton } from "../ui/panel.js";
+import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 
 const ENEMY_SPRITES = {
   Slime: "monster_slime",
@@ -14,11 +15,13 @@ export function toggleCodex(scene) {
     if (scene.codexGroup) scene.codexGroup.forEach((c) => c.destroy());
     scene.codexGroup = null;
     scene.codexOpen = false;
+    resumeWorldFor(scene, "codex");
     return;
   }
-  if (scene.menuOpen) toggleMenu(scene); // close menu first
+  if (scene.menuOpen) toggleMenu(scene); // close menu first (also resumes its lock)
 
   scene.codexOpen = true;
+  pauseWorldFor(scene, "codex");
   scene.codexGroup = [];
   const gs = scene.gameState;
 

@@ -1,5 +1,6 @@
 import { playSFX } from "../systems/audio.js";
 import { isTouchDevice } from "../systems/input.js";
+import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 
 // TILE_COLORS needed for world map rendering
 const TILE_COLORS = {
@@ -44,7 +45,7 @@ export async function interactWithDoor(scene) {
 }
 
 export function showWorldMap(scene) {
-  scene.animating = true;
+  pauseWorldFor(scene, "world_map");
   const ol = [];
 
   // Full screen map overlay
@@ -167,13 +168,13 @@ export function showWorldMap(scene) {
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => {
         ol.forEach((o) => o.destroy());
-        scene.animating = false;
+        resumeWorldFor(scene, "world_map");
       }),
   );
 
   scene.input.keyboard.once("keydown-ESC", () => {
     ol.forEach((o) => o.destroy());
-    scene.animating = false;
+    resumeWorldFor(scene, "world_map");
   });
 }
 

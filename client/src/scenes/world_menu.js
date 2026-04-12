@@ -1,6 +1,7 @@
 import { saveGame, equipItem } from "../api.js";
 import { playSFX } from "../systems/audio.js";
 import { getAutosaveEnabled, setAutosaveEnabled } from "../systems/prefs.js";
+import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 import { showWorldMap } from "./world_interact.js";
 import { openCharacterDetail } from "./character_detail.js";
 import { showOptions } from "./options.js";
@@ -39,6 +40,7 @@ export function toggleMenu(scene) {
   }
 
   scene.menuOpen = true;
+  pauseWorldFor(scene, "party_menu");
   scene.menuGroup = [];
   const gs = scene.gameState;
 
@@ -210,7 +212,10 @@ function closeMenu(scene) {
     scene.menuGroup.forEach((c) => c.destroy());
     scene.menuGroup = null;
   }
-  scene.menuOpen = false;
+  if (scene.menuOpen) {
+    scene.menuOpen = false;
+    resumeWorldFor(scene, "party_menu");
+  }
 }
 
 // drawPartyRow renders a single member's block: portrait slot, name /
@@ -383,7 +388,11 @@ export async function showEquipPicker(scene, slot, type, opts = {}) {
     scene.menuGroup.forEach((c) => c.destroy());
     scene.menuGroup = null;
   }
-  scene.menuOpen = false;
+  if (scene.menuOpen) {
+    scene.menuOpen = false;
+    resumeWorldFor(scene, "party_menu");
+  }
+  pauseWorldFor(scene, "equip_picker");
 
   const gs = scene.gameState;
   const equipped = gs.equipment ? gs.equipment[slot] : null;
@@ -395,6 +404,7 @@ export async function showEquipPicker(scene, slot, type, opts = {}) {
     // set menuOpen=false first, then re-open the caller fresh against
     // the latest scene.gameState so new gear / stats show.
     scene.menuOpen = false;
+    resumeWorldFor(scene, "equip_picker");
     if (returnTo.type === "character") {
       openCharacterDetail(scene, returnTo.index);
     } else {
@@ -497,7 +507,11 @@ export function showQuestLog(scene) {
     scene.menuGroup.forEach((c) => c.destroy());
     scene.menuGroup = null;
   }
-  scene.menuOpen = false;
+  if (scene.menuOpen) {
+    scene.menuOpen = false;
+    resumeWorldFor(scene, "party_menu");
+  }
+  pauseWorldFor(scene, "quest_log");
 
   const gs = scene.gameState;
   const quests = Array.isArray(gs.quests) ? gs.quests : [];
@@ -672,7 +686,10 @@ export function showQuestLog(scene) {
     .setScrollFactor(0)
     .setDepth(51)
     .setInteractive({ useHandCursor: true });
-  closeBtn.on("pointerdown", () => overlay.forEach((o) => o.destroy()));
+  closeBtn.on("pointerdown", () => {
+    overlay.forEach((o) => o.destroy());
+    resumeWorldFor(scene, "quest_log");
+  });
   overlay.push(closeBtn);
 }
 

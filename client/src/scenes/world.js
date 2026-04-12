@@ -22,6 +22,7 @@ import {
 import { shouldStartBattle } from "./encounterFlow.js";
 import { initTouchControls } from "../systems/input.js";
 import { nextWalkFrame, walkSheetKey, walkFrameIndex } from "./walkFrame.js";
+import { isWorldInputLocked } from "../systems/modalLock.js";
 
 const ENEMY_SPRITES = {
   Slime: "monster_slime",
@@ -238,6 +239,9 @@ export class WorldScene extends Phaser.Scene {
     this.wasd = this.input.keyboard.addKeys("W,A,S,D");
     this.menuOpen = false;
     this.menuGroup = null;
+    // Fresh modal lock set per scene instance — survives Battle -> World
+    // restarts cleanly because Phaser rebuilds the scene on scene.start().
+    this._modalLocks = new Set();
 
     // M key opens menu, H opens codex
     this.input.keyboard.on("keydown-M", () => toggleMenu(this));
@@ -440,8 +444,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   update(time) {
-    if (this.gameOver || this.animating || this.menuOpen || this.codexOpen)
-      return;
+    if (isWorldInputLocked(this)) return;
     if (!this.hudText || !this.player) return; // scene destroyed
     if (time - this.lastMoveTime < this.moveCooldown) return;
 
