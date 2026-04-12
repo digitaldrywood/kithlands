@@ -66,7 +66,7 @@ export class BootScene extends Phaser.Scene {
     // facing the camera. See #140 for the asset regeneration plan.
     // Every class falls back to the static player_{dir} images which
     // have correct directional poses.
-    const CLASSES_WITH_WALK_SHEETS = [];
+    const CLASSES_WITH_WALK_SHEETS = CLASS_SPRITE_KEYS;
     for (const key of CLASSES_WITH_WALK_SHEETS) {
       this.load.spritesheet(`${key}_walk`, `/sprites/walk/${key}_walk.png`, {
         frameWidth: 128,
