@@ -1975,6 +1975,12 @@ export class BattleScene extends Phaser.Scene {
     this.children.removeAll(true);
     this.add.rectangle(400, 300, 800, 600, 0x0a0a1e);
 
+    this.victoryFastForwarded = false;
+    this.victoryContinueShown = false;
+    this.victoryFinalizers = [];
+    this.victoryPendingTimers = [];
+    this.victoryFFHandler = null;
+
     const isDefeat = gs.phase === "defeat";
     stopMusic();
     playMusic(isDefeat ? "music_defeat" : "music_victory", false);
@@ -2164,7 +2170,7 @@ export class BattleScene extends Phaser.Scene {
         );
 
         // Animate the XP bar filling
-        this.tweens.add({
+        const xpTween = this.tweens.add({
           targets: xpBarFill,
           width: barW * xpPctEnd,
           duration: 1200,
@@ -2179,6 +2185,11 @@ export class BattleScene extends Phaser.Scene {
             xpText.setText(`${Math.min(currentXP, p.xp)}/${p.xp_next}`);
           },
         });
+        this.victoryFinalizers.push(() => {
+          xpTween.stop();
+          xpBarFill.width = barW * xpPctEnd;
+          xpText.setText(`${p.xp}/${p.xp_next}`);
+        });
       }
 
       // Check for level up -- flash effect (capture y in closure)
@@ -2187,7 +2198,7 @@ export class BattleScene extends Phaser.Scene {
         !diedThisFight && log.some((l) => l.includes(`${p.name} leveled up`));
       if (leveledUp) {
         const memberY = y; // capture current y for this member
-        this.time.delayedCall(delay + 1300, () => {
+        const runLevelUp = (instant) => {
           // Flash on THIS member's row
           const flash = this.add.rectangle(
             400,
@@ -2197,13 +2208,6 @@ export class BattleScene extends Phaser.Scene {
             0xffff44,
             0.3,
           );
-          this.tweens.add({
-            targets: flash,
-            alpha: 0,
-            duration: 600,
-            onComplete: () => flash.destroy(),
-          });
-
           // Level up text next to this member
           const lvlUpText = this.add
             .text(650, memberY + 12, "LEVEL UP!", {
@@ -2213,13 +2217,44 @@ export class BattleScene extends Phaser.Scene {
               fontStyle: "bold",
             })
             .setOrigin(0.5)
-            .setAlpha(0);
-          this.tweens.add({ targets: lvlUpText, alpha: 1, duration: 300 });
+            .setAlpha(instant ? 1 : 0);
+
+          if (instant) {
+            flash.destroy();
+          } else {
+            const flashTween = this.tweens.add({
+              targets: flash,
+              alpha: 0,
+              duration: 600,
+              onComplete: () => flash.destroy(),
+            });
+            const textTween = this.tweens.add({
+              targets: lvlUpText,
+              alpha: 1,
+              duration: 300,
+            });
+            this.victoryFinalizers.push(() => {
+              flashTween.stop();
+              if (flash.active) flash.destroy();
+            });
+            this.victoryFinalizers.push(() => {
+              textTween.stop();
+              lvlUpText.setAlpha(1);
+            });
+          }
 
           // Update level display
           levelText
             .setText(`${p.class_name} Lv.${p.level}`)
             .setColor("#ffff44");
+        };
+
+        const lvlTimer = this.time.delayedCall(delay + 1300, () =>
+          runLevelUp(false),
+        );
+        this.victoryPendingTimers.push({
+          timer: lvlTimer,
+          finalize: () => runLevelUp(true),
         });
       }
 
@@ -2258,9 +2293,52 @@ export class BattleScene extends Phaser.Scene {
     }
 
     // Delay continue button to let animations play
-    this.time.delayedCall(500 + gs.party.length * 800 + 1000, () => {
-      this.addContinueButton(gs);
+    const contTimer = this.time.delayedCall(
+      500 + gs.party.length * 800 + 1000,
+      () => this.finalizeVictory(gs),
+    );
+    this.victoryPendingTimers.push({
+      timer: contTimer,
+      finalize: () => this.finalizeVictory(gs),
     });
+
+    // SPACE during the sequence fast-forwards every in-flight animation.
+    this.victoryFFHandler = () => this.fastForwardVictoryResults(gs);
+    this.input.keyboard.on("keydown-SPACE", this.victoryFFHandler);
+  }
+
+  fastForwardVictoryResults(gs) {
+    if (this.victoryFastForwarded) return;
+    this.victoryFastForwarded = true;
+
+    const first = this.victoryFinalizers;
+    this.victoryFinalizers = [];
+    for (const fn of first) fn();
+
+    const timers = this.victoryPendingTimers;
+    this.victoryPendingTimers = [];
+    for (const { timer, finalize } of timers) {
+      if (timer && !timer.hasDispatched) {
+        timer.remove(false);
+      }
+      finalize();
+    }
+
+    // Level-up finalizers may have pushed additional flash/text finalizers;
+    // snap those too so nothing is left mid-tween.
+    const late = this.victoryFinalizers;
+    this.victoryFinalizers = [];
+    for (const fn of late) fn();
+  }
+
+  finalizeVictory(gs) {
+    if (this.victoryContinueShown) return;
+    this.victoryContinueShown = true;
+    if (this.victoryFFHandler) {
+      this.input.keyboard.off("keydown-SPACE", this.victoryFFHandler);
+      this.victoryFFHandler = null;
+    }
+    this.addContinueButton(gs);
   }
 
   addContinueButton(gs) {
