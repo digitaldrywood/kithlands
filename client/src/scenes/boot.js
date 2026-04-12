@@ -59,22 +59,18 @@ export class BootScene extends Phaser.Scene {
     }
 
     // Per-class walk sprite sheets (#127). 4 rows (down/up/left/right) x
-    // 4 cols (frame 0-3), 128px per cell. Missing sheets fall back to the
-    // static player_{dir} sprite in world/town scenes — silence the 404 so
-    // development works while sheets are still being generated.
-    for (const key of CLASS_SPRITE_KEYS) {
+    // 4 cols (frame 0-3), 128px per cell. Only enqueue sheets we know are
+    // on disk to avoid the noisy "Failed to process file" console spam
+    // that happens when Phaser tries to parse a missing spritesheet as
+    // 128x128 cells. Remaining classes use the static player_{dir}
+    // fallback in world/town scenes until their sheets are generated.
+    const CLASSES_WITH_WALK_SHEETS = ["warrior"];
+    for (const key of CLASSES_WITH_WALK_SHEETS) {
       this.load.spritesheet(`${key}_walk`, `/sprites/walk/${key}_walk.png`, {
         frameWidth: 128,
         frameHeight: 128,
       });
     }
-    this.load.on("loaderror", (file) => {
-      if (file && typeof file.key === "string" && file.key.endsWith("_walk")) {
-        // Expected while class walk sheets are being generated — remove the
-        // failed entry so Phaser doesn't keep a broken texture reference.
-        this.textures.remove(file.key);
-      }
-    });
 
     // Status effect icons
     this.load.image("icon_poison", "/sprites/ui/icon_poison.png");
