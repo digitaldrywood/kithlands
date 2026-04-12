@@ -12,9 +12,18 @@ import {
 } from "../systems/hpBar.js";
 import { FloatingTextPool } from "../ui/floating_text.js";
 import { ENEMY_SPRITES } from "../data/monsterSprites.js";
-import { battleSpeedMul, messageCharMs } from "../systems/prefs.js";
+import {
+  battleSpeedMul,
+  getBattlePlanMemory,
+  messageCharMs,
+  setBattlePlanMemory,
+} from "../systems/prefs.js";
 import { toggleDebugPanel, closeDebugPanel } from "./debug_panel.js";
-import { buildAutoBattleActions } from "../systems/auto_battle.js";
+import {
+  buildBattleActionButtons,
+  planSmartRound,
+  resolveAction,
+} from "../systems/auto_battle.js";
 
 const ENEMY_COLORS = {
   Slime: 0x42a5f5,
@@ -73,7 +82,7 @@ export class BattleScene extends Phaser.Scene {
   init(data) {
     this.gameState = data.gameState;
     this._lastRoundActions =
-      data.lastRoundActions || data.gameState?.last_round_actions || null;
+      data.lastRoundActions || getBattlePlanMemory(data.gameState?.party) || null;
     this._autoMode = data.autoMode || false;
   }
 
@@ -344,6 +353,13 @@ export class BattleScene extends Phaser.Scene {
       this.showItemPicker(slot);
     });
 
+    this.input.keyboard.on("keydown-M", () => {
+      if (this.animating || this.targetingMode || this.pickerOverlay) return;
+      if (this.currentMemberIdx >= this.livingMembers.length) return;
+      this.autoMode = false;
+      this.executeSmartAttack();
+    });
+
     this.input.keyboard.on("keydown-B", () => {
       if (this.animating || this.targetingMode || this.pickerOverlay) return;
       if (this.currentMemberIdx >= this.livingMembers.length) return;
@@ -369,6 +385,7 @@ export class BattleScene extends Phaser.Scene {
     // Toggle AUTO-BATTLE mode (issue #99)
     this.input.keyboard.on("keydown-Q", () => {
       if (this.animating || this.targetingMode || this.pickerOverlay) return;
+      if (!this.lastRoundActions) return;
       this.autoMode = !this.autoMode;
       if (this.autoMode) {
         this.executeRepeat();
@@ -798,29 +815,11 @@ export class BattleScene extends Phaser.Scene {
     this.actionBtns = [];
 
     const member = gs.party[slot];
-    const hasSpells =
-      member.spells?.length > 0 &&
-      member.spells.some((s) => (member.mp ?? 0) >= (s.mp_cost ?? 0));
-    const hasAbilities = member.abilities?.length > 0;
-
-    const btns = [{ label: "[A]TTACK", type: "attack", color: "#ff4444" }];
-    if (hasSpells)
-      btns.push({ label: "[S]PELL", type: "spell", color: "#8888ff" });
-    if (hasAbilities)
-      btns.push({ label: "[B]ABILITY", type: "ability", color: "#ff88ff" });
-    const hasItems =
-      gs.potions > 0 ||
-      (gs.items && gs.items.some((i) => i.id === "phoenix_down"));
-    if (hasItems)
-      btns.push({ label: "[I]TEMS", type: "item", color: "#44ff44" });
-    btns.push({ label: "[F]LEE", type: "flee", color: "#ffcc44" });
-    if (this.lastRoundActions) {
-      btns.push({ label: "[R]EPEAT", type: "repeat", color: "#44ccff" });
-    }
-    btns.push({
-      label: this.autoMode ? "[Q] AUTO*" : "[Q] AUTO",
-      type: "auto",
-      color: this.autoMode ? "#ffaa44" : "#ff8844",
+    const btns = buildBattleActionButtons({
+      member,
+      gameState: gs,
+      hasLastRound: !!this.lastRoundActions,
+      autoMode: this.autoMode,
     });
 
     const tw = btns.length * 145,
@@ -866,6 +865,8 @@ export class BattleScene extends Phaser.Scene {
           this.showAbilityPicker(slot);
         } else if (b.type === "item") {
           this.showItemPicker(slot);
+        } else if (b.type === "smart") {
+          this.executeSmartAttack();
         } else if (b.type === "flee") {
           // Flee sends immediately (whole party flees)
           this.doFlee();
@@ -955,15 +956,50 @@ export class BattleScene extends Phaser.Scene {
     this.scaledDelay(400, () => this.showCurrentMemberTurn());
   }
 
+  executeSmartAttack() {
+    const remainingSlots = this.livingMembers.slice(this.currentMemberIdx);
+    const { actions, preview } = planSmartRound(this.gameState, remainingSlots);
+    if (actions.length === 0) {
+      this.showCurrentMemberTurn();
+      return;
+    }
+
+    this.memberActions.push(...actions);
+    if (import.meta.env?.DEV && preview.length > 0) {
+      console.debug("[SmartAttack]", preview);
+    }
+
+    if (this.actionBtns) {
+      this.actionBtns.forEach((o) => o.destroy());
+      this.actionBtns = [];
+    }
+
+    this.promptText.setText("SMART ATTACK...").setColor("#88ffaa");
+    this.currentMemberIdx = this.livingMembers.length;
+    this.submitAllActions();
+  }
+
   // Resolve all living members' previous actions through the smart fallback
   // resolver, then submit the round immediately. Used by both REPEAT and AUTO.
   executeRepeat() {
     const gs = this.gameState;
-    this.memberActions = buildAutoBattleActions(
-      this.lastRoundActions,
-      gs,
-      this.livingMembers,
-    );
+    this.memberActions = [];
+    for (const slot of this.livingMembers) {
+      // Find the previous action for this slot, if any
+      const prev = this.lastRoundActions.find((a) => a.slot === slot);
+      if (!prev) {
+        // No previous action for this member — default to attack
+        const target = gs.enemies.find((e) => e.hp > 0);
+        if (target) {
+          this.memberActions.push({ slot, type: "attack", target_id: target.id });
+        }
+        continue;
+      }
+      const resolved = resolveAction(prev, gs.party[slot], gs);
+      if (resolved) {
+        this.memberActions.push(resolved);
+      }
+    }
 
     if (this.memberActions.length === 0) {
       // Nothing valid to submit — cancel auto-mode and let player choose
@@ -1426,6 +1462,7 @@ export class BattleScene extends Phaser.Scene {
 
       // Persist this round's actions for REPEAT / AUTO next round (issue #99)
       const savedActions = [...this.memberActions];
+      setBattlePlanMemory(this.gameState.party, savedActions);
 
       this.scaledDelay(400, () => {
         this.animating = false;

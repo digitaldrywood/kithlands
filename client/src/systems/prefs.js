@@ -59,9 +59,9 @@ export function getPartyHistory() {
 export function addPartyToHistory(party) {
   const history = getPartyHistory();
   // Add if not duplicate
-  const key = party.map((p) => `${p.name}:${p.class_id}`).join(",");
+  const key = partySignature(party);
   const existing = history.find(
-    (h) => h.map((p) => `${p.name}:${p.class_id}`).join(",") === key,
+    (h) => partySignature(h) === key,
   );
   if (!existing) {
     history.unshift(party);
@@ -83,6 +83,30 @@ export function addNPCsToHistory(npcs) {
     if (history.length > 5) history.pop();
     setPref("npc_history", history);
   }
+}
+
+function partySignature(party) {
+  if (!Array.isArray(party) || party.length === 0) return "";
+  return party.map((p) => `${p.name}:${p.class_id}`).join(",");
+}
+
+export function getBattlePlanMemory(party) {
+  const key = partySignature(party);
+  if (!key) return null;
+  const plans = getPref("battle_plan_memory", {});
+  return plans[key] ?? null;
+}
+
+export function setBattlePlanMemory(party, actions) {
+  const key = partySignature(party);
+  if (!key) return;
+  const plans = { ...getPref("battle_plan_memory", {}) };
+  if (!actions || actions.length === 0) {
+    delete plans[key];
+  } else {
+    plans[key] = actions;
+  }
+  setPref("battle_plan_memory", plans);
 }
 
 export function getAutosaveEnabled() {
