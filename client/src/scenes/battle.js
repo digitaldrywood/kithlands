@@ -1,4 +1,4 @@
-import { gameAction } from "../api.js";
+import { gameAction, getGame } from "../api.js";
 import { createComposedSprite } from "../sprites/composedSprite.js";
 import { initAudio, playMusic, playSFX, stopMusic } from "../systems/audio.js";
 import { shouldAcceptEnemySpriteClick } from "../systems/battleTargeting.js";
@@ -1450,7 +1450,11 @@ export class BattleScene extends Phaser.Scene {
 
       if (result.error) {
         console.error("[Battle] error:", result.error);
-        this.animating = false;
+        // Issue #138: if the server returns an error mid-combat, the
+        // player was previously stuck in a locked battle scene with no way
+        // out. Recover by fetching the authoritative game state and
+        // re-routing the scene so the player can keep playing.
+        await this.recoverFromCombatError();
         return;
       }
 
@@ -1481,8 +1485,43 @@ export class BattleScene extends Phaser.Scene {
       });
     } catch (e) {
       console.error("[Battle] failed:", e);
-      this.animating = false;
+      await this.recoverFromCombatError();
     }
+  }
+
+  // recoverFromCombatError handles the issue #138 lock-up: when the server
+  // returns an error (500, empty body, network failure) the battle scene
+  // used to sit with no valid actions and no way out. We refetch the
+  // authoritative game state and either rehydrate combat with whatever the
+  // server believes is true, or punt back to the World scene if combat is
+  // already resolved.
+  async recoverFromCombatError() {
+    this.promptText
+      .setText("Combat error — recovering...")
+      .setColor("#ff8844");
+    try {
+      const fresh = await getGame(this.gameState.id);
+      if (fresh && !fresh.error) {
+        this.gameState = fresh;
+        this.time.delayedCall(600, () => {
+          this.animating = false;
+          if (fresh.phase === "combat") {
+            this.scene.restart({ gameState: fresh });
+          } else {
+            this.scene.start("World", { gameState: fresh });
+          }
+        });
+        return;
+      }
+    } catch (err) {
+      console.error("[Battle] recovery fetch failed:", err);
+    }
+    // As a last resort, return to the world scene with the stale state so
+    // the player isn't trapped.
+    this.time.delayedCall(600, () => {
+      this.animating = false;
+      this.scene.start("World", { gameState: this.gameState });
+    });
   }
 
   async animateCombatLog(log, actions) {

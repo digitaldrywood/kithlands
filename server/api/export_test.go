@@ -1,6 +1,8 @@
 package api
 
 import (
+	"errors"
+
 	"github.com/digitaldrywood/kithlands/internal/balance"
 	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/combat"
@@ -154,6 +156,26 @@ func ClearQuestsForTest(g *Game) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.currentQ = len(g.quests)
+}
+
+// NilPartyMemberForTest drops a nil pointer into g.party to force a
+// downstream nil-deref panic when makeCombatants runs. The issue #138
+// regression test uses it to verify that ProcessAction's panic recovery
+// converts the crash into a typed error instead of an empty 500 body.
+func NilPartyMemberForTest(g *Game, slot int) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if slot < 0 || slot >= len(g.party) {
+		return
+	}
+	g.party[slot] = nil
+}
+
+// IsErrInternalAction reports whether err wraps ErrInternalAction. Exposed
+// so tests in the api_test package can assert on the sentinel without
+// importing the unexported variable.
+func IsErrInternalAction(err error) bool {
+	return errors.Is(err, ErrInternalAction)
 }
 
 // DamagePartyForTest subtracts `dmg` HP from the given party slot without
