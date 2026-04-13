@@ -273,15 +273,16 @@ function placeAnchorFurniture(tiles, buildingType, roomW, roomH) {
   const cx = Math.floor(roomW / 2);
 
   switch (buildingType) {
-    case "shop": {
-      // Counter across the middle
-      const counterRow = Math.floor(roomH / 2);
-      for (let x = 2; x <= roomW - 3; x++) {
-        if (counterRow > 0 && counterRow < roomH - 1) {
-          tiles[counterRow][x] = T_COUNTER;
+    case "shop":
+      {
+        // Counter across the middle
+        const counterRow = Math.floor(roomH / 2);
+        for (let x = 2; x <= roomW - 3; x++) {
+          if (counterRow > 0 && counterRow < roomH - 1) {
+            tiles[counterRow][x] = T_COUNTER;
+          }
         }
       }
-    }
       break;
     case "inn":
       // Desk/reception near top
@@ -407,9 +408,9 @@ export class TownScene extends Phaser.Scene {
 
     const tags = this.spawn.tags || [];
     const tagSet = new Set(tags);
-    const buildingType =
-      this.spawn.building_type || buildingTypeFromTags(tags);
-    const interiorSeed = this.spawn.interior_seed || hashCode(this.spawn.node_id || "default");
+    const buildingType = this.spawn.building_type || buildingTypeFromTags(tags);
+    const interiorSeed =
+      this.spawn.interior_seed || hashCode(this.spawn.node_id || "default");
 
     // Determine room dimensions
     const dims = roomDimensions(buildingType, interiorSeed);
@@ -471,8 +472,7 @@ export class TownScene extends Phaser.Scene {
     this.npcs = [];
     for (let i = 0; i < npcPositions.length; i++) {
       const pos = npcPositions[i];
-      const sprite =
-        i === 0 ? npcSpriteForTags(tags) : "npc_elder";
+      const sprite = i === 0 ? npcSpriteForTags(tags) : "npc_elder";
       const npcImage = this.add
         .image(
           this.offsetX + pos.x * RENDERED_TILE + RENDERED_TILE / 2,
@@ -805,8 +805,7 @@ export class TownScene extends Phaser.Scene {
       }
     } else {
       // Extra NPC: just talk (with sub-NPC dialogue)
-      const subNodeId =
-        this.spawn.node_id + "_npc" + npc.index;
+      const subNodeId = this.spawn.node_id + "_npc" + npc.index;
       await this.openExtraNpcDialogue(subNodeId);
     }
 

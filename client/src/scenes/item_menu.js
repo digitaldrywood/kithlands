@@ -55,7 +55,11 @@ export function canUseOnTarget(item, target) {
     case "heal":
       return target.hp > 0 && target.hp < target.max_hp;
     case "restore_mp":
-      return target.hp > 0 && (target.max_mp || 0) > 0 && (target.mp || 0) < target.max_mp;
+      return (
+        target.hp > 0 &&
+        (target.max_mp || 0) > 0 &&
+        (target.mp || 0) < target.max_mp
+      );
     case "revive":
       return target.hp <= 0;
     case "cure_poison":
@@ -77,7 +81,8 @@ function hasValidTarget(item, party) {
     // Tent should be usable if any living member is not at full HP/MP.
     for (const p of party) {
       if (p.hp > 0 && p.hp < p.max_hp) return true;
-      if (p.hp > 0 && (p.max_mp || 0) > 0 && (p.mp || 0) < p.max_mp) return true;
+      if (p.hp > 0 && (p.max_mp || 0) > 0 && (p.mp || 0) < p.max_mp)
+        return true;
     }
     return false;
   }
@@ -325,7 +330,8 @@ function onKey(state, ev) {
     case "ArrowUp":
     case "ArrowLeft":
       if (state.items.length === 0) return;
-      state.cursor = (state.cursor - 1 + state.items.length) % state.items.length;
+      state.cursor =
+        (state.cursor - 1 + state.items.length) % state.items.length;
       refreshCursor(state);
       break;
     case "Enter":

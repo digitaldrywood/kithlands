@@ -405,34 +405,20 @@ export function toggleCodex(scene) {
   const totalTabsW = tabs.length * tabW + (tabs.length - 1) * tabGap;
   let tabCursor = 400 - totalTabsW / 2 + tabW / 2;
   for (const tab of tabs) {
-    const btn = drawButton(
-      scene,
-      tabCursor,
-      90,
-      tabW,
-      30,
-      tab.label,
-      () => {
-        renderTab(tab.key);
-        for (const key of Object.keys(tabHandles)) {
-          tabHandles[key].setActive(key === tab.key);
-        }
-      },
-    );
+    const btn = drawButton(scene, tabCursor, 90, tabW, 30, tab.label, () => {
+      renderTab(tab.key);
+      for (const key of Object.keys(tabHandles)) {
+        tabHandles[key].setActive(key === tab.key);
+      }
+    });
     btn.setActive(tab.key === activeTab);
     tabHandles[tab.key] = btn;
     scene.codexGroup.push(btn);
     tabCursor += tabW + tabGap;
   }
 
-  const closeBtn = drawButton(
-    scene,
-    400,
-    545,
-    180,
-    32,
-    "CLOSE (H/ESC)",
-    () => toggleCodex(scene),
+  const closeBtn = drawButton(scene, 400, 545, 180, 32, "CLOSE (H/ESC)", () =>
+    toggleCodex(scene),
   );
   scene.codexGroup.push(closeBtn);
 

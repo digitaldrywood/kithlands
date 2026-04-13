@@ -213,7 +213,10 @@ export class WorldScene extends Phaser.Scene {
     // Validate cached leader index: clamp to party size and skip dead members
     if (cachedLeaderIndex >= (gs?.party?.length || 1)) cachedLeaderIndex = 0;
     if (gs?.party?.[cachedLeaderIndex]?.hp <= 0) {
-      cachedLeaderIndex = nextLeaderIndex(gs.party, cachedLeaderIndex - 1 < 0 ? gs.party.length - 1 : cachedLeaderIndex - 1);
+      cachedLeaderIndex = nextLeaderIndex(
+        gs.party,
+        cachedLeaderIndex - 1 < 0 ? gs.party.length - 1 : cachedLeaderIndex - 1,
+      );
     }
     const leader = gs?.party?.[cachedLeaderIndex] || gs?.party?.[0];
     this.leaderClass = leader?.sprite_id || leader?.class_id || "warrior";

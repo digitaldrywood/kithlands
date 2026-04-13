@@ -204,7 +204,12 @@ function resolveItem(action, gameState, slot) {
       targetSlot < party.length &&
       party[targetSlot].hp <= 0
     ) {
-      return { slot, type: "revive", target_id: targetSlot, item_id: "phoenix_down" };
+      return {
+        slot,
+        type: "revive",
+        target_id: targetSlot,
+        item_id: "phoenix_down",
+      };
     }
     // Target no longer dead — fall back to attack
     const fb = fallbackAttack(enemies);

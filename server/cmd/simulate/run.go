@@ -77,7 +77,7 @@ func DefaultRunOptions() RunOptions {
 // RunOne plays a single headless playthrough against the given strategy and
 // returns the RunResult. The gd argument lets callers share a single
 // gamedata load across thousands of runs.
-func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strat Strategy, opts RunOptions) (RunResult, error) {
+func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strategy Strategy, opts RunOptions) (RunResult, error) {
 	if opts.MaxTurns == 0 {
 		opts.MaxTurns = DefaultRunOptions().MaxTurns
 	}
@@ -114,7 +114,7 @@ func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strat Strategy,
 
 	result := RunResult{
 		Seed:            seed,
-		Strategy:        strat.Name(),
+		Strategy:        strategy.Name(),
 		EncounterStarts: make(map[string]int),
 	}
 
@@ -166,7 +166,7 @@ func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strat Strategy,
 			if result.LevelAtPromotion == 0 && len(state.Party) > 0 {
 				result.LevelAtPromotion = state.Party[0].Level
 			}
-			accept := strat.OnPromotion(&state)
+			accept := strategy.OnPromotion(&state)
 			next, err := game.Promote(accept)
 			if err != nil {
 				return result, fmt.Errorf("promote: %w", err)
@@ -187,10 +187,10 @@ func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strat Strategy,
 				req = api.GameActionRequest{Type: "encounter"}
 				pendingRolls--
 			} else {
-				req = strat.ChooseWorldAction(&state)
+				req = strategy.ChooseWorldAction(&state)
 			}
 		case "combat":
-			req = api.GameActionRequest{Actions: strat.ChooseCombatActions(&state)}
+			req = api.GameActionRequest{Actions: strategy.ChooseCombatActions(&state)}
 			if len(req.Actions) == 0 {
 				// Everyone is dead but we're still in combat — force a flee
 				// to unstick. Server handles the rest.
@@ -209,7 +209,7 @@ func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strat Strategy,
 			if err := opts.PauseHook(PauseEvent{
 				Phase:    HookBeforeAction,
 				Seed:     seed,
-				Strategy: strat.Name(),
+				Strategy: strategy.Name(),
 				Turn:     turn,
 				State:    &preState,
 				Action:   &req,
@@ -223,7 +223,7 @@ func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strat Strategy,
 			ev := PauseEvent{
 				Phase:    HookAfterAction,
 				Seed:     seed,
-				Strategy: strat.Name(),
+				Strategy: strategy.Name(),
 				Turn:     turn,
 				Action:   &req,
 				Err:      err,

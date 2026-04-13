@@ -12,7 +12,10 @@ import { shouldStartBattle } from "./encounterFlow.js";
 describe("shouldStartBattle", () => {
   it("returns true for phase=combat with at least one enemy", () => {
     expect(
-      shouldStartBattle({ phase: "combat", enemies: [{ id: 1, name: "slime" }] }),
+      shouldStartBattle({
+        phase: "combat",
+        enemies: [{ id: 1, name: "slime" }],
+      }),
     ).toBe(true);
   });
 
@@ -26,7 +29,10 @@ describe("shouldStartBattle", () => {
 
   it("returns false for phase=world even with enemies populated", () => {
     expect(
-      shouldStartBattle({ phase: "world", enemies: [{ id: 1, name: "slime" }] }),
+      shouldStartBattle({
+        phase: "world",
+        enemies: [{ id: 1, name: "slime" }],
+      }),
     ).toBe(false);
   });
 

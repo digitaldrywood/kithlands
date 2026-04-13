@@ -127,14 +127,14 @@ func main() {
 // uses seed+i so outcomes are fully reproducible with a single base seed.
 func runAll(gd *gamedata.GameData, sharedDir string, baseSeed int64, runs int, strategies []Strategy, opts RunOptions) []RunResult {
 	type job struct {
-		strat Strategy
-		seed  int64
+		strategy Strategy
+		seed     int64
 	}
 
 	var jobs []job
 	for _, s := range strategies {
 		for i := 0; i < runs; i++ {
-			jobs = append(jobs, job{strat: s, seed: baseSeed + int64(i)})
+			jobs = append(jobs, job{strategy: s, seed: baseSeed + int64(i)})
 		}
 	}
 
@@ -148,7 +148,7 @@ func runAll(gd *gamedata.GameData, sharedDir string, baseSeed int64, runs int, s
 		go func(idx int, jb job) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			res, err := RunOne(gd, sharedDir, jb.seed, jb.strat, opts)
+			res, err := RunOne(gd, sharedDir, jb.seed, jb.strategy, opts)
 			if err != nil {
 				res.FinalPhase = "error"
 			}
@@ -207,7 +207,7 @@ func writeJSON(path string, v any) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0o644)
+	return os.WriteFile(path, data, 0o600)
 }
 
 func splitCSV(s string) []string {

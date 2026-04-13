@@ -124,10 +124,7 @@ export function closeCharacterDetail(scene) {
   scene.characterDetailGroup = null;
   scene.characterDetailIndex = null;
   if (scene.characterDetailEscHandler) {
-    scene.input.keyboard.off(
-      "keydown-ESC",
-      scene.characterDetailEscHandler,
-    );
+    scene.input.keyboard.off("keydown-ESC", scene.characterDetailEscHandler);
     scene.characterDetailEscHandler = null;
   }
   resumeWorldFor(scene, "character_detail");

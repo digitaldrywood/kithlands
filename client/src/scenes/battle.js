@@ -847,11 +847,7 @@ export class BattleScene extends Phaser.Scene {
       bg.on("pointerdown", () => {
         if (this.animating) return;
         // Any manual action cancels auto-mode (issue #99)
-        if (
-          b.type !== "repeat" &&
-          b.type !== "auto" &&
-          this.autoMode
-        ) {
+        if (b.type !== "repeat" && b.type !== "auto" && this.autoMode) {
           this.autoMode = false;
         }
         if (b.type === "attack") {
@@ -967,7 +963,11 @@ export class BattleScene extends Phaser.Scene {
         // No previous action for this member — default to attack
         const target = gs.enemies.find((e) => e.hp > 0);
         if (target) {
-          this.memberActions.push({ slot, type: "attack", target_id: target.id });
+          this.memberActions.push({
+            slot,
+            type: "attack",
+            target_id: target.id,
+          });
         }
         continue;
       }
@@ -1465,9 +1465,7 @@ export class BattleScene extends Phaser.Scene {
   // server believes is true, or punt back to the World scene if combat is
   // already resolved.
   async recoverFromCombatError() {
-    this.promptText
-      .setText("Combat error — recovering...")
-      .setColor("#ff8844");
+    this.promptText.setText("Combat error — recovering...").setColor("#ff8844");
     try {
       const fresh = await getGame(this.gameState.id);
       if (fresh && !fresh.error) {

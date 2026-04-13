@@ -1,7 +1,10 @@
 import { defineConfig } from "vite";
 
 const vitePort = parseInt(process.env.VITE_PORT || "3000", 10);
-const apiPort = parseInt(process.env.API_PORT || process.env.PORT || "8080", 10);
+const apiPort = parseInt(
+  process.env.API_PORT || process.env.PORT || "8080",
+  10,
+);
 
 export default defineConfig({
   server: {

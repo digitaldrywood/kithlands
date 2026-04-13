@@ -24,8 +24,20 @@ function makeState(overrides = {}) {
     enemies: [makeEnemy(1, 50), makeEnemy(2, 80)],
     party: [
       makeMember(0, 80, 100, 20, 50, [
-        { id: "fire", name: "Fire", target: "single_enemy", effect: "damage", mp_cost: 5 },
-        { id: "cure", name: "Cure", target: "single_ally", effect: "heal", mp_cost: 8 },
+        {
+          id: "fire",
+          name: "Fire",
+          target: "single_enemy",
+          effect: "damage",
+          mp_cost: 5,
+        },
+        {
+          id: "cure",
+          name: "Cure",
+          target: "single_ally",
+          effect: "heal",
+          mp_cost: 8,
+        },
       ]),
       makeMember(1, 60, 100),
       makeMember(2, 100, 100),
@@ -133,7 +145,13 @@ describe("heal spell on ally", () => {
     const gs = makeState();
     // Set MP to 0
     gs.party[0] = makeMember(0, 80, 100, 0, 50, [
-      { id: "cure", name: "Cure", target: "single_ally", effect: "heal", mp_cost: 8 },
+      {
+        id: "cure",
+        name: "Cure",
+        target: "single_ally",
+        effect: "heal",
+        mp_cost: 8,
+      },
     ]);
     const actor = gs.party[0];
     const action = { slot: 0, type: "spell", target_id: 1, spell_id: "cure" };
@@ -177,7 +195,13 @@ describe("damage spell on enemy", () => {
   it("falls back to attack if not enough MP (original target alive)", () => {
     const gs = makeState();
     gs.party[0] = makeMember(0, 80, 100, 2, 50, [
-      { id: "fire", name: "Fire", target: "single_enemy", effect: "damage", mp_cost: 5 },
+      {
+        id: "fire",
+        name: "Fire",
+        target: "single_enemy",
+        effect: "damage",
+        mp_cost: 5,
+      },
     ]);
     const actor = gs.party[0];
     const action = { slot: 0, type: "spell", target_id: 1, spell_id: "fire" };
@@ -191,7 +215,13 @@ describe("damage spell on enemy", () => {
       enemies: [makeEnemy(1, 0), makeEnemy(2, 50)],
     });
     gs.party[0] = makeMember(0, 80, 100, 2, 50, [
-      { id: "fire", name: "Fire", target: "single_enemy", effect: "damage", mp_cost: 5 },
+      {
+        id: "fire",
+        name: "Fire",
+        target: "single_enemy",
+        effect: "damage",
+        mp_cost: 5,
+      },
     ]);
     const actor = gs.party[0];
     const action = { slot: 0, type: "spell", target_id: 1, spell_id: "fire" };
@@ -279,7 +309,12 @@ describe("revive", () => {
     const gs = makeState();
     gs.party[2] = makeMember(2, 0, 100); // dead
     const actor = gs.party[0];
-    const action = { slot: 0, type: "revive", target_id: 2, item_id: "phoenix_down" };
+    const action = {
+      slot: 0,
+      type: "revive",
+      target_id: 2,
+      item_id: "phoenix_down",
+    };
     const result = resolveAction(action, actor, gs);
     expect(result).toEqual({
       slot: 0,
@@ -293,7 +328,12 @@ describe("revive", () => {
     const gs = makeState({ items: [] });
     gs.party[2] = makeMember(2, 0, 100);
     const actor = gs.party[0];
-    const action = { slot: 0, type: "revive", target_id: 2, item_id: "phoenix_down" };
+    const action = {
+      slot: 0,
+      type: "revive",
+      target_id: 2,
+      item_id: "phoenix_down",
+    };
     const result = resolveAction(action, actor, gs);
     expect(result).toEqual({ slot: 0, type: "attack", target_id: 1 });
   });
@@ -302,7 +342,12 @@ describe("revive", () => {
     const gs = makeState();
     // Member 2 is alive (100 HP)
     const actor = gs.party[0];
-    const action = { slot: 0, type: "revive", target_id: 2, item_id: "phoenix_down" };
+    const action = {
+      slot: 0,
+      type: "revive",
+      target_id: 2,
+      item_id: "phoenix_down",
+    };
     const result = resolveAction(action, actor, gs);
     expect(result).toEqual({ slot: 0, type: "attack", target_id: 1 });
   });
@@ -315,7 +360,12 @@ describe("ability", () => {
   it("keeps original target if alive", () => {
     const gs = makeState();
     const actor = gs.party[0];
-    const action = { slot: 0, type: "ability", target_id: 1, ability_id: "focus" };
+    const action = {
+      slot: 0,
+      type: "ability",
+      target_id: 1,
+      ability_id: "focus",
+    };
     const result = resolveAction(action, actor, gs);
     expect(result).toEqual({
       slot: 0,
@@ -330,7 +380,12 @@ describe("ability", () => {
       enemies: [makeEnemy(1, 0), makeEnemy(2, 80)],
     });
     const actor = gs.party[0];
-    const action = { slot: 0, type: "ability", target_id: 1, ability_id: "backstab" };
+    const action = {
+      slot: 0,
+      type: "ability",
+      target_id: 1,
+      ability_id: "backstab",
+    };
     const result = resolveAction(action, actor, gs);
     expect(result).toEqual({
       slot: 0,
@@ -375,7 +430,13 @@ describe("edge cases", () => {
     gs.party[1] = makeMember(1, 0, 100);
     gs.party[2] = makeMember(2, 30, 200);
     gs.party[0] = makeMember(0, 80, 100, 20, 50, [
-      { id: "cure", name: "Cure", target: "single_ally", effect: "heal", mp_cost: 8 },
+      {
+        id: "cure",
+        name: "Cure",
+        target: "single_ally",
+        effect: "heal",
+        mp_cost: 8,
+      },
     ]);
     const actor = gs.party[0];
     const action = { slot: 0, type: "spell", target_id: 1, spell_id: "cure" };

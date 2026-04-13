@@ -30,8 +30,12 @@ describe("shouldAcceptEnemySpriteClick", () => {
   });
 
   it("rejects cure_status spells on any enemy while in party targeting mode", () => {
-    expect(shouldAcceptEnemySpriteClick("party", "cure_status", true)).toBe(false);
-    expect(shouldAcceptEnemySpriteClick("party", "cure_status", false)).toBe(false);
+    expect(shouldAcceptEnemySpriteClick("party", "cure_status", true)).toBe(
+      false,
+    );
+    expect(shouldAcceptEnemySpriteClick("party", "cure_status", false)).toBe(
+      false,
+    );
   });
 
   it("rejects clicks when no targeting mode is active", () => {

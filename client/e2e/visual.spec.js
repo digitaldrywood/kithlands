@@ -73,9 +73,7 @@ test.describe("visual regression — issue #145", () => {
     await expect(page).toHaveScreenshot("options-modal-blocks.png");
   });
 
-  test.skip("HUD footer fits a 4-member party (c26d83f)", async ({
-    page,
-  }) => {
+  test.skip("HUD footer fits a 4-member party (c26d83f)", async ({ page }) => {
     await startGame(page);
     // TODO(baseline-capture): create a 4-member party, force into
     // combat (so MP bars show), and screenshot just the bottom 40px

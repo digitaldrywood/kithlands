@@ -786,4 +786,3 @@ function wrapText(s, width) {
   if (line) lines.push(line);
   return lines.join("\n");
 }
-

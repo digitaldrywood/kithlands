@@ -22,14 +22,29 @@ describe("filterEquippableItems", () => {
   it("returns only wpn_-prefixed items for type=weapon and strips the prefix", () => {
     const out = filterEquippableItems(items, "weapon");
     expect(out).toHaveLength(2);
-    expect(out[0]).toMatchObject({ id: "long_sword", name: "Long Sword", count: 1, power: 10 });
-    expect(out[1]).toMatchObject({ id: "dagger", name: "Dagger", count: 2, power: 5 });
+    expect(out[0]).toMatchObject({
+      id: "long_sword",
+      name: "Long Sword",
+      count: 1,
+      power: 10,
+    });
+    expect(out[1]).toMatchObject({
+      id: "dagger",
+      name: "Dagger",
+      count: 2,
+      power: 5,
+    });
   });
 
   it("returns only arm_-prefixed items for type=armor and strips the prefix", () => {
     const out = filterEquippableItems(items, "armor");
     expect(out).toHaveLength(1);
-    expect(out[0]).toMatchObject({ id: "chain", name: "Chain Mail", count: 1, absorb: 8 });
+    expect(out[0]).toMatchObject({
+      id: "chain",
+      name: "Chain Mail",
+      count: 1,
+      absorb: 8,
+    });
   });
 
   it("returns an empty array when items is missing or empty", () => {
@@ -39,7 +54,12 @@ describe("filterEquippableItems", () => {
   });
 
   it("ignores items without a matching prefix", () => {
-    expect(filterEquippableItems([{ id: "elixir", name: "Elixir", count: 1 }], "weapon")).toEqual([]);
+    expect(
+      filterEquippableItems(
+        [{ id: "elixir", name: "Elixir", count: 1 }],
+        "weapon",
+      ),
+    ).toEqual([]);
   });
 });
 
@@ -68,7 +88,9 @@ describe("computeEquipDelta", () => {
   });
 
   it("can return a negative delta when the new item is worse", () => {
-    expect(computeEquipDelta({ power: 2 }, { weapon_power: 10 }, "weapon")).toBe(-8);
+    expect(
+      computeEquipDelta({ power: 2 }, { weapon_power: 10 }, "weapon"),
+    ).toBe(-8);
   });
 });
 

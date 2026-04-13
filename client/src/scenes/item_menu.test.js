@@ -22,8 +22,24 @@ describe("buildItemList", () => {
   it("returns only world-usable items in world mode", () => {
     const gs = makeGS({
       items: [
-        { id: "potion", name: "Potion", count: 3, effect: "heal", description: "Heals", combat_usable: true, world_usable: true },
-        { id: "tent", name: "Tent", count: 1, effect: "rest", description: "Rests", combat_usable: false, world_usable: true },
+        {
+          id: "potion",
+          name: "Potion",
+          count: 3,
+          effect: "heal",
+          description: "Heals",
+          combat_usable: true,
+          world_usable: true,
+        },
+        {
+          id: "tent",
+          name: "Tent",
+          count: 1,
+          effect: "rest",
+          description: "Rests",
+          combat_usable: false,
+          world_usable: true,
+        },
       ],
     });
     const list = buildItemList(gs, "world");
@@ -35,8 +51,22 @@ describe("buildItemList", () => {
   it("excludes non-combat items in combat mode", () => {
     const gs = makeGS({
       items: [
-        { id: "potion", name: "Potion", count: 3, effect: "heal", combat_usable: true, world_usable: true },
-        { id: "tent", name: "Tent", count: 1, effect: "rest", combat_usable: false, world_usable: true },
+        {
+          id: "potion",
+          name: "Potion",
+          count: 3,
+          effect: "heal",
+          combat_usable: true,
+          world_usable: true,
+        },
+        {
+          id: "tent",
+          name: "Tent",
+          count: 1,
+          effect: "rest",
+          combat_usable: false,
+          world_usable: true,
+        },
       ],
     });
     const ids = buildItemList(gs, "combat").map((i) => i.id);
@@ -49,7 +79,14 @@ describe("buildItemList", () => {
       items: [
         { id: "wpn_long_sword", name: "Long Sword", count: 1, power: 10 },
         { id: "arm_chain", name: "Chain Mail", count: 1, absorb: 8 },
-        { id: "potion", name: "Potion", count: 3, effect: "heal", combat_usable: true, world_usable: true },
+        {
+          id: "potion",
+          name: "Potion",
+          count: 3,
+          effect: "heal",
+          combat_usable: true,
+          world_usable: true,
+        },
       ],
     });
     const ids = buildItemList(gs, "world").map((i) => i.id);
@@ -59,8 +96,22 @@ describe("buildItemList", () => {
   it("skips items with zero count", () => {
     const gs = makeGS({
       items: [
-        { id: "potion", name: "Potion", count: 0, effect: "heal", combat_usable: true, world_usable: true },
-        { id: "ether", name: "Ether", count: 2, effect: "restore_mp", combat_usable: true, world_usable: true },
+        {
+          id: "potion",
+          name: "Potion",
+          count: 0,
+          effect: "heal",
+          combat_usable: true,
+          world_usable: true,
+        },
+        {
+          id: "ether",
+          name: "Ether",
+          count: 2,
+          effect: "restore_mp",
+          combat_usable: true,
+          world_usable: true,
+        },
       ],
     });
     const ids = buildItemList(gs, "world").map((i) => i.id);
@@ -70,7 +121,14 @@ describe("buildItemList", () => {
   it("greys phoenix_down when no party member is KO'd", () => {
     const gs = makeGS({
       items: [
-        { id: "phoenix_down", name: "Phoenix Down", count: 1, effect: "revive", combat_usable: true, world_usable: true },
+        {
+          id: "phoenix_down",
+          name: "Phoenix Down",
+          count: 1,
+          effect: "revive",
+          combat_usable: true,
+          world_usable: true,
+        },
       ],
     });
     const [pd] = buildItemList(gs, "world");
@@ -82,7 +140,14 @@ describe("buildItemList", () => {
     gs.party[2].hp = 0;
     gs.party[2].status = "death";
     gs.items = [
-      { id: "phoenix_down", name: "Phoenix Down", count: 1, effect: "revive", combat_usable: true, world_usable: true },
+      {
+        id: "phoenix_down",
+        name: "Phoenix Down",
+        count: 1,
+        effect: "revive",
+        combat_usable: true,
+        world_usable: true,
+      },
     ];
     const [pd] = buildItemList(gs, "world");
     expect(pd.greyed).toBe(false);
@@ -92,7 +157,14 @@ describe("buildItemList", () => {
     const gs = makeGS();
     gs.party[1].mp = gs.party[1].max_mp; // Mage at full MP
     gs.items = [
-      { id: "ether", name: "Ether", count: 1, effect: "restore_mp", combat_usable: true, world_usable: true },
+      {
+        id: "ether",
+        name: "Ether",
+        count: 1,
+        effect: "restore_mp",
+        combat_usable: true,
+        world_usable: true,
+      },
     ];
     expect(buildItemList(gs, "world")[0].greyed).toBe(true);
   });
@@ -100,7 +172,14 @@ describe("buildItemList", () => {
   it("enables ether when a caster is missing MP", () => {
     const gs = makeGS(); // mage starts at 5/20
     gs.items = [
-      { id: "ether", name: "Ether", count: 1, effect: "restore_mp", combat_usable: true, world_usable: true },
+      {
+        id: "ether",
+        name: "Ether",
+        count: 1,
+        effect: "restore_mp",
+        combat_usable: true,
+        world_usable: true,
+      },
     ];
     expect(buildItemList(gs, "world")[0].greyed).toBe(false);
   });
@@ -108,7 +187,14 @@ describe("buildItemList", () => {
   it("greys antidote when no one is poisoned", () => {
     const gs = makeGS({
       items: [
-        { id: "antidote", name: "Antidote", count: 1, effect: "cure_poison", combat_usable: true, world_usable: true },
+        {
+          id: "antidote",
+          name: "Antidote",
+          count: 1,
+          effect: "cure_poison",
+          combat_usable: true,
+          world_usable: true,
+        },
       ],
     });
     expect(buildItemList(gs, "world")[0].greyed).toBe(true);
@@ -118,7 +204,14 @@ describe("buildItemList", () => {
     const gs = makeGS();
     gs.party[0].status = "poison";
     gs.items = [
-      { id: "antidote", name: "Antidote", count: 1, effect: "cure_poison", combat_usable: true, world_usable: true },
+      {
+        id: "antidote",
+        name: "Antidote",
+        count: 1,
+        effect: "cure_poison",
+        combat_usable: true,
+        world_usable: true,
+      },
     ];
     expect(buildItemList(gs, "world")[0].greyed).toBe(false);
   });
@@ -127,7 +220,14 @@ describe("buildItemList", () => {
     const gs = makeGS();
     gs.party.forEach((p) => (p.hp = p.max_hp));
     gs.items = [
-      { id: "potion", name: "Potion", count: 3, effect: "heal", combat_usable: true, world_usable: true },
+      {
+        id: "potion",
+        name: "Potion",
+        count: 3,
+        effect: "heal",
+        combat_usable: true,
+        world_usable: true,
+      },
     ];
     expect(buildItemList(gs, "world")[0].greyed).toBe(true);
   });
