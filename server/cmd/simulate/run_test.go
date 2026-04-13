@@ -11,9 +11,9 @@ import (
 // the default turn budget, producing a non-empty RunResult.
 func TestRunOneReachesTerminalPhase(t *testing.T) {
 	gd := gamedata.Load("../../../shared")
-	strat := &CautiousStrategy{}
+	strategy := &CautiousStrategy{}
 
-	res, err := RunOne(gd, "../../../shared", 42, strat, DefaultRunOptions())
+	res, err := RunOne(gd, "../../../shared", 42, strategy, DefaultRunOptions())
 	if err != nil {
 		t.Fatalf("RunOne: %v", err)
 	}
@@ -35,10 +35,10 @@ func TestRunOneReachesTerminalPhase(t *testing.T) {
 // seed produce identical results (critical for reproducible CI regressions).
 func TestRunOneDeterministicSeed(t *testing.T) {
 	gd := gamedata.Load("../../../shared")
-	strat := &CautiousStrategy{}
+	strategy := &CautiousStrategy{}
 
-	a, errA := RunOne(gd, "../../../shared", 1337, strat, DefaultRunOptions())
-	b, errB := RunOne(gd, "../../../shared", 1337, strat, DefaultRunOptions())
+	a, errA := RunOne(gd, "../../../shared", 1337, strategy, DefaultRunOptions())
+	b, errB := RunOne(gd, "../../../shared", 1337, strategy, DefaultRunOptions())
 	if errA != nil || errB != nil {
 		t.Fatalf("errors: %v / %v", errA, errB)
 	}
@@ -63,9 +63,9 @@ func TestRunOneDeterministicSeed(t *testing.T) {
 // with the sum of EncounterStarts.
 func TestRunOneGeneratesRandomEncounters(t *testing.T) {
 	gd := gamedata.Load("../../../shared")
-	strat := &AggressiveStrategy{}
+	strategy := &AggressiveStrategy{}
 
-	res, err := RunOne(gd, "../../../shared", 1, strat, DefaultRunOptions())
+	res, err := RunOne(gd, "../../../shared", 1, strategy, DefaultRunOptions())
 	if err != nil {
 		t.Fatalf("RunOne: %v", err)
 	}
@@ -91,11 +91,11 @@ func TestRunOneGeneratesRandomEncounters(t *testing.T) {
 // so a disabled run still produces exactly one encounter (the boss).
 func TestRunOneRespectsEncounterRollsPerQuestDisable(t *testing.T) {
 	gd := gamedata.Load("../../../shared")
-	strat := &AggressiveStrategy{}
+	strategy := &AggressiveStrategy{}
 
 	opts := DefaultRunOptions()
 	opts.EncounterRollsPerQuest = -1
-	res, err := RunOne(gd, "../../../shared", 1, strat, opts)
+	res, err := RunOne(gd, "../../../shared", 1, strategy, opts)
 	if err != nil {
 		t.Fatalf("RunOne: %v", err)
 	}

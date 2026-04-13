@@ -44,8 +44,8 @@ func makeCombatState(partyHP []int, partyMP []int, enemies []int) *api.GameState
 
 func TestAggressiveAttacksFirstLivingEnemy(t *testing.T) {
 	gs := makeCombatState([]int{50, 50}, []int{0, 0}, []int{0, 30}) // first enemy dead
-	strat := &AggressiveStrategy{}
-	actions := strat.ChooseCombatActions(gs)
+	strategy := &AggressiveStrategy{}
+	actions := strategy.ChooseCombatActions(gs)
 	if len(actions) != 2 {
 		t.Fatalf("actions: got %d, want 2", len(actions))
 	}
@@ -61,8 +61,8 @@ func TestAggressiveAttacksFirstLivingEnemy(t *testing.T) {
 
 func TestAggressiveSkipsDeadAllies(t *testing.T) {
 	gs := makeCombatState([]int{0, 50}, []int{0, 0}, []int{30})
-	strat := &AggressiveStrategy{}
-	actions := strat.ChooseCombatActions(gs)
+	strategy := &AggressiveStrategy{}
+	actions := strategy.ChooseCombatActions(gs)
 	if len(actions) != 1 {
 		t.Errorf("actions: got %d, want 1 (dead slot skipped)", len(actions))
 	}
@@ -80,8 +80,8 @@ func TestCautiousHealsWoundedAlly(t *testing.T) {
 	gs.Party[1].Spells = []api.SpellState{
 		{ID: "cure", Name: "Cure", Target: "single_ally", Effect: "heal", MPCost: 2, Castable: true},
 	}
-	strat := &CautiousStrategy{}
-	actions := strat.ChooseCombatActions(gs)
+	strategy := &CautiousStrategy{}
+	actions := strategy.ChooseCombatActions(gs)
 	// Find slot 1's action.
 	var casterAction *api.MemberActionReq
 	for i := range actions {
@@ -112,8 +112,8 @@ func TestCautiousFallsBackToAttackWhenNoMP(t *testing.T) {
 	gs.Party[1].Spells = []api.SpellState{
 		{ID: "cure", Name: "Cure", Target: "single_ally", Effect: "heal", MPCost: 2, Castable: true},
 	}
-	strat := &CautiousStrategy{}
-	actions := strat.ChooseCombatActions(gs)
+	strategy := &CautiousStrategy{}
+	actions := strategy.ChooseCombatActions(gs)
 	for _, a := range actions {
 		if a.Slot == 1 && a.Type != "attack" {
 			t.Errorf("slot 1 should fall back to attack, got %q", a.Type)
@@ -132,8 +132,8 @@ func TestHealerHeavyGroupHealsWhenMultipleWounded(t *testing.T) {
 		{ID: "heal", Name: "Heal", Target: "all_allies", Effect: "heal", MPCost: 4, Castable: true},
 		{ID: "cure", Name: "Cure", Target: "single_ally", Effect: "heal", MPCost: 2, Castable: true},
 	}
-	strat := &HealerHeavyStrategy{}
-	actions := strat.ChooseCombatActions(gs)
+	strategy := &HealerHeavyStrategy{}
+	actions := strategy.ChooseCombatActions(gs)
 	var menderAction *api.MemberActionReq
 	for i := range actions {
 		if actions[i].Slot == 2 {
@@ -156,14 +156,14 @@ func TestAllStrategiesAdvanceQuestInWorldPhase(t *testing.T) {
 			{ID: "q0", TargetNodeID: "node_0"},
 		},
 	}
-	for _, strat := range AllStrategies() {
-		t.Run(strat.Name(), func(t *testing.T) {
-			req := strat.ChooseWorldAction(gs)
+	for _, strategy := range AllStrategies() {
+		t.Run(strategy.Name(), func(t *testing.T) {
+			req := strategy.ChooseWorldAction(gs)
 			if req.Type != "quest_advance" {
-				t.Errorf("%s: world action type = %q, want quest_advance", strat.Name(), req.Type)
+				t.Errorf("%s: world action type = %q, want quest_advance", strategy.Name(), req.Type)
 			}
 			if req.NodeID != "node_0" {
-				t.Errorf("%s: node id = %q, want node_0", strat.Name(), req.NodeID)
+				t.Errorf("%s: node id = %q, want node_0", strategy.Name(), req.NodeID)
 			}
 		})
 	}
@@ -171,10 +171,10 @@ func TestAllStrategiesAdvanceQuestInWorldPhase(t *testing.T) {
 
 func TestAllStrategiesAcceptPromotion(t *testing.T) {
 	gs := &api.GameState{Phase: "promotion"}
-	for _, strat := range AllStrategies() {
-		t.Run(strat.Name(), func(t *testing.T) {
-			if !strat.OnPromotion(gs) {
-				t.Errorf("%s: should accept promotion", strat.Name())
+	for _, strategy := range AllStrategies() {
+		t.Run(strategy.Name(), func(t *testing.T) {
+			if !strategy.OnPromotion(gs) {
+				t.Errorf("%s: should accept promotion", strategy.Name())
 			}
 		})
 	}
