@@ -8,7 +8,7 @@ on:
 
 jobs:
   server:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, personal, prometheus]
     steps:
       - uses: actions/checkout@v4
 
@@ -37,7 +37,7 @@ jobs:
           args: --timeout=5m
 
   client:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, personal, prometheus]
     steps:
       - uses: actions/checkout@v4
 
@@ -65,7 +65,7 @@ jobs:
         continue-on-error: true
 
   balance-sim:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, personal, prometheus]
     steps:
       - uses: actions/checkout@v4
 
@@ -79,7 +79,7 @@ jobs:
         run: go run ./cmd/balance_sim -battles=10 -shared=../shared
 
   json-validation:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, personal, prometheus]
     steps:
       - uses: actions/checkout@v4
 
@@ -97,7 +97,7 @@ jobs:
           exit $failed
 
   gamedata-validation:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, personal, prometheus]
     steps:
       - uses: actions/checkout@v4
 
@@ -112,7 +112,7 @@ jobs:
 
   pr-size:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, personal, prometheus]
     permissions:
       contents: read
       pull-requests: write
