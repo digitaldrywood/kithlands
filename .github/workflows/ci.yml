@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  server:
+  server-and-data:
     runs-on: [self-hosted, linux, x64, personal, prometheus]
     steps:
       - uses: actions/checkout@v4
@@ -36,6 +36,27 @@ jobs:
           working-directory: server
           args: --timeout=5m
 
+      - name: Balance sim smoke test
+        working-directory: server
+        run: go run ./cmd/balance_sim -battles=10 -shared=../shared
+
+      - name: Validate shared JSON files
+        run: |
+          failed=0
+          for f in $(find shared -name '*.json' -type f); do
+            if ! python3 -c "import json, sys; json.load(open(sys.argv[1]))" "$f" 2>&1; then
+              echo "FAIL: $f"
+              failed=1
+            else
+              echo "OK: $f"
+            fi
+          done
+          exit $failed
+
+      - name: Validate shared/ gamedata semantics
+        working-directory: server
+        run: go run ./cmd/validate_gamedata -shared=../shared
+
   client:
     runs-on: [self-hosted, linux, x64, personal, prometheus]
     steps:
@@ -63,52 +84,6 @@ jobs:
         working-directory: client
         run: npm audit --audit-level=moderate
         continue-on-error: true
-
-  balance-sim:
-    runs-on: [self-hosted, linux, x64, personal, prometheus]
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.24'
-          cache-dependency-path: server/go.sum
-
-      - name: Balance sim smoke test
-        working-directory: server
-        run: go run ./cmd/balance_sim -battles=10 -shared=../shared
-
-  json-validation:
-    runs-on: [self-hosted, linux, x64, personal, prometheus]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Validate shared JSON files
-        run: |
-          failed=0
-          for f in $(find shared -name '*.json' -type f); do
-            if ! python3 -c "import json, sys; json.load(open(sys.argv[1]))" "$f" 2>&1; then
-              echo "FAIL: $f"
-              failed=1
-            else
-              echo "OK: $f"
-            fi
-          done
-          exit $failed
-
-  gamedata-validation:
-    runs-on: [self-hosted, linux, x64, personal, prometheus]
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.24'
-          cache-dependency-path: server/go.sum
-
-      - name: Validate shared/ gamedata semantics
-        working-directory: server
-        run: go run ./cmd/validate_gamedata -shared=../shared
 
   pr-size:
     if: github.event_name == 'pull_request'
