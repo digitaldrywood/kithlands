@@ -2,7 +2,31 @@ package api
 
 import (
 	"testing"
+
+	"github.com/digitaldrywood/kithlands/internal/character"
+	"github.com/digitaldrywood/kithlands/internal/gamedata"
 )
+
+func newTownTestGame(t *testing.T) *Game {
+	t.Helper()
+	gd := gamedata.Load("../../shared")
+	gm := NewGameManager(gd, "../../shared")
+	game, err := gm.CreateGame(NewGameRequest{
+		TownName:    "Cadott",
+		People:      []WizardPersonReq{{Name: "Bob", Relation: "friendly"}},
+		Places:      []string{"School", "Store"},
+		BigBuilding: "Town Hall",
+		Party: []PartyMemberReq{
+			{Name: "Hero", ClassID: "warrior"},
+			{Name: "Sparks", ClassID: "cinder"},
+		},
+		Difficulty: "normal",
+	})
+	if err != nil {
+		t.Fatalf("create game: %v", err)
+	}
+	return game
+}
 
 func TestPickHiddenItemReward_Tier1(t *testing.T) {
 	tags := map[string]bool{"shop": true, "commerce": true}
@@ -68,6 +92,49 @@ func TestPickHiddenItemReward_Deterministic(t *testing.T) {
 	id2, g2 := pickHiddenItemReward(tags, 0, 42)
 	if id1 != id2 || g1 != g2 {
 		t.Errorf("not deterministic: (%q,%d) != (%q,%d)", id1, g1, id2, g2)
+	}
+}
+
+func TestRestAtTown_RestoresLivingPartyMembers(t *testing.T) {
+	for _, tags := range [][]string{{"house"}, {"safehouse"}} {
+		t.Run(tags[0], func(t *testing.T) {
+			game := newTownTestGame(t)
+
+			DamagePartyForTest(game, 0, PartyMaxHPForTest(game, 0)-1)
+			DamagePartyMPForTest(game, 1, PartyMaxMPForTest(game, 1))
+			KillPartyMemberForTest(game, 1)
+
+			msg, err := game.restAtTown(tags)
+			if err != nil {
+				t.Fatalf("restAtTown: %v", err)
+			}
+			if msg != "HP and spells restored!" {
+				t.Fatalf("message = %q, want HP and spells restored!", msg)
+			}
+			if got, want := PartyHPForTest(game, 0), PartyMaxHPForTest(game, 0); got != want {
+				t.Fatalf("hero HP after rest = %d, want %d", got, want)
+			}
+			if got, want := PartyMPForTest(game, 0), PartyMaxMPForTest(game, 0); got != want {
+				t.Fatalf("hero MP after rest = %d, want %d", got, want)
+			}
+			if hp := PartyHPForTest(game, 1); hp != 0 {
+				t.Fatalf("dead member HP after rest = %d, want 0", hp)
+			}
+			if mp := PartyMPForTest(game, 1); mp != 0 {
+				t.Fatalf("dead member MP after rest = %d, want 0", mp)
+			}
+			if status := PartyStatusForTest(game, 1); status != character.StatusDeath {
+				t.Fatalf("dead member status after rest = %q, want %q", status, character.StatusDeath)
+			}
+		})
+	}
+}
+
+func TestRestAtTown_RejectsNonRestNodes(t *testing.T) {
+	game := newTownTestGame(t)
+
+	if _, err := game.restAtTown([]string{"commerce"}); err == nil {
+		t.Fatal("expected non-rest node to be rejected")
 	}
 }
 

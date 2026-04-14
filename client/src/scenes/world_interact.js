@@ -1,6 +1,7 @@
 import { playSFX } from "../systems/audio.js";
 import { isTouchDevice } from "../systems/input.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
+import { isRestBuilding } from "./building_type.js";
 
 // TILE_COLORS needed for world map rendering
 const TILE_COLORS = {
@@ -183,7 +184,7 @@ export function showInteractPrompt(scene, spawn) {
   const tags = spawn.tags || [];
   let action = "Enter";
   if (tags.includes("shop") || tags.includes("commerce")) action = "Shop";
-  else if (tags.includes("rest")) action = "Rest";
+  else if (isRestBuilding(tags)) action = "Rest";
   else if (tags.includes("temple") || tags.includes("revive")) action = "Pray";
 
   scene.interactPrompt = scene.add
