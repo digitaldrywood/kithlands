@@ -128,6 +128,12 @@ export function installDevTestBridge(game) {
       return true;
     },
 
+    townNpcPositions(sceneKey = "Town") {
+      const scene = getScene(game, sceneKey);
+      if (!scene) throw new Error("Town scene is not active");
+      return (scene.npcs || []).map((npc) => ({ x: npc.x, y: npc.y }));
+    },
+
     teleportTownPlayer(x, y, sceneKey = "Town") {
       const scene = getScene(game, sceneKey);
       if (!scene) throw new Error("Town scene is not active");
@@ -159,6 +165,7 @@ export function installDevTestBridge(game) {
         x: scene.playerX,
         y: scene.playerY,
         nearNpcIndex: scene.nearNpcIndex,
+        npcPositions: (scene.npcs || []).map((npc) => ({ x: npc.x, y: npc.y })),
       };
     },
 
