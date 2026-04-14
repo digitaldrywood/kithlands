@@ -359,16 +359,16 @@ function djb2(str) {
 // Generate 1-3 hidden item positions deterministically from the node ID.
 // Only places items on walkable floor tiles, avoiding the NPC, door, and
 // player start positions.
-function generateHiddenItems(nodeId, tiles, npcX, npcY) {
+function generateHiddenItems(nodeId, tiles, roomW, roomH, npcX, npcY) {
   const seed = djb2(nodeId);
   const count = (seed % 3) + 1; // 1-3 items
-  const doorX = Math.floor(ROOM_W / 2);
-  const playerStartY = ROOM_H - 2;
+  const doorX = Math.floor(roomW / 2);
+  const playerStartY = roomH - 2;
 
   // Collect all valid floor tiles
   const floors = [];
-  for (let y = 1; y < ROOM_H - 1; y++) {
-    for (let x = 1; x < ROOM_W - 1; x++) {
+  for (let y = 1; y < roomH - 1; y++) {
+    for (let x = 1; x < roomW - 1; x++) {
       if (tiles[y][x] !== T_FLOOR) continue;
       if (x === npcX && y === npcY) continue;
       if (x === doorX && y === playerStartY) continue;
@@ -537,6 +537,8 @@ export class TownScene extends Phaser.Scene {
     this.hiddenItems = generateHiddenItems(
       this.spawn.node_id,
       this.tiles,
+      this.roomW,
+      this.roomH,
       this.npcTileX,
       this.npcTileY,
     ).filter((h) => !collected.has(h.key));
