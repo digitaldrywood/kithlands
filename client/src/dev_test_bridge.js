@@ -156,10 +156,12 @@ export function installDevTestBridge(game) {
       }
       if (closestIdx >= 0) {
         scene.nearNpcIndex = closestIdx;
-        if (typeof scene.showInteractPrompt === "function") scene.showInteractPrompt();
+        if (typeof scene.showInteractPrompt === "function")
+          scene.showInteractPrompt();
       } else {
         scene.nearNpcIndex = -1;
-        if (typeof scene.hideInteractPrompt === "function") scene.hideInteractPrompt();
+        if (typeof scene.hideInteractPrompt === "function")
+          scene.hideInteractPrompt();
       }
       return {
         x: scene.playerX,

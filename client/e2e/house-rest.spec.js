@@ -49,7 +49,9 @@ async function addVitalsOverlay(page, label) {
 }
 
 test.describe("house rest flow", () => {
-  test("house proprietor restores HP and MP with visual proof", async ({ page }) => {
+  test("house proprietor restores HP and MP with visual proof", async ({
+    page,
+  }) => {
     await startQuickGame(page);
 
     await page.evaluate(() =>
@@ -69,13 +71,16 @@ test.describe("house rest flow", () => {
         tags: ["house"],
       }),
     );
-    await page.waitForFunction(() => window.__kithlandsTest.sceneIsActive("Town"));
+    await page.waitForFunction(() =>
+      window.__kithlandsTest.sceneIsActive("Town"),
+    );
 
     const proprietor = await page.evaluate(
       () => window.__kithlandsTest.townNpcPositions("Town")[0],
     );
     await page.waitForFunction(
-      ({ x, y }) => window.__kithlandsTest.teleportTownPlayer(x, y + 1).nearNpcIndex === 0,
+      ({ x, y }) =>
+        window.__kithlandsTest.teleportTownPlayer(x, y + 1).nearNpcIndex === 0,
       proprietor,
     );
 

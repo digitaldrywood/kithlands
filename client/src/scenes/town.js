@@ -779,7 +779,11 @@ export class TownScene extends Phaser.Scene {
       if (tagSet.has("shop") || tagSet.has("commerce")) {
         openShop(this, this.spawn);
       } else if (isRestBuilding(tags)) {
-        const result = await restAtTown(this.gameState.id, this.spawn.node_id, tags);
+        const result = await restAtTown(
+          this.gameState.id,
+          this.spawn.node_id,
+          tags,
+        );
         if (result && !result.error) {
           Object.assign(this.gameState, result);
           playSFX("sfx_heal");

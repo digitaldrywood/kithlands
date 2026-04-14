@@ -84,7 +84,7 @@ func (g *Game) restAtTown(tags []string) (string, error) {
 		tagSet[t] = true
 	}
 
-	if !(tagSet["rest"] || tagSet["house"] || tagSet["safehouse"]) {
+	if !tagSet["rest"] && !tagSet["house"] && !tagSet["safehouse"] {
 		return "", fmt.Errorf("node is not a rest location")
 	}
 
