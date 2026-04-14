@@ -96,33 +96,37 @@ func TestPickHiddenItemReward_Deterministic(t *testing.T) {
 }
 
 func TestRestAtTown_RestoresLivingPartyMembers(t *testing.T) {
-	game := newTownTestGame(t)
+	for _, tags := range [][]string{{"house"}, {"safehouse"}} {
+		t.Run(tags[0], func(t *testing.T) {
+			game := newTownTestGame(t)
 
-	DamagePartyForTest(game, 0, PartyMaxHPForTest(game, 0)-1)
-	DamagePartyMPForTest(game, 1, PartyMaxMPForTest(game, 1))
-	KillPartyMemberForTest(game, 1)
+			DamagePartyForTest(game, 0, PartyMaxHPForTest(game, 0)-1)
+			DamagePartyMPForTest(game, 1, PartyMaxMPForTest(game, 1))
+			KillPartyMemberForTest(game, 1)
 
-	msg, err := game.restAtTown([]string{"house"})
-	if err != nil {
-		t.Fatalf("restAtTown: %v", err)
-	}
-	if msg != "HP and spells restored!" {
-		t.Fatalf("message = %q, want HP and spells restored!", msg)
-	}
-	if got, want := PartyHPForTest(game, 0), PartyMaxHPForTest(game, 0); got != want {
-		t.Fatalf("hero HP after rest = %d, want %d", got, want)
-	}
-	if got, want := PartyMPForTest(game, 0), PartyMaxMPForTest(game, 0); got != want {
-		t.Fatalf("hero MP after rest = %d, want %d", got, want)
-	}
-	if hp := PartyHPForTest(game, 1); hp != 0 {
-		t.Fatalf("dead member HP after rest = %d, want 0", hp)
-	}
-	if mp := PartyMPForTest(game, 1); mp != 0 {
-		t.Fatalf("dead member MP after rest = %d, want 0", mp)
-	}
-	if status := PartyStatusForTest(game, 1); status != character.StatusDeath {
-		t.Fatalf("dead member status after rest = %q, want %q", status, character.StatusDeath)
+			msg, err := game.restAtTown(tags)
+			if err != nil {
+				t.Fatalf("restAtTown: %v", err)
+			}
+			if msg != "HP and spells restored!" {
+				t.Fatalf("message = %q, want HP and spells restored!", msg)
+			}
+			if got, want := PartyHPForTest(game, 0), PartyMaxHPForTest(game, 0); got != want {
+				t.Fatalf("hero HP after rest = %d, want %d", got, want)
+			}
+			if got, want := PartyMPForTest(game, 0), PartyMaxMPForTest(game, 0); got != want {
+				t.Fatalf("hero MP after rest = %d, want %d", got, want)
+			}
+			if hp := PartyHPForTest(game, 1); hp != 0 {
+				t.Fatalf("dead member HP after rest = %d, want 0", hp)
+			}
+			if mp := PartyMPForTest(game, 1); mp != 0 {
+				t.Fatalf("dead member MP after rest = %d, want 0", mp)
+			}
+			if status := PartyStatusForTest(game, 1); status != character.StatusDeath {
+				t.Fatalf("dead member status after rest = %q, want %q", status, character.StatusDeath)
+			}
+		})
 	}
 }
 
