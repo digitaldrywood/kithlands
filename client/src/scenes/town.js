@@ -1,5 +1,5 @@
 import { playSFX, playMusic } from "../systems/audio.js";
-import { collectHiddenItem } from "../api.js";
+import { autosaveGame, collectHiddenItem, restAtTown } from "../api.js";
 import { openDialogue } from "./town_dialogue.js";
 import { openShop } from "./world_shop.js";
 import { isTouchDevice, initTouchControls } from "../systems/input.js";
@@ -11,7 +11,6 @@ import {
 } from "./walkFrame.js";
 import { getLeaderIndex } from "./world.js";
 import { buildingTypeFromTags, isRestBuilding } from "./building_type.js";
-import { restoreLivingPartyMembers } from "./party_rest.js";
 import { walkStepMs } from "../systems/prefs.js";
 import { isWorldInputLocked } from "../systems/modalLock.js";
 import { getNpcDialogue } from "../api.js";
@@ -275,15 +274,16 @@ function placeAnchorFurniture(tiles, buildingType, roomW, roomH) {
   const cx = Math.floor(roomW / 2);
 
   switch (buildingType) {
-    case "shop": {
-      // Counter across the middle
-      const counterRow = Math.floor(roomH / 2);
-      for (let x = 2; x <= roomW - 3; x++) {
-        if (counterRow > 0 && counterRow < roomH - 1) {
-          tiles[counterRow][x] = T_COUNTER;
+    case "shop":
+      {
+        // Counter across the middle
+        const counterRow = Math.floor(roomH / 2);
+        for (let x = 2; x <= roomW - 3; x++) {
+          if (counterRow > 0 && counterRow < roomH - 1) {
+            tiles[counterRow][x] = T_COUNTER;
+          }
         }
       }
-    }
       break;
     case "inn":
       // Desk/reception near top
@@ -409,9 +409,9 @@ export class TownScene extends Phaser.Scene {
 
     const tags = this.spawn.tags || [];
     const tagSet = new Set(tags);
-    const buildingType =
-      this.spawn.building_type || buildingTypeFromTags(tags);
-    const interiorSeed = this.spawn.interior_seed || hashCode(this.spawn.node_id || "default");
+    const buildingType = this.spawn.building_type || buildingTypeFromTags(tags);
+    const interiorSeed =
+      this.spawn.interior_seed || hashCode(this.spawn.node_id || "default");
 
     // Determine room dimensions
     const dims = roomDimensions(buildingType, interiorSeed);
@@ -473,8 +473,7 @@ export class TownScene extends Phaser.Scene {
     this.npcs = [];
     for (let i = 0; i < npcPositions.length; i++) {
       const pos = npcPositions[i];
-      const sprite =
-        i === 0 ? npcSpriteForTags(tags) : "npc_elder";
+      const sprite = i === 0 ? npcSpriteForTags(tags) : "npc_elder";
       const npcImage = this.add
         .image(
           this.offsetX + pos.x * RENDERED_TILE + RENDERED_TILE / 2,
@@ -780,10 +779,22 @@ export class TownScene extends Phaser.Scene {
       if (tagSet.has("shop") || tagSet.has("commerce")) {
         openShop(this, this.spawn);
       } else if (isRestBuilding(tags)) {
-        restoreLivingPartyMembers(this.gameState.party);
-        playSFX("sfx_heal");
+        const result = await restAtTown(
+          this.gameState.id,
+          this.spawn.node_id,
+          tags,
+        );
+        if (result && !result.error) {
+          Object.assign(this.gameState, result);
+          playSFX("sfx_heal");
+          autosaveGame(result.id, "inn_rest").catch((e) =>
+            console.error("[Town] autosave failed:", e),
+          );
+        }
         await openDialogue(this, this.spawn);
-        this.showMessage("HP and spells restored!");
+        this.showMessage(
+          result?.error ? "Could not rest here." : "HP and spells restored!",
+        );
         this.time.delayedCall(1500, () => this.hideMessage());
       } else if (tagSet.has("temple") || tagSet.has("revive")) {
         const dead = this.gameState.party.filter((p) => p.hp <= 0);
@@ -804,8 +815,7 @@ export class TownScene extends Phaser.Scene {
       }
     } else {
       // Extra NPC: just talk (with sub-NPC dialogue)
-      const subNodeId =
-        this.spawn.node_id + "_npc" + npc.index;
+      const subNodeId = this.spawn.node_id + "_npc" + npc.index;
       await this.openExtraNpcDialogue(subNodeId);
     }
 

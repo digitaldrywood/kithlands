@@ -6,6 +6,38 @@ import (
 	"net/http"
 )
 
+func (s *Server) handleTownRest(w http.ResponseWriter, r *http.Request) {
+	gameID := r.PathValue("id")
+	game := s.games.GetGame(gameID)
+	if game == nil {
+		httpError(w, "game not found", http.StatusNotFound)
+		return
+	}
+
+	var req struct {
+		NodeID string   `json:"node_id"`
+		Tags   []string `json:"tags"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpError(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if req.NodeID == "" {
+		httpError(w, "node_id required", http.StatusBadRequest)
+		return
+	}
+
+	msg, err := game.restAtTown(req.Tags)
+	if err != nil {
+		httpError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	state := game.State()
+	state.Message = msg
+	jsonResp(w, state)
+}
+
 // handleTownCollect handles POST /api/game/{id}/town/collect.
 // The client sends the node_id, a deterministic item_key, and the building
 // tags so the server can pick a tier-appropriate reward. The key is recorded
@@ -41,6 +73,23 @@ func (s *Server) handleTownCollect(w http.ResponseWriter, r *http.Request) {
 	state := game.State()
 	state.Message = msg
 	jsonResp(w, state)
+}
+
+func (g *Game) restAtTown(tags []string) (string, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	tagSet := make(map[string]bool, len(tags))
+	for _, t := range tags {
+		tagSet[t] = true
+	}
+
+	if !(tagSet["rest"] || tagSet["house"] || tagSet["safehouse"]) {
+		return "", fmt.Errorf("node is not a rest location")
+	}
+
+	g.restParty()
+	return "HP and spells restored!", nil
 }
 
 // collectHiddenItem validates the key, picks a reward, adds it to inventory,
