@@ -20,6 +20,22 @@ npx playwright install chromium
 
 ## Running locally
 
+Fastest stable path:
+
+```sh
+make test-visual-local SPEC=e2e/house-rest.spec.js
+```
+
+That wrapper now does the annoying part correctly for you:
+- sources `scripts/worktree-env.sh`
+- creates the right worktree DB if needed
+- starts the matching server and client on the derived ports
+- waits for real readiness markers and reachable HTTP endpoints
+- runs Playwright against the correct `VITE_PORT`
+- tears the local stack down on exit
+
+Manual mode still exists if you want it:
+
 ```sh
 KITHLANDS_DEBUG=1 make play
 make test-visual
@@ -67,5 +83,6 @@ sessions do not collide. This worktree defaults to
 
 - Local-only: CI still does not install Playwright browsers or start the
   worktree-specific stack.
+- The stable wrapper currently covers local proof paths, not full CI orchestration.
 - The visual snapshot tests in `visual.spec.js` still need baseline capture and
   are intentionally skipped.

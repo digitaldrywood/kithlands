@@ -95,6 +95,12 @@ test-scripts:
 test-visual:
 	@cd client && VITE_PORT=$(VITE_PORT) npx playwright test --config=e2e/playwright.config.js
 
+# Stable local Playwright harness: boots the worktree-isolated DB/server/client,
+# waits for readiness, then runs the requested spec(s). Use SPEC=... to target
+# a single proof path.
+test-visual-local:
+	@./scripts/run_playwright_local.sh $(SPEC)
+
 # Refresh baselines after an intentional UI change. Only run this
 # after visually reviewing every diff.
 test-visual-update:
