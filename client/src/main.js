@@ -32,4 +32,10 @@ const config = {
   ],
 };
 
-new Phaser.Game(config);
+const game = new Phaser.Game(config);
+
+if (import.meta.env?.DEV) {
+  import("./dev_test_bridge.js").then(({ installDevTestBridge }) => {
+    installDevTestBridge(game);
+  });
+}
