@@ -3,6 +3,8 @@ import { isTouchDevice } from "../systems/input.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 
 // TILE_COLORS needed for world map rendering
+import { isRestBuilding } from "./building_type.js";
+
 const TILE_COLORS = {
   0: 0x4caf50, // grass
   1: 0xd2b48c, // path
@@ -183,7 +185,7 @@ export function showInteractPrompt(scene, spawn) {
   const tags = spawn.tags || [];
   let action = "Enter";
   if (tags.includes("shop") || tags.includes("commerce")) action = "Shop";
-  else if (tags.includes("rest")) action = "Rest";
+  else if (isRestBuilding(tags)) action = "Rest";
   else if (tags.includes("temple") || tags.includes("revive")) action = "Pray";
 
   scene.interactPrompt = scene.add

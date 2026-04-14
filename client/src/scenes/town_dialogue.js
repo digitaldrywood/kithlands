@@ -1,5 +1,6 @@
 import { getNpcDialogue } from "../api.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
+import { isRestBuilding } from "./building_type.js";
 
 // Default dialogue lines used when the server call fails.
 const FALLBACK_DIALOGUE = {
@@ -35,7 +36,7 @@ function fallbackForTags(tags) {
   const tagSet = new Set(tags || []);
   if (tagSet.has("shop") || tagSet.has("commerce"))
     return FALLBACK_DIALOGUE.shop;
-  if (tagSet.has("rest")) return FALLBACK_DIALOGUE.rest;
+  if (isRestBuilding(tags)) return FALLBACK_DIALOGUE.rest;
   if (tagSet.has("temple") || tagSet.has("revive"))
     return FALLBACK_DIALOGUE.temple;
   return FALLBACK_DIALOGUE.default;

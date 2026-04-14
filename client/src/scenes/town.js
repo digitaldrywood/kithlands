@@ -10,6 +10,8 @@ import {
   nextLeaderIndex,
 } from "./walkFrame.js";
 import { getLeaderIndex } from "./world.js";
+import { buildingTypeFromTags, isRestBuilding } from "./building_type.js";
+import { restoreLivingPartyMembers } from "./party_rest.js";
 import { walkStepMs } from "../systems/prefs.js";
 import { isWorldInputLocked } from "../systems/modalLock.js";
 import { getNpcDialogue } from "../api.js";
@@ -357,16 +359,16 @@ function djb2(str) {
 // Generate 1-3 hidden item positions deterministically from the node ID.
 // Only places items on walkable floor tiles, avoiding the NPC, door, and
 // player start positions.
-function generateHiddenItems(nodeId, tiles, npcX, npcY) {
+function generateHiddenItems(nodeId, tiles, roomW, roomH, npcX, npcY) {
   const seed = djb2(nodeId);
   const count = (seed % 3) + 1; // 1-3 items
-  const doorX = Math.floor(ROOM_W / 2);
-  const playerStartY = ROOM_H - 2;
+  const doorX = Math.floor(roomW / 2);
+  const playerStartY = roomH - 2;
 
   // Collect all valid floor tiles
   const floors = [];
-  for (let y = 1; y < ROOM_H - 1; y++) {
-    for (let x = 1; x < ROOM_W - 1; x++) {
+  for (let y = 1; y < roomH - 1; y++) {
+    for (let x = 1; x < roomW - 1; x++) {
       if (tiles[y][x] !== T_FLOOR) continue;
       if (x === npcX && y === npcY) continue;
       if (x === doorX && y === playerStartY) continue;
@@ -536,6 +538,8 @@ export class TownScene extends Phaser.Scene {
     this.hiddenItems = generateHiddenItems(
       this.spawn.node_id,
       this.tiles,
+      this.roomW,
+      this.roomH,
       this.npcTileX,
       this.npcTileY,
     ).filter((h) => !collected.has(h.key));
@@ -775,13 +779,8 @@ export class TownScene extends Phaser.Scene {
       // Proprietor NPC: special behavior by building type
       if (tagSet.has("shop") || tagSet.has("commerce")) {
         openShop(this, this.spawn);
-      } else if (tagSet.has("rest")) {
-        this.gameState.party.forEach((p) => {
-          if (p.hp > 0) {
-            p.hp = p.max_hp;
-            p.mp = p.max_mp;
-          }
-        });
+      } else if (isRestBuilding(tags)) {
+        restoreLivingPartyMembers(this.gameState.party);
         playSFX("sfx_heal");
         await openDialogue(this, this.spawn);
         this.showMessage("HP and spells restored!");
@@ -925,14 +924,7 @@ export class TownScene extends Phaser.Scene {
   }
 }
 
-// Client-side fallback for building type derivation (when server doesn't provide it)
-function buildingTypeFromTags(tags) {
-  const tagSet = new Set(tags || []);
-  if (tagSet.has("rest")) return "inn";
-  if (tagSet.has("shop") || tagSet.has("commerce")) return "shop";
-  if (tagSet.has("temple") || tagSet.has("revive")) return "temple";
-  return "house";
-}
+// Client-side fallback for building type derivation lives in building_type.js
 
 // Simple string hash for seed fallback (unsigned)
 function hashCode(str) {
