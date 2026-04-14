@@ -120,6 +120,13 @@ export async function learnSpell(gameId, charName, spellId) {
   });
 }
 
+export async function restAtTown(gameId, nodeId, tags) {
+  return apiCall("POST", `/game/${gameId}/town/rest`, {
+    node_id: nodeId,
+    tags,
+  });
+}
+
 export async function collectHiddenItem(gameId, nodeId, itemKey, tags) {
   return apiCall("POST", `/game/${gameId}/town/collect`, {
     node_id: nodeId,

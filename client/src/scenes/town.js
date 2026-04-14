@@ -1,5 +1,5 @@
 import { playSFX, playMusic } from "../systems/audio.js";
-import { collectHiddenItem } from "../api.js";
+import { autosaveGame, collectHiddenItem, restAtTown } from "../api.js";
 import { openDialogue } from "./town_dialogue.js";
 import { openShop } from "./world_shop.js";
 import { isTouchDevice, initTouchControls } from "../systems/input.js";
@@ -11,7 +11,6 @@ import {
 } from "./walkFrame.js";
 import { getLeaderIndex } from "./world.js";
 import { buildingTypeFromTags, isRestBuilding } from "./building_type.js";
-import { restoreLivingPartyMembers } from "./party_rest.js";
 import { walkStepMs } from "../systems/prefs.js";
 import { isWorldInputLocked } from "../systems/modalLock.js";
 import { getNpcDialogue } from "../api.js";
@@ -778,10 +777,18 @@ export class TownScene extends Phaser.Scene {
       if (tagSet.has("shop") || tagSet.has("commerce")) {
         openShop(this, this.spawn);
       } else if (isRestBuilding(tags)) {
-        restoreLivingPartyMembers(this.gameState.party);
-        playSFX("sfx_heal");
+        const result = await restAtTown(this.gameState.id, this.spawn.node_id, tags);
+        if (result && !result.error) {
+          Object.assign(this.gameState, result);
+          playSFX("sfx_heal");
+          autosaveGame(result.id, "inn_rest").catch((e) =>
+            console.error("[Town] autosave failed:", e),
+          );
+        }
         await openDialogue(this, this.spawn);
-        this.showMessage("HP and spells restored!");
+        this.showMessage(
+          result?.error ? "Could not rest here." : "HP and spells restored!",
+        );
         this.time.delayedCall(1500, () => this.hideMessage());
       } else if (tagSet.has("temple") || tagSet.has("revive")) {
         const dead = this.gameState.party.filter((p) => p.hp <= 0);
