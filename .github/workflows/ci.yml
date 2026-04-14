@@ -10,9 +10,9 @@ jobs:
   server-and-data:
     runs-on: [self-hosted, linux, x64, personal, prometheus]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.24'
           cache-dependency-path: server/go.sum
@@ -30,7 +30,7 @@ jobs:
         run: go test -race ./...
 
       - name: Lint
-        uses: golangci/golangci-lint-action@v7
+        uses: golangci/golangci-lint-action@v9
         with:
           version: v2.1.6
           working-directory: server
@@ -60,9 +60,9 @@ jobs:
   client:
     runs-on: [self-hosted, linux, x64, personal, prometheus]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '22'
           cache: 'npm'
@@ -92,7 +92,7 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
