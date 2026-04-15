@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Generate a few review-only overworld walk-sheet prototypes via Gemini.
+"""Generate review-only overworld walk prototypes via Gemini.
 
-This is intentionally not a runtime asset pipeline. It creates a small number
-of candidate 4x4 walk sheets under client/tmp/walk-prototypes/ so humans can
-judge whether the art direction is converging on classic JRPG overworld sprites
-before any wider rollout.
+This version intentionally generates one 4-frame row per facing, then composes
+the rows into a single 4x4 walk sheet. That makes the model solve a much
+simpler problem than "invent a full sheet at once" and gives us a cleaner way
+to reject bad choreography.
 """
 
 from __future__ import annotations
 
+import argparse
 import base64
 import io
 import json
@@ -24,59 +25,102 @@ OUT_DIR = REPO_ROOT / "client" / "tmp" / "walk-prototypes"
 STYLE_REF = OUT_DIR / "style_ref.png"
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-image")
 API_KEY = os.environ.get("GEMINI_API_KEY", "")
+CELL = 128
+SHEET = CELL * 4
 
-PROMPTS = [
+WARRIOR_IDENTITY = (
+    "silver plate armor, blue cape, knight silhouette, small sword, classic "
+    "JRPG overworld proportions"
+)
+
+ROW_SPECS = [
     (
-        "warrior_proto_a_walk.png",
-        "warrior",
+        "down",
         (
-            "Create a classic JRPG overworld walk sprite sheet for an armored "
-            "warrior. Use the first reference image for the target overworld "
-            "scale and sprite readability. Use the second reference image only "
-            "for class identity cues: silver armor, blue cape, knight feel. "
-            "STRICT layout: 4 rows x 4 columns, each cell a full-body sprite. "
-            "Row 1 faces down/front, row 2 faces up/back, row 3 faces left "
-            "profile, row 4 faces right profile. Columns are idle, left-step, "
-            "idle, right-step. Make it read like classic Final Fantasy or "
-            "Dragon Quest overworld sprites: chibi body, simple shading, clear "
-            "legs and feet, readable silhouette, no portrait detail, no soft "
-            "painting, no anti-aliased concept art. The same character must "
-            "appear in all 16 cells. Solid bright magenta #FF00FF background."
+            "Create a single horizontal strip containing exactly 4 full-body "
+            "overworld sprite frames of the same armored warrior walking "
+            "TOWARD the camera in a classic JRPG style. Keep the camera angle "
+            "locked to a front/down view in all four frames. Do not rotate the "
+            "character. Do not switch to a side or back view. The 4 frames "
+            "must form a real walk cycle in order: frame 1 neutral/contact, "
+            "frame 2 left leg forward with opposite arm swing, frame 3 "
+            "passing/neutral variant, frame 4 right leg forward with opposite "
+            "arm swing. Keep the head and torso anchored, only the limbs and "
+            "cape should shift naturally. Use the first reference image only "
+            "for overworld sprite style/scale and the second reference image "
+            f"only for warrior identity cues: {WARRIOR_IDENTITY}. "
+            "Use a solid bright magenta #FF00FF background."
         ),
     ),
     (
-        "rogue_proto_a_walk.png",
-        "rogue",
+        "up",
         (
-            "Create a classic JRPG overworld walk sprite sheet for a rogue. "
-            "Use the first reference image for the target overworld scale and "
-            "simplicity. Use the second reference image only for identity "
-            "cues: green hood, dark leather gear, dagger, thief silhouette. "
-            "STRICT layout: 4 rows x 4 columns, each cell a full-body sprite. "
-            "Row 1 faces down/front, row 2 faces up/back, row 3 faces left "
-            "profile, row 4 faces right profile. Columns are idle, left-step, "
-            "idle, right-step. Keep the legs visible and readable. Make it "
-            "chunky, low-res, and classic JRPG overworld style rather than "
-            "detailed illustration. Solid bright magenta #FF00FF background."
+            "Create a single horizontal strip containing exactly 4 full-body "
+            "overworld sprite frames of the same armored warrior walking AWAY "
+            "from the camera in a classic JRPG style. Keep the camera angle "
+            "locked to a back/up view in all four frames. Do not rotate the "
+            "character. Do not show the face from the front. The 4 frames "
+            "must form a real walk cycle in order: frame 1 neutral/contact, "
+            "frame 2 left leg forward with opposite arm swing, frame 3 "
+            "passing/neutral variant, frame 4 right leg forward with opposite "
+            "arm swing. Keep the back silhouette readable and the cape motion "
+            "subtle. Use the first reference image only for overworld sprite "
+            "style/scale and the second reference image only for warrior "
+            f"identity cues: {WARRIOR_IDENTITY}. Use a solid bright magenta "
+            "#FF00FF background."
         ),
     ),
     (
-        "mender_proto_a_walk.png",
-        "mender",
+        "left",
         (
-            "Create a classic JRPG overworld walk sprite sheet for a healer "
-            "or white mage. Use the first reference image for target scale and "
-            "the second reference image only for class identity cues: white "
-            "and blue robe, staff, gentle healer silhouette. STRICT layout: "
-            "4 rows x 4 columns, each cell a full-body sprite. Row 1 faces "
-            "down/front, row 2 faces up/back, row 3 faces left profile, row 4 "
-            "faces right profile. Columns are idle, left-step, idle, "
-            "right-step. Classic Final Fantasy style overworld readability: "
-            "clear head/body/feet, simple shading, no portrait realism, same "
-            "character in every cell. Solid bright magenta #FF00FF background."
+            "Create a single horizontal strip containing exactly 4 full-body "
+            "overworld sprite frames of the same armored warrior walking LEFT "
+            "in a classic JRPG style. Keep the camera angle locked to a left "
+            "profile view in all four frames. Do not rotate toward the front "
+            "or back. The 4 frames must form a real walk cycle in order: "
+            "frame 1 neutral/contact, frame 2 left leg forward with opposite "
+            "arm swing, frame 3 passing/neutral variant, frame 4 right leg "
+            "forward with opposite arm swing. Keep the torso stable and make "
+            "the legs read clearly. Use the first reference image only for "
+            "overworld sprite style/scale and the second reference image only "
+            f"for warrior identity cues: {WARRIOR_IDENTITY}. Use a solid "
+            "bright magenta #FF00FF background."
+        ),
+    ),
+    (
+        "right",
+        (
+            "Create a single horizontal strip containing exactly 4 full-body "
+            "overworld sprite frames of the same armored warrior walking "
+            "RIGHT in a classic JRPG style. Keep the camera angle locked to a "
+            "right profile view in all four frames. Do not rotate toward the "
+            "front or back. The 4 frames must form a real walk cycle in order: "
+            "frame 1 neutral/contact, frame 2 left leg forward with opposite "
+            "arm swing, frame 3 passing/neutral variant, frame 4 right leg "
+            "forward with opposite arm swing. Keep the torso stable and make "
+            "the legs read clearly. Use the first reference image only for "
+            "overworld sprite style/scale and the second reference image only "
+            f"for warrior identity cues: {WARRIOR_IDENTITY}. Use a solid "
+            "bright magenta #FF00FF background."
         ),
     ),
 ]
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--class-id",
+        default="warrior",
+        choices=["warrior"],
+        help="Prototype class to generate",
+    )
+    parser.add_argument(
+        "--name",
+        default="warrior_proto_b",
+        help="Output basename without _walk.png suffix",
+    )
+    return parser.parse_args()
 
 
 def ensure_api_key() -> None:
@@ -92,22 +136,21 @@ def ensure_api_key() -> None:
 
 
 def base64_part(path: Path) -> dict:
-    mime = "image/png"
     return {
         "inlineData": {
-            "mimeType": mime,
+            "mimeType": "image/png",
             "data": base64.b64encode(path.read_bytes()).decode(),
         }
     }
 
 
-def generate_image(parts: list[dict]) -> Image.Image:
+def generate_image(parts: list[dict], *, aspect_ratio: str) -> Image.Image:
     payload = {
         "contents": [{"parts": parts}],
         "generationConfig": {
             "responseModalities": ["TEXT", "IMAGE"],
             "imageConfig": {
-                "aspectRatio": "1:1",
+                "aspectRatio": aspect_ratio,
                 "imageSize": "1K",
             },
         },
@@ -143,8 +186,8 @@ def generate_image(parts: list[dict]) -> Image.Image:
         raise RuntimeError(f"Gemini HTTP {result.stdout.strip()}")
 
     data = json.loads(Path(resp_file).read_text())
-    parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
-    for part in parts:
+    response_parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+    for part in response_parts:
         if "inlineData" in part:
             raw = base64.b64decode(part["inlineData"]["data"])
             return Image.open(io.BytesIO(raw)).convert("RGBA")
@@ -162,6 +205,18 @@ def remove_magenta(img: Image.Image) -> Image.Image:
     return img
 
 
+def fit_row(img: Image.Image) -> Image.Image:
+    scale = min(SHEET / img.width, CELL / img.height)
+    width = max(1, round(img.width * scale))
+    height = max(1, round(img.height * scale))
+    resized = img.resize((width, height), Image.Resampling.NEAREST)
+    canvas = Image.new("RGBA", (SHEET, CELL), (0, 0, 0, 0))
+    x = (SHEET - width) // 2
+    y = (CELL - height) // 2
+    canvas.paste(resized, (x, y), resized)
+    return canvas
+
+
 def build_style_reference() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     board = Image.new("RGBA", (256, 256), (0, 0, 0, 0))
@@ -172,32 +227,52 @@ def build_style_reference() -> None:
         ("player_right.png", (128, 128)),
     ]
     for name, pos in positions:
-        img = Image.open(SPRITES_DIR / name).convert("RGBA").resize((128, 128), Image.Resampling.NEAREST)
+        img = (
+            Image.open(SPRITES_DIR / name)
+            .convert("RGBA")
+            .resize((128, 128), Image.Resampling.NEAREST)
+        )
         board.paste(img, pos, img)
     board.save(STYLE_REF)
 
 
+def compose_sheet(rows: list[Image.Image]) -> Image.Image:
+    sheet = Image.new("RGBA", (SHEET, SHEET), (0, 0, 0, 0))
+    for row_idx, row_img in enumerate(rows):
+        sheet.paste(row_img, (0, row_idx * CELL), row_img)
+    return sheet
+
+
 def main() -> None:
+    args = parse_args()
     ensure_api_key()
     build_style_reference()
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
+    portrait_path = SPRITES_DIR / f"{args.class_id}.png"
+    row_images: list[Image.Image] = []
+
     print(f"style-ref {STYLE_REF}")
-    for filename, class_id, prompt in PROMPTS:
-        out_path = OUT_DIR / filename
-        portrait_path = SPRITES_DIR / f"{class_id}.png"
-        print(f"generate {filename}")
+    for direction, prompt in ROW_SPECS:
+        out_path = OUT_DIR / f"{args.name}_{direction}.png"
+        print(f"generate {out_path.name}")
         img = generate_image(
             [
                 base64_part(STYLE_REF),
                 base64_part(portrait_path),
                 {"text": prompt},
-            ]
+            ],
+            aspect_ratio="16:9",
         )
-        img = remove_magenta(img)
-        img = img.resize((512, 512), Image.Resampling.NEAREST)
+        img = fit_row(remove_magenta(img))
         img.save(out_path)
+        row_images.append(img)
         print(f"saved {out_path}")
+
+    sheet = compose_sheet(row_images)
+    sheet_path = OUT_DIR / f"{args.name}_walk.png"
+    sheet.save(sheet_path)
+    print(f"saved {sheet_path}")
 
 
 if __name__ == "__main__":
