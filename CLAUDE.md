@@ -9,6 +9,71 @@ For broader repo workflow, validation, and agent coordination rules, also read:
 4. [docs/CODEX_PR_WORKFLOW.md](docs/CODEX_PR_WORKFLOW.md)
 5. [docs/CODEX_OPENCLAW_WORKFLOW.md](docs/CODEX_OPENCLAW_WORKFLOW.md)
 
+## Claude's Role In This Repo
+
+Claude can operate in two different modes here:
+
+1. direct implementation
+2. orchestration of Codex or OpenClaw workers
+
+The shared repo rules still come from `AGENTS.md` and the referenced docs. The
+Claude-specific difference is who should own the feature worktree and who
+should stay on the control plane.
+
+## When Claude Is Implementing Directly
+
+If Claude is writing code itself, it should use the same worktree rules as
+Codex:
+
+- start from `origin/main`
+- use a dedicated feature worktree
+- derive `PORT`, `VITE_PORT`, `DB_NAME`, and `DATABASE_URL` from
+  `scripts/worktree-env.sh`
+- use worktree-local browser profiles under `client/tmp/`
+- run the relevant validation and proof commands before claiming success
+- commit and push after each coherent chunk
+
+In direct implementation mode, the filename `docs/CODEX_WORKTREE_GUIDE.md` is
+just a historical label. Its instructions still apply to Claude.
+
+## When Claude Is Orchestrating Codex Or OpenClaw
+
+If Claude is coordinating another worker instead of coding directly, it should
+usually stay on a clean control-plane checkout and avoid sharing a dirty
+feature worktree with the worker.
+
+Default orchestration rules:
+
+- keep Claude on clean `main` unless Claude is explicitly taking ownership of
+  code changes
+- tell Codex or OpenClaw to create a fresh worktree from `origin/main`
+- tell the worker to derive ports from `scripts/worktree-env.sh`
+- do not have Claude and Codex edit the same dirty worktree unless that is
+  explicitly intended and tightly controlled
+- require the worker to report exact commands run, exact tests run, proof
+  filenames, commit SHA, and PR URL or blocker
+- for unattended workers, use managed background processes instead of shell
+  backgrounding
+
+This keeps Claude acting as the coordinator while Codex or OpenClaw owns the
+implementation worktree, ports, browser profile, and proof artifacts.
+
+## Recommended Handoff Pattern
+
+When Claude is delegating issue work, the instructions should be explicit:
+
+- issue or PR number
+- fresh branch and worktree from `origin/main`
+- derive ports from `scripts/worktree-env.sh`
+- exact validation and proof requirements
+- stop conditions:
+  - commit pushed
+  - PR opened or updated
+  - one precise blocker
+
+For OpenClaw-specific stop rules, state tracking, and Slack control-plane
+guidance, follow `docs/CODEX_OPENCLAW_WORKFLOW.md`.
+
 ## Worktree Isolation (ports + database)
 
 Every git worktree gets its own ports and database automatically, so multiple
