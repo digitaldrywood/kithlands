@@ -603,16 +603,19 @@ export class BattleScene extends Phaser.Scene {
           this.promptText.setText(`Target: ${e.name}`);
         }
       });
-      sprite.on("pointerout", () => sprite.setAlpha(1));
-      this.enemySprites[e.id] = { sprite, x, y, name: e.name };
+      sprite.on("pointerout", () => {
+        if (!this.enemySprites[e.id]?.dying) sprite.setAlpha(1);
+      });
+      this.enemySprites[e.id] = { sprite, x, y, name: e.name, id: e.id };
 
-      this.add
+      const nameText = this.add
         .text(x, y - sz / 2 - 18, e.name, {
           fontSize: "10px",
           color: "#ffffff",
           fontFamily: "monospace",
         })
         .setOrigin(0.5);
+      this.enemySprites[e.id].nameText = nameText;
 
       // Number indicator for keyboard targeting
       const numText = this.add
@@ -673,6 +676,7 @@ export class BattleScene extends Phaser.Scene {
             .image(x + sz / 2 + 2, y - sz / 2 - 2, iconKey)
             .setDepth(10);
           icon.setScale(16 / Math.max(icon.width, icon.height));
+          this.enemySprites[e.id].statusIcon = icon;
         }
       }
     }
@@ -1905,6 +1909,31 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
+  // hideEnemyElements hides every visual element associated with an enemy
+  // sprite entry: the sprite itself, name text, HP bar, and number indicator.
+  hideEnemyElements(ee) {
+    if (ee.sprite) {
+      ee.sprite.setVisible(false);
+      ee.sprite.removeInteractive();
+    }
+    if (ee.nameText) ee.nameText.setVisible(false);
+    if (ee.statusIcon) ee.statusIcon.setVisible(false);
+    if (ee.hpBar) {
+      ee.hpBar.bg.setVisible(false);
+      ee.hpBar.ghost.setVisible(false);
+      ee.hpBar.fill.setVisible(false);
+      ee.hpBar.label.setVisible(false);
+      ee.hpBar.fill.width = 0;
+      ee.hpBar.ghost.width = 0;
+      ee.hpBar.currentHP = 0;
+      ee.hpBar.label.setText(formatHPLabel(0, ee.hpBar.maxHP));
+    }
+    // Hide number indicator
+    const numEntry = this.enemyNumbers?.find((n) => n.enemyId === ee.id);
+    if (numEntry?.text) numEntry.text.setVisible(false);
+    ee.dead = true;
+  }
+
   enemyDeathFx(ee) {
     return new Promise((resolve) => {
       if (!ee || !ee.sprite) {
@@ -1916,6 +1945,8 @@ export class BattleScene extends Phaser.Scene {
         return;
       }
       ee.dying = true;
+      // Disable pointer events so hover handlers can't fight the fade.
+      ee.sprite.removeInteractive();
       this.tweens.add({
         targets: ee.sprite,
         alpha: 0,
@@ -1924,18 +1955,16 @@ export class BattleScene extends Phaser.Scene {
         duration: 500,
         ease: "Power2",
         onComplete: () => {
-          ee.sprite.setVisible(false);
-          ee.dead = true;
-          if (ee.hpBar) {
-            // Nuke the bar visuals so a lingering sliver can't survive
-            // the reconciliation pass.
-            ee.hpBar.fill.width = 0;
-            ee.hpBar.ghost.width = 0;
-            ee.hpBar.currentHP = 0;
-            ee.hpBar.label.setText(formatHPLabel(0, ee.hpBar.maxHP));
-          }
+          this.hideEnemyElements(ee);
           resolve();
         },
+      });
+      // Fallback: if the tween never completes (scene transition, engine
+      // hiccup), force-hide after 600ms so the sprite never lingers.
+      // resolve() is safe to call twice — second call is a no-op.
+      this.time.delayedCall(600, () => {
+        if (!ee.dead) this.hideEnemyElements(ee);
+        resolve();
       });
     });
   }
@@ -1953,7 +1982,14 @@ export class BattleScene extends Phaser.Scene {
     for (const idStr of Object.keys(this.enemySprites)) {
       const id = Number(idStr);
       const ee = this.enemySprites[id];
-      if (!ee || ee.dead || ee.dying) continue;
+      if (!ee || ee.dead) continue;
+      // If a death tween is in progress but the server confirms death,
+      // force-hide immediately rather than waiting for the tween.
+      if (ee.dying && !liveIds.has(id)) {
+        this.hideEnemyElements(ee);
+        continue;
+      }
+      if (ee.dying) continue;
       if (!liveIds.has(id)) {
         fades.push(this.enemyDeathFx(ee));
       }
