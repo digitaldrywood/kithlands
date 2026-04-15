@@ -56,6 +56,18 @@ Run:
 make test-e2e
 ```
 
+### Worktree Lifecycle Isolation
+
+When changing the local `make play` / `make stop` workflow, run:
+
+```sh
+make test-worktree-lifecycle
+```
+
+This proof boots two separate paths with different derived `PORT`,
+`VITE_PORT`, and `DB_NAME` values, confirms both stacks are reachable at the
+same time, stops one, and proves the other keeps running.
+
 ## 2. CI-Equivalent Local Gate
 
 GitHub Actions currently runs the following:

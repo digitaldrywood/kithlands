@@ -30,3 +30,4 @@ pgdata/
 # Build
 *.out
 coverage.txt
+tmp/

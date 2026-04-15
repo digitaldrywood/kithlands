@@ -16,23 +16,23 @@ if [ ! -f "${ENV_SCRIPT}" ]; then
 fi
 
 # Load env vars from worktree-env.sh when invoked from DIR.
-# Prints: PORT VITE_PORT DB_NAME WORKTREE_OFFSET
+# Prints: PORT VITE_PORT API_PORT DB_NAME DATABASE_URL WORKTREE_OFFSET
 _load() {
   local dir="$1"
   ( cd "$dir" && \
     unset PORT VITE_PORT API_PORT DB_NAME DATABASE_URL WORKTREE_OFFSET && \
     source "${ENV_SCRIPT}" && \
-    printf '%s %s %s %s\n' "$PORT" "$VITE_PORT" "$DB_NAME" "$WORKTREE_OFFSET" )
+    printf '%s %s %s %s %s %s\n' "$PORT" "$VITE_PORT" "$API_PORT" "$DB_NAME" "$DATABASE_URL" "$WORKTREE_OFFSET" )
 }
 
 TMP_A="$(mktemp -d)"
 TMP_B="$(mktemp -d)"
 trap 'rm -rf "${TMP_A}" "${TMP_B}"' EXIT
 
-read -r A_PORT A_VITE A_DB A_OFFSET < <(_load "${TMP_A}")
-read -r B_PORT B_VITE B_DB B_OFFSET < <(_load "${TMP_B}")
+read -r A_PORT A_VITE A_API A_DB A_URL A_OFFSET < <(_load "${TMP_A}")
+read -r B_PORT B_VITE B_API B_DB B_URL B_OFFSET < <(_load "${TMP_B}")
 # Determinism: run A again and require identical values.
-read -r A2_PORT A2_VITE A2_DB A2_OFFSET < <(_load "${TMP_A}")
+read -r A2_PORT A2_VITE A2_API A2_DB A2_URL A2_OFFSET < <(_load "${TMP_A}")
 
 fail=0
 
@@ -62,15 +62,20 @@ fi
 # Same PWD → same values every time.
 check "determinism PORT" "${A_PORT}" "${A2_PORT}"
 check "determinism VITE_PORT" "${A_VITE}" "${A2_VITE}"
+check "determinism API_PORT" "${A_API}" "${A2_API}"
 check "determinism DB_NAME" "${A_DB}" "${A2_DB}"
+check "determinism DATABASE_URL" "${A_URL}" "${A2_URL}"
 
 # PORT/VITE_PORT/DB_NAME must all agree on the same offset.
 expected_port=$((8080 + A_OFFSET))
 expected_vite=$((3000 + A_OFFSET))
 expected_db="kithlands_${A_OFFSET}"
+expected_url="postgres://${USER}@localhost:5432/${expected_db}?sslmode=disable"
 check "PORT = 8080 + offset" "${expected_port}" "${A_PORT}"
 check "VITE_PORT = 3000 + offset" "${expected_vite}" "${A_VITE}"
+check "API_PORT = PORT" "${A_PORT}" "${A_API}"
 check "DB_NAME = kithlands_<offset>" "${expected_db}" "${A_DB}"
+check "DATABASE_URL uses derived DB" "${expected_url}" "${A_URL}"
 
 # Offsets must be within [0, 999].
 if [ "${A_OFFSET}" -lt 0 ] || [ "${A_OFFSET}" -gt 999 ]; then

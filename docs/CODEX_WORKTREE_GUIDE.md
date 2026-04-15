@@ -88,6 +88,17 @@ cd client && VITE_PORT="$VITE_PORT" API_PORT="$PORT" npx vite --host 0.0.0.0 --p
 `make play` is convenient for humans. Managed processes are safer for
 automation because they can be supervised and stopped explicitly.
 
+For local manual work, `make play` now:
+
+- sources the same worktree-derived env as `.envrc`
+- writes logs and PID files under `tmp/runtime/`
+- starts detached server/client processes for just this worktree
+- refuses to reuse a busy derived port if an unexpected listener owns it
+
+`make stop` only reads the PID files under `tmp/runtime/` and kills those
+processes after re-verifying that they still own this worktree's derived port.
+It does not use broad `pkill` patterns.
+
 ## 5. Running Without Direnv
 
 If direnv is unavailable:
@@ -109,16 +120,18 @@ Use that mode carefully if multiple worktrees are active.
 
 ## 6. Logs And Process Locations
 
-`make play` writes logs to:
+`make play` writes runtime state to:
 
-- `/tmp/kithlands-server-$PORT.log`
-- `/tmp/kithlands-client-$VITE_PORT.log`
+- `tmp/runtime/server.pid`
+- `tmp/runtime/client.pid`
+- `tmp/runtime/logs/server.log`
+- `tmp/runtime/logs/client.log`
 
 Useful checks:
 
 ```sh
-tail -f /tmp/kithlands-server-$PORT.log
-tail -f /tmp/kithlands-client-$VITE_PORT.log
+tail -f tmp/runtime/logs/server.log
+tail -f tmp/runtime/logs/client.log
 curl -fsS "http://localhost:$PORT/api/data/classes"
 curl -fsS "http://localhost:$VITE_PORT" >/dev/null
 ```
