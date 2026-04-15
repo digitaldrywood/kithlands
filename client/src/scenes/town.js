@@ -11,6 +11,12 @@ import {
 } from "./walkFrame.js";
 import { getLeaderIndex } from "./world.js";
 import { buildingTypeFromTags, isRestBuilding } from "./building_type.js";
+import {
+  extraNpcSpritesForTags,
+  furnitureDensity,
+  minimumNpcSpacing,
+  roomDimensions,
+} from "./town_layout.js";
 import { walkStepMs } from "../systems/prefs.js";
 import { isWorldInputLocked } from "../systems/modalLock.js";
 import { getNpcDialogue } from "../api.js";
@@ -89,24 +95,8 @@ function mulberry32(seed) {
   };
 }
 
-// Room dimensions by building type
-function roomDimensions(buildingType, seed) {
-  switch (buildingType) {
-    case "inn":
-      return { w: 8, h: 8 };
-    case "shop":
-      return { w: 10, h: 8 };
-    case "temple":
-      return { w: 12, h: 10 };
-    default: {
-      // house: random in [8..12] x [6..10]
-      const rng = mulberry32(seed);
-      const w = 8 + Math.floor(rng() * 5); // 8-12
-      const h = 6 + Math.floor(rng() * 5); // 6-10
-      return { w, h };
-    }
-  }
-}
+// Room dimensions and density helpers live in town_layout.js so they can be
+// tested without booting Phaser.
 
 // NPC count by building type (2-4 per spec)
 function npcCount(buildingType) {
@@ -138,7 +128,7 @@ function proprietorPosition(buildingType, roomW, roomH) {
     case "shop":
       return { x: cx, y: Math.floor(roomH / 2) - 1 }; // behind counter
     case "inn":
-      return { x: cx, y: 1 }; // behind desk
+      return { x: cx, y: 2 }; // behind reception desk
     case "temple":
       return { x: cx, y: 1 }; // behind altar
     default:
@@ -246,7 +236,8 @@ function generateInterior(buildingType, roomW, roomH, seed) {
 
   // Place random furniture from weighted pool
   const interiorArea = (roomW - 2) * (roomH - 2);
-  const furnitureCount = Math.floor(interiorArea * 0.2) + 2; // ~20% coverage + 2
+  const furnitureCount =
+    Math.floor(interiorArea * furnitureDensity(buildingType)) + 2;
 
   for (let i = 0; i < furnitureCount; i++) {
     const tile = pickFromPool(pool, rng());
@@ -285,12 +276,17 @@ function placeAnchorFurniture(tiles, buildingType, roomW, roomH) {
         }
       }
       break;
-    case "inn":
-      // Desk/reception near top
-      if (2 < roomH - 1) tiles[2][cx] = T_DESK;
-      // Fireplace on one side
-      if (1 < roomW - 1 && 1 < roomH - 1) tiles[1][1] = T_FIREPLACE;
+    case "inn": {
+      // Reception desk near the top with a wider front so the proprietor reads
+      // as the person running the room instead of a sprite glued to the wall.
+      const deskRow = 3;
+      for (let x = Math.max(1, cx - 2); x <= Math.min(roomW - 2, cx + 2); x++) {
+        tiles[deskRow][x] = T_DESK;
+      }
+      // Fireplace tucked to one side so it doesn't compete with the desk area.
+      if (2 < roomW - 1 && 2 < roomH - 1) tiles[2][2] = T_FIREPLACE;
       break;
+    }
     case "temple":
       // Altar at top center
       if (2 < roomH - 1) {
@@ -414,7 +410,7 @@ export class TownScene extends Phaser.Scene {
       this.spawn.interior_seed || hashCode(this.spawn.node_id || "default");
 
     // Determine room dimensions
-    const dims = roomDimensions(buildingType, interiorSeed);
+    const dims = roomDimensions(buildingType, interiorSeed, mulberry32);
     this.roomW = dims.w;
     this.roomH = dims.h;
 
@@ -471,9 +467,13 @@ export class TownScene extends Phaser.Scene {
 
     // Place NPCs
     this.npcs = [];
+    const extraNpcSprites = extraNpcSpritesForTags(tags);
     for (let i = 0; i < npcPositions.length; i++) {
       const pos = npcPositions[i];
-      const sprite = i === 0 ? npcSpriteForTags(tags) : "npc_elder";
+      const sprite =
+        i === 0
+          ? npcSpriteForTags(tags)
+          : extraNpcSprites[(i - 1) % extraNpcSprites.length];
       const npcImage = this.add
         .image(
           this.offsetX + pos.x * RENDERED_TILE + RENDERED_TILE / 2,
@@ -598,32 +598,45 @@ export class TownScene extends Phaser.Scene {
     // Extra NPCs on random walkable interior tiles
     const occupied = new Set([`${propPos.x},${propPos.y}`]);
     const doorX = Math.floor(this.roomW / 2);
+    const preferredSpacing = minimumNpcSpacing(buildingType);
     // Also block the player start tile and the door
     occupied.add(`${doorX},${this.roomH - 2}`);
     occupied.add(`${doorX},${this.roomH - 1}`);
 
-    for (let i = 1; i < count; i++) {
-      let placed = false;
+    const isWellSpaced = (x, y, spacing) =>
+      positions.every(
+        (pos) => Math.abs(pos.x - x) + Math.abs(pos.y - y) >= spacing,
+      );
+
+    const isInnLobbyLane = (x, y) =>
+      buildingType === "inn" && Math.abs(x - doorX) <= 2 && y >= this.roomH - 5;
+
+    const tryPlaceNpc = (spacing) => {
       for (let attempt = 0; attempt < 30; attempt++) {
         const x = 1 + Math.floor(rng() * (this.roomW - 2));
         const y = 1 + Math.floor(rng() * (this.roomH - 2));
         const key = `${x},${y}`;
-        // Must be on a walkable tile, not occupied, not on bottom two rows
+        // Must be on a walkable tile, not occupied, not on bottom two rows,
+        // and not crowd existing NPCs.
         if (
           !occupied.has(key) &&
           y < this.roomH - 2 &&
-          TILE_WALKABLE[tiles[y][x]]
+          !isInnLobbyLane(x, y) &&
+          TILE_WALKABLE[tiles[y][x]] &&
+          isWellSpaced(x, y, spacing)
         ) {
           occupied.add(key);
           positions.push({ x, y });
-          placed = true;
-          break;
+          return true;
         }
       }
-      if (!placed) {
-        // Fallback: skip this NPC
-        break;
-      }
+      return false;
+    };
+
+    for (let i = 1; i < count; i++) {
+      if (tryPlaceNpc(preferredSpacing)) continue;
+      if (preferredSpacing > 2 && tryPlaceNpc(2)) continue;
+      break;
     }
 
     return positions;

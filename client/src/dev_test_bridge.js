@@ -134,6 +134,19 @@ export function installDevTestBridge(game) {
       return (scene.npcs || []).map((npc) => ({ x: npc.x, y: npc.y }));
     },
 
+    townSnapshot(sceneKey = "Town") {
+      const scene = getScene(game, sceneKey);
+      if (!scene) throw new Error("Town scene is not active");
+      return {
+        roomW: scene.roomW,
+        roomH: scene.roomH,
+        npcKeys: (scene.npcs || []).map(
+          (npc) => npc.image?.texture?.key || null,
+        ),
+        npcPositions: (scene.npcs || []).map((npc) => ({ x: npc.x, y: npc.y })),
+      };
+    },
+
     teleportTownPlayer(x, y, sceneKey = "Town") {
       const scene = getScene(game, sceneKey);
       if (!scene) throw new Error("Town scene is not active");
