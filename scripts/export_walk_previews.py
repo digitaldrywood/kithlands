@@ -18,6 +18,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 CELL = 128
+SHEET = CELL * 4
 SCALE = 4
 FRAME_MS = 180
 OUT_BG = (18, 22, 26, 255)
@@ -128,6 +129,34 @@ def export_row_strip(rows: dict[str, list[Image.Image]], out_path: Path) -> None
             scaled = scale_frame(frame).convert("RGBA")
             canvas.paste(scaled, (x, y), scaled)
 
+    canvas.save(out_path)
+
+
+def find_raw_rows(source_dir: Path, class_id: str) -> dict[str, Path] | None:
+    paths = {dir_name: source_dir / f"{class_id}_{dir_name}.png" for dir_name in DIRS}
+    if all(path.exists() for path in paths.values()):
+        return paths
+    return None
+
+
+def export_raw_row_strip(raw_rows: dict[str, Path], out_path: Path) -> None:
+    font = ImageFont.load_default()
+    label_w = 72
+    gap = 16
+    row_w = SHEET * SCALE
+    row_h = CELL * SCALE
+    canvas_w = label_w + gap + row_w
+    canvas_h = (row_h + gap) * len(DIRS) - gap
+    canvas = Image.new("RGBA", (canvas_w, canvas_h), OUT_BG)
+    draw = ImageDraw.Draw(canvas)
+
+    for row_idx, dir_name in enumerate(DIRS):
+        y = row_idx * (row_h + gap)
+        draw.rectangle((0, y, label_w, y + row_h), fill=PANEL_BG)
+        draw.text((10, y + 12), dir_name.upper(), fill=WHITE, font=font)
+        row_img = Image.open(raw_rows[dir_name]).convert("RGBA")
+        scaled = row_img.resize((row_w, row_h), Image.Resampling.NEAREST)
+        canvas.paste(scaled, (label_w + gap, y), scaled)
     canvas.save(out_path)
 
 
@@ -245,7 +274,11 @@ def main() -> None:
         strip_out = class_dir / f"{class_id}_directions_4x.png"
         preview_out = class_dir / f"{class_id}_preview.gif"
         export_sheet(sheet, sheet_out)
-        export_row_strip(rows, strip_out)
+        raw_rows = find_raw_rows(source_dir, class_id)
+        if raw_rows:
+            export_raw_row_strip(raw_rows, strip_out)
+        else:
+            export_row_strip(rows, strip_out)
         preview_gif(rows, preview_out)
 
         entry = {

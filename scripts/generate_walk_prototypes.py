@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+from collections import deque
 import io
 import json
 import os
@@ -194,7 +195,7 @@ def generate_image(parts: list[dict], *, aspect_ratio: str) -> Image.Image:
     raise RuntimeError("No image part in Gemini response")
 
 
-def remove_magenta(img: Image.Image) -> Image.Image:
+def remove_background(img: Image.Image) -> Image.Image:
     img = img.convert("RGBA")
     px = img.load()
     for y in range(img.height):
@@ -202,6 +203,33 @@ def remove_magenta(img: Image.Image) -> Image.Image:
             r, g, b, a = px[x, y]
             if a and r > 120 and b > 120 and g < 120:
                 px[x, y] = (0, 0, 0, 0)
+
+    # Flood-fill edge-connected black padding to transparent without nuking
+    # interior dark outline pixels on the sprite itself.
+    w, h = img.size
+    queue = deque()
+    seen: set[tuple[int, int]] = set()
+
+    def is_bg(x: int, y: int) -> bool:
+        r, g, b, a = px[x, y]
+        return a > 0 and r < 24 and g < 24 and b < 24
+
+    for x in range(w):
+        queue.append((x, 0))
+        queue.append((x, h - 1))
+    for y in range(h):
+        queue.append((0, y))
+        queue.append((w - 1, y))
+
+    while queue:
+        x, y = queue.popleft()
+        if (x, y) in seen or not (0 <= x < w and 0 <= y < h):
+            continue
+        seen.add((x, y))
+        if not is_bg(x, y):
+            continue
+        px[x, y] = (0, 0, 0, 0)
+        queue.extend(((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)))
     return img
 
 
@@ -264,7 +292,7 @@ def main() -> None:
             ],
             aspect_ratio="16:9",
         )
-        img = fit_row(remove_magenta(img))
+        img = fit_row(remove_background(img))
         img.save(out_path)
         row_images.append(img)
         print(f"saved {out_path}")
