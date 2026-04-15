@@ -32,11 +32,11 @@ const BASE_FRAME = {
 async function startGame(page) {
   await page.goto("/");
   await page.waitForFunction(() => !!window.__kithlandsTest);
-  await page.waitForFunction(() => window.__kithlandsTest.sceneIsActive("Title"));
-  await page.evaluate(() => window.__kithlandsTest.startQuickGame());
-  await page.waitForFunction(
-    () => window.__kithlandsTest.activeSceneKey() === "World",
+  await page.waitForFunction(() =>
+    window.__kithlandsTest.sceneIsActive("Title"),
   );
+  await page.evaluate(() => window.__kithlandsTest.startQuickGame());
+  await page.evaluate(() => window.__kithlandsTest.waitForSceneReady("World"));
 }
 
 async function restartSceneWithLeaderClass(page, sceneKey, classId) {
@@ -45,17 +45,10 @@ async function restartSceneWithLeaderClass(page, sceneKey, classId) {
       window.__kithlandsTest.restartSceneWithLeaderClass(classId, sceneKey),
     { classId, sceneKey },
   );
-  await page.waitForFunction(
+  await page.evaluate(
     ({ sceneKey, classId }) =>
-      window.__kithlandsTest.sceneIsActive(sceneKey) &&
-      window.__kithlandsTest.gameState(sceneKey)?.party?.[0]?.class_id ===
-        classId,
+      window.__kithlandsTest.waitForSceneReady(sceneKey, classId),
     { sceneKey, classId },
-  );
-  await page.waitForFunction(
-    ({ sceneKey }) =>
-      !!window.__kithlandsTest.findStraightAuditAnchor("down", 1, sceneKey),
-    { sceneKey },
   );
 }
 
@@ -105,7 +98,7 @@ async function auditClassScene(page, sceneKey, classId) {
       BASE_FRAME[dir] + 2,
       BASE_FRAME[dir] + 3,
     ]);
-    expect(sequence[1].frameHash).not.toBe(sequence[0].frameHash);
+    expect(new Set(sequence.map((step) => step.frameHash)).size).toBe(4);
   }
 
   const perDirection = {};

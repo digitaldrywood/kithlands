@@ -2,17 +2,19 @@
 """Generate per-class walk sprite sheets from the class overworld art.
 
 Creates a 512x512 PNG per class with 4 rows (down/up/left/right) x 4 cols
-(walk cycle frames). Walk animation is a subtle vertical bob:
-  frame 0: base position
-  frame 1: shifted up 2px (mid-step)
-  frame 2: base position (other foot)
-  frame 3: shifted up 2px (mid-step return)
+(walk cycle frames). Each row uses four distinct poses:
+  frame 0: idle A
+  frame 1: left-foot stride
+  frame 2: idle B (counter-sway)
+  frame 3: right-foot stride
 
 The previous version mixed a class-specific south row with generic
 player_{dir}.png rows for the other directions. That preserved directionality
 but broke character identity: moving left/right/up visibly swapped the party
 leader into an unrelated placeholder human. This generator keeps every row
-class-consistent by deriving directional variants from the class sprite itself.
+class-consistent by deriving directional variants from the class sprite itself
+and then animating body segments so movement reads like a walk cycle instead of
+a simple vertical bob.
 
 Usage:
   python3 scripts/generate_walk_sheets.py
@@ -36,8 +38,6 @@ CLASSES = [
 ]
 
 DIRS = ["down", "up", "left", "right"]
-
-BOB_OFFSETS = [0, -2, 0, -2]
 
 
 try:
@@ -102,6 +102,157 @@ def directional_variants(class_id: str) -> dict[str, Image.Image]:
     }
 
 
+def alpha_bbox(img: Image.Image) -> tuple[int, int, int, int]:
+    bbox = img.getbbox()
+    if bbox is None:
+        return (0, 0, CELL, CELL)
+    return bbox
+
+
+def split_segments(base: Image.Image) -> tuple[dict[str, tuple[int, int, int, int]], tuple[int, int, int, int]]:
+    bbox = alpha_bbox(base)
+    x0, y0, x1, y1 = bbox
+    width = x1 - x0
+    height = y1 - y0
+    cx = x0 + width // 2
+
+    head_y = y0 + int(height * 0.22)
+    chest_y = y0 + int(height * 0.58)
+    waist_y = y0 + int(height * 0.72)
+    left_arm_x = x0 + int(width * 0.28)
+    right_arm_x = x1 - int(width * 0.28)
+    overlap = max(2, height // 32)
+
+    segments = {
+        "head": (x0, y0, x1, min(y1, head_y + overlap)),
+        "torso": (
+            left_arm_x,
+            max(y0, head_y - overlap),
+            right_arm_x,
+            min(y1, chest_y + overlap),
+        ),
+        "left_arm": (x0, max(y0, head_y - overlap), left_arm_x, min(y1, chest_y + overlap * 2)),
+        "right_arm": (
+            right_arm_x,
+            max(y0, head_y - overlap),
+            x1,
+            min(y1, chest_y + overlap * 2),
+        ),
+        "hips": (x0, max(y0, chest_y - overlap), x1, min(y1, waist_y + overlap)),
+        "left_leg": (x0, max(y0, waist_y - overlap), cx + overlap, y1),
+        "right_leg": (max(x0, cx - overlap), max(y0, waist_y - overlap), x1, y1),
+    }
+    return segments, bbox
+
+
+def frame_offsets(direction: str) -> list[dict[str, tuple[int, int]]]:
+    if direction in ("down", "up"):
+        return [
+            {
+                "head": (0, 0),
+                "torso": (-2, 0),
+                "left_arm": (-2, 0),
+                "right_arm": (2, 0),
+                "hips": (0, 0),
+                "left_leg": (0, 0),
+                "right_leg": (0, 0),
+            },
+            {
+                "head": (-2, -1),
+                "torso": (-4, -1),
+                "left_arm": (3, 1),
+                "right_arm": (-3, -1),
+                "hips": (-2, 0),
+                "left_leg": (-6, 2),
+                "right_leg": (4, -1),
+            },
+            {
+                "head": (0, 0),
+                "torso": (2, 0),
+                "left_arm": (2, 0),
+                "right_arm": (-2, 0),
+                "hips": (0, 0),
+                "left_leg": (2, 0),
+                "right_leg": (-2, 0),
+            },
+            {
+                "head": (2, -1),
+                "torso": (4, -1),
+                "left_arm": (-3, -1),
+                "right_arm": (3, 1),
+                "hips": (2, 0),
+                "left_leg": (4, -1),
+                "right_leg": (-6, 2),
+            },
+        ]
+
+    return [
+        {
+            "head": (0, 0),
+            "torso": (0, 0),
+            "left_arm": (-2, 0),
+            "right_arm": (2, 0),
+            "hips": (0, 0),
+            "left_leg": (0, 0),
+            "right_leg": (0, 0),
+        },
+        {
+            "head": (-2, -1),
+            "torso": (-2, -1),
+            "left_arm": (4, 1),
+            "right_arm": (-2, -1),
+            "hips": (0, 0),
+            "left_leg": (6, 1),
+            "right_leg": (-4, 0),
+        },
+        {
+            "head": (0, 0),
+            "torso": (0, 0),
+            "left_arm": (2, 0),
+            "right_arm": (-2, 0),
+            "hips": (0, 0),
+            "left_leg": (2, 0),
+            "right_leg": (-2, 0),
+        },
+        {
+            "head": (2, -1),
+            "torso": (2, -1),
+            "left_arm": (-2, -1),
+            "right_arm": (4, 1),
+            "hips": (0, 0),
+            "left_leg": (-4, 0),
+            "right_leg": (6, 1),
+        },
+    ]
+
+
+def pose_frame(base: Image.Image, direction: str, frame_idx: int) -> Image.Image:
+    segments, bbox = split_segments(base)
+    offsets = frame_offsets(direction)[frame_idx]
+    frame = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
+
+    # Paint back-to-front so stride pieces overlap naturally.
+    draw_order = ["left_leg", "right_leg", "hips", "torso", "left_arm", "right_arm", "head"]
+    for key in draw_order:
+        region = segments[key]
+        part = base.crop(region)
+        dx, dy = offsets[key]
+        frame.paste(part, (region[0] + dx, region[1] + dy), part)
+
+    # Keep the feet grounded if the stride lifted the whole silhouette.
+    new_bbox = frame.getbbox()
+    if new_bbox:
+        _, _, _, y1 = bbox
+        _, _, _, new_y1 = new_bbox
+        foot_adjust = y1 - new_y1
+        if foot_adjust:
+            grounded = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
+            grounded.paste(frame, (0, foot_adjust), frame)
+            frame = grounded
+
+    return frame
+
+
 def make_walk_sheet(class_id: str) -> Image.Image:
     """Build a 512x512 walk sheet for one class."""
     sheet = Image.new("RGBA", (SHEET, SHEET), (0, 0, 0, 0))
@@ -110,9 +261,7 @@ def make_walk_sheet(class_id: str) -> Image.Image:
     for row_idx, direction in enumerate(DIRS):
         base = variants[direction]
         for col_idx in range(4):
-            frame = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
-            y_offset = BOB_OFFSETS[col_idx]
-            frame.paste(base, (0, y_offset), base)
+            frame = pose_frame(base, direction, col_idx)
             sheet.paste(frame, (col_idx * CELL, row_idx * CELL))
 
     return sheet

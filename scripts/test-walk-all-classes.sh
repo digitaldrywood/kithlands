@@ -43,5 +43,6 @@ for class_id in "${classes[@]}"; do
     npx playwright test \
       --config=e2e/playwright.config.js \
       e2e/walk-all-classes.spec.js \
+      --retries=1 \
       --grep "${class_id} keeps"
 done

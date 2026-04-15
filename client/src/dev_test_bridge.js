@@ -85,6 +85,10 @@ function waitFor(check, timeoutMs = 5000, intervalMs = 25) {
   });
 }
 
+function nextFrame() {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
+
 function clickGameObject(obj) {
   if (!obj || typeof obj.emit !== "function") {
     throw new Error("Interactive game object not found");
@@ -432,7 +436,20 @@ export function installDevTestBridge(game) {
       }
       await waitFor(() => !!title.statusText);
       await title.startGame({ value: email }, true);
+      await this.waitForSceneReady("World");
       return this.gameState("World");
+    },
+
+    async waitForSceneReady(sceneKey, leaderClass = null) {
+      await waitFor(() => {
+        const scene = getScene(game, sceneKey);
+        if (!game.scene.isActive(sceneKey) || !scene?.player) return false;
+        if (leaderClass && scene.leaderClass !== leaderClass) return false;
+        return true;
+      });
+      await nextFrame();
+      await nextFrame();
+      return this.sceneAuditInfo(sceneKey);
     },
 
     walkSheetClassIds() {
