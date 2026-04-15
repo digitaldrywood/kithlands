@@ -1959,8 +1959,10 @@ export class BattleScene extends Phaser.Scene {
       });
       // Fallback: if the tween never completes (scene transition, engine
       // hiccup), force-hide after 600ms so the sprite never lingers.
+      // resolve() is safe to call twice — second call is a no-op.
       this.time.delayedCall(600, () => {
         if (!ee.dead) this.hideEnemyElements(ee);
+        resolve();
       });
     });
   }
