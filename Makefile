@@ -1,4 +1,4 @@
-.PHONY: play stop run test test-e2e test-scripts test-worktree-lifecycle test-visual test-walk-classes test-visual-local test-visual-update build demo migrate setup-db teardown-db balance-sim simulate validate-data client-dev client-build lint vet fmt pre-commit docker-up docker-down
+.PHONY: play stop run test test-e2e test-scripts test-worktree-lifecycle test-visual test-walk-classes walk-previews test-visual-local test-visual-update build demo migrate setup-db teardown-db balance-sim simulate validate-data client-dev client-build lint vet fmt pre-commit docker-up docker-down
 
 # Per-worktree isolation: these are populated by scripts/worktree-env.sh via
 # direnv. Defaults below keep the Makefile usable without direnv (for CI, or
@@ -80,6 +80,11 @@ test-visual:
 # all 12 classes are verified in both World and Town without cross-test state.
 test-walk-classes:
 	@./scripts/test-walk-all-classes.sh
+
+# Export enlarged sheets plus animated GIF previews for every generated walk
+# sheet under client/tmp/walk-previews so humans can inspect the actual motion.
+walk-previews:
+	@python3 scripts/export_walk_previews.py
 
 # Stable local proof harness for issue-scoped Playwright checks. Boots the
 # worktree stack on its derived ports, then runs the requested spec.

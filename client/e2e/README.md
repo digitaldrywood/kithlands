@@ -28,6 +28,7 @@ npx playwright install chromium
 KITHLANDS_DEBUG=1 make play
 make test-visual
 make test-walk-classes
+make walk-previews
 ```
 
 `make test-visual` runs every Playwright spec under `client/e2e`, including the
@@ -36,6 +37,11 @@ working party-menu equip flow.
 `make test-walk-classes` is the exhaustive walk-sheet proof path. It runs the
 `walk-all-classes.spec.js` audit once per class in a fresh browser process so
 all 12 classes are checked in both `World` and `Town` without cross-test state.
+
+`make walk-previews` exports enlarged sheets and animated GIFs for every class
+under `client/tmp/walk-previews/`. Open `client/tmp/walk-previews/index.html`
+to review the actual motion class-by-class before accepting any generated walk
+assets.
 
 ## Sprite debugger
 
