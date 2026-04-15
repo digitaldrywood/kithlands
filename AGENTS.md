@@ -1,0 +1,220 @@
+# Kithlands Agent Guide
+
+This is the operational source of truth for Codex and other coding agents
+working in this repository.
+
+Read this file first. Then read the supporting docs it points to for the task
+you are actually doing.
+
+## 1. First Session Checklist
+
+Before making claims, plans, or code changes:
+
+1. Read this file.
+2. Read the relevant section of [docs/KITHLANDS_DESIGN.md](docs/KITHLANDS_DESIGN.md).
+3. Read [docs/decisions/ADR-001-demo-cut-first.md](docs/decisions/ADR-001-demo-cut-first.md).
+4. Check the current repo state with `git status --short`.
+5. Verify the task against the actual code and behavior. Do not trust prior
+   chat summaries, issue titles, or merged PR titles.
+
+## 2. Product Rules
+
+These are not optional.
+
+- The server is authoritative. Combat, progression, saves, quest state, and
+  mechanics belong in Go.
+- The Phaser client is a renderer and input layer. Do not move game rules into
+  the client.
+- All content belongs in `shared/`. Do not hardcode classes, spells, monsters,
+  items, quest templates, flavors, or transportation data in Go or JS.
+- The game must remain playable when the LLM is disabled. LLM output is flavor,
+  never structural logic.
+- Do not use browser storage for persistent game state.
+- Keep the game safe for minors. Reject borderline generated content.
+- Prefer maintainability over cleverness.
+
+Design basis:
+
+- `docs/KITHLANDS_DESIGN.md` Section 1: principles and constraints
+- `docs/KITHLANDS_DESIGN.md` Section 2: structure first, LLM second
+- `docs/KITHLANDS_DESIGN.md` Section 18.3: demo cut scope
+
+## 3. Branching And Base Rules
+
+- Keep `main` clean and playable.
+- Start feature work from `origin/main`, not local `main`.
+- Use git worktrees for parallel work.
+- Commit and push after each coherent chunk. Do not let important work sit only
+  in a dirty worktree.
+- If a cherry-pick or salvage pulls unrelated files, stop and port only the
+  required hunks.
+
+See [docs/CODEX_PR_WORKFLOW.md](docs/CODEX_PR_WORKFLOW.md).
+
+## 4. OpenClaw Execution Model
+
+If OpenClaw or any unattended worker is used on this repo, follow these rules:
+
+- Keep heartbeat disabled. Heartbeat is not the worker and must not choose or
+  continue issues on its own.
+- Use Slack DM as the control plane. Start work explicitly per issue or PR.
+- Work one issue at a time.
+- Stay on the active issue until one of these happens:
+  1. a commit is pushed
+  2. a PR is opened or updated
+  3. one precise blocker is reached
+- Use the single state file at
+  `.openclaw/workspace/memory/projects.md` as the source of truth for:
+  - active issue
+  - active branch/worktree
+  - derived ports
+  - current blocker
+  - last proof produced
+  - next step
+- For long-lived services, use managed background processes if the agent
+  runtime supports them. Do not rely on shell backgrounding for unattended
+  server/client sessions.
+
+See [docs/CODEX_OPENCLAW_WORKFLOW.md](docs/CODEX_OPENCLAW_WORKFLOW.md).
+
+## 5. Worktree And Port Model
+
+This repo is set up for parallel workers.
+
+- `scripts/worktree-env.sh` derives a deterministic per-worktree:
+  - `PORT`
+  - `VITE_PORT`
+  - `API_PORT`
+  - `DB_NAME`
+  - `DATABASE_URL`
+  - `WORKTREE_OFFSET`
+- `.envrc` sources that script automatically when direnv is allowed.
+- Secrets and local overrides belong in `.envrc.local`, never committed files.
+- Browser automation must use worktree-local state under `client/tmp/` instead
+  of shared global Chrome or Playwright profiles.
+
+See [docs/CODEX_WORKTREE_GUIDE.md](docs/CODEX_WORKTREE_GUIDE.md).
+
+## 6. Priority Order
+
+When choosing between possible tasks, use this order:
+
+1. active PR review comments
+2. merge-conflicted or broken PRs
+3. the explicitly assigned active issue
+4. bug or regression issues
+5. audit / cleanup issues
+6. features, oldest first
+
+Do not auto-pick a new issue if the active issue or PR is still in flight.
+
+## 7. Required Validation
+
+Minimum validation depends on what changed.
+
+### Backend Or Shared Data
+
+- `make test`
+- `make validate-data` if `shared/` changed
+- `make balance-sim` or `make simulate` if combat, progression, quests, or
+  transport pacing changed
+
+### Client Or Visible UX
+
+- `cd client && npm test` or targeted `vitest` command
+- `cd client && npm run build` or `make client-build`
+- Run the actual screen flow for user-visible changes
+
+### DB Or Full Integration
+
+- `make test-e2e`
+
+### CI-Equivalent Local Gate
+
+The current GitHub Actions CI runs:
+
+- `cd server && go vet ./...`
+- `cd server && go build ./...`
+- `cd server && go test -race ./...`
+- `cd server && golangci-lint run ./...`
+- `cd server && go run ./cmd/balance_sim -battles=10 -shared=../shared`
+- JSON parse validation across `shared/`
+- `cd server && go run ./cmd/validate_gamedata -shared=../shared`
+- `cd client && npm ci`
+- `cd client && npm run build`
+- `cd client && npx prettier --check --ignore-path .gitignore .`
+
+See [docs/CODEX_VALIDATION.md](docs/CODEX_VALIDATION.md).
+
+## 8. Proof Contract
+
+Every agent status update should report:
+
+- issue number
+- branch name
+- latest pushed commit SHA
+- exact commands run
+- exact targeted tests run
+- simulator commands if gameplay or balance changed
+- browser or Playwright proof if UI or visual behavior changed
+- screenshot filenames
+- PR URL or one precise blocker
+
+Proof rules:
+
+- screenshot filenames must be unique per run
+- do not reuse deterministic filenames as “progress proof”
+- if OpenClaw needs to attach screenshots out-of-band, copy them to
+  `~/.openclaw/workspace/tmp/` first
+- visual proof is mandatory for user-visible work
+
+## 9. Visual Verification Rules
+
+Tests are not enough for visible work.
+
+- Any sprite, layout, animation, menu, or rendering change needs visual
+  verification before you describe it as working.
+- For Playwright proof paths, inspect the screenshot output. Do not treat
+  “screenshot captured” as validation.
+- For generated sprite sheets, inspect the actual frames.
+- Prefer running the game over reasoning from code when the change is visible.
+
+The local Playwright wrapper already uses worktree-local ports and browser
+state:
+
+- `./scripts/run_playwright_local.sh e2e/<spec>.spec.js`
+
+## 10. Repo Map
+
+- `server/`: Go backend and authoritative game logic
+- `server/internal/`: combat, progression, balance, locality, inventory,
+  generator, save, sprites, transport, safety
+- `server/cmd/kithlands`: main server
+- `server/cmd/balance_sim`: combat balance smoke command
+- `server/cmd/simulate`: headless Monte Carlo campaign simulator
+- `server/cmd/validate_gamedata`: semantic validation for `shared/`
+- `client/src/`: Phaser client
+- `client/e2e/`: Playwright proof and visual test scaffolding
+- `shared/`: JSON game content and flavor data
+- `docs/`: design doc, ADRs, and agent workflow docs
+
+## 11. Supporting Docs
+
+Use these after reading `AGENTS.md`:
+
+- [docs/CODEX_WORKTREE_GUIDE.md](docs/CODEX_WORKTREE_GUIDE.md)
+  Worktrees, ports, databases, direnv, and browser isolation.
+- [docs/CODEX_VALIDATION.md](docs/CODEX_VALIDATION.md)
+  Validation matrix, CI parity, simulator usage, and Playwright proof flow.
+- [docs/CODEX_PR_WORKFLOW.md](docs/CODEX_PR_WORKFLOW.md)
+  Branching, commit cadence, PR expectations, review, merge, and cleanup.
+- [docs/CODEX_OPENCLAW_WORKFLOW.md](docs/CODEX_OPENCLAW_WORKFLOW.md)
+  Slack-controlled one-issue-at-a-time workflow, stop conditions, and state.
+- [docs/KITHLANDS_DESIGN.md](docs/KITHLANDS_DESIGN.md)
+  Product and architecture source of truth.
+
+## 12. Legacy Files
+
+- `CLAUDE.md` and `CLAUDE.local.md` are compatibility shims for older tooling.
+  They are not the primary source of truth anymore.
+- `AGENTS.md` and the `docs/CODEX_*.md` files should win if guidance overlaps.
