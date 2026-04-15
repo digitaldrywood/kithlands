@@ -3,505 +3,831 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Kithlands - Sprite Gallery (Dev)</title>
+    <title>Kithlands Sprite Debugger</title>
     <style>
+      :root {
+        --bg: #0d1321;
+        --panel: #182033;
+        --panel-2: #101827;
+        --ink: #eef4ff;
+        --muted: #9aadc9;
+        --line: #2a3550;
+        --gold: #f6c945;
+        --cyan: #68d5ff;
+        --green: #88e283;
+        --rose: #ff8f8f;
+      }
+
       * {
+        box-sizing: border-box;
         margin: 0;
         padding: 0;
-        box-sizing: border-box;
       }
+
       body {
-        background: #1a1a2e;
-        color: #e0e0e0;
+        background:
+          radial-gradient(
+            circle at top,
+            rgba(104, 213, 255, 0.12),
+            transparent 32%
+          ),
+          linear-gradient(180deg, #10172a 0%, var(--bg) 60%);
+        color: var(--ink);
         font-family: "Courier New", monospace;
+        min-height: 100vh;
         padding: 24px;
       }
-      h1 {
-        text-align: center;
-        color: #ffd700;
-        font-size: 28px;
-        margin-bottom: 8px;
+
+      a {
+        color: var(--cyan);
+      }
+
+      .page {
+        margin: 0 auto;
+        max-width: 1520px;
+      }
+
+      .hero {
+        display: grid;
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+
+      .hero h1 {
+        color: var(--gold);
+        font-size: clamp(28px, 5vw, 44px);
         letter-spacing: 2px;
       }
-      .subtitle {
-        text-align: center;
-        color: #888;
-        font-size: 12px;
-        margin-bottom: 32px;
+
+      .hero p {
+        color: var(--muted);
+        max-width: 960px;
       }
-      .controls {
-        text-align: center;
-        margin-bottom: 24px;
+
+      .toolbar,
+      .status-grid {
+        display: grid;
+        gap: 12px;
       }
-      .controls label {
-        color: #aaa;
-        margin-right: 8px;
+
+      .toolbar {
+        align-items: start;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        margin-bottom: 28px;
       }
-      .btn {
-        background: #16213e;
-        color: #ffd700;
-        border: 1px solid #444;
-        padding: 4px 12px;
-        cursor: pointer;
-        font-family: inherit;
-        font-size: 13px;
-        margin: 0 2px;
+
+      .status-grid {
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        margin-bottom: 28px;
       }
-      .btn:hover {
-        background: #1a1a4e;
+
+      .panel {
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.03),
+          rgba(255, 255, 255, 0.01)
+        );
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 16px;
       }
-      .btn.active {
-        border-color: #ffd700;
-        background: #2a2a4e;
-      }
-      section {
-        margin-bottom: 40px;
-      }
-      h2 {
-        color: #4fc3f7;
-        font-size: 18px;
-        border-bottom: 1px solid #333;
-        padding-bottom: 6px;
-        margin-bottom: 16px;
-      }
-      h2 .count {
-        color: #666;
-        font-weight: normal;
-        font-size: 13px;
-      }
-      .grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 16px;
-      }
-      .sprite-card {
-        background: #16213e;
-        border: 1px solid #333;
-        border-radius: 4px;
-        padding: 12px;
-        text-align: center;
-        transition: border-color 0.2s;
-      }
-      .sprite-card:hover {
-        border-color: #4fc3f7;
-      }
-      .sprite-card img {
-        image-rendering: auto;
-        display: block;
-        margin: 0 auto 8px;
-      }
-      .sprite-card .name {
-        font-size: 11px;
-        color: #ccc;
-        word-break: break-all;
-      }
-      .bg-dark {
-        background-color: #111;
-        display: inline-block;
-        padding: 4px;
-      }
-      .bg-checker {
-        background-image:
-          linear-gradient(45deg, #222 25%, transparent 25%),
-          linear-gradient(-45deg, #222 25%, transparent 25%),
-          linear-gradient(45deg, transparent 75%, #222 75%),
-          linear-gradient(-45deg, transparent 75%, #222 75%);
-        background-size: 8px 8px;
-        background-position:
-          0 0,
-          0 4px,
-          4px -4px,
-          -4px 0px;
-        display: inline-block;
-        padding: 4px;
-      }
-      .bg-light {
-        background-color: #ddd;
-        display: inline-block;
-        padding: 4px;
-      }
-      .walk-group {
-        display: flex;
-        gap: 4px;
-        justify-content: center;
+
+      .panel h2,
+      .panel h3 {
         margin-bottom: 8px;
       }
-      .walk-group img {
-        margin: 0 !important;
+
+      .panel p,
+      .panel li {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      .panel ul {
+        list-style: none;
+        display: grid;
+        gap: 6px;
+      }
+
+      .panel strong {
+        color: var(--ink);
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .btn {
+        appearance: none;
+        background: #121b2e;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: var(--ink);
+        cursor: pointer;
+        font: inherit;
+        padding: 8px 14px;
+      }
+
+      .btn.active {
+        background: rgba(246, 201, 69, 0.14);
+        border-color: var(--gold);
+        color: var(--gold);
+      }
+
+      .meta-list {
+        display: grid;
+        gap: 6px;
+      }
+
+      .meta-line {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .section {
+        margin-bottom: 34px;
+      }
+
+      .section-head {
+        align-items: end;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+        margin-bottom: 16px;
+        padding-bottom: 10px;
+      }
+
+      .section-head h2 {
+        color: var(--cyan);
+        font-size: 22px;
+      }
+
+      .section-head p {
+        color: var(--muted);
+        font-size: 13px;
+        max-width: 780px;
+      }
+
+      .asset-grid,
+      .walk-grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      .asset-grid {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      }
+
+      .walk-grid {
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      }
+
+      .card {
+        background: linear-gradient(
+          180deg,
+          rgba(24, 32, 51, 0.92),
+          rgba(16, 24, 39, 0.96)
+        );
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        overflow: hidden;
+      }
+
+      .card-header {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        display: grid;
+        gap: 8px;
+        padding: 14px 16px 12px;
+      }
+
+      .card-title {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: space-between;
+      }
+
+      .card-title h3 {
+        font-size: 17px;
+      }
+
+      .badge-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .badge {
+        border: 1px solid currentColor;
+        border-radius: 999px;
+        display: inline-flex;
+        font-size: 11px;
+        letter-spacing: 0.4px;
+        padding: 3px 8px;
+        text-transform: uppercase;
+      }
+
+      .badge.fallback {
+        color: var(--gold);
+      }
+
+      .badge.sheet {
+        color: var(--cyan);
+      }
+
+      .badge.reference {
+        color: var(--green);
+      }
+
+      .badge.warning {
+        color: var(--rose);
+      }
+
+      .card-path,
+      .card-meta {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .card-body {
+        display: grid;
+        gap: 14px;
+        padding: 16px;
+      }
+
+      .preview-wrap {
+        border-radius: 12px;
+        display: flex;
+        justify-content: center;
+        min-height: 120px;
+        padding: 12px;
+      }
+
+      .bg-dark {
+        background: #05070d;
+      }
+
+      .bg-light {
+        background: #e8edf8;
+      }
+
+      .bg-checker {
+        background-image:
+          linear-gradient(45deg, #182033 25%, transparent 25%),
+          linear-gradient(-45deg, #182033 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, #182033 75%),
+          linear-gradient(-45deg, transparent 75%, #182033 75%);
+        background-color: #0a101d;
+        background-position:
+          0 0,
+          0 8px,
+          8px -8px,
+          -8px 0;
+        background-size: 16px 16px;
+      }
+
+      .preview-wrap img,
+      .preview-wrap canvas {
+        display: block;
+        image-rendering: pixelated;
+        max-width: 100%;
+      }
+
+      .walk-sheet-layout {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: minmax(96px, 156px) minmax(0, 1fr);
+      }
+
+      .sheet-preview {
+        align-items: center;
+        display: flex;
+        justify-content: center;
+      }
+
+      .cell-grid {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .cell {
+        display: grid;
+        gap: 6px;
+      }
+
+      .cell-label {
+        color: var(--muted);
+        font-size: 11px;
+        text-align: center;
+      }
+
+      .cell canvas {
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        width: 100%;
+      }
+
+      .notice {
+        border-radius: 12px;
+        font-size: 13px;
+        line-height: 1.45;
+        padding: 12px 14px;
+      }
+
+      .notice.info {
+        background: rgba(104, 213, 255, 0.09);
+        border: 1px solid rgba(104, 213, 255, 0.22);
+        color: #c4efff;
+      }
+
+      .notice.warn {
+        background: rgba(255, 143, 143, 0.08);
+        border: 1px solid rgba(255, 143, 143, 0.2);
+        color: #ffd0d0;
+      }
+
+      .broken {
+        align-items: center;
+        color: var(--rose);
+        display: flex;
+        font-size: 13px;
+        justify-content: center;
+        min-height: 96px;
+        text-align: center;
+      }
+
+      .legend {
+        color: var(--muted);
+        display: flex;
+        flex-wrap: wrap;
+        font-size: 12px;
+        gap: 10px;
+      }
+
+      @media (max-width: 900px) {
+        body {
+          padding: 16px;
+        }
+
+        .walk-sheet-layout {
+          grid-template-columns: 1fr;
+        }
       }
     </style>
   </head>
   <body>
-    <h1>KITHLANDS SPRITE GALLERY</h1>
-    <p class="subtitle">Dev asset browser -- HD Pixel Remaster style</p>
+    <div class="page">
+      <header class="hero">
+        <h1>KITHLANDS SPRITE DEBUGGER</h1>
+        <p>
+          Developer surface for the current Vite stack. Use this page to verify
+          which directional sprites are runtime-safe, inspect every generated
+          class walk sheet cell-by-cell, and catch missing or mis-ordered rows
+          before enabling animated movement.
+        </p>
+      </header>
 
-    <div class="controls">
-      <label>Background:</label>
-      <button class="btn active" onclick="setBg('dark', event)">Dark</button>
-      <button class="btn" onclick="setBg('checker', event)">Checker</button>
-      <button class="btn" onclick="setBg('light', event)">Light</button>
+      <div class="toolbar">
+        <section class="panel">
+          <h2>Background</h2>
+          <p>
+            Swap backgrounds to catch transparency edges and silhouette issues.
+          </p>
+          <div class="controls">
+            <button class="btn active" data-bg="checker" type="button">
+              Checker
+            </button>
+            <button class="btn" data-bg="dark" type="button">Dark</button>
+            <button class="btn" data-bg="light" type="button">Light</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>How To Use</h2>
+          <ul>
+            <li>
+              <strong>Fallback Directionals:</strong> current safe runtime
+              movement art.
+            </li>
+            <li>
+              <strong>Generated Walk Sheets:</strong> on-disk 4x4 sheets, sliced
+              into cells.
+            </li>
+            <li>
+              <strong>Other Sprite Assets:</strong> quick browse for portraits,
+              monsters, NPCs, and UI.
+            </li>
+          </ul>
+        </section>
+
+        <section class="panel">
+          <h2>Expected Geometry</h2>
+          <div class="meta-list">
+            <div class="meta-line">
+              <strong>Directionals:</strong> 128x128 PNG
+            </div>
+            <div class="meta-line">
+              <strong>Walk sheets:</strong> 512x512 PNG
+            </div>
+            <div class="meta-line">
+              <strong>Walk cells:</strong> 4 rows x 4 columns at 128x128 each
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="status-grid">
+        <section class="panel">
+          <h2>Live URL</h2>
+          <p id="live-url">Loading current route...</p>
+        </section>
+        <section class="panel">
+          <h2>Runtime BootScene</h2>
+          <p id="runtime-status">Checking `client/src/scenes/boot.js`...</p>
+        </section>
+        <section class="panel">
+          <h2>Reason This Exists</h2>
+          <p>
+            Generated walk sheets are stored in `client/public/sprites/walk/`,
+            but the runtime should only enable them after row and cell
+            inspection passes. This page keeps that inspection on the main Vite
+            dev server instead of relying on stale ad-hoc URLs.
+          </p>
+        </section>
+      </div>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>Fallback Directional Sprites</h2>
+          <p>
+            These are the current fallback movement assets. If animated walk
+            sheets are disabled, these are the sprites the client can safely use
+            for directionally correct movement.
+          </p>
+        </div>
+        <div class="notice info">
+          `BootScene` currently loads these as plain images, independent of any
+          class walk-sheet enablement.
+        </div>
+        <div class="asset-grid" id="fallback-grid"></div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>Generated Class Walk Sheets</h2>
+          <p>
+            Every card shows the raw sheet and all 16 sliced cells. Use this to
+            verify row order, stance consistency, and bad frame mixes before
+            enabling a class in movement runtime code.
+          </p>
+        </div>
+        <div class="legend">
+          <span>`r0-c0` means row 0, column 0 within the 4x4 sheet.</span>
+          <span
+            >Compare against the fallback directional references above.</span
+          >
+        </div>
+        <div class="notice warn">
+          Missing images should be obvious here. The previous page silently
+          requested files like `walk_down_0.png` that no longer exist.
+        </div>
+        <div class="walk-grid" id="walk-grid"></div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>Other Sprite Assets</h2>
+          <p>
+            Supporting visual scan for battle portraits, monsters, NPCs, and UI
+            icons that commonly interact with sprite regressions.
+          </p>
+        </div>
+        <div class="asset-grid" id="portrait-grid"></div>
+        <div class="asset-grid" id="monster-grid"></div>
+        <div class="asset-grid" id="npc-grid"></div>
+        <div class="asset-grid" id="ui-grid"></div>
+      </section>
     </div>
 
-    <section>
-      <h2>
-        Class Battle Portraits <span class="count">(12) &mdash; 192x192</span>
-      </h2>
-      <div class="grid" id="grid-classes"></div>
-    </section>
-
-    <section>
-      <h2>Player Directional <span class="count">(4) &mdash; 128x128</span></h2>
-      <div class="grid" id="grid-player"></div>
-    </section>
-
-    <section>
-      <h2>Walk Animation <span class="count">(4 dirs x 4 frames)</span></h2>
-      <div class="grid" id="grid-walk"></div>
-    </section>
-
-    <section>
-      <h2>
-        Monsters
-        <span class="count">(18) &mdash; 256x256 / bosses 384x384</span>
-      </h2>
-      <div class="grid" id="grid-monsters"></div>
-    </section>
-
-    <section>
-      <h2>NPCs <span class="count">(6) &mdash; 128x128</span></h2>
-      <div class="grid" id="grid-npcs"></div>
-    </section>
-
-    <section>
-      <h2>
-        Overworld Tilesets
-        <span class="count"
-          >(13) &mdash; 16x16 native, tiled preview at 8x zoom</span
-        >
-      </h2>
-      <div class="grid" id="grid-tilesets"></div>
-    </section>
-
-    <section>
-      <h2>
-        Interior Tilesets
-        <span class="count"
-          >(9) &mdash; 16x16 native, tiled preview at 8x zoom</span
-        >
-      </h2>
-      <div class="grid" id="grid-interiors"></div>
-    </section>
-
-    <section>
-      <h2>UI Icons <span class="count">(11) &mdash; 64x64</span></h2>
-      <div class="grid" id="grid-ui-icons"></div>
-    </section>
-
-    <section>
-      <h2>UI Borders <span class="count">(9) &mdash; 64x64</span></h2>
-      <div class="grid" id="grid-ui-borders"></div>
-    </section>
-
-    <section>
-      <h2>HP Bar Elements <span class="count">(3) &mdash; 192x192</span></h2>
-      <div class="grid" id="grid-ui-hp"></div>
-    </section>
-
     <script>
-      let currentBg = "dark";
+      const BACKGROUNDS = ["checker", "dark", "light"];
+      const WALK_SHEETS = [
+        "warrior",
+        "brawler",
+        "rogue",
+        "mender",
+        "cinder",
+        "wayfarer",
+        "knight",
+        "champion",
+        "shadow",
+        "sage",
+        "pyromancer",
+        "wanderer",
+      ];
+      const FALLBACK_DIRECTIONALS = [
+        { name: "player_down", size: 128 },
+        { name: "player_up", size: 128 },
+        { name: "player_left", size: 128 },
+        { name: "player_right", size: 128 },
+      ];
+      const PORTRAITS = WALK_SHEETS.map((name) => ({ name, size: 192 }));
+      const MONSTERS = [
+        { name: "slime", size: 256 },
+        { name: "goblin", size: 256 },
+        { name: "wolf", size: 256 },
+        { name: "skeleton", size: 256 },
+        { name: "bat", size: 256 },
+        { name: "rat", size: 256 },
+        { name: "snake", size: 256 },
+        { name: "spider", size: 256 },
+        { name: "orc", size: 256 },
+        { name: "ghost", size: 256 },
+        { name: "bandit", size: 256 },
+        { name: "troll", size: 256 },
+        { name: "wyvern", size: 256 },
+        { name: "lich", size: 256 },
+        { name: "golem", size: 256 },
+        { name: "demon", size: 256 },
+        { name: "dark_knight", size: 384 },
+        { name: "dragon", size: 384 },
+      ];
+      const NPCS = [
+        { name: "elder", size: 128 },
+        { name: "merchant", size: 128 },
+        { name: "blacksmith", size: 128 },
+        { name: "innkeeper", size: 128 },
+        { name: "priestess", size: 128 },
+        { name: "guard", size: 128 },
+      ];
+      const UI = [
+        { name: "icon_sword", size: 64 },
+        { name: "icon_shield", size: 64 },
+        { name: "icon_potion", size: 64 },
+        { name: "icon_spell", size: 64 },
+        { name: "icon_gold", size: 64 },
+        { name: "icon_xp", size: 64 },
+        { name: "icon_poison", size: 64 },
+        { name: "icon_sleep", size: 64 },
+        { name: "icon_mute", size: 64 },
+        { name: "icon_slow", size: 64 },
+        { name: "icon_paralyze", size: 64 },
+        { name: "icon_confuse", size: 64 },
+      ];
 
-      const SECTIONS = {
-        classes: {
-          grid: "grid-classes",
-          base: "sprites/",
-          display: 160,
-          items: [
-            "warrior",
-            "brawler",
-            "rogue",
-            "mender",
-            "cinder",
-            "wayfarer",
-            "knight",
-            "champion",
-            "shadow",
-            "sage",
-            "pyromancer",
-            "wanderer",
-          ],
-        },
-        player: {
-          grid: "grid-player",
-          base: "sprites/",
-          display: 120,
-          items: ["player_down", "player_up", "player_left", "player_right"],
-        },
-        walk: {
-          grid: "grid-walk",
-          base: "sprites/walk/",
-          display: 72,
-          grouped: true,
-          groups: {
-            Down: ["walk_down_0", "walk_down_1", "walk_down_2", "walk_down_3"],
-            Up: ["walk_up_0", "walk_up_1", "walk_up_2", "walk_up_3"],
-            Left: ["walk_left_0", "walk_left_1", "walk_left_2", "walk_left_3"],
-            Right: [
-              "walk_right_0",
-              "walk_right_1",
-              "walk_right_2",
-              "walk_right_3",
-            ],
-          },
-        },
-        monsters: {
-          grid: "grid-monsters",
-          base: "sprites/monsters/",
-          display: 160,
-          items: [
-            "slime",
-            "goblin",
-            "wolf",
-            "skeleton",
-            "bat",
-            "rat",
-            "snake",
-            "spider",
-            "orc",
-            "ghost",
-            "bandit",
-            "troll",
-            "wyvern",
-            "lich",
-            "golem",
-            "demon",
-            "dark_knight",
-            "dragon",
-          ],
-          displayOverrides: { dark_knight: 200, dragon: 200 },
-        },
-        npcs: {
-          grid: "grid-npcs",
-          base: "sprites/npcs/",
-          display: 120,
-          items: [
-            "elder",
-            "merchant",
-            "blacksmith",
-            "innkeeper",
-            "priestess",
-            "guard",
-          ],
-        },
-        tilesets: {
-          grid: "grid-tilesets",
-          base: "tilesets/",
-          tiled: true,
-          tilePx: 32,
-          repeats: 4,
-          items: [
-            "grass",
-            "path",
-            "water",
-            "tree",
-            "building",
-            "door",
-            "floor",
-            "rock",
-            "bush",
-            "dark_grass",
-            "forest",
-            "hill",
-            "sand",
-          ],
-        },
-        interiors: {
-          grid: "grid-interiors",
-          base: "tilesets/interiors/",
-          tiled: true,
-          tilePx: 32,
-          repeats: 4,
-          items: [
-            "shop_floor",
-            "inn_floor",
-            "temple_floor",
-            "wooden_wall",
-            "stone_wall",
-            "counter",
-            "bookshelf",
-            "bed",
-            "altar",
-          ],
-        },
-        "ui-icons": {
-          grid: "grid-ui-icons",
-          base: "sprites/ui/",
-          display: 80,
-          items: [
-            "icon_sword",
-            "icon_shield",
-            "icon_potion",
-            "icon_spell",
-            "icon_gold",
-            "icon_xp",
-            "icon_poison",
-            "icon_sleep",
-            "icon_mute",
-            "icon_slow",
-            "icon_paralyze",
-          ],
-        },
-        "ui-borders": {
-          grid: "grid-ui-borders",
-          base: "sprites/ui/",
-          display: 80,
-          items: [
-            "border_tl",
-            "border_t",
-            "border_tr",
-            "border_l",
-            "border_fill",
-            "border_r",
-            "border_bl",
-            "border_b",
-            "border_br",
-          ],
-        },
-        "ui-hp": {
-          grid: "grid-ui-hp",
-          base: "sprites/ui/",
-          display: 180,
-          items: ["hp_bar_frame", "hp_bar_fill", "hp_bar_empty"],
-        },
-      };
-
-      function bgClass() {
-        return currentBg === "checker"
-          ? "bg-checker"
-          : currentBg === "light"
-            ? "bg-light"
-            : "bg-dark";
-      }
+      let currentBg = "checker";
 
       function label(name) {
         return name.replace(/_/g, " ");
       }
 
-      function makeCard(src, name, display) {
-        const card = document.createElement("div");
-        card.className = "sprite-card";
-        const wrap = document.createElement("div");
-        wrap.className = bgClass();
-        const img = document.createElement("img");
-        img.src = src;
-        img.width = display;
-        img.height = display;
-        wrap.appendChild(img);
-        card.appendChild(wrap);
-        const nameDiv = document.createElement("div");
-        nameDiv.className = "name";
-        nameDiv.textContent = label(name);
-        card.appendChild(nameDiv);
-        return card;
+      function previewClassName() {
+        return `preview-wrap bg-${currentBg}`;
       }
 
-      function makeTileCard(src, name, tilePx, repeats) {
-        const card = document.createElement("div");
-        card.className = "sprite-card";
-        const totalPx = tilePx * repeats;
-        const wrap = document.createElement("div");
-        wrap.className = bgClass();
-        const canvas = document.createElement("canvas");
-        canvas.width = totalPx;
-        canvas.height = totalPx;
-        canvas.style.imageRendering = "pixelated";
-        canvas.style.display = "block";
-        const img = new Image();
-        img.onload = function () {
-          const ctx = canvas.getContext("2d");
-          ctx.imageSmoothingEnabled = false;
-          for (let y = 0; y < repeats; y++) {
-            for (let x = 0; x < repeats; x++) {
-              ctx.drawImage(
-                img,
-                0,
-                0,
-                img.width,
-                img.height,
-                x * tilePx,
-                y * tilePx,
-                tilePx,
-                tilePx,
-              );
-            }
-          }
-        };
-        img.src = src;
-        wrap.appendChild(canvas);
-        card.appendChild(wrap);
-        const nameDiv = document.createElement("div");
-        nameDiv.className = "name";
-        nameDiv.textContent = label(name);
-        card.appendChild(nameDiv);
-        return card;
+      function setLiveUrl() {
+        document.getElementById("live-url").innerHTML =
+          `<strong>${window.location.href}</strong><br />Open this page through the same Vite origin as the game.`;
       }
 
-      function render() {
-        for (const [key, cfg] of Object.entries(SECTIONS)) {
-          const grid = document.getElementById(cfg.grid);
-          if (!grid) continue;
-          grid.innerHTML = "";
-
-          if (cfg.grouped) {
-            for (const [groupName, files] of Object.entries(cfg.groups)) {
-              const card = document.createElement("div");
-              card.className = "sprite-card";
-              const wrap = document.createElement("div");
-              wrap.className = bgClass();
-              const groupDiv = document.createElement("div");
-              groupDiv.className = "walk-group";
-              for (const file of files) {
-                const img = document.createElement("img");
-                img.src = cfg.base + file + ".png";
-                img.width = cfg.display;
-                img.height = cfg.display;
-                groupDiv.appendChild(img);
-              }
-              wrap.appendChild(groupDiv);
-              card.appendChild(wrap);
-              const nameDiv = document.createElement("div");
-              nameDiv.className = "name";
-              nameDiv.textContent = groupName;
-              card.appendChild(nameDiv);
-              grid.appendChild(card);
-            }
-            continue;
+      async function setRuntimeStatus() {
+        const target = document.getElementById("runtime-status");
+        try {
+          const response = await fetch("/src/scenes/boot.js", {
+            cache: "no-store",
+          });
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
           }
-
-          for (const name of cfg.items) {
-            const src = cfg.base + name + ".png";
-            if (cfg.tiled) {
-              grid.appendChild(
-                makeTileCard(src, name, cfg.tilePx, cfg.repeats),
-              );
-            } else {
-              const display =
-                (cfg.displayOverrides && cfg.displayOverrides[name]) ||
-                cfg.display;
-              grid.appendChild(makeCard(src, name, display));
-            }
+          const source = await response.text();
+          const match = source.match(
+            /CLASSES_WITH_WALK_SHEETS\s*=\s*\[([\s\S]*?)\]/,
+          );
+          if (!match) {
+            target.textContent =
+              "Walk-sheet runtime list was not found in BootScene.";
+            return;
           }
+          const enabled = [...match[1].matchAll(/"([^"]+)"/g)].map(
+            (entry) => entry[1],
+          );
+          target.innerHTML = enabled.length
+            ? `<strong>Enabled walk sheets:</strong> ${enabled.join(", ")}`
+            : "<strong>Enabled walk sheets:</strong> none. Runtime is still on fallback directionals.";
+        } catch (error) {
+          target.textContent = `Runtime source unavailable from this origin: ${error.message}`;
         }
       }
 
-      function setBg(mode, evt) {
-        currentBg = mode;
-        document
-          .querySelectorAll(".btn")
-          .forEach((b) => b.classList.remove("active"));
-        if (evt && evt.target) evt.target.classList.add("active");
+      function makeImageCard({
+        name,
+        src,
+        size,
+        display,
+        badgeClass,
+        badgeLabel,
+        pathLabel,
+      }) {
+        const card = document.createElement("article");
+        card.className = "card";
+        card.innerHTML = `
+          <div class="card-header">
+            <div class="card-title">
+              <h3>${label(name)}</h3>
+              <div class="badge-row">
+                <span class="badge ${badgeClass}">${badgeLabel}</span>
+              </div>
+            </div>
+            <div class="card-path">${pathLabel}</div>
+            <div class="card-meta">${size}x${size} native</div>
+          </div>
+          <div class="card-body">
+            <div class="${previewClassName()}">
+              <img
+                alt="${label(name)}"
+                height="${display}"
+                src="${src}"
+                width="${display}"
+              />
+            </div>
+          </div>
+        `;
+        const img = card.querySelector("img");
+        img.addEventListener("error", () => {
+          const wrap = card.querySelector(".preview-wrap");
+          wrap.innerHTML = `<div class="broken">Missing or unreadable asset:<br />${pathLabel}</div>`;
+        });
+        return card;
+      }
+
+      function renderAssetGrid(targetId, items, options) {
+        const target = document.getElementById(targetId);
+        target.innerHTML = "";
+        for (const item of items) {
+          target.appendChild(
+            makeImageCard({
+              badgeClass: options.badgeClass,
+              badgeLabel: options.badgeLabel,
+              display: options.displayFor(item),
+              name: item.name,
+              pathLabel: options.pathFor(item),
+              size: item.size,
+              src: options.srcFor(item),
+            }),
+          );
+        }
+      }
+
+      function buildWalkSheetCard(className) {
+        const card = document.createElement("article");
+        card.className = "card";
+        const path = `/sprites/walk/${className}_walk.png`;
+        card.innerHTML = `
+          <div class="card-header">
+            <div class="card-title">
+              <h3>${label(className)}</h3>
+              <div class="badge-row">
+                <span class="badge sheet">Generated walk sheet</span>
+                <span class="badge warning">Inspect before runtime use</span>
+              </div>
+            </div>
+            <div class="card-path">${path}</div>
+            <div class="card-meta">Expected 512x512 sheet, sliced into 16 cells.</div>
+          </div>
+          <div class="card-body">
+            <div class="walk-sheet-layout">
+              <div class="sheet-preview ${previewClassName()}">
+                <img alt="${label(className)} walk sheet" src="${path}" width="156" height="156" />
+              </div>
+              <div class="cell-grid"></div>
+            </div>
+          </div>
+        `;
+
+        const grid = card.querySelector(".cell-grid");
+        const img = card.querySelector("img");
+        const meta = card.querySelector(".card-meta");
+
+        img.addEventListener("load", () => {
+          const cellWidth = img.naturalWidth / 4;
+          const cellHeight = img.naturalHeight / 4;
+          meta.textContent =
+            `${img.naturalWidth}x${img.naturalHeight} sheet | ` +
+            `4 rows x 4 columns | ${cellWidth}x${cellHeight} per cell`;
+          grid.innerHTML = "";
+          for (let row = 0; row < 4; row++) {
+            for (let col = 0; col < 4; col++) {
+              const cell = document.createElement("div");
+              cell.className = "cell";
+              cell.innerHTML = `
+                <div class="cell-label">r${row}-c${col}</div>
+                <div class="${previewClassName()}"></div>
+              `;
+              const canvas = document.createElement("canvas");
+              canvas.width = cellWidth;
+              canvas.height = cellHeight;
+              const ctx = canvas.getContext("2d");
+              ctx.imageSmoothingEnabled = false;
+              ctx.drawImage(
+                img,
+                col * cellWidth,
+                row * cellHeight,
+                cellWidth,
+                cellHeight,
+                0,
+                0,
+                cellWidth,
+                cellHeight,
+              );
+              cell.querySelector(".preview-wrap").appendChild(canvas);
+              grid.appendChild(cell);
+            }
+          }
+        });
+
+        img.addEventListener("error", () => {
+          meta.textContent = "Sheet is missing or unreadable.";
+          grid.innerHTML = `<div class="broken">Missing sheet:<br />${path}</div>`;
+        });
+
+        return card;
+      }
+
+      function renderWalkSheets() {
+        const target = document.getElementById("walk-grid");
+        target.innerHTML = "";
+        for (const className of WALK_SHEETS) {
+          target.appendChild(buildWalkSheetCard(className));
+        }
+      }
+
+      function render() {
+        renderAssetGrid("fallback-grid", FALLBACK_DIRECTIONALS, {
+          badgeClass: "fallback",
+          badgeLabel: "Fallback directional",
+          displayFor: () => 128,
+          pathFor: (item) => `/sprites/${item.name}.png`,
+          srcFor: (item) => `/sprites/${item.name}.png`,
+        });
+
+        renderWalkSheets();
+
+        renderAssetGrid("portrait-grid", PORTRAITS, {
+          badgeClass: "reference",
+          badgeLabel: "Class portrait",
+          displayFor: () => 160,
+          pathFor: (item) => `/sprites/${item.name}.png`,
+          srcFor: (item) => `/sprites/${item.name}.png`,
+        });
+
+        renderAssetGrid("monster-grid", MONSTERS, {
+          badgeClass: "reference",
+          badgeLabel: "Monster",
+          displayFor: (item) => (item.size === 384 ? 170 : 148),
+          pathFor: (item) => `/sprites/monsters/${item.name}.png`,
+          srcFor: (item) => `/sprites/monsters/${item.name}.png`,
+        });
+
+        renderAssetGrid("npc-grid", NPCS, {
+          badgeClass: "reference",
+          badgeLabel: "NPC",
+          displayFor: () => 120,
+          pathFor: (item) => `/sprites/npcs/${item.name}.png`,
+          srcFor: (item) => `/sprites/npcs/${item.name}.png`,
+        });
+
+        renderAssetGrid("ui-grid", UI, {
+          badgeClass: "reference",
+          badgeLabel: "UI",
+          displayFor: () => 84,
+          pathFor: (item) => `/sprites/ui/${item.name}.png`,
+          srcFor: (item) => `/sprites/ui/${item.name}.png`,
+        });
+      }
+
+      function setBackground(mode) {
+        currentBg = BACKGROUNDS.includes(mode) ? mode : "checker";
+        for (const button of document.querySelectorAll(".btn[data-bg]")) {
+          button.classList.toggle("active", button.dataset.bg === currentBg);
+        }
         render();
       }
 
+      document.querySelectorAll(".btn[data-bg]").forEach((button) => {
+        button.addEventListener("click", () => {
+          setBackground(button.dataset.bg);
+        });
+      });
+
+      setLiveUrl();
+      setRuntimeStatus();
       render();
     </script>
   </body>

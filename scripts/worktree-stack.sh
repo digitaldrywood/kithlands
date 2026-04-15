@@ -242,8 +242,10 @@ play() {
   echo "  Worktree: $repo_root"
   echo "  Offset:   $WORKTREE_OFFSET"
   echo "  Game:     $client_url"
+  echo "  Sprites:  ${client_url}/sprites.html"
   if [ -n "${TAILSCALE_HOSTNAME:-}" ]; then
     echo "  Network:  http://${TAILSCALE_HOSTNAME}:${VITE_PORT}"
+    echo "  Sprites:  http://${TAILSCALE_HOSTNAME}:${VITE_PORT}/sprites.html"
   fi
   echo "  API:      $server_url"
   if [ -n "${TAILSCALE_HOSTNAME:-}" ]; then

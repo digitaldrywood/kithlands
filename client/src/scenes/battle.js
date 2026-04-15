@@ -10,11 +10,21 @@ import {
   hpBarColorPct,
   hpBarFillWidth,
 } from "../systems/hpBar.js";
+import { buildVictoryXPSegments } from "../systems/victoryXp.js";
 import { FloatingTextPool } from "../ui/floating_text.js";
 import { ENEMY_SPRITES } from "../data/monsterSprites.js";
-import { battleSpeedMul, messageCharMs } from "../systems/prefs.js";
+import {
+  battleSpeedMul,
+  getBattlePlanMemory,
+  messageCharMs,
+  setBattlePlanMemory,
+} from "../systems/prefs.js";
 import { toggleDebugPanel, closeDebugPanel } from "./debug_panel.js";
-import { resolveAction } from "../systems/auto_battle.js";
+import {
+  buildBattleActionButtons,
+  planSmartRound,
+  resolveAction,
+} from "../systems/auto_battle.js";
 
 const ENEMY_COLORS = {
   Slime: 0x42a5f5,
@@ -72,7 +82,10 @@ export class BattleScene extends Phaser.Scene {
 
   init(data) {
     this.gameState = data.gameState;
-    this._lastRoundActions = data.lastRoundActions || null;
+    this._lastRoundActions =
+      data.lastRoundActions ||
+      getBattlePlanMemory(data.gameState?.party) ||
+      null;
     this._autoMode = data.autoMode || false;
   }
 
@@ -341,6 +354,13 @@ export class BattleScene extends Phaser.Scene {
       this.autoMode = false;
       const slot = this.livingMembers[this.currentMemberIdx];
       this.showItemPicker(slot);
+    });
+
+    this.input.keyboard.on("keydown-M", () => {
+      if (this.animating || this.targetingMode || this.pickerOverlay) return;
+      if (this.currentMemberIdx >= this.livingMembers.length) return;
+      this.autoMode = false;
+      this.executeSmartAttack();
     });
 
     this.input.keyboard.on("keydown-B", () => {
@@ -798,30 +818,12 @@ export class BattleScene extends Phaser.Scene {
     this.actionBtns = [];
 
     const member = gs.party[slot];
-    const hasSpells =
-      member.spells?.length > 0 &&
-      member.spells.some((s) => (member.mp ?? 0) >= (s.mp_cost ?? 0));
-    const hasAbilities = member.abilities?.length > 0;
-
-    const btns = [{ label: "[A]TTACK", type: "attack", color: "#ff4444" }];
-    if (hasSpells)
-      btns.push({ label: "[S]PELL", type: "spell", color: "#8888ff" });
-    if (hasAbilities)
-      btns.push({ label: "[B]ABILITY", type: "ability", color: "#ff88ff" });
-    const hasItems =
-      gs.potions > 0 ||
-      (gs.items && gs.items.some((i) => i.id === "phoenix_down"));
-    if (hasItems)
-      btns.push({ label: "[I]TEMS", type: "item", color: "#44ff44" });
-    btns.push({ label: "[F]LEE", type: "flee", color: "#ffcc44" });
-    if (this.lastRoundActions) {
-      btns.push({ label: "[R]EPEAT", type: "repeat", color: "#44ccff" });
-      btns.push({
-        label: this.autoMode ? "[Q] AUTO*" : "[Q] AUTO",
-        type: "auto",
-        color: this.autoMode ? "#ffaa44" : "#ff8844",
-      });
-    }
+    const btns = buildBattleActionButtons({
+      member,
+      gameState: gs,
+      hasLastRound: !!this.lastRoundActions,
+      autoMode: this.autoMode,
+    });
 
     const tw = btns.length * 145,
       sx = 400 - tw / 2 + 72;
@@ -862,6 +864,8 @@ export class BattleScene extends Phaser.Scene {
           this.showAbilityPicker(slot);
         } else if (b.type === "item") {
           this.showItemPicker(slot);
+        } else if (b.type === "smart") {
+          this.executeSmartAttack();
         } else if (b.type === "flee") {
           // Flee sends immediately (whole party flees)
           this.doFlee();
@@ -949,6 +953,29 @@ export class BattleScene extends Phaser.Scene {
 
     // Brief pause then show next member's turn
     this.scaledDelay(400, () => this.showCurrentMemberTurn());
+  }
+
+  executeSmartAttack() {
+    const remainingSlots = this.livingMembers.slice(this.currentMemberIdx);
+    const { actions, preview } = planSmartRound(this.gameState, remainingSlots);
+    if (actions.length === 0) {
+      this.showCurrentMemberTurn();
+      return;
+    }
+
+    this.memberActions.push(...actions);
+    if (import.meta.env?.DEV && preview.length > 0) {
+      console.debug("[SmartAttack]", preview);
+    }
+
+    if (this.actionBtns) {
+      this.actionBtns.forEach((o) => o.destroy());
+      this.actionBtns = [];
+    }
+
+    this.promptText.setText("SMART ATTACK...").setColor("#88ffaa");
+    this.currentMemberIdx = this.livingMembers.length;
+    this.submitAllActions();
   }
 
   // Resolve all living members' previous actions through the smart fallback
@@ -1438,6 +1465,7 @@ export class BattleScene extends Phaser.Scene {
 
       // Persist this round's actions for REPEAT / AUTO next round (issue #99)
       const savedActions = [...this.memberActions];
+      setBattlePlanMemory(this.gameState.party, savedActions);
 
       this.scaledDelay(400, () => {
         this.animating = false;
@@ -2120,6 +2148,7 @@ export class BattleScene extends Phaser.Scene {
     y += 15;
     const barW = 300;
     const xpBefore = gs.xp_before || [];
+    const xpThresholds = gs.xp_thresholds || [];
     const diedFlags = gs.died_this_fight || [];
 
     for (let i = 0; i < gs.party.length; i++) {
@@ -2209,16 +2238,25 @@ export class BattleScene extends Phaser.Scene {
           fontFamily: "monospace",
         });
       } else {
-        const xpPctEnd = p.xp_next > 0 ? Math.min(1, p.xp / p.xp_next) : 0;
+        const segments = buildVictoryXPSegments({
+          prevXP,
+          currentXP: p.xp,
+          xpNext: p.xp_next,
+          xpThresholds: xpThresholds[i] || [],
+        });
+        const firstSegment = segments[0] || null;
+        const firstMax = firstSegment?.max || p.xp_next;
+        const firstWidth =
+          firstMax > 0 ? (barW * firstSegment.start) / firstMax : 0;
 
         const xpBarFill = this.add
-          .rectangle(300 + 15, y + 22, 1, 10, 0x4488ff)
+          .rectangle(300 + 15, y + 22, firstWidth, 10, 0x4488ff)
           .setOrigin(0, 0.5);
 
         const xpText = this.add.text(
           300 + barW + 20,
           y + 17,
-          `${prevXP}/${p.xp_next}`,
+          `${firstSegment?.start ?? prevXP}/${firstMax || p.xp_next}`,
           {
             fontSize: "9px",
             color: "#8888ff",
@@ -2226,25 +2264,65 @@ export class BattleScene extends Phaser.Scene {
           },
         );
 
-        // Animate the XP bar filling
-        const xpTween = this.tweens.add({
-          targets: xpBarFill,
-          width: barW * xpPctEnd,
-          duration: 1200,
-          delay,
-          ease: "Power2",
-          onUpdate: () => {
-            // Update XP text as bar fills
-            const progress = xpBarFill.width / barW;
-            const currentXP = Math.floor(
-              prevXP + (p.xp - prevXP) * (progress / xpPctEnd || 0),
-            );
-            xpText.setText(`${Math.min(currentXP, p.xp)}/${p.xp_next}`);
+        const xpTweens = [];
+        const animateSegment = (segmentIdx) => {
+          if (segmentIdx >= segments.length) {
+            xpBarFill.width = p.xp_next > 0 ? (barW * p.xp) / p.xp_next : 0;
+            xpText.setText(`${p.xp}/${p.xp_next}`);
+            return;
+          }
+
+          const segment = segments[segmentIdx];
+          const startWidth =
+            segment.max > 0 ? (barW * segment.start) / segment.max : 0;
+          const endWidth =
+            segment.max > 0 ? (barW * segment.end) / segment.max : 0;
+          xpBarFill.width = startWidth;
+          xpText.setText(`${segment.start}/${segment.max}`);
+
+          if (segment.start === segment.end) {
+            xpText.setText(`${segment.end}/${segment.max}`);
+            animateSegment(segmentIdx + 1);
+            return;
+          }
+
+          const tween = this.tweens.add({
+            targets: xpBarFill,
+            width: endWidth,
+            duration: Math.max(150, Math.floor(1200 / segments.length)),
+            ease: "Power2",
+            onUpdate: () => {
+              const denom = endWidth - startWidth;
+              const progress =
+                denom === 0 ? 1 : (xpBarFill.width - startWidth) / denom;
+              const currentXP = Math.floor(
+                segment.start + (segment.end - segment.start) * progress,
+              );
+              xpText.setText(
+                `${Math.min(currentXP, segment.end)}/${segment.max}`,
+              );
+            },
+            onComplete: () => {
+              xpBarFill.width = endWidth;
+              xpText.setText(`${segment.end}/${segment.max}`);
+              animateSegment(segmentIdx + 1);
+            },
+          });
+          xpTweens.push(tween);
+        };
+
+        const xpTimer = this.time.delayedCall(delay, () => animateSegment(0));
+        this.victoryPendingTimers.push({
+          timer: xpTimer,
+          finalize: () => {
+            for (const tween of xpTweens) tween.stop();
+            xpBarFill.width = p.xp_next > 0 ? (barW * p.xp) / p.xp_next : 0;
+            xpText.setText(`${p.xp}/${p.xp_next}`);
           },
         });
         this.victoryFinalizers.push(() => {
-          xpTween.stop();
-          xpBarFill.width = barW * xpPctEnd;
+          for (const tween of xpTweens) tween.stop();
+          xpBarFill.width = p.xp_next > 0 ? (barW * p.xp) / p.xp_next : 0;
           xpText.setText(`${p.xp}/${p.xp_next}`);
         });
       }

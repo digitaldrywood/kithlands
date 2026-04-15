@@ -23,17 +23,20 @@ import { test, expect } from "@playwright/test";
 // Helper: start a fresh game via the public API so each test is
 // deterministic and does not depend on localStorage leftover state.
 async function startGame(page) {
-  // Use the wizard's quick-start path: title → new game flow.
-  // The title scene offers a "debug" fast-path in dev builds that
-  // skips OSM and creates a canned town.
   await page.goto("/");
-  await page.waitForSelector("canvas");
-  // Wait for the title scene to render.
-  await page.waitForTimeout(500);
-  // Click "New Game" — exact selector depends on the canvas DOM overlay.
-  // Tests here are placeholders; wire to the real flow once baselines
-  // are captured interactively.
+  await page.waitForFunction(() => !!window.__kithlandsTest);
+  await page.evaluate(() => window.__kithlandsTest.startQuickGame());
+  await page.waitForFunction(
+    () => window.__kithlandsTest.activeSceneKey() === "World",
+  );
 }
+
+const OPPOSITE_DIR = {
+  down: "up",
+  up: "down",
+  left: "right",
+  right: "left",
+};
 
 test.describe("visual regression — issue #145", () => {
   test.skip("ambush banner fires once and clears (c9be154)", async ({
@@ -47,19 +50,87 @@ test.describe("visual regression — issue #145", () => {
     await expect(page).toHaveScreenshot("ambush-round-0.png");
   });
 
-  test.skip("walk sprite frames differ per direction (14c3da0)", async ({
+  test("walk sprite frames differ per direction (14c3da0)", async ({
     page,
   }) => {
     await startGame(page);
-    // TODO(baseline-capture): drive the player N/E/S/W in sequence,
-    // screenshot the player sprite at frame 0 for each direction, and
-    // assert the four images are pairwise distinct (toHaveScreenshot
-    // captures each snapshot name separately so a manual diff catches
-    // the regression).
-    await expect(page).toHaveScreenshot("walk-down.png");
-    await expect(page).toHaveScreenshot("walk-up.png");
-    await expect(page).toHaveScreenshot("walk-left.png");
-    await expect(page).toHaveScreenshot("walk-right.png");
+    const anchor = await page.evaluate(() =>
+      window.__kithlandsTest.findDirectionAuditAnchor("World"),
+    );
+    expect(anchor).toBeTruthy();
+
+    const frames = {};
+    for (const dir of ["down", "up", "left", "right"]) {
+      await page.evaluate(
+        ({ x, y }) => window.__kithlandsTest.setPlayerTile(x, y, "World"),
+        anchor,
+      );
+      await page.evaluate(
+        (facing) => window.__kithlandsTest.setPlayerFacing(facing, "World"),
+        OPPOSITE_DIR[dir],
+      );
+      frames[dir] = await page.evaluate(
+        (moveDir) => window.__kithlandsTest.movePlayer(moveDir, "World"),
+        dir,
+      );
+      expect(frames[dir].moved).toBe(true);
+      expect(frames[dir].playerDir).toBe(dir);
+      if (frames[dir].hasWalkSheet) {
+        expect(frames[dir].textureKey).toBe(`${frames[dir].leaderClass}_walk`);
+        expect(frames[dir].walkFrame).toBe(0);
+      } else {
+        expect(frames[dir].textureKey).toBe(`player_${dir}`);
+      }
+    }
+
+    const usesWalkSheet = Object.values(frames).some(
+      (frame) => frame.hasWalkSheet,
+    );
+    expect(
+      Object.values(frames).every(
+        (frame) => frame.hasWalkSheet === usesWalkSheet,
+      ),
+    ).toBe(true);
+
+    if (usesWalkSheet) {
+      expect(frames.down.frameIndex).toBe(0);
+      expect(frames.up.frameIndex).toBe(4);
+      expect(frames.left.frameIndex).toBe(8);
+      expect(frames.right.frameIndex).toBe(12);
+    }
+    expect(
+      new Set(Object.values(frames).map((frame) => frame.frameHash)).size,
+    ).toBe(4);
+
+    const leftPathAnchor = await page.evaluate(() =>
+      window.__kithlandsTest.findStraightAuditAnchor("left", 2, "World"),
+    );
+    expect(leftPathAnchor).toBeTruthy();
+
+    await page.evaluate(
+      ({ x, y }) => window.__kithlandsTest.setPlayerTile(x, y, "World"),
+      leftPathAnchor,
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.setPlayerFacing("right", "World"),
+    );
+    const left0 = await page.evaluate(() =>
+      window.__kithlandsTest.movePlayer("left", "World"),
+    );
+    const left1 = await page.evaluate(() =>
+      window.__kithlandsTest.movePlayer("left", "World"),
+    );
+    expect(left1.moved).toBe(true);
+    expect(left1.playerDir).toBe("left");
+    if (left1.hasWalkSheet) {
+      expect(left0.frameIndex).toBe(8);
+      expect(left1.frameIndex).toBe(9);
+      expect(left1.walkFrame).toBe(1);
+      expect(left1.frameHash).not.toBe(left0.frameHash);
+    } else {
+      expect(left0.textureKey).toBe("player_left");
+      expect(left1.textureKey).toBe("player_left");
+    }
   });
 
   test.skip("options modal blocks world click-through (0eba90d)", async ({

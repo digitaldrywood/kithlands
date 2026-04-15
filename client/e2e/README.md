@@ -1,64 +1,71 @@
-# Visual regression (issue #145)
+# Playwright Local Verification
 
-Playwright-based screenshot diff suite for the four bug classes that
-shipped this session.
+Playwright now has one working local e2e path for Kithlands:
 
-## Status: scaffolded, baselines not yet captured
+- `party-menu-equip.spec.js`: quick-start a game, grant real equipment via the
+  normal buy/equip APIs, open the party menu, drill into character detail, and
+  equip an upgraded weapon through the actual UI flow.
 
-All four tests are marked `test.skip` until baselines are captured. This
-is deliberate — the flow requires an interactive first run to review
-and commit the expected screenshots, and CI does not yet install
-Playwright browsers.
+The older screenshot suite in `visual.spec.js` is still scaffolded and skipped.
+It remains available for future baseline capture, but it is not the main
+verification path yet.
 
-## Prerequisites (one-time per machine)
+## Prerequisites
 
 ```sh
 cd client
-npm install                 # installs @playwright/test from package.json
+npm install
 npx playwright install chromium
 ```
-
-`npx playwright install` downloads the Chromium browser binary
-(~300 MB) into `~/.cache/ms-playwright`. This only runs once per
-machine.
 
 ## Running locally
 
 ```sh
-# From repo root, in a worktree with direnv active:
-KITHLANDS_DEBUG=1 make play      # server + client on worktree ports
-make test-visual                 # runs playwright against the running game
+KITHLANDS_DEBUG=1 make play
+make test-visual
 ```
 
-## Capturing baselines for the first time
+`make test-visual` runs every Playwright spec under `client/e2e`, including the
+working party-menu equip flow.
 
-1. Unskip the four tests in `visual.spec.js` (remove the `.skip`).
-2. Fill in the `TODO(baseline-capture)` blocks with the actual debug
-   API calls and canvas interactions — each test has a comment
-   describing the intended flow.
-3. Run `make test-visual` — Playwright will auto-create the baseline
-   screenshots under `e2e/__screenshots__/`.
-4. Review every `__screenshots__/*.png` manually. Any baseline that
-   doesn't match the expected rendered state should be deleted and
-   re-captured with the scene fixed, not committed.
-5. Commit the `.png` files.
+## Sprite debugger
 
-## Refreshing baselines after an intentional UI change
+The sprite debugger is served by the same Vite dev server as the game:
 
 ```sh
-make test-visual-update
+source scripts/worktree-env.sh
+echo "http://localhost:${VITE_PORT}/sprites.html"
 ```
 
-(Wires through `npx playwright test --update-snapshots`.)
+If you use `make play`, it now prints the sprite debugger URL alongside the
+game URL. If `TAILSCALE_HOSTNAME=prometheus` is set, the network form is:
 
-## Why this is not in CI yet
+```sh
+http://prometheus:${VITE_PORT}/sprites.html
+```
 
-- Playwright browser install is ~300 MB per CI runner.
-- The worktree-isolated port scheme (`PORT`/`VITE_PORT`) is direnv-based
-  and does not yet have a CI shim.
-- Baselines are platform-dependent — a Linux CI runner will produce
-  different pixel output than a local macOS/Linux dev machine, so the
-  committed baselines would need to match whichever the gate runs on.
+The old `http://prometheus:5173/sprites.html` expectation is stale. This repo
+has used an explicit Vite port instead of Vite's default for a long time, and
+since the per-worktree infra change each worktree gets its own derived
+`VITE_PORT` from `scripts/worktree-env.sh`.
 
-CI integration is tracked as a follow-up once the first set of
-baselines is captured and the suite is stable on one platform.
+Each browser run should use a worktree-local profile so concurrent tmux/worktree
+sessions do not collide. This worktree defaults to
+`client/tmp/playwright-chromium-profile`. Override with
+`PLAYWRIGHT_USER_DATA_DIR=/abs/path/to/profile` if you need a different one.
+
+## How the harness works
+
+- The app exposes a small DEV-only browser test bridge from
+  `client/src/dev_test_bridge.js`.
+- Playwright uses that bridge to quick-start a fresh game and drive the same
+  authenticated client session the game already uses.
+- The spec still drives the real menu/detail/equip UI path instead of calling
+  the equip endpoint directly.
+
+## Current limits
+
+- Local-only: CI still does not install Playwright browsers or start the
+  worktree-specific stack.
+- The visual snapshot tests in `visual.spec.js` still need baseline capture and
+  are intentionally skipped.

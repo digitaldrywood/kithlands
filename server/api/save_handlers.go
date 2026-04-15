@@ -23,15 +23,15 @@ import (
 
 // SaveGameData is the full serializable game state stored in JSONB.
 type SaveGameData struct {
-	Party      []*character.Character        `json:"party"`
-	SpellBooks map[string]*magic.SpellBook   `json:"spell_books"`
-	Inventory  *inventory.Inventory          `json:"inventory"`
-	Quests     []generator.Quest             `json:"quests"`
-	CurrentQ   int                           `json:"current_quest"`
-	Phase      string                        `json:"phase"`
-	Discovered map[string]bool               `json:"discovered"`
-	PlayerX    int                           `json:"player_x"`
-	PlayerY    int                           `json:"player_y"`
+	Party      []*character.Character      `json:"party"`
+	SpellBooks map[string]*magic.SpellBook `json:"spell_books"`
+	Inventory  *inventory.Inventory        `json:"inventory"`
+	Quests     []generator.Quest           `json:"quests"`
+	CurrentQ   int                         `json:"current_quest"`
+	Phase      string                      `json:"phase"`
+	Discovered map[string]bool             `json:"discovered"`
+	PlayerX    int                         `json:"player_x"`
+	PlayerY    int                         `json:"player_y"`
 }
 
 // ToSaveState serializes the live game into a SaveState for database storage.
@@ -55,12 +55,13 @@ func (g *Game) ToSaveState(name, userID string) (*save.SaveState, error) {
 	}
 
 	worldState := map[string]any{
-		"current_quest":        g.currentQ,
-		"phase":                g.phase,
-		"discovered":           g.discovered,
-		"spell_books":          g.spellBooks,
-		"transport":            g.trans,
+		"current_quest":          g.currentQ,
+		"phase":                  g.phase,
+		"discovered":             g.discovered,
+		"spell_books":            g.spellBooks,
+		"transport":              g.trans,
 		"collected_hidden_items": g.collectedHiddenItems,
+		"last_round_actions":     g.lastRoundActions,
 	}
 	worldJSON, err := json.Marshal(worldState)
 	if err != nil {
@@ -117,6 +118,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		SpellBooks           map[string]*magic.SpellBook `json:"spell_books"`
 		Transport            *transport.State            `json:"transport"`
 		CollectedHiddenItems map[string]bool             `json:"collected_hidden_items"`
+		LastRoundActions     []MemberActionReq           `json:"last_round_actions"`
 	}
 	if err := json.Unmarshal(ss.WorldState, &worldState); err != nil {
 		return nil, fmt.Errorf("unmarshaling world state: %w", err)
@@ -149,23 +151,24 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	}
 
 	game := &Game{
-		id:         fmt.Sprintf("game_%d", time.Now().UnixNano()),
-		gd:         gd,
-		rng:        rng,
-		rngSeed:    ss.RNGSeed,
-		loc:        loc,
-		walk:       walk,
-		tileMap:    tileMap,
-		party:      party,
-		spellBooks: spellBooks,
-		inv:        &inv,
-		quests:     quests,
-		currentQ:   worldState.CurrentQ,
-		phase:      "world", // always resume in world
+		id:                   fmt.Sprintf("game_%d", time.Now().UnixNano()),
+		gd:                   gd,
+		rng:                  rng,
+		rngSeed:              ss.RNGSeed,
+		loc:                  loc,
+		walk:                 walk,
+		tileMap:              tileMap,
+		party:                party,
+		spellBooks:           spellBooks,
+		inv:                  &inv,
+		quests:               quests,
+		currentQ:             worldState.CurrentQ,
+		phase:                "world", // always resume in world
 		diff:                 balance.GetDifficulty(ss.Difficulty),
 		discovered:           discovered,
 		collectedHiddenItems: collectedHidden,
 		trans:                trans,
+		lastRoundActions:     cloneMemberActionReqs(worldState.LastRoundActions),
 	}
 
 	// Saves written before the transport pipeline landed have no transport

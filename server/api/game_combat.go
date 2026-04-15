@@ -450,6 +450,9 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 	}
 
 	results := combat.ResolveTurn(combatants, g.enemies, actions, stats, g.rng)
+	if len(req.Actions) > 0 {
+		g.lastRoundActions = cloneMemberActionReqs(req.Actions)
+	}
 	g.combatRound++
 	for _, r := range results {
 		switch r.Kind {
