@@ -676,6 +676,7 @@ export class BattleScene extends Phaser.Scene {
             .image(x + sz / 2 + 2, y - sz / 2 - 2, iconKey)
             .setDepth(10);
           icon.setScale(16 / Math.max(icon.width, icon.height));
+          this.enemySprites[e.id].statusIcon = icon;
         }
       }
     }
@@ -1916,6 +1917,7 @@ export class BattleScene extends Phaser.Scene {
       ee.sprite.removeInteractive();
     }
     if (ee.nameText) ee.nameText.setVisible(false);
+    if (ee.statusIcon) ee.statusIcon.setVisible(false);
     if (ee.hpBar) {
       ee.hpBar.bg.setVisible(false);
       ee.hpBar.ghost.setVisible(false);
