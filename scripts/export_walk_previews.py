@@ -2,10 +2,10 @@
 """Export human-reviewable previews for all generated walk sheets.
 
 Outputs:
-  client/tmp/walk-previews/index.html
-  client/tmp/walk-previews/{class}/{class}_sheet_4x.png
-  client/tmp/walk-previews/{class}/{class}_preview.gif
-  client/tmp/walk-previews/{class}/{class}_{dir}.gif
+  <output-dir>/index.html
+  <output-dir>/{class}/{class}_sheet_4x.png
+  <output-dir>/{class}/{class}_preview.gif
+  <output-dir>/{class}/{class}_{dir}.gif
 
 The goal is reviewability, not runtime usage. This script makes it easy to
 inspect each class one-by-one before integrating walk assets.
@@ -13,6 +13,7 @@ inspect each class one-by-one before integrating walk assets.
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 from PIL import Image
 
@@ -104,7 +105,7 @@ def export_sheet(sheet: Image.Image, out_path: Path) -> None:
     enlarged.save(out_path)
 
 
-def write_index(entries: list[dict[str, str]]) -> None:
+def write_index(entries: list[dict[str, str]], out_dir: Path, title: str) -> None:
     cards = []
     for entry in entries:
         cls = entry["class"]
@@ -128,7 +129,7 @@ def write_index(entries: list[dict[str, str]]) -> None:
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Kithlands Walk Previews</title>
+    <title>{title}</title>
   <style>
     body {{
       margin: 0;
@@ -166,7 +167,7 @@ def write_index(entries: list[dict[str, str]]) -> None:
   </style>
 </head>
 <body>
-  <h1>Kithlands Walk Previews</h1>
+  <h1>{title}</h1>
   <p>Generated review surface for all walk sheets. Inspect the animated GIFs before merging.</p>
   <div class="grid">
     {''.join(cards)}
@@ -174,16 +175,39 @@ def write_index(entries: list[dict[str, str]]) -> None:
 </body>
 </html>
 """
-    (OUT_DIR / "index.html").write_text(html)
+    (out_dir / "index.html").write_text(html)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--source-dir",
+        default=str(WALK_DIR),
+        help="Directory containing *_walk.png sheets",
+    )
+    parser.add_argument(
+        "--output-dir",
+        default=str(OUT_DIR),
+        help="Directory to write preview artifacts into",
+    )
+    parser.add_argument(
+        "--title",
+        default="Kithlands Walk Previews",
+        help="Heading/title for the generated index page",
+    )
+    return parser.parse_args()
 
 
 def main() -> None:
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    args = parse_args()
+    source_dir = Path(args.source_dir)
+    out_dir = Path(args.output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
     entries: list[dict[str, str]] = []
 
-    for sheet_path in sorted(WALK_DIR.glob("*_walk.png")):
+    for sheet_path in sorted(source_dir.glob("*_walk.png")):
         class_id = sheet_path.stem.removesuffix("_walk")
-        class_dir = OUT_DIR / class_id
+        class_dir = out_dir / class_id
         class_dir.mkdir(parents=True, exist_ok=True)
 
         sheet = Image.open(sheet_path).convert("RGBA")
@@ -207,8 +231,8 @@ def main() -> None:
 
         entries.append(entry)
 
-    write_index(entries)
-    print(OUT_DIR / "index.html")
+    write_index(entries, out_dir, args.title)
+    print(out_dir / "index.html")
 
 
 if __name__ == "__main__":
