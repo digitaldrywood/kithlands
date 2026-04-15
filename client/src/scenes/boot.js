@@ -1,4 +1,5 @@
 import { MONSTER_SPRITE_LOAD } from "../data/monsterSprites.js";
+import { WALK_SHEET_CLASS_IDS } from "./walkFrame.js";
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -40,20 +41,7 @@ export class BootScene extends Phaser.Scene {
 
     // Character sprites (base + promoted classes — must match CLASS_SPRITES
     // in battle.js and server's buildPartyMemberState sprite_id output)
-    const CLASS_SPRITE_KEYS = [
-      "warrior",
-      "brawler",
-      "rogue",
-      "mender",
-      "cinder",
-      "wayfarer",
-      "knight",
-      "champion",
-      "shadow",
-      "sage",
-      "pyromancer",
-      "wanderer",
-    ];
+    const CLASS_SPRITE_KEYS = WALK_SHEET_CLASS_IDS;
     for (const key of CLASS_SPRITE_KEYS) {
       this.load.image(key, `/sprites/${key}.png`);
     }

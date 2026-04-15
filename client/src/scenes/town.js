@@ -646,6 +646,10 @@ export class TownScene extends Phaser.Scene {
     }
   }
 
+  canWalkTile(tile) {
+    return !!TILE_WALKABLE[tile];
+  }
+
   tryMove(dx, dy) {
     const nx = this.playerX + dx;
     const ny = this.playerY + dy;

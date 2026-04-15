@@ -5,10 +5,14 @@ Playwright now has one working local e2e path for Kithlands:
 - `party-menu-equip.spec.js`: quick-start a game, grant real equipment via the
   normal buy/equip APIs, open the party menu, drill into character detail, and
   equip an upgraded weapon through the actual UI flow.
+- `walk-all-classes.spec.js`: quick-start a game, enter a town interior, and
+  verify all 12 walk-sheet classes render the correct directional sequences in
+  both `World` and `Town`.
 
-The older screenshot suite in `visual.spec.js` is still scaffolded and skipped.
-It remains available for future baseline capture, but it is not the main
-verification path yet.
+The screenshot suite in `visual.spec.js` still exists for issue-scoped visual
+regression checks. It is no longer the only path for walking validation, but it
+remains useful when a change needs inspected pixel output instead of only
+runtime assertions.
 
 ## Prerequisites
 
@@ -23,10 +27,15 @@ npx playwright install chromium
 ```sh
 KITHLANDS_DEBUG=1 make play
 make test-visual
+make test-walk-classes
 ```
 
 `make test-visual` runs every Playwright spec under `client/e2e`, including the
 working party-menu equip flow.
+
+`make test-walk-classes` is the exhaustive walk-sheet proof path. It runs the
+`walk-all-classes.spec.js` audit once per class in a fresh browser process so
+all 12 classes are checked in both `World` and `Town` without cross-test state.
 
 ## Sprite debugger
 

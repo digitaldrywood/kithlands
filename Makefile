@@ -1,4 +1,4 @@
-.PHONY: play stop run test test-e2e test-scripts test-worktree-lifecycle test-visual test-visual-local test-visual-update build demo migrate setup-db teardown-db balance-sim simulate validate-data client-dev client-build lint vet fmt pre-commit docker-up docker-down
+.PHONY: play stop run test test-e2e test-scripts test-worktree-lifecycle test-visual test-walk-classes test-visual-local test-visual-update build demo migrate setup-db teardown-db balance-sim simulate validate-data client-dev client-build lint vet fmt pre-commit docker-up docker-down
 
 # Per-worktree isolation: these are populated by scripts/worktree-env.sh via
 # direnv. Defaults below keep the Makefile usable without direnv (for CI, or
@@ -75,6 +75,11 @@ test-worktree-lifecycle:
 # client/e2e/README.md for the one-time baseline capture procedure.
 test-visual:
 	@cd client && VITE_PORT=$(VITE_PORT) npx playwright test --config=e2e/playwright.config.js
+
+# Exhaustive walk-sheet audit: launches a fresh Playwright browser per class so
+# all 12 classes are verified in both World and Town without cross-test state.
+test-walk-classes:
+	@./scripts/test-walk-all-classes.sh
 
 # Stable local proof harness for issue-scoped Playwright checks. Boots the
 # worktree stack on its derived ports, then runs the requested spec.
