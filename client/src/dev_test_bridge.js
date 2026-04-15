@@ -4,6 +4,14 @@ import {
   closeCharacterDetail,
 } from "./scenes/character_detail.js";
 import { showEquipPicker } from "./scenes/world_menu.js";
+import { walkSheetKey, walkFrameIndex } from "./scenes/walkFrame.js";
+
+const DIR_DELTAS = {
+  up: [0, -1],
+  down: [0, 1],
+  left: [-1, 0],
+  right: [1, 0],
+};
 
 function activeScene(game) {
   const scenes = game.scene.getScenes(true);
@@ -118,6 +126,128 @@ function findCharacterDetailSlot(scene, slotLabel) {
   return best;
 }
 
+function canWalk(scene, x, y) {
+  if (!scene?.tileData) return false;
+  if (x < 0 || y < 0 || x >= scene.mapW || y >= scene.mapH) return false;
+  if (typeof scene.canWalkTile !== "function") return false;
+  return scene.canWalkTile(scene.tileData[y][x]);
+}
+
+function setPlayerSprite(scene) {
+  if (!scene?.player) return;
+  scene.hasWalkSheet = scene.textures.exists(walkSheetKey(scene.leaderClass));
+  if (scene.hasWalkSheet) {
+    scene.player.setTexture(
+      walkSheetKey(scene.leaderClass),
+      walkFrameIndex(scene.playerDir, scene.walkFrame || 0),
+    );
+  } else {
+    scene.player.setTexture(`player_${scene.playerDir}`);
+  }
+}
+
+function stopPlayerTweens(scene) {
+  scene?.tweens?.killTweensOf(scene.player);
+  if (scene?.vehicleIndicator)
+    scene.tweens.killTweensOf(scene.vehicleIndicator);
+}
+
+function setPlayerTile(scene, x, y) {
+  stopPlayerTweens(scene);
+  scene.playerX = x;
+  scene.playerY = y;
+  if (scene.player) {
+    scene.player.x = x * 32 + 16;
+    scene.player.y = y * 32 + 16;
+  }
+}
+
+function frameHash(scene) {
+  const textureKey = scene?.player?.texture?.key;
+  const frame = scene?.player?.frame;
+  if (!textureKey || !frame) return null;
+  const image = frame.source?.image;
+  if (!image) return `${textureKey}:${frame.name}`;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 16;
+  canvas.height = 16;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, 16, 16);
+  ctx.drawImage(
+    image,
+    frame.cutX,
+    frame.cutY,
+    frame.cutWidth,
+    frame.cutHeight,
+    0,
+    0,
+    16,
+    16,
+  );
+  const pixels = ctx.getImageData(0, 0, 16, 16).data;
+  let hash = 2166136261;
+  for (let i = 0; i < pixels.length; i++) {
+    hash ^= pixels[i];
+    hash = Math.imul(hash, 16777619);
+  }
+  return `${textureKey}:${hash >>> 0}`;
+}
+
+function playerSnapshot(scene, moved) {
+  const frame = scene?.player?.frame;
+  const rawFrameIndex =
+    frame && frame.name !== undefined ? Number(frame.name) : frame?.index;
+  return {
+    moved,
+    playerDir: scene?.playerDir || null,
+    textureKey: scene?.player?.texture?.key || null,
+    frameIndex: Number.isFinite(rawFrameIndex) ? rawFrameIndex : null,
+    walkFrame: scene?.walkFrame ?? null,
+    hasWalkSheet: !!scene?.hasWalkSheet,
+    leaderClass: scene?.leaderClass || null,
+    frameHash: frameHash(scene),
+    x: scene?.playerX ?? null,
+    y: scene?.playerY ?? null,
+  };
+}
+
+function findDirectionAuditAnchor(scene) {
+  for (let y = 1; y < scene.mapH - 1; y++) {
+    for (let x = 1; x < scene.mapW - 1; x++) {
+      if (
+        canWalk(scene, x, y) &&
+        canWalk(scene, x, y - 1) &&
+        canWalk(scene, x, y + 1) &&
+        canWalk(scene, x - 1, y) &&
+        canWalk(scene, x + 1, y)
+      ) {
+        return { x, y };
+      }
+    }
+  }
+  return null;
+}
+
+function findStraightAuditAnchor(scene, dir, steps) {
+  const [dx, dy] = DIR_DELTAS[dir] || [0, 0];
+  for (let y = 1; y < scene.mapH - 1; y++) {
+    for (let x = 1; x < scene.mapW - 1; x++) {
+      if (!canWalk(scene, x, y)) continue;
+      let ok = true;
+      for (let i = 1; i <= steps; i++) {
+        if (!canWalk(scene, x + dx * i, y + dy * i)) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok) return { x, y };
+    }
+  }
+  return null;
+}
+
 export function installDevTestBridge(game) {
   globalThis.__kithlandsTest = {
     activeSceneKey() {
@@ -220,6 +350,47 @@ export function installDevTestBridge(game) {
       const scene = getScene(game, sceneKey);
       openCharacterDetail(scene, index);
       return this.sceneFlags(sceneKey);
+    },
+
+    findDirectionAuditAnchor(sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return findDirectionAuditAnchor(scene);
+    },
+
+    findStraightAuditAnchor(dir, steps = 1, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return findStraightAuditAnchor(scene, dir, steps);
+    },
+
+    setPlayerFacing(dir, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      if (!scene?.player) throw new Error("Scene has no player");
+      scene.playerDir = dir;
+      scene.walkFrame = 0;
+      setPlayerSprite(scene);
+      return playerSnapshot(scene, false);
+    },
+
+    setPlayerTile(x, y, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      if (!scene?.player) throw new Error("Scene has no player");
+      setPlayerTile(scene, x, y);
+      return playerSnapshot(scene, false);
+    },
+
+    movePlayer(dir, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      if (!scene?.player || typeof scene.tryMove !== "function") {
+        throw new Error("Scene cannot move player");
+      }
+      const beforeX = scene.playerX;
+      const beforeY = scene.playerY;
+      const [dx, dy] = DIR_DELTAS[dir] || [0, 0];
+      scene.tryMove(dx, dy);
+      return playerSnapshot(
+        scene,
+        beforeX !== scene.playerX || beforeY !== scene.playerY,
+      );
     },
 
     setPartyVitals(updates, sceneKey) {
