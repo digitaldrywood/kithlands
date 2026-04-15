@@ -81,8 +81,10 @@ If the agent runtime supports managed background processes:
 
 Do not use shell backgrounding as the unattended process model.
 
-For humans or local manual work, `make play` is fine. For OpenClaw-style
-automation, managed processes are preferred.
+For humans or local manual work, `make play` is fine. It now records detached
+server/client PIDs and logs under `tmp/runtime/` and `make stop` only stops
+those verified worktree-local processes. For OpenClaw-style automation,
+managed processes are still preferred.
 
 ### Ports
 

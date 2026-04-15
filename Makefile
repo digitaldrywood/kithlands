@@ -1,4 +1,4 @@
-.PHONY: play stop run test test-e2e test-scripts test-visual test-visual-local test-visual-update build demo migrate setup-db teardown-db balance-sim simulate validate-data client-dev client-build lint vet fmt pre-commit docker-up docker-down
+.PHONY: play stop run test test-e2e test-scripts test-worktree-lifecycle test-visual test-visual-local test-visual-update build demo migrate setup-db teardown-db balance-sim simulate validate-data client-dev client-build lint vet fmt pre-commit docker-up docker-down
 
 # Per-worktree isolation: these are populated by scripts/worktree-env.sh via
 # direnv. Defaults below keep the Makefile usable without direnv (for CI, or
@@ -26,38 +26,16 @@ teardown-db:
 # Back-compat alias. New code should depend on setup-db directly.
 migrate: setup-db
 
-# Start everything and open the game. Uses $(PORT) / $(VITE_PORT) / $(DB_NAME)
-# from the environment so parallel worktrees don't collide.
-play: stop setup-db
-	@echo "Starting Kithlands (worktree offset $${WORKTREE_OFFSET:-0})..."
-	@cd server && PORT=$(PORT) DATABASE_URL='$(DATABASE_URL)' go run ./cmd/kithlands > /tmp/kithlands-server-$(PORT).log 2>&1 &
-	@sleep 2
-	@echo "Starting Phaser client (port $(VITE_PORT))..."
-	@cd client && VITE_PORT=$(VITE_PORT) API_PORT=$(PORT) npx vite --host 0.0.0.0 --port $(VITE_PORT) > /tmp/kithlands-client-$(VITE_PORT).log 2>&1 &
-	@sleep 2
-	@echo ""
-	@echo "========================================="
-	@echo "  KITHLANDS is running!"
-	@echo ""
-	@echo "  Game:   http://localhost:$(VITE_PORT)"
-	@if [ -n "$${TAILSCALE_HOSTNAME}" ]; then echo "  Network: http://$${TAILSCALE_HOSTNAME}:$(VITE_PORT)"; fi
-	@echo ""
-	@echo "  API:    http://localhost:$(PORT)"
-	@if [ -n "$${TAILSCALE_HOSTNAME}" ]; then echo "  API:    http://$${TAILSCALE_HOSTNAME}:$(PORT)"; fi
-	@echo ""
-	@echo "  DB:     $(DB_NAME)"
-	@echo "  Logs:   /tmp/kithlands-server-$(PORT).log"
-	@echo "          /tmp/kithlands-client-$(VITE_PORT).log"
-	@echo "  Stop:   make stop"
-	@echo "========================================="
+# Start the local stack for just this worktree. The runtime script derives
+# ports and DB names from scripts/worktree-env.sh, stores logs/PIDs under
+# ./tmp/runtime, and refuses to kill or reuse other worktrees' processes.
+play:
+	@./scripts/worktree-stack.sh play
 
-# Stop the play processes started from this worktree. Filters on the
-# worktree-specific log paths so other worktrees' servers keep running.
+# Stop only the server/client PIDs recorded under this worktree's ./tmp/runtime
+# after re-verifying their port ownership. No broad pkill patterns.
 stop:
-	@-pkill -f "go run ./cmd/kithlands" 2>/dev/null || true
-	@-pkill -f "go-build.*kithlands" 2>/dev/null || true
-	@-pkill -f "vite.*--port $(VITE_PORT)" 2>/dev/null || true
-	@-pkill -f "node.*vite.*client" 2>/dev/null || true
+	@./scripts/worktree-stack.sh stop
 
 run:
 	cd server && PORT=$(PORT) DATABASE_URL='$(DATABASE_URL)' go run ./cmd/kithlands
@@ -83,6 +61,11 @@ test-e2e: setup-db
 # Shell-level tests for scripts/ (currently: worktree-env.sh).
 test-scripts:
 	@bash scripts/worktree-env_test.sh
+
+# End-to-end proof that two separate worktrees derive different ports/DBs,
+# start without colliding, and stop without killing the other stack.
+test-worktree-lifecycle:
+	@bash scripts/worktree-lifecycle_test.sh
 
 # Playwright visual regression suite (issue #145 Part D). Assumes
 # server + client are already running with KITHLANDS_DEBUG=1 — start
