@@ -1,7 +1,7 @@
 # Kithlands Agent Guide
 
-This is the operational source of truth for Codex and other coding agents
-working in this repository.
+This is the operational source of truth for Codex, Claude, OpenClaw, and other
+coding agents working in this repository.
 
 Read this file first. Then read the supporting docs it points to for the task
 you are actually doing.
@@ -203,18 +203,28 @@ state:
 Use these after reading `AGENTS.md`:
 
 - [docs/CODEX_WORKTREE_GUIDE.md](docs/CODEX_WORKTREE_GUIDE.md)
-  Worktrees, ports, databases, direnv, and browser isolation.
+  Shared worktrees, ports, databases, direnv, and browser isolation rules for
+  any agent despite the filename.
 - [docs/CODEX_VALIDATION.md](docs/CODEX_VALIDATION.md)
-  Validation matrix, CI parity, simulator usage, and Playwright proof flow.
+  Shared validation matrix, CI parity, simulator usage, and Playwright proof
+  flow.
 - [docs/CODEX_PR_WORKFLOW.md](docs/CODEX_PR_WORKFLOW.md)
-  Branching, commit cadence, PR expectations, review, merge, and cleanup.
+  Shared branching, commit cadence, PR expectations, review, merge, and
+  cleanup.
 - [docs/CODEX_OPENCLAW_WORKFLOW.md](docs/CODEX_OPENCLAW_WORKFLOW.md)
   Slack-controlled one-issue-at-a-time workflow, stop conditions, and state.
 - [docs/KITHLANDS_DESIGN.md](docs/KITHLANDS_DESIGN.md)
   Product and architecture source of truth.
+- [CLAUDE.md](CLAUDE.md)
+  Claude-specific guidance for direct implementation versus orchestrating
+  Codex/OpenClaw.
 
-## 12. Legacy Files
+## 12. Companion Files
 
-- `CLAUDE.md` and `CLAUDE.local.md` are compatibility shims for older tooling.
-  They are not the primary source of truth anymore.
-- `AGENTS.md` and the `docs/CODEX_*.md` files should win if guidance overlaps.
+- `CLAUDE.md` is a first-class Claude-facing companion guide. It should follow
+  the same repo rules as `AGENTS.md` while adding Claude-specific operating
+  guidance.
+- `CLAUDE.local.md` is for machine-local Claude notes only. Keep it untracked
+  and ignored.
+- If guidance overlaps, the shared repo rules in `AGENTS.md` and the
+  referenced docs still define the repo behavior.

@@ -3,6 +3,10 @@
 This doc explains how to run multiple Kithlands worktrees in parallel without
 port, database, or browser collisions.
 
+Despite the filename, this guide applies to Claude, Codex, OpenClaw, and any
+other agent working in this repo. `CLAUDE.md` adds the role-specific choice
+between Claude implementing directly versus Claude orchestrating another worker.
+
 ## 1. Why Worktrees Matter Here
 
 Kithlands is built for concurrent issue work. Each worktree should be able to:
