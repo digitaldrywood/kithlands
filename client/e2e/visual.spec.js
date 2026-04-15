@@ -50,7 +50,9 @@ test.describe("visual regression — issue #145", () => {
     await expect(page).toHaveScreenshot("ambush-round-0.png");
   });
 
-  test("walk sprite frames differ per direction (14c3da0)", async ({ page }) => {
+  test("walk sprite frames differ per direction (14c3da0)", async ({
+    page,
+  }) => {
     await startGame(page);
     const anchor = await page.evaluate(() =>
       window.__kithlandsTest.findDirectionAuditAnchor("World"),
@@ -81,9 +83,13 @@ test.describe("visual regression — issue #145", () => {
       }
     }
 
-    const usesWalkSheet = Object.values(frames).some((frame) => frame.hasWalkSheet);
+    const usesWalkSheet = Object.values(frames).some(
+      (frame) => frame.hasWalkSheet,
+    );
     expect(
-      Object.values(frames).every((frame) => frame.hasWalkSheet === usesWalkSheet),
+      Object.values(frames).every(
+        (frame) => frame.hasWalkSheet === usesWalkSheet,
+      ),
     ).toBe(true);
 
     if (usesWalkSheet) {
@@ -92,7 +98,9 @@ test.describe("visual regression — issue #145", () => {
       expect(frames.left.frameIndex).toBe(8);
       expect(frames.right.frameIndex).toBe(12);
     }
-    expect(new Set(Object.values(frames).map((frame) => frame.frameHash)).size).toBe(4);
+    expect(
+      new Set(Object.values(frames).map((frame) => frame.frameHash)).size,
+    ).toBe(4);
 
     const leftPathAnchor = await page.evaluate(() =>
       window.__kithlandsTest.findStraightAuditAnchor("left", 2, "World"),
@@ -103,14 +111,14 @@ test.describe("visual regression — issue #145", () => {
       ({ x, y }) => window.__kithlandsTest.setPlayerTile(x, y, "World"),
       leftPathAnchor,
     );
-    await page.evaluate(
-      () => window.__kithlandsTest.setPlayerFacing("right", "World"),
+    await page.evaluate(() =>
+      window.__kithlandsTest.setPlayerFacing("right", "World"),
     );
-    const left0 = await page.evaluate(
-      () => window.__kithlandsTest.movePlayer("left", "World"),
+    const left0 = await page.evaluate(() =>
+      window.__kithlandsTest.movePlayer("left", "World"),
     );
-    const left1 = await page.evaluate(
-      () => window.__kithlandsTest.movePlayer("left", "World"),
+    const left1 = await page.evaluate(() =>
+      window.__kithlandsTest.movePlayer("left", "World"),
     );
     expect(left1.moved).toBe(true);
     expect(left1.playerDir).toBe("left");

@@ -133,7 +133,7 @@ function getRoleProfile(actor) {
       Math.max(0, (actor.int_stat ?? actor.int ?? 0) - (actor.str ?? 0)),
     magic_weight:
       damageSpells * 16 +
-      Math.max(0, (actor.int_stat ?? actor.int ?? 0) - ((actor.str ?? 0) / 2)),
+      Math.max(0, (actor.int_stat ?? actor.int ?? 0) - (actor.str ?? 0) / 2),
     physical_weight:
       (actor.str ?? 0) +
       physicalAbilities * 12 +
@@ -153,7 +153,13 @@ function estimatePhysicalDamage(actor, abilityId = "") {
 
 function enemyThreat(enemy) {
   const sizeScore =
-    enemy.size === "boss" ? 70 : enemy.size === "large" ? 36 : enemy.size === "medium" ? 24 : 12;
+    enemy.size === "boss"
+      ? 70
+      : enemy.size === "large"
+        ? 36
+        : enemy.size === "medium"
+          ? 24
+          : 12;
   const hpScore = (enemy.max_hp ?? enemy.hp ?? 0) * 0.16;
   const woundedScore = ((enemy.max_hp ?? 1) - enemy.hp) * 0.08;
   const statusPenalty = enemy.status === "sleep" ? 4 : 0;
@@ -162,7 +168,11 @@ function enemyThreat(enemy) {
 
 function revivePriority(member) {
   const role = getRoleProfile(member);
-  return role.support_weight * 0.8 + role.magic_weight * 0.5 + role.physical_weight * 0.4;
+  return (
+    role.support_weight * 0.8 +
+    role.magic_weight * 0.5 +
+    role.physical_weight * 0.4
+  );
 }
 
 function elementalMultiplier(spell, enemy) {
@@ -188,10 +198,16 @@ function statusMatchesCure(spell, member) {
 function bestEnemyTarget(enemies, damageEstimate, utilityShift = 0) {
   let best = null;
   for (const enemy of livingEnemies(enemies)) {
-    const killBonus = damageEstimate >= enemy.hp ? 55 + enemyThreat(enemy) * 0.35 : 0;
-    const lowHpBonus = ((enemy.max_hp ?? 1) - enemy.hp) / Math.max(1, enemy.max_hp) * 22;
+    const killBonus =
+      damageEstimate >= enemy.hp ? 55 + enemyThreat(enemy) * 0.35 : 0;
+    const lowHpBonus =
+      (((enemy.max_hp ?? 1) - enemy.hp) / Math.max(1, enemy.max_hp)) * 22;
     const score = enemyThreat(enemy) + killBonus + lowHpBonus + utilityShift;
-    if (!best || score > best.score || (score === best.score && enemy.id < best.enemy.id)) {
+    if (
+      !best ||
+      score > best.score ||
+      (score === best.score && enemy.id < best.enemy.id)
+    ) {
       best = { enemy, score };
     }
   }
@@ -205,7 +221,9 @@ function addCandidate(candidates, candidate) {
 
 function candidateSort(a, b) {
   if (b.score !== a.score) return b.score - a.score;
-  const typeCmp = (ACTION_TIEBREAK[a.action.type] ?? 99) - (ACTION_TIEBREAK[b.action.type] ?? 99);
+  const typeCmp =
+    (ACTION_TIEBREAK[a.action.type] ?? 99) -
+    (ACTION_TIEBREAK[b.action.type] ?? 99);
   if (typeCmp !== 0) return typeCmp;
   if ((a.action.target_id ?? -1) !== (b.action.target_id ?? -1)) {
     return (a.action.target_id ?? -1) - (b.action.target_id ?? -1);
@@ -231,12 +249,18 @@ function planAbilityCandidates(actor, slot, gameState, role) {
       const best = bestEnemyTarget(
         gameState.enemies,
         estimatePhysicalDamage(actor, abilityId),
-        role.physical_weight * 0.22 + PHYSICAL_ABILITY_META[abilityId].utility_bonus,
+        role.physical_weight * 0.22 +
+          PHYSICAL_ABILITY_META[abilityId].utility_bonus,
       );
       if (!best) continue;
       addCandidate(candidates, {
         score: best.score + role.physical_weight * 0.95 + 8,
-        action: { slot, type: "ability", ability_id: abilityId, target_id: best.enemy.id },
+        action: {
+          slot,
+          type: "ability",
+          ability_id: abilityId,
+          target_id: best.enemy.id,
+        },
         preview: `${actor.name} -> Backstab ${best.enemy.name}`,
       });
       continue;
@@ -270,7 +294,8 @@ function planAbilityCandidates(actor, slot, gameState, role) {
 
     if (abilityId === "inspire") {
       const wounded = partyMissingHP(gameState.party);
-      const urgent = lowestLivingHpRatio(gameState.party) <= SMART_CONFIG.hurt_heal_ratio;
+      const urgent =
+        lowestLivingHpRatio(gameState.party) <= SMART_CONFIG.hurt_heal_ratio;
       addCandidate(candidates, {
         score:
           role.support_weight * 0.6 +
@@ -298,7 +323,10 @@ function lowestLivingHpRatio(party) {
 }
 
 function partyMissingHP(party) {
-  return party.reduce((sum, member) => sum + Math.max(0, (member.max_hp ?? 0) - (member.hp ?? 0)), 0);
+  return party.reduce(
+    (sum, member) => sum + Math.max(0, (member.max_hp ?? 0) - (member.hp ?? 0)),
+    0,
+  );
 }
 
 function planReviveCandidate(actor, slot, gameState, role) {
@@ -319,7 +347,12 @@ function planReviveCandidate(actor, slot, gameState, role) {
       revivePriority(target) +
       role.support_weight * 0.45 -
       livingEnemies(gameState.enemies).length * 4,
-    action: { slot, type: "revive", target_id: target.slot, item_id: "phoenix_down" },
+    action: {
+      slot,
+      type: "revive",
+      target_id: target.slot,
+      item_id: "phoenix_down",
+    },
     preview: `${actor.name} -> Phoenix Down ${target.name}`,
   };
 }
@@ -361,9 +394,18 @@ function planSupportSpellCandidates(actor, slot, gameState, role) {
             role.support_weight +
             missing * 0.9 +
             Math.min(missing, spell.power ?? 0) * 1.2 +
-            (ratio <= SMART_CONFIG.urgent_heal_ratio ? 52 : ratio <= SMART_CONFIG.hurt_heal_ratio ? 20 : -18) -
+            (ratio <= SMART_CONFIG.urgent_heal_ratio
+              ? 52
+              : ratio <= SMART_CONFIG.hurt_heal_ratio
+                ? 20
+                : -18) -
             (spell.mp_cost ?? 0) * 2.5,
-          action: { slot, type: "spell", target_id: member.slot, spell_id: spell.id },
+          action: {
+            slot,
+            type: "spell",
+            target_id: member.slot,
+            spell_id: spell.id,
+          },
           preview: `${actor.name} -> ${spell.name} ${member.name}`,
         });
       }
@@ -372,7 +414,9 @@ function planSupportSpellCandidates(actor, slot, gameState, role) {
 
     if (spell.effect === "cure_status") {
       if (spell.target === "all_allies" || spell.target === "party") {
-        const afflicted = livingParty(gameState.party).filter((member) => statusMatchesCure(spell, member));
+        const afflicted = livingParty(gameState.party).filter((member) =>
+          statusMatchesCure(spell, member),
+        );
         if (!afflicted.length) continue;
         addCandidate(candidates, {
           score:
@@ -394,7 +438,12 @@ function planSupportSpellCandidates(actor, slot, gameState, role) {
             SMART_CONFIG.status_cure_score +
             (member.status === "stone" ? 16 : 0) -
             (spell.mp_cost ?? 0) * 2,
-          action: { slot, type: "spell", target_id: member.slot, spell_id: spell.id },
+          action: {
+            slot,
+            type: "spell",
+            target_id: member.slot,
+            spell_id: spell.id,
+          },
           preview: `${actor.name} -> ${spell.name} ${member.name}`,
         });
       }
@@ -402,7 +451,9 @@ function planSupportSpellCandidates(actor, slot, gameState, role) {
     }
 
     if (spell.effect === "buff") {
-      if (lowestLivingHpRatio(gameState.party) <= SMART_CONFIG.hurt_heal_ratio) {
+      if (
+        lowestLivingHpRatio(gameState.party) <= SMART_CONFIG.hurt_heal_ratio
+      ) {
         continue;
       }
       const allies = livingParty(gameState.party);
@@ -418,7 +469,12 @@ function planSupportSpellCandidates(actor, slot, gameState, role) {
           SMART_CONFIG.buff_base_score +
           estimatePhysicalDamage(target) * 0.3 -
           (spell.mp_cost ?? 0) * 1.5,
-        action: { slot, type: "spell", target_id: target.slot, spell_id: spell.id },
+        action: {
+          slot,
+          type: "spell",
+          target_id: target.slot,
+          spell_id: spell.id,
+        },
         preview: `${actor.name} -> ${spell.name} ${target.name}`,
       });
     }
@@ -474,7 +530,12 @@ function planDamageSpellCandidates(actor, slot, gameState, role) {
           enemyThreat(enemy) +
           weaknessBonus -
           (spell.mp_cost ?? 0) * 3,
-        action: { slot, type: "spell", target_id: enemy.id, spell_id: spell.id },
+        action: {
+          slot,
+          type: "spell",
+          target_id: enemy.id,
+          spell_id: spell.id,
+        },
         preview: `${actor.name} -> ${spell.name} ${enemy.name}`,
       });
     }
@@ -491,16 +552,29 @@ function planSmartAction(slot, actor, gameState) {
   const candidates = [];
 
   addCandidate(candidates, planReviveCandidate(actor, slot, gameState, role));
-  for (const candidate of planSupportSpellCandidates(actor, slot, gameState, role)) {
+  for (const candidate of planSupportSpellCandidates(
+    actor,
+    slot,
+    gameState,
+    role,
+  )) {
     addCandidate(candidates, candidate);
   }
-  for (const candidate of planDamageSpellCandidates(actor, slot, gameState, role)) {
+  for (const candidate of planDamageSpellCandidates(
+    actor,
+    slot,
+    gameState,
+    role,
+  )) {
     addCandidate(candidates, candidate);
   }
   for (const candidate of planAbilityCandidates(actor, slot, gameState, role)) {
     addCandidate(candidates, candidate);
   }
-  addCandidate(candidates, planAttackCandidate(actor, slot, gameState.enemies, role));
+  addCandidate(
+    candidates,
+    planAttackCandidate(actor, slot, gameState.enemies, role),
+  );
 
   if (!candidates.length) return null;
   candidates.sort(candidateSort);
@@ -530,9 +604,12 @@ export function planSmartRound(gameState, slots = null) {
 
 export function describePlannedAction(action, gameState) {
   if (!action) return "";
-  const actorName = gameState.party?.[action.slot]?.name || `Slot ${action.slot + 1}`;
+  const actorName =
+    gameState.party?.[action.slot]?.name || `Slot ${action.slot + 1}`;
   if (action.type === "attack") {
-    const enemy = gameState.enemies?.find((entry) => entry.id === action.target_id);
+    const enemy = gameState.enemies?.find(
+      (entry) => entry.id === action.target_id,
+    );
     return `${actorName} -> Attack ${enemy?.name || `Enemy ${action.target_id}`}`;
   }
   if (action.type === "revive") {
@@ -545,14 +622,18 @@ export function describePlannedAction(action, gameState) {
       return `${actorName} -> ${spell?.name || action.spell_id} ${gameState.party[action.target_id].name}`;
     }
     if (action.target_id > 0) {
-      const enemy = gameState.enemies?.find((entry) => entry.id === action.target_id);
+      const enemy = gameState.enemies?.find(
+        (entry) => entry.id === action.target_id,
+      );
       return `${actorName} -> ${spell?.name || action.spell_id} ${enemy?.name || `Enemy ${action.target_id}`}`;
     }
     return `${actorName} -> ${spell?.name || action.spell_id}`;
   }
   if (action.type === "ability") {
     if (action.target_id > 0) {
-      const enemy = gameState.enemies?.find((entry) => entry.id === action.target_id);
+      const enemy = gameState.enemies?.find(
+        (entry) => entry.id === action.target_id,
+      );
       return `${actorName} -> ${action.ability_id} ${enemy?.name || `Enemy ${action.target_id}`}`;
     }
     return `${actorName} -> ${action.ability_id}`;
@@ -560,7 +641,12 @@ export function describePlannedAction(action, gameState) {
   return `${actorName} -> ${action.type}`;
 }
 
-export function buildBattleActionButtons({ member, gameState, hasLastRound, autoMode }) {
+export function buildBattleActionButtons({
+  member,
+  gameState,
+  hasLastRound,
+  autoMode,
+}) {
   const buttons = [{ label: "[A]TTACK", type: "attack", color: "#ff4444" }];
   const hasSpells =
     member.spells?.length > 0 &&
@@ -673,7 +759,11 @@ function resolveAllySpell(action, spell, party, enemies, slot) {
   }
 
   const targetSlot = action.target_id;
-  if (targetSlot >= 0 && targetSlot < party.length && party[targetSlot].hp > 0) {
+  if (
+    targetSlot >= 0 &&
+    targetSlot < party.length &&
+    party[targetSlot].hp > 0
+  ) {
     return {
       slot,
       type: "spell",
@@ -719,7 +809,11 @@ function resolveEnemySpell(action, spell, enemies, slot) {
 }
 
 function resolveAbility(action, enemies, slot) {
-  if (action.ability_id === "focus" || action.ability_id === "counter" || action.ability_id === "inspire") {
+  if (
+    action.ability_id === "focus" ||
+    action.ability_id === "counter" ||
+    action.ability_id === "inspire"
+  ) {
     return {
       slot,
       type: "ability",
@@ -747,8 +841,17 @@ function resolveItem(action, gameState, slot) {
       return fb ? { slot, ...fb } : null;
     }
     const targetSlot = action.target_id;
-    if (targetSlot >= 0 && targetSlot < party.length && party[targetSlot].hp <= 0) {
-      return { slot, type: "revive", target_id: targetSlot, item_id: "phoenix_down" };
+    if (
+      targetSlot >= 0 &&
+      targetSlot < party.length &&
+      party[targetSlot].hp <= 0
+    ) {
+      return {
+        slot,
+        type: "revive",
+        target_id: targetSlot,
+        item_id: "phoenix_down",
+      };
     }
     const fb = fallbackAttack(enemies);
     return fb ? { slot, ...fb } : null;

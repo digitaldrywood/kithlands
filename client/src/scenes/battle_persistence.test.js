@@ -94,7 +94,14 @@ function stubLocalStorage() {
 
 function makeParty() {
   return [
-    { name: "Bruno", class_id: "warrior", hp: 90, max_hp: 100, mp: 0, max_mp: 0 },
+    {
+      name: "Bruno",
+      class_id: "warrior",
+      hp: 90,
+      max_hp: 100,
+      mp: 0,
+      max_mp: 0,
+    },
     { name: "Nia", class_id: "cinder", hp: 70, max_hp: 70, mp: 12, max_mp: 12 },
   ];
 }

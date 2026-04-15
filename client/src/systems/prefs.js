@@ -60,9 +60,7 @@ export function addPartyToHistory(party) {
   const history = getPartyHistory();
   // Add if not duplicate
   const key = partySignature(party);
-  const existing = history.find(
-    (h) => partySignature(h) === key,
-  );
+  const existing = history.find((h) => partySignature(h) === key);
   if (!existing) {
     history.unshift(party);
     if (history.length > 5) history.pop(); // keep last 5

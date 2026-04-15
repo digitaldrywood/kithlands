@@ -484,13 +484,29 @@ describe("smart attack planner", () => {
   it("healer revives a fallen ally before attacking", () => {
     const gs = makeState({
       party: [
-        makeMember(0, 72, 100, 18, 30, [
-          { id: "cure", name: "Cure", target: "single_ally", effect: "heal", mp_cost: 4, power: 16, castable_in_combat: true },
-        ], {
-          class_id: "mender",
-          int_stat: 18,
-          str: 6,
-        }),
+        makeMember(
+          0,
+          72,
+          100,
+          18,
+          30,
+          [
+            {
+              id: "cure",
+              name: "Cure",
+              target: "single_ally",
+              effect: "heal",
+              mp_cost: 4,
+              power: 16,
+              castable_in_combat: true,
+            },
+          ],
+          {
+            class_id: "mender",
+            int_stat: 18,
+            str: 6,
+          },
+        ),
         makeMember(1, 0, 100, 0, 0, [], { class_id: "warrior", str: 20 }),
         makeMember(2, 90, 100),
       ],
@@ -505,14 +521,39 @@ describe("smart attack planner", () => {
   it("healer picks a heal spell for a critically hurt ally", () => {
     const gs = makeState({
       party: [
-        makeMember(0, 70, 100, 20, 30, [
-          { id: "cure", name: "Cure", target: "single_ally", effect: "heal", mp_cost: 4, power: 16, castable_in_combat: true },
-          { id: "bless", name: "Bless", target: "single_ally", effect: "buff", mp_cost: 2, power: 10, buff_stat: "hit_pct", castable_in_combat: true },
-        ], {
-          class_id: "mender",
-          int_stat: 19,
-          str: 5,
-        }),
+        makeMember(
+          0,
+          70,
+          100,
+          20,
+          30,
+          [
+            {
+              id: "cure",
+              name: "Cure",
+              target: "single_ally",
+              effect: "heal",
+              mp_cost: 4,
+              power: 16,
+              castable_in_combat: true,
+            },
+            {
+              id: "bless",
+              name: "Bless",
+              target: "single_ally",
+              effect: "buff",
+              mp_cost: 2,
+              power: 10,
+              buff_stat: "hit_pct",
+              castable_in_combat: true,
+            },
+          ],
+          {
+            class_id: "mender",
+            int_stat: 19,
+            str: 5,
+          },
+        ),
         makeMember(1, 18, 100, 0, 0, [], { class_id: "warrior", str: 20 }),
         makeMember(2, 100, 100),
       ],
@@ -542,14 +583,40 @@ describe("smart attack planner", () => {
         }),
       ],
       party: [
-        makeMember(0, 60, 80, 22, 30, [
-          { id: "spark", name: "Spark", target: "single_enemy", effect: "damage", mp_cost: 4, power: 10, element: "fire", castable_in_combat: true },
-          { id: "frost", name: "Frost", target: "single_enemy", effect: "damage", mp_cost: 4, power: 10, element: "ice", castable_in_combat: true },
-        ], {
-          class_id: "cinder",
-          str: 4,
-          int_stat: 24,
-        }),
+        makeMember(
+          0,
+          60,
+          80,
+          22,
+          30,
+          [
+            {
+              id: "spark",
+              name: "Spark",
+              target: "single_enemy",
+              effect: "damage",
+              mp_cost: 4,
+              power: 10,
+              element: "fire",
+              castable_in_combat: true,
+            },
+            {
+              id: "frost",
+              name: "Frost",
+              target: "single_enemy",
+              effect: "damage",
+              mp_cost: 4,
+              power: 10,
+              element: "ice",
+              castable_in_combat: true,
+            },
+          ],
+          {
+            class_id: "cinder",
+            str: 4,
+            int_stat: 24,
+          },
+        ),
       ],
     });
 
@@ -569,14 +636,40 @@ describe("smart attack planner", () => {
         makeEnemy(3, 80, 80, { name: "Goblin C" }),
       ],
       party: [
-        makeMember(0, 60, 80, 30, 30, [
-          { id: "spark", name: "Spark", target: "single_enemy", effect: "damage", mp_cost: 4, power: 10, element: "fire", castable_in_combat: true },
-          { id: "ember", name: "Ember", target: "all_enemies", effect: "damage", mp_cost: 6, power: 12, element: "fire", castable_in_combat: true },
-        ], {
-          class_id: "cinder",
-          str: 4,
-          int_stat: 22,
-        }),
+        makeMember(
+          0,
+          60,
+          80,
+          30,
+          30,
+          [
+            {
+              id: "spark",
+              name: "Spark",
+              target: "single_enemy",
+              effect: "damage",
+              mp_cost: 4,
+              power: 10,
+              element: "fire",
+              castable_in_combat: true,
+            },
+            {
+              id: "ember",
+              name: "Ember",
+              target: "all_enemies",
+              effect: "damage",
+              mp_cost: 6,
+              power: 12,
+              element: "fire",
+              castable_in_combat: true,
+            },
+          ],
+          {
+            class_id: "cinder",
+            str: 4,
+            int_stat: 22,
+          },
+        ),
       ],
     });
 

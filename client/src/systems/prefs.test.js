@@ -36,6 +36,8 @@ describe("battle plan memory", () => {
   it("returns null when the party key does not match", () => {
     setBattlePlanMemory(PARTY, [{ slot: 0, type: "attack", target_id: 99 }]);
 
-    expect(getBattlePlanMemory([{ name: "Other", class_id: "warrior" }])).toBeNull();
+    expect(
+      getBattlePlanMemory([{ name: "Other", class_id: "warrior" }]),
+    ).toBeNull();
   });
 });
