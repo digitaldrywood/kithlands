@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 CELL = 128
 SCALE = 4
@@ -69,6 +69,9 @@ def panel_frame(frame: Image.Image, label: str) -> Image.Image:
     panel.paste(scaled, (12, 12), scaled)
     label_box = Image.new("RGBA", (panel.width, 24), LABEL_BG)
     panel.paste(label_box, (0, panel.height - 24), label_box)
+    draw = ImageDraw.Draw(panel)
+    font = ImageFont.load_default()
+    draw.text((10, panel.height - 19), label, fill=WHITE, font=font)
     return panel
 
 
@@ -105,6 +108,29 @@ def export_sheet(sheet: Image.Image, out_path: Path) -> None:
     enlarged.save(out_path)
 
 
+def export_row_strip(rows: dict[str, list[Image.Image]], out_path: Path) -> None:
+    font = ImageFont.load_default()
+    label_w = 72
+    gap = 16
+    frame_w = CELL * SCALE
+    frame_h = CELL * SCALE
+    canvas_w = label_w + gap + frame_w * 4
+    canvas_h = (frame_h + gap) * len(DIRS) - gap
+    canvas = Image.new("RGBA", (canvas_w, canvas_h), OUT_BG)
+    draw = ImageDraw.Draw(canvas)
+
+    for row_idx, dir_name in enumerate(DIRS):
+        y = row_idx * (frame_h + gap)
+        draw.rectangle((0, y, label_w, y + frame_h), fill=PANEL_BG)
+        draw.text((10, y + 12), dir_name.upper(), fill=WHITE, font=font)
+        for col_idx, frame in enumerate(rows[dir_name]):
+            x = label_w + gap + col_idx * frame_w
+            scaled = scale_frame(frame).convert("RGBA")
+            canvas.paste(scaled, (x, y), scaled)
+
+    canvas.save(out_path)
+
+
 def write_index(entries: list[dict[str, str]], out_dir: Path, title: str) -> None:
     cards = []
     for entry in entries:
@@ -113,8 +139,10 @@ def write_index(entries: list[dict[str, str]], out_dir: Path, title: str) -> Non
             f"""
             <article class="card">
               <h2>{cls}</h2>
-              <p><img src="{entry['preview_rel']}" alt="{cls} animated preview"></p>
-              <p><a href="{entry['sheet_rel']}">Sheet PNG</a></p>
+              <p><img src="{entry['strip_rel']}" alt="{cls} labeled direction strip"></p>
+              <p><a href="{entry['strip_rel']}">Labeled Direction Strip</a></p>
+              <p><a href="{entry['sheet_rel']}">Raw Sheet PNG</a></p>
+              <p><a href="{entry['preview_rel']}">Composite Preview GIF</a></p>
               <p class="links">
                 <a href="{entry['down_rel']}">Down</a>
                 <a href="{entry['up_rel']}">Up</a>
@@ -214,13 +242,16 @@ def main() -> None:
         rows = {dir_name: extract_row(sheet, idx) for idx, dir_name in enumerate(DIRS)}
 
         sheet_out = class_dir / f"{class_id}_sheet_4x.png"
+        strip_out = class_dir / f"{class_id}_directions_4x.png"
         preview_out = class_dir / f"{class_id}_preview.gif"
         export_sheet(sheet, sheet_out)
+        export_row_strip(rows, strip_out)
         preview_gif(rows, preview_out)
 
         entry = {
             "class": class_id,
             "sheet_rel": f"{class_id}/{sheet_out.name}",
+            "strip_rel": f"{class_id}/{strip_out.name}",
             "preview_rel": f"{class_id}/{preview_out.name}",
         }
 
