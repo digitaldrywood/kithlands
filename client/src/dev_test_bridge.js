@@ -1,4 +1,5 @@
 import { buyItem, debugGiveItem } from "./api.js";
+import { getCurrentMusicKey, getPlayingSoundKeys } from "./systems/audio.js";
 import {
   openCharacterDetail,
   closeCharacterDetail,
@@ -141,6 +142,14 @@ export function installDevTestBridge(game) {
       return clone(getScene(game, sceneKey)?.gameState || null);
     },
 
+    audioState(sceneKey) {
+      const scene = getScene(game, sceneKey) || activeScene(game);
+      return {
+        currentMusicKey: getCurrentMusicKey(),
+        playingKeys: getPlayingSoundKeys(scene),
+      };
+    },
+
     visibleTexts(sceneKey) {
       const scene = getScene(game, sceneKey);
       return (scene?.children?.list || [])
@@ -248,6 +257,15 @@ export function installDevTestBridge(game) {
           ...spawn,
         },
       });
+      return true;
+    },
+
+    exitTown(sceneKey = "Town") {
+      const scene = getScene(game, sceneKey);
+      if (!scene || typeof scene.exitToWorld !== "function") {
+        throw new Error("Town scene cannot exit");
+      }
+      scene.exitToWorld();
       return true;
     },
 

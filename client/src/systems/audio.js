@@ -74,6 +74,15 @@ export function stopMusic() {
   currentMusicKey = null;
 }
 
+export function getCurrentMusicKey() {
+  return currentMusicKey;
+}
+
+export function getPlayingSoundKeys(phaserScene = scene) {
+  const sounds = phaserScene?.sound?.sounds || [];
+  return sounds.filter((sound) => sound?.isPlaying).map((sound) => sound.key);
+}
+
 export function playSFX(key) {
   if (!scene || !scene.sound || muted) return;
   if (scene.cache.audio.exists(key)) {

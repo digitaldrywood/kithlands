@@ -1,4 +1,4 @@
-import { playSFX, playMusic } from "../systems/audio.js";
+import { initAudio, playSFX, playMusic } from "../systems/audio.js";
 import { autosaveGame, collectHiddenItem, restAtTown } from "../api.js";
 import { openDialogue } from "./town_dialogue.js";
 import { openShop } from "./world_shop.js";
@@ -10,7 +10,7 @@ import {
   nextLeaderIndex,
 } from "./walkFrame.js";
 import { getLeaderIndex } from "./world.js";
-import { buildingTypeFromTags, isRestBuilding } from "./building_type.js";
+import { buildingTypeFromTags } from "./building_type.js";
 import { walkStepMs } from "../systems/prefs.js";
 import { isWorldInputLocked } from "../systems/modalLock.js";
 import { getNpcDialogue } from "../api.js";
@@ -394,6 +394,20 @@ function generateHiddenItems(nodeId, tiles, roomW, roomH, npcX, npcY) {
   return items;
 }
 
+function buildingMusicForTags(tags) {
+  const tagSet = new Set(tags || []);
+  if (tagSet.has("shop") || tagSet.has("commerce")) {
+    return { key: "music_shop", loop: true };
+  }
+  if (tagSet.has("rest") || tagSet.has("house") || tagSet.has("safehouse")) {
+    return { key: "music_inn", loop: false };
+  }
+  if (tagSet.has("temple") || tagSet.has("revive")) {
+    return { key: "music_quest", loop: true };
+  }
+  return { key: "music_inn", loop: false };
+}
+
 export class TownScene extends Phaser.Scene {
   constructor() {
     super("Town");
@@ -406,9 +420,9 @@ export class TownScene extends Phaser.Scene {
 
   create() {
     this.animating = false;
+    initAudio(this);
 
     const tags = this.spawn.tags || [];
-    const tagSet = new Set(tags);
     const buildingType = this.spawn.building_type || buildingTypeFromTags(tags);
     const interiorSeed =
       this.spawn.interior_seed || hashCode(this.spawn.node_id || "default");
@@ -418,14 +432,8 @@ export class TownScene extends Phaser.Scene {
     this.roomW = dims.w;
     this.roomH = dims.h;
 
-    // Pick music
-    if (tagSet.has("shop") || tagSet.has("commerce")) {
-      playMusic("music_shop");
-    } else if (tagSet.has("rest")) {
-      playMusic("music_inn", false);
-    } else {
-      playMusic("music_overworld");
-    }
+    const { key: musicKey, loop: musicLoop } = buildingMusicForTags(tags);
+    playMusic(musicKey, musicLoop);
 
     // Generate interior first, then place NPCs on walkable tiles
     const numNpcs = npcCount(buildingType);
