@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Generate review-only overworld walk prototypes via Gemini.
 
-This version intentionally generates one 4-frame row per facing, then composes
-the rows into a single 4x4 walk sheet. That makes the model solve a much
-simpler problem than "invent a full sheet at once" and gives us a cleaner way
-to reject bad choreography.
+This version generates one frame at a time instead of asking Gemini for a full
+row strip. That gives us explicit control over the 4-frame order and prevents
+the "multiple poses smeared across one strip" failure mode.
 """
 
 from __future__ import annotations
@@ -34,77 +33,18 @@ WARRIOR_IDENTITY = (
     "JRPG overworld proportions"
 )
 
-ROW_SPECS = [
-    (
-        "down",
-        (
-            "Create a single horizontal strip containing exactly 4 full-body "
-            "overworld sprite frames of the same armored warrior walking "
-            "TOWARD the camera in a classic JRPG style. Keep the camera angle "
-            "locked to a front/down view in all four frames. Do not rotate the "
-            "character. Do not switch to a side or back view. The 4 frames "
-            "must form a real walk cycle in order: frame 1 neutral/contact, "
-            "frame 2 left leg forward with opposite arm swing, frame 3 "
-            "passing/neutral variant, frame 4 right leg forward with opposite "
-            "arm swing. Keep the head and torso anchored, only the limbs and "
-            "cape should shift naturally. Use the first reference image only "
-            "for overworld sprite style/scale and the second reference image "
-            f"only for warrior identity cues: {WARRIOR_IDENTITY}. "
-            "Use a solid bright magenta #FF00FF background."
-        ),
-    ),
-    (
-        "up",
-        (
-            "Create a single horizontal strip containing exactly 4 full-body "
-            "overworld sprite frames of the same armored warrior walking AWAY "
-            "from the camera in a classic JRPG style. Keep the camera angle "
-            "locked to a back/up view in all four frames. Do not rotate the "
-            "character. Do not show the face from the front. The 4 frames "
-            "must form a real walk cycle in order: frame 1 neutral/contact, "
-            "frame 2 left leg forward with opposite arm swing, frame 3 "
-            "passing/neutral variant, frame 4 right leg forward with opposite "
-            "arm swing. Keep the back silhouette readable and the cape motion "
-            "subtle. Use the first reference image only for overworld sprite "
-            "style/scale and the second reference image only for warrior "
-            f"identity cues: {WARRIOR_IDENTITY}. Use a solid bright magenta "
-            "#FF00FF background."
-        ),
-    ),
-    (
-        "left",
-        (
-            "Create a single horizontal strip containing exactly 4 full-body "
-            "overworld sprite frames of the same armored warrior walking LEFT "
-            "in a classic JRPG style. Keep the camera angle locked to a left "
-            "profile view in all four frames. Do not rotate toward the front "
-            "or back. The 4 frames must form a real walk cycle in order: "
-            "frame 1 neutral/contact, frame 2 left leg forward with opposite "
-            "arm swing, frame 3 passing/neutral variant, frame 4 right leg "
-            "forward with opposite arm swing. Keep the torso stable and make "
-            "the legs read clearly. Use the first reference image only for "
-            "overworld sprite style/scale and the second reference image only "
-            f"for warrior identity cues: {WARRIOR_IDENTITY}. Use a solid "
-            "bright magenta #FF00FF background."
-        ),
-    ),
-    (
-        "right",
-        (
-            "Create a single horizontal strip containing exactly 4 full-body "
-            "overworld sprite frames of the same armored warrior walking "
-            "RIGHT in a classic JRPG style. Keep the camera angle locked to a "
-            "right profile view in all four frames. Do not rotate toward the "
-            "front or back. The 4 frames must form a real walk cycle in order: "
-            "frame 1 neutral/contact, frame 2 left leg forward with opposite "
-            "arm swing, frame 3 passing/neutral variant, frame 4 right leg "
-            "forward with opposite arm swing. Keep the torso stable and make "
-            "the legs read clearly. Use the first reference image only for "
-            "overworld sprite style/scale and the second reference image only "
-            f"for warrior identity cues: {WARRIOR_IDENTITY}. Use a solid "
-            "bright magenta #FF00FF background."
-        ),
-    ),
+DIRECTION_LABELS = {
+    "down": "front/down view, walking toward the camera",
+    "up": "back/up view, walking away from the camera",
+    "left": "left profile view, walking left",
+    "right": "right profile view, walking right",
+}
+
+FRAME_PHASES = [
+    ("f0", "neutral contact pose, both feet near center, calm shoulder swing"),
+    ("f1", "left leg forward, right arm forward, visible shoulder swing"),
+    ("f2", "passing pose, weight shifted through center, subtle head and cape motion"),
+    ("f3", "right leg forward, left arm forward, visible shoulder swing"),
 ]
 
 
@@ -118,7 +58,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--name",
-        default="warrior_proto_b",
+        default="warrior_proto_c",
         help="Output basename without _walk.png suffix",
     )
     return parser.parse_args()
@@ -233,14 +173,14 @@ def remove_background(img: Image.Image) -> Image.Image:
     return img
 
 
-def fit_row(img: Image.Image) -> Image.Image:
-    scale = min(SHEET / img.width, CELL / img.height)
+def fit_frame(img: Image.Image) -> Image.Image:
+    scale = min(CELL / img.width, CELL / img.height)
     width = max(1, round(img.width * scale))
     height = max(1, round(img.height * scale))
     resized = img.resize((width, height), Image.Resampling.NEAREST)
-    canvas = Image.new("RGBA", (SHEET, CELL), (0, 0, 0, 0))
-    x = (SHEET - width) // 2
-    y = (CELL - height) // 2
+    canvas = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
+    x = (CELL - width) // 2
+    y = CELL - height
     canvas.paste(resized, (x, y), resized)
     return canvas
 
@@ -264,11 +204,37 @@ def build_style_reference() -> None:
     board.save(STYLE_REF)
 
 
-def compose_sheet(rows: list[Image.Image]) -> Image.Image:
+def compose_sheet(rows: list[list[Image.Image]]) -> Image.Image:
     sheet = Image.new("RGBA", (SHEET, SHEET), (0, 0, 0, 0))
-    for row_idx, row_img in enumerate(rows):
-        sheet.paste(row_img, (0, row_idx * CELL), row_img)
+    for row_idx, row in enumerate(rows):
+        for col_idx, frame in enumerate(row):
+            sheet.paste(frame, (col_idx * CELL, row_idx * CELL), frame)
     return sheet
+
+
+def direction_ref_path(direction: str) -> Path:
+    name = {
+        "down": "player_down.png",
+        "up": "player_up.png",
+        "left": "player_left.png",
+        "right": "player_right.png",
+    }[direction]
+    return SPRITES_DIR / name
+
+
+def frame_prompt(direction: str, phase_desc: str) -> str:
+    return (
+        "Create one single full-body overworld sprite frame on a solid bright "
+        "magenta #FF00FF background. Classic JRPG overworld style, not a "
+        "portrait, not a strip, not multiple poses. Keep the camera angle "
+        f"locked to {DIRECTION_LABELS[direction]}. The pose for this one frame "
+        f"is: {phase_desc}. The same armored warrior identity must be kept in "
+        f"every frame: {WARRIOR_IDENTITY}. Use the first reference image for "
+        "general overworld readability, the second reference image for the "
+        "exact facing/style of this direction, and the third reference image "
+        "only for warrior identity cues. Keep the sprite centered in the "
+        "square and keep the feet visible."
+    )
 
 
 def main() -> None:
@@ -278,26 +244,31 @@ def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     portrait_path = SPRITES_DIR / f"{args.class_id}.png"
-    row_images: list[Image.Image] = []
+    rows: list[list[Image.Image]] = []
 
     print(f"style-ref {STYLE_REF}")
-    for direction, prompt in ROW_SPECS:
-        out_path = OUT_DIR / f"{args.name}_{direction}.png"
-        print(f"generate {out_path.name}")
-        img = generate_image(
-            [
-                base64_part(STYLE_REF),
-                base64_part(portrait_path),
-                {"text": prompt},
-            ],
-            aspect_ratio="16:9",
-        )
-        img = fit_row(remove_background(img))
-        img.save(out_path)
-        row_images.append(img)
-        print(f"saved {out_path}")
+    for direction in ["down", "up", "left", "right"]:
+        dir_ref = direction_ref_path(direction)
+        row_frames: list[Image.Image] = []
+        for frame_id, phase_desc in FRAME_PHASES:
+            out_path = OUT_DIR / f"{args.name}_{direction}_{frame_id}.png"
+            print(f"generate {out_path.name}")
+            img = generate_image(
+                [
+                    base64_part(STYLE_REF),
+                    base64_part(dir_ref),
+                    base64_part(portrait_path),
+                    {"text": frame_prompt(direction, phase_desc)},
+                ],
+                aspect_ratio="1:1",
+            )
+            img = fit_frame(remove_background(img))
+            img.save(out_path)
+            row_frames.append(img)
+            print(f"saved {out_path}")
+        rows.append(row_frames)
 
-    sheet = compose_sheet(row_images)
+    sheet = compose_sheet(rows)
     sheet_path = OUT_DIR / f"{args.name}_walk.png"
     sheet.save(sheet_path)
     print(f"saved {sheet_path}")
