@@ -80,6 +80,10 @@ export function npcSpriteForTags(tags) {
   return "npc_elder";
 }
 
+export function interiorCharacterScale(sourcePixels = 128) {
+  return (RENDERED_TILE / Math.max(sourcePixels, 1)) * SCALE;
+}
+
 // Proprietor NPC position (first NPC, behind key furniture)
 function proprietorPosition(buildingType, roomW, roomH) {
   const cx = Math.floor(roomW / 2);
@@ -471,8 +475,12 @@ export class TownScene extends Phaser.Scene {
           this.offsetY + pos.y * RENDERED_TILE + RENDERED_TILE / 2,
           sprite,
         )
-        .setScale(SCALE)
         .setDepth(10);
+      npcImage.setScale(
+        interiorCharacterScale(
+          Math.max(npcImage.width || 0, npcImage.height || 0, 1),
+        ),
+      );
       this.npcs.push({
         x: pos.x,
         y: pos.y,
@@ -511,8 +519,12 @@ export class TownScene extends Phaser.Scene {
     } else {
       this.player = this.add
         .image(playerCx, playerCy, `player_${this.playerDir}`)
-        .setScale(SCALE)
         .setDepth(10);
+      this.player.setScale(
+        interiorCharacterScale(
+          Math.max(this.player.width || 0, this.player.height || 0, 1),
+        ),
+      );
     }
 
     // Input

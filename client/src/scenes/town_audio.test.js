@@ -53,13 +53,15 @@ vi.mock("../systems/modalLock.js", () => ({
 
 let TownScene;
 let npcSpriteForTags;
+let interiorCharacterScale;
 
 beforeAll(async () => {
   globalThis.Phaser = {
     Scene: class {},
   };
 
-  ({ TownScene, npcSpriteForTags } = await import("./town.js"));
+  ({ TownScene, npcSpriteForTags, interiorCharacterScale } =
+    await import("./town.js"));
 });
 
 beforeEach(() => {
@@ -163,5 +165,15 @@ describe("npcSpriteForTags", () => {
   it("keeps merchants and innkeepers mapped to their existing sprites", () => {
     expect(npcSpriteForTags(["shop", "commerce"])).toBe("npc_merchant");
     expect(npcSpriteForTags(["rest"])).toBe("npc_innkeeper");
+  });
+});
+
+describe("interiorCharacterScale", () => {
+  it("scales 128px NPC portraits down to the FF-style interior footprint", () => {
+    expect(interiorCharacterScale(128)).toBe(0.5);
+  });
+
+  it("keeps smaller source art proportional to the rendered tile size", () => {
+    expect(interiorCharacterScale(64)).toBe(1);
   });
 });
