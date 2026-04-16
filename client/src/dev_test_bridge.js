@@ -112,11 +112,11 @@ function applySceneGameState(game, scene, result) {
   if (typeof scene.updateHUD === "function") scene.updateHUD();
 
   if (scene.scene?.key === "World" && result.phase === "combat") {
-    game.scene.start("Battle", { gameState: result });
+    scene.scene.start("Battle", { gameState: result });
     return;
   }
-  if (scene.scene?.key === "Battle" && result.phase === "world") {
-    game.scene.start("World", { gameState: result });
+  if (scene.scene?.key === "Battle" && result.phase !== "combat") {
+    scene.scene.start("World", { gameState: result });
   }
 }
 
@@ -142,6 +142,51 @@ function findInteractiveText(scene, text) {
     }
   }
   return null;
+}
+
+function findFieldMagicRow(scene, text) {
+  const matcher = String(text).toLowerCase();
+  const rows = scene?.fieldMagicMenuState?.rowObjects || [];
+  for (const row of rows) {
+    if (typeof row?.row?.label !== "string") continue;
+    if (row.row.label.toLowerCase().includes(matcher)) {
+      return row.bg;
+    }
+  }
+  return null;
+}
+
+function gameObjectCenter(game, obj) {
+  if (!obj) {
+    return null;
+  }
+  let x = obj.x;
+  let y = obj.y;
+  if (typeof obj.getBounds === "function") {
+    const bounds = obj.getBounds();
+    if (
+      bounds &&
+      Number.isFinite(bounds.centerX) &&
+      Number.isFinite(bounds.centerY)
+    ) {
+      x = bounds.centerX;
+      y = bounds.centerY;
+    }
+  }
+  if (typeof x !== "number" || typeof y !== "number") {
+    return null;
+  }
+  const canvas = game?.canvas;
+  const rect = canvas?.getBoundingClientRect?.();
+  const width = canvas?.width || game?.scale?.width || 0;
+  const height = canvas?.height || game?.scale?.height || 0;
+  if (!rect || !width || !height) {
+    return { x, y };
+  }
+  return {
+    x: rect.left + (x / width) * rect.width,
+    y: rect.top + (y / height) * rect.height,
+  };
 }
 
 function findCharacterDetailSlot(scene, slotLabel) {
@@ -500,6 +545,7 @@ export function installDevTestBridge(game) {
         menuOpen: !!scene?.menuOpen,
         characterDetailOpen: !!scene?.characterDetailGroup,
         debugPanelOpen: !!scene?.debugPanelOpen,
+        fieldMagicOpen: !!scene?.fieldMagicMenuState,
       };
     },
 
@@ -674,11 +720,37 @@ export function installDevTestBridge(game) {
       clickGameObject(button);
     },
 
+    menuButtonPosition(label, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return gameObjectCenter(game, findMenuButton(scene, label));
+    },
+
+    menuButtonEnabled(label, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      const button = scene?.menuGroup?.find(
+        (entry) => entry?.label?.text === label,
+      );
+      if (!button) return null;
+      return typeof button.isEnabled === "function"
+        ? button.isEnabled()
+        : !!button?.bg?.input?.enabled;
+    },
+
     clickInteractiveText(text, sceneKey) {
       const scene = getScene(game, sceneKey);
       const target = findInteractiveText(scene, text);
       if (!target) throw new Error(`Interactive text not found: ${text}`);
       clickGameObject(target);
+    },
+
+    interactiveTextPosition(text, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return gameObjectCenter(game, findInteractiveText(scene, text));
+    },
+
+    fieldMagicRowPosition(text, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return gameObjectCenter(game, findFieldMagicRow(scene, text));
     },
 
     clickCharacterDetailSlot(slotLabel, sceneKey) {

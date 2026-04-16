@@ -65,16 +65,52 @@ export function collectFieldSpellTargets(spell, party) {
     .filter((target) => canTargetFieldSpell(spell, target));
 }
 
+function fieldSpellDisabledReason(spell, currentMP) {
+  if ((spell?.mp_cost ?? 0) > currentMP) return "low MP";
+  return null;
+}
+
+function fieldTargetDisabledReason(spell, target) {
+  if (!spell || !target) return "invalid target";
+  switch (spell?.effect) {
+    case "heal":
+      if (target.hp <= 0) return "KO";
+      return target.hp >= target.max_hp ? "full HP" : null;
+    case "cure_status":
+      if (target.hp <= 0) return "KO";
+      if (spell.cures_status === "all") {
+        return target.status && target.status !== "death" ? null : "no status";
+      }
+      return target.status === spell.cures_status
+        ? null
+        : `no ${spell.cures_status}`;
+    case "utility":
+      return spell.id === "resurrect" && target.hp <= 0 ? null : "not KO";
+    default:
+      return "invalid target";
+  }
+}
+
 export function buildFieldSpellList(caster, party) {
   if (!caster || !Array.isArray(caster.spells)) return [];
   const currentMP = caster.mp ?? 0;
   return caster.spells
     .filter((spell) => isFieldCastableSpell(spell))
-    .map((spell) => ({
-      ...spell,
-      greyed:
-        currentMP < (spell.mp_cost ?? 0) || !hasValidFieldTarget(spell, party),
-    }));
+    .map((spell) => {
+      const greyed = currentMP < (spell.mp_cost ?? 0);
+      return {
+        ...spell,
+        greyed,
+        disabledReason: greyed
+          ? fieldSpellDisabledReason(spell, currentMP)
+          : null,
+        hasValidTarget: hasValidFieldTarget(spell, party),
+      };
+    });
+}
+
+export function hasCastableFieldSpell(caster, party) {
+  return buildFieldSpellList(caster, party).length > 0;
 }
 
 function buildFieldCasterList(gs) {
@@ -130,6 +166,7 @@ export function showFieldMagicMenu(scene, opts = {}) {
     casterSlot: Number.isInteger(opts.casterSlot) ? opts.casterSlot : null,
     spell: null,
   };
+  scene.fieldMagicMenuState = state;
 
   const panel = drawPanel(scene, PANEL_CX, PANEL_CY, PANEL_W, PANEL_H, {
     depth: DEPTH_BG,
@@ -280,21 +317,29 @@ function renderSpellRows(state, caster) {
 }
 
 function renderTargetRows(state) {
-  const targets = collectFieldSpellTargets(
-    state.spell,
-    state.scene.gameState?.party,
-  );
-  const rows = targets.map((target) => ({
-    id: `target-${target.slot}`,
-    label:
-      `${target.name}  HP:${target.hp}/${target.max_hp}` +
-      ((target.max_mp || 0) > 0 ? `  MP:${target.mp}/${target.max_mp}` : ""),
-    meta: target.status ? `status: ${target.status}` : "",
-    onSelect: () => {
-      void executeCast(state, target.slot);
-    },
-  }));
-  renderRows(state, rows, "(no valid targets)");
+  const party = Array.isArray(state.scene.gameState?.party)
+    ? state.scene.gameState.party
+    : [];
+  const rows = party.map((target, slot) => {
+    const greyed = !canTargetFieldSpell(state.spell, target);
+    return {
+      id: `target-${slot}`,
+      label:
+        `${target.name}  HP:${target.hp}/${target.max_hp}` +
+        ((target.max_mp || 0) > 0 ? `  MP:${target.mp}/${target.max_mp}` : ""),
+      meta: greyed
+        ? fieldTargetDisabledReason(state.spell, target)
+        : target.status
+          ? `status: ${target.status}`
+          : "",
+      greyed,
+      onSelect: () => {
+        if (greyed) return;
+        void executeCast(state, slot);
+      },
+    };
+  });
+  renderRows(state, rows, "(no party members)");
 }
 
 function renderRows(state, rows, emptyText) {
@@ -341,18 +386,6 @@ function renderRows(state, rows, emptyText) {
       state.cursor = i;
       row.onSelect();
     });
-    if (!row.greyed) {
-      label.setInteractive({ useHandCursor: true });
-      label.on("pointerover", () => {
-        state.cursor = i;
-        refreshCursor(state);
-      });
-      label.on("pointerup", () => {
-        state.cursor = i;
-        row.onSelect();
-      });
-    }
-
     state.overlay.push(bg, label, meta);
     state.rowObjects.push({ bg, label, meta, row, idx: i });
   }
@@ -457,6 +490,7 @@ function closeFieldMagicMenu(state) {
   }
   state.overlay = [];
   state.rowObjects = [];
+  state.scene.fieldMagicMenuState = null;
   resumeWorldFor(state.scene, "field_magic");
   state.opts.onClose?.();
 }

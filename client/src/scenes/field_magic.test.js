@@ -3,6 +3,7 @@ import {
   buildFieldSpellList,
   canTargetFieldSpell,
   collectFieldSpellTargets,
+  hasCastableFieldSpell,
   isFieldCastableSpell,
   spellNeedsFieldTarget,
 } from "./field_magic.js";
@@ -126,6 +127,38 @@ describe("buildFieldSpellList", () => {
     ]);
     expect(list.find((spell) => spell.id === "cure").greyed).toBe(false);
     expect(list.find((spell) => spell.id === "resurrect").greyed).toBe(true);
+    expect(list.find((spell) => spell.id === "resurrect").disabledReason).toBe(
+      "low MP",
+    );
+  });
+
+  it("keeps healing spells selectable even when nobody needs healing", () => {
+    const party = [
+      { name: "Mira", hp: 30, max_hp: 30, mp: 8, max_mp: 10, status: "" },
+      { name: "Tank", hp: 40, max_hp: 40, mp: 0, max_mp: 0, status: "" },
+    ];
+    const caster = {
+      name: "Mira",
+      hp: 30,
+      max_hp: 30,
+      mp: 8,
+      max_mp: 10,
+      spells: [
+        {
+          id: "cure",
+          name: "Cure",
+          effect: "heal",
+          target: "single_ally",
+          mp_cost: 2,
+        },
+      ],
+    };
+
+    const [cure] = buildFieldSpellList(caster, party);
+    expect(cure.greyed).toBe(false);
+    expect(cure.hasValidTarget).toBe(false);
+    expect(cure.disabledReason).toBeNull();
+    expect(hasCastableFieldSpell(caster, party)).toBe(true);
   });
 });
 
