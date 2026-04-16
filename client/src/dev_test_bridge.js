@@ -161,6 +161,28 @@ function playerPixelPosition(scene, x, y) {
   };
 }
 
+function sceneObjectsReady(scene, sceneKey, leaderClass = null) {
+  if (!scene) return false;
+  if (scene.scene?.key !== sceneKey) return false;
+  if (scene.sys?.isActive && !scene.sys.isActive()) return false;
+  if (!scene.sys?.displayList || !scene.sys?.updateList) return false;
+  if (!scene.player || scene.player.active === false) return false;
+  if (scene.player.scene !== scene) return false;
+  if (!scene.player.texture?.key) return false;
+  if (!scene.player.frame) return false;
+  if (leaderClass && scene.leaderClass !== leaderClass) return false;
+  if (scene.hasWalkSheet && !scene.textures.exists(walkSheetKey(scene.leaderClass))) {
+    return false;
+  }
+  if (sceneKey === "World") {
+    if (!scene.hudText || scene.hudText.active === false) return false;
+    if (scene.hudText.scene !== scene) return false;
+    if (!scene.hudFooter || scene.hudFooter.active === false) return false;
+    if (scene.hudFooter.scene !== scene) return false;
+  }
+  return true;
+}
+
 function rebuildPlayerSprite(scene) {
   const { x, y } = playerPixelPosition(
     scene,
@@ -404,6 +426,9 @@ export function installDevTestBridge(game) {
         key: scene?.scene?.key || null,
         active: game.scene.isActive(sceneKey),
         hasPlayer: !!scene?.player,
+        playerAttached: scene?.player?.scene === scene,
+        playerActive: scene?.player?.active ?? null,
+        playerTextureKey: scene?.player?.texture?.key || null,
         hasTileData: !!scene?.tileData,
         hasTiles: !!scene?.tiles,
         mapW: scene?.mapW ?? null,
@@ -412,6 +437,8 @@ export function installDevTestBridge(game) {
         roomH: scene?.roomH ?? null,
         hasCanWalkTile: typeof scene?.canWalkTile === "function",
         leaderClass: scene?.leaderClass || null,
+        hudAttached: scene?.hudText?.scene === scene,
+        hudFooterAttached: scene?.hudFooter?.scene === scene,
       };
     },
 
@@ -443,12 +470,16 @@ export function installDevTestBridge(game) {
     async waitForSceneReady(sceneKey, leaderClass = null) {
       await waitFor(() => {
         const scene = getScene(game, sceneKey);
-        if (!game.scene.isActive(sceneKey) || !scene?.player) return false;
-        if (leaderClass && scene.leaderClass !== leaderClass) return false;
-        return true;
+        if (!game.scene.isActive(sceneKey)) return false;
+        return sceneObjectsReady(scene, sceneKey, leaderClass);
       });
       await nextFrame();
       await nextFrame();
+      await nextFrame();
+      await waitFor(() => {
+        const scene = getScene(game, sceneKey);
+        return sceneObjectsReady(scene, sceneKey, leaderClass);
+      });
       return this.sceneAuditInfo(sceneKey);
     },
 
