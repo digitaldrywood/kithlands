@@ -503,7 +503,11 @@ func (g *Game) ProcessAction(req GameActionRequest) (result *GameState, err erro
 	case "combat":
 		return g.processCombatAction(req)
 	case "quest_complete":
-		return g.processAdvance(req)
+		if req.Type == "" || req.Type == "advance" {
+			return g.processAdvance(req)
+		}
+		g.phase = "world"
+		return g.processWorldAction(req)
 	default:
 		state := g.stateUnlocked()
 		return &state, nil

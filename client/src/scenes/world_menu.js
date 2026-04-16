@@ -6,7 +6,7 @@ import { showWorldMap } from "./world_interact.js";
 import { openCharacterDetail } from "./character_detail.js";
 import { showOptions } from "./options.js";
 import { showItemMenu } from "./item_menu.js";
-import { buildFieldSpellList, showFieldMagicMenu } from "./field_magic.js";
+import { hasCastableFieldSpell, showFieldMagicMenu } from "./field_magic.js";
 import { drawPanel, drawButton } from "../ui/panel.js";
 import { barFillWidth, barLabel, hpBarColorPct } from "../systems/hpBar.js";
 import {
@@ -107,9 +107,7 @@ export function toggleMenu(scene) {
     ? gs.items.some((i) => i && i.effect && i.count > 0)
     : false;
   const magicEnabled = Array.isArray(gs.party)
-    ? gs.party.some(
-        (member) => buildFieldSpellList(member, gs.party).length > 0,
-      )
+    ? gs.party.some((member) => hasCastableFieldSpell(member, gs.party))
     : false;
   layoutButtonRow(scene, scene.menuGroup, PANEL_CX, FOOTER_TOP + 15, [
     {

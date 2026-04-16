@@ -4,6 +4,7 @@
 .envrc.local
 .direnv/
 CLAUDE.local.md
+.codex
 
 # Go
 server/kithlands

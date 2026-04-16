@@ -29,6 +29,15 @@ func ForceWorldPhaseForTest(g *Game) {
 	g.enemies = nil
 }
 
+// ForceQuestCompletePhaseForTest drops the game into the post-quest state
+// without changing the rest of the world state. Used by tests that need to
+// verify world actions remain usable before the player manually advances.
+func ForceQuestCompletePhaseForTest(g *Game) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.phase = "quest_complete"
+}
+
 // ForceVictoryForTest kills every enemy in the current encounter and runs
 // the normal combat-victory path so the game transitions into the post-fight
 // quest_complete / promotion phases. Exposed only for tests.

@@ -327,4 +327,45 @@ describe("character detail navigation", () => {
       returnTo: { type: "character", index: 1 },
     });
   });
+
+  it("keeps field healing selectable and explains the next step", () => {
+    const scene = makeScene(2);
+    scene.gameState.party = [
+      {
+        ...scene.gameState.party[0],
+        class_id: "mender",
+        class_name: "Mender",
+        hp: 30,
+        max_hp: 30,
+        mp: 8,
+        max_mp: 10,
+        spells: [
+          {
+            id: "cure",
+            name: "Cure",
+            effect: "heal",
+            target: "single_ally",
+            mp_cost: 2,
+          },
+        ],
+      },
+      {
+        ...scene.gameState.party[1],
+        hp: 31,
+        max_hp: 31,
+        status: "",
+        spells: [],
+      },
+    ];
+
+    openCharacterDetail(scene, 0);
+
+    expect(currentTextValues(scene)).toContain(
+      "Select a spell, then choose a valid target.",
+    );
+    const cureRow = groupTexts(scene).find(
+      (entry) => entry.text === "Cure (2)",
+    );
+    expect(cureRow?.interactive).toBe(true);
+  });
 });

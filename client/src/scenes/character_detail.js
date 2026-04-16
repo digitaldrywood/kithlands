@@ -419,15 +419,18 @@ function drawSpells(scene, group, member, partyIndex, x, y) {
     const fieldSpell = fieldByID.get(spell.id);
     const interactive = fieldSpell && !fieldSpell.greyed;
     const color = interactive ? "#aaccff" : fieldSpell ? "#666666" : "#555555";
-    const label =
+    let label =
       spell.mp_cost != null ? `${spell.name} (${spell.mp_cost})` : spell.name;
+    if (fieldSpell?.greyed && fieldSpell.disabledReason) {
+      label += ` - ${fieldSpell.disabledReason}`;
+    }
 
     const text = plainText(scene, tx, ty, label, color, "11px");
     if (interactive) {
       text.setInteractive({ useHandCursor: true });
       text.on("pointerover", () => text.setColor("#ffffff"));
       text.on("pointerout", () => text.setColor("#aaccff"));
-      text.on("pointerup", () => {
+      text.on("pointerdown", () => {
         closeCharacterDetail(scene);
         showFieldMagicMenu(scene, {
           casterSlot: partyIndex,
@@ -438,6 +441,19 @@ function drawSpells(scene, group, member, partyIndex, x, y) {
     }
     group.push(text);
   });
+
+  if (fieldSpells.some((spell) => !spell.hasValidTarget)) {
+    group.push(
+      plainText(
+        scene,
+        x + 82,
+        y + 80,
+        "Select a spell, then choose a valid target.",
+        "#888888",
+        "10px",
+      ),
+    );
+  }
 }
 
 function plainText(scene, x, y, str, color, size) {
