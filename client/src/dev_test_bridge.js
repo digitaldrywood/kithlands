@@ -923,6 +923,9 @@ export function installDevTestBridge(game) {
       const scene = getScene(game, sceneKey);
       if (!scene) throw new Error("Town scene is not active");
       return {
+        buildingType: scene.buildingType ?? null,
+        offsetX: scene.offsetX ?? null,
+        offsetY: scene.offsetY ?? null,
         roomW: scene.roomW ?? null,
         roomH: scene.roomH ?? null,
         npcKeys: (scene.npcs || []).map(

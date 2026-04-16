@@ -11,7 +11,7 @@ const config = {
   parent: "game",
   width: 800,
   height: 600,
-  backgroundColor: "#111111",
+  backgroundColor: "#000000",
   input: {
     activePointers: 2,
   },

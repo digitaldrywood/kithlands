@@ -15,74 +15,33 @@ import {
   extraNpcSpritesForTags,
   furnitureDensity,
   minimumNpcSpacing,
+  RENDERED_TILE,
   roomDimensions,
+  SCALE,
+  T_ALTAR,
+  T_BED,
+  T_BOOKSHELF,
+  T_CANDLE,
+  T_CHAIR,
+  T_COUNTER,
+  T_CRATE,
+  T_DESK,
+  T_DOOR,
+  T_FIREPLACE,
+  T_FLOOR,
+  T_PEW,
+  T_RUG,
+  T_SHELF,
+  T_STATUE,
+  T_TABLE,
+  T_WALL,
+  TILE_COLORS,
+  TILE_WALKABLE,
+  tileTextureKey,
 } from "./town_layout.js";
 import { walkStepMs } from "../systems/prefs.js";
 import { isWorldInputLocked } from "../systems/modalLock.js";
 import { getNpcDialogue } from "../api.js";
-
-const TILE_SIZE = 16;
-const SCALE = 2;
-const RENDERED_TILE = TILE_SIZE * SCALE;
-
-// Interior tile IDs (local to this scene)
-const T_WALL = 0;
-const T_FLOOR = 1;
-const T_DOOR = 2;
-const T_COUNTER = 3;
-const T_SHELF = 4;
-const T_BED = 5;
-const T_ALTAR = 6;
-const T_DESK = 7;
-const T_RUG = 8;
-const T_FIREPLACE = 9;
-const T_CRATE = 10;
-const T_CANDLE = 11;
-const T_STATUE = 12;
-const T_PEW = 13;
-const T_BOOKSHELF = 14;
-const T_CHAIR = 15;
-const T_TABLE = 16;
-
-const TILE_COLORS = {
-  [T_WALL]: 0x5d4037,
-  [T_FLOOR]: 0xbcaaa4,
-  [T_DOOR]: 0xffc107,
-  [T_COUNTER]: 0x8d6e63,
-  [T_SHELF]: 0x6d4c41,
-  [T_BED]: 0x7986cb,
-  [T_ALTAR]: 0xffd54f,
-  [T_DESK]: 0x8d6e63,
-  [T_RUG]: 0xc62828,
-  [T_FIREPLACE]: 0xff6f00,
-  [T_CRATE]: 0xa1887f,
-  [T_CANDLE]: 0xfff176,
-  [T_STATUE]: 0x90a4ae,
-  [T_PEW]: 0x6d4c41,
-  [T_BOOKSHELF]: 0x4e342e,
-  [T_CHAIR]: 0x795548,
-  [T_TABLE]: 0x8d6e63,
-};
-
-const TILE_WALKABLE = {
-  [T_WALL]: false,
-  [T_FLOOR]: true,
-  [T_DOOR]: true,
-  [T_COUNTER]: false,
-  [T_SHELF]: false,
-  [T_BED]: false,
-  [T_ALTAR]: false,
-  [T_DESK]: false,
-  [T_RUG]: true,
-  [T_FIREPLACE]: false,
-  [T_CRATE]: false,
-  [T_CANDLE]: false,
-  [T_STATUE]: false,
-  [T_PEW]: false,
-  [T_BOOKSHELF]: false,
-  [T_CHAIR]: false,
-  [T_TABLE]: false,
-};
 
 // Seeded PRNG (mulberry32). Returns a () => float [0,1) closure.
 function mulberry32(seed) {
@@ -404,6 +363,27 @@ function buildingMusicForTags(tags) {
   return { key: "music_inn", loop: false };
 }
 
+function fallbackOverlayForTile(tile) {
+  switch (tile) {
+    case T_DOOR:
+      return { color: 0xffc107, alpha: 0.95, inset: 4 };
+    case T_RUG:
+      return { color: 0xc62828, alpha: 0.85, inset: 3 };
+    case T_FIREPLACE:
+      return { color: 0xff6f00, alpha: 0.9, inset: 3 };
+    case T_CANDLE:
+      return { color: 0xfff176, alpha: 0.9, inset: 10 };
+    case T_STATUE:
+      return { color: 0x90a4ae, alpha: 0.8, inset: 4 };
+    case T_PEW:
+      return { color: 0x6d4c41, alpha: 0.85, inset: 5 };
+    case T_CHAIR:
+      return { color: 0x795548, alpha: 0.85, inset: 6 };
+    default:
+      return null;
+  }
+}
+
 export class TownScene extends Phaser.Scene {
   constructor() {
     super("Town");
@@ -417,9 +397,11 @@ export class TownScene extends Phaser.Scene {
   create() {
     this.animating = false;
     initAudio(this);
+    this.cameras.main.setBackgroundColor("#000000");
 
     const tags = this.spawn.tags || [];
     const buildingType = this.spawn.building_type || buildingTypeFromTags(tags);
+    this.buildingType = buildingType;
     const interiorSeed =
       this.spawn.interior_seed || hashCode(this.spawn.node_id || "default");
 
@@ -460,6 +442,7 @@ export class TownScene extends Phaser.Scene {
     this.offsetY = Math.floor((600 - roomPixelH) / 2);
 
     // Draw tiles
+    this.tileLayer = this.add.container(0, 0);
     this.tileGraphics = this.add.graphics();
     this.drawRoom();
 
@@ -933,27 +916,44 @@ export class TownScene extends Phaser.Scene {
   flashSaveIcon() {}
 
   drawRoom() {
+    if (this.tileLayer) {
+      this.tileLayer.removeAll(true);
+    }
     this.tileGraphics.clear();
     for (let y = 0; y < this.roomH; y++) {
       for (let x = 0; x < this.roomW; x++) {
         const tile = this.tiles[y][x];
-        const color = TILE_COLORS[tile] || 0x000000;
-        this.tileGraphics.fillStyle(color, 1);
-        this.tileGraphics.fillRect(
-          this.offsetX + x * RENDERED_TILE,
-          this.offsetY + y * RENDERED_TILE,
-          RENDERED_TILE,
-          RENDERED_TILE,
-        );
+        const tileX = this.offsetX + x * RENDERED_TILE;
+        const tileY = this.offsetY + y * RENDERED_TILE;
+        const textureKey = tileTextureKey(tile, this.buildingType);
+        if (textureKey && this.textures.exists(textureKey)) {
+          this.tileLayer.add(
+            this.add
+              .image(tileX, tileY, textureKey)
+              .setOrigin(0)
+              .setScale(SCALE),
+          );
+        } else {
+          const color = TILE_COLORS[tile] || 0x000000;
+          this.tileGraphics.fillStyle(color, 1);
+          this.tileGraphics.fillRect(
+            tileX,
+            tileY,
+            RENDERED_TILE,
+            RENDERED_TILE,
+          );
+        }
 
-        // Add grid lines for visual clarity
-        this.tileGraphics.lineStyle(1, 0x000000, 0.15);
-        this.tileGraphics.strokeRect(
-          this.offsetX + x * RENDERED_TILE,
-          this.offsetY + y * RENDERED_TILE,
-          RENDERED_TILE,
-          RENDERED_TILE,
-        );
+        const overlay = fallbackOverlayForTile(tile);
+        if (overlay) {
+          this.tileGraphics.fillStyle(overlay.color, overlay.alpha);
+          this.tileGraphics.fillRect(
+            tileX + overlay.inset,
+            tileY + overlay.inset,
+            RENDERED_TILE - overlay.inset * 2,
+            RENDERED_TILE - overlay.inset * 2,
+          );
+        }
       }
     }
   }

@@ -78,6 +78,11 @@ function runCreateUntilMusic(tags) {
     name: "Test Building",
     tags,
   };
+  scene.cameras = {
+    main: {
+      setBackgroundColor: vi.fn(),
+    },
+  };
   scene.placeNPCs = () => {
     throw stopAfterMusic;
   };
@@ -87,6 +92,34 @@ function runCreateUntilMusic(tags) {
   } catch (error) {
     if (error !== stopAfterMusic) throw error;
   }
+}
+
+function runCreateUntilBackground(tags) {
+  const stopAfterBackground = new Error("stop after background setup");
+  const scene = new TownScene();
+  scene.gameState = {
+    party: [{ class_id: "warrior", sprite_id: "warrior" }],
+  };
+  scene.spawn = {
+    node_id: "building-1",
+    name: "Test Building",
+    tags,
+  };
+  scene.cameras = {
+    main: {
+      setBackgroundColor: vi.fn(() => {
+        throw stopAfterBackground;
+      }),
+    },
+  };
+
+  try {
+    scene.create();
+  } catch (error) {
+    if (error !== stopAfterBackground) throw error;
+  }
+
+  return scene.cameras.main.setBackgroundColor;
 }
 
 describe("TownScene audio setup", () => {
@@ -112,5 +145,11 @@ describe("TownScene audio setup", () => {
     runCreateUntilMusic(["house"]);
 
     expect(audioMocks.playMusic).toHaveBeenCalledWith("music_inn", false);
+  });
+
+  it("switches the town camera to a pure black background", () => {
+    const setBackgroundColor = runCreateUntilBackground(["shop"]);
+
+    expect(setBackgroundColor).toHaveBeenCalledWith("#000000");
   });
 });
