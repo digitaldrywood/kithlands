@@ -146,6 +146,35 @@ function findInteractiveText(scene, text) {
       return child;
     }
   }
+  return findLabeledButton(scene, text);
+}
+
+function findLabeledButton(scene, text) {
+  const matcher = String(text).toLowerCase();
+  const children = scene?.children?.list || [];
+  for (let i = children.length - 1; i >= 0; i -= 1) {
+    const label = children[i];
+    if (typeof label?.text !== "string") continue;
+    const labelText = label.text.toLowerCase();
+    if (labelText !== matcher && !labelText.includes(matcher)) continue;
+    for (let j = children.length - 1; j >= 0; j -= 1) {
+      const target = children[j];
+      if (
+        !target?.input?.enabled ||
+        typeof target?.emit !== "function" ||
+        typeof target?.x !== "number" ||
+        typeof target?.y !== "number"
+      ) {
+        continue;
+      }
+      if (
+        Math.abs(target.x - label.x) <= 2 &&
+        Math.abs(target.y - label.y) <= 2
+      ) {
+        return target;
+      }
+    }
+  }
   return null;
 }
 

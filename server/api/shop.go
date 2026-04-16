@@ -133,12 +133,16 @@ func (g *Game) GetShopItems(nodeID string) []ShopItemState {
 			continue
 		}
 		items = append(items, ShopItemState{
-			ID:      w.ID,
-			Name:    w.Name,
-			Type:    "weapon",
-			Price:   w.BuyPrice,
-			Power:   w.Power,
-			Classes: strings.Join(w.Classes, ", "),
+			ID:       w.ID,
+			Name:     w.Name,
+			Type:     "weapon",
+			Price:    w.BuyPrice,
+			Power:    w.Power,
+			HitPct:   w.HitPct,
+			CritPct:  w.CritPct,
+			Element:  w.Element,
+			Classes:  strings.Join(w.Classes, ", "),
+			ClassIDs: append([]string(nil), w.Classes...),
 		})
 	}
 
@@ -148,12 +152,16 @@ func (g *Game) GetShopItems(nodeID string) []ShopItemState {
 			continue
 		}
 		items = append(items, ShopItemState{
-			ID:      a.ID,
-			Name:    a.Name,
-			Type:    "armor",
-			Price:   a.BuyPrice,
-			Absorb:  a.Absorb,
-			Classes: strings.Join(a.Classes, ", "),
+			ID:           a.ID,
+			Name:         a.Name,
+			Type:         "armor",
+			Price:        a.BuyPrice,
+			Absorb:       a.Absorb,
+			MagicDefense: a.MagicDefense,
+			EvadePenalty: a.EvadePenalty,
+			Element:      a.ElementResist,
+			Classes:      strings.Join(a.Classes, ", "),
+			ClassIDs:     append([]string(nil), a.Classes...),
 		})
 	}
 

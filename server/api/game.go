@@ -174,26 +174,38 @@ type ItemState struct {
 }
 
 type EquipState struct {
-	WeaponID    string `json:"weapon_id"`
-	WeaponName  string `json:"weapon_name"`
-	WeaponPower int    `json:"weapon_power,omitempty"`
-	ArmorID     string `json:"armor_id"`
-	ArmorName   string `json:"armor_name"`
-	ArmorAbsorb int    `json:"armor_absorb,omitempty"`
+	WeaponID          string `json:"weapon_id"`
+	WeaponName        string `json:"weapon_name"`
+	WeaponPower       int    `json:"weapon_power,omitempty"`
+	WeaponHitPct      int    `json:"weapon_hit_pct,omitempty"`
+	WeaponCritPct     int    `json:"weapon_crit_pct,omitempty"`
+	WeaponElement     string `json:"weapon_element,omitempty"`
+	ArmorID           string `json:"armor_id"`
+	ArmorName         string `json:"armor_name"`
+	ArmorAbsorb       int    `json:"armor_absorb,omitempty"`
+	ArmorMagicDefense int    `json:"armor_magic_defense,omitempty"`
+	ArmorEvadePenalty int    `json:"armor_evade_penalty,omitempty"`
+	ArmorElement      string `json:"armor_element,omitempty"`
 }
 
 type ShopItemState struct {
-	ID         string              `json:"id"`
-	Name       string              `json:"name"`
-	Type       string              `json:"type"` // weapon, armor, consumable, spell
-	Price      int                 `json:"price"`
-	Power      int                 `json:"power,omitempty"`
-	Absorb     int                 `json:"absorb,omitempty"`
-	Classes    string              `json:"classes,omitempty"`
-	Owned      bool                `json:"owned,omitempty"`
-	School     string              `json:"school,omitempty"`
-	SpellLevel int                 `json:"spell_level,omitempty"`
-	Learners   []SpellLearnerState `json:"learners,omitempty"`
+	ID           string              `json:"id"`
+	Name         string              `json:"name"`
+	Type         string              `json:"type"` // weapon, armor, consumable, spell
+	Price        int                 `json:"price"`
+	Power        int                 `json:"power,omitempty"`
+	Absorb       int                 `json:"absorb,omitempty"`
+	HitPct       int                 `json:"hit_pct,omitempty"`
+	CritPct      int                 `json:"crit_pct,omitempty"`
+	MagicDefense int                 `json:"magic_defense,omitempty"`
+	EvadePenalty int                 `json:"evade_penalty,omitempty"`
+	Element      string              `json:"element,omitempty"`
+	Classes      string              `json:"classes,omitempty"`
+	ClassIDs     []string            `json:"class_ids,omitempty"`
+	Owned        bool                `json:"owned,omitempty"`
+	School       string              `json:"school,omitempty"`
+	SpellLevel   int                 `json:"spell_level,omitempty"`
+	Learners     []SpellLearnerState `json:"learners,omitempty"`
 }
 
 type SpellLearnerState struct {
@@ -718,10 +730,16 @@ func (g *Game) fillInventoryState(state *GameState) {
 		if w := g.gd.WeaponByID(eq.WeaponID); w != nil {
 			es.WeaponName = w.Name
 			es.WeaponPower = w.Power
+			es.WeaponHitPct = w.HitPct
+			es.WeaponCritPct = w.CritPct
+			es.WeaponElement = w.Element
 		}
 		if a := g.gd.ArmorByID(eq.ArmorID); a != nil {
 			es.ArmorName = a.Name
 			es.ArmorAbsorb = a.Absorb
+			es.ArmorMagicDefense = a.MagicDefense
+			es.ArmorEvadePenalty = a.EvadePenalty
+			es.ArmorElement = a.ElementResist
 		}
 		state.Equipment[i] = es
 	}

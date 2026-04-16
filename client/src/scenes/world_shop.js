@@ -1,16 +1,54 @@
-import { getShop, buyItem, learnSpell, autosaveGame } from "../api.js";
+import {
+  autosaveGame,
+  buyItem,
+  equipItem,
+  getShop,
+  learnSpell,
+} from "../api.js";
 import { getAutosaveEnabled } from "../systems/prefs.js";
 import {
   pauseWorldFor,
   resumeWorldFor,
   topWorldLock,
 } from "../systems/modalLock.js";
+import { drawButton, drawPanel } from "../ui/panel.js";
+import {
+  buildFocusedMemberCompare,
+  buildItemStatBlock,
+  buildMemberIndicators,
+  buyForMemberLabel,
+  canPartyMemberEquip,
+  cycleMemberIndex,
+  isEquipmentShopItem,
+} from "./shopCompare.js";
+
+const MAIN_PANEL = {
+  x: 400,
+  y: 300,
+  w: 740,
+  h: 520,
+  depth: 50,
+};
+
+const LIST_LEFT = 70;
+const LIST_RIGHT = 495;
+const DETAIL_X = 615;
+const DETAIL_Y = 325;
+const DETAIL_W = 240;
+const DETAIL_H = 370;
+
+function destroyGroup(group) {
+  group.forEach((entry) => entry?.destroy?.());
+  group.length = 0;
+}
 
 export function groupShopItems(items = []) {
   return {
     weapons: items.filter((item) => item.type === "weapon"),
     armor: items.filter((item) => item.type === "armor"),
-    consumables: items.filter((item) => item.type === "consumable"),
+    consumables: items.filter(
+      (item) => item.type === "consumable" || item.type === "key_item",
+    ),
     spells: items.filter((item) => item.type === "spell"),
   };
 }
@@ -73,9 +111,9 @@ export async function openShop(scene, spawn) {
   }
 
   const overlay = [];
-  let listGroup = [];
-  let pickerGroup = [];
-  let currentTab = "weapons";
+  const listGroup = [];
+  const detailGroup = [];
+  const pickerGroup = [];
   const tabButtons = [];
   const tabs = [
     { label: "Weapons", key: "weapons" },
@@ -83,43 +121,18 @@ export async function openShop(scene, spawn) {
     { label: "Items", key: "consumables" },
     { label: "Spells", key: "spells" },
   ];
+  let currentTab = "weapons";
+  let selectedItemId = null;
+  let focusedMemberIndex = 0;
+  let escHandler = null;
+  let cycleHandler = null;
 
-  const bg = scene.add
-    .rectangle(400, 300, 650, 500, 0x0a0a22, 0.95)
-    .setStrokeStyle(2, 0x444488)
-    .setScrollFactor(0)
-    .setDepth(50)
-    .setInteractive();
-  overlay.push(bg);
-
-  const title = scene.add
-    .text(400, 70, `${spawn.name}`, {
-      fontSize: "18px",
-      color: "#ffff44",
-      fontFamily: "monospace",
-    })
-    .setOrigin(0.5)
-    .setScrollFactor(0)
-    .setDepth(51);
-  overlay.push(title);
-
-  const goldText = scene.add
-    .text(400, 95, `Gold: ${scene.gameState.gold}`, {
-      fontSize: "13px",
-      color: "#ffcc44",
-      fontFamily: "monospace",
-    })
-    .setOrigin(0.5)
-    .setScrollFactor(0)
-    .setDepth(51);
-  overlay.push(goldText);
-
-  const destroyPicker = () => {
-    pickerGroup.forEach((obj) => obj.destroy());
-    pickerGroup = [];
-  };
-
+  const destroyPicker = () => destroyGroup(pickerGroup);
+  const destroyDetail = () => destroyGroup(detailGroup);
   const itemsForTab = (tabKey) => groupShopItems(items)[tabKey] || [];
+
+  const currentSelectedItem = () =>
+    itemsForTab(currentTab).find((item) => item.id === selectedItemId) || null;
 
   const showToast = (message, ms = 1200) => {
     scene.showMessage(message);
@@ -144,33 +157,502 @@ export async function openShop(scene, spawn) {
     }
   };
 
-  const syncState = async (result, successMessage) => {
-    if (result?.error) {
-      showToast(result.error, 1500);
-      return false;
+  const syncSelection = () => {
+    const tabItems = itemsForTab(currentTab);
+    const current = tabItems.find((item) => item.id === selectedItemId);
+    if (current && isEquipmentShopItem(current)) {
+      return current;
+    }
+    const fallback = tabItems.find((item) => isEquipmentShopItem(item)) || null;
+    selectedItemId = fallback?.id || null;
+    const partyCount = Math.min(scene.gameState?.party?.length || 0, 4);
+    if (focusedMemberIndex >= partyCount) focusedMemberIndex = 0;
+    return fallback;
+  };
+
+  const updateGold = () => {
+    goldText.setText(`Gold: ${scene.gameState.gold}`);
+  };
+
+  const updateTabButtons = () => {
+    tabButtons.forEach(({ key, button }) =>
+      button.setActive(key === currentTab),
+    );
+  };
+
+  const renderDetail = () => {
+    destroyDetail();
+    if (currentTab !== "weapons" && currentTab !== "armor") return;
+
+    const item = currentSelectedItem();
+    if (!item || !isEquipmentShopItem(item)) return;
+
+    const party = (scene.gameState.party || []).slice(0, 4);
+    if (party.length === 0) return;
+    if (focusedMemberIndex >= party.length) focusedMemberIndex = 0;
+
+    const member = party[focusedMemberIndex];
+    const equipped = scene.gameState.equipment?.[focusedMemberIndex] || {};
+    const compare = buildFocusedMemberCompare(item, member, equipped);
+    const statBlock = buildItemStatBlock(item);
+    const indicators = buildMemberIndicators(
+      item,
+      scene.gameState.party,
+      scene.gameState.equipment,
+    );
+    const affordable = (scene.gameState.gold || 0) >= (item.price || 0);
+
+    const panel = drawPanel(scene, DETAIL_X, DETAIL_Y, DETAIL_W, DETAIL_H, {
+      depth: MAIN_PANEL.depth + 2,
+      fill: 0x081225,
+      stroke: 0x6699ff,
+    });
+    detailGroup.push(panel.bg);
+
+    const title = scene.add
+      .text(DETAIL_X, DETAIL_Y - 165, item.name, {
+        fontSize: "15px",
+        color: "#ffff88",
+        fontFamily: "monospace",
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(MAIN_PANEL.depth + 3);
+    detailGroup.push(title);
+
+    const cyclePrev = () => {
+      focusedMemberIndex = cycleMemberIndex(
+        focusedMemberIndex,
+        party.length,
+        -1,
+      );
+      renderDetail();
+    };
+    const cycleNext = () => {
+      focusedMemberIndex = cycleMemberIndex(
+        focusedMemberIndex,
+        party.length,
+        1,
+      );
+      renderDetail();
+    };
+
+    const prevBtn = drawButton(
+      scene,
+      DETAIL_X - 62,
+      DETAIL_Y - 135,
+      78,
+      26,
+      "< [L]",
+      cyclePrev,
+      { depth: MAIN_PANEL.depth + 3, fontSize: "10px" },
+    );
+    const nextBtn = drawButton(
+      scene,
+      DETAIL_X + 62,
+      DETAIL_Y - 135,
+      78,
+      26,
+      "R ] >",
+      cycleNext,
+      { depth: MAIN_PANEL.depth + 3, fontSize: "10px" },
+    );
+    detailGroup.push(prevBtn, nextBtn);
+
+    const focusText = scene.add
+      .text(
+        DETAIL_X,
+        DETAIL_Y - 136,
+        `${member.name} · ${member.class_name} · Lv.${member.level}`,
+        {
+          fontSize: "11px",
+          color: "#aaccee",
+          fontFamily: "monospace",
+        },
+      )
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(MAIN_PANEL.depth + 3);
+    detailGroup.push(focusText);
+
+    let indicatorX = DETAIL_X - 52;
+    for (const indicator of indicators) {
+      const marker = scene.add
+        .text(indicatorX, DETAIL_Y - 110, indicator.symbol, {
+          fontSize: indicator.slot === focusedMemberIndex ? "16px" : "13px",
+          color: indicator.color,
+          fontFamily: "monospace",
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(MAIN_PANEL.depth + 3);
+      detailGroup.push(marker);
+      indicatorX += 34;
     }
 
-    scene.gameState = result;
-    goldText.setText(`Gold: ${result.gold}`);
-    scene.updateHUD?.();
-    await refreshCatalog();
-    renderList(itemsForTab(currentTab));
-    updateTabButtons();
-    showToast(successMessage);
-    autosaveAfterPurchase(result);
-    return true;
+    const currentLine = scene.add
+      .text(DETAIL_X - 98, DETAIL_Y - 90, `Current: ${compare.currentName}`, {
+        fontSize: "10px",
+        color: "#ffffff",
+        fontFamily: "monospace",
+      })
+      .setScrollFactor(0)
+      .setDepth(MAIN_PANEL.depth + 3);
+    const nextLine = scene.add
+      .text(DETAIL_X - 98, DETAIL_Y - 76, `Shop:    ${compare.nextName}`, {
+        fontSize: "10px",
+        color: "#ffffaa",
+        fontFamily: "monospace",
+      })
+      .setScrollFactor(0)
+      .setDepth(MAIN_PANEL.depth + 3);
+    detailGroup.push(currentLine, nextLine);
+
+    const lockText = scene.add
+      .text(
+        DETAIL_X - 98,
+        DETAIL_Y - 58,
+        compare.canEquip ? "Equip: OK" : "Equip: class locked",
+        {
+          fontSize: "10px",
+          color: compare.canEquip ? "#44ff44" : "#ddaa66",
+          fontFamily: "monospace",
+        },
+      )
+      .setScrollFactor(0)
+      .setDepth(MAIN_PANEL.depth + 3);
+    detailGroup.push(lockText);
+
+    let statY = DETAIL_Y - 34;
+    const statHeader = scene.add
+      .text(DETAIL_X - 98, statY, "Item Stats", {
+        fontSize: "11px",
+        color: "#ffcc44",
+        fontFamily: "monospace",
+      })
+      .setScrollFactor(0)
+      .setDepth(MAIN_PANEL.depth + 3);
+    detailGroup.push(statHeader);
+    statY += 18;
+    for (const stat of statBlock) {
+      const line = scene.add
+        .text(DETAIL_X - 98, statY, `${stat.label}: ${stat.value}`, {
+          fontSize: "10px",
+          color: "#dddddd",
+          fontFamily: "monospace",
+        })
+        .setScrollFactor(0)
+        .setDepth(MAIN_PANEL.depth + 3);
+      detailGroup.push(line);
+      statY += 14;
+    }
+
+    statY += 8;
+    const compareHeader = scene.add
+      .text(DETAIL_X - 98, statY, "Member Compare", {
+        fontSize: "11px",
+        color: "#ffcc44",
+        fontFamily: "monospace",
+      })
+      .setScrollFactor(0)
+      .setDepth(MAIN_PANEL.depth + 3);
+    detailGroup.push(compareHeader);
+    statY += 18;
+
+    for (const line of compare.lines) {
+      const base = scene.add
+        .text(
+          DETAIL_X - 98,
+          statY,
+          `${line.label}: ${line.currentValue} -> ${line.nextValue}`,
+          {
+            fontSize: "10px",
+            color: "#dddddd",
+            fontFamily: "monospace",
+          },
+        )
+        .setScrollFactor(0)
+        .setDepth(MAIN_PANEL.depth + 3);
+      const delta = scene.add
+        .text(DETAIL_X + 18, statY, line.deltaText, {
+          fontSize: "10px",
+          color: line.color,
+          fontFamily: "monospace",
+        })
+        .setScrollFactor(0)
+        .setDepth(MAIN_PANEL.depth + 3);
+      detailGroup.push(base, delta);
+      statY += 14;
+    }
+
+    const elementLine = scene.add
+      .text(
+        DETAIL_X - 98,
+        statY,
+        `Element: ${compare.currentElement} -> ${compare.nextElement}`,
+        {
+          fontSize: "10px",
+          color: "#dddddd",
+          fontFamily: "monospace",
+        },
+      )
+      .setScrollFactor(0)
+      .setDepth(MAIN_PANEL.depth + 3);
+    detailGroup.push(elementLine);
+
+    const buyStandard = async () => {
+      const result = await buyItem(scene.gameState.id, item.id, item.type);
+      if (result?.error) {
+        showToast(result.error, 1500);
+        return;
+      }
+      scene.gameState = result;
+      updateGold();
+      scene.updateHUD?.();
+      await refreshCatalog();
+      syncSelection();
+      renderList(itemsForTab(currentTab));
+      renderDetail();
+      showToast(`Bought: ${item.name}!`);
+      autosaveAfterPurchase(result);
+    };
+
+    const buyForMember = async () => {
+      const purchase = await buyItem(scene.gameState.id, item.id, item.type);
+      if (purchase?.error) {
+        showToast(purchase.error, 1500);
+        return;
+      }
+
+      const equipResult = await equipItem(
+        purchase.id,
+        focusedMemberIndex,
+        item.id,
+        item.type,
+      );
+      const finalResult = equipResult?.error ? purchase : equipResult;
+      scene.gameState = finalResult;
+      updateGold();
+      scene.updateHUD?.();
+      await refreshCatalog();
+      syncSelection();
+      renderList(itemsForTab(currentTab));
+      renderDetail();
+
+      if (equipResult?.error) {
+        showToast(
+          `Bought ${item.name}, but equip failed: ${equipResult.error}`,
+          1800,
+        );
+      } else {
+        showToast(`${member.name} equipped ${item.name}!`);
+      }
+      autosaveAfterPurchase(finalResult);
+    };
+
+    const buyBtn = drawButton(
+      scene,
+      DETAIL_X - 55,
+      DETAIL_Y + 153,
+      86,
+      30,
+      "BUY ONLY",
+      buyStandard,
+      { depth: MAIN_PANEL.depth + 3, fontSize: "11px" },
+    );
+    const buyForBtn = drawButton(
+      scene,
+      DETAIL_X + 50,
+      DETAIL_Y + 153,
+      150,
+      30,
+      buyForMemberLabel(member),
+      buyForMember,
+      { depth: MAIN_PANEL.depth + 3, fontSize: "10px" },
+    );
+    if (!affordable) {
+      buyBtn.setEnabled(false);
+      buyForBtn.setEnabled(false);
+    } else if (!canPartyMemberEquip(item, member)) {
+      buyForBtn.setEnabled(false);
+    }
+    detailGroup.push(buyBtn, buyForBtn);
+  };
+
+  const renderList = (tabItems) => {
+    destroyPicker();
+    destroyGroup(listGroup);
+
+    const selected = currentSelectedItem();
+    const displayItems = tabItems.slice(0, 10);
+    const currentGold = scene.gameState?.gold ?? 0;
+
+    let y = 154;
+    for (const item of displayItems) {
+      const affordable = currentGold >= item.price;
+      const equippable = isEquipmentShopItem(item);
+      const selectedRow = selected?.id === item.id;
+
+      const rowBg = scene.add
+        .rectangle(282, y, 410, 26, selectedRow ? 0x23395d : 0x111a33, 0.95)
+        .setStrokeStyle(1, selectedRow ? 0x88ccff : 0x334466)
+        .setScrollFactor(0)
+        .setDepth(MAIN_PANEL.depth + 1);
+      listGroup.push(rowBg);
+
+      let desc = item.name;
+      if (item.type === "spell" && item.school) {
+        desc += ` (${item.school} ${item.spell_level})`;
+      }
+      if (item.type === "key_item") {
+        desc += " [Key]";
+      }
+
+      const textColor = affordable || equippable ? "#ffffff" : "#777777";
+      const label = scene.add
+        .text(LIST_LEFT, y, desc, {
+          fontSize: "11px",
+          color: textColor,
+          fontFamily: "monospace",
+        })
+        .setOrigin(0, 0.5)
+        .setScrollFactor(0)
+        .setDepth(MAIN_PANEL.depth + 2);
+      listGroup.push(label);
+
+      const price = scene.add
+        .text(455, y, `${item.price}g`, {
+          fontSize: "11px",
+          color: affordable ? "#ffcc44" : "#777777",
+          fontFamily: "monospace",
+        })
+        .setOrigin(1, 0.5)
+        .setScrollFactor(0)
+        .setDepth(MAIN_PANEL.depth + 2);
+      listGroup.push(price);
+
+      if (equippable) {
+        const selectRow = () => {
+          selectedItemId = item.id;
+          renderList(itemsForTab(currentTab));
+          renderDetail();
+        };
+        rowBg.setInteractive({ useHandCursor: true });
+        label.setInteractive({ useHandCursor: true });
+        rowBg.on("pointerover", selectRow);
+        label.on("pointerover", selectRow);
+        rowBg.on("pointerdown", selectRow);
+        label.on("pointerdown", selectRow);
+
+        const indicators = buildMemberIndicators(
+          item,
+          scene.gameState.party,
+          scene.gameState.equipment,
+        );
+        let indicatorX = 390;
+        for (const indicator of indicators) {
+          const marker = scene.add
+            .text(indicatorX, y, indicator.symbol, {
+              fontSize: "12px",
+              color: indicator.color,
+              fontFamily: "monospace",
+            })
+            .setOrigin(0.5)
+            .setScrollFactor(0)
+            .setDepth(MAIN_PANEL.depth + 2);
+          listGroup.push(marker);
+          indicatorX += 16;
+        }
+      } else if (affordable) {
+        const triggerPurchase = async () => {
+          if (item.type === "spell") {
+            showSpellPicker(item);
+            return;
+          }
+          const result = await buyItem(scene.gameState.id, item.id, item.type);
+          if (result?.error) {
+            showToast(result.error, 1500);
+            return;
+          }
+          scene.gameState = result;
+          updateGold();
+          scene.updateHUD?.();
+          await refreshCatalog();
+          syncSelection();
+          renderList(itemsForTab(currentTab));
+          renderDetail();
+          showToast(`Bought: ${item.name}!`);
+          autosaveAfterPurchase(result);
+        };
+        rowBg.setInteractive({ useHandCursor: true });
+        label.setInteractive({ useHandCursor: true });
+        rowBg.on("pointerdown", triggerPurchase);
+        label.on("pointerdown", triggerPurchase);
+      }
+
+      if (affordable) {
+        const triggerPurchase = async () => {
+          if (item.type === "spell") {
+            showSpellPicker(item);
+            return;
+          }
+          const result = await buyItem(scene.gameState.id, item.id, item.type);
+          if (result?.error) {
+            showToast(result.error, 1500);
+            return;
+          }
+          scene.gameState = result;
+          updateGold();
+          scene.updateHUD?.();
+          await refreshCatalog();
+          syncSelection();
+          renderList(itemsForTab(currentTab));
+          renderDetail();
+          showToast(`Bought: ${item.name}!`);
+          autosaveAfterPurchase(result);
+        };
+        const buyBtn = scene.add
+          .text(522, y, "[BUY]", {
+            fontSize: "11px",
+            color: "#44ff44",
+            fontFamily: "monospace",
+          })
+          .setOrigin(0.5)
+          .setScrollFactor(0)
+          .setDepth(MAIN_PANEL.depth + 2)
+          .setInteractive({ useHandCursor: true });
+        buyBtn.on("pointerover", () => buyBtn.setColor("#88ff88"));
+        buyBtn.on("pointerout", () => buyBtn.setColor("#44ff44"));
+        buyBtn.on("pointerdown", triggerPurchase);
+        listGroup.push(buyBtn);
+      }
+
+      y += 30;
+    }
+
+    if (displayItems.length === 0) {
+      const empty = scene.add
+        .text(280, 205, "Nothing in this category.", {
+          fontSize: "12px",
+          color: "#666666",
+          fontFamily: "monospace",
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(MAIN_PANEL.depth + 2);
+      listGroup.push(empty);
+    }
   };
 
   const showSpellPicker = (item) => {
     destroyPicker();
 
-    const panel = scene.add
-      .rectangle(400, 305, 470, 250, 0x111133, 0.98)
-      .setStrokeStyle(2, 0x88aaff)
-      .setScrollFactor(0)
-      .setDepth(60)
-      .setInteractive();
-    pickerGroup.push(panel);
+    const panel = drawPanel(scene, 400, 305, 470, 250, {
+      fill: 0x111133,
+      stroke: 0x88aaff,
+      depth: MAIN_PANEL.depth + 10,
+    });
+    pickerGroup.push(panel.bg);
 
     const titleText = scene.add
       .text(400, 205, `Learn ${item.name}`, {
@@ -180,7 +662,7 @@ export async function openShop(scene, spawn) {
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
-      .setDepth(61);
+      .setDepth(MAIN_PANEL.depth + 11);
     pickerGroup.push(titleText);
 
     const subtitle = scene.add
@@ -191,7 +673,7 @@ export async function openShop(scene, spawn) {
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
-      .setDepth(61);
+      .setDepth(MAIN_PANEL.depth + 11);
     pickerGroup.push(subtitle);
 
     const choices = buildSpellLearnerChoices(item, scene.gameState.party || []);
@@ -203,11 +685,20 @@ export async function openShop(scene, spawn) {
           choice.name,
           item.id,
         );
-        const ok = await syncState(
-          result,
-          `${choice.name} learned ${item.name}!`,
-        );
-        if (ok) destroyPicker();
+        if (result?.error) {
+          showToast(result.error, 1500);
+          return;
+        }
+        scene.gameState = result;
+        updateGold();
+        scene.updateHUD?.();
+        await refreshCatalog();
+        syncSelection();
+        renderList(itemsForTab(currentTab));
+        renderDetail();
+        destroyPicker();
+        showToast(`${choice.name} learned ${item.name}!`);
+        autosaveAfterPurchase(result);
       };
 
       const label = scene.add
@@ -217,7 +708,7 @@ export async function openShop(scene, spawn) {
           fontFamily: "monospace",
         })
         .setScrollFactor(0)
-        .setDepth(61);
+        .setDepth(MAIN_PANEL.depth + 11);
       if (choice.canLearn) {
         label.setInteractive({ useHandCursor: true });
         label.on("pointerdown", triggerLearn);
@@ -235,7 +726,7 @@ export async function openShop(scene, spawn) {
           fontFamily: "monospace",
         })
         .setScrollFactor(0)
-        .setDepth(61);
+        .setDepth(MAIN_PANEL.depth + 11);
       pickerGroup.push(status);
 
       if (choice.canLearn) {
@@ -248,156 +739,113 @@ export async function openShop(scene, spawn) {
       y += 24;
     }
 
-    const cancel = scene.add
-      .text(400, 392, "[ CANCEL ]", {
-        fontSize: "12px",
-        color: "#aaaaaa",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(61)
-      .setInteractive({ useHandCursor: true });
-    cancel.on("pointerdown", destroyPicker);
+    const cancel = drawButton(
+      scene,
+      400,
+      392,
+      120,
+      28,
+      "[ CANCEL ]",
+      destroyPicker,
+      { depth: MAIN_PANEL.depth + 11, fontSize: "11px" },
+    );
     pickerGroup.push(cancel);
   };
 
-  const renderList = (tabItems) => {
-    destroyPicker();
-    listGroup.forEach((obj) => obj.destroy());
-    listGroup = [];
+  const mainPanel = drawPanel(
+    scene,
+    MAIN_PANEL.x,
+    MAIN_PANEL.y,
+    MAIN_PANEL.w,
+    MAIN_PANEL.h,
+    { depth: MAIN_PANEL.depth, fill: 0x0a0a22, stroke: 0x444488 },
+  );
+  overlay.push(mainPanel.bg);
 
-    let y = 145;
-    const displayItems = tabItems.slice(0, 10);
-    const currentGold = scene.gameState?.gold ?? 0;
-
-    for (const item of displayItems) {
-      const affordable = currentGold >= item.price;
-      const color = affordable ? "#ffffff" : "#666666";
-
-      let desc = `${item.name}`;
-      if (item.power) desc += ` (Pow:${item.power})`;
-      if (item.absorb) desc += ` (Abs:${item.absorb})`;
-      if (item.classes) desc += ` [${item.classes}]`;
-      if (item.type === "spell" && item.school) {
-        desc += ` (${item.school} ${item.spell_level})`;
-      }
-      desc += `  ${item.price}g`;
-
-      const text = scene.add
-        .text(150, y, desc, {
-          fontSize: "11px",
-          color,
-          fontFamily: "monospace",
-        })
-        .setScrollFactor(0)
-        .setDepth(52);
-      const triggerPurchase = async () => {
-        if (item.type === "spell") {
-          showSpellPicker(item);
-          return;
-        }
-        const result = await buyItem(scene.gameState.id, item.id, item.type);
-        await syncState(result, `Bought: ${item.name}!`);
-      };
-      if (affordable) {
-        text.setInteractive({ useHandCursor: true });
-        text.on("pointerdown", triggerPurchase);
-      }
-      listGroup.push(text);
-
-      if (affordable) {
-        const buyBtn = scene.add
-          .text(620, y, "[BUY]", {
-            fontSize: "11px",
-            color: "#44ff44",
-            fontFamily: "monospace",
-          })
-          .setScrollFactor(0)
-          .setDepth(52)
-          .setInteractive({ useHandCursor: true });
-        buyBtn.on("pointerover", () => buyBtn.setColor("#88ff88"));
-        buyBtn.on("pointerout", () => buyBtn.setColor("#44ff44"));
-        buyBtn.on("pointerdown", triggerPurchase);
-        listGroup.push(buyBtn);
-      }
-
-      y += 22;
-    }
-
-    if (displayItems.length === 0) {
-      const empty = scene.add
-        .text(400, 200, "Nothing in this category.", {
-          fontSize: "12px",
-          color: "#666666",
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5)
-        .setScrollFactor(0)
-        .setDepth(52);
-      listGroup.push(empty);
-    }
-  };
-
-  const updateTabButtons = () => {
-    tabButtons.forEach(({ key, button }) => {
-      const active = key === currentTab;
-      button.setColor(active ? "#ffffff" : "#666666");
-      button.setStyle({
-        backgroundColor: active ? "#333366" : "#111133",
-      });
-    });
-  };
-
-  let tabX = 180;
-  for (const tab of tabs) {
-    const tabBtn = scene.add
-      .text(tabX, 118, tab.label, {
-        fontSize: "12px",
-        color: tab.key === currentTab ? "#ffffff" : "#666666",
-        fontFamily: "monospace",
-        backgroundColor: tab.key === currentTab ? "#333366" : "#111133",
-        padding: { x: 6, y: 2 },
-      })
-      .setScrollFactor(0)
-      .setDepth(51)
-      .setInteractive({ useHandCursor: true });
-    tabBtn.on("pointerdown", () => {
-      currentTab = tab.key;
-      updateTabButtons();
-      renderList(itemsForTab(currentTab));
-    });
-    overlay.push(tabBtn);
-    tabButtons.push({ key: tab.key, button: tabBtn });
-    tabX += 120;
-  }
-
-  const closeShop = () => {
-    destroyPicker();
-    overlay.forEach((obj) => obj.destroy());
-    listGroup.forEach((obj) => obj.destroy());
-    if (escHandler) {
-      scene.input.keyboard.off("keydown-ESC", escHandler);
-      escHandler = null;
-    }
-    scene.animating = false;
-    resumeWorldFor(scene, "shop");
-  };
-
-  const closeBtn = scene.add
-    .text(400, 530, "[ LEAVE SHOP (ESC) ]", {
-      fontSize: "14px",
-      color: "#aaaaaa",
+  const title = scene.add
+    .text(400, 64, `${spawn.name}`, {
+      fontSize: "18px",
+      color: "#ffff44",
       fontFamily: "monospace",
     })
     .setOrigin(0.5)
     .setScrollFactor(0)
-    .setDepth(51)
-    .setInteractive({ useHandCursor: true });
-  closeBtn.on("pointerdown", closeShop);
-  overlay.push(closeBtn);
+    .setDepth(MAIN_PANEL.depth + 1);
+  overlay.push(title);
 
-  let escHandler = null;
+  const goldText = scene.add
+    .text(400, 90, `Gold: ${scene.gameState.gold}`, {
+      fontSize: "13px",
+      color: "#ffcc44",
+      fontFamily: "monospace",
+    })
+    .setOrigin(0.5)
+    .setScrollFactor(0)
+    .setDepth(MAIN_PANEL.depth + 1);
+  overlay.push(goldText);
+
+  const listHeader = scene.add
+    .text(70, 123, "Shop Stock", {
+      fontSize: "11px",
+      color: "#aaccee",
+      fontFamily: "monospace",
+    })
+    .setScrollFactor(0)
+    .setDepth(MAIN_PANEL.depth + 1);
+  overlay.push(listHeader);
+
+  let tabX = 144;
+  for (const tab of tabs) {
+    const tabBtn = drawButton(
+      scene,
+      tabX,
+      120,
+      96,
+      28,
+      tab.label,
+      () => {
+        currentTab = tab.key;
+        syncSelection();
+        updateTabButtons();
+        renderList(itemsForTab(currentTab));
+        renderDetail();
+      },
+      { depth: MAIN_PANEL.depth + 1, fontSize: "11px" },
+    );
+    overlay.push(tabBtn);
+    tabButtons.push({ key: tab.key, button: tabBtn });
+    tabX += 108;
+  }
+
+  const leaveBtn = drawButton(
+    scene,
+    400,
+    536,
+    190,
+    32,
+    "[ LEAVE SHOP (ESC) ]",
+    closeShop,
+    { depth: MAIN_PANEL.depth + 1, fontSize: "12px" },
+  );
+  overlay.push(leaveBtn);
+
+  function closeShop() {
+    destroyPicker();
+    destroyDetail();
+    destroyGroup(listGroup);
+    destroyGroup(overlay);
+    if (escHandler) {
+      scene.input.keyboard.off("keydown-ESC", escHandler);
+      escHandler = null;
+    }
+    if (cycleHandler) {
+      scene.input.keyboard.off("keydown", cycleHandler);
+      cycleHandler = null;
+    }
+    scene.animating = false;
+    resumeWorldFor(scene, "shop");
+  }
+
   escHandler = () => {
     if (scene._skipShopEscapeOnce) {
       scene._skipShopEscapeOnce = false;
@@ -405,11 +853,34 @@ export async function openShop(scene, spawn) {
     }
     if (!shouldHandleShopEscape(scene)) return;
     closeShop();
-    scene.input.keyboard.off("keydown-ESC", escHandler);
-    escHandler = null;
+  };
+  cycleHandler = (event) => {
+    if (!shouldHandleShopEscape(scene)) return;
+    if (!currentSelectedItem() || !isEquipmentShopItem(currentSelectedItem())) {
+      return;
+    }
+    if (event.key === "[" || event.key === "l" || event.key === "L") {
+      focusedMemberIndex = cycleMemberIndex(
+        focusedMemberIndex,
+        Math.min(scene.gameState?.party?.length || 0, 4),
+        -1,
+      );
+      renderDetail();
+    }
+    if (event.key === "]" || event.key === "r" || event.key === "R") {
+      focusedMemberIndex = cycleMemberIndex(
+        focusedMemberIndex,
+        Math.min(scene.gameState?.party?.length || 0, 4),
+        1,
+      );
+      renderDetail();
+    }
   };
   scene.input.keyboard.on("keydown-ESC", escHandler);
+  scene.input.keyboard.on("keydown", cycleHandler);
 
+  syncSelection();
   renderList(itemsForTab(currentTab));
+  renderDetail();
   updateTabButtons();
 }
