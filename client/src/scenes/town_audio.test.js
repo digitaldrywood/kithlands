@@ -23,6 +23,10 @@ vi.mock("./town_dialogue.js", () => ({
   openDialogue: vi.fn(),
 }));
 
+vi.mock("./world_menu.js", () => ({
+  toggleMenu: vi.fn(),
+}));
+
 vi.mock("./world_shop.js", () => ({
   openShop: vi.fn(),
 }));
@@ -48,7 +52,9 @@ vi.mock("../systems/prefs.js", () => ({
 }));
 
 vi.mock("../systems/modalLock.js", () => ({
+  hasWorldLock: vi.fn(() => false),
   isWorldInputLocked: vi.fn(() => false),
+  topWorldLock: vi.fn(() => null),
 }));
 
 let TownScene;

@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
+  activeWorldLocks,
+  hasWorldLock,
   pauseWorldFor,
   resumeWorldFor,
   isWorldInputLocked,
+  topWorldLock,
 } from "./modalLock.js";
 
 // Issue #133: modal overlays that sit on top of the World scene were leaking
@@ -41,10 +44,15 @@ describe("pauseWorldFor / resumeWorldFor", () => {
   it("nested modals stay locked until all resume", () => {
     pauseWorldFor(scene, "party_menu");
     pauseWorldFor(scene, "character_detail");
+    expect(activeWorldLocks(scene)).toEqual(["party_menu", "character_detail"]);
+    expect(topWorldLock(scene)).toBe("character_detail");
+    expect(hasWorldLock(scene, "party_menu")).toBe(true);
     resumeWorldFor(scene, "character_detail");
     expect(isWorldInputLocked(scene)).toBe(true);
+    expect(topWorldLock(scene)).toBe("party_menu");
     resumeWorldFor(scene, "party_menu");
     expect(isWorldInputLocked(scene)).toBe(false);
+    expect(topWorldLock(scene)).toBe(null);
   });
 
   it("closing nested modals in reverse or forward order both unlock", () => {
