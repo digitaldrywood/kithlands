@@ -120,10 +120,13 @@ function applySceneGameState(game, scene, result) {
   }
 }
 
-function findMenuButton(scene, label) {
+function findMenuButtonAt(scene, label, occurrence = 0) {
   if (!scene?.menuGroup) return null;
+  let seen = 0;
   for (const entry of scene.menuGroup) {
-    if (entry?.label?.text === label && entry?.bg) return entry.bg;
+    if (entry?.label?.text !== label || !entry?.bg) continue;
+    if (seen === occurrence) return entry.bg;
+    seen += 1;
   }
   return null;
 }
@@ -186,6 +189,160 @@ function gameObjectCenter(game, obj) {
   return {
     x: rect.left + (x / width) * rect.width,
     y: rect.top + (y / height) * rect.height,
+  };
+}
+
+function objectBounds(obj) {
+  const target = obj?.bg || obj;
+  if (!target) return null;
+  if (typeof target.getBounds === "function") {
+    const bounds = target.getBounds();
+    if (
+      bounds &&
+      Number.isFinite(bounds.left) &&
+      Number.isFinite(bounds.right) &&
+      Number.isFinite(bounds.top) &&
+      Number.isFinite(bounds.bottom)
+    ) {
+      return {
+        left: bounds.left,
+        right: bounds.right,
+        top: bounds.top,
+        bottom: bounds.bottom,
+        width: bounds.width,
+        height: bounds.height,
+      };
+    }
+    if (
+      bounds &&
+      Number.isFinite(bounds.x) &&
+      Number.isFinite(bounds.y) &&
+      Number.isFinite(bounds.width) &&
+      Number.isFinite(bounds.height)
+    ) {
+      return {
+        left: bounds.x,
+        right: bounds.x + bounds.width,
+        top: bounds.y,
+        bottom: bounds.y + bounds.height,
+        width: bounds.width,
+        height: bounds.height,
+      };
+    }
+  }
+
+  const width = Number.isFinite(target.width)
+    ? target.width
+    : Number.isFinite(target.w)
+      ? target.w
+      : null;
+  const height = Number.isFinite(target.height)
+    ? target.height
+    : Number.isFinite(target.h)
+      ? target.h
+      : null;
+  if (
+    !Number.isFinite(target.x) ||
+    !Number.isFinite(target.y) ||
+    !Number.isFinite(width) ||
+    !Number.isFinite(height)
+  ) {
+    return null;
+  }
+
+  const originX = Number.isFinite(target.originX) ? target.originX : 0.5;
+  const originY = Number.isFinite(target.originY) ? target.originY : 0.5;
+  return {
+    left: target.x - width * originX,
+    right: target.x + width * (1 - originX),
+    top: target.y - height * originY,
+    bottom: target.y + height * (1 - originY),
+    width,
+    height,
+  };
+}
+
+function describeObject(entry, index) {
+  const target = entry?.bg || entry;
+  return {
+    index,
+    label:
+      (typeof entry?.label?.text === "string" && entry.label.text) ||
+      (typeof target?.text === "string" && target.text) ||
+      target?.name ||
+      target?.type ||
+      target?.constructor?.name ||
+      `entry_${index}`,
+    bounds: objectBounds(entry),
+    fillColor:
+      target?.fillColor ??
+      target?.fill ??
+      target?.style?.backgroundColor ??
+      null,
+  };
+}
+
+function flattenMenuEntries(menuGroup) {
+  const out = [];
+  for (const entry of menuGroup || []) {
+    if (entry?.bg && entry?.label) {
+      out.push(entry.bg, entry.label);
+      continue;
+    }
+    out.push(entry);
+  }
+  return out;
+}
+
+function partyMenuLayoutSnapshot(scene) {
+  if (!scene?.menuGroup) return null;
+  const flattened = flattenMenuEntries(scene.menuGroup);
+  const panel = describeObject(flattened[0], 0);
+  const panelBounds = panel.bounds;
+  const entries = flattened.map((entry, index) => describeObject(entry, index));
+
+  const outOfBounds = panelBounds
+    ? entries.filter((entry) => {
+        const bounds = entry.bounds;
+        if (!bounds) return false;
+        const epsilon = 1;
+        return (
+          bounds.left < panelBounds.left - epsilon ||
+          bounds.right > panelBounds.right + epsilon ||
+          bounds.top < panelBounds.top - epsilon ||
+          bounds.bottom > panelBounds.bottom + epsilon
+        );
+      })
+    : [];
+
+  const barRects = entries.filter((entry) => {
+    const bounds = entry.bounds;
+    return (
+      bounds &&
+      bounds.height >= 6 &&
+      bounds.height <= 12 &&
+      bounds.width > 0 &&
+      Number.isFinite(entry.fillColor)
+    );
+  });
+
+  return {
+    panelBounds,
+    entryCount: entries.length,
+    outOfBounds,
+    barCounts: {
+      track: barRects.filter((entry) => entry.fillColor === 0x222244).length,
+      hp: barRects.filter((entry) =>
+        [0x44ff44, 0xff8800, 0xff0000, 0x333333].includes(entry.fillColor),
+      ).length,
+      mp: barRects.filter((entry) => entry.fillColor === 0x4488ff).length,
+      xp: barRects.filter((entry) => entry.fillColor === 0xffcc44).length,
+    },
+    labelCounts: {
+      hp: entries.filter((entry) => entry.label?.startsWith("HP ")).length,
+      mp: entries.filter((entry) => entry.label?.startsWith("MP ")).length,
+      xp: entries.filter((entry) => entry.label?.startsWith("XP ")).length,
+    },
   };
 }
 
@@ -817,16 +974,16 @@ export function installDevTestBridge(game) {
       return visibleBattleFxSnapshot(scene);
     },
 
-    clickMenuButton(label, sceneKey) {
+    clickMenuButton(label, sceneKey, occurrence = 0) {
       const scene = getScene(game, sceneKey);
-      const button = findMenuButton(scene, label);
+      const button = findMenuButtonAt(scene, label, occurrence);
       if (!button) throw new Error(`Menu button not found: ${label}`);
       clickGameObject(button);
     },
 
-    menuButtonPosition(label, sceneKey) {
+    menuButtonPosition(label, sceneKey, occurrence = 0) {
       const scene = getScene(game, sceneKey);
-      return gameObjectCenter(game, findMenuButton(scene, label));
+      return gameObjectCenter(game, findMenuButtonAt(scene, label, occurrence));
     },
 
     menuButtonEnabled(label, sceneKey) {
@@ -887,6 +1044,19 @@ export function installDevTestBridge(game) {
       const scene = getScene(game, sceneKey);
       openCharacterDetail(scene, index);
       return this.sceneFlags(sceneKey);
+    },
+
+    partyMenuLayout(sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return clone(partyMenuLayoutSnapshot(scene));
+    },
+
+    messageState(sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return {
+        visible: !!scene?.messageText?.visible,
+        text: scene?.messageText?.text || "",
+      };
     },
 
     findDirectionAuditAnchor(sceneKey) {
