@@ -65,24 +65,7 @@ def scale_to_body_height(img: Image.Image, target_h: int) -> Image.Image:
     return canvas
 
 
-def symmetrize_vertical(img: Image.Image) -> Image.Image:
-    x0, y0, x1, y1 = alpha_bbox(img)
-    body = img.crop((x0, y0, x1, y1))
-    w, h = body.size
-    half_w = (w + 1) // 2
-    left = body.crop((0, 0, half_w, h))
-    mirrored = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    mirrored.paste(left, (0, 0), left)
-    right = left.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
-    mirrored.paste(right.crop((right.width - (w - half_w), 0, right.width, h)), (half_w, 0))
-    canvas = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
-    canvas.paste(mirrored, (x0, y0), mirrored)
-    return canvas
-
-
 def prepare_master(direction: str, img: Image.Image, target_h: int) -> Image.Image:
-    if direction in ("down", "up"):
-        img = symmetrize_vertical(img)
     return scale_to_body_height(img, target_h)
 
 
