@@ -367,6 +367,11 @@ def parse_args() -> argparse.Namespace:
         default="Kithlands Walk Previews",
         help="Heading/title for the generated index page",
     )
+    parser.add_argument(
+        "--glob",
+        default="*_walk.png",
+        help="Glob pattern for source walk sheets",
+    )
     return parser.parse_args()
 
 
@@ -377,7 +382,7 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     entries: list[dict[str, str]] = []
 
-    for sheet_path in sorted(source_dir.glob("*_walk.png")):
+    for sheet_path in sorted(source_dir.glob(args.glob)):
         class_id = sheet_path.stem.removesuffix("_walk")
         class_dir = out_dir / class_id
         class_dir.mkdir(parents=True, exist_ok=True)
