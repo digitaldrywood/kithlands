@@ -1,9 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  clearPrefs,
-  getBattlePlanMemory,
-  setBattlePlanMemory,
-} from "../systems/prefs.js";
+import { clearPrefs } from "../systems/prefs.js";
 
 const apiMocks = vi.hoisted(() => ({
   gameAction: vi.fn(),
@@ -147,18 +143,38 @@ beforeEach(() => {
 });
 
 describe("BattleScene repeat memory", () => {
-  it("loads the saved round when a fresh encounter starts with the same party", () => {
+  it("loads the saved round from authoritative game state", () => {
     const actions = [{ slot: 0, type: "attack", target_id: 7 }];
-    const party = makeParty();
-    setBattlePlanMemory(party, actions);
-
     const scene = new BattleScene();
-    scene.init({ gameState: makeCombatState({ party }) });
+    scene.init({
+      gameState: makeCombatState({ last_round_actions: actions }),
+    });
 
     expect(scene._lastRoundActions).toEqual(actions);
   });
 
-  it("persists the resolved round after combat submission and carries it into restart", async () => {
+  it("prefers server round memory over stale localStorage state", () => {
+    const serverActions = [{ slot: 0, type: "attack", target_id: 7 }];
+    globalThis.localStorage.setItem(
+      "kithlands_prefs",
+      JSON.stringify({
+        battle_plan_memory: {
+          "Bruno:warrior,Nia:cinder": [
+            { slot: 0, type: "attack", target_id: 99 },
+          ],
+        },
+      }),
+    );
+
+    const scene = new BattleScene();
+    scene.init({
+      gameState: makeCombatState({ last_round_actions: serverActions }),
+    });
+
+    expect(scene._lastRoundActions).toEqual(serverActions);
+  });
+
+  it("persists the authoritative round after combat submission and carries it into restart", async () => {
     const scene = new BattleScene();
     scene.gameState = makeCombatState();
     scene.memberActions = [{ slot: 0, type: "attack", target_id: 7 }];
@@ -179,6 +195,7 @@ describe("BattleScene repeat memory", () => {
       enemies: [{ id: 9, name: "Wolf", hp: 20, max_hp: 20 }],
       combat_log: ["Bruno attacks!"],
       combat_actions: [{ type: "attack", actor_slot: 0, target_id: 7 }],
+      last_round_actions: [{ slot: 0, type: "attack", target_id: 9 }],
     });
     apiMocks.gameAction.mockResolvedValue(result);
 
@@ -188,27 +205,21 @@ describe("BattleScene repeat memory", () => {
       type: "combat_round",
       actions: [{ slot: 0, type: "attack", target_id: 7 }],
     });
-    expect(getBattlePlanMemory(result.party)).toEqual([
-      { slot: 0, type: "attack", target_id: 7 },
-    ]);
     expect(scene.scene.restart).toHaveBeenCalledWith({
       gameState: result,
-      lastRoundActions: [{ slot: 0, type: "attack", target_id: 7 }],
+      lastRoundActions: [{ slot: 0, type: "attack", target_id: 9 }],
       autoMode: undefined,
     });
   });
 });
 
 describe("save-load persistence", () => {
-  it("keeps battle plan memory after loading a save", async () => {
-    const actions = [{ slot: 0, type: "attack", target_id: 7 }];
-    const party = makeParty();
-    setBattlePlanMemory(party, actions);
-
+  it("keeps authoritative last_round_actions when loading a save", async () => {
     const loadedGame = {
       id: "loaded-1",
       phase: "world",
-      party,
+      party: makeParty(),
+      last_round_actions: [{ slot: 0, type: "attack", target_id: 7 }],
     };
     apiMocks.loadSave.mockResolvedValue(loadedGame);
 
@@ -219,6 +230,5 @@ describe("save-load persistence", () => {
     expect(scene.scene.start).toHaveBeenCalledWith("World", {
       gameState: loadedGame,
     });
-    expect(getBattlePlanMemory(party)).toEqual(actions);
   });
 });
