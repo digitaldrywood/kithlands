@@ -18,6 +18,11 @@ const PANEL_LEFT = PANEL_CX - PANEL_W / 2;
 const PANEL_RIGHT = PANEL_CX + PANEL_W / 2;
 const PANEL_TOP = PANEL_CY - PANEL_H / 2;
 const PANEL_BOTTOM = PANEL_CY + PANEL_H / 2;
+const NAV_BTN_W = 34;
+const NAV_BTN_H = 34;
+const NAV_BTN_Y = PANEL_TOP + 42;
+const NAV_LEFT_X = PANEL_LEFT + 28;
+const NAV_RIGHT_X = PANEL_RIGHT - 28;
 
 // Opens the detail overlay for a single party member. Idempotent: calling
 // twice closes the previous instance before opening the new one, so the
@@ -41,12 +46,45 @@ export function openCharacterDetail(scene, partyIndex) {
   });
   group.push(panel.bg);
 
-  // Header: name + class · level, centered.
+  const positionLabel = formatCharacterDetailPosition(gs.party, partyIndex);
+  const prevBtn = drawButton(
+    scene,
+    NAV_LEFT_X,
+    NAV_BTN_Y,
+    NAV_BTN_W,
+    NAV_BTN_H,
+    "<",
+    () => cycleCharacterDetail(scene, -1),
+  );
+  const nextBtn = drawButton(
+    scene,
+    NAV_RIGHT_X,
+    NAV_BTN_Y,
+    NAV_BTN_W,
+    NAV_BTN_H,
+    ">",
+    () => cycleCharacterDetail(scene, 1),
+  );
+  group.push(prevBtn, nextBtn);
+
+  // Header: name + class · level, centered, with party position shown near
+  // the title strip so the player can see which member they're on.
   group.push(
     scene.add
       .text(PANEL_CX, PANEL_TOP + 32, member.name, {
         fontSize: "22px",
         color: "#ffffff",
+        fontFamily: "monospace",
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(DEPTH_LABEL),
+  );
+  group.push(
+    scene.add
+      .text(PANEL_RIGHT - 84, PANEL_TOP + 32, positionLabel, {
+        fontSize: "14px",
+        color: "#88ccff",
         fontFamily: "monospace",
       })
       .setOrigin(0.5)
@@ -116,6 +154,13 @@ export function openCharacterDetail(scene, partyIndex) {
   const escHandler = () => closeCharacterDetail(scene);
   scene.input.keyboard.once("keydown-ESC", escHandler);
   scene.characterDetailEscHandler = escHandler;
+
+  const leftHandler = () => cycleCharacterDetail(scene, -1);
+  const rightHandler = () => cycleCharacterDetail(scene, 1);
+  scene.input.keyboard.on("keydown-LEFT", leftHandler);
+  scene.input.keyboard.on("keydown-RIGHT", rightHandler);
+  scene.characterDetailLeftHandler = leftHandler;
+  scene.characterDetailRightHandler = rightHandler;
 }
 
 export function closeCharacterDetail(scene) {
@@ -126,6 +171,17 @@ export function closeCharacterDetail(scene) {
   if (scene.characterDetailEscHandler) {
     scene.input.keyboard.off("keydown-ESC", scene.characterDetailEscHandler);
     scene.characterDetailEscHandler = null;
+  }
+  if (scene.characterDetailLeftHandler) {
+    scene.input.keyboard.off("keydown-LEFT", scene.characterDetailLeftHandler);
+    scene.characterDetailLeftHandler = null;
+  }
+  if (scene.characterDetailRightHandler) {
+    scene.input.keyboard.off(
+      "keydown-RIGHT",
+      scene.characterDetailRightHandler,
+    );
+    scene.characterDetailRightHandler = null;
   }
   resumeWorldFor(scene, "character_detail");
 }
@@ -138,6 +194,32 @@ function handOffToEquipPicker(scene, partyIndex, type) {
   showEquipPicker(scene, partyIndex, type, {
     returnTo: { type: "character", index: partyIndex },
   });
+}
+
+function cycleCharacterDetail(scene, delta) {
+  const slots = activePartySlots(scene?.gameState?.party);
+  if (slots.length === 0) return;
+
+  const currentPos = slots.indexOf(scene.characterDetailIndex);
+  const basePos = currentPos >= 0 ? currentPos : 0;
+  const nextPos = (basePos + delta + slots.length) % slots.length;
+  openCharacterDetail(scene, slots[nextPos]);
+}
+
+function formatCharacterDetailPosition(party, partyIndex) {
+  const slots = activePartySlots(party);
+  if (slots.length === 0) return "0/0";
+  const currentPos = slots.indexOf(partyIndex);
+  const shownPos = currentPos >= 0 ? currentPos + 1 : 1;
+  return `${shownPos}/${slots.length}`;
+}
+
+function activePartySlots(party) {
+  const slots = [];
+  for (let i = 0; i < (party || []).length; i += 1) {
+    if (party[i]) slots.push(i);
+  }
+  return slots;
 }
 
 // ------ internal layout helpers ------

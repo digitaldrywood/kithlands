@@ -365,6 +365,14 @@ function findDirectionAuditAnchor(scene) {
   return null;
 }
 
+function findCharacterDetailButton(scene, label) {
+  const group = scene?.characterDetailGroup || [];
+  for (const entry of group) {
+    if (entry?.label?.text === label && entry?.bg) return entry.bg;
+  }
+  return null;
+}
+
 function findStraightAuditAnchor(scene, dir, steps) {
   const [dx, dy] = DIR_DELTAS[dir] || [0, 0];
   const width = scene?.mapW ?? scene?.roomW;
@@ -578,6 +586,15 @@ export function installDevTestBridge(game) {
       const target = findCharacterDetailSlot(scene, slotLabel);
       if (!target) {
         throw new Error(`Character detail slot not found: ${slotLabel}`);
+      }
+      clickGameObject(target);
+    },
+
+    clickCharacterDetailButton(label, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      const target = findCharacterDetailButton(scene, label);
+      if (!target) {
+        throw new Error(`Character detail button not found: ${label}`);
       }
       clickGameObject(target);
     },
