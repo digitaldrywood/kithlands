@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/digitaldrywood/kithlands/internal/character"
@@ -14,11 +15,11 @@ func TestMigrateLegacyMP(t *testing.T) {
 	gd := gamedata.Load("../../shared")
 
 	tests := []struct {
-		name      string
-		classID   string
-		level     int
-		wantMP    int
-		wantZero  bool
+		name     string
+		classID  string
+		level    int
+		wantMP   int
+		wantZero bool
 	}{
 		{
 			name:    "cinder level 1",
@@ -115,5 +116,52 @@ func TestMigrateLegacyMPSkipsInitialized(t *testing.T) {
 	}
 	if c.CurrentMP != 7 {
 		t.Errorf("CurrentMP should not change: got %d, want 7", c.CurrentMP)
+	}
+}
+
+func TestFromSaveStateMigratesLegacyCasterMP(t *testing.T) {
+	game := newXPProgressTestGame(t, []PartyMemberReq{
+		{Name: "Hero", ClassID: "warrior"},
+		{Name: "Mage", ClassID: "cinder"},
+	})
+
+	ss, err := game.ToSaveState("legacy-mp", "test-user")
+	if err != nil {
+		t.Fatalf("ToSaveState: %v", err)
+	}
+
+	var party []*character.Character
+	if err := json.Unmarshal(ss.Party, &party); err != nil {
+		t.Fatalf("unmarshal party: %v", err)
+	}
+	party[1].Level = 5
+	party[1].MaxMP = 0
+	party[1].CurrentMP = 0
+
+	partyJSON, err := json.Marshal(party)
+	if err != nil {
+		t.Fatalf("marshal party: %v", err)
+	}
+	ss.Party = partyJSON
+
+	loaded, err := FromSaveState(ss, game.gd, game.loc)
+	if err != nil {
+		t.Fatalf("FromSaveState: %v", err)
+	}
+
+	const wantMP = 30
+	if got := loaded.party[1].MaxMP; got != wantMP {
+		t.Fatalf("loaded MaxMP = %d, want %d", got, wantMP)
+	}
+	if got := loaded.party[1].CurrentMP; got != wantMP {
+		t.Fatalf("loaded CurrentMP = %d, want %d", got, wantMP)
+	}
+
+	state := loaded.State()
+	if got := state.Party[1].MaxMP; got != wantMP {
+		t.Fatalf("state MaxMP = %d, want %d", got, wantMP)
+	}
+	if got := state.Party[1].MP; got != wantMP {
+		t.Fatalf("state MP = %d, want %d", got, wantMP)
 	}
 }
