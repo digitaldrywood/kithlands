@@ -115,14 +115,7 @@ export function openCharacterDetail(scene, partyIndex) {
 
   // Three-column body.
   drawPortrait(scene, group, member, PANEL_LEFT + 120, PANEL_TOP + 230);
-  drawStatBlock(
-    scene,
-    group,
-    member,
-    equip,
-    PANEL_LEFT + 230,
-    PANEL_TOP + 110,
-  );
+  drawStatBlock(scene, group, member, equip, PANEL_LEFT + 230, PANEL_TOP + 110);
   drawEquipSlot(
     scene,
     group,

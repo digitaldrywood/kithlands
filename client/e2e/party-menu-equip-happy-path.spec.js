@@ -93,7 +93,8 @@ test.describe("party menu equip happy path", () => {
       return {
         member: state.party[slot],
         equip: state.equipment[slot],
-        attack: state.party[slot].str + (state.equipment[slot].weapon_power || 0),
+        attack:
+          state.party[slot].str + (state.equipment[slot].weapon_power || 0),
       };
     }, SLOT);
     expect(before.equip.weapon_name).not.toBe("Iron Sword");
