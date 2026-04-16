@@ -58,10 +58,12 @@ function makeRectangle() {
 }
 
 function makeText(initial) {
+  const handlers = {};
   const text = {
     __kind: "text",
     text: initial,
     destroyed: false,
+    handlers,
     setOrigin() {
       return text;
     },
@@ -77,6 +79,14 @@ function makeText(initial) {
     },
     setColor(color) {
       text.color = color;
+      return text;
+    },
+    setInteractive() {
+      text.interactive = true;
+      return text;
+    },
+    on(event, fn) {
+      handlers[event] = fn;
       return text;
     },
     destroy() {

@@ -1,4 +1,11 @@
-import { buyItem, debugGiveItem } from "./api.js";
+import {
+  buyItem,
+  debugForceEncounter,
+  debugGiveItem,
+  debugSetPartyVitals,
+  gameAction,
+  newGame,
+} from "./api.js";
 import { getCurrentMusicKey, getPlayingSoundKeys } from "./systems/audio.js";
 import {
   openCharacterDetail,
@@ -99,6 +106,20 @@ function clickGameObject(obj) {
   obj.emit("pointerup");
 }
 
+function applySceneGameState(game, scene, result) {
+  if (!scene || !result || result.error) return;
+  scene.gameState = result;
+  if (typeof scene.updateHUD === "function") scene.updateHUD();
+
+  if (scene.scene?.key === "World" && result.phase === "combat") {
+    game.scene.start("Battle", { gameState: result });
+    return;
+  }
+  if (scene.scene?.key === "Battle" && result.phase === "world") {
+    game.scene.start("World", { gameState: result });
+  }
+}
+
 function findMenuButton(scene, label) {
   if (!scene?.menuGroup) return null;
   for (const entry of scene.menuGroup) {
@@ -110,7 +131,8 @@ function findMenuButton(scene, label) {
 function findInteractiveText(scene, text) {
   const matcher = String(text).toLowerCase();
   const children = scene?.children?.list || [];
-  for (const child of children) {
+  for (let i = children.length - 1; i >= 0; i -= 1) {
+    const child = children[i];
     if (
       typeof child?.text === "string" &&
       child.text.toLowerCase().includes(matcher) &&
@@ -564,6 +586,16 @@ export function installDevTestBridge(game) {
       return this.gameState("World");
     },
 
+    async startCustomGame(gameData) {
+      const result = await newGame(gameData);
+      if (result?.error) {
+        throw new Error(result.error);
+      }
+      game.scene.start("World", { gameState: result });
+      await this.waitForSceneReady("World");
+      return this.gameState("World");
+    },
+
     async waitForSceneReady(sceneKey, leaderClass = null) {
       await waitFor(() => {
         const scene = getScene(game, sceneKey);
@@ -590,8 +622,7 @@ export function installDevTestBridge(game) {
       if (!gameId) throw new Error("Active scene has no game id");
       const result = await debugGiveItem(gameId, itemId, qty);
       if (!result?.error) {
-        scene.gameState = result;
-        if (typeof scene.updateHUD === "function") scene.updateHUD();
+        applySceneGameState(game, scene, result);
       }
       return clone(result);
     },
@@ -602,8 +633,36 @@ export function installDevTestBridge(game) {
       if (!gameId) throw new Error("Active scene has no game id");
       const result = await buyItem(gameId, itemId, itemType);
       if (!result?.error) {
-        scene.gameState = result;
-        if (typeof scene.updateHUD === "function") scene.updateHUD();
+        applySceneGameState(game, scene, result);
+      }
+      return clone(result);
+    },
+
+    async forceEncounter(monsterIds, level = 1, sceneKey = "World") {
+      const scene = getScene(game, sceneKey);
+      const gameId = scene?.gameState?.id;
+      if (!gameId) throw new Error("Active scene has no game id");
+      const result = await debugForceEncounter(gameId, monsterIds, level);
+      if (!result?.error) {
+        applySceneGameState(game, scene, result);
+        if (result.phase === "combat") {
+          await waitFor(() => game.scene.isActive("Battle"));
+          await nextFrame();
+        }
+      }
+      return clone(result);
+    },
+
+    async submitAction(action, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      const gameId = scene?.gameState?.id;
+      if (!gameId) throw new Error("Active scene has no game id");
+      const result = await gameAction(gameId, action);
+      if (!result?.error) {
+        applySceneGameState(game, scene, result);
+        if (scene?.scene?.key === "Battle" && result.phase === "world") {
+          await this.waitForSceneReady("World");
+        }
       }
       return clone(result);
     },
@@ -727,6 +786,18 @@ export function installDevTestBridge(game) {
     },
 
     setPartyVitals(updates, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      const gameId = scene?.gameState?.id;
+      if (!gameId) throw new Error("Active scene has no game id");
+      return debugSetPartyVitals(gameId, updates).then((result) => {
+        if (!result?.error) {
+          applySceneGameState(game, scene, result);
+        }
+        return clone(result);
+      });
+    },
+
+    setPartyVitalsLocal(updates, sceneKey) {
       const scene = getScene(game, sceneKey);
       if (!scene?.gameState?.party) throw new Error("Scene has no party state");
       for (const update of updates || []) {

@@ -38,6 +38,8 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 	switch req.Type {
 	case "item":
 		return g.processWorldItem(req)
+	case "spell":
+		return g.processWorldSpell(req)
 	case "encounter":
 		if g.tickOverworldPoisonAndCheckDefeat() {
 			state := g.stateUnlocked()
