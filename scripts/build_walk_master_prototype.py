@@ -72,6 +72,7 @@ def split_side(base: Image.Image, facing: str) -> dict[str, tuple[int, int, int,
 
     return {
         "head": (x0, y0, x1, head_y),
+        "cape": (back_x0, chest_y - 6, back_x1, y1),
         "torso": (x0, head_y, x1, waist_y),
         "front_arm": (front_x0, chest_y - 4, front_x1, waist_y),
         "back_arm": (back_x0, chest_y - 4, back_x1, waist_y),
@@ -124,6 +125,7 @@ SIDE_OFFSETS = {
     "left": [
         {
             "head": (0, 0),
+            "cape": (0, 0),
             "torso": (0, 0),
             "front_arm": (0, 0),
             "back_arm": (0, 0),
@@ -132,6 +134,7 @@ SIDE_OFFSETS = {
         },
         {
             "head": (-2, -1),
+            "cape": (2, 1),
             "torso": (-2, 0),
             "front_arm": (-3, 1),
             "back_arm": (2, -1),
@@ -140,6 +143,7 @@ SIDE_OFFSETS = {
         },
         {
             "head": (0, -2),
+            "cape": (1, 0),
             "torso": (0, 0),
             "front_arm": (0, 0),
             "back_arm": (0, 0),
@@ -148,6 +152,7 @@ SIDE_OFFSETS = {
         },
         {
             "head": (2, -1),
+            "cape": (-2, 1),
             "torso": (2, 0),
             "front_arm": (2, -1),
             "back_arm": (-3, 1),
@@ -158,6 +163,7 @@ SIDE_OFFSETS = {
     "right": [
         {
             "head": (0, 0),
+            "cape": (0, 0),
             "torso": (0, 0),
             "front_arm": (0, 0),
             "back_arm": (0, 0),
@@ -166,6 +172,7 @@ SIDE_OFFSETS = {
         },
         {
             "head": (2, -1),
+            "cape": (-2, 1),
             "torso": (2, 0),
             "front_arm": (3, 1),
             "back_arm": (-2, -1),
@@ -174,6 +181,7 @@ SIDE_OFFSETS = {
         },
         {
             "head": (0, -2),
+            "cape": (-1, 0),
             "torso": (0, 0),
             "front_arm": (0, 0),
             "back_arm": (0, 0),
@@ -182,6 +190,7 @@ SIDE_OFFSETS = {
         },
         {
             "head": (-2, -1),
+            "cape": (2, 1),
             "torso": (-2, 0),
             "front_arm": (-2, -1),
             "back_arm": (3, 1),
@@ -200,7 +209,7 @@ def pose_frame(base: Image.Image, direction: str, frame_idx: int) -> Image.Image
     else:
         segments = split_side(base, direction)
         offsets = SIDE_OFFSETS[direction][frame_idx]
-        draw_order = ["back_leg", "front_leg", "torso", "back_arm", "front_arm", "head"]
+        draw_order = ["cape", "back_leg", "front_leg", "torso", "back_arm", "front_arm", "head"]
 
     frame = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
     for key in draw_order:
