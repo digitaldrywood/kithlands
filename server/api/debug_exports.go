@@ -59,6 +59,7 @@ func (g *Game) DebugForceEncounter(monsterIDs []string, level int) error {
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	g.snapshotVictoryXPProgress()
 	g.enemies = g.enemies[:0]
 	for _, id := range monsterIDs {
 		found := false
