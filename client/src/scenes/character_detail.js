@@ -115,7 +115,14 @@ export function openCharacterDetail(scene, partyIndex) {
 
   // Three-column body.
   drawPortrait(scene, group, member, PANEL_LEFT + 120, PANEL_TOP + 230);
-  drawStatBlock(scene, group, member, PANEL_LEFT + 230, PANEL_TOP + 110);
+  drawStatBlock(
+    scene,
+    group,
+    member,
+    equip,
+    PANEL_LEFT + 230,
+    PANEL_TOP + 110,
+  );
   drawEquipSlot(
     scene,
     group,
@@ -268,7 +275,7 @@ function drawPortrait(scene, group, member, cx, cy) {
   }
 }
 
-function drawStatBlock(scene, group, member, x, y) {
+function drawStatBlock(scene, group, member, equip, x, y) {
   // HP / MP / XP bars — re-using the integer-safe helpers from hpBar.js.
   drawBar(scene, group, x, y, 240, member.hp, member.max_hp, "HP", (pct) =>
     pct > 0.5 ? 0x44ff44 : pct > 0.25 ? 0xff8800 : 0xff0000,
@@ -304,6 +311,7 @@ function drawStatBlock(scene, group, member, x, y) {
 
   // Scalar stats + status + perks.
   const lines = [
+    `ATK: ${derivedAttack(member, equip)}`,
     `STR: ${member.str}`,
     `AGI: ${member.agi}`,
     `INT: ${member.int_stat}`,
@@ -315,6 +323,10 @@ function drawStatBlock(scene, group, member, x, y) {
   lines.forEach((line, i) => {
     group.push(plainText(scene, x, y + 88 + i * 20, line, "#ffffff", "12px"));
   });
+}
+
+function derivedAttack(member, equip) {
+  return (member?.str || 0) + (equip?.weapon_power || 0);
 }
 
 function drawBar(scene, group, x, y, width, cur, max, prefix, colorFn) {

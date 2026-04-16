@@ -2,9 +2,12 @@
 
 Playwright now has one working local e2e path for Kithlands:
 
-- `party-menu-equip.spec.js`: quick-start a game, grant real equipment via the
-  normal buy/equip APIs, open the party menu, drill into character detail, and
-  equip an upgraded weapon through the actual UI flow.
+- `party-menu-equip-happy-path.spec.js`: start a deterministic 4-member party,
+  buy a real weapon via the live API, open the party menu, assert the menu
+  layout stays inside the 760x540 panel, drill into character detail from a
+  specific row, equip the upgraded weapon through the actual UI flow, and
+  confirm the derived attack/weapon change persists after closing and
+  reopening.
 - `walk-all-classes.spec.js`: quick-start a game, enter a town interior, and
   verify all 12 walk-sheet classes render the correct directional sequences in
   both `World` and `Town`.

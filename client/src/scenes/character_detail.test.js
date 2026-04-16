@@ -157,7 +157,9 @@ function makeScene(partySize = 4) {
       party: makeParty(partySize),
       equipment: Array.from({ length: partySize }, (_, idx) => ({
         weapon_name: `Sword ${idx + 1}`,
+        weapon_power: 5 + idx,
         armor_name: `Armor ${idx + 1}`,
+        armor_absorb: 2 + idx,
       })),
     },
     input: {
@@ -326,6 +328,15 @@ describe("character detail navigation", () => {
     expect(showEquipPicker).toHaveBeenCalledWith(scene, 1, "weapon", {
       returnTo: { type: "character", index: 1 },
     });
+  });
+
+  it("shows derived attack using the equipped weapon power", () => {
+    const scene = makeScene(1);
+
+    openCharacterDetail(scene, 0);
+
+    expect(currentTextValues(scene)).toContain("ATK: 11");
+    expect(currentTextValues(scene)).toContain("STR: 6");
   });
 
   it("keeps field healing selectable and explains the next step", () => {
