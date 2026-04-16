@@ -7,6 +7,7 @@ import {
   WALK_FRAME_COUNT,
   WALK_DIRS,
   WALK_DIR_INDEX,
+  WALK_SHEET_CLASS_IDS,
 } from "./walkFrame.js";
 
 describe("nextWalkFrame", () => {
@@ -32,20 +33,7 @@ describe("nextWalkFrame", () => {
 });
 
 describe("walkSheetKey", () => {
-  it.each([
-    "warrior",
-    "brawler",
-    "rogue",
-    "mender",
-    "cinder",
-    "wayfarer",
-    "knight",
-    "champion",
-    "shadow",
-    "sage",
-    "pyromancer",
-    "wanderer",
-  ])("builds %s_walk", (cls) => {
+  it.each(WALK_SHEET_CLASS_IDS)("builds %s_walk", (cls) => {
     expect(walkSheetKey(cls)).toBe(`${cls}_walk`);
   });
 });

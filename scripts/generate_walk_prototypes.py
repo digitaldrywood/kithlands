@@ -1,0 +1,278 @@
+#!/usr/bin/env python3
+"""Generate review-only overworld walk prototypes via Gemini.
+
+This version generates one frame at a time instead of asking Gemini for a full
+row strip. That gives us explicit control over the 4-frame order and prevents
+the "multiple poses smeared across one strip" failure mode.
+"""
+
+from __future__ import annotations
+
+import argparse
+import base64
+from collections import deque
+import io
+import json
+import os
+import subprocess
+from pathlib import Path
+
+from PIL import Image
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+SPRITES_DIR = REPO_ROOT / "client" / "public" / "sprites"
+OUT_DIR = REPO_ROOT / "client" / "tmp" / "walk-prototypes"
+STYLE_REF = OUT_DIR / "style_ref.png"
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-image")
+API_KEY = os.environ.get("GEMINI_API_KEY", "")
+CELL = 128
+SHEET = CELL * 4
+
+WARRIOR_IDENTITY = (
+    "silver plate armor, blue cape, knight silhouette, small sword, classic "
+    "JRPG overworld proportions"
+)
+
+DIRECTION_LABELS = {
+    "down": "front/down view, walking toward the camera",
+    "up": "back/up view, walking away from the camera",
+    "left": "left profile view, walking left",
+    "right": "right profile view, walking right",
+}
+
+FRAME_PHASES = [
+    ("f0", "neutral contact pose, both feet near center, calm shoulder swing"),
+    ("f1", "left leg forward, right arm forward, visible shoulder swing"),
+    ("f2", "passing pose, weight shifted through center, subtle head and cape motion"),
+    ("f3", "right leg forward, left arm forward, visible shoulder swing"),
+]
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--class-id",
+        default="warrior",
+        choices=["warrior"],
+        help="Prototype class to generate",
+    )
+    parser.add_argument(
+        "--name",
+        default="warrior_proto_c",
+        help="Output basename without _walk.png suffix",
+    )
+    return parser.parse_args()
+
+
+def ensure_api_key() -> None:
+    if API_KEY:
+        return
+    env_path = REPO_ROOT / ".env"
+    if env_path.exists():
+        for line in env_path.read_text().splitlines():
+            if line.startswith("GEMINI_API_KEY="):
+                os.environ["GEMINI_API_KEY"] = line.split("=", 1)[1].strip().strip('"').strip("'")
+                return
+    raise SystemExit("GEMINI_API_KEY not set")
+
+
+def base64_part(path: Path) -> dict:
+    return {
+        "inlineData": {
+            "mimeType": "image/png",
+            "data": base64.b64encode(path.read_bytes()).decode(),
+        }
+    }
+
+
+def generate_image(parts: list[dict], *, aspect_ratio: str) -> Image.Image:
+    payload = {
+        "contents": [{"parts": parts}],
+        "generationConfig": {
+            "responseModalities": ["TEXT", "IMAGE"],
+            "imageConfig": {
+                "aspectRatio": aspect_ratio,
+                "imageSize": "1K",
+            },
+        },
+    }
+
+    req_file = f"/tmp/gemini-walk-proto-req-{os.getpid()}.json"
+    resp_file = f"/tmp/gemini-walk-proto-resp-{os.getpid()}.json"
+    with open(req_file, "w") as f:
+        json.dump(payload, f)
+
+    result = subprocess.run(
+        [
+            "curl",
+            "-s",
+            "-o",
+            resp_file,
+            "-w",
+            "%{http_code}",
+            "-X",
+            "POST",
+            f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={os.environ['GEMINI_API_KEY']}",
+            "-H",
+            "Content-Type: application/json",
+            "-d",
+            f"@{req_file}",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=180,
+    )
+
+    if result.stdout.strip() != "200":
+        raise RuntimeError(f"Gemini HTTP {result.stdout.strip()}")
+
+    data = json.loads(Path(resp_file).read_text())
+    response_parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+    for part in response_parts:
+        if "inlineData" in part:
+            raw = base64.b64decode(part["inlineData"]["data"])
+            return Image.open(io.BytesIO(raw)).convert("RGBA")
+    raise RuntimeError("No image part in Gemini response")
+
+
+def remove_background(img: Image.Image) -> Image.Image:
+    img = img.convert("RGBA")
+    px = img.load()
+    for y in range(img.height):
+        for x in range(img.width):
+            r, g, b, a = px[x, y]
+            if a and r > 120 and b > 120 and g < 120:
+                px[x, y] = (0, 0, 0, 0)
+
+    # Flood-fill edge-connected black padding to transparent without nuking
+    # interior dark outline pixels on the sprite itself.
+    w, h = img.size
+    queue = deque()
+    seen: set[tuple[int, int]] = set()
+
+    def is_bg(x: int, y: int) -> bool:
+        r, g, b, a = px[x, y]
+        return a > 0 and r < 24 and g < 24 and b < 24
+
+    for x in range(w):
+        queue.append((x, 0))
+        queue.append((x, h - 1))
+    for y in range(h):
+        queue.append((0, y))
+        queue.append((w - 1, y))
+
+    while queue:
+        x, y = queue.popleft()
+        if (x, y) in seen or not (0 <= x < w and 0 <= y < h):
+            continue
+        seen.add((x, y))
+        if not is_bg(x, y):
+            continue
+        px[x, y] = (0, 0, 0, 0)
+        queue.extend(((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)))
+    return img
+
+
+def fit_frame(img: Image.Image) -> Image.Image:
+    scale = min(CELL / img.width, CELL / img.height)
+    width = max(1, round(img.width * scale))
+    height = max(1, round(img.height * scale))
+    resized = img.resize((width, height), Image.Resampling.NEAREST)
+    canvas = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
+    x = (CELL - width) // 2
+    y = CELL - height
+    canvas.paste(resized, (x, y), resized)
+    return canvas
+
+
+def build_style_reference() -> None:
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    board = Image.new("RGBA", (256, 256), (0, 0, 0, 0))
+    positions = [
+        ("player_down.png", (0, 0)),
+        ("player_up.png", (128, 0)),
+        ("player_left.png", (0, 128)),
+        ("player_right.png", (128, 128)),
+    ]
+    for name, pos in positions:
+        img = (
+            Image.open(SPRITES_DIR / name)
+            .convert("RGBA")
+            .resize((128, 128), Image.Resampling.NEAREST)
+        )
+        board.paste(img, pos, img)
+    board.save(STYLE_REF)
+
+
+def compose_sheet(rows: list[list[Image.Image]]) -> Image.Image:
+    sheet = Image.new("RGBA", (SHEET, SHEET), (0, 0, 0, 0))
+    for row_idx, row in enumerate(rows):
+        for col_idx, frame in enumerate(row):
+            sheet.paste(frame, (col_idx * CELL, row_idx * CELL), frame)
+    return sheet
+
+
+def direction_ref_path(direction: str) -> Path:
+    name = {
+        "down": "player_down.png",
+        "up": "player_up.png",
+        "left": "player_left.png",
+        "right": "player_right.png",
+    }[direction]
+    return SPRITES_DIR / name
+
+
+def frame_prompt(direction: str, phase_desc: str) -> str:
+    return (
+        "Create one single full-body overworld sprite frame on a solid bright "
+        "magenta #FF00FF background. Classic JRPG overworld style, not a "
+        "portrait, not a strip, not multiple poses. Keep the camera angle "
+        f"locked to {DIRECTION_LABELS[direction]}. The pose for this one frame "
+        f"is: {phase_desc}. The same armored warrior identity must be kept in "
+        f"every frame: {WARRIOR_IDENTITY}. Use the first reference image for "
+        "general overworld readability, the second reference image for the "
+        "exact facing/style of this direction, and the third reference image "
+        "only for warrior identity cues. Keep the sprite centered in the "
+        "square and keep the feet visible."
+    )
+
+
+def main() -> None:
+    args = parse_args()
+    ensure_api_key()
+    build_style_reference()
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    portrait_path = SPRITES_DIR / f"{args.class_id}.png"
+    rows: list[list[Image.Image]] = []
+
+    print(f"style-ref {STYLE_REF}")
+    for direction in ["down", "up", "left", "right"]:
+        dir_ref = direction_ref_path(direction)
+        row_frames: list[Image.Image] = []
+        for frame_id, phase_desc in FRAME_PHASES:
+            out_path = OUT_DIR / f"{args.name}_{direction}_{frame_id}.png"
+            print(f"generate {out_path.name}")
+            img = generate_image(
+                [
+                    base64_part(STYLE_REF),
+                    base64_part(dir_ref),
+                    base64_part(portrait_path),
+                    {"text": frame_prompt(direction, phase_desc)},
+                ],
+                aspect_ratio="1:1",
+            )
+            img = fit_frame(remove_background(img))
+            img.save(out_path)
+            row_frames.append(img)
+            print(f"saved {out_path}")
+        rows.append(row_frames)
+
+    sheet = compose_sheet(rows)
+    sheet_path = OUT_DIR / f"{args.name}_walk.png"
+    sheet.save(sheet_path)
+    print(f"saved {sheet_path}")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,4 +1,5 @@
 import { MONSTER_SPRITE_LOAD } from "../data/monsterSprites.js";
+import { WALK_SHEET_CLASS_IDS } from "./walkFrame.js";
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -40,31 +41,16 @@ export class BootScene extends Phaser.Scene {
 
     // Character sprites (base + promoted classes — must match CLASS_SPRITES
     // in battle.js and server's buildPartyMemberState sprite_id output)
-    const CLASS_SPRITE_KEYS = [
-      "warrior",
-      "brawler",
-      "rogue",
-      "mender",
-      "cinder",
-      "wayfarer",
-      "knight",
-      "champion",
-      "shadow",
-      "sage",
-      "pyromancer",
-      "wanderer",
-    ];
+    const CLASS_SPRITE_KEYS = WALK_SHEET_CLASS_IDS;
     for (const key of CLASS_SPRITE_KEYS) {
       this.load.image(key, `/sprites/${key}.png`);
     }
 
-    // Per-class walk sprite sheets (#127/#140). The current generated sheets
-    // are still not reliable enough to enable globally: cell-by-cell
-    // inspection shows mismatched directional rows, so using them renders the
-    // wrong art while moving. Keep the runtime manifest empty until validated
-    // replacements exist; the static player_{dir} sprites are directionally
-    // correct even though they do not animate.
-    const CLASSES_WITH_WALK_SHEETS = [];
+    // Per-class walk sprite sheets (#127/#140). These are generated from each
+    // class portrait so all four movement directions preserve class identity.
+    // Fallback player_{dir} sprites remain loaded for safety, but normal
+    // movement should now use the class-specific walk sheet.
+    const CLASSES_WITH_WALK_SHEETS = CLASS_SPRITE_KEYS;
     for (const key of CLASSES_WITH_WALK_SHEETS) {
       this.load.spritesheet(`${key}_walk`, `/sprites/walk/${key}_walk.png`, {
         frameWidth: 128,

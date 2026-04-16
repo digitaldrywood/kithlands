@@ -1,6 +1,20 @@
 export const WALK_FRAME_COUNT = 4;
 export const WALK_DIRS = ["down", "up", "left", "right"];
 export const WALK_DIR_INDEX = { down: 0, up: 1, left: 2, right: 3 };
+export const WALK_SHEET_CLASS_IDS = [
+  "warrior",
+  "brawler",
+  "rogue",
+  "mender",
+  "cinder",
+  "wayfarer",
+  "knight",
+  "champion",
+  "shadow",
+  "sage",
+  "pyromancer",
+  "wanderer",
+];
 
 export function nextWalkFrame(prevFrame) {
   return (prevFrame + 1) % WALK_FRAME_COUNT;

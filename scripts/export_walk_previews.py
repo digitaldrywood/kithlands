@@ -1,0 +1,422 @@
+#!/usr/bin/env python3
+"""Export human-reviewable previews for all generated walk sheets.
+
+Outputs:
+  <output-dir>/index.html
+  <output-dir>/{class}/{class}_sheet_4x.png
+  <output-dir>/{class}/{class}_centered_sheet_4x.png
+  <output-dir>/{class}/{class}_frames_4x.png
+
+The goal is reviewability, not runtime usage. This script makes it easy to
+inspect each class one-by-one before integrating walk assets.
+"""
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+from PIL import Image, ImageDraw, ImageFont
+
+CELL = 128
+SHEET = CELL * 4
+SCALE = 4
+FRAME_MS = 180
+OUT_BG = (18, 22, 26, 255)
+PANEL_BG = (32, 38, 44, 255)
+LABEL_BG = (10, 12, 16, 220)
+WHITE = (245, 245, 245, 255)
+DIRS = ["down", "up", "left", "right"]
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+WALK_DIR = REPO_ROOT / "client" / "public" / "sprites" / "walk"
+OUT_DIR = REPO_ROOT / "client" / "tmp" / "walk-previews"
+
+
+def scale_frame(frame: Image.Image) -> Image.Image:
+    return frame.resize((frame.width * SCALE, frame.height * SCALE), Image.Resampling.NEAREST)
+
+
+def extract_row(sheet: Image.Image, row_idx: int) -> list[Image.Image]:
+    frames = []
+    for col_idx in range(4):
+        frame = sheet.crop(
+            (
+                col_idx * CELL,
+                row_idx * CELL,
+                (col_idx + 1) * CELL,
+                (row_idx + 1) * CELL,
+            )
+        )
+        frames.append(frame)
+    return frames
+
+
+def normalize_row_frames(frames: list[Image.Image]) -> list[Image.Image]:
+    prepared: list[tuple[Image.Image | None, tuple[int, int, int, int] | None]] = []
+    centers = []
+    bottoms = []
+
+    for frame in frames:
+        bbox = frame.getbbox()
+        if bbox is None:
+            prepared.append((None, None))
+            continue
+        cropped = frame.crop(bbox)
+        prepared.append((cropped, bbox))
+        x0, y0, x1, y1 = bbox
+        centers.append((x0 + x1) / 2)
+        bottoms.append(y1)
+
+    if not centers:
+        return [Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0)) for _ in frames]
+
+    target_center = round(sum(centers) / len(centers))
+    target_bottom = max(bottoms)
+
+    normalized = []
+    for cropped, bbox in prepared:
+        canvas = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
+        if cropped is not None and bbox is not None:
+            x = round(target_center - cropped.width / 2)
+            y = target_bottom - cropped.height
+            x = max(0, min(CELL - cropped.width, x))
+            y = max(0, min(CELL - cropped.height, y))
+            canvas.paste(cropped, (x, y), cropped)
+        normalized.append(canvas)
+    return normalized
+
+
+def extract_raw_row_frames(row_img: Image.Image) -> list[Image.Image]:
+    bbox = row_img.getbbox()
+    if bbox is None:
+        return [Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0)) for _ in range(4)]
+
+    content = row_img.crop(bbox)
+    seg_w = max(1, content.width // 4)
+    frames = []
+    for idx in range(4):
+        x0 = idx * seg_w
+        x1 = content.width if idx == 3 else min(content.width, (idx + 1) * seg_w)
+        frame = content.crop((x0, 0, x1, content.height))
+        frames.append(frame)
+    return normalize_row_frames(frames)
+
+
+def panel_frame(frame: Image.Image, label: str) -> Image.Image:
+    scaled = scale_frame(frame).convert("RGBA")
+    panel = Image.new("RGBA", (scaled.width + 24, scaled.height + 48), PANEL_BG)
+    panel.paste(scaled, (12, 12), scaled)
+    label_box = Image.new("RGBA", (panel.width, 24), LABEL_BG)
+    panel.paste(label_box, (0, panel.height - 24), label_box)
+    draw = ImageDraw.Draw(panel)
+    font = ImageFont.load_default()
+    draw.text((10, panel.height - 19), label, fill=WHITE, font=font)
+    return panel
+
+
+def export_sheet(sheet: Image.Image, out_path: Path) -> None:
+    enlarged = sheet.resize((sheet.width * SCALE, sheet.height * SCALE), Image.Resampling.NEAREST)
+    enlarged.save(out_path)
+
+
+def export_row_strip(rows: dict[str, list[Image.Image]], out_path: Path) -> None:
+    font = ImageFont.load_default()
+    label_w = 72
+    gap = 16
+    frame_w = CELL * SCALE
+    frame_h = CELL * SCALE
+    canvas_w = label_w + gap + frame_w * 4
+    canvas_h = (frame_h + gap) * len(DIRS) - gap
+    canvas = Image.new("RGBA", (canvas_w, canvas_h), OUT_BG)
+    draw = ImageDraw.Draw(canvas)
+
+    for row_idx, dir_name in enumerate(DIRS):
+        y = row_idx * (frame_h + gap)
+        draw.rectangle((0, y, label_w, y + frame_h), fill=PANEL_BG)
+        draw.text((10, y + 12), dir_name.upper(), fill=WHITE, font=font)
+        for col_idx, frame in enumerate(rows[dir_name]):
+            x = label_w + gap + col_idx * frame_w
+            scaled = scale_frame(frame).convert("RGBA")
+            canvas.paste(scaled, (x, y), scaled)
+
+    canvas.save(out_path)
+
+
+def find_raw_rows(source_dir: Path, class_id: str) -> dict[str, Path] | None:
+    paths = {dir_name: source_dir / f"{class_id}_{dir_name}.png" for dir_name in DIRS}
+    if all(path.exists() for path in paths.values()):
+        return paths
+    return None
+
+
+def load_rows_from_raw_paths(raw_rows: dict[str, Path]) -> dict[str, list[Image.Image]]:
+    return {
+        dir_name: extract_raw_row_frames(Image.open(path).convert("RGBA"))
+        for dir_name, path in raw_rows.items()
+    }
+
+
+def export_raw_row_strip(raw_rows: dict[str, Path], out_path: Path) -> None:
+    font = ImageFont.load_default()
+    label_w = 72
+    gap = 16
+    row_w = SHEET * SCALE
+    row_h = CELL * SCALE
+    canvas_w = label_w + gap + row_w
+    canvas_h = (row_h + gap) * len(DIRS) - gap
+    canvas = Image.new("RGBA", (canvas_w, canvas_h), OUT_BG)
+    draw = ImageDraw.Draw(canvas)
+
+    for row_idx, dir_name in enumerate(DIRS):
+        y = row_idx * (row_h + gap)
+        draw.rectangle((0, y, label_w, y + row_h), fill=PANEL_BG)
+        draw.text((10, y + 12), dir_name.upper(), fill=WHITE, font=font)
+        row_img = Image.open(raw_rows[dir_name]).convert("RGBA")
+        scaled = row_img.resize((row_w, row_h), Image.Resampling.NEAREST)
+        canvas.paste(scaled, (label_w + gap, y), scaled)
+    canvas.save(out_path)
+
+
+def export_frame_grid(rows: dict[str, list[Image.Image]], out_path: Path) -> None:
+    font = ImageFont.load_default()
+    label_w = 72
+    header_h = 28
+    gap = 16
+    frame_w = CELL * SCALE
+    frame_h = CELL * SCALE
+    canvas_w = label_w + gap + frame_w * 4
+    canvas_h = header_h + gap + (frame_h + gap) * len(DIRS) - gap
+    canvas = Image.new("RGBA", (canvas_w, canvas_h), OUT_BG)
+    draw = ImageDraw.Draw(canvas)
+
+    for col_idx in range(4):
+        x = label_w + gap + col_idx * frame_w
+        draw.rectangle((x, 0, x + frame_w, header_h), fill=PANEL_BG)
+        draw.text((x + 12, 8), f"F{col_idx}", fill=WHITE, font=font)
+
+    for row_idx, dir_name in enumerate(DIRS):
+        y = header_h + gap + row_idx * (frame_h + gap)
+        draw.rectangle((0, y, label_w, y + frame_h), fill=PANEL_BG)
+        draw.text((10, y + 12), dir_name.upper(), fill=WHITE, font=font)
+        for col_idx, frame in enumerate(rows[dir_name]):
+            x = label_w + gap + col_idx * frame_w
+            scaled = scale_frame(frame).convert("RGBA")
+            canvas.paste(scaled, (x, y), scaled)
+
+    canvas.save(out_path)
+
+
+def build_centered_sheet(rows: dict[str, list[Image.Image]]) -> Image.Image:
+    sheet = Image.new("RGBA", (SHEET, SHEET), (0, 0, 0, 0))
+    for row_idx, dir_name in enumerate(DIRS):
+        for col_idx, frame in enumerate(rows[dir_name]):
+            sheet.paste(frame, (col_idx * CELL, row_idx * CELL), frame)
+    return sheet
+
+
+def write_index(entries: list[dict[str, str]], out_dir: Path, title: str) -> None:
+    cards = []
+    for entry in entries:
+        cls = entry["class"]
+        cards.append(
+            f"""
+            <article class="card">
+              <h2>{cls}</h2>
+              <div class="anim-grid" data-sheet="{entry['centered_sheet_rel']}">
+                <div class="anim-panel">
+                  <strong>DOWN</strong>
+                  <canvas data-dir="down" width="128" height="128"></canvas>
+                </div>
+                <div class="anim-panel">
+                  <strong>UP</strong>
+                  <canvas data-dir="up" width="128" height="128"></canvas>
+                </div>
+                <div class="anim-panel">
+                  <strong>LEFT</strong>
+                  <canvas data-dir="left" width="128" height="128"></canvas>
+                </div>
+                <div class="anim-panel">
+                  <strong>RIGHT</strong>
+                  <canvas data-dir="right" width="128" height="128"></canvas>
+                </div>
+              </div>
+              <p><a href="{entry['strip_rel']}">Labeled Direction Strip</a></p>
+              <p><a href="{entry['centered_sheet_rel']}">Centered Sheet PNG</a></p>
+              <p><a href="{entry['frames_rel']}">Individual Frame Grid</a></p>
+              <p><a href="{entry['sheet_rel']}">Raw Sheet PNG</a></p>
+            </article>
+            """
+        )
+
+    html = f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+    <title>{title}</title>
+  <style>
+    body {{
+      margin: 0;
+      padding: 24px;
+      background: #11161b;
+      color: #f4f4f4;
+      font-family: monospace;
+    }}
+    h1 {{
+      margin-top: 0;
+    }}
+    .grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }}
+    .card {{
+      background: #1d252c;
+      border: 1px solid #36424d;
+      border-radius: 10px;
+      padding: 14px;
+    }}
+    .card img {{
+      width: 100%;
+      image-rendering: pixelated;
+      background: #0d1014;
+      border: 1px solid #2f3a43;
+    }}
+    .anim-grid {{
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }}
+    .anim-panel {{
+      background: #0d1014;
+      border: 1px solid #2f3a43;
+      padding: 8px;
+      text-align: center;
+    }}
+    .anim-panel strong {{
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }}
+    .anim-panel canvas {{
+      width: 128px;
+      height: 128px;
+      image-rendering: pixelated;
+    }}
+    .links a {{
+      margin-right: 10px;
+    }}
+    a {{
+      color: #8dc7ff;
+    }}
+  </style>
+</head>
+<body>
+  <h1>{title}</h1>
+  <p>Generated review surface for all walk sheets. Each preview canvas cycles centered frames with JavaScript so drift is obvious.</p>
+  <div class="grid">
+    {''.join(cards)}
+  </div>
+  <script>
+    const DIR_ROW = {{ down: 0, up: 1, left: 2, right: 3 }};
+    const CELL = 128;
+    const grids = [...document.querySelectorAll('.anim-grid')];
+
+    for (const grid of grids) {{
+      const img = new Image();
+      img.src = grid.dataset.sheet;
+      img.onload = () => {{
+        const canvases = [...grid.querySelectorAll('canvas')];
+        let frame = 0;
+        const draw = () => {{
+          for (const canvas of canvases) {{
+            const dir = canvas.dataset.dir;
+            const row = DIR_ROW[dir];
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, CELL, CELL);
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(img, frame * CELL, row * CELL, CELL, CELL, 0, 0, CELL, CELL);
+          }}
+          frame = (frame + 1) % 4;
+        }};
+        draw();
+        setInterval(draw, {FRAME_MS});
+      }};
+    }}
+  </script>
+</body>
+</html>
+"""
+    (out_dir / "index.html").write_text(html)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--source-dir",
+        default=str(WALK_DIR),
+        help="Directory containing *_walk.png sheets",
+    )
+    parser.add_argument(
+        "--output-dir",
+        default=str(OUT_DIR),
+        help="Directory to write preview artifacts into",
+    )
+    parser.add_argument(
+        "--title",
+        default="Kithlands Walk Previews",
+        help="Heading/title for the generated index page",
+    )
+    parser.add_argument(
+        "--glob",
+        default="*_walk.png",
+        help="Glob pattern for source walk sheets",
+    )
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    source_dir = Path(args.source_dir)
+    out_dir = Path(args.output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    entries: list[dict[str, str]] = []
+
+    for sheet_path in sorted(source_dir.glob(args.glob)):
+        class_id = sheet_path.stem.removesuffix("_walk")
+        class_dir = out_dir / class_id
+        class_dir.mkdir(parents=True, exist_ok=True)
+
+        sheet = Image.open(sheet_path).convert("RGBA")
+        rows = {dir_name: extract_row(sheet, idx) for idx, dir_name in enumerate(DIRS)}
+
+        sheet_out = class_dir / f"{class_id}_sheet_4x.png"
+        centered_sheet_out = class_dir / f"{class_id}_centered_sheet_4x.png"
+        strip_out = class_dir / f"{class_id}_directions_4x.png"
+        frames_out = class_dir / f"{class_id}_frames_4x.png"
+        export_sheet(sheet, sheet_out)
+        raw_rows = find_raw_rows(source_dir, class_id)
+        if raw_rows:
+            rows = load_rows_from_raw_paths(raw_rows)
+            export_raw_row_strip(raw_rows, strip_out)
+        else:
+            export_row_strip(rows, strip_out)
+        build_centered_sheet(rows).save(centered_sheet_out)
+        export_frame_grid(rows, frames_out)
+
+        entry = {
+            "class": class_id,
+            "sheet_rel": f"{class_id}/{sheet_out.name}",
+            "centered_sheet_rel": f"{class_id}/{centered_sheet_out.name}",
+            "strip_rel": f"{class_id}/{strip_out.name}",
+            "frames_rel": f"{class_id}/{frames_out.name}",
+        }
+
+        entries.append(entry)
+
+    write_index(entries, out_dir, args.title)
+    print(out_dir / "index.html")
+
+
+if __name__ == "__main__":
+    main()
