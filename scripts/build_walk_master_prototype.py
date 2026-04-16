@@ -18,7 +18,7 @@ CELL = 128
 SHEET = CELL * 4
 
 MASTERS = {
-    "down": PROTO_DIR / "warrior_proto_c_down_f3.png",
+    "down": PROTO_DIR / "warrior_proto_c_down_f2.png",
     "up": PROTO_DIR / "warrior_proto_c_up_f0.png",
     "left": PROTO_DIR / "warrior_proto_c_left_f0.png",
     "right": PROTO_DIR / "warrior_proto_c_right_f2.png",
@@ -30,6 +30,44 @@ def alpha_bbox(img: Image.Image) -> tuple[int, int, int, int]:
     if bbox is None:
         return (0, 0, CELL, CELL)
     return bbox
+
+
+def scale_to_body_height(img: Image.Image, target_h: int) -> Image.Image:
+    x0, y0, x1, y1 = alpha_bbox(img)
+    body = img.crop((x0, y0, x1, y1))
+    height = y1 - y0
+    if height <= 0:
+        return img
+    scale = target_h / height
+    new_w = max(1, round(body.width * scale))
+    new_h = max(1, round(body.height * scale))
+    resized = body.resize((new_w, new_h), Image.Resampling.NEAREST)
+    canvas = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
+    x = (CELL - new_w) // 2
+    y = CELL - new_h - 8
+    canvas.paste(resized, (x, y), resized)
+    return canvas
+
+
+def symmetrize_vertical(img: Image.Image) -> Image.Image:
+    x0, y0, x1, y1 = alpha_bbox(img)
+    body = img.crop((x0, y0, x1, y1))
+    w, h = body.size
+    half_w = (w + 1) // 2
+    left = body.crop((0, 0, half_w, h))
+    mirrored = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    mirrored.paste(left, (0, 0), left)
+    right = left.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    mirrored.paste(right.crop((right.width - (w - half_w), 0, right.width, h)), (half_w, 0))
+    canvas = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
+    canvas.paste(mirrored, (x0, y0), mirrored)
+    return canvas
+
+
+def prepare_master(direction: str, img: Image.Image, target_h: int) -> Image.Image:
+    if direction in ("down", "up"):
+        img = symmetrize_vertical(img)
+    return scale_to_body_height(img, target_h)
 
 
 def split_front_back(base: Image.Image) -> dict[str, tuple[int, int, int, int]]:
@@ -222,8 +260,10 @@ def pose_frame(base: Image.Image, direction: str, frame_idx: int) -> Image.Image
 
 def build_sheet() -> Image.Image:
     sheet = Image.new("RGBA", (SHEET, SHEET), (0, 0, 0, 0))
+    masters = {direction: Image.open(path).convert("RGBA") for direction, path in MASTERS.items()}
+    target_h = max(alpha_bbox(masters[d])[3] - alpha_bbox(masters[d])[1] for d in MASTERS)
     for row_idx, direction in enumerate(["down", "up", "left", "right"]):
-        base = Image.open(MASTERS[direction]).convert("RGBA")
+        base = prepare_master(direction, masters[direction], target_h)
         for col_idx in range(4):
             frame = pose_frame(base, direction, col_idx)
             sheet.paste(frame, (col_idx * CELL, row_idx * CELL), frame)
