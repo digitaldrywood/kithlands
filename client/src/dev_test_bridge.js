@@ -277,6 +277,39 @@ function frameHash(scene) {
   return `${textureKey}:${hash >>> 0}`;
 }
 
+function exportPlayerFrame(scene) {
+  const player = scene?.player;
+  const frame = player?.frame;
+  if (!player || !frame) throw new Error("Scene has no player frame");
+  const textureFrame = scene?.textures?.getFrame(player.texture.key, frame.name);
+  const sourceImage = frame?.source?.image || textureFrame?.source?.image;
+  if (!sourceImage) throw new Error("Player frame source image unavailable");
+
+  const canvas = document.createElement("canvas");
+  canvas.width = frame.cutWidth;
+  canvas.height = frame.cutHeight;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(
+    sourceImage,
+    frame.cutX,
+    frame.cutY,
+    frame.cutWidth,
+    frame.cutHeight,
+    0,
+    0,
+    frame.cutWidth,
+    frame.cutHeight,
+  );
+  return {
+    textureKey: player.texture.key,
+    frameName: String(frame.name),
+    frameIndex: frame.index ?? Number(frame.name),
+    dataUrl: canvas.toDataURL("image/png"),
+  };
+}
+
 function playerSnapshot(scene, moved) {
   const frame = scene?.player?.frame;
   const rawFrameIndex =
@@ -613,6 +646,11 @@ export function installDevTestBridge(game) {
         scene,
         beforeX !== scene.playerX || beforeY !== scene.playerY,
       );
+    },
+
+    exportPlayerFrame(sceneKey = "World") {
+      const scene = getScene(game, sceneKey);
+      return exportPlayerFrame(scene);
     },
 
     setPartyVitals(updates, sceneKey) {

@@ -278,14 +278,16 @@ def build_sheet_for_class(class_id: str) -> Image.Image:
         for direction in ["down", "up", "left", "right"]
     }
     sheet = Image.new("RGBA", (SHEET, SHEET), (0, 0, 0, 0))
-    row_directions = ["down", "up", "left", "right"]
-    if class_id == "knight":
-        row_directions = ["down", "up", "right", "left"]
-    for row_idx, direction in enumerate(row_directions):
+    for row_idx, direction in enumerate(["down", "up", "left", "right"]):
         base = masters[direction]
         for col_idx in range(4):
             frame = pose_frame(base, direction, col_idx)
             sheet.paste(frame, (col_idx * CELL, row_idx * CELL), frame)
+    if class_id == "knight":
+        left_row = sheet.crop((0, 2 * CELL, SHEET, 3 * CELL))
+        right_row = sheet.crop((0, 3 * CELL, SHEET, 4 * CELL))
+        sheet.paste(right_row, (0, 2 * CELL), right_row)
+        sheet.paste(left_row, (0, 3 * CELL), left_row)
     return sheet
 
 
