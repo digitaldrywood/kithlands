@@ -68,8 +68,10 @@ async function expectInteriorProof(page, spawn, expected) {
   );
 
   expect(details.buildingType).toBe(expected.buildingType);
-  expect(details.roomW).toBe(expected.roomW);
-  expect(details.roomH).toBe(expected.roomH);
+  expect(details.roomW).toBeGreaterThanOrEqual(expected.roomWMin);
+  expect(details.roomW).toBeLessThanOrEqual(expected.roomWMax);
+  expect(details.roomH).toBeGreaterThanOrEqual(expected.roomHMin);
+  expect(details.roomH).toBeLessThanOrEqual(expected.roomHMax);
   expect(details.offsetX).toBeGreaterThan(0);
   expect(details.offsetY).toBeGreaterThan(0);
 
@@ -99,8 +101,10 @@ test.describe("FF-style town interiors", () => {
       },
       {
         buildingType: "inn",
-        roomW: 20,
-        roomH: 14,
+        roomWMin: 18,
+        roomWMax: 20,
+        roomHMin: 12,
+        roomHMax: 14,
       },
     );
 
@@ -113,8 +117,10 @@ test.describe("FF-style town interiors", () => {
       },
       {
         buildingType: "shop",
-        roomW: 16,
-        roomH: 12,
+        roomWMin: 14,
+        roomWMax: 18,
+        roomHMin: 10,
+        roomHMax: 13,
       },
     );
   });

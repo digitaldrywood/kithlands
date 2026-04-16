@@ -225,7 +225,10 @@ func (gd *GameData) validate() {
 		}
 	}
 
-	requiredArchetypes := []string{"merchant", "priestess", "elder", "innkeeper", "guard", "blacksmith"}
+	requiredArchetypes := []string{
+		"merchant", "priestess", "elder", "innkeeper", "guard", "blacksmith",
+		"child", "farmer", "sage", "traveler", "default",
+	}
 	for _, arch := range requiredArchetypes {
 		a, ok := gd.Dialogue.Archetypes[arch]
 		if !ok {

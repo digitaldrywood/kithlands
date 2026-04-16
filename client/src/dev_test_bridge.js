@@ -1253,12 +1253,36 @@ export function installDevTestBridge(game) {
       if (!scene || typeof scene.interact !== "function") {
         throw new Error("Scene cannot interact");
       }
+      scene.nearHiddenItem = null;
+      if (typeof scene.hideSearchPrompt === "function") {
+        scene.hideSearchPrompt();
+      }
       const pending = scene.interact();
-      [150, 350, 650, 1000].forEach((delay) => {
-        setTimeout(() => scene.input.keyboard.emit("keydown-ENTER"), delay);
-      });
-      await pending;
+      let settled = false;
+      const interval = setInterval(() => {
+        if (settled) return;
+        scene.input.keyboard.emit("keydown-ENTER");
+      }, 200);
+      try {
+        await pending;
+      } finally {
+        settled = true;
+        clearInterval(interval);
+      }
       return this.gameState(sceneKey);
+    },
+
+    beginInteract(sceneKey = "Town") {
+      const scene = getScene(game, sceneKey);
+      if (!scene || typeof scene.interact !== "function") {
+        throw new Error("Scene cannot interact");
+      }
+      scene.nearHiddenItem = null;
+      if (typeof scene.hideSearchPrompt === "function") {
+        scene.hideSearchPrompt();
+      }
+      scene.interact();
+      return true;
     },
   };
 }

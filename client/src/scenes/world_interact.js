@@ -167,8 +167,8 @@ export function showInteractPrompt(scene, spawn) {
   hideInteractPrompt(scene);
   const tags = spawn.tags || [];
   let action = "Enter";
-  if (tags.includes("shop") || tags.includes("commerce")) action = "Shop";
-  else if (isRestBuilding(tags)) action = "Rest";
+  if (isRestBuilding(tags)) action = "Rest";
+  else if (tags.includes("shop") || tags.includes("commerce")) action = "Shop";
   else if (tags.includes("temple") || tags.includes("revive")) action = "Pray";
 
   scene.interactPrompt = scene.add

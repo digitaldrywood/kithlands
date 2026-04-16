@@ -1,0 +1,142 @@
+[
+  {
+    "id": "inn_letters",
+    "building_type": "inn",
+    "name": "Traveler's Letters",
+    "template": "Q02",
+    "act": 1,
+    "item_hint": "satchel of letters",
+    "xp_reward": 45,
+    "gold_reward": 90
+  },
+  {
+    "id": "inn_supplies",
+    "building_type": "inn",
+    "name": "Pantry Shortage",
+    "template": "Q01",
+    "act": 1,
+    "item_hint": "crate of provisions",
+    "xp_reward": 50,
+    "gold_reward": 80
+  },
+  {
+    "id": "inn_safe_road",
+    "building_type": "inn",
+    "name": "Clear the Coach Road",
+    "template": "Q04",
+    "act": 1,
+    "item_hint": "road report",
+    "xp_reward": 60,
+    "gold_reward": 110
+  },
+  {
+    "id": "shop_moon_petals",
+    "building_type": "shop",
+    "name": "Moon Petal Order",
+    "template": "Q01",
+    "act": 1,
+    "item_hint": "bundle of moon petals",
+    "xp_reward": 55,
+    "gold_reward": 120
+  },
+  {
+    "id": "shop_receipt",
+    "building_type": "shop",
+    "name": "Missing Receipt",
+    "template": "Q03",
+    "act": 1,
+    "item_hint": "ledger receipt",
+    "xp_reward": 50,
+    "gold_reward": 95
+  },
+  {
+    "id": "shop_delivery",
+    "building_type": "shop",
+    "name": "Rush Delivery",
+    "template": "Q02",
+    "act": 1,
+    "item_hint": "sealed supply crate",
+    "xp_reward": 45,
+    "gold_reward": 130
+  },
+  {
+    "id": "temple_well",
+    "building_type": "temple",
+    "name": "Bless the Well",
+    "template": "Q03",
+    "act": 1,
+    "item_hint": "warding prayer",
+    "xp_reward": 55,
+    "gold_reward": 85
+  },
+  {
+    "id": "temple_relic",
+    "building_type": "temple",
+    "name": "Lost Reliquary",
+    "template": "Q01",
+    "act": 1,
+    "item_hint": "silver reliquary",
+    "xp_reward": 60,
+    "gold_reward": 100
+  },
+  {
+    "id": "temple_acolyte",
+    "building_type": "temple",
+    "name": "Wayward Acolyte",
+    "template": "Q05",
+    "act": 1,
+    "item_hint": "young acolyte",
+    "xp_reward": 70,
+    "gold_reward": 90
+  },
+  {
+    "id": "house_heirloom",
+    "building_type": "house",
+    "name": "Grandfather's Cane",
+    "template": "Q01",
+    "act": 1,
+    "item_hint": "carved walking cane",
+    "xp_reward": 40,
+    "gold_reward": 70
+  },
+  {
+    "id": "house_child",
+    "building_type": "house",
+    "name": "Missing Child",
+    "template": "Q05",
+    "act": 1,
+    "item_hint": "missing child",
+    "xp_reward": 75,
+    "gold_reward": 85
+  },
+  {
+    "id": "house_tools",
+    "building_type": "house",
+    "name": "Borrowed Tools",
+    "template": "Q02",
+    "act": 1,
+    "item_hint": "bundle of tools",
+    "xp_reward": 35,
+    "gold_reward": 65
+  },
+  {
+    "id": "default_errand",
+    "building_type": "default",
+    "name": "Local Errand",
+    "template": "Q02",
+    "act": 1,
+    "item_hint": "sealed parcel",
+    "xp_reward": 35,
+    "gold_reward": 60
+  },
+  {
+    "id": "default_search",
+    "building_type": "default",
+    "name": "Neighborhood Search",
+    "template": "Q01",
+    "act": 1,
+    "item_hint": "lost keepsake",
+    "xp_reward": 40,
+    "gold_reward": 60
+  }
+]

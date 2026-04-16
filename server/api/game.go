@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand/v2"
 	"runtime/debug"
+	"sort"
 	"strings"
 	"sync"
 
@@ -121,25 +122,26 @@ type GameState struct {
 	Formation     string             `json:"formation,omitempty"`
 	// EncounterStart is "preemptive" or "ambush" when the current encounter
 	// started with one side getting a free first round. Empty for normal.
-	EncounterStart       string              `json:"encounter_start,omitempty"`
-	Quests               []QuestState        `json:"quests"`
-	CurrentQ             int                 `json:"current_quest"`
-	Gold                 int                 `json:"gold"`
-	Potions              int                 `json:"potions"`
-	Ethers               int                 `json:"ethers"`
-	HiEthers             int                 `json:"hi_ethers"`
-	XEthers              int                 `json:"x_ethers"`
-	Items                []ItemState         `json:"items"`
-	Equipment            [4]EquipState       `json:"equipment"`
-	Location             string              `json:"location"`
-	Message              string              `json:"message,omitempty"`
-	CombatLog            []string            `json:"combat_log,omitempty"`
-	CombatActions        []CombatActionEntry `json:"combat_actions,omitempty"`
-	LastRoundActions     []MemberActionReq   `json:"last_round_actions,omitempty"`
-	TileMap              *locality.TileMap   `json:"tilemap,omitempty"`
-	ShopItems            []ShopItemState     `json:"shop_items,omitempty"`
-	Transport            TransportInfo       `json:"transport"`
-	CollectedHiddenItems map[string]bool     `json:"collected_hidden_items,omitempty"`
+	EncounterStart       string                   `json:"encounter_start,omitempty"`
+	Quests               []QuestState             `json:"quests"`
+	BuildingSideQuests   []BuildingSideQuestState `json:"building_side_quests,omitempty"`
+	CurrentQ             int                      `json:"current_quest"`
+	Gold                 int                      `json:"gold"`
+	Potions              int                      `json:"potions"`
+	Ethers               int                      `json:"ethers"`
+	HiEthers             int                      `json:"hi_ethers"`
+	XEthers              int                      `json:"x_ethers"`
+	Items                []ItemState              `json:"items"`
+	Equipment            [4]EquipState            `json:"equipment"`
+	Location             string                   `json:"location"`
+	Message              string                   `json:"message,omitempty"`
+	CombatLog            []string                 `json:"combat_log,omitempty"`
+	CombatActions        []CombatActionEntry      `json:"combat_actions,omitempty"`
+	LastRoundActions     []MemberActionReq        `json:"last_round_actions,omitempty"`
+	TileMap              *locality.TileMap        `json:"tilemap,omitempty"`
+	ShopItems            []ShopItemState          `json:"shop_items,omitempty"`
+	Transport            TransportInfo            `json:"transport"`
+	CollectedHiddenItems map[string]bool          `json:"collected_hidden_items,omitempty"`
 }
 
 // TransportInfo is the transport tier state sent to the client.
@@ -328,6 +330,23 @@ type QuestState struct {
 	Reward        QuestRewardState `json:"reward"`
 }
 
+type BuildingSideQuestState struct {
+	ID             string           `json:"id"`
+	Name           string           `json:"name"`
+	Description    string           `json:"description"`
+	Completion     string           `json:"completion,omitempty"`
+	GiverName      string           `json:"giver_name,omitempty"`
+	GiverNodeID    string           `json:"giver_node_id,omitempty"`
+	TargetName     string           `json:"target_name,omitempty"`
+	TargetNodeID   string           `json:"target_node_id,omitempty"`
+	SourceNodeID   string           `json:"source_node_id,omitempty"`
+	SourceNodeName string           `json:"source_node_name,omitempty"`
+	BuildingType   string           `json:"building_type,omitempty"`
+	Status         string           `json:"status"`
+	Completed      bool             `json:"completed"`
+	Reward         QuestRewardState `json:"reward"`
+}
+
 type QuestRewardState struct {
 	XP   int `json:"xp"`
 	Gold int `json:"gold"`
@@ -335,27 +354,28 @@ type QuestRewardState struct {
 
 // Game holds the live state of one game session.
 type Game struct {
-	id            string
-	gd            *gamedata.GameData
-	rng           *rand.Rand
-	rngSeed       int64
-	loc           *locality.Locality
-	walk          *locality.WalkResult
-	tileMap       *locality.TileMap
-	party         []*character.Character
-	spellBooks    map[string]*magic.SpellBook
-	inv           *inventory.Inventory
-	quests        []generator.Quest
-	currentQ      int
-	phase         string // world, combat, quest_complete, victory, defeat
-	enemies       []*combat.Combatant
-	spellBuffs    map[int][]combat.CombatBuff // slot -> buffs active for current encounter
-	combatLog     []string
-	combatActions []CombatActionEntry
-	message       string
-	diff          balance.Difficulty
-	xpBefore      []int // snapshot before combat for victory animation
-	levelBefore   []int // snapshot before combat for victory animation
+	id                 string
+	gd                 *gamedata.GameData
+	rng                *rand.Rand
+	rngSeed            int64
+	loc                *locality.Locality
+	walk               *locality.WalkResult
+	tileMap            *locality.TileMap
+	party              []*character.Character
+	spellBooks         map[string]*magic.SpellBook
+	inv                *inventory.Inventory
+	quests             []generator.Quest
+	buildingSideQuests map[string]generator.BuildingSideQuest
+	currentQ           int
+	phase              string // world, combat, quest_complete, victory, defeat
+	enemies            []*combat.Combatant
+	spellBuffs         map[int][]combat.CombatBuff // slot -> buffs active for current encounter
+	combatLog          []string
+	combatActions      []CombatActionEntry
+	message            string
+	diff               balance.Difficulty
+	xpBefore           []int // snapshot before combat for victory animation
+	levelBefore        []int // snapshot before combat for victory animation
 	// diedThisFight is captured at the exact moment the combat-victory block
 	// distributes XP (before restParty heals dead members). Exposed to the
 	// client via GameState.DiedThisFight.
@@ -434,6 +454,7 @@ func (g *Game) State() GameState {
 	for _, q := range g.quests {
 		state.Quests = append(state.Quests, questToState(&q))
 	}
+	g.fillBuildingSideQuestState(&state)
 
 	return state
 }
@@ -470,6 +491,25 @@ func questToState(q *generator.Quest) QuestState {
 		BossMonsterID: q.BossMonsterID,
 		PromoStage:    q.PromoStage,
 		Reward:        QuestRewardState{XP: q.Reward.XP, Gold: q.Reward.Gold},
+	}
+}
+
+func buildingSideQuestToState(q *generator.BuildingSideQuest) BuildingSideQuestState {
+	return BuildingSideQuestState{
+		ID:             q.ID,
+		Name:           q.Name,
+		Description:    q.Description,
+		Completion:     q.Completion,
+		GiverName:      q.GiverName,
+		GiverNodeID:    q.GiverNodeID,
+		TargetName:     q.TargetName,
+		TargetNodeID:   q.TargetNodeID,
+		SourceNodeID:   q.SourceNodeID,
+		SourceNodeName: q.SourceNodeName,
+		BuildingType:   q.BuildingType,
+		Status:         q.Status,
+		Completed:      q.Status == generator.BuildingQuestCompleted,
+		Reward:         QuestRewardState{XP: q.Reward.XP, Gold: q.Reward.Gold},
 	}
 }
 
@@ -720,7 +760,27 @@ func (g *Game) stateUnlocked() GameState {
 	for _, q := range g.quests {
 		state.Quests = append(state.Quests, questToState(&q))
 	}
+	g.fillBuildingSideQuestState(&state)
 	return state
+}
+
+func (g *Game) fillBuildingSideQuestState(state *GameState) {
+	if len(g.buildingSideQuests) == 0 {
+		return
+	}
+	keys := make([]string, 0, len(g.buildingSideQuests))
+	for key := range g.buildingSideQuests {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		q := g.buildingSideQuests[key]
+		if q.Status == generator.BuildingQuestAvailable {
+			continue
+		}
+		questCopy := q
+		state.BuildingSideQuests = append(state.BuildingSideQuests, buildingSideQuestToState(&questCopy))
+	}
 }
 
 // buildTransportInfo creates the transport payload for the client.

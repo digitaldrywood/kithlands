@@ -39,4 +39,13 @@ describe("showInteractPrompt", () => {
     showInteractPrompt(scene, { name: "Hideout", tags: ["safehouse"] });
     expect(scene.interactPrompt.text).toContain("Rest at Hideout");
   });
+
+  it("prefers Rest over Shop for inn-style commerce tags", () => {
+    const scene = makeScene();
+    showInteractPrompt(scene, {
+      name: "The Wayward Inn",
+      tags: ["commerce", "rest"],
+    });
+    expect(scene.interactPrompt.text).toContain("Rest at The Wayward Inn");
+  });
 });

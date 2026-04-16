@@ -143,6 +143,101 @@
         {"text": "There's a vein of dark iron under the hills. Nobody dares mine it.", "mood": "mysterious"},
         {"text": "A strong shield has turned more battles than any magic spell.", "mood": "neutral"}
       ]
+    },
+    "child": {
+      "lines": [
+        {"text": "I know every shortcut in town. Grown-ups never look in the fun places.", "mood": "friendly"},
+        {"text": "My friends say the old hall creaks because it remembers secrets.", "mood": "mysterious"},
+        {"text": "If you chase butterflies long enough, you end up hearing good gossip.", "mood": "friendly"},
+        {"text": "I dropped my toy by the road once. It was gone before sunset.", "mood": "mysterious"},
+        {"text": "Everybody thinks I am playing, but I notice who comes and goes.", "mood": "neutral"},
+        {"text": "The baker gives me warm rolls when I run errands fast enough.", "mood": "friendly"},
+        {"text": "There is a patch of flowers outside town that glows after dark. I am not supposed to visit it.", "mood": "mysterious"},
+        {"text": "When the bells ring, all the little kids race to count them first.", "mood": "friendly"},
+        {"text": "I heard a traveler say monsters hate loud singing. Maybe we should test that.", "mood": "neutral"},
+        {"text": "If you ask nicely, I can point you toward the safest fence to climb.", "mood": "friendly"},
+        {"text": "My grandmother says brave people still need to come home for supper.", "mood": "neutral"},
+        {"text": "There is a window in the temple that makes rainbow light on the floor. I like standing in it.", "mood": "friendly"},
+        {"text": "Sometimes the guard dogs bark at nothing. I do not think it is nothing.", "mood": "mysterious"},
+        {"text": "We pretend the empty lot is a castle until the grown-ups need it again.", "mood": "neutral"},
+        {"text": "I keep finding pebbles with strange marks near the gate.", "mood": "mysterious"}
+      ]
+    },
+    "farmer": {
+      "lines": [
+        {"text": "A steady harvest keeps fear from taking root.", "mood": "neutral"},
+        {"text": "Rain came right on time this week. The fields finally look honest again.", "mood": "friendly"},
+        {"text": "Tracks cut across my south field at dawn, and they were not from any mule I own.", "mood": "mysterious"},
+        {"text": "Good soil will forgive a lot, but not neglect.", "mood": "neutral"},
+        {"text": "We trade seed, tools, and favors out here. That is how a town lasts.", "mood": "friendly"},
+        {"text": "The crows keep circling the north fence. They know something is wrong before we do.", "mood": "mysterious"},
+        {"text": "I rise before the sun and still feel behind some weeks.", "mood": "neutral"},
+        {"text": "Fresh milk, clean water, and a locked gate solve more problems than magic.", "mood": "friendly"},
+        {"text": "Last season, something trampled the corn without eating any of it.", "mood": "mysterious"},
+        {"text": "The younger hands are strong, but they have not learned patience yet.", "mood": "neutral"},
+        {"text": "You can tell a storm is coming by the way the birds vanish from the hedges.", "mood": "neutral"},
+        {"text": "I send produce to the inn twice a week, and news always comes back with the empty cart.", "mood": "friendly"},
+        {"text": "There is an old well by the orchard that tastes of stone and iron now.", "mood": "mysterious"},
+        {"text": "A sharp hoe and a sharper eye are enough to keep most trouble off the land.", "mood": "neutral"},
+        {"text": "I would rather mend a fence all day than let a hungry thing find a gap after dark.", "mood": "friendly"}
+      ]
+    },
+    "sage": {
+      "lines": [
+        {"text": "The oldest answers rarely shout. You have to wait for them.", "mood": "neutral"},
+        {"text": "There are stories buried under this town that no archive has ever kept straight.", "mood": "mysterious"},
+        {"text": "A calm mind notices patterns that panic walks right past.", "mood": "friendly"},
+        {"text": "I have seen maps that place a forgotten shrine where the road bends east.", "mood": "mysterious"},
+        {"text": "Wisdom is not speed. It is returning with the right thing after everyone else rushed home empty-handed.", "mood": "neutral"},
+        {"text": "Light, shadow, iron, and memory. Those four things shape most of the trouble in this realm.", "mood": "neutral"},
+        {"text": "The temple bells changed tone last month. Small omens matter.", "mood": "mysterious"},
+        {"text": "You need not be old to ask the right question.", "mood": "friendly"},
+        {"text": "An oath spoken in a sacred room carries further than people think.", "mood": "mysterious"},
+        {"text": "When a town forgets its history, danger starts dressing up as novelty.", "mood": "neutral"},
+        {"text": "Rest when you can. Exhaustion makes fools of heroes and scholars alike.", "mood": "friendly"},
+        {"text": "The old carvings near the hill road are worn smooth, but their warning remains.", "mood": "mysterious"},
+        {"text": "If a problem keeps returning, study the pattern before you study the weapon.", "mood": "neutral"},
+        {"text": "Most relics are only dangerous to the impatient.", "mood": "mysterious"},
+        {"text": "A truthful answer can still arrive wrapped in poetry.", "mood": "friendly"}
+      ]
+    },
+    "traveler": {
+      "lines": [
+        {"text": "I have crossed three roads to get here, and this town still feels steadier than most.", "mood": "neutral"},
+        {"text": "The inn fire in this place is worth a detour all by itself.", "mood": "friendly"},
+        {"text": "A wagon overturned east of town. No tracks away from it, just silence.", "mood": "mysterious"},
+        {"text": "You learn fast on the road: pack light, listen often, and never waste daylight.", "mood": "neutral"},
+        {"text": "I trade stories for supper when coin runs thin.", "mood": "friendly"},
+        {"text": "There is a mile marker north of here that faces the wrong direction now.", "mood": "mysterious"},
+        {"text": "A clean bed after rain can make any town feel blessed.", "mood": "friendly"},
+        {"text": "Merchants complain in every region, but fear changes the tone of it.", "mood": "neutral"},
+        {"text": "I met a scout who swore the tree line moved overnight.", "mood": "mysterious"},
+        {"text": "Your roads are kinder than the ones west of the ridge.", "mood": "neutral"},
+        {"text": "If you ever leave town, keep a spare pair of socks dry. That advice has saved more people than any sword.", "mood": "friendly"},
+        {"text": "Campfire rumors travel faster than caravans.", "mood": "neutral"},
+        {"text": "The moon looked wrong two nights back, like it was watching instead of shining.", "mood": "mysterious"},
+        {"text": "Every stop teaches you who still shares bread when supplies run low.", "mood": "friendly"},
+        {"text": "The road ahead is passable, but I would not call it peaceful.", "mood": "neutral"}
+      ]
+    },
+    "default": {
+      "lines": [
+        {"text": "This town has a rhythm of its own. You hear it if you stay still long enough.", "mood": "neutral"},
+        {"text": "Most folks around here are willing to help if you give them reason to trust you.", "mood": "friendly"},
+        {"text": "Something unsettled has been moving at the edge of ordinary life lately.", "mood": "mysterious"},
+        {"text": "Keep your eyes open and your pace steady. That advice works almost anywhere.", "mood": "neutral"},
+        {"text": "A kind word gets farther than people expect.", "mood": "friendly"},
+        {"text": "Old buildings remember more than they say.", "mood": "mysterious"},
+        {"text": "There is always work for someone willing to see a task through.", "mood": "neutral"},
+        {"text": "Even a quiet street can hide an important story.", "mood": "mysterious"},
+        {"text": "Travel safely. People here would rather greet you twice than mourn you once.", "mood": "friendly"},
+        {"text": "The ordinary parts of a town are what make the heroic parts worth saving.", "mood": "neutral"},
+        {"text": "I have learned not to dismiss strange weather or stranger timing.", "mood": "mysterious"},
+        {"text": "A warm light in a window can do more for courage than a speech.", "mood": "friendly"},
+        {"text": "When trouble comes, it rarely announces itself clearly.", "mood": "neutral"},
+        {"text": "The people who sweep the floors usually know more than the people who own the room.", "mood": "mysterious"},
+        {"text": "There is always another rumor, but only some of them matter.", "mood": "neutral"}
+      ]
     }
   }
 }

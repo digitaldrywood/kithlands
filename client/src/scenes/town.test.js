@@ -14,20 +14,35 @@ import {
 
 describe("roomDimensions", () => {
   it("gives inns noticeably larger interiors for multi-NPC layouts", () => {
-    expect(roomDimensions("inn", 1)).toEqual({ w: 20, h: 14 });
+    expect(roomDimensions("inn", 1, () => () => 0)).toEqual({ w: 18, h: 12 });
+    expect(roomDimensions("inn", 1, () => () => 0.999)).toEqual({
+      w: 20,
+      h: 14,
+    });
   });
 
   it("expands shops and temples to the FF-style interior footprint", () => {
-    expect(roomDimensions("shop", 1)).toEqual({ w: 16, h: 12 });
-    expect(roomDimensions("temple", 1)).toEqual({ w: 20, h: 14 });
+    expect(roomDimensions("shop", 1, () => () => 0)).toEqual({ w: 14, h: 10 });
+    expect(roomDimensions("shop", 1, () => () => 0.999)).toEqual({
+      w: 18,
+      h: 13,
+    });
+    expect(roomDimensions("temple", 1, () => () => 0)).toEqual({
+      w: 18,
+      h: 12,
+    });
+    expect(roomDimensions("temple", 1, () => () => 0.999)).toEqual({
+      w: 20,
+      h: 16,
+    });
   });
 
   it("keeps houses at or above the minimum larger-room target", () => {
     const house = roomDimensions("house", 123, () => () => 0);
     const largeHouse = roomDimensions("house", 456, () => () => 0.999);
 
-    expect(house).toEqual({ w: 12, h: 10 });
-    expect(largeHouse).toEqual({ w: 16, h: 14 });
+    expect(house).toEqual({ w: 16, h: 12 });
+    expect(largeHouse).toEqual({ w: 20, h: 16 });
   });
 });
 

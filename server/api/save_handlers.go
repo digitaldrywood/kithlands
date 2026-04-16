@@ -61,6 +61,7 @@ func (g *Game) ToSaveState(name, userID string) (*save.SaveState, error) {
 		"spell_books":            g.spellBooks,
 		"transport":              g.trans,
 		"collected_hidden_items": g.collectedHiddenItems,
+		"building_side_quests":   g.buildingSideQuests,
 		"last_round_actions":     g.lastRoundActions,
 	}
 	worldJSON, err := json.Marshal(worldState)
@@ -112,13 +113,14 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	}
 
 	var worldState struct {
-		CurrentQ             int                         `json:"current_quest"`
-		Phase                string                      `json:"phase"`
-		Discovered           map[string]bool             `json:"discovered"`
-		SpellBooks           map[string]*magic.SpellBook `json:"spell_books"`
-		Transport            *transport.State            `json:"transport"`
-		CollectedHiddenItems map[string]bool             `json:"collected_hidden_items"`
-		LastRoundActions     []MemberActionReq           `json:"last_round_actions"`
+		CurrentQ             int                                    `json:"current_quest"`
+		Phase                string                                 `json:"phase"`
+		Discovered           map[string]bool                        `json:"discovered"`
+		SpellBooks           map[string]*magic.SpellBook            `json:"spell_books"`
+		Transport            *transport.State                       `json:"transport"`
+		CollectedHiddenItems map[string]bool                        `json:"collected_hidden_items"`
+		BuildingSideQuests   map[string]generator.BuildingSideQuest `json:"building_side_quests"`
+		LastRoundActions     []MemberActionReq                      `json:"last_round_actions"`
 	}
 	if err := json.Unmarshal(ss.WorldState, &worldState); err != nil {
 		return nil, fmt.Errorf("unmarshaling world state: %w", err)
@@ -143,6 +145,10 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	if collectedHidden == nil {
 		collectedHidden = make(map[string]bool)
 	}
+	buildingSideQuests := worldState.BuildingSideQuests
+	if buildingSideQuests == nil {
+		buildingSideQuests = make(map[string]generator.BuildingSideQuest)
+	}
 
 	legacyTransport := worldState.Transport == nil
 	trans := worldState.Transport
@@ -162,6 +168,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		spellBooks:           spellBooks,
 		inv:                  &inv,
 		quests:               quests,
+		buildingSideQuests:   buildingSideQuests,
 		currentQ:             worldState.CurrentQ,
 		phase:                "world", // always resume in world
 		diff:                 balance.GetDifficulty(ss.Difficulty),

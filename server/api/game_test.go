@@ -101,6 +101,36 @@ func testServer(t *testing.T) (*api.Server, *httptest.Server) {
 		}
 		json.NewEncoder(w).Encode(game.State())
 	})
+	mux.HandleFunc("GET /api/game/{id}/npc/{nodeId}/talk", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		game := srv.GetGameManager().GetGame(id)
+		if game == nil {
+			w.WriteHeader(404)
+			return
+		}
+		resp := game.GetNPCDialogue(r.PathValue("nodeId"))
+		if resp == nil {
+			w.WriteHeader(404)
+			json.NewEncoder(w).Encode(map[string]string{"error": "not found"})
+			return
+		}
+		json.NewEncoder(w).Encode(resp)
+	})
+	mux.HandleFunc("POST /api/game/{id}/npc/{nodeId}/talk", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		game := srv.GetGameManager().GetGame(id)
+		if game == nil {
+			w.WriteHeader(404)
+			return
+		}
+		resp := game.InteractWithNPC(r.PathValue("nodeId"))
+		if resp == nil {
+			w.WriteHeader(404)
+			json.NewEncoder(w).Encode(map[string]string{"error": "not found"})
+			return
+		}
+		json.NewEncoder(w).Encode(resp)
+	})
 
 	ts := httptest.NewServer(mux)
 	return srv, ts
@@ -201,7 +231,7 @@ func TestCombatEncounter(t *testing.T) {
 	gs := post(t, ts.URL+"/api/game/new", api.NewGameRequest{
 		TownName: "Test", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
 		Places: []string{"X"}, BigBuilding: "Hall",
-		Party: []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}, {Name: "Mage", ClassID: "cinder"}},
+		Party:      []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}, {Name: "Mage", ClassID: "cinder"}},
 		Difficulty: "normal",
 	})
 	gameID := gs["id"].(string)
@@ -260,7 +290,7 @@ func TestPotionInCombat(t *testing.T) {
 	gs := post(t, ts.URL+"/api/game/new", api.NewGameRequest{
 		TownName: "Test", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
 		Places: []string{"X"}, BigBuilding: "Hall",
-		Party: []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}, {Name: "Mage", ClassID: "cinder"}},
+		Party:      []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}, {Name: "Mage", ClassID: "cinder"}},
 		Difficulty: "normal",
 	})
 	gameID := gs["id"].(string)
@@ -316,7 +346,7 @@ func TestBuyItem(t *testing.T) {
 	gs := post(t, ts.URL+"/api/game/new", api.NewGameRequest{
 		TownName: "Test", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
 		Places: []string{"X"}, BigBuilding: "Hall",
-		Party:  []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
+		Party:      []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
 		Difficulty: "normal",
 	})
 	gameID := gs["id"].(string)
@@ -357,7 +387,7 @@ func TestEquipWeapon(t *testing.T) {
 	gs := post(t, ts.URL+"/api/game/new", api.NewGameRequest{
 		TownName: "Test", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
 		Places: []string{"X"}, BigBuilding: "Hall",
-		Party:  []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
+		Party:      []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
 		Difficulty: "normal",
 	})
 	gameID := gs["id"].(string)
@@ -425,7 +455,7 @@ func TestEquipWrongClass(t *testing.T) {
 	gs := post(t, ts.URL+"/api/game/new", api.NewGameRequest{
 		TownName: "Test", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
 		Places: []string{"X"}, BigBuilding: "Hall",
-		Party:  []api.PartyMemberReq{{Name: "Mage", ClassID: "cinder"}},
+		Party:      []api.PartyMemberReq{{Name: "Mage", ClassID: "cinder"}},
 		Difficulty: "normal",
 	})
 	gameID := gs["id"].(string)
@@ -453,7 +483,7 @@ func TestQuestAdvance(t *testing.T) {
 	gs := post(t, ts.URL+"/api/game/new", api.NewGameRequest{
 		TownName: "Test", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
 		Places: []string{"X"}, BigBuilding: "Hall",
-		Party:  []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
+		Party:      []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
 		Difficulty: "normal",
 	})
 	gameID := gs["id"].(string)
@@ -482,7 +512,7 @@ func TestCannotBuyWithoutGold(t *testing.T) {
 	gs := post(t, ts.URL+"/api/game/new", api.NewGameRequest{
 		TownName: "Test", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
 		Places: []string{"X"}, BigBuilding: "Hall",
-		Party:  []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
+		Party:      []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
 		Difficulty: "normal",
 	})
 	gameID := gs["id"].(string)
@@ -512,7 +542,7 @@ func TestFlee(t *testing.T) {
 	gs := post(t, ts.URL+"/api/game/new", api.NewGameRequest{
 		TownName: "Test", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
 		Places: []string{"X"}, BigBuilding: "Hall",
-		Party:  []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
+		Party:      []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
 		Difficulty: "normal",
 	})
 	gameID := gs["id"].(string)
@@ -551,7 +581,7 @@ func TestSpellInCombat(t *testing.T) {
 	gs := post(t, ts.URL+"/api/game/new", api.NewGameRequest{
 		TownName: "Test", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
 		Places: []string{"X"}, BigBuilding: "Hall",
-		Party:  []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}, {Name: "Mage", ClassID: "cinder"}},
+		Party:      []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}, {Name: "Mage", ClassID: "cinder"}},
 		Difficulty: "normal",
 	})
 	gameID := gs["id"].(string)
@@ -594,7 +624,7 @@ func TestFullCampaign(t *testing.T) {
 			{Name: "Eve", Relation: "rival"},
 		},
 		Places: []string{"School", "Store"}, BigBuilding: "Town Hall",
-		Party:  []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}, {Name: "Sparks", ClassID: "cinder"}},
+		Party:      []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}, {Name: "Sparks", ClassID: "cinder"}},
 		Difficulty: "easy",
 	})
 	gameID := gs["id"].(string)
@@ -654,7 +684,7 @@ func TestVictoryXPAnimationData(t *testing.T) {
 	gs := post(t, ts.URL+"/api/game/new", api.NewGameRequest{
 		TownName: "Test", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
 		Places: []string{"X"}, BigBuilding: "Hall",
-		Party:  []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}, {Name: "Mage", ClassID: "cinder"}},
+		Party:      []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}, {Name: "Mage", ClassID: "cinder"}},
 		Difficulty: "easy",
 	})
 	gameID := gs["id"].(string)

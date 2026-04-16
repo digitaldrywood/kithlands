@@ -67,6 +67,17 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 			}
 			g.visitedNodes[req.NodeID] = true
 
+			for nodeID, quest := range g.buildingSideQuests {
+				if quest.Status != generator.BuildingQuestAccepted {
+					continue
+				}
+				if quest.TargetNodeID != "" && req.NodeID == quest.TargetNodeID {
+					quest.Status = generator.BuildingQuestReadyToTurnIn
+					g.buildingSideQuests[nodeID] = quest
+					g.message += fmt.Sprintf("Building side quest updated: return to %s for %s.\n", quest.GiverName, quest.Name)
+				}
+			}
+
 			// Check soft prerequisites: reveal hidden quests
 			for i := range g.quests {
 				if g.quests[i].Hidden && g.quests[i].SoftPrereq == req.NodeID {
