@@ -111,6 +111,22 @@ func debugTestServer(t *testing.T) (*api.Server, *httptest.Server) {
 		game.DebugHealParty()
 		writeJSON(w, game.State())
 	})
+	mux.HandleFunc("POST /api/debug/game/{id}/set-party-vitals", func(w http.ResponseWriter, r *http.Request) {
+		game := getGame(r)
+		if game == nil {
+			writeErr(w, "not found", http.StatusNotFound)
+			return
+		}
+		var req struct {
+			Updates []api.DebugPartyVitalsUpdate `json:"updates"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		if err := game.DebugSetPartyVitals(req.Updates); err != nil {
+			writeErr(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		writeJSON(w, game.State())
+	})
 	mux.HandleFunc("POST /api/debug/game/{id}/warp-quest", func(w http.ResponseWriter, r *http.Request) {
 		game := getGame(r)
 		if game == nil {
@@ -285,6 +301,34 @@ func TestDebug_HealParty_LeavesDeadMembersDead(t *testing.T) {
 	}
 	if hp := api.PartyHPForTest(game, 1); hp != 0 {
 		t.Errorf("dead member HP after heal-party = %d, want 0", hp)
+	}
+}
+
+func TestDebug_SetPartyVitals_OverridesStats(t *testing.T) {
+	srv, ts := debugTestServer(t)
+	gameID := newGameViaHTTP(t, ts)
+	game := srv.GetGameManager().GetGame(gameID)
+
+	code, body := postDebugJSON(t, ts,
+		"/api/debug/game/"+gameID+"/set-party-vitals",
+		`{"updates":[{"slot":0,"hp":3,"mp":0,"status":"poison"},{"slot":1,"hp":0}]}`)
+	if code != http.StatusOK {
+		t.Fatalf("set-party-vitals: got %d (%s)", code, body)
+	}
+	if hp := api.PartyHPForTest(game, 0); hp != 3 {
+		t.Errorf("slot 0 HP = %d, want 3", hp)
+	}
+	if mp := api.PartyMPForTest(game, 0); mp != 0 {
+		t.Errorf("slot 0 MP = %d, want 0", mp)
+	}
+	if status := api.PartyStatusForTest(game, 0); status != character.StatusPoison {
+		t.Errorf("slot 0 status = %q, want poison", status)
+	}
+	if hp := api.PartyHPForTest(game, 1); hp != 0 {
+		t.Errorf("slot 1 HP = %d, want 0", hp)
+	}
+	if status := api.PartyStatusForTest(game, 1); status != character.StatusDeath {
+		t.Errorf("slot 1 status = %q, want death", status)
 	}
 }
 

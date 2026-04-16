@@ -71,6 +71,12 @@ export async function debugHealParty(gameId) {
   return apiCall("POST", `/debug/game/${gameId}/heal-party`, {});
 }
 
+export async function debugSetPartyVitals(gameId, updates) {
+  return apiCall("POST", `/debug/game/${gameId}/set-party-vitals`, {
+    updates,
+  });
+}
+
 export async function debugWarpQuest(gameId, questIdx) {
   return apiCall("POST", `/debug/game/${gameId}/warp-quest`, {
     quest_idx: questIdx,

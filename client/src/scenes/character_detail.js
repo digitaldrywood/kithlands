@@ -1,6 +1,7 @@
 import { drawPanel, drawButton } from "../ui/panel.js";
 import { barFillWidth, barLabel, hpBarColorPct } from "../systems/hpBar.js";
 import { showEquipPicker } from "./world_menu.js";
+import { buildFieldSpellList, showFieldMagicMenu } from "./field_magic.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 
 // Depth layering. The party menu panel sits at 40-41; character detail
@@ -135,7 +136,14 @@ export function openCharacterDetail(scene, partyIndex) {
   );
 
   // Bottom strip: spell list.
-  drawSpells(scene, group, member, PANEL_LEFT + 20, PANEL_BOTTOM - 110);
+  drawSpells(
+    scene,
+    group,
+    member,
+    partyIndex,
+    PANEL_LEFT + 20,
+    PANEL_BOTTOM - 124,
+  );
 
   // Close button, mirrors the party menu footer style.
   const closeBtn = drawButton(
@@ -394,19 +402,42 @@ function drawEquipSlot(scene, group, cx, cy, slotLabel, itemName, onClick) {
   );
 }
 
-function drawSpells(scene, group, member, x, y) {
+function drawSpells(scene, group, member, partyIndex, x, y) {
   group.push(plainText(scene, x, y, "SPELLS", "#8888ff", "12px"));
   if (!member.spells || member.spells.length === 0) {
     group.push(plainText(scene, x + 80, y, "(no spells)", "#666666", "11px"));
     return;
   }
-  // Render up to 8 spells inline as "Name (MP)" using the unified MP
-  // pool from #106. Falls back to just the name if mp_cost is absent.
-  const text = member.spells
-    .slice(0, 8)
-    .map((s) => (s.mp_cost != null ? `${s.name} (${s.mp_cost})` : s.name))
-    .join("   ");
-  group.push(plainText(scene, x + 80, y, text, "#aaccff", "11px"));
+  const fieldSpells = buildFieldSpellList(member, scene.gameState?.party);
+  const fieldByID = new Map(fieldSpells.map((spell) => [spell.id, spell]));
+
+  member.spells.slice(0, 8).forEach((spell, idx) => {
+    const col = Math.floor(idx / 4);
+    const row = idx % 4;
+    const tx = x + 82 + col * 230;
+    const ty = y + 4 + row * 18;
+    const fieldSpell = fieldByID.get(spell.id);
+    const interactive = fieldSpell && !fieldSpell.greyed;
+    const color = interactive ? "#aaccff" : fieldSpell ? "#666666" : "#555555";
+    const label =
+      spell.mp_cost != null ? `${spell.name} (${spell.mp_cost})` : spell.name;
+
+    const text = plainText(scene, tx, ty, label, color, "11px");
+    if (interactive) {
+      text.setInteractive({ useHandCursor: true });
+      text.on("pointerover", () => text.setColor("#ffffff"));
+      text.on("pointerout", () => text.setColor("#aaccff"));
+      text.on("pointerup", () => {
+        closeCharacterDetail(scene);
+        showFieldMagicMenu(scene, {
+          casterSlot: partyIndex,
+          spellId: spell.id,
+          onClose: () => openCharacterDetail(scene, partyIndex),
+        });
+      });
+    }
+    group.push(text);
+  });
 }
 
 function plainText(scene, x, y, str, color, size) {

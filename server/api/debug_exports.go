@@ -22,6 +22,13 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/combat"
 )
 
+type DebugPartyVitalsUpdate struct {
+	Slot   int
+	HP     *int
+	MP     *int
+	Status *string
+}
+
 // DebugForceEncounterStart sets the encounter start marker and resets the
 // round counter so the next client poll sees the requested opening.
 // Only "ambush", "preemptive", and "normal" are accepted.
@@ -134,6 +141,38 @@ func (g *Game) DebugHealParty() {
 			c.Status = character.StatusNone
 		}
 	}
+}
+
+// DebugSetPartyVitals applies direct HP/MP/status overrides to named party
+// slots. Debug-only: used by Playwright proof flows to set up deterministic
+// menu states without depending on combat RNG.
+func (g *Game) DebugSetPartyVitals(updates []DebugPartyVitalsUpdate) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	for _, update := range updates {
+		if update.Slot < 0 || update.Slot >= len(g.party) {
+			return fmt.Errorf("invalid slot %d", update.Slot)
+		}
+		c := g.party[update.Slot]
+		if c == nil {
+			return fmt.Errorf("invalid slot %d", update.Slot)
+		}
+		if update.HP != nil {
+			c.CurrentHP = max(0, min(c.MaxHP, *update.HP))
+			if c.CurrentHP == 0 {
+				c.Status = character.StatusDeath
+			} else if c.Status == character.StatusDeath && update.Status == nil {
+				c.Status = character.StatusNone
+			}
+		}
+		if update.MP != nil {
+			c.CurrentMP = max(0, min(c.MaxMP, *update.MP))
+		}
+		if update.Status != nil {
+			c.Status = character.Status(*update.Status)
+		}
+	}
+	return nil
 }
 
 // DebugWarpQuest fast-forwards currentQ so the named quest index is active.

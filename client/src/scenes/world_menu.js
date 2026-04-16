@@ -6,6 +6,7 @@ import { showWorldMap } from "./world_interact.js";
 import { openCharacterDetail } from "./character_detail.js";
 import { showOptions } from "./options.js";
 import { showItemMenu } from "./item_menu.js";
+import { buildFieldSpellList, showFieldMagicMenu } from "./field_magic.js";
 import { drawPanel, drawButton } from "../ui/panel.js";
 import { barFillWidth, barLabel, hpBarColorPct } from "../systems/hpBar.js";
 import {
@@ -105,10 +106,15 @@ export function toggleMenu(scene) {
   const itemsEnabled = Array.isArray(gs.items)
     ? gs.items.some((i) => i && i.effect && i.count > 0)
     : false;
+  const magicEnabled = Array.isArray(gs.party)
+    ? gs.party.some(
+        (member) => buildFieldSpellList(member, gs.party).length > 0,
+      )
+    : false;
   layoutButtonRow(scene, scene.menuGroup, PANEL_CX, FOOTER_TOP + 15, [
     {
       label: "CHARACTER",
-      w: 130,
+      w: 116,
       onClick: () => {
         // Footer button opens the detail for the party lead. Per-row
         // CHARACTER → buttons in drawPartyRow handle the specific hero.
@@ -117,8 +123,19 @@ export function toggleMenu(scene) {
       },
     },
     {
+      label: "MAGIC",
+      w: 96,
+      enabled: magicEnabled,
+      onClick: () => {
+        closeMenu(scene);
+        showFieldMagicMenu(scene, {
+          onClose: () => toggleMenu(scene),
+        });
+      },
+    },
+    {
       label: "EQUIPMENT",
-      w: 130,
+      w: 116,
       onClick: () => {
         scene.showMessage("Equipment screen — coming in #95");
         scene.time.delayedCall(1500, () => scene.hideMessage());
@@ -126,7 +143,7 @@ export function toggleMenu(scene) {
     },
     {
       label: "ITEM",
-      w: 110,
+      w: 96,
       enabled: itemsEnabled,
       onClick: () => {
         // Close the party menu first so the Item overlay can paint at the
@@ -141,12 +158,12 @@ export function toggleMenu(scene) {
     },
     {
       label: "QUESTS",
-      w: 110,
+      w: 96,
       onClick: () => showQuestLog(scene),
     },
     {
       label: "MAP",
-      w: 90,
+      w: 84,
       onClick: () => {
         closeMenu(scene);
         showWorldMap(scene);
