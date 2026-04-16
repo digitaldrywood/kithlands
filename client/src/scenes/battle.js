@@ -13,10 +13,7 @@ import {
 import { buildVictoryXPSegments } from "../systems/victoryXp.js";
 import { FloatingTextPool } from "../ui/floating_text.js";
 import { ENEMY_SPRITES } from "../data/monsterSprites.js";
-import {
-  battleSpeedMul,
-  messageCharMs,
-} from "../systems/prefs.js";
+import { battleSpeedMul, messageCharMs } from "../systems/prefs.js";
 import { toggleDebugPanel, closeDebugPanel } from "./debug_panel.js";
 import {
   buildBattleActionButtons,

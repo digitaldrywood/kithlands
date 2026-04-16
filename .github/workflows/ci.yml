@@ -35,7 +35,7 @@ jobs:
         with:
           version: v2.1.6
           working-directory: server
-          args: --timeout=5m
+          args: --timeout=5m --allow-serial-runners
 
       - name: Balance sim smoke test
         working-directory: server
