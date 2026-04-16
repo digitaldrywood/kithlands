@@ -1,5 +1,39 @@
 import { describe, expect, it } from "vitest";
 import { restoreLivingPartyMembers } from "./party_rest.js";
+import {
+  extraNpcSpritesForTags,
+  furnitureDensity,
+  minimumNpcSpacing,
+  roomDimensions,
+} from "./town_layout.js";
+
+describe("roomDimensions", () => {
+  it("gives inns noticeably larger interiors for multi-NPC layouts", () => {
+    expect(roomDimensions("inn", 1)).toEqual({ w: 20, h: 14 });
+  });
+});
+
+describe("inn layout tuning", () => {
+  it("keeps inn furniture density lower than generic houses", () => {
+    expect(furnitureDensity("inn")).toBeLessThan(furnitureDensity("house"));
+    expect(furnitureDensity("inn")).toBe(0.05);
+  });
+
+  it("requires extra personal space between inn occupants", () => {
+    expect(minimumNpcSpacing("inn")).toBe(5);
+    expect(minimumNpcSpacing("shop")).toBe(2);
+  });
+});
+
+describe("extraNpcSpritesForTags", () => {
+  it("keeps inn guests visually distinct from the innkeeper", () => {
+    expect(extraNpcSpritesForTags(["rest"])).toEqual([
+      "npc_guard",
+      "npc_blacksmith",
+      "npc_elder",
+    ]);
+  });
+});
 
 describe("restoreLivingPartyMembers", () => {
   it("fully restores HP and MP for living party members", () => {
