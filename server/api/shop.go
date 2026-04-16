@@ -4,9 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
+	"strconv"
 	"strings"
 
+	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
+	"github.com/digitaldrywood/kithlands/internal/magic"
 )
 
 func (s *Server) handleShop(w http.ResponseWriter, r *http.Request) {
@@ -188,10 +192,13 @@ func (g *Game) GetShopItems(nodeID string) []ShopItemState {
 		for _, sp := range g.gd.Spells.Spells {
 			if sp.SpellLevel <= maxTier {
 				items = append(items, ShopItemState{
-					ID:    sp.ID,
-					Name:  sp.Name,
-					Type:  "spell",
-					Price: sp.SpellLevel * 100,
+					ID:         sp.ID,
+					Name:       sp.Name,
+					Type:       "spell",
+					Price:      sp.SpellLevel * 100,
+					School:     sp.School,
+					SpellLevel: sp.SpellLevel,
+					Learners:   g.spellLearnersForShop(sp.ID),
 				})
 			}
 		}
@@ -310,55 +317,138 @@ func (g *Game) LearnSpell(charName, spellID string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	spell := g.gd.SpellByID(spellID)
-	if spell == nil {
-		return fmt.Errorf("spell not found")
+	_, spell, sb, err := g.validateSpellLearningLocked(charName, spellID)
+	if err != nil {
+		return err
 	}
 
-	sb, ok := g.spellBooks[charName]
-	if !ok {
-		return fmt.Errorf("%s cannot learn spells", charName)
-	}
-
-	// Check if character's class can learn this spell school
-	var ch *gamedata.Class
-	for _, c := range g.party {
-		if c.Name == charName {
-			ch = g.gd.ClassByID(c.ClassID)
-			break
-		}
-	}
-	if ch == nil {
-		return fmt.Errorf("character not found")
-	}
-
-	canLearn := false
-	for _, school := range ch.Magic.Schools {
-		if school == spell.School {
-			canLearn = true
-			break
-		}
-	}
-	if !canLearn {
-		return fmt.Errorf("%s cannot learn %s magic", charName, spell.School)
-	}
-
-	// Check spell level cap
-	if spell.SpellLevel > ch.Magic.MaxSpellLevel {
-		return fmt.Errorf("spell level %d exceeds max %d for %s", spell.SpellLevel, ch.Magic.MaxSpellLevel, ch.Name)
-	}
-
-	// Price: spell level * 100 gold
 	price := spell.SpellLevel * 100
 	if g.inv.Gold < price {
 		return fmt.Errorf("need %d gold, have %d", price, g.inv.Gold)
 	}
 
-	err := sb.LearnSpell(spellID, spell.SpellLevel, g.gd.Spells.ChargeTable.MaxSpellsPerLvl)
+	err = sb.LearnSpell(spellID, spell.SpellLevel, g.gd.Spells.ChargeTable.MaxSpellsPerLvl)
 	if err != nil {
 		return err
 	}
 
 	g.inv.Gold -= price
 	return nil
+}
+
+func (g *Game) spellLearnersForShop(spellID string) []SpellLearnerState {
+	learners := make([]SpellLearnerState, 0, len(g.party))
+	for _, member := range g.party {
+		if member == nil {
+			continue
+		}
+		canLearn, reason := g.spellLearningStatusLocked(member.Name, spellID)
+		learners = append(learners, SpellLearnerState{
+			Name:     member.Name,
+			CanLearn: canLearn,
+			Reason:   reason,
+		})
+	}
+	return learners
+}
+
+func (g *Game) validateSpellLearningLocked(charName, spellID string) (*character.Character, *gamedata.Spell, *magic.SpellBook, error) {
+	spell := g.gd.SpellByID(spellID)
+	if spell == nil {
+		return nil, nil, nil, fmt.Errorf("spell not found")
+	}
+
+	caster := g.partyMemberByName(charName)
+	if caster == nil {
+		return nil, nil, nil, fmt.Errorf("character not found")
+	}
+
+	sb, ok := g.spellBooks[charName]
+	if !ok {
+		return nil, nil, nil, fmt.Errorf("%s cannot learn spells", charName)
+	}
+
+	if canLearn, reason := g.spellLearningStatusLocked(charName, spellID); !canLearn {
+		switch reason {
+		case "wrong class":
+			return nil, nil, nil, fmt.Errorf("%s cannot learn %s magic", charName, spell.School)
+		case "level too low":
+			minLevel := g.minCharacterLevelForSpellLevel(spell.SpellLevel)
+			return nil, nil, nil, fmt.Errorf("level too low: %s is level %d; level %d required for level %d spells", charName, caster.Level, minLevel, spell.SpellLevel)
+		default:
+			return nil, nil, nil, fmt.Errorf("%s", reason)
+		}
+	}
+
+	return caster, spell, sb, nil
+}
+
+func (g *Game) spellLearningStatusLocked(charName, spellID string) (bool, string) {
+	spell := g.gd.SpellByID(spellID)
+	if spell == nil {
+		return false, "spell not found"
+	}
+
+	member := g.partyMemberByName(charName)
+	if member == nil {
+		return false, "character not found"
+	}
+
+	sb, ok := g.spellBooks[charName]
+	if !ok {
+		return false, "wrong class"
+	}
+
+	class := g.gd.ClassByID(member.ClassID)
+	if class == nil {
+		return false, "wrong class"
+	}
+	if !slices.Contains(class.Magic.Schools, spell.School) || spell.SpellLevel > class.Magic.MaxSpellLevel {
+		return false, "wrong class"
+	}
+
+	if member.Level < g.minCharacterLevelForSpellLevel(spell.SpellLevel) {
+		return false, "level too low"
+	}
+
+	for _, known := range sb.KnownSpells[spell.SpellLevel] {
+		if known == spellID {
+			return false, "already known"
+		}
+	}
+	if len(sb.KnownSpells[spell.SpellLevel]) >= g.gd.Spells.ChargeTable.MaxSpellsPerLvl {
+		return false, "spell level full"
+	}
+
+	return true, ""
+}
+
+func (g *Game) partyMemberByName(name string) *character.Character {
+	for _, member := range g.party {
+		if member != nil && member.Name == name {
+			return member
+		}
+	}
+	return nil
+}
+
+func (g *Game) minCharacterLevelForSpellLevel(spellLevel int) int {
+	if spellLevel <= 1 {
+		return 1
+	}
+
+	minLevel := 0
+	for levelKey, charges := range g.gd.Spells.ChargeTable.Table {
+		level, err := strconv.Atoi(levelKey)
+		if err != nil || spellLevel-1 >= len(charges) || charges[spellLevel-1] <= 0 {
+			continue
+		}
+		if minLevel == 0 || level < minLevel {
+			minLevel = level
+		}
+	}
+	if minLevel == 0 {
+		return 1
+	}
+	return minLevel
 }

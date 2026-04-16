@@ -183,14 +183,23 @@ type EquipState struct {
 }
 
 type ShopItemState struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Type    string `json:"type"` // weapon, armor, consumable, spell
-	Price   int    `json:"price"`
-	Power   int    `json:"power,omitempty"`
-	Absorb  int    `json:"absorb,omitempty"`
-	Classes string `json:"classes,omitempty"`
-	Owned   bool   `json:"owned,omitempty"`
+	ID         string              `json:"id"`
+	Name       string              `json:"name"`
+	Type       string              `json:"type"` // weapon, armor, consumable, spell
+	Price      int                 `json:"price"`
+	Power      int                 `json:"power,omitempty"`
+	Absorb     int                 `json:"absorb,omitempty"`
+	Classes    string              `json:"classes,omitempty"`
+	Owned      bool                `json:"owned,omitempty"`
+	School     string              `json:"school,omitempty"`
+	SpellLevel int                 `json:"spell_level,omitempty"`
+	Learners   []SpellLearnerState `json:"learners,omitempty"`
+}
+
+type SpellLearnerState struct {
+	Name     string `json:"name"`
+	CanLearn bool   `json:"can_learn"`
+	Reason   string `json:"reason,omitempty"`
 }
 
 type PartyMemberState struct {

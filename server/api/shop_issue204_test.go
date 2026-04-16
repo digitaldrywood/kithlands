@@ -1,0 +1,113 @@
+package api
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/digitaldrywood/kithlands/internal/gamedata"
+)
+
+func newShopSpellGame(t *testing.T, party []PartyMemberReq) *Game {
+	t.Helper()
+	gm := NewGameManager(loadSharedForTest(t), "../../shared")
+	game, err := gm.CreateGame(NewGameRequest{
+		TownName:    "Cadott",
+		People:      []WizardPersonReq{{Name: "Coach Bell", Relation: "friendly"}},
+		Places:      []string{"Store", "Library"},
+		BigBuilding: "Town Hall",
+		Party:       party,
+		Difficulty:  "normal",
+		SpawnNodeID: "shop",
+	})
+	if err != nil {
+		t.Fatalf("create game: %v", err)
+	}
+	return game
+}
+
+func loadSharedForTest(t *testing.T) *gamedata.GameData {
+	t.Helper()
+	return gamedata.Load("../../shared")
+}
+
+func setPartyLevel(t *testing.T, game *Game, slot, level int) {
+	t.Helper()
+	game.mu.Lock()
+	defer game.mu.Unlock()
+	if slot < 0 || slot >= len(game.party) {
+		t.Fatalf("invalid slot %d", slot)
+	}
+	game.party[slot].Level = level
+}
+
+func setGold(t *testing.T, game *Game, gold int) {
+	t.Helper()
+	game.mu.Lock()
+	defer game.mu.Unlock()
+	game.inv.Gold = gold
+}
+
+func findShopSpell(items []ShopItemState, id string) *ShopItemState {
+	for i := range items {
+		if items[i].ID == id {
+			return &items[i]
+		}
+	}
+	return nil
+}
+
+func TestLearnSpellRejectsPartyMemberBelowRequiredLevel(t *testing.T) {
+	game := newShopSpellGame(t, []PartyMemberReq{
+		{Name: "Nia", ClassID: "mender"},
+	})
+	setGold(t, game, 500)
+
+	err := game.LearnSpell("Nia", "heal")
+	if err == nil {
+		t.Fatal("expected level gate error, got nil")
+	}
+	if !strings.Contains(err.Error(), "level too low") {
+		t.Fatalf("expected level gate error, got %v", err)
+	}
+}
+
+func TestGetShopItemsIncludesSpellLearnerReasons(t *testing.T) {
+	game := newShopSpellGame(t, []PartyMemberReq{
+		{Name: "Bruno", ClassID: "warrior"},
+		{Name: "Nia", ClassID: "mender"},
+		{Name: "Mira", ClassID: "mender"},
+		{Name: "Tess", ClassID: "mender"},
+	})
+	setPartyLevel(t, game, 0, 7)
+	setPartyLevel(t, game, 1, 1)
+	setPartyLevel(t, game, 2, 4)
+	setPartyLevel(t, game, 3, 4)
+	TeachSpellForTest(game, 2, "heal", 2)
+
+	heal := findShopSpell(game.GetShopItems("shop"), "heal")
+	if heal == nil {
+		t.Fatal("shop missing heal")
+	}
+
+	want := []struct {
+		name     string
+		canLearn bool
+		reason   string
+	}{
+		{name: "Bruno", canLearn: false, reason: "wrong class"},
+		{name: "Nia", canLearn: false, reason: "level too low"},
+		{name: "Mira", canLearn: false, reason: "already known"},
+		{name: "Tess", canLearn: true, reason: ""},
+	}
+
+	if len(heal.Learners) != len(want) {
+		t.Fatalf("learners length = %d, want %d", len(heal.Learners), len(want))
+	}
+
+	for i, wantLearner := range want {
+		got := heal.Learners[i]
+		if got.Name != wantLearner.name || got.CanLearn != wantLearner.canLearn || got.Reason != wantLearner.reason {
+			t.Fatalf("learner[%d] = %+v, want %+v", i, got, wantLearner)
+		}
+	}
+}
