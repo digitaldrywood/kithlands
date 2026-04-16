@@ -37,9 +37,7 @@ CLASS_SCALE_MULTIPLIER = {
     "knight": 1.08,
 }
 
-SWAP_SIDE_DIRECTIONS = {
-    "knight",
-}
+SWAP_SIDE_DIRECTIONS = set()
 
 
 def parse_args() -> argparse.Namespace:
@@ -280,7 +278,10 @@ def build_sheet_for_class(class_id: str) -> Image.Image:
         for direction in ["down", "up", "left", "right"]
     }
     sheet = Image.new("RGBA", (SHEET, SHEET), (0, 0, 0, 0))
-    for row_idx, direction in enumerate(["down", "up", "left", "right"]):
+    row_directions = ["down", "up", "left", "right"]
+    if class_id == "knight":
+        row_directions = ["down", "up", "right", "left"]
+    for row_idx, direction in enumerate(row_directions):
         base = masters[direction]
         for col_idx in range(4):
             frame = pose_frame(base, direction, col_idx)
