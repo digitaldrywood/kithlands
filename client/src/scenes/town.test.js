@@ -5,11 +5,29 @@ import {
   furnitureDensity,
   minimumNpcSpacing,
   roomDimensions,
+  T_ALTAR,
+  T_FLOOR,
+  T_SHELF,
+  T_WALL,
+  tileTextureKey,
 } from "./town_layout.js";
 
 describe("roomDimensions", () => {
   it("gives inns noticeably larger interiors for multi-NPC layouts", () => {
     expect(roomDimensions("inn", 1)).toEqual({ w: 20, h: 14 });
+  });
+
+  it("expands shops and temples to the FF-style interior footprint", () => {
+    expect(roomDimensions("shop", 1)).toEqual({ w: 16, h: 12 });
+    expect(roomDimensions("temple", 1)).toEqual({ w: 20, h: 14 });
+  });
+
+  it("keeps houses at or above the minimum larger-room target", () => {
+    const house = roomDimensions("house", 123, () => () => 0);
+    const largeHouse = roomDimensions("house", 456, () => () => 0.999);
+
+    expect(house).toEqual({ w: 12, h: 10 });
+    expect(largeHouse).toEqual({ w: 16, h: 14 });
   });
 });
 
@@ -32,6 +50,20 @@ describe("extraNpcSpritesForTags", () => {
       "npc_blacksmith",
       "npc_elder",
     ]);
+  });
+});
+
+describe("tileTextureKey", () => {
+  it("uses themed walls and floors per building type", () => {
+    expect(tileTextureKey(T_WALL, "temple")).toBe("tile_stone_wall");
+    expect(tileTextureKey(T_WALL, "shop")).toBe("tile_wooden_wall");
+    expect(tileTextureKey(T_FLOOR, "shop")).toBe("tile_shop_floor");
+    expect(tileTextureKey(T_FLOOR, "inn")).toBe("tile_inn_floor");
+  });
+
+  it("maps furniture tiles to interior sprites instead of flat fills", () => {
+    expect(tileTextureKey(T_SHELF, "shop")).toBe("tile_bookshelf");
+    expect(tileTextureKey(T_ALTAR, "temple")).toBe("tile_altar");
   });
 });
 

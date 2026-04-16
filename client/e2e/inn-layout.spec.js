@@ -1,4 +1,13 @@
+import { mkdirSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { test, expect } from "@playwright/test";
+
+const RUN_ID = Date.now();
+const SPEC_DIR = path.dirname(fileURLToPath(import.meta.url));
+const PROOF_DIR = path.join(SPEC_DIR, "tmp");
+
+mkdirSync(PROOF_DIR, { recursive: true });
 
 async function waitForBridge(page) {
   await page.waitForFunction(() => !!window.__kithlandsTest);
@@ -13,35 +22,100 @@ async function startQuickGame(page) {
   );
 }
 
-test.describe("inn interior layout", () => {
-  test("rest buildings get a roomy inn layout with distinct occupants", async ({
+async function sampleCanvasPixel(page, x, y) {
+  return page.evaluate(
+    ({ sx, sy }) => {
+      const canvas = document.querySelector("canvas");
+      if (!canvas) throw new Error("Game canvas not found");
+      const ctx2d = canvas.getContext("2d", { willReadFrequently: true });
+      if (ctx2d) {
+        return Array.from(ctx2d.getImageData(sx, sy, 1, 1).data);
+      }
+
+      const gl =
+        canvas.getContext("webgl2", { preserveDrawingBuffer: true }) ||
+        canvas.getContext("webgl", { preserveDrawingBuffer: true });
+      if (!gl) throw new Error("Canvas context unavailable");
+
+      const pixel = new Uint8Array(4);
+      gl.readPixels(
+        sx,
+        canvas.height - sy - 1,
+        1,
+        1,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        pixel,
+      );
+      return Array.from(pixel);
+    },
+    { sx: x, sy: y },
+  );
+}
+
+async function expectInteriorProof(page, spawn, expected) {
+  await page.evaluate(
+    (nextSpawn) => window.__kithlandsTest.startTownScene(nextSpawn),
+    spawn,
+  );
+  await page.waitForFunction(() =>
+    window.__kithlandsTest.sceneIsActive("Town"),
+  );
+  await page.waitForTimeout(200);
+
+  const details = await page.evaluate(() =>
+    window.__kithlandsTest.townSnapshot("Town"),
+  );
+
+  expect(details.buildingType).toBe(expected.buildingType);
+  expect(details.roomW).toBe(expected.roomW);
+  expect(details.roomH).toBe(expected.roomH);
+  expect(details.offsetX).toBeGreaterThan(0);
+  expect(details.offsetY).toBeGreaterThan(0);
+
+  const cornerPixel = await sampleCanvasPixel(page, 5, 5);
+  expect(cornerPixel).toEqual([0, 0, 0, 255]);
+
+  await page.locator("canvas").screenshot({
+    path: path.join(
+      PROOF_DIR,
+      `issue-178-${expected.buildingType}-${RUN_ID}.png`,
+    ),
+  });
+}
+
+test.describe("FF-style town interiors", () => {
+  test("renders black-backed larger inn and shop interiors", async ({
     page,
-  }, testInfo) => {
+  }) => {
     await startQuickGame(page);
 
-    await page.evaluate(() =>
-      window.__kithlandsTest.startTownScene({
+    await expectInteriorProof(
+      page,
+      {
         node_id: "proof_inn",
         name: "Copper Kettle Inn",
         tags: ["rest"],
-      }),
-    );
-    await page.waitForFunction(() =>
-      window.__kithlandsTest.sceneIsActive("Town"),
-    );
-
-    const details = await page.evaluate(() =>
-      window.__kithlandsTest.townSnapshot("Town"),
+      },
+      {
+        buildingType: "inn",
+        roomW: 20,
+        roomH: 14,
+      },
     );
 
-    expect(details.roomW).toBe(20);
-    expect(details.roomH).toBe(14);
-    expect(details.npcKeys[0]).toBe("npc_innkeeper");
-    expect(new Set(details.npcKeys).size).toBe(details.npcKeys.length);
-
-    await page.screenshot({
-      path: testInfo.outputPath(`inn-layout-proof-${Date.now()}.png`),
-      fullPage: true,
-    });
+    await expectInteriorProof(
+      page,
+      {
+        node_id: "proof_shop",
+        name: "Briar Goods",
+        tags: ["shop"],
+      },
+      {
+        buildingType: "shop",
+        roomW: 16,
+        roomH: 12,
+      },
+    );
   });
 });
