@@ -57,9 +57,9 @@ func TestMapSpawnEnrichment(t *testing.T) {
 	}
 
 	tests := []struct {
-		name         string
-		nodeID       string
-		wantType     string
+		name     string
+		nodeID   string
+		wantType string
 	}{
 		{name: "inn spawn", nodeID: "inn", wantType: "inn"},
 		{name: "shop spawn", nodeID: "shop", wantType: "shop"},

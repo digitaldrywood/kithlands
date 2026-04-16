@@ -1,18 +1,4 @@
-const TILE_ENCOUNTER_MULTIPLIERS = Object.freeze({
-  0: 0.5, // grass
-  1: 0.1, // path
-  2: 0, // water
-  3: 0, // tree
-  4: 0, // building
-  5: 0, // door
-  6: 0, // floor
-  7: 0, // rock
-  8: 0, // bush
-  9: 1.0, // dark grass
-  10: 1.5, // forest
-  11: 1.2, // hill
-  12: 0.7, // sand
-});
+import { TILE_ENCOUNTER_MULTIPLIERS } from "./tileConstants.js";
 
 export function encounterRateMultiplierForTile(tile) {
   return TILE_ENCOUNTER_MULTIPLIERS[tile] ?? 0;

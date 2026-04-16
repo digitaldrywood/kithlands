@@ -9,23 +9,7 @@ import { toggleMenu } from "../scenes/world_menu.js";
 import { toggleCodex } from "../scenes/world_codex.js";
 import { toggleMute, isMuted } from "./audio.js";
 import { isWorldInputLocked } from "./modalLock.js";
-
-// Tile walkability (mirrored from world.js to avoid circular dependency)
-const TILE_WALKABLE = {
-  0: true,
-  1: true,
-  2: false,
-  3: false,
-  4: false,
-  5: true,
-  6: true,
-  7: false,
-  8: false,
-  9: true,
-  10: false,
-  11: false,
-  12: true,
-};
+import { TILE_WALKABLE } from "../scenes/tileConstants.js";
 const RENDERED_TILE = 32;
 
 let _isTouch = false;

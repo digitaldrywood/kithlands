@@ -30,6 +30,16 @@ import {
 } from "./walkFrame.js";
 import { isWorldInputLocked } from "../systems/modalLock.js";
 import { encounterChanceForStep } from "./worldEncounter.js";
+import {
+  FLY_TILES,
+  TILE_COLORS,
+  TILE_WALKABLE,
+  WATER_TILES,
+} from "./tileConstants.js";
+import {
+  buildTerrainRenderPlan,
+  ensureTerrainRenderTexture,
+} from "./terrainAutotile.js";
 
 const ENEMY_SPRITES = {
   Slime: "monster_slime",
@@ -38,59 +48,6 @@ const ENEMY_SPRITES = {
   Skeleton: "monster_skeleton",
   "Dark Knight": "monster_dark_knight",
 };
-
-// Tile colors for programmatic rendering
-const TILE_COLORS = {
-  0: 0x4caf50, // grass
-  1: 0xd2b48c, // path
-  2: 0x2196f3, // water
-  3: 0x2e7d32, // tree
-  4: 0x795548, // building
-  5: 0xffc107, // door
-  6: 0xbcaaa4, // floor
-  7: 0x9e9e9e, // rock
-  8: 0x66bb6a, // bush
-  9: 0x388e3c, // dark grass
-  10: 0x1b5e20, // forest (darker)
-  11: 0x8d6e63, // hill
-  12: 0xffe082, // sand
-};
-
-// Sprite keys for overworld tile types. Ids 4/5/6 (building/door/floor) intentionally
-// omitted — they still render via TILE_COLORS fillRect in drawMap(). See issue #73.
-const TILE_SPRITE_KEYS = {
-  0: "tile_grass",
-  1: "tile_path",
-  2: "tile_water",
-  3: "tile_tree",
-  7: "tile_rock",
-  8: "tile_bush",
-  9: "tile_dark_grass",
-  10: "tile_forest",
-  11: "tile_hill",
-  12: "tile_sand",
-};
-
-const TILE_WALKABLE = {
-  0: true, // grass
-  1: true, // path
-  2: false, // water
-  3: false, // tree
-  4: false, // building
-  5: true, // door
-  6: true, // floor
-  7: false, // rock
-  8: false, // bush
-  9: true, // dark grass
-  10: false, // forest
-  11: false, // hill
-  12: true, // sand
-};
-
-// Tiles unlocked by water transport (T3+)
-const WATER_TILES = { 2: true };
-// Tiles unlocked by flying transport (T5)
-const FLY_TILES = { 2: true, 3: true, 7: true, 8: true, 10: true, 11: true };
 
 // Vehicle indicator colors by tier
 const VEHICLE_COLORS = {
@@ -697,7 +654,10 @@ export class WorldScene extends Phaser.Scene {
         const tile = this.tileData[y][x];
         const px = x * RENDERED_TILE;
         const py = y * RENDERED_TILE;
-        const spriteKey = TILE_SPRITE_KEYS[tile];
+        const spriteKey = ensureTerrainRenderTexture(
+          this,
+          buildTerrainRenderPlan(this.tileData, x, y),
+        );
 
         if (spriteKey) {
           const img = this.add
