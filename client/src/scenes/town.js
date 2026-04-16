@@ -8,11 +8,7 @@ import {
 import { openDialogue } from "./town_dialogue.js";
 import { openShop } from "./world_shop.js";
 import { isTouchDevice, initTouchControls } from "../systems/input.js";
-import {
-  nextWalkFrame,
-  walkSheetKey,
-  walkFrameIndex,
-} from "./walkFrame.js";
+import { nextWalkFrame, walkSheetKey, walkFrameIndex } from "./walkFrame.js";
 import { getLeaderIndex } from "./world.js";
 import { buildingTypeFromTags, isRestBuilding } from "./building_type.js";
 import {

@@ -24,7 +24,9 @@ async function visitInterior(page, spawn, fromSceneKey = "World") {
       window.__kithlandsTest.startTownScene(nextSpawn, sceneKey),
     { nextSpawn: spawn, sceneKey: fromSceneKey },
   );
-  await page.waitForFunction(() => window.__kithlandsTest.sceneIsActive("Town"));
+  await page.waitForFunction(() =>
+    window.__kithlandsTest.sceneIsActive("Town"),
+  );
   await page.waitForTimeout(200);
   return page.evaluate(() => window.__kithlandsTest.townSnapshot("Town"));
 }
@@ -36,7 +38,8 @@ async function moveToNpc(page, npcIndex = 0) {
   );
   await page.waitForFunction(
     ({ x, y, index }) =>
-      window.__kithlandsTest.teleportTownPlayer(x, y + 1).nearNpcIndex === index,
+      window.__kithlandsTest.teleportTownPlayer(x, y + 1).nearNpcIndex ===
+      index,
     { ...npc, index: npcIndex },
   );
 }
@@ -80,7 +83,9 @@ test.describe("building interiors and side-quest handoff", () => {
     const innState = await page.evaluate(() =>
       window.__kithlandsTest.gameState("Town"),
     );
-    expect(innState.building_side_quests?.length || 0).toBeGreaterThanOrEqual(1);
+    expect(innState.building_side_quests?.length || 0).toBeGreaterThanOrEqual(
+      1,
+    );
     expect(innState.building_side_quests[0].status).toBe("accepted");
 
     const temple = await visitInterior(
