@@ -4,6 +4,7 @@
 Outputs:
   <output-dir>/index.html
   <output-dir>/{class}/{class}_sheet_4x.png
+  <output-dir>/{class}/{class}_frames_4x.png
   <output-dir>/{class}/{class}_preview.gif
   <output-dir>/{class}/{class}_{dir}.gif
 
@@ -160,6 +161,35 @@ def export_raw_row_strip(raw_rows: dict[str, Path], out_path: Path) -> None:
     canvas.save(out_path)
 
 
+def export_frame_grid(rows: dict[str, list[Image.Image]], out_path: Path) -> None:
+    font = ImageFont.load_default()
+    label_w = 72
+    header_h = 28
+    gap = 16
+    frame_w = CELL * SCALE
+    frame_h = CELL * SCALE
+    canvas_w = label_w + gap + frame_w * 4
+    canvas_h = header_h + gap + (frame_h + gap) * len(DIRS) - gap
+    canvas = Image.new("RGBA", (canvas_w, canvas_h), OUT_BG)
+    draw = ImageDraw.Draw(canvas)
+
+    for col_idx in range(4):
+        x = label_w + gap + col_idx * frame_w
+        draw.rectangle((x, 0, x + frame_w, header_h), fill=PANEL_BG)
+        draw.text((x + 12, 8), f"F{col_idx}", fill=WHITE, font=font)
+
+    for row_idx, dir_name in enumerate(DIRS):
+        y = header_h + gap + row_idx * (frame_h + gap)
+        draw.rectangle((0, y, label_w, y + frame_h), fill=PANEL_BG)
+        draw.text((10, y + 12), dir_name.upper(), fill=WHITE, font=font)
+        for col_idx, frame in enumerate(rows[dir_name]):
+            x = label_w + gap + col_idx * frame_w
+            scaled = scale_frame(frame).convert("RGBA")
+            canvas.paste(scaled, (x, y), scaled)
+
+    canvas.save(out_path)
+
+
 def write_index(entries: list[dict[str, str]], out_dir: Path, title: str) -> None:
     cards = []
     for entry in entries:
@@ -170,6 +200,7 @@ def write_index(entries: list[dict[str, str]], out_dir: Path, title: str) -> Non
               <h2>{cls}</h2>
               <p><img src="{entry['strip_rel']}" alt="{cls} labeled direction strip"></p>
               <p><a href="{entry['strip_rel']}">Labeled Direction Strip</a></p>
+              <p><a href="{entry['frames_rel']}">Individual Frame Grid</a></p>
               <p><a href="{entry['sheet_rel']}">Raw Sheet PNG</a></p>
               <p><a href="{entry['preview_rel']}">Composite Preview GIF</a></p>
               <p class="links">
@@ -272,8 +303,10 @@ def main() -> None:
 
         sheet_out = class_dir / f"{class_id}_sheet_4x.png"
         strip_out = class_dir / f"{class_id}_directions_4x.png"
+        frames_out = class_dir / f"{class_id}_frames_4x.png"
         preview_out = class_dir / f"{class_id}_preview.gif"
         export_sheet(sheet, sheet_out)
+        export_frame_grid(rows, frames_out)
         raw_rows = find_raw_rows(source_dir, class_id)
         if raw_rows:
             export_raw_row_strip(raw_rows, strip_out)
@@ -285,6 +318,7 @@ def main() -> None:
             "class": class_id,
             "sheet_rel": f"{class_id}/{sheet_out.name}",
             "strip_rel": f"{class_id}/{strip_out.name}",
+            "frames_rel": f"{class_id}/{frames_out.name}",
             "preview_rel": f"{class_id}/{preview_out.name}",
         }
 
