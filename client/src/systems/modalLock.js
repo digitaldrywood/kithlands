@@ -16,6 +16,19 @@ function locks(scene) {
   return scene._modalLocks;
 }
 
+export function activeWorldLocks(scene) {
+  return scene?._modalLocks ? [...scene._modalLocks] : [];
+}
+
+export function topWorldLock(scene) {
+  const active = activeWorldLocks(scene);
+  return active.length > 0 ? active[active.length - 1] : null;
+}
+
+export function hasWorldLock(scene, name) {
+  return !!scene?._modalLocks?.has(name);
+}
+
 export function pauseWorldFor(scene, name) {
   const set = locks(scene);
   if (set.has(name)) {

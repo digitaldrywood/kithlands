@@ -1,6 +1,10 @@
 import { getShop, buyItem, learnSpell, autosaveGame } from "../api.js";
 import { getAutosaveEnabled } from "../systems/prefs.js";
-import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
+import {
+  pauseWorldFor,
+  resumeWorldFor,
+  topWorldLock,
+} from "../systems/modalLock.js";
 
 export function groupShopItems(items = []) {
   return {
@@ -37,6 +41,10 @@ export function buildSpellLearnerChoices(item, party = []) {
       label: `${member.name} · Lv.${member.level} ${member.class_name}`,
     };
   });
+}
+
+export function shouldHandleShopEscape(scene) {
+  return topWorldLock(scene) === "shop";
 }
 
 export async function openShop(scene, spawn) {
@@ -391,6 +399,11 @@ export async function openShop(scene, spawn) {
 
   let escHandler = null;
   escHandler = () => {
+    if (scene._skipShopEscapeOnce) {
+      scene._skipShopEscapeOnce = false;
+      return;
+    }
+    if (!shouldHandleShopEscape(scene)) return;
     closeShop();
     scene.input.keyboard.off("keydown-ESC", escHandler);
     escHandler = null;

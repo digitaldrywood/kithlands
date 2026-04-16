@@ -6,6 +6,7 @@ import {
   restAtTown,
 } from "../api.js";
 import { openDialogue } from "./town_dialogue.js";
+import { toggleMenu } from "./world_menu.js";
 import { openShop } from "./world_shop.js";
 import { isTouchDevice, initTouchControls } from "../systems/input.js";
 import { nextWalkFrame, walkSheetKey, walkFrameIndex } from "./walkFrame.js";
@@ -40,7 +41,11 @@ import {
   tileTextureKey,
 } from "./town_layout.js";
 import { walkStepMs } from "../systems/prefs.js";
-import { isWorldInputLocked } from "../systems/modalLock.js";
+import {
+  hasWorldLock,
+  isWorldInputLocked,
+  topWorldLock,
+} from "../systems/modalLock.js";
 
 // Seeded PRNG (mulberry32). Returns a () => float [0,1) closure.
 function mulberry32(seed) {
@@ -388,6 +393,11 @@ function fallbackOverlayForTile(tile) {
   }
 }
 
+function canTogglePartyMenu(scene) {
+  const topLock = topWorldLock(scene);
+  return !topLock || topLock === "shop" || topLock === "party_menu";
+}
+
 export class TownScene extends Phaser.Scene {
   constructor() {
     super("Town");
@@ -532,6 +542,10 @@ export class TownScene extends Phaser.Scene {
     this.wasd = this.input.keyboard.addKeys("W,A,S,D");
     this.lastMoveTime = 0;
     this.moveCooldown = 150;
+    this.menuOpen = false;
+    this.menuGroup = null;
+    this._modalLocks = new Set();
+    this._skipShopEscapeOnce = false;
 
     // Hidden items — deterministic positions filtered by already-collected set
     const collected = new Set(
@@ -553,9 +567,23 @@ export class TownScene extends Phaser.Scene {
     this.interactPrompt = null;
     this.input.keyboard.on("keydown-ENTER", () => this.interact());
     this.input.keyboard.on("keydown-SPACE", () => this.interact());
+    this.input.keyboard.on("keydown-M", () => {
+      if (!canTogglePartyMenu(this)) return;
+      toggleMenu(this);
+    });
 
     // ESC to exit
     this.input.keyboard.on("keydown-ESC", () => {
+      if (this.menuOpen) {
+        this._skipShopEscapeOnce = hasWorldLock(this, "shop");
+        toggleMenu(this);
+        return;
+      }
+      if (this.characterDetailGroup) {
+        this._skipShopEscapeOnce = hasWorldLock(this, "shop");
+        return;
+      }
+      if (isWorldInputLocked(this)) return;
       if (!this.animating) this.exitToWorld();
     });
 
@@ -579,11 +607,16 @@ export class TownScene extends Phaser.Scene {
 
     // Instructions
     this.add
-      .text(400, 590, "Arrow keys: move | ENTER/SPACE: talk | ESC: exit", {
-        fontSize: "10px",
-        color: "#666666",
-        fontFamily: "monospace",
-      })
+      .text(
+        400,
+        590,
+        "Arrow keys: move | ENTER/SPACE: talk | M: menu | ESC: exit",
+        {
+          fontSize: "10px",
+          color: "#666666",
+          fontFamily: "monospace",
+        },
+      )
       .setOrigin(0.5)
       .setDepth(5);
   }

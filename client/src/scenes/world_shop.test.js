@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildSpellLearnerChoices, groupShopItems } from "./world_shop.js";
+import { pauseWorldFor } from "../systems/modalLock.js";
+import {
+  buildSpellLearnerChoices,
+  groupShopItems,
+  shouldHandleShopEscape,
+} from "./world_shop.js";
 
 describe("groupShopItems", () => {
   it("keeps spell rows separate from consumables", () => {
@@ -72,5 +77,17 @@ describe("buildSpellLearnerChoices", () => {
         label: "Tess · Lv.4 Mender",
       },
     ]);
+  });
+});
+
+describe("shouldHandleShopEscape", () => {
+  it("only lets the shop close itself when it is the top modal", () => {
+    const scene = {};
+
+    pauseWorldFor(scene, "shop");
+    expect(shouldHandleShopEscape(scene)).toBe(true);
+
+    pauseWorldFor(scene, "party_menu");
+    expect(shouldHandleShopEscape(scene)).toBe(false);
   });
 });
