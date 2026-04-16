@@ -262,7 +262,8 @@ type Formation struct {
 	Weight            int             `json:"weight"`
 	MinEncounterLevel int             `json:"min_encounter_level"`
 	MaxEncounterLevel int             `json:"max_encounter_level"` // 0 = no upper bound
-	Layout            string          `json:"layout"`              // line, vshape, triangle, boss_minions, scattered, rows
+	TerrainTags       []string        `json:"terrain_tags,omitempty"`
+	Layout            string          `json:"layout"` // line, vshape, triangle, boss_minions, scattered, rows
 	Slots             []FormationSlot `json:"slots"`
 }
 

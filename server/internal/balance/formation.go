@@ -2,6 +2,7 @@ package balance
 
 import (
 	"math/rand/v2"
+	"slices"
 
 	"github.com/digitaldrywood/kithlands/internal/combat"
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
@@ -25,7 +26,7 @@ type EncounterResult struct {
 // GenerateFormationEncounter picks an eligible formation from gd.Formations,
 // resolves each slot to a random count, scales all combatants, and returns
 // the result with layout metadata.
-func GenerateFormationEncounter(gd *gamedata.GameData, encounterLevel int, diff Difficulty, rng *rand.Rand) EncounterResult {
+func GenerateFormationEncounter(gd *gamedata.GameData, encounterLevel int, diff Difficulty, terrainTag string, rng *rand.Rand) EncounterResult {
 	var eligible []gamedata.Formation
 	var totalWeight int
 	for _, f := range gd.Formations {
@@ -36,6 +37,9 @@ func GenerateFormationEncounter(gd *gamedata.GameData, encounterLevel int, diff 
 			continue
 		}
 		if f.MaxEncounterLevel > 0 && encounterLevel > f.MaxEncounterLevel {
+			continue
+		}
+		if !formationMatchesTerrain(f, terrainTag) {
 			continue
 		}
 		eligible = append(eligible, f)
@@ -116,4 +120,11 @@ func GenerateFormationEncounter(gd *gamedata.GameData, encounterLevel int, diff 
 		Layout:      picked.Layout,
 		FormationID: picked.ID,
 	}
+}
+
+func formationMatchesTerrain(f gamedata.Formation, terrainTag string) bool {
+	if terrainTag == "" || len(f.TerrainTags) == 0 {
+		return true
+	}
+	return slices.Contains(f.TerrainTags, "any") || slices.Contains(f.TerrainTags, terrainTag)
 }

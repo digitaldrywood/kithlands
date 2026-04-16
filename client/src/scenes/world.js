@@ -29,6 +29,7 @@ import {
   nextLeaderIndex,
 } from "./walkFrame.js";
 import { isWorldInputLocked } from "../systems/modalLock.js";
+import { encounterChanceForStep } from "./worldEncounter.js";
 
 const ENEMY_SPRITES = {
   Slime: "monster_slime",
@@ -588,22 +589,23 @@ export class WorldScene extends Phaser.Scene {
       hideInteractPrompt(this);
     }
 
-    // Random encounter on grass/dark grass (modified by transport tier)
+    // Random encounter chance varies by terrain tile and transport tier.
     const encounterMult = this.gameState.transport?.encounter_rate_mult ?? 1.0;
-    if ((tile === 0 || tile === 9) && this.stepCount > 6 && encounterMult > 0) {
-      const baseChance = Math.min(10 + this.stepCount * 3, 50);
-      const chance = baseChance * encounterMult;
-      if (Phaser.Math.Between(1, 100) <= chance) {
-        this.stepCount = 0;
-        this.triggerRandomEncounter();
-      }
+    const chance = encounterChanceForStep({
+      tile,
+      stepCount: this.stepCount,
+      transportMult: encounterMult,
+    });
+    if (chance > 0 && Phaser.Math.Between(1, 100) <= chance) {
+      this.stepCount = 0;
+      this.triggerRandomEncounter(tile);
     }
 
     this.updateHUD();
     this.updateMinimap();
   }
 
-  async triggerRandomEncounter() {
+  async triggerRandomEncounter(tile) {
     this.animating = true;
     // Save position before transitioning to battle
     cachedPlayerX = this.playerX;
@@ -621,6 +623,7 @@ export class WorldScene extends Phaser.Scene {
 
       const result = await gameAction(this.gameState.id, {
         type: "encounter",
+        tile_type: tile,
       });
       this.gameState = result;
 

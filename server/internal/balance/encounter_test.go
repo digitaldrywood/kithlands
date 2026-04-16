@@ -18,7 +18,7 @@ func TestGenerateFormationEncounterReturnsNonEmpty(t *testing.T) {
 	diff := balance.GetDifficulty("normal")
 	rng := rand.New(rand.NewPCG(42, 0))
 
-	result := balance.GenerateFormationEncounter(gd, 1, diff, rng)
+	result := balance.GenerateFormationEncounter(gd, 1, diff, "", rng)
 	if len(result.Combatants) == 0 {
 		t.Fatal("expected at least one combatant")
 	}
@@ -41,7 +41,7 @@ func TestFormationEligibilityByLevel(t *testing.T) {
 
 	for seed := uint64(0); seed < 1000; seed++ {
 		rng := rand.New(rand.NewPCG(seed, 0))
-		result := balance.GenerateFormationEncounter(gd, 1, diff, rng)
+		result := balance.GenerateFormationEncounter(gd, 1, diff, "", rng)
 		if result.FormationID == "" {
 			continue // fallback
 		}
@@ -57,7 +57,7 @@ func TestSizeCapEnforced(t *testing.T) {
 
 	for seed := uint64(0); seed < 500; seed++ {
 		rng := rand.New(rand.NewPCG(seed, 0))
-		result := balance.GenerateFormationEncounter(gd, 3, diff, rng)
+		result := balance.GenerateFormationEncounter(gd, 3, diff, "", rng)
 
 		sizeCounts := make(map[string]int)
 		for _, c := range result.Combatants {
@@ -81,7 +81,7 @@ func TestMixedFormationHasMultipleTypes(t *testing.T) {
 	foundMixed := false
 	for seed := uint64(0); seed < 2000; seed++ {
 		rng := rand.New(rand.NewPCG(seed, 0))
-		result := balance.GenerateFormationEncounter(gd, 2, diff, rng)
+		result := balance.GenerateFormationEncounter(gd, 2, diff, "", rng)
 
 		monsterIDs := make(map[string]bool)
 		for _, c := range result.Combatants {
@@ -108,7 +108,7 @@ func TestLayoutPassthrough(t *testing.T) {
 
 	for seed := uint64(0); seed < 200; seed++ {
 		rng := rand.New(rand.NewPCG(seed, 0))
-		result := balance.GenerateFormationEncounter(gd, 3, diff, rng)
+		result := balance.GenerateFormationEncounter(gd, 3, diff, "", rng)
 		if !validLayouts[result.Layout] {
 			t.Fatalf("seed %d: invalid layout %q", seed, result.Layout)
 		}
@@ -122,10 +122,10 @@ func TestDeterminismWithSeed(t *testing.T) {
 	// Same seed must produce identical results
 	for seed := uint64(0); seed < 50; seed++ {
 		rng1 := rand.New(rand.NewPCG(seed, 0))
-		r1 := balance.GenerateFormationEncounter(gd, 2, diff, rng1)
+		r1 := balance.GenerateFormationEncounter(gd, 2, diff, "", rng1)
 
 		rng2 := rand.New(rand.NewPCG(seed, 0))
-		r2 := balance.GenerateFormationEncounter(gd, 2, diff, rng2)
+		r2 := balance.GenerateFormationEncounter(gd, 2, diff, "", rng2)
 
 		if r1.FormationID != r2.FormationID {
 			t.Fatalf("seed %d: formation mismatch: %q vs %q", seed, r1.FormationID, r2.FormationID)
@@ -149,7 +149,7 @@ func TestFallbackWhenNoEligible(t *testing.T) {
 	// Level 99 is beyond all max_encounter_level values (except 0 = unbounded)
 	// but all formations with max=0 have weight=0 (boss only).
 	// This should trigger the fallback.
-	result := balance.GenerateFormationEncounter(gd, 99, diff, rng)
+	result := balance.GenerateFormationEncounter(gd, 99, diff, "", rng)
 	if len(result.Combatants) == 0 {
 		t.Fatal("expected fallback to produce at least one combatant")
 	}
@@ -235,7 +235,7 @@ func TestCombatantFieldsPopulated(t *testing.T) {
 	diff := balance.GetDifficulty("normal")
 	rng := rand.New(rand.NewPCG(42, 0))
 
-	result := balance.GenerateFormationEncounter(gd, 1, diff, rng)
+	result := balance.GenerateFormationEncounter(gd, 1, diff, "", rng)
 	for _, c := range result.Combatants {
 		if c.MonsterID == "" {
 			t.Error("combatant has empty MonsterID")
@@ -249,5 +249,77 @@ func TestCombatantFieldsPopulated(t *testing.T) {
 		if c.CurrentHP != c.MaxHP {
 			t.Errorf("combatant %q CurrentHP != MaxHP: %d != %d", c.Name, c.CurrentHP, c.MaxHP)
 		}
+	}
+}
+
+func TestFormationEligibilityByTerrainTag(t *testing.T) {
+	gd := loadTestData(t)
+	gd.Formations = []gamedata.Formation{
+		{
+			ID:                "path_only",
+			Weight:            1,
+			MinEncounterLevel: 1,
+			MaxEncounterLevel: 0,
+			TerrainTags:       []string{"path"},
+			Layout:            "line",
+			Slots: []gamedata.FormationSlot{
+				{MonsterID: "goblin", Min: 1, Max: 1},
+			},
+		},
+		{
+			ID:                "grass_only",
+			Weight:            1,
+			MinEncounterLevel: 1,
+			MaxEncounterLevel: 0,
+			TerrainTags:       []string{"grass"},
+			Layout:            "line",
+			Slots: []gamedata.FormationSlot{
+				{MonsterID: "slime", Min: 1, Max: 1},
+			},
+		},
+	}
+	diff := balance.GetDifficulty("normal")
+
+	for seed := uint64(0); seed < 50; seed++ {
+		rng := rand.New(rand.NewPCG(seed, 0))
+		result := balance.GenerateFormationEncounter(gd, 1, diff, "path", rng)
+		if result.FormationID != "path_only" {
+			t.Fatalf("seed %d: path terrain picked %q, want path_only", seed, result.FormationID)
+		}
+	}
+}
+
+func TestFormationTerrainFallsBackToAny(t *testing.T) {
+	gd := loadTestData(t)
+	gd.Formations = []gamedata.Formation{
+		{
+			ID:                "forest_only",
+			Weight:            1,
+			MinEncounterLevel: 1,
+			MaxEncounterLevel: 0,
+			TerrainTags:       []string{"forest"},
+			Layout:            "line",
+			Slots: []gamedata.FormationSlot{
+				{MonsterID: "wolf", Min: 1, Max: 1},
+			},
+		},
+		{
+			ID:                "anywhere",
+			Weight:            1,
+			MinEncounterLevel: 1,
+			MaxEncounterLevel: 0,
+			TerrainTags:       []string{"any"},
+			Layout:            "line",
+			Slots: []gamedata.FormationSlot{
+				{MonsterID: "slime", Min: 1, Max: 1},
+			},
+		},
+	}
+	diff := balance.GetDifficulty("normal")
+
+	rng := rand.New(rand.NewPCG(42, 0))
+	result := balance.GenerateFormationEncounter(gd, 1, diff, "sand", rng)
+	if result.FormationID != "anywhere" {
+		t.Fatalf("sand terrain should fall back to any-tagged formation, got %q", result.FormationID)
 	}
 }

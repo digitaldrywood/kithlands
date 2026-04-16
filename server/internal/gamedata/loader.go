@@ -6,14 +6,15 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/digitaldrywood/kithlands/internal/transport"
 )
 
 // TransportData holds transportation tier definitions from transport.json.
 type TransportData struct {
-	Tiers         []transport.Tier       `json:"tiers"`
-	ConquestSkins map[string]SkinEntry   `json:"conquest_skins"`
+	Tiers         []transport.Tier     `json:"tiers"`
+	ConquestSkins map[string]SkinEntry `json:"conquest_skins"`
 }
 
 // SkinEntry is a flavor-specific sprite mapping for a transport tier.
@@ -256,6 +257,11 @@ func (gd *GameData) validate() {
 		}
 		if len(f.Slots) == 0 {
 			panic(fmt.Sprintf("gamedata: formation %q has no slots", f.ID))
+		}
+		for _, tag := range f.TerrainTags {
+			if strings.TrimSpace(tag) == "" {
+				panic(fmt.Sprintf("gamedata: formation %q has empty terrain tag", f.ID))
+			}
 		}
 		for _, s := range f.Slots {
 			if gd.monsterByID[s.MonsterID] == nil {

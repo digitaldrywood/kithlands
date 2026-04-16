@@ -4,6 +4,7 @@
     "weight": 40,
     "min_encounter_level": 1,
     "max_encounter_level": 3,
+    "terrain_tags": ["grass", "dark_grass", "sand"],
     "layout": "line",
     "slots": [
       { "monster_id": "slime", "min": 2, "max": 4 }
@@ -14,6 +15,7 @@
     "weight": 35,
     "min_encounter_level": 1,
     "max_encounter_level": 3,
+    "terrain_tags": ["path", "grass", "sand"],
     "layout": "line",
     "slots": [
       { "monster_id": "goblin", "min": 2, "max": 3 }
@@ -24,6 +26,7 @@
     "weight": 15,
     "min_encounter_level": 2,
     "max_encounter_level": 4,
+    "terrain_tags": ["grass", "dark_grass"],
     "layout": "vshape",
     "slots": [
       { "monster_id": "slime", "min": 2, "max": 3 },
@@ -35,6 +38,7 @@
     "weight": 20,
     "min_encounter_level": 1,
     "max_encounter_level": 3,
+    "terrain_tags": ["path", "grass"],
     "layout": "scattered",
     "slots": [
       { "monster_id": "slime", "min": 1, "max": 2 },
@@ -46,6 +50,7 @@
     "weight": 25,
     "min_encounter_level": 2,
     "max_encounter_level": 5,
+    "terrain_tags": ["dark_grass", "forest", "hill"],
     "layout": "line",
     "slots": [
       { "monster_id": "wolf", "min": 1, "max": 3 }
@@ -56,6 +61,7 @@
     "weight": 20,
     "min_encounter_level": 2,
     "max_encounter_level": 5,
+    "terrain_tags": ["forest", "dark_grass"],
     "layout": "rows",
     "slots": [
       { "monster_id": "wolf", "min": 2, "max": 3 }
@@ -66,6 +72,7 @@
     "weight": 10,
     "min_encounter_level": 2,
     "max_encounter_level": 4,
+    "terrain_tags": ["forest", "hill"],
     "layout": "triangle",
     "slots": [
       { "monster_id": "wolf", "min": 1, "max": 1 },
@@ -77,6 +84,7 @@
     "weight": 20,
     "min_encounter_level": 2,
     "max_encounter_level": 5,
+    "terrain_tags": ["hill", "sand", "dark_grass"],
     "layout": "line",
     "slots": [
       { "monster_id": "skeleton", "min": 1, "max": 2 }
@@ -87,6 +95,7 @@
     "weight": 15,
     "min_encounter_level": 3,
     "max_encounter_level": 5,
+    "terrain_tags": ["forest", "hill", "dark_grass"],
     "layout": "vshape",
     "slots": [
       { "monster_id": "skeleton", "min": 1, "max": 1 },
@@ -98,6 +107,7 @@
     "weight": 0,
     "min_encounter_level": 3,
     "max_encounter_level": 0,
+    "terrain_tags": ["any"],
     "layout": "boss_minions",
     "slots": [
       { "monster_id": "dark_knight", "min": 1, "max": 1 },
