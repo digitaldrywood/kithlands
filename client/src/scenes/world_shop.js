@@ -76,7 +76,7 @@ export async function openShop(scene, spawn) {
 
   let listGroup = [];
 
-  const renderList = (tabItems, tabType) => {
+  const renderList = (tabItems) => {
     listGroup.forEach((o) => o.destroy());
     listGroup = [];
 
@@ -116,33 +116,27 @@ export async function openShop(scene, spawn) {
         buyBtn.on("pointerover", () => buyBtn.setColor("#88ff88"));
         buyBtn.on("pointerout", () => buyBtn.setColor("#44ff44"));
         buyBtn.on("pointerdown", async () => {
-          const result = await buyItem(
-            gs.id,
-            item.id,
-            tabType === "spells"
-              ? "consumable"
-              : tabType === "weapons"
-                ? "weapon"
-                : tabType === "armor"
-                  ? "armor"
-                  : "consumable",
-          );
-          if (!result.error) {
-            scene.gameState = result;
-            gs.gold = result.gold;
-            goldText.setText(`Gold: ${result.gold}`);
-            scene.showMessage(`Bought: ${item.name}!`);
-            scene.updateHUD();
-            scene.time.delayedCall(1000, () => scene.hideMessage());
-            renderList(tabItems, tabType);
-            // Autosave after purchase
-            if (getAutosaveEnabled() && result.id) {
-              autosaveGame(result.id, "purchase")
-                .then(() => {
-                  if (scene.flashSaveIcon) scene.flashSaveIcon();
-                })
-                .catch((e) => console.error("[Shop] autosave failed:", e));
-            }
+          const result = await buyItem(gs.id, item.id, item.type);
+          if (result.error) {
+            scene.showMessage(result.error);
+            scene.time.delayedCall(1500, () => scene.hideMessage());
+            return;
+          }
+
+          scene.gameState = result;
+          gs.gold = result.gold;
+          goldText.setText(`Gold: ${result.gold}`);
+          scene.showMessage(`Bought: ${item.name}!`);
+          scene.updateHUD();
+          scene.time.delayedCall(1000, () => scene.hideMessage());
+          renderList(tabItems);
+          // Autosave after purchase
+          if (getAutosaveEnabled() && result.id) {
+            autosaveGame(result.id, "purchase")
+              .then(() => {
+                if (scene.flashSaveIcon) scene.flashSaveIcon();
+              })
+              .catch((e) => console.error("[Shop] autosave failed:", e));
           }
         });
         listGroup.push(buyBtn);
@@ -182,13 +176,7 @@ export async function openShop(scene, spawn) {
       .setInteractive({ useHandCursor: true });
     tabBtn.on("pointerdown", () => {
       currentTab = tab.key;
-      const type =
-        tab.key === "weapons"
-          ? "weapon"
-          : tab.key === "armor"
-            ? "armor"
-            : "consumable";
-      renderList(tab.items, type);
+      renderList(tab.items);
       // Refresh tab colors (hacky but works for prototype)
     });
     overlay.push(tabBtn);
@@ -224,5 +212,5 @@ export async function openShop(scene, spawn) {
   });
 
   // Show first tab
-  renderList(weapons, "weapon");
+  renderList(weapons);
 }
