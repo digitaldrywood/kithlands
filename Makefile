@@ -53,7 +53,7 @@ test:
 # Currently runs go tests with the `integration` build tag; add e2e suites
 # under that tag. Runs a teardown even when the tests fail.
 test-e2e: setup-db
-	@cd server && DATABASE_URL='$(DATABASE_URL)' go test -tags=integration ./...; \
+	@(cd server && DATABASE_URL='$(DATABASE_URL)' go test -tags=integration ./...); \
 	status=$$?; \
 	$(MAKE) teardown-db; \
 	exit $$status
