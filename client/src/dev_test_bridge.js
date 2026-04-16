@@ -2,6 +2,8 @@ import {
   buyItem,
   debugForceEncounter,
   debugGiveItem,
+  debugSetGold,
+  debugSetPartyLevels,
   debugSetPartyVitals,
   gameAction,
   newGame,
@@ -857,6 +859,28 @@ export function installDevTestBridge(game) {
       const gameId = scene?.gameState?.id;
       if (!gameId) throw new Error("Active scene has no game id");
       const result = await debugGiveItem(gameId, itemId, qty);
+      if (!result?.error) {
+        applySceneGameState(game, scene, result);
+      }
+      return clone(result);
+    },
+
+    async setGold(gold, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      const gameId = scene?.gameState?.id;
+      if (!gameId) throw new Error("Active scene has no game id");
+      const result = await debugSetGold(gameId, gold);
+      if (!result?.error) {
+        applySceneGameState(game, scene, result);
+      }
+      return clone(result);
+    },
+
+    async setPartyLevels(updates, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      const gameId = scene?.gameState?.id;
+      if (!gameId) throw new Error("Active scene has no game id");
+      const result = await debugSetPartyLevels(gameId, updates);
       if (!result?.error) {
         applySceneGameState(game, scene, result);
       }

@@ -29,6 +29,11 @@ type DebugPartyVitalsUpdate struct {
 	Status *string
 }
 
+type DebugPartyLevelUpdate struct {
+	Slot  int `json:"slot"`
+	Level int `json:"level"`
+}
+
 // DebugForceEncounterStart sets the encounter start marker and resets the
 // round counter so the next client poll sees the requested opening.
 // Only "ambush", "preemptive", and "normal" are accepted.
@@ -122,6 +127,18 @@ func (g *Game) DebugGiveItem(itemID string, qty int) error {
 	return nil
 }
 
+// DebugSetGold overwrites the party's gold. Debug-only: used by visual proof
+// flows that need deterministic shop purchasing without walking a money grind.
+func (g *Game) DebugSetGold(gold int) error {
+	if gold < 0 {
+		return errors.New("gold must be >= 0")
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.inv.Gold = gold
+	return nil
+}
+
 // DebugHealParty restores every living party member to full HP and MP and
 // clears non-death statuses. Members at 0 HP remain dead — use a Phoenix
 // Down via DebugGiveItem + a combat action to revive them.
@@ -171,6 +188,28 @@ func (g *Game) DebugSetPartyVitals(updates []DebugPartyVitalsUpdate) error {
 		if update.Status != nil {
 			c.Status = character.Status(*update.Status)
 		}
+	}
+	return nil
+}
+
+// DebugSetPartyLevels applies direct level overrides for deterministic shop
+// and progression proof setup. It intentionally changes only Level because the
+// issue-scoped tests care about shop gating, not a full respec of combat stats.
+func (g *Game) DebugSetPartyLevels(updates []DebugPartyLevelUpdate) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	for _, update := range updates {
+		if update.Slot < 0 || update.Slot >= len(g.party) {
+			return fmt.Errorf("invalid slot %d", update.Slot)
+		}
+		if update.Level < 1 {
+			return fmt.Errorf("invalid level %d", update.Level)
+		}
+		c := g.party[update.Slot]
+		if c == nil {
+			return fmt.Errorf("invalid slot %d", update.Slot)
+		}
+		c.Level = update.Level
 	}
 	return nil
 }

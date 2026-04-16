@@ -102,6 +102,22 @@ func debugTestServer(t *testing.T) (*api.Server, *httptest.Server) {
 		}
 		writeJSON(w, game.State())
 	})
+	mux.HandleFunc("POST /api/debug/game/{id}/set-gold", func(w http.ResponseWriter, r *http.Request) {
+		game := getGame(r)
+		if game == nil {
+			writeErr(w, "not found", http.StatusNotFound)
+			return
+		}
+		var req struct {
+			Gold int `json:"gold"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		if err := game.DebugSetGold(req.Gold); err != nil {
+			writeErr(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		writeJSON(w, game.State())
+	})
 	mux.HandleFunc("POST /api/debug/game/{id}/heal-party", func(w http.ResponseWriter, r *http.Request) {
 		game := getGame(r)
 		if game == nil {
@@ -122,6 +138,22 @@ func debugTestServer(t *testing.T) (*api.Server, *httptest.Server) {
 		}
 		_ = json.NewDecoder(r.Body).Decode(&req)
 		if err := game.DebugSetPartyVitals(req.Updates); err != nil {
+			writeErr(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		writeJSON(w, game.State())
+	})
+	mux.HandleFunc("POST /api/debug/game/{id}/set-party-levels", func(w http.ResponseWriter, r *http.Request) {
+		game := getGame(r)
+		if game == nil {
+			writeErr(w, "not found", http.StatusNotFound)
+			return
+		}
+		var req struct {
+			Updates []api.DebugPartyLevelUpdate `json:"updates"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		if err := game.DebugSetPartyLevels(req.Updates); err != nil {
 			writeErr(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -258,6 +290,60 @@ func TestDebug_GiveItem_AddsConsumable(t *testing.T) {
 	}
 	if !api.HasPhoenixDownForTest(game) {
 		t.Errorf("phoenix_down not present in inventory after give-item")
+	}
+}
+
+func TestDebug_SetGold_OverridesPartyGold(t *testing.T) {
+	_, ts := debugTestServer(t)
+	gameID := newGameViaHTTP(t, ts)
+
+	code, body := postDebugJSON(t, ts,
+		"/api/debug/game/"+gameID+"/set-gold",
+		`{"gold":450}`)
+	if code != http.StatusOK {
+		t.Fatalf("set-gold: got %d (%s)", code, body)
+	}
+
+	var state map[string]any
+	_ = json.Unmarshal(body, &state)
+	if got := int(state["gold"].(float64)); got != 450 {
+		t.Fatalf("gold after set-gold = %d, want 450", got)
+	}
+
+	code, _ = postDebugJSON(t, ts,
+		"/api/debug/game/"+gameID+"/set-gold",
+		`{"gold":-1}`)
+	if code != http.StatusBadRequest {
+		t.Fatalf("negative gold should 400, got %d", code)
+	}
+}
+
+func TestDebug_SetPartyLevels_OverridesDisplayedLevels(t *testing.T) {
+	_, ts := debugTestServer(t)
+	gameID := newGameViaHTTP(t, ts)
+
+	code, body := postDebugJSON(t, ts,
+		"/api/debug/game/"+gameID+"/set-party-levels",
+		`{"updates":[{"slot":0,"level":4},{"slot":1,"level":7}]}`)
+	if code != http.StatusOK {
+		t.Fatalf("set-party-levels: got %d (%s)", code, body)
+	}
+
+	var state map[string]any
+	_ = json.Unmarshal(body, &state)
+	party, _ := state["party"].([]any)
+	if got := int(party[0].(map[string]any)["level"].(float64)); got != 4 {
+		t.Fatalf("party[0] level = %d, want 4", got)
+	}
+	if got := int(party[1].(map[string]any)["level"].(float64)); got != 7 {
+		t.Fatalf("party[1] level = %d, want 7", got)
+	}
+
+	code, _ = postDebugJSON(t, ts,
+		"/api/debug/game/"+gameID+"/set-party-levels",
+		`{"updates":[{"slot":0,"level":0}]}`)
+	if code != http.StatusBadRequest {
+		t.Fatalf("invalid level should 400, got %d", code)
 	}
 }
 

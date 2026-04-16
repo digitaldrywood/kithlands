@@ -67,12 +67,24 @@ export async function debugGiveItem(gameId, itemId, qty) {
   });
 }
 
+export async function debugSetGold(gameId, gold) {
+  return apiCall("POST", `/debug/game/${gameId}/set-gold`, {
+    gold,
+  });
+}
+
 export async function debugHealParty(gameId) {
   return apiCall("POST", `/debug/game/${gameId}/heal-party`, {});
 }
 
 export async function debugSetPartyVitals(gameId, updates) {
   return apiCall("POST", `/debug/game/${gameId}/set-party-vitals`, {
+    updates,
+  });
+}
+
+export async function debugSetPartyLevels(gameId, updates) {
+  return apiCall("POST", `/debug/game/${gameId}/set-party-levels`, {
     updates,
   });
 }
