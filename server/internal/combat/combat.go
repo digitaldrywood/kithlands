@@ -66,10 +66,10 @@ type Action struct {
 type ActionKind string
 
 const (
-	ActionAttack  ActionKind = "attack"
-	ActionDefend  ActionKind = "defend"
-	ActionFlee    ActionKind = "flee"
-	ActionAbility ActionKind = "ability"
+	ActionAttack     ActionKind = "attack"
+	ActionDefend     ActionKind = "defend"
+	ActionFlee       ActionKind = "flee"
+	ActionAbility    ActionKind = "ability"
 	ActionCounter    ActionKind = "counter"     // reactive; emitted by ResolveTurn, not requested
 	ActionPoisonTick ActionKind = "poison_tick" // emitted for poison damage at start of round
 	ActionConfusion  ActionKind = "confusion"   // emitted when confused actor attacks randomly
@@ -393,6 +393,17 @@ func EffectiveArmorAbsorb(c *Combatant) int {
 	return armor + bonus
 }
 
+func rollPhysicalDamage(baseDamage, mitigation, minDamage int, rng *rand.Rand) int {
+	downSwing := max(1, baseDamage/4)
+	upSwing := max(1, baseDamage/3)
+	variance := rng.IntN(downSwing+upSwing+1) - downSwing
+	dmg := baseDamage - mitigation + variance
+	if dmg < minDamage {
+		return minDamage
+	}
+	return dmg
+}
+
 // resolveAttack implements the damage formula from Section 6.2.
 func resolveAttack(attacker, defender *Combatant, stats *gamedata.CombatConfig, rng *rand.Rand) ResolvedAction {
 	attackerHitPct := EffectiveHitPct(attacker)
@@ -420,10 +431,7 @@ func resolveAttack(attacker, defender *Combatant, stats *gamedata.CombatConfig, 
 			baseDamage = baseDamage * mult / 100
 		}
 		mitigation := EffectiveArmorAbsorb(defender)
-		dmg := baseDamage - mitigation + rng.IntN(max(1, baseDamage/2)+1)
-		if dmg < stats.MinDamagePerHit {
-			dmg = stats.MinDamagePerHit
-		}
+		dmg := rollPhysicalDamage(baseDamage, mitigation, stats.MinDamagePerHit, rng)
 
 		// Crit check per Section 6.2
 		isCrit := false
@@ -471,10 +479,7 @@ func resolveBackstab(attacker, defender *Combatant, stats *gamedata.CombatConfig
 	baseDamage *= 3
 
 	mitigation := EffectiveArmorAbsorb(defender)
-	dmg := baseDamage - mitigation + rng.IntN(max(1, baseDamage/2)+1)
-	if dmg < stats.MinDamagePerHit {
-		dmg = stats.MinDamagePerHit
-	}
+	dmg := rollPhysicalDamage(baseDamage, mitigation, stats.MinDamagePerHit, rng)
 
 	isCrit := false
 	critChance := attacker.LCK / 4
