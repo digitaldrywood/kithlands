@@ -51,16 +51,39 @@ def extract_row(sheet: Image.Image, row_idx: int) -> list[Image.Image]:
     return frames
 
 
-def center_frame(frame: Image.Image) -> Image.Image:
-    bbox = frame.getbbox()
-    if bbox is None:
-        return Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
-    cropped = frame.crop(bbox)
-    canvas = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
-    x = (CELL - cropped.width) // 2
-    y = (CELL - cropped.height) // 2
-    canvas.paste(cropped, (x, y), cropped)
-    return canvas
+def normalize_row_frames(frames: list[Image.Image]) -> list[Image.Image]:
+    prepared: list[tuple[Image.Image | None, tuple[int, int, int, int] | None]] = []
+    centers = []
+    bottoms = []
+
+    for frame in frames:
+        bbox = frame.getbbox()
+        if bbox is None:
+            prepared.append((None, None))
+            continue
+        cropped = frame.crop(bbox)
+        prepared.append((cropped, bbox))
+        x0, y0, x1, y1 = bbox
+        centers.append((x0 + x1) / 2)
+        bottoms.append(y1)
+
+    if not centers:
+        return [Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0)) for _ in frames]
+
+    target_center = round(sum(centers) / len(centers))
+    target_bottom = max(bottoms)
+
+    normalized = []
+    for cropped, bbox in prepared:
+        canvas = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
+        if cropped is not None and bbox is not None:
+            x = round(target_center - cropped.width / 2)
+            y = target_bottom - cropped.height
+            x = max(0, min(CELL - cropped.width, x))
+            y = max(0, min(CELL - cropped.height, y))
+            canvas.paste(cropped, (x, y), cropped)
+        normalized.append(canvas)
+    return normalized
 
 
 def extract_raw_row_frames(row_img: Image.Image) -> list[Image.Image]:
@@ -75,8 +98,8 @@ def extract_raw_row_frames(row_img: Image.Image) -> list[Image.Image]:
         x0 = idx * seg_w
         x1 = content.width if idx == 3 else min(content.width, (idx + 1) * seg_w)
         frame = content.crop((x0, 0, x1, content.height))
-        frames.append(center_frame(frame))
-    return frames
+        frames.append(frame)
+    return normalize_row_frames(frames)
 
 
 def panel_frame(frame: Image.Image, label: str) -> Image.Image:
