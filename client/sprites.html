@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kithlands Sprite Debugger</title>
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero">
+        <h1>KITHLANDS SPRITE DEBUGGER</h1>
+        <p>
+          Developer surface for the active Vite client. Use this page to verify
+          fallback directionals, inspect each walk-sheet cell individually, and
+          catch bad crops or row ordering before a sprite regression ships.
+        </p>
+      </header>
+
+      <div class="toolbar">
+        <section class="panel">
+          <h2>Background</h2>
+          <p>
+            Swap preview backgrounds to expose silhouette edges and transparent
+            pixel mistakes.
+          </p>
+          <div class="controls">
+            <button class="btn active" data-bg="checker" type="button">
+              Checker
+            </button>
+            <button class="btn" data-bg="dark" type="button">Dark</button>
+            <button class="btn" data-bg="light" type="button">Light</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>How To Use</h2>
+          <ul>
+            <li>
+              <strong>Fallbacks:</strong> confirm safe directional movement art.
+            </li>
+            <li>
+              <strong>Walk sheets:</strong> verify atlas bounds and per-cell
+              crops.
+            </li>
+            <li>
+              <strong>Other assets:</strong> scan portraits, monsters, NPCs, and
+              UI icons.
+            </li>
+          </ul>
+        </section>
+
+        <section class="panel">
+          <h2>Expected Geometry</h2>
+          <div class="meta-list" id="expected-geometry"></div>
+        </section>
+      </div>
+
+      <div class="status-grid">
+        <section class="panel">
+          <h2>Live URL</h2>
+          <p id="live-url">Loading current route...</p>
+        </section>
+        <section class="panel">
+          <h2>Runtime BootScene</h2>
+          <p id="runtime-status">Checking runtime walk-sheet list...</p>
+        </section>
+        <section class="panel">
+          <h2>Why This Route Exists</h2>
+          <div id="route-notes"></div>
+        </section>
+      </div>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>Fallback Directional Sprites</h2>
+          <p>
+            These remain the safe movement art even when a class-specific walk
+            sheet has not been cleared for use.
+          </p>
+        </div>
+        <div class="notice info">
+          BootScene keeps the directional fallback images loaded separately from
+          the generated class walk sheets.
+        </div>
+        <div class="asset-grid" id="fallback-grid"></div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>Generated Class Walk Sheets</h2>
+          <p>
+            Each card overlays visible cell bounds on the full atlas and exposes
+            all 16 crops as separate inspectable cells.
+          </p>
+        </div>
+        <div class="legend">
+          <span>`r0-c0` means row 0, column 0 within the 4x4 sheet.</span>
+          <span>Click a cell to zoom it and verify the crop coordinates.</span>
+          <span
+            >Row directions follow the runtime order: down, up, left,
+            right.</span
+          >
+        </div>
+        <div class="notice warn">
+          This route is intended for visual debugging, not browsing. If a sheet
+          is missing, the page should make that failure obvious immediately.
+        </div>
+        <div class="walk-grid" id="walk-grid"></div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>Other Sprite Assets</h2>
+          <p id="other-assets-copy"></p>
+        </div>
+        <div class="asset-grid" id="portrait-grid"></div>
+        <div class="asset-grid" id="monster-grid"></div>
+        <div class="asset-grid" id="npc-grid"></div>
+        <div class="asset-grid" id="ui-grid"></div>
+      </section>
+    </div>
+
+    <script type="module" src="/src/sprite-debugger/main.js"></script>
+  </body>
+</html>
