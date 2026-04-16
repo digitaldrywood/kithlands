@@ -56,6 +56,22 @@ export function getPartyHistory() {
   return getPref("party_history", []);
 }
 
+function partySignature(party) {
+  if (!Array.isArray(party)) return "";
+  return party
+    .map((member) => {
+      if (!member || typeof member !== "object") return "";
+      const name = String(member.name || "")
+        .trim()
+        .toLowerCase();
+      const classId = String(member.class_id || "")
+        .trim()
+        .toLowerCase();
+      return `${name}:${classId}`;
+    })
+    .join("|");
+}
+
 export function addPartyToHistory(party) {
   const history = getPartyHistory();
   // Add if not duplicate
