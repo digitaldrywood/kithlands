@@ -76,6 +76,20 @@ describe("computeEquipDelta", () => {
     expect(computeEquipDelta(item, eq, "armor")).toBe(6);
   });
 
+  it("can compare weapon secondary stats", () => {
+    const item = { hit_pct: 5, crit_pct: 3 };
+    const eq = { weapon_hit_pct: 1, weapon_crit_pct: 0 };
+    expect(computeEquipDelta(item, eq, "weapon", "hit_pct")).toBe(4);
+    expect(computeEquipDelta(item, eq, "weapon", "crit_pct")).toBe(3);
+  });
+
+  it("can compare armor secondary stats", () => {
+    const item = { magic_defense: 7, evade_penalty: -3 };
+    const eq = { armor_magic_defense: 2, armor_evade_penalty: 0 };
+    expect(computeEquipDelta(item, eq, "armor", "magic_defense")).toBe(5);
+    expect(computeEquipDelta(item, eq, "armor", "evade_penalty")).toBe(-3);
+  });
+
   it("treats missing equipped stat as 0", () => {
     expect(computeEquipDelta({ power: 5 }, {}, "weapon")).toBe(5);
     expect(computeEquipDelta({ absorb: 3 }, {}, "armor")).toBe(3);
@@ -116,5 +130,11 @@ describe("formatDeltaLabel", () => {
   it("uses Abs for armor and Pow for weapon", () => {
     expect(formatDeltaLabel(1, "weapon").text.startsWith("Pow")).toBe(true);
     expect(formatDeltaLabel(1, "armor").text.startsWith("Abs")).toBe(true);
+  });
+
+  it("uses stat-specific labels for secondary compare lines", () => {
+    expect(formatDeltaLabel(5, "weapon", "hit_pct").text).toBe("Hit% +5");
+    expect(formatDeltaLabel(-2, "armor", "magic_defense").text).toBe("MDef -2");
+    expect(formatDeltaLabel(0, "armor", "evade_penalty").text).toBe("Eva 0");
   });
 });

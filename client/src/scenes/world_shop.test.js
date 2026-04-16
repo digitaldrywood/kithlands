@@ -10,12 +10,16 @@ describe("groupShopItems", () => {
   it("keeps spell rows separate from consumables", () => {
     const grouped = groupShopItems([
       { id: "potion", type: "consumable" },
+      { id: "airship_pass", type: "key_item" },
       { id: "heal", type: "spell" },
       { id: "short_bow", type: "weapon" },
       { id: "cloth_robe", type: "armor" },
     ]);
 
-    expect(grouped.consumables.map((item) => item.id)).toEqual(["potion"]);
+    expect(grouped.consumables.map((item) => item.id)).toEqual([
+      "potion",
+      "airship_pass",
+    ]);
     expect(grouped.spells.map((item) => item.id)).toEqual(["heal"]);
   });
 });

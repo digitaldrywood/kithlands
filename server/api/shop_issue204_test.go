@@ -111,3 +111,42 @@ func TestGetShopItemsIncludesSpellLearnerReasons(t *testing.T) {
 		}
 	}
 }
+
+func TestGetShopItemsIncludesEquipmentCompareStats(t *testing.T) {
+	game := newShopSpellGame(t, []PartyMemberReq{
+		{Name: "Ayla", ClassID: "warrior"},
+		{Name: "Mira", ClassID: "mender"},
+	})
+
+	items := game.GetShopItems("shop")
+	var weapon *ShopItemState
+	var armor *ShopItemState
+	for i := range items {
+		switch items[i].ID {
+		case "hand_axe":
+			weapon = &items[i]
+		case "cloth_robe":
+			armor = &items[i]
+		}
+	}
+
+	if weapon == nil {
+		t.Fatal("shop missing hand_axe")
+	}
+	if weapon.Power != 8 || weapon.HitPct != -5 || weapon.CritPct != 0 || weapon.Element != "none" {
+		t.Fatalf("weapon compare stats = %+v", *weapon)
+	}
+	if len(weapon.ClassIDs) == 0 || weapon.ClassIDs[0] != "warrior" {
+		t.Fatalf("weapon class_ids = %v, want warrior-first list", weapon.ClassIDs)
+	}
+
+	if armor == nil {
+		t.Fatal("shop missing cloth_robe")
+	}
+	if armor.Absorb != 2 || armor.MagicDefense != 2 || armor.EvadePenalty != 0 {
+		t.Fatalf("armor compare stats = %+v", *armor)
+	}
+	if armor.ClassIDs == nil || len(armor.ClassIDs) == 0 {
+		t.Fatalf("armor class_ids missing: %+v", *armor)
+	}
+}
