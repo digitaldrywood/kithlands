@@ -34,7 +34,7 @@ func TestGenerateFormationEncounterEmptyWhenSlotsUnknown(t *testing.T) {
 	diff := balance.GetDifficulty("normal")
 	rng := rand.New(rand.NewPCG(42, 0))
 
-	result := balance.GenerateFormationEncounter(gd, 1, diff, rng)
+	result := balance.GenerateFormationEncounter(gd, 1, diff, "", rng)
 	if len(result.Combatants) != 0 {
 		t.Fatalf("expected 0 combatants when all slots reference unknown monsters, got %d", len(result.Combatants))
 	}

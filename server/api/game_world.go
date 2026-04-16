@@ -48,41 +48,13 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 		// the party's real pre-fight state.
 		g.snapshotVictoryXPProgress()
 
-		// Random encounter triggered by client (walking on grass)
-		partyLevels := make([]int, len(g.party))
-		for i, c := range g.party {
-			partyLevels[i] = c.Level
+		terrainTag, err := encounterTerrainTag(req.TileType)
+		if err != nil {
+			return nil, err
 		}
-		encLvl := balance.EncounterLevel(partyLevels, "normal", 0, g.currentQ)
-		result := balance.GenerateFormationEncounter(g.gd, encLvl, g.diff, g.rng)
-		if len(result.Combatants) == 0 {
-			// Formation generation can legitimately return zero combatants
-			// (unknown monster IDs in data, or every slot clipped to zero by
-			// SizeMaxPerEncounter). Stay in world phase rather than shipping
-			// phase="combat" with no enemies — otherwise the client plays the
-			// encounter flash and the Battle scene never starts (issue #114).
-			state := g.stateUnlocked()
-			return &state, nil
-		}
-		g.enemies = result.Combatants
-		g.formation = result.Layout
-		g.phase = "combat"
-		g.spellBuffs = nil
-		g.rollEncounterStartForNewFight()
-
-		// Track discovered monsters
-		if g.discovered == nil {
-			g.discovered = make(map[string]bool)
-		}
-		for _, e := range g.enemies {
-			if e.MonsterID != "" {
-				g.discovered[e.MonsterID] = true
-			}
-		}
-
-		g.logCombat("Enemies appear!", CombatActionEntry{Kind: "info"})
-		for _, e := range g.enemies {
-			g.logCombat(fmt.Sprintf("  %s (HP: %d)", e.Name, e.MaxHP), CombatActionEntry{Kind: "info"})
+		state, err := g.startRandomEncounter(terrainTag)
+		if err != nil || state != nil {
+			return state, err
 		}
 
 	case "quest_advance":
@@ -181,26 +153,63 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 		for i, c := range g.party {
 			partyLevels[i] = c.Level
 		}
-		encLvl := balance.EncounterLevel(partyLevels, "normal", 0, g.currentQ)
-		result := balance.GenerateFormationEncounter(g.gd, encLvl, g.diff, g.rng)
-		if len(result.Combatants) == 0 {
-			// See note on the "encounter" branch above (issue #114).
-			state := g.stateUnlocked()
-			return &state, nil
-		}
-		g.enemies = result.Combatants
-		g.formation = result.Layout
-		g.phase = "combat"
-		g.spellBuffs = nil
-		g.rollEncounterStartForNewFight()
-		g.logCombat("Enemies appear!", CombatActionEntry{Kind: "info"})
-		for _, e := range g.enemies {
-			g.logCombat(fmt.Sprintf("  %s (HP: %d)", e.Name, e.MaxHP), CombatActionEntry{Kind: "info"})
+		state, err := g.startRandomEncounter("")
+		if err != nil || state != nil {
+			return state, err
 		}
 	}
 
 	state := g.stateUnlocked()
 	return &state, nil
+}
+
+func encounterTerrainTag(tileType *int) (string, error) {
+	if tileType == nil {
+		return "", nil
+	}
+	tag, ok := locality.EncounterTerrainTag(locality.TileType(*tileType))
+	if !ok {
+		return "", fmt.Errorf("invalid tile_type: %d", *tileType)
+	}
+	return tag, nil
+}
+
+func (g *Game) startRandomEncounter(terrainTag string) (*GameState, error) {
+	partyLevels := make([]int, len(g.party))
+	for i, c := range g.party {
+		partyLevels[i] = c.Level
+	}
+	encLvl := balance.EncounterLevel(partyLevels, "normal", 0, g.currentQ)
+	result := balance.GenerateFormationEncounter(g.gd, encLvl, g.diff, terrainTag, g.rng)
+	if len(result.Combatants) == 0 {
+		// Formation generation can legitimately return zero combatants
+		// (unknown monster IDs in data, or every slot clipped to zero by
+		// SizeMaxPerEncounter). Stay in world phase rather than shipping
+		// phase="combat" with no enemies — otherwise the client plays the
+		// encounter flash and the Battle scene never starts (issue #114).
+		state := g.stateUnlocked()
+		return &state, nil
+	}
+	g.enemies = result.Combatants
+	g.formation = result.Layout
+	g.phase = "combat"
+	g.spellBuffs = nil
+	g.rollEncounterStartForNewFight()
+
+	if g.discovered == nil {
+		g.discovered = make(map[string]bool)
+	}
+	for _, e := range g.enemies {
+		if e.MonsterID != "" {
+			g.discovered[e.MonsterID] = true
+		}
+	}
+
+	g.logCombat("Enemies appear!", CombatActionEntry{Kind: "info"})
+	for _, e := range g.enemies {
+		g.logCombat(fmt.Sprintf("  %s (HP: %d)", e.Name, e.MaxHP), CombatActionEntry{Kind: "info"})
+	}
+	return nil, nil
 }
 
 // advancePromotionQuest runs the FF1/DQ3-style three-stage machine for the

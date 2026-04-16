@@ -11,6 +11,7 @@ import {
   WALK_SHEET_CLASS_IDS,
 } from "./scenes/walkFrame.js";
 import { setLeaderIndex } from "./scenes/world.js";
+import { encounterChanceForStep } from "./scenes/worldEncounter.js";
 
 const DIR_DELTAS = {
   up: [0, -1],
@@ -365,6 +366,18 @@ function findDirectionAuditAnchor(scene) {
   return null;
 }
 
+function findWorldTile(scene, tileID) {
+  const tiles = scene?.tileData || [];
+  for (let y = 0; y < tiles.length; y++) {
+    for (let x = 0; x < tiles[y].length; x++) {
+      if (tiles[y][x] === tileID) {
+        return { x, y, tile: tileID };
+      }
+    }
+  }
+  return null;
+}
+
 function findCharacterDetailButton(scene, label) {
   const group = scene?.characterDetailGroup || [];
   for (const entry of group) {
@@ -499,6 +512,34 @@ export function installDevTestBridge(game) {
       return {
         currentMusicKey: getCurrentMusicKey(),
         playingKeys: getPlayingSoundKeys(scene),
+      };
+    },
+
+    worldEncounterAudit(stepCount = 7, sceneKey = "World") {
+      const scene = getScene(game, sceneKey);
+      if (!scene?.tileData) throw new Error("World scene is not ready");
+
+      const transportMult =
+        scene.gameState?.transport?.encounter_rate_mult ?? 1;
+      const path = findWorldTile(scene, 1);
+      const grass = findWorldTile(scene, 0);
+      const darkGrass = findWorldTile(scene, 9);
+
+      return {
+        transportMult,
+        stepCount,
+        path,
+        grass,
+        darkGrass,
+        chances: {
+          path: encounterChanceForStep({ tile: 1, stepCount, transportMult }),
+          grass: encounterChanceForStep({ tile: 0, stepCount, transportMult }),
+          darkGrass: encounterChanceForStep({
+            tile: 9,
+            stepCount,
+            transportMult,
+          }),
+        },
       };
     },
 

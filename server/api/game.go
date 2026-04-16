@@ -92,6 +92,7 @@ type GameActionRequest struct {
 	ItemID   string            `json:"item_id,omitempty"`
 	SlotIdx  int               `json:"slot_idx,omitempty"`
 	NodeID   string            `json:"node_id,omitempty"` // node ID for quest_advance / sequence-break checks
+	TileType *int              `json:"tile_type,omitempty"`
 	Actions  []MemberActionReq `json:"actions,omitempty"` // per-member actions for combat
 }
 

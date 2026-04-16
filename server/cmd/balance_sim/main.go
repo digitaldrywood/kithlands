@@ -44,7 +44,7 @@ func main() {
 
 			// Generate encounter using formation system
 			encLvl := balance.EncounterLevel([]int{level, level, level, level}, *diffFlag, 0, 0)
-			result := balance.GenerateFormationEncounter(gd, encLvl, diff, rng)
+			result := balance.GenerateFormationEncounter(gd, encLvl, diff, "", rng)
 			enemies := result.Combatants
 
 			// Run combat
