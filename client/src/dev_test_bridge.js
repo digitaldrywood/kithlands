@@ -171,7 +171,10 @@ function sceneObjectsReady(scene, sceneKey, leaderClass = null) {
   if (!scene.player.texture?.key) return false;
   if (!scene.player.frame) return false;
   if (leaderClass && scene.leaderClass !== leaderClass) return false;
-  if (scene.hasWalkSheet && !scene.textures.exists(walkSheetKey(scene.leaderClass))) {
+  if (
+    scene.hasWalkSheet &&
+    !scene.textures.exists(walkSheetKey(scene.leaderClass))
+  ) {
     return false;
   }
   if (sceneKey === "World") {
@@ -281,7 +284,10 @@ function exportPlayerFrame(scene) {
   const player = scene?.player;
   const frame = player?.frame;
   if (!player || !frame) throw new Error("Scene has no player frame");
-  const textureFrame = scene?.textures?.getFrame(player.texture.key, frame.name);
+  const textureFrame = scene?.textures?.getFrame(
+    player.texture.key,
+    frame.name,
+  );
   const sourceImage = frame?.source?.image || textureFrame?.source?.image;
   if (!sourceImage) throw new Error("Player frame source image unavailable");
 
