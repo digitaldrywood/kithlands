@@ -1,28 +1,44 @@
 #!/usr/bin/env python3
-"""Build a coherent walk prototype from stable master frames.
+"""Build aligned walk sheets from neutral master frames.
 
-Uses one chosen master frame per direction, then synthesizes the 4-frame walk
-cycle deterministically by shifting segmented body parts. This avoids the
-frame-to-frame identity drift from AI-generated independent frames.
+Reads neutral masters from client/tmp/walk-masters/{class}_{dir}.png, then
+builds 4-frame walk sheets deterministically. Right-facing masters are mirrored
+from left-facing masters to keep the style coherent and reduce generation cost.
 """
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 
 from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-PROTO_DIR = REPO_ROOT / "client" / "tmp" / "walk-prototypes"
+MASTER_DIR = REPO_ROOT / "client" / "tmp" / "walk-masters"
+OUT_DIR = REPO_ROOT / "client" / "tmp" / "walk-prototypes"
 CELL = 128
 SHEET = CELL * 4
+CLASS_IDS = [
+    "warrior",
+    "brawler",
+    "rogue",
+    "mender",
+    "cinder",
+    "wayfarer",
+    "knight",
+    "champion",
+    "shadow",
+    "sage",
+    "pyromancer",
+    "wanderer",
+]
 
-MASTERS = {
-    "down": PROTO_DIR / "warrior_proto_c_down_f2.png",
-    "up": PROTO_DIR / "warrior_proto_c_up_f0.png",
-    "left": PROTO_DIR / "warrior_proto_c_left_f0.png",
-    "right": PROTO_DIR / "warrior_proto_c_right_f2.png",
-}
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--class-id", action="append", choices=CLASS_IDS, help="Limit build to one or more classes")
+    parser.add_argument("--suffix", default="proto_d", help="Output suffix before _walk.png")
+    return parser.parse_args()
 
 
 def alpha_bbox(img: Image.Image) -> tuple[int, int, int, int]:
@@ -80,7 +96,6 @@ def split_front_back(base: Image.Image) -> dict[str, tuple[int, int, int, int]]:
     waist_y = y0 + int(h * 0.72)
     arm_inner = max(x0 + 1, x0 + int(w * 0.28))
     arm_outer = min(x1 - 1, x1 - int(w * 0.28))
-
     return {
         "head": (x0, y0, x1, head_y),
         "torso": (arm_inner, head_y, arm_outer, waist_y),
@@ -100,14 +115,12 @@ def split_side(base: Image.Image, facing: str) -> dict[str, tuple[int, int, int,
     chest_y = y0 + int(h * 0.54)
     waist_y = y0 + int(h * 0.73)
     mid_x = x0 + w // 2
-
     if facing == "left":
         front_x0, front_x1 = x0, mid_x
         back_x0, back_x1 = mid_x, x1
     else:
         front_x0, front_x1 = mid_x, x1
         back_x0, back_x1 = x0, mid_x
-
     return {
         "head": (x0, y0, x1, head_y),
         "cape": (back_x0, chest_y - 6, back_x1, y1),
@@ -248,7 +261,6 @@ def pose_frame(base: Image.Image, direction: str, frame_idx: int) -> Image.Image
         segments = split_side(base, direction)
         offsets = SIDE_OFFSETS[direction][frame_idx]
         draw_order = ["cape", "back_leg", "front_leg", "torso", "back_arm", "front_arm", "head"]
-
     frame = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
     for key in draw_order:
         x0, y0, x1, y1 = segments[key]
@@ -258,12 +270,24 @@ def pose_frame(base: Image.Image, direction: str, frame_idx: int) -> Image.Image
     return frame
 
 
-def build_sheet() -> Image.Image:
+def load_masters(class_id: str) -> dict[str, Image.Image]:
+    down = Image.open(MASTER_DIR / f"{class_id}_down.png").convert("RGBA")
+    up = Image.open(MASTER_DIR / f"{class_id}_up.png").convert("RGBA")
+    left = Image.open(MASTER_DIR / f"{class_id}_left.png").convert("RGBA")
+    right = left.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    return {"down": down, "up": up, "left": left, "right": right}
+
+
+def build_sheet_for_class(class_id: str) -> Image.Image:
+    raw_masters = load_masters(class_id)
+    target_h = max(alpha_bbox(raw_masters[d])[3] - alpha_bbox(raw_masters[d])[1] for d in raw_masters)
+    masters = {
+        direction: prepare_master(direction, raw_masters[direction], target_h)
+        for direction in ["down", "up", "left", "right"]
+    }
     sheet = Image.new("RGBA", (SHEET, SHEET), (0, 0, 0, 0))
-    masters = {direction: Image.open(path).convert("RGBA") for direction, path in MASTERS.items()}
-    target_h = max(alpha_bbox(masters[d])[3] - alpha_bbox(masters[d])[1] for d in MASTERS)
     for row_idx, direction in enumerate(["down", "up", "left", "right"]):
-        base = prepare_master(direction, masters[direction], target_h)
+        base = masters[direction]
         for col_idx in range(4):
             frame = pose_frame(base, direction, col_idx)
             sheet.paste(frame, (col_idx * CELL, row_idx * CELL), frame)
@@ -271,10 +295,14 @@ def build_sheet() -> Image.Image:
 
 
 def main() -> None:
-    out_path = PROTO_DIR / "warrior_proto_d_walk.png"
-    sheet = build_sheet()
-    sheet.save(out_path)
-    print(out_path)
+    args = parse_args()
+    classes = args.class_id or CLASS_IDS
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    for class_id in classes:
+        out_path = OUT_DIR / f"{class_id}_{args.suffix}_walk.png"
+        sheet = build_sheet_for_class(class_id)
+        sheet.save(out_path)
+        print(out_path)
 
 
 if __name__ == "__main__":
