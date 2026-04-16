@@ -4,9 +4,8 @@
 Outputs:
   <output-dir>/index.html
   <output-dir>/{class}/{class}_sheet_4x.png
+  <output-dir>/{class}/{class}_centered_sheet_4x.png
   <output-dir>/{class}/{class}_frames_4x.png
-  <output-dir>/{class}/{class}_preview.gif
-  <output-dir>/{class}/{class}_{dir}.gif
 
 The goal is reviewability, not runtime usage. This script makes it easy to
 inspect each class one-by-one before integrating walk assets.
@@ -52,17 +51,32 @@ def extract_row(sheet: Image.Image, row_idx: int) -> list[Image.Image]:
     return frames
 
 
-def direction_gif(frames: list[Image.Image], out_path: Path) -> None:
-    scaled = [scale_frame(frame).convert("RGBA") for frame in frames]
-    scaled[0].save(
-        out_path,
-        save_all=True,
-        append_images=scaled[1:],
-        duration=FRAME_MS,
-        loop=0,
-        disposal=2,
-        transparency=0,
-    )
+def center_frame(frame: Image.Image) -> Image.Image:
+    bbox = frame.getbbox()
+    if bbox is None:
+        return Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
+    cropped = frame.crop(bbox)
+    canvas = Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0))
+    x = (CELL - cropped.width) // 2
+    y = (CELL - cropped.height) // 2
+    canvas.paste(cropped, (x, y), cropped)
+    return canvas
+
+
+def extract_raw_row_frames(row_img: Image.Image) -> list[Image.Image]:
+    bbox = row_img.getbbox()
+    if bbox is None:
+        return [Image.new("RGBA", (CELL, CELL), (0, 0, 0, 0)) for _ in range(4)]
+
+    content = row_img.crop(bbox)
+    seg_w = max(1, content.width // 4)
+    frames = []
+    for idx in range(4):
+        x0 = idx * seg_w
+        x1 = content.width if idx == 3 else min(content.width, (idx + 1) * seg_w)
+        frame = content.crop((x0, 0, x1, content.height))
+        frames.append(center_frame(frame))
+    return frames
 
 
 def panel_frame(frame: Image.Image, label: str) -> Image.Image:
@@ -75,34 +89,6 @@ def panel_frame(frame: Image.Image, label: str) -> Image.Image:
     font = ImageFont.load_default()
     draw.text((10, panel.height - 19), label, fill=WHITE, font=font)
     return panel
-
-
-def preview_gif(rows: dict[str, list[Image.Image]], out_path: Path) -> None:
-    layout = [("down", 0, 0), ("up", 1, 0), ("left", 0, 1), ("right", 1, 1)]
-    sample_panel = panel_frame(rows["down"][0], "down")
-    frame_w, frame_h = sample_panel.size
-    canvas_w = frame_w * 2 + 16
-    canvas_h = frame_h * 2 + 16
-    gif_frames = []
-
-    for frame_idx in range(4):
-        canvas = Image.new("RGBA", (canvas_w, canvas_h), OUT_BG)
-        for dir_name, gx, gy in layout:
-            panel = panel_frame(rows[dir_name][frame_idx], dir_name)
-            px = gx * frame_w + (16 if gx else 0)
-            py = gy * frame_h + (16 if gy else 0)
-            canvas.paste(panel, (px, py), panel)
-        gif_frames.append(canvas)
-
-    gif_frames[0].save(
-        out_path,
-        save_all=True,
-        append_images=gif_frames[1:],
-        duration=FRAME_MS,
-        loop=0,
-        disposal=2,
-        transparency=0,
-    )
 
 
 def export_sheet(sheet: Image.Image, out_path: Path) -> None:
@@ -138,6 +124,13 @@ def find_raw_rows(source_dir: Path, class_id: str) -> dict[str, Path] | None:
     if all(path.exists() for path in paths.values()):
         return paths
     return None
+
+
+def load_rows_from_raw_paths(raw_rows: dict[str, Path]) -> dict[str, list[Image.Image]]:
+    return {
+        dir_name: extract_raw_row_frames(Image.open(path).convert("RGBA"))
+        for dir_name, path in raw_rows.items()
+    }
 
 
 def export_raw_row_strip(raw_rows: dict[str, Path], out_path: Path) -> None:
@@ -190,6 +183,14 @@ def export_frame_grid(rows: dict[str, list[Image.Image]], out_path: Path) -> Non
     canvas.save(out_path)
 
 
+def build_centered_sheet(rows: dict[str, list[Image.Image]]) -> Image.Image:
+    sheet = Image.new("RGBA", (SHEET, SHEET), (0, 0, 0, 0))
+    for row_idx, dir_name in enumerate(DIRS):
+        for col_idx, frame in enumerate(rows[dir_name]):
+            sheet.paste(frame, (col_idx * CELL, row_idx * CELL), frame)
+    return sheet
+
+
 def write_index(entries: list[dict[str, str]], out_dir: Path, title: str) -> None:
     cards = []
     for entry in entries:
@@ -198,17 +199,28 @@ def write_index(entries: list[dict[str, str]], out_dir: Path, title: str) -> Non
             f"""
             <article class="card">
               <h2>{cls}</h2>
-              <p><img src="{entry['strip_rel']}" alt="{cls} labeled direction strip"></p>
+              <div class="anim-grid" data-sheet="{entry['centered_sheet_rel']}">
+                <div class="anim-panel">
+                  <strong>DOWN</strong>
+                  <canvas data-dir="down" width="128" height="128"></canvas>
+                </div>
+                <div class="anim-panel">
+                  <strong>UP</strong>
+                  <canvas data-dir="up" width="128" height="128"></canvas>
+                </div>
+                <div class="anim-panel">
+                  <strong>LEFT</strong>
+                  <canvas data-dir="left" width="128" height="128"></canvas>
+                </div>
+                <div class="anim-panel">
+                  <strong>RIGHT</strong>
+                  <canvas data-dir="right" width="128" height="128"></canvas>
+                </div>
+              </div>
               <p><a href="{entry['strip_rel']}">Labeled Direction Strip</a></p>
+              <p><a href="{entry['centered_sheet_rel']}">Centered Sheet PNG</a></p>
               <p><a href="{entry['frames_rel']}">Individual Frame Grid</a></p>
               <p><a href="{entry['sheet_rel']}">Raw Sheet PNG</a></p>
-              <p><a href="{entry['preview_rel']}">Composite Preview GIF</a></p>
-              <p class="links">
-                <a href="{entry['down_rel']}">Down</a>
-                <a href="{entry['up_rel']}">Up</a>
-                <a href="{entry['left_rel']}">Left</a>
-                <a href="{entry['right_rel']}">Right</a>
-              </p>
             </article>
             """
         )
@@ -246,6 +258,28 @@ def write_index(entries: list[dict[str, str]], out_dir: Path, title: str) -> Non
       background: #0d1014;
       border: 1px solid #2f3a43;
     }}
+    .anim-grid {{
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }}
+    .anim-panel {{
+      background: #0d1014;
+      border: 1px solid #2f3a43;
+      padding: 8px;
+      text-align: center;
+    }}
+    .anim-panel strong {{
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }}
+    .anim-panel canvas {{
+      width: 128px;
+      height: 128px;
+      image-rendering: pixelated;
+    }}
     .links a {{
       margin-right: 10px;
     }}
@@ -256,10 +290,37 @@ def write_index(entries: list[dict[str, str]], out_dir: Path, title: str) -> Non
 </head>
 <body>
   <h1>{title}</h1>
-  <p>Generated review surface for all walk sheets. Inspect the animated GIFs before merging.</p>
+  <p>Generated review surface for all walk sheets. Each preview canvas cycles centered frames with JavaScript so drift is obvious.</p>
   <div class="grid">
     {''.join(cards)}
   </div>
+  <script>
+    const DIR_ROW = {{ down: 0, up: 1, left: 2, right: 3 }};
+    const CELL = 128;
+    const grids = [...document.querySelectorAll('.anim-grid')];
+
+    for (const grid of grids) {{
+      const img = new Image();
+      img.src = grid.dataset.sheet;
+      img.onload = () => {{
+        const canvases = [...grid.querySelectorAll('canvas')];
+        let frame = 0;
+        const draw = () => {{
+          for (const canvas of canvases) {{
+            const dir = canvas.dataset.dir;
+            const row = DIR_ROW[dir];
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, CELL, CELL);
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(img, frame * CELL, row * CELL, CELL, CELL, 0, 0, CELL, CELL);
+          }}
+          frame = (frame + 1) % 4;
+        }};
+        draw();
+        setInterval(draw, {FRAME_MS});
+      }};
+    }}
+  </script>
 </body>
 </html>
 """
@@ -302,30 +363,26 @@ def main() -> None:
         rows = {dir_name: extract_row(sheet, idx) for idx, dir_name in enumerate(DIRS)}
 
         sheet_out = class_dir / f"{class_id}_sheet_4x.png"
+        centered_sheet_out = class_dir / f"{class_id}_centered_sheet_4x.png"
         strip_out = class_dir / f"{class_id}_directions_4x.png"
         frames_out = class_dir / f"{class_id}_frames_4x.png"
-        preview_out = class_dir / f"{class_id}_preview.gif"
         export_sheet(sheet, sheet_out)
-        export_frame_grid(rows, frames_out)
         raw_rows = find_raw_rows(source_dir, class_id)
         if raw_rows:
+            rows = load_rows_from_raw_paths(raw_rows)
             export_raw_row_strip(raw_rows, strip_out)
         else:
             export_row_strip(rows, strip_out)
-        preview_gif(rows, preview_out)
+        build_centered_sheet(rows).save(centered_sheet_out)
+        export_frame_grid(rows, frames_out)
 
         entry = {
             "class": class_id,
             "sheet_rel": f"{class_id}/{sheet_out.name}",
+            "centered_sheet_rel": f"{class_id}/{centered_sheet_out.name}",
             "strip_rel": f"{class_id}/{strip_out.name}",
             "frames_rel": f"{class_id}/{frames_out.name}",
-            "preview_rel": f"{class_id}/{preview_out.name}",
         }
-
-        for dir_name in DIRS:
-            dir_out = class_dir / f"{class_id}_{dir_name}.gif"
-            direction_gif(rows[dir_name], dir_out)
-            entry[f"{dir_name}_rel"] = f"{class_id}/{dir_out.name}"
 
         entries.append(entry)
 
