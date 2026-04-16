@@ -8,6 +8,9 @@ Playwright now has one working local e2e path for Kithlands:
   specific row, equip the upgraded weapon through the actual UI flow, and
   confirm the derived attack/weapon change persists after closing and
   reopening.
+- `sprites-debugger.spec.js`: load `/sprites.html` from the active Vite stack,
+  confirm a generated walk sheet renders with visible cell bounds, click an
+  individual atlas cell, and capture a proof screenshot.
 - `walk-all-classes.spec.js`: quick-start a game, enter a town interior, and
   verify all 12 walk-sheet classes render the correct directional sequences in
   both `World` and `Town`.
@@ -54,6 +57,10 @@ The sprite debugger is served by the same Vite dev server as the game:
 source scripts/worktree-env.sh
 echo "http://localhost:${VITE_PORT}/sprites.html"
 ```
+
+The route is backed by `client/sprites.html`, a first-class Vite entry that
+imports the live walk-sheet and monster registries from `src/`. It is no longer
+just a static file parked under `client/public/`.
 
 If you use `make play`, it now prints the sprite debugger URL alongside the
 game URL. If `TAILSCALE_HOSTNAME=prometheus` is set, the network form is:
