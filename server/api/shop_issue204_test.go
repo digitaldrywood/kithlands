@@ -146,7 +146,7 @@ func TestGetShopItemsIncludesEquipmentCompareStats(t *testing.T) {
 	if armor.Absorb != 2 || armor.MagicDefense != 2 || armor.EvadePenalty != 0 {
 		t.Fatalf("armor compare stats = %+v", *armor)
 	}
-	if armor.ClassIDs == nil || len(armor.ClassIDs) == 0 {
+	if len(armor.ClassIDs) == 0 {
 		t.Fatalf("armor class_ids missing: %+v", *armor)
 	}
 }
