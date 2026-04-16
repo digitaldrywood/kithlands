@@ -33,6 +33,14 @@ CLASS_IDS = [
     "wanderer",
 ]
 
+CLASS_SCALE_MULTIPLIER = {
+    "knight": 1.08,
+}
+
+SWAP_SIDE_DIRECTIONS = {
+    "knight",
+}
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -258,12 +266,15 @@ def load_masters(class_id: str) -> dict[str, Image.Image]:
     up = Image.open(MASTER_DIR / f"{class_id}_up.png").convert("RGBA")
     left = Image.open(MASTER_DIR / f"{class_id}_left.png").convert("RGBA")
     right = left.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    if class_id in SWAP_SIDE_DIRECTIONS:
+        left, right = right, left
     return {"down": down, "up": up, "left": left, "right": right}
 
 
 def build_sheet_for_class(class_id: str) -> Image.Image:
     raw_masters = load_masters(class_id)
     target_h = max(alpha_bbox(raw_masters[d])[3] - alpha_bbox(raw_masters[d])[1] for d in raw_masters)
+    target_h = round(target_h * CLASS_SCALE_MULTIPLIER.get(class_id, 1.0))
     masters = {
         direction: prepare_master(direction, raw_masters[direction], target_h)
         for direction in ["down", "up", "left", "right"]
