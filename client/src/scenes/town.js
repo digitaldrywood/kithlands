@@ -77,8 +77,8 @@ function npcCount(buildingType) {
 // NPC sprite mapping by building tags (proprietor)
 export function npcSpriteForTags(tags) {
   const tagSet = new Set(tags || []);
-  if (tagSet.has("rest")) return "npc_innkeeper";
   if (tagSet.has("heal")) return "npc_priestess";
+  if (tagSet.has("rest")) return "npc_innkeeper";
   if (tagSet.has("shop") || tagSet.has("commerce")) return "npc_merchant";
   if (tagSet.has("temple") || tagSet.has("revive")) return "npc_priestess";
   return "npc_elder";
