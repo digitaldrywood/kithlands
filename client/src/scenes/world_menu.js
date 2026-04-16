@@ -544,6 +544,9 @@ export function showQuestLog(scene) {
 
   const gs = scene.gameState;
   const quests = Array.isArray(gs.quests) ? gs.quests : [];
+  const buildingSideQuests = Array.isArray(gs.building_side_quests)
+    ? gs.building_side_quests
+    : [];
   const currentIdx = gs.current_quest ?? 0;
   const overlay = [];
 
@@ -619,6 +622,45 @@ export function showQuestLog(scene) {
       y += 20;
     }
     y += 10;
+
+    if (buildingSideQuests.length > 0 && y < 430) {
+      const sideHeader = scene.add
+        .text(70, y, "BUILDING QUESTS", {
+          fontSize: "12px",
+          color: "#ff88cc",
+          fontFamily: "monospace",
+        })
+        .setScrollFactor(0)
+        .setDepth(51);
+      overlay.push(sideHeader);
+      y += 18;
+
+      for (const q of buildingSideQuests) {
+        if (y >= 430) break;
+        const status =
+          q.status === "ready_to_turn_in"
+            ? "return"
+            : q.status === "completed"
+              ? "done"
+              : "active";
+        const line = scene.add
+          .text(
+            80,
+            y,
+            `[${status}] ${q.name}${q.target_name ? ` -> ${q.target_name}` : ""}`,
+            {
+              fontSize: "11px",
+              color: q.status === "completed" ? "#77cc77" : "#dd99cc",
+              fontFamily: "monospace",
+            },
+          )
+          .setScrollFactor(0)
+          .setDepth(51);
+        overlay.push(line);
+        y += 15;
+      }
+      y += 8;
+    }
 
     // UPCOMING (hide boss name to avoid spoilers)
     const upHeader = scene.add

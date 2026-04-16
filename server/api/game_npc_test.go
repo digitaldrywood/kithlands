@@ -5,6 +5,7 @@ import (
 
 	"github.com/digitaldrywood/kithlands/api"
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
+	"github.com/digitaldrywood/kithlands/internal/locality"
 )
 
 func newTestGame(t *testing.T) *api.Game {
@@ -104,18 +105,18 @@ func TestGetNPCDialogue_NotFound(t *testing.T) {
 	}
 }
 
-func TestGetNPCDialogue_DefaultGuard(t *testing.T) {
+func TestGetNPCDialogue_DefaultBuildingRole(t *testing.T) {
 	game := newTestGame(t)
 	// "central" node is a landmark without shop/inn/temple tags
 	resp := game.GetNPCDialogue("central")
 	if resp == nil {
 		t.Fatal("expected dialogue for central node, got nil")
 	}
-	if resp.NPCName != "Guard" {
-		t.Errorf("npc_name = %q, want Guard", resp.NPCName)
+	if resp.NPCName != "Elder" {
+		t.Errorf("npc_name = %q, want Elder", resp.NPCName)
 	}
-	if resp.Sprite != "npc_guard" {
-		t.Errorf("sprite = %q, want npc_guard", resp.Sprite)
+	if resp.Sprite != "npc_elder" {
+		t.Errorf("sprite = %q, want npc_elder", resp.Sprite)
 	}
 	if len(resp.Lines) < 3 {
 		t.Errorf("expected at least 3 dialogue lines, got %d", len(resp.Lines))
@@ -194,18 +195,18 @@ func TestGetNPCDialogue_Variety(t *testing.T) {
 }
 
 // TestGetNPCDialogue_SubNPC verifies that "inn_npc1" resolves to the inn node
-// and returns Innkeeper dialogue.
+// and returns the inn's first guest archetype.
 func TestGetNPCDialogue_SubNPC(t *testing.T) {
 	game := newTestGame(t)
 	resp := game.GetNPCDialogue("inn_npc1")
 	if resp == nil {
 		t.Fatal("expected dialogue for inn_npc1, got nil")
 	}
-	if resp.NPCName != "Innkeeper" {
-		t.Errorf("npc_name = %q, want Innkeeper", resp.NPCName)
+	if resp.NPCName != "Traveler" {
+		t.Errorf("npc_name = %q, want Traveler", resp.NPCName)
 	}
-	if resp.Sprite != "npc_innkeeper" {
-		t.Errorf("sprite = %q, want npc_innkeeper", resp.Sprite)
+	if resp.Sprite != "npc_guard" {
+		t.Errorf("sprite = %q, want npc_guard", resp.Sprite)
 	}
 	if len(resp.Lines) < 3 {
 		t.Errorf("expected at least 3 dialogue lines, got %d", len(resp.Lines))
@@ -249,7 +250,10 @@ func TestGetNPCDialogue_SubNPC_InvalidBase(t *testing.T) {
 // TestDialoguePoolSize validates that dialogue.json has >= 15 lines per archetype.
 func TestDialoguePoolSize(t *testing.T) {
 	gd := gamedata.Load("../../shared")
-	required := []string{"merchant", "priestess", "elder", "innkeeper", "guard", "blacksmith"}
+	required := []string{
+		"merchant", "priestess", "elder", "innkeeper", "guard", "blacksmith",
+		"child", "farmer", "sage", "traveler", "default",
+	}
 	for _, arch := range required {
 		a, ok := gd.Dialogue.Archetypes[arch]
 		if !ok {
@@ -258,6 +262,63 @@ func TestDialoguePoolSize(t *testing.T) {
 		}
 		if len(a.Lines) < 15 {
 			t.Errorf("archetype %q has %d lines, want >= 15", arch, len(a.Lines))
+		}
+	}
+}
+
+func TestGetNPCDialogue_PersistsAcrossSaveLoad(t *testing.T) {
+	gd := gamedata.Load("../../shared")
+	req := api.NewGameRequest{
+		TownName:    "Cadott",
+		People:      []api.WizardPersonReq{{Name: "Bob", Relation: "friendly"}},
+		Places:      []string{"School", "Store"},
+		BigBuilding: "Town Hall",
+		Party: []api.PartyMemberReq{
+			{Name: "Hero", ClassID: "warrior"},
+			{Name: "Sparks", ClassID: "cinder"},
+		},
+		Difficulty: "normal",
+	}
+
+	gm := api.NewGameManager(gd, "../../shared")
+	game, err := gm.CreateGame(req)
+	if err != nil {
+		t.Fatalf("create game: %v", err)
+	}
+
+	before := game.GetNPCDialogue("inn_npc1")
+	if before == nil {
+		t.Fatal("expected inn_npc1 dialogue before save")
+	}
+
+	saveState, err := game.ToSaveState("round-trip", "test-user")
+	if err != nil {
+		t.Fatalf("ToSaveState: %v", err)
+	}
+
+	loc := locality.BuildFromWizard(locality.WizardInput{
+		TownName:    req.TownName,
+		People:      []locality.WizardPerson{{Name: "Bob", Relation: "friendly"}},
+		Places:      req.Places,
+		BigBuilding: req.BigBuilding,
+		Flavor:      "conquest",
+		Difficulty:  req.Difficulty,
+	})
+	loaded, err := api.FromSaveState(saveState, gd, loc)
+	if err != nil {
+		t.Fatalf("FromSaveState: %v", err)
+	}
+
+	after := loaded.GetNPCDialogue("inn_npc1")
+	if after == nil {
+		t.Fatal("expected inn_npc1 dialogue after load")
+	}
+	if len(before.Lines) != len(after.Lines) {
+		t.Fatalf("line count changed across save/load: %d vs %d", len(before.Lines), len(after.Lines))
+	}
+	for i := range before.Lines {
+		if before.Lines[i] != after.Lines[i] {
+			t.Fatalf("line %d changed across save/load: %q vs %q", i, before.Lines[i], after.Lines[i])
 		}
 	}
 }

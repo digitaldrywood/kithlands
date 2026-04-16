@@ -34,28 +34,30 @@ const FALLBACK_DIALOGUE = {
 
 function fallbackForTags(tags) {
   const tagSet = new Set(tags || []);
+  if (isRestBuilding(tags)) return FALLBACK_DIALOGUE.rest;
   if (tagSet.has("shop") || tagSet.has("commerce"))
     return FALLBACK_DIALOGUE.shop;
-  if (isRestBuilding(tags)) return FALLBACK_DIALOGUE.rest;
   if (tagSet.has("temple") || tagSet.has("revive"))
     return FALLBACK_DIALOGUE.temple;
   return FALLBACK_DIALOGUE.default;
 }
 
-export async function openDialogue(scene, spawn) {
+export async function openDialogue(scene, spawn, providedDialogue = null) {
   pauseWorldFor(scene, "dialogue");
   scene.animating = true;
 
-  let dialogue;
-  try {
-    const resp = await getNpcDialogue(scene.gameState.id, spawn.node_id);
-    if (resp && resp.lines && resp.lines.length > 0) {
-      dialogue = resp;
-    } else {
+  let dialogue = providedDialogue;
+  if (!dialogue) {
+    try {
+      const resp = await getNpcDialogue(scene.gameState.id, spawn.node_id);
+      if (resp && resp.lines && resp.lines.length > 0) {
+        dialogue = resp;
+      } else {
+        dialogue = fallbackForTags(spawn.tags);
+      }
+    } catch {
       dialogue = fallbackForTags(spawn.tags);
     }
-  } catch {
-    dialogue = fallbackForTags(spawn.tags);
   }
 
   const lines = dialogue.lines;

@@ -65,19 +65,16 @@ export const TILE_WALKABLE = {
 };
 
 export function roomDimensions(buildingType, seed, rngFactory) {
+  const rng = (rngFactory || defaultRngFactory)(seed);
   switch (buildingType) {
     case "inn":
-      return { w: 20, h: 14 };
+      return { w: 18 + Math.floor(rng() * 3), h: 12 + Math.floor(rng() * 3) };
     case "shop":
-      return { w: 16, h: 12 };
+      return { w: 14 + Math.floor(rng() * 5), h: 10 + Math.floor(rng() * 4) };
     case "temple":
-      return { w: 20, h: 14 };
-    default: {
-      const rng = (rngFactory || defaultRngFactory)(seed);
-      const w = 12 + Math.floor(rng() * 5);
-      const h = 10 + Math.floor(rng() * 5);
-      return { w, h };
-    }
+      return { w: 18 + Math.floor(rng() * 3), h: 12 + Math.floor(rng() * 5) };
+    default:
+      return { w: 16 + Math.floor(rng() * 5), h: 12 + Math.floor(rng() * 5) };
   }
 }
 

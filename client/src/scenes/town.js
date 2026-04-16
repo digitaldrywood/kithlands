@@ -1,5 +1,10 @@
 import { initAudio, playSFX, playMusic } from "../systems/audio.js";
-import { autosaveGame, collectHiddenItem, restAtTown } from "../api.js";
+import {
+  autosaveGame,
+  collectHiddenItem,
+  interactWithNpc,
+  restAtTown,
+} from "../api.js";
 import { openDialogue } from "./town_dialogue.js";
 import { openShop } from "./world_shop.js";
 import { isTouchDevice, initTouchControls } from "../systems/input.js";
@@ -7,10 +12,9 @@ import {
   nextWalkFrame,
   walkSheetKey,
   walkFrameIndex,
-  nextLeaderIndex,
 } from "./walkFrame.js";
 import { getLeaderIndex } from "./world.js";
-import { buildingTypeFromTags } from "./building_type.js";
+import { buildingTypeFromTags, isRestBuilding } from "./building_type.js";
 import {
   extraNpcSpritesForTags,
   furnitureDensity,
@@ -41,7 +45,6 @@ import {
 } from "./town_layout.js";
 import { walkStepMs } from "../systems/prefs.js";
 import { isWorldInputLocked } from "../systems/modalLock.js";
-import { getNpcDialogue } from "../api.js";
 
 // Seeded PRNG (mulberry32). Returns a () => float [0,1) closure.
 function mulberry32(seed) {
@@ -61,22 +64,22 @@ function mulberry32(seed) {
 function npcCount(buildingType) {
   switch (buildingType) {
     case "inn":
-      return 3;
+      return 4;
     case "shop":
-      return 2;
+      return 3;
     case "temple":
       return 4;
     default:
-      return 2;
+      return 3;
   }
 }
 
 // NPC sprite mapping by building tags (proprietor)
 export function npcSpriteForTags(tags) {
   const tagSet = new Set(tags || []);
+  if (tagSet.has("rest")) return "npc_innkeeper";
   if (tagSet.has("heal")) return "npc_priestess";
   if (tagSet.has("shop") || tagSet.has("commerce")) return "npc_merchant";
-  if (tagSet.has("rest")) return "npc_innkeeper";
   if (tagSet.has("temple") || tagSet.has("revive")) return "npc_priestess";
   return "npc_elder";
 }
@@ -352,11 +355,11 @@ function generateHiddenItems(nodeId, tiles, roomW, roomH, npcX, npcY) {
 
 function buildingMusicForTags(tags) {
   const tagSet = new Set(tags || []);
-  if (tagSet.has("shop") || tagSet.has("commerce")) {
-    return { key: "music_shop", loop: true };
-  }
   if (tagSet.has("rest") || tagSet.has("house") || tagSet.has("safehouse")) {
     return { key: "music_inn", loop: false };
+  }
+  if (tagSet.has("shop") || tagSet.has("commerce")) {
+    return { key: "music_shop", loop: true };
   }
   if (tagSet.has("temple") || tagSet.has("revive")) {
     return { key: "music_quest", loop: true };
@@ -782,12 +785,19 @@ export class TownScene extends Phaser.Scene {
     const npc = this.npcs[this.nearNpcIndex];
     const tags = this.spawn.tags || [];
     const tagSet = new Set(tags);
+    const nodeId = npc.isProprietor
+      ? this.spawn.node_id
+      : this.spawn.node_id + "_npc" + npc.index;
+    const interaction = await interactWithNpc(this.gameState.id, nodeId);
+    if (interaction?.game_state && !interaction.game_state.error) {
+      Object.assign(this.gameState, interaction.game_state);
+    }
+    const dialogue = interaction?.dialogue || null;
 
     if (npc.isProprietor) {
-      // Proprietor NPC: special behavior by building type
-      if (tagSet.has("shop") || tagSet.has("commerce")) {
-        openShop(this, this.spawn);
-      } else if (isRestBuilding(tags)) {
+      await openDialogue(this, this.spawn, dialogue);
+
+      if (isRestBuilding(tags)) {
         const result = await restAtTown(
           this.gameState.id,
           this.spawn.node_id,
@@ -800,11 +810,12 @@ export class TownScene extends Phaser.Scene {
             console.error("[Town] autosave failed:", e),
           );
         }
-        await openDialogue(this, this.spawn);
         this.showMessage(
           result?.error ? "Could not rest here." : "HP and spells restored!",
         );
         this.time.delayedCall(1500, () => this.hideMessage());
+      } else if (tagSet.has("shop") || tagSet.has("commerce")) {
+        openShop(this, this.spawn);
       } else if (tagSet.has("temple") || tagSet.has("revive")) {
         const dead = this.gameState.party.filter((p) => p.hp <= 0);
         if (dead.length > 0) {
@@ -818,35 +829,15 @@ export class TownScene extends Phaser.Scene {
           });
         }
         playSFX("sfx_heal");
-        await openDialogue(this, this.spawn);
-      } else {
-        await openDialogue(this, this.spawn);
       }
     } else {
-      // Extra NPC: just talk (with sub-NPC dialogue)
-      const subNodeId = this.spawn.node_id + "_npc" + npc.index;
-      await this.openExtraNpcDialogue(subNodeId);
+      const synthSpawn = { ...this.spawn, node_id: nodeId };
+      await openDialogue(this, synthSpawn, dialogue);
     }
 
     // Re-show talk prompt if still near an NPC
     if (this.nearNpcIndex >= 0) {
       this.showInteractPrompt();
-    }
-  }
-
-  // Fetch and display dialogue for a sub-NPC (non-proprietor)
-  async openExtraNpcDialogue(subNodeId) {
-    try {
-      const resp = await getNpcDialogue(this.gameState.id, subNodeId);
-      if (resp && resp.lines && resp.lines.length > 0) {
-        // Use the dialogue system with a synthetic spawn
-        const synthSpawn = { ...this.spawn, node_id: subNodeId };
-        await openDialogue(this, synthSpawn);
-      } else {
-        await openDialogue(this, this.spawn);
-      }
-    } catch {
-      await openDialogue(this, this.spawn);
     }
   }
 
