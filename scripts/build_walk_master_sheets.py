@@ -37,7 +37,6 @@ CLASS_SCALE_MULTIPLIER = {
     "knight": 1.08,
 }
 
-SWAP_SIDE_DIRECTIONS = set()
 
 
 def parse_args() -> argparse.Namespace:
@@ -264,8 +263,6 @@ def load_masters(class_id: str) -> dict[str, Image.Image]:
     up = Image.open(MASTER_DIR / f"{class_id}_up.png").convert("RGBA")
     left = Image.open(MASTER_DIR / f"{class_id}_left.png").convert("RGBA")
     right = left.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
-    if class_id in SWAP_SIDE_DIRECTIONS:
-        left, right = right, left
     return {"down": down, "up": up, "left": left, "right": right}
 
 
@@ -278,16 +275,11 @@ def build_sheet_for_class(class_id: str) -> Image.Image:
         for direction in ["down", "up", "left", "right"]
     }
     sheet = Image.new("RGBA", (SHEET, SHEET), (0, 0, 0, 0))
-    for row_idx, direction in enumerate(["down", "up", "left", "right"]):
+    for row_idx, direction in enumerate(["down", "up", "right", "left"]):
         base = masters[direction]
         for col_idx in range(4):
             frame = pose_frame(base, direction, col_idx)
             sheet.paste(frame, (col_idx * CELL, row_idx * CELL), frame)
-    if class_id == "knight":
-        left_row = sheet.crop((0, 2 * CELL, SHEET, 3 * CELL))
-        right_row = sheet.crop((0, 3 * CELL, SHEET, 4 * CELL))
-        sheet.paste(right_row, (0, 2 * CELL), right_row)
-        sheet.paste(left_row, (0, 3 * CELL), left_row)
     return sheet
 
 
