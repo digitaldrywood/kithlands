@@ -1,5 +1,6 @@
 import { MONSTER_SPRITE_LOAD } from "../data/monsterSprites.js";
 import { WALK_SHEET_CLASS_IDS } from "./walkFrame.js";
+import { registerGeneratedTerrainTextures } from "./terrainAutotile.js";
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -143,6 +144,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
+    registerGeneratedTerrainTextures(this);
     this.scene.start("Title");
   }
 }

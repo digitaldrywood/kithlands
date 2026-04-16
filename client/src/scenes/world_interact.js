@@ -2,23 +2,7 @@ import { playSFX } from "../systems/audio.js";
 import { isTouchDevice } from "../systems/input.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 import { isRestBuilding } from "./building_type.js";
-
-// TILE_COLORS needed for world map rendering
-const TILE_COLORS = {
-  0: 0x4caf50, // grass
-  1: 0xd2b48c, // path
-  2: 0x2196f3, // water
-  3: 0x2e7d32, // tree
-  4: 0x795548, // building
-  5: 0xffc107, // door
-  6: 0xbcaaa4, // floor
-  7: 0x9e9e9e, // rock
-  8: 0x66bb6a, // bush
-  9: 0x388e3c, // dark grass
-  10: 0x1b5e20, // forest (darker)
-  11: 0x8d6e63, // hill
-  12: 0xffe082, // sand
-};
+import { TILE_COLORS } from "./tileConstants.js";
 
 export async function interactWithDoor(scene) {
   if (scene.animating || scene.menuOpen || scene.gameOver) return;

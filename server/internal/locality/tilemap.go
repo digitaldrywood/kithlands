@@ -22,6 +22,12 @@ const (
 	TileForest    TileType = 10
 	TileHill      TileType = 11
 	TileSand      TileType = 12
+	TileMarsh     TileType = 13
+	TileLake      TileType = 14
+	TileRiver     TileType = 15
+	TileSnow      TileType = 16
+	TileMountain  TileType = 17
+	TileBridge    TileType = 18
 )
 
 // majorHighway is the set of OSM highway classes that are always rasterized
@@ -224,26 +230,48 @@ func GenerateTileMap(loc *Locality, spawnID string, walk *WalkResult) *TileMap {
 func fillTerrain(tiles [][]int, w, h int, seed uint64) {
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
-			// Simple noise at multiple scales
-			n1 := noise(x, y, seed, 20)    // large features
-			n2 := noise(x, y, seed+99, 8)  // medium features
-			n3 := noise(x, y, seed+777, 3) // small features
-			val := n1*0.5 + n2*0.3 + n3*0.2
+			height := noise(x, y, seed, 24)*0.45 +
+				noise(x, y, seed+99, 9)*0.35 +
+				noise(x, y, seed+777, 4)*0.20
+			moisture := noise(x, y, seed+1337, 28)*0.55 +
+				noise(x, y, seed+2112, 11)*0.30 +
+				noise(x, y, seed+4242, 5)*0.15
+			lakeNoise := noise(x, y, seed+9001, 18)*0.7 +
+				noise(x, y, seed+9017, 6)*0.3
+			latitude := 1 - math.Abs(float64(y)/float64(maxInt(1, h-1))*2-1)
+			temperature := latitude*0.55 + noise(x, y, seed+5150, 21)*0.45
 
-			if val < 0.15 {
+			switch {
+			case height < 0.10:
 				tiles[y][x] = int(TileWater)
-			} else if val < 0.22 {
+			case height < 0.16 && lakeNoise > 0.58:
+				tiles[y][x] = int(TileLake)
+			case height < 0.21:
 				tiles[y][x] = int(TileSand)
-			} else if val < 0.4 {
-				tiles[y][x] = int(TileGrass)
-			} else if val < 0.55 {
-				tiles[y][x] = int(TileDarkGrass)
-			} else if val < 0.7 {
-				tiles[y][x] = int(TileTree)
-			} else if val < 0.82 {
+			case moisture > 0.76 && height < 0.42:
+				tiles[y][x] = int(TileMarsh)
+			case height > 0.90:
+				if temperature < 0.56 {
+					tiles[y][x] = int(TileSnow)
+				} else {
+					tiles[y][x] = int(TileMountain)
+				}
+			case height > 0.78:
+				if temperature < 0.42 {
+					tiles[y][x] = int(TileSnow)
+				} else {
+					tiles[y][x] = int(TileHill)
+				}
+			case moisture > 0.78:
 				tiles[y][x] = int(TileForest)
-			} else {
-				tiles[y][x] = int(TileHill)
+			case moisture > 0.65:
+				tiles[y][x] = int(TileTree)
+			case moisture > 0.52:
+				tiles[y][x] = int(TileDarkGrass)
+			case moisture < 0.24 && height < 0.38:
+				tiles[y][x] = int(TileSand)
+			default:
+				tiles[y][x] = int(TileGrass)
 			}
 		}
 	}
@@ -488,10 +516,9 @@ func rasterizeWaterways(tiles [][]int, waters []Waterway, mapW, mapH int) {
 	}
 }
 
-// drawWidePathWater is drawWidePathN but stamps TileWater instead of TilePath.
-// Skips TileBuilding/TileDoor (rivers don't flow through houses) and
-// TilePath (road/river intersections stay walkable — the path tile reads as
-// a bridge interrupting the water line).
+// drawWidePathWater is drawWidePathN but stamps TileRiver instead of TilePath.
+// Skips TileBuilding/TileDoor (rivers don't flow through houses) and upgrades
+// TilePath to TileBridge so crossings stay walkable and visually legible.
 func drawWidePathWater(tiles [][]int, x1, y1, x2, y2, w, h, width int) {
 	if width < 1 {
 		width = 1
@@ -514,8 +541,13 @@ func drawWidePathWater(tiles [][]int, x1, y1, x2, y2, w, h, width int) {
 			nx := x + pw
 			if inBounds(nx, y, w, h) {
 				tile := tiles[y][nx]
-				if tile != int(TileBuilding) && tile != int(TileDoor) && tile != int(TilePath) {
-					tiles[y][nx] = int(TileWater)
+				switch tile {
+				case int(TileBuilding), int(TileDoor):
+					continue
+				case int(TilePath), int(TileBridge):
+					tiles[y][nx] = int(TileBridge)
+				default:
+					tiles[y][nx] = int(TileRiver)
 				}
 			}
 		}
@@ -723,11 +755,11 @@ func carveHiddenPath(tiles [][]int, nodePositions []nodePos, walk *WalkResult, m
 		return nil
 	}
 
-	// Carve: replace non-walkable tiles along the path with dark grass.
+	// Carve: replace dense blockers along the path with dark grass.
 	carved := make([][2]int, 0, len(path))
 	for _, p := range path {
 		t := TileType(tiles[p[1]][p[0]])
-		if t == TileTree || t == TileForest || t == TileBush || t == TileHill {
+		if t == TileTree || t == TileForest || t == TileBush || t == TileHill || t == TileMountain || t == TileSnow {
 			tiles[p[1]][p[0]] = int(TileDarkGrass)
 			carved = append(carved, p)
 		}
@@ -761,8 +793,9 @@ func (h *astarHeap) Pop() any {
 }
 
 // astarPath finds a path from (sx,sy) to (tx,ty) on the tile grid.
-// Traversal costs: dark grass/grass/path/sand = 1, tree/forest/bush/hill = 3.
-// Water, border (rows/cols 0-1 and last 2), and forbidden tiles are impassable.
+// Traversal costs: open ground/path/bridge = 1, rough ground = 2, dense
+// vegetation = 3. Water, border (rows/cols 0-1 and last 2), and forbidden
+// tiles are impassable.
 func astarPath(tiles [][]int, forbidden [][]bool, sx, sy, tx, ty, w, h int) [][2]int {
 	type key struct{ x, y int }
 
@@ -831,12 +864,14 @@ func astarPath(tiles [][]int, forbidden [][]bool, sx, sy, tx, ty, w, h int) [][2
 // tileCost returns the traversal cost for A* pathfinding. Returns -1 for impassable.
 func tileCost(t TileType) int {
 	switch t {
-	case TileDarkGrass, TileGrass, TilePath, TileSand, TileFloor:
+	case TileDarkGrass, TileGrass, TilePath, TileSand, TileFloor, TileBridge:
 		return 1
-	case TileTree, TileForest, TileBush, TileHill:
+	case TileHill, TileSnow, TileMarsh:
+		return 2
+	case TileTree, TileForest, TileBush:
 		return 3
 	default:
-		return -1 // water, building, door, rock
+		return -1 // water, lake, river, building, door, rock, mountain
 	}
 }
 
@@ -845,4 +880,11 @@ func abs(x int) int {
 		return -x
 	}
 	return x
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

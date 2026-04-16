@@ -6,7 +6,13 @@ func EncounterTerrainTag(tile TileType) (string, bool) {
 		return "grass", true
 	case TilePath:
 		return "path", true
+	case TileBridge:
+		return "path", true
 	case TileWater:
+		return "water", true
+	case TileLake:
+		return "water", true
+	case TileRiver:
 		return "water", true
 	case TileTree:
 		return "tree", true
@@ -26,8 +32,14 @@ func EncounterTerrainTag(tile TileType) (string, bool) {
 		return "forest", true
 	case TileHill:
 		return "hill", true
+	case TileSnow:
+		return "hill", true
+	case TileMountain:
+		return "hill", true
 	case TileSand:
 		return "sand", true
+	case TileMarsh:
+		return "dark_grass", true
 	default:
 		return "", false
 	}

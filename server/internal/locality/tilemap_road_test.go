@@ -183,12 +183,12 @@ func TestParseWaterways_PopulatesKind(t *testing.T) {
 	}
 }
 
-// countWaterTiles returns the number of TileWater tiles in the grid.
+// countWaterTiles returns the number of water-family tiles in the grid.
 func countWaterTiles(tiles [][]int) int {
 	n := 0
 	for _, row := range tiles {
 		for _, t := range row {
-			if t == int(TileWater) {
+			if t == int(TileWater) || t == int(TileLake) || t == int(TileRiver) {
 				n++
 			}
 		}
@@ -236,9 +236,9 @@ func TestRasterizeWaterways_SkipsDrainAndDitch(t *testing.T) {
 	}
 }
 
-// Roads already rasterized before rasterizeWaterways runs must remain TilePath
-// at crossings so players (and quest routing) can still traverse bridges.
-func TestRasterizeWaterways_PreservesRoadCrossings(t *testing.T) {
+// Roads already rasterized before rasterizeWaterways runs must convert to
+// bridge tiles at crossings so players can read the path over the river.
+func TestRasterizeWaterways_BuildsBridgeCrossings(t *testing.T) {
 	const mapW, mapH = 40, 40
 	tiles := blankTiles(mapW, mapH)
 
@@ -260,11 +260,18 @@ func TestRasterizeWaterways_PreservesRoadCrossings(t *testing.T) {
 	}
 	rasterizeWaterways(tiles, waters, mapW, mapH)
 
-	// The entire road row must remain TilePath — no water stamped over it.
+	bridgeCount := 0
 	for x := 0; x < mapW; x++ {
-		if tiles[roadY][x] != int(TilePath) {
-			t.Fatalf("road row %d clobbered at x=%d: got tile %d, want TilePath", roadY, x, tiles[roadY][x])
+		switch tiles[roadY][x] {
+		case int(TilePath):
+		case int(TileBridge):
+			bridgeCount++
+		default:
+			t.Fatalf("road row %d clobbered at x=%d: got tile %d, want TilePath/TileBridge", roadY, x, tiles[roadY][x])
 		}
+	}
+	if bridgeCount == 0 {
+		t.Fatal("expected at least one TileBridge where a river crosses the road")
 	}
 	// The river should still exist elsewhere (not a no-op test).
 	if countWaterTiles(tiles) == 0 {

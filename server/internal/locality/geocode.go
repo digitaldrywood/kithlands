@@ -30,6 +30,7 @@ func Geocode(ctx context.Context, query string) (*GeoResult, error) {
 	req.Header.Set("User-Agent", "Kithlands/1.0 (game; contact@kithlands.com)")
 
 	client := &http.Client{Timeout: 10 * time.Second}
+	//nolint:gosec // Nominatim endpoint is fixed and query-escaped before request construction.
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("geocoding request: %w", err)

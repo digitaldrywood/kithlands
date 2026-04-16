@@ -1,0 +1,90 @@
+import { describe, expect, it } from "vitest";
+import {
+  AUTOTILE_EDGE_EAST,
+  AUTOTILE_EDGE_NORTH,
+  AUTOTILE_EDGE_SOUTH,
+  AUTOTILE_EDGE_WEST,
+  buildTerrainRenderPlan,
+} from "./terrainAutotile.js";
+
+describe("buildTerrainRenderPlan", () => {
+  it("adds a water-edge mask when a walkable ground tile borders water", () => {
+    const tiles = [
+      [0, 2, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+    ];
+
+    const plan = buildTerrainRenderPlan(tiles, 1, 1);
+
+    expect(plan.baseKey).toBe("tile_grass");
+    expect(plan.overlay).toEqual(
+      expect.objectContaining({
+        key: "tile_water",
+        mask: AUTOTILE_EDGE_NORTH,
+      }),
+    );
+  });
+
+  it("builds a connected path mask from orthogonal neighbors", () => {
+    const tiles = [
+      [0, 1, 0],
+      [1, 1, 1],
+      [0, 1, 0],
+    ];
+
+    const plan = buildTerrainRenderPlan(tiles, 1, 1);
+
+    expect(plan.baseKey).toBe("tile_grass");
+    expect(plan.overlay).toEqual(
+      expect.objectContaining({
+        key: "tile_path",
+        mask:
+          AUTOTILE_EDGE_NORTH |
+          AUTOTILE_EDGE_EAST |
+          AUTOTILE_EDGE_SOUTH |
+          AUTOTILE_EDGE_WEST,
+      }),
+    );
+  });
+
+  it("prefers the strongest adjacent terrain for grass-to-forest blending", () => {
+    const tiles = [
+      [0, 10, 0],
+      [10, 0, 10],
+      [0, 10, 0],
+    ];
+
+    const plan = buildTerrainRenderPlan(tiles, 1, 1);
+
+    expect(plan.baseKey).toBe("tile_grass");
+    expect(plan.overlay).toEqual(
+      expect.objectContaining({
+        key: "tile_forest",
+        mask:
+          AUTOTILE_EDGE_NORTH |
+          AUTOTILE_EDGE_EAST |
+          AUTOTILE_EDGE_SOUTH |
+          AUTOTILE_EDGE_WEST,
+      }),
+    );
+  });
+
+  it("renders bridges over adjacent river tiles instead of nearby grass", () => {
+    const tiles = [
+      [0, 15, 0],
+      [1, 18, 1],
+      [0, 15, 0],
+    ];
+
+    const plan = buildTerrainRenderPlan(tiles, 1, 1);
+
+    expect(plan.baseKey).toBe("tile_river");
+    expect(plan.overlay).toEqual(
+      expect.objectContaining({
+        key: "tile_bridge",
+        mask: AUTOTILE_EDGE_EAST | AUTOTILE_EDGE_WEST,
+      }),
+    );
+  });
+});

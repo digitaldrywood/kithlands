@@ -15,6 +15,7 @@ describe("encounterRateMultiplierForTile", () => {
     expect(encounterRateMultiplierForTile(9)).toBe(1.0);
     expect(encounterRateMultiplierForTile(10)).toBe(1.5);
     expect(encounterRateMultiplierForTile(11)).toBe(1.2);
+    expect(encounterRateMultiplierForTile(13)).toBe(1.3);
   });
 
   it("returns 0 for safe or indoor tiles", () => {
@@ -22,6 +23,8 @@ describe("encounterRateMultiplierForTile", () => {
     expect(encounterRateMultiplierForTile(4)).toBe(0);
     expect(encounterRateMultiplierForTile(5)).toBe(0);
     expect(encounterRateMultiplierForTile(6)).toBe(0);
+    expect(encounterRateMultiplierForTile(15)).toBe(0);
+    expect(encounterRateMultiplierForTile(17)).toBe(0);
   });
 });
 
