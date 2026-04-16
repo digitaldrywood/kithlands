@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/digitaldrywood/kithlands/api"
+	"github.com/digitaldrywood/kithlands/internal/combat"
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
 )
 
@@ -38,6 +39,7 @@ func enterCombat(t *testing.T, game *api.Game) *api.GameState {
 	if state.Phase != "combat" {
 		t.Fatalf("phase after encounter: %q, want combat", state.Phase)
 	}
+	api.SetEncounterStartForTest(game, combat.EncounterStartNormal)
 	return state
 }
 
@@ -176,4 +178,3 @@ func TestRogueStealEmitsLogLine(t *testing.T) {
 		t.Errorf("combat log missing steal entry; got %v", state.CombatLog)
 	}
 }
-
