@@ -15,9 +15,7 @@ import { FloatingTextPool } from "../ui/floating_text.js";
 import { ENEMY_SPRITES } from "../data/monsterSprites.js";
 import {
   battleSpeedMul,
-  getBattlePlanMemory,
   messageCharMs,
-  setBattlePlanMemory,
 } from "../systems/prefs.js";
 import { toggleDebugPanel, closeDebugPanel } from "./debug_panel.js";
 import {
@@ -75,6 +73,10 @@ const CLASS_SPRITES = {
   wanderer: "wanderer",
 };
 
+function normalizeLastRoundActions(actions) {
+  return Array.isArray(actions) && actions.length > 0 ? actions : null;
+}
+
 export class BattleScene extends Phaser.Scene {
   constructor() {
     super("Battle");
@@ -82,10 +84,9 @@ export class BattleScene extends Phaser.Scene {
 
   init(data) {
     this.gameState = data.gameState;
-    this._lastRoundActions =
-      data.lastRoundActions ||
-      getBattlePlanMemory(data.gameState?.party) ||
-      null;
+    this._lastRoundActions = normalizeLastRoundActions(
+      data.lastRoundActions ?? data.gameState?.last_round_actions,
+    );
     this._autoMode = data.autoMode || false;
   }
 
@@ -1467,9 +1468,9 @@ export class BattleScene extends Phaser.Scene {
 
       this.gameState = result;
 
-      // Persist this round's actions for REPEAT / AUTO next round (issue #99)
-      const savedActions = [...this.memberActions];
-      setBattlePlanMemory(this.gameState.party, savedActions);
+      // Persist this round's actions for REPEAT / AUTO from the
+      // authoritative server state, not browser storage.
+      const savedActions = normalizeLastRoundActions(result.last_round_actions);
 
       this.scaledDelay(400, () => {
         this.animating = false;
