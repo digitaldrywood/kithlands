@@ -58,6 +58,7 @@ func (o *OllamaGateway) Generate(ctx context.Context, req Request) (Response, er
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 
+	//nolint:gosec // Ollama baseURL is configured for the trusted local gateway.
 	resp, err := o.client.Do(httpReq)
 	if err != nil {
 		return o.fallback.Generate(ctx, req)

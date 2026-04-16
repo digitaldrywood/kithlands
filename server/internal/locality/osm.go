@@ -434,6 +434,7 @@ out body; >; out skel qt;`,
 	req.Header.Set("User-Agent", "Kithlands/1.0 (game)")
 
 	client := &http.Client{Timeout: 30 * time.Second}
+	//nolint:gosec // Overpass endpoint is fixed and request body only parameterizes the query payload.
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
