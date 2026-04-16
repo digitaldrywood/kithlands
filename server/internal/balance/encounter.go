@@ -41,14 +41,21 @@ func ScaleMonster(m *gamedata.Monster, id int, encounterLevel int, diff Difficul
 		levelScale = 0
 	}
 
-	hp := int(float64(m.HP+levelScale*5) * diff.EnemyHPMult)
+	hpScale := 1.0 + 0.10*float64(levelScale)
+	hp := int(float64(m.HP) * hpScale * diff.EnemyHPMult)
 	if hp < 1 {
 		hp = 1
 	}
 
-	str := int(float64(m.Stats.STR+levelScale) * diff.EnemyDamageMult)
+	damageScale := 1.0 + 0.05*float64(levelScale)
+	str := int(float64(m.Stats.STR) * damageScale * diff.EnemyDamageMult)
 	if str < 1 {
 		str = 1
+	}
+
+	hitPct := m.Stats.HitPct + levelScale*2
+	if hitPct < 1 {
+		hitPct = 1
 	}
 
 	// XP scales with encounter level (+50% per level above tier) and applies
@@ -68,7 +75,7 @@ func ScaleMonster(m *gamedata.Monster, id int, encounterLevel int, diff Difficul
 		INT:         m.Stats.INT,
 		VIT:         m.Stats.VIT,
 		LCK:         m.Stats.LCK,
-		HitPct:      m.Stats.HitPct + levelScale,
+		HitPct:      hitPct,
 		MaxHP:       hp,
 		CurrentHP:   hp,
 		WeaponPower: 0,

@@ -29,6 +29,7 @@ type EncounterResult struct {
 func GenerateFormationEncounter(gd *gamedata.GameData, encounterLevel int, diff Difficulty, terrainTag string, rng *rand.Rand) EncounterResult {
 	var eligible []gamedata.Formation
 	var totalWeight int
+	relaxedMaxCap := false
 	for _, f := range gd.Formations {
 		if f.Weight == 0 {
 			continue
@@ -44,6 +45,28 @@ func GenerateFormationEncounter(gd *gamedata.GameData, encounterLevel int, diff 
 		}
 		eligible = append(eligible, f)
 		totalWeight += f.Weight
+	}
+
+	if len(eligible) == 0 {
+		// Once the party outlevels the authored encounter caps, keep using real
+		// formations and let ScaleMonster provide the pressure rather than
+		// collapsing into the single-slime fallback. Reward only the authored
+		// monster XP on this relaxed path so difficulty rises without exploding
+		// progression.
+		relaxedMaxCap = true
+		for _, f := range gd.Formations {
+			if f.Weight == 0 {
+				continue
+			}
+			if encounterLevel < f.MinEncounterLevel {
+				continue
+			}
+			if !formationMatchesTerrain(f, terrainTag) {
+				continue
+			}
+			eligible = append(eligible, f)
+			totalWeight += f.Weight
+		}
 	}
 
 	if len(eligible) == 0 {
@@ -81,6 +104,10 @@ func GenerateFormationEncounter(gd *gamedata.GameData, encounterLevel int, diff 
 	sizeCounts := make(map[string]int)
 	var combatants []*combat.Combatant
 	combatantID := 100
+	scaledEncounterLevel := encounterLevel
+	if relaxedMaxCap && picked.MaxEncounterLevel > 0 {
+		scaledEncounterLevel = min(encounterLevel, picked.MaxEncounterLevel+4)
+	}
 
 	for _, slot := range picked.Slots {
 		m := gd.MonsterByID(slot.MonsterID)
@@ -106,7 +133,10 @@ func GenerateFormationEncounter(gd *gamedata.GameData, encounterLevel int, diff 
 		}
 
 		for i := 0; i < count; i++ {
-			c := ScaleMonster(m, combatantID, encounterLevel, diff)
+			c := ScaleMonster(m, combatantID, scaledEncounterLevel, diff)
+			if relaxedMaxCap {
+				c.XPReward = max(1, int(float64(m.XPReward)*diff.XPGainMult*0.85))
+			}
 			c.MonsterID = m.ID
 			c.Size = m.Size
 			combatants = append(combatants, c)

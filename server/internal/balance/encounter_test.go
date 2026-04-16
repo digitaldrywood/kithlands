@@ -230,6 +230,38 @@ func TestScaleMonster_XPFloorsAtBase(t *testing.T) {
 	}
 }
 
+func TestScaleMonster_HighEncounterLevelKeepsPressure(t *testing.T) {
+	m := &gamedata.Monster{
+		Name:        "war hydra",
+		Tier:        5,
+		HP:          350,
+		ArmorAbsorb: 18,
+		Stats: gamedata.MonsterStats{
+			STR:    62,
+			AGI:    12,
+			INT:    8,
+			VIT:    28,
+			LCK:    6,
+			HitPct: 22,
+		},
+		XPReward: 910,
+	}
+	diff := balance.GetDifficulty("normal")
+
+	base := balance.ScaleMonster(m, 1, 5, diff)
+	late := balance.ScaleMonster(m, 2, 20, diff)
+
+	if got := float64(late.MaxHP) / float64(base.MaxHP); got < 2.0 {
+		t.Fatalf("late-game HP ratio %.2f too low; want at least 2.0x", got)
+	}
+	if got := float64(late.STR) / float64(base.STR); got < 1.4 {
+		t.Fatalf("late-game STR ratio %.2f too low; want at least 1.4x", got)
+	}
+	if late.HitPct <= base.HitPct {
+		t.Fatalf("late-game hit pct %d should exceed base %d", late.HitPct, base.HitPct)
+	}
+}
+
 func TestCombatantFieldsPopulated(t *testing.T) {
 	gd := loadTestData(t)
 	diff := balance.GetDifficulty("normal")
@@ -249,6 +281,47 @@ func TestCombatantFieldsPopulated(t *testing.T) {
 		if c.CurrentHP != c.MaxHP {
 			t.Errorf("combatant %q CurrentHP != MaxHP: %d != %d", c.Name, c.CurrentHP, c.MaxHP)
 		}
+	}
+}
+
+func TestGenerateFormationEncounterHighLevelAvoidsFallback(t *testing.T) {
+	gd := loadTestData(t)
+	gd.Formations = []gamedata.Formation{
+		{
+			ID:                "capped_wolves",
+			Weight:            1,
+			MinEncounterLevel: 2,
+			MaxEncounterLevel: 5,
+			TerrainTags:       []string{"forest"},
+			Layout:            "line",
+			Slots: []gamedata.FormationSlot{
+				{MonsterID: "wolf", Min: 1, Max: 1},
+			},
+		},
+	}
+	diff := balance.GetDifficulty("normal")
+	rng := rand.New(rand.NewPCG(42, 0))
+
+	result := balance.GenerateFormationEncounter(gd, 20, diff, "forest", rng)
+	if result.FormationID != "capped_wolves" {
+		t.Fatalf("expected capped formation, got %q", result.FormationID)
+	}
+	if len(result.Combatants) != 1 {
+		t.Fatalf("expected one scaled combatant, got %d", len(result.Combatants))
+	}
+	wolf := gd.MonsterByID("wolf")
+	if wolf == nil {
+		t.Fatal("expected wolf monster data")
+	}
+	if got := result.Combatants[0].MonsterID; got != "wolf" {
+		t.Fatalf("expected wolf combatant, got %q", got)
+	}
+	if result.Combatants[0].MaxHP <= wolf.HP {
+		t.Fatalf("expected scaled wolf HP > base %d, got %d", wolf.HP, result.Combatants[0].MaxHP)
+	}
+	wantXP := int(float64(wolf.XPReward) * diff.XPGainMult * 0.85)
+	if result.Combatants[0].XPReward != wantXP {
+		t.Fatalf("expected relaxed XP reward %d, got %d", wantXP, result.Combatants[0].XPReward)
 	}
 }
 

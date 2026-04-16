@@ -154,6 +154,57 @@ func TestCritDoublesBaseDamage(t *testing.T) {
 	}
 }
 
+func TestPhysicalDamageVarianceSwingsAboveAndBelowNominal(t *testing.T) {
+	gd := loadTestData(t)
+	stats := &gd.Stats.Combat
+
+	attacker := &combat.Combatant{
+		ID: 1, Name: "Variance", IsPlayer: true,
+		STR: 24, AGI: 50, INT: 1, VIT: 10, LCK: 0, HitPct: 30,
+		MaxHP: 100, CurrentHP: 100,
+		WeaponPower: 12,
+	}
+	defender := &combat.Combatant{
+		ID: 2, Name: "Dummy", IsPlayer: false,
+		STR: 1, AGI: 0, INT: 1, VIT: 1, LCK: 0, HitPct: 0,
+		MaxHP: 10_000, CurrentHP: 10_000,
+		ArmorAbsorb: 8,
+	}
+
+	nominal := (attacker.STR + attacker.WeaponPower) - defender.ArmorAbsorb
+	minDmg := 1 << 30
+	maxDmg := 0
+
+	for seed := uint64(0); seed < 256; seed++ {
+		defender.CurrentHP = 10_000
+		defender.Status = character.StatusNone
+		rng := rand.New(rand.NewPCG(seed, 0))
+		results := combat.ResolveTurn(
+			[]*combat.Combatant{attacker},
+			[]*combat.Combatant{defender},
+			[]combat.Action{{ActorID: 1, Kind: combat.ActionAttack, TargetID: 2}},
+			stats, rng,
+		)
+		if len(results) == 0 || len(results[0].Hits) == 0 || results[0].Hits[0].Missed {
+			t.Fatalf("expected a landed hit for seed %d", seed)
+		}
+		dmg := results[0].Hits[0].Damage
+		if dmg < minDmg {
+			minDmg = dmg
+		}
+		if dmg > maxDmg {
+			maxDmg = dmg
+		}
+	}
+
+	if minDmg >= nominal {
+		t.Fatalf("minimum damage %d should dip below nominal %d", minDmg, nominal)
+	}
+	if maxDmg <= nominal {
+		t.Fatalf("maximum damage %d should rise above nominal %d", maxDmg, nominal)
+	}
+}
+
 func TestVictoryCondition(t *testing.T) {
 	enemies := []*combat.Combatant{
 		{ID: 1, CurrentHP: 0, Status: character.StatusDeath},
