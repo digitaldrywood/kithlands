@@ -52,13 +52,14 @@ vi.mock("../systems/modalLock.js", () => ({
 }));
 
 let TownScene;
+let npcSpriteForTags;
 
 beforeAll(async () => {
   globalThis.Phaser = {
     Scene: class {},
   };
 
-  ({ TownScene } = await import("./town.js"));
+  ({ TownScene, npcSpriteForTags } = await import("./town.js"));
 });
 
 beforeEach(() => {
@@ -151,5 +152,16 @@ describe("TownScene audio setup", () => {
     const setBackgroundColor = runCreateUntilBackground(["shop"]);
 
     expect(setBackgroundColor).toHaveBeenCalledWith("#000000");
+  });
+});
+
+describe("npcSpriteForTags", () => {
+  it("uses the healer sprite for heal-tag buildings", () => {
+    expect(npcSpriteForTags(["rest", "heal"])).toBe("npc_priestess");
+  });
+
+  it("keeps merchants and innkeepers mapped to their existing sprites", () => {
+    expect(npcSpriteForTags(["shop", "commerce"])).toBe("npc_merchant");
+    expect(npcSpriteForTags(["rest"])).toBe("npc_innkeeper");
   });
 });

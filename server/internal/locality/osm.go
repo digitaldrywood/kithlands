@@ -323,10 +323,16 @@ func keepBuildingUnnamed(tags map[string]string) bool {
 	if b := tags["building"]; b != "" && b != "yes" {
 		return true
 	}
+	switch {
+	case isHealingAmenity(tags["amenity"]):
+		return true
+	case isShopAmenity(tags):
+		return true
+	}
 	switch tags["amenity"] {
-	case "school", "hospital", "fire_station", "police",
+	case "school", "fire_station", "police",
 		"place_of_worship", "library", "townhall",
-		"university", "college", "clinic", "courthouse":
+		"university", "college", "courthouse":
 		return true
 	}
 	return false
@@ -538,9 +544,9 @@ func classifyBuilding(tags map[string]string) NodeKind {
 		return NodePlace
 	case amenity == "library":
 		return NodePlace
-	case amenity == "hospital" || amenity == "clinic":
-		return NodePlace
-	case b == "commercial" || b == "retail" || amenity == "restaurant" || amenity == "cafe":
+	case isHealingAmenity(amenity):
+		return NodeBusiness
+	case isShopAmenity(tags) || b == "commercial" || b == "retail" || amenity == "restaurant" || amenity == "cafe" || amenity == "bar" || amenity == "fast_food":
 		return NodeBusiness
 	case b == "civic" || b == "government":
 		return NodeLandmark
@@ -560,10 +566,13 @@ func buildingTags(tags map[string]string) []string {
 	if amenity == "place_of_worship" || b == "church" {
 		result = append(result, "temple", "revive")
 	}
+	if isHealingAmenity(amenity) {
+		result = append(result, "rest", "heal")
+	}
 	if amenity == "restaurant" || amenity == "cafe" || amenity == "bar" {
 		result = append(result, "commerce", "rest")
 	}
-	if b == "commercial" || b == "retail" || tags["shop"] != "" {
+	if isShopAmenity(tags) || b == "commercial" || b == "retail" {
 		result = append(result, "commerce", "shop")
 	}
 	if b == "civic" || b == "government" || amenity == "townhall" {
@@ -596,12 +605,14 @@ func classifyAmenity(tags map[string]string) NodeKind {
 	switch amenity {
 	case "restaurant", "cafe", "bar", "fast_food":
 		return NodeBusiness
+	case "hospital", "clinic", "doctor", "pharmacy", "convenience", "supermarket", "department_store":
+		return NodeBusiness
 	case "school", "library", "fire_station", "police":
 		return NodePlace
 	case "place_of_worship":
 		return NodeLandmark
 	default:
-		if tags["shop"] != "" {
+		if isShopAmenity(tags) {
 			return NodeBusiness
 		}
 		return NodePlace
@@ -612,10 +623,13 @@ func amenityTags(tags map[string]string) []string {
 	result := []string{"place"}
 	amenity := tags["amenity"]
 
+	if isHealingAmenity(amenity) {
+		result = append(result, "rest", "heal")
+	}
 	if amenity == "restaurant" || amenity == "cafe" || amenity == "bar" {
 		result = append(result, "commerce", "rest")
 	}
-	if tags["shop"] != "" {
+	if isShopAmenity(tags) {
 		result = append(result, "commerce", "shop")
 	}
 	if amenity == "place_of_worship" {
@@ -623,6 +637,27 @@ func amenityTags(tags map[string]string) []string {
 	}
 
 	return result
+}
+
+func isHealingAmenity(amenity string) bool {
+	switch amenity {
+	case "hospital", "clinic", "doctor":
+		return true
+	default:
+		return false
+	}
+}
+
+func isShopAmenity(tags map[string]string) bool {
+	if tags["shop"] != "" {
+		return true
+	}
+	switch tags["amenity"] {
+	case "pharmacy", "convenience", "supermarket", "department_store":
+		return true
+	default:
+		return false
+	}
 }
 
 func coordDistance(a, b Node, centerLat, centerLng, minLat, maxLat, minLng, maxLng float64) float64 {

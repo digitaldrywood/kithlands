@@ -345,6 +345,11 @@ func TestKeepBuildingUnnamed(t *testing.T) {
 		{"building=yes alone", map[string]string{"building": "yes"}, false},
 		{"building=yes with civic amenity", map[string]string{"building": "yes", "amenity": "fire_station"}, true},
 		{"building=yes with hospital amenity", map[string]string{"building": "yes", "amenity": "hospital"}, true},
+		{"building=yes with doctor amenity", map[string]string{"building": "yes", "amenity": "doctor"}, true},
+		{"building=yes with pharmacy amenity", map[string]string{"building": "yes", "amenity": "pharmacy"}, true},
+		{"building=yes with convenience amenity", map[string]string{"building": "yes", "amenity": "convenience"}, true},
+		{"building=yes with supermarket amenity", map[string]string{"building": "yes", "amenity": "supermarket"}, true},
+		{"building=yes with department store amenity", map[string]string{"building": "yes", "amenity": "department_store"}, true},
 		{"building=yes with school amenity", map[string]string{"building": "yes", "amenity": "school"}, true},
 		{"building=yes with place_of_worship amenity", map[string]string{"building": "yes", "amenity": "place_of_worship"}, true},
 		{"building=yes with unimportant amenity", map[string]string{"building": "yes", "amenity": "bench"}, false},
@@ -382,8 +387,15 @@ func TestClassifyBuildingEdgeCases(t *testing.T) {
 		tags map[string]string
 		want NodeKind
 	}{
-		{"hospital", map[string]string{"amenity": "hospital"}, NodePlace},
-		{"clinic", map[string]string{"amenity": "clinic"}, NodePlace},
+		{"hospital", map[string]string{"amenity": "hospital"}, NodeBusiness},
+		{"clinic", map[string]string{"amenity": "clinic"}, NodeBusiness},
+		{"doctor", map[string]string{"amenity": "doctor"}, NodeBusiness},
+		{"pharmacy", map[string]string{"amenity": "pharmacy"}, NodeBusiness},
+		{"convenience", map[string]string{"amenity": "convenience"}, NodeBusiness},
+		{"supermarket", map[string]string{"amenity": "supermarket"}, NodeBusiness},
+		{"department store", map[string]string{"amenity": "department_store"}, NodeBusiness},
+		{"bar", map[string]string{"amenity": "bar"}, NodeBusiness},
+		{"fast_food", map[string]string{"amenity": "fast_food"}, NodeBusiness},
 		{"library", map[string]string{"amenity": "library"}, NodePlace},
 		{"police", map[string]string{"amenity": "police"}, NodePlace},
 		{"government", map[string]string{"building": "government"}, NodeLandmark},
@@ -408,6 +420,13 @@ func TestClassifyAmenityEdgeCases(t *testing.T) {
 	}{
 		{"fast_food", map[string]string{"amenity": "fast_food"}, NodeBusiness},
 		{"shop", map[string]string{"shop": "bakery"}, NodeBusiness},
+		{"hospital", map[string]string{"amenity": "hospital"}, NodeBusiness},
+		{"clinic", map[string]string{"amenity": "clinic"}, NodeBusiness},
+		{"doctor", map[string]string{"amenity": "doctor"}, NodeBusiness},
+		{"pharmacy", map[string]string{"amenity": "pharmacy"}, NodeBusiness},
+		{"convenience", map[string]string{"amenity": "convenience"}, NodeBusiness},
+		{"supermarket", map[string]string{"amenity": "supermarket"}, NodeBusiness},
+		{"department_store", map[string]string{"amenity": "department_store"}, NodeBusiness},
 		{"unknown amenity", map[string]string{"amenity": "bench"}, NodePlace},
 	}
 
@@ -419,6 +438,125 @@ func TestClassifyAmenityEdgeCases(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestBuildingTagsGameplayMappings(t *testing.T) {
+	tests := []struct {
+		name string
+		tags map[string]string
+		want []string
+	}{
+		{
+			name: "hospital adds rest and heal gameplay tags",
+			tags: map[string]string{"building": "yes", "amenity": "hospital"},
+			want: []string{"place", "rest", "heal"},
+		},
+		{
+			name: "clinic adds rest and heal gameplay tags",
+			tags: map[string]string{"building": "yes", "amenity": "clinic"},
+			want: []string{"place", "rest", "heal"},
+		},
+		{
+			name: "doctor adds rest and heal gameplay tags",
+			tags: map[string]string{"building": "yes", "amenity": "doctor"},
+			want: []string{"place", "rest", "heal"},
+		},
+		{
+			name: "pharmacy maps to shop gameplay tags",
+			tags: map[string]string{"building": "yes", "amenity": "pharmacy"},
+			want: []string{"place", "commerce", "shop"},
+		},
+		{
+			name: "convenience maps to shop gameplay tags",
+			tags: map[string]string{"building": "yes", "amenity": "convenience"},
+			want: []string{"place", "commerce", "shop"},
+		},
+		{
+			name: "supermarket maps to shop gameplay tags",
+			tags: map[string]string{"building": "yes", "amenity": "supermarket"},
+			want: []string{"place", "commerce", "shop"},
+		},
+		{
+			name: "department store maps to shop gameplay tags",
+			tags: map[string]string{"building": "yes", "amenity": "department_store"},
+			want: []string{"place", "commerce", "shop"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := buildingTags(tt.tags)
+			for _, tag := range tt.want {
+				if !containsTag(got, tag) {
+					t.Fatalf("buildingTags(%v) missing %q in %v", tt.tags, tag, got)
+				}
+			}
+		})
+	}
+}
+
+func TestAmenityTagsGameplayMappings(t *testing.T) {
+	tests := []struct {
+		name string
+		tags map[string]string
+		want []string
+	}{
+		{
+			name: "hospital adds rest and heal gameplay tags",
+			tags: map[string]string{"amenity": "hospital"},
+			want: []string{"place", "rest", "heal"},
+		},
+		{
+			name: "clinic adds rest and heal gameplay tags",
+			tags: map[string]string{"amenity": "clinic"},
+			want: []string{"place", "rest", "heal"},
+		},
+		{
+			name: "doctor adds rest and heal gameplay tags",
+			tags: map[string]string{"amenity": "doctor"},
+			want: []string{"place", "rest", "heal"},
+		},
+		{
+			name: "pharmacy maps to shop gameplay tags",
+			tags: map[string]string{"amenity": "pharmacy"},
+			want: []string{"place", "commerce", "shop"},
+		},
+		{
+			name: "convenience maps to shop gameplay tags",
+			tags: map[string]string{"amenity": "convenience"},
+			want: []string{"place", "commerce", "shop"},
+		},
+		{
+			name: "supermarket maps to shop gameplay tags",
+			tags: map[string]string{"amenity": "supermarket"},
+			want: []string{"place", "commerce", "shop"},
+		},
+		{
+			name: "department store maps to shop gameplay tags",
+			tags: map[string]string{"amenity": "department_store"},
+			want: []string{"place", "commerce", "shop"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := amenityTags(tt.tags)
+			for _, tag := range tt.want {
+				if !containsTag(got, tag) {
+					t.Fatalf("amenityTags(%v) missing %q in %v", tt.tags, tag, got)
+				}
+			}
+		})
+	}
+}
+
+func containsTag(tags []string, want string) bool {
+	for _, tag := range tags {
+		if tag == want {
+			return true
+		}
+	}
+	return false
 }
 
 func TestBoundingBoxScalesWithRadius(t *testing.T) {
