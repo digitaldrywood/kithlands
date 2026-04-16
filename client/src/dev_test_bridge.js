@@ -706,6 +706,12 @@ export function installDevTestBridge(game) {
       return true;
     },
 
+    startScene(sceneKey, data = {}) {
+      if (!sceneKey) throw new Error("sceneKey is required");
+      game.scene.start(sceneKey, clone(data));
+      return true;
+    },
+
     townNpcPositions(sceneKey = "Town") {
       const scene = getScene(game, sceneKey);
       if (!scene) throw new Error("Town scene is not active");

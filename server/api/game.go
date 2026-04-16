@@ -609,6 +609,16 @@ func (g *Game) fillExtras(state *GameState) {
 	}
 }
 
+func (g *Game) snapshotVictoryXPProgress() {
+	g.xpBefore = make([]int, len(g.party))
+	g.levelBefore = make([]int, len(g.party))
+	g.diedThisFight = make([]bool, len(g.party))
+	for i, c := range g.party {
+		g.xpBefore[i] = c.XP
+		g.levelBefore[i] = c.Level
+	}
+}
+
 func (g *Game) fillInventoryState(state *GameState) {
 	// Items: every consumable (potions, ethers, cures, tent, revive, …) AND
 	// any weapons/armor stored in the inventory map. Potions and ethers

@@ -44,16 +44,9 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 			return &state, nil
 		}
 
-		// Snapshot XP and level before combat for victory screen animation
-		g.xpBefore = make([]int, len(g.party))
-		g.levelBefore = make([]int, len(g.party))
-		// Clear per-fight dead-at-victory flags so a prior fight's death
-		// cannot leak into the next victory screen.
-		g.diedThisFight = make([]bool, len(g.party))
-		for i, c := range g.party {
-			g.xpBefore[i] = c.XP
-			g.levelBefore[i] = c.Level
-		}
+		// Snapshot current XP/level progress so the victory screen starts from
+		// the party's real pre-fight state.
+		g.snapshotVictoryXPProgress()
 
 		// Random encounter triggered by client (walking on grass)
 		partyLevels := make([]int, len(g.party))
@@ -183,13 +176,9 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 			state := g.stateUnlocked()
 			return &state, nil
 		}
-		g.xpBefore = make([]int, len(g.party))
-		g.levelBefore = make([]int, len(g.party))
-		g.diedThisFight = make([]bool, len(g.party))
+		g.snapshotVictoryXPProgress()
 		partyLevels := make([]int, len(g.party))
 		for i, c := range g.party {
-			g.xpBefore[i] = c.XP
-			g.levelBefore[i] = c.Level
 			partyLevels[i] = c.Level
 		}
 		encLvl := balance.EncounterLevel(partyLevels, "normal", 0, g.currentQ)
@@ -343,13 +332,7 @@ func (g *Game) spawnScriptedBoss(monsterID string) error {
 
 	// Snapshot XP/level for the victory screen animation, same as random
 	// encounters do in the "encounter" branch above.
-	g.xpBefore = make([]int, len(g.party))
-	g.levelBefore = make([]int, len(g.party))
-	g.diedThisFight = make([]bool, len(g.party))
-	for i, c := range g.party {
-		g.xpBefore[i] = c.XP
-		g.levelBefore[i] = c.Level
-	}
+	g.snapshotVictoryXPProgress()
 
 	c := balance.ScaleMonster(m, 100, encLvl, g.diff)
 	c.MonsterID = m.ID
