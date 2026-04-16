@@ -12,12 +12,14 @@ describe("buildingTypeFromTags", () => {
 
   it("still preserves other specialized building types", () => {
     expect(buildingTypeFromTags(["rest"])).toBe("inn");
+    expect(buildingTypeFromTags(["heal"])).toBe("inn");
     expect(buildingTypeFromTags(["shop"])).toBe("shop");
     expect(buildingTypeFromTags(["temple"])).toBe("temple");
   });
 
-  it("treats inns, houses, and safehouses as rest buildings", () => {
+  it("treats inns, healers, houses, and safehouses as rest buildings", () => {
     expect(isRestBuilding(["rest"])).toBe(true);
+    expect(isRestBuilding(["heal"])).toBe(true);
     expect(isRestBuilding(["house"])).toBe(true);
     expect(isRestBuilding(["safehouse"])).toBe(true);
     expect(isRestBuilding(["temple"])).toBe(false);
