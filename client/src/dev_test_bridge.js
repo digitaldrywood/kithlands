@@ -414,6 +414,39 @@ function playerSnapshot(scene, moved) {
   };
 }
 
+function visibleBattleFxSnapshot(scene) {
+  const children = scene?.children?.list || [];
+  const taggedCount = (tag) =>
+    children.filter(
+      (child) =>
+        child?._combatFxTag === tag &&
+        child.active !== false &&
+        child.visible !== false &&
+        (child.alpha ?? 1) > 0.01,
+    ).length;
+
+  return {
+    reticles: taggedCount("reticle"),
+    tracers: taggedCount("tracer"),
+    bursts: taggedCount("burst"),
+    vignetteAlpha: scene?.lowHpVignette?.alpha ?? 0,
+    floatingTexts: (scene?.floatingText?.active || [])
+      .filter(
+        (text) =>
+          text?.active !== false &&
+          text?.visible !== false &&
+          (text?.alpha ?? 1) > 0.01,
+      )
+      .map((text) => ({
+        text: text.text,
+        x: text.x ?? null,
+        y: text.y ?? null,
+        color: text.style?.color || text.color || null,
+        fontSize: text.style?.fontSize || text.fontSize || null,
+      })),
+  };
+}
+
 function findDirectionAuditAnchor(scene) {
   const width = scene?.mapW ?? scene?.roomW;
   const height = scene?.mapH ?? scene?.roomH;
@@ -711,6 +744,77 @@ export function installDevTestBridge(game) {
         }
       }
       return clone(result);
+    },
+
+    battleVisibilitySnapshot(sceneKey = "Battle") {
+      const scene = getScene(game, sceneKey);
+      if (!scene || scene.scene?.key !== "Battle") {
+        throw new Error("Battle scene is not active");
+      }
+      return visibleBattleFxSnapshot(scene);
+    },
+
+    async playBattleVisibilityDemo(kind = "tracer", sceneKey = "Battle") {
+      const scene = getScene(game, sceneKey);
+      if (!scene || scene.scene?.key !== "Battle") {
+        throw new Error("Battle scene is not active");
+      }
+
+      const partyEntries = Object.values(scene.partySprites || {}).sort(
+        (a, b) => (a.slot ?? 0) - (b.slot ?? 0),
+      );
+      const enemyEntries = Object.values(scene.enemySprites || {}).filter(
+        (entry) => entry && !entry.dead && !entry.dying,
+      );
+      const partyTarget = partyEntries[0] || null;
+      const partyActor =
+        partyEntries[Math.min(1, Math.max(0, partyEntries.length - 1))] ||
+        partyTarget;
+      const enemyActor = enemyEntries[0] || null;
+      const enemyTarget =
+        enemyEntries[Math.min(1, Math.max(0, enemyEntries.length - 1))] ||
+        enemyActor;
+      const stamp = Date.now();
+
+      if (kind === "tracer") {
+        scene.showActionFocus(enemyActor, partyTarget, {
+          tracerColor: 0xff8800,
+          targetColor: 0xff6666,
+        });
+      } else if (kind === "party_hit") {
+        scene.showActionFocus(enemyActor, partyTarget, {
+          tracerColor: 0xff8800,
+          targetColor: 0xff6666,
+        });
+        scene.hitFx(partyTarget.x, partyTarget.y, 27, true, false, "physical", {
+          targetKey: `proof_party_hit_${stamp}`,
+        });
+        scene.playPartyHitReaction(partyTarget, {
+          newHP: Math.max(
+            1,
+            Math.floor((partyTarget.hpBar?.maxHP ?? 100) * 0.2),
+          ),
+          maxHP: partyTarget.hpBar?.maxHP ?? 100,
+        });
+      } else if (kind === "floating_text") {
+        scene.hitFx(partyTarget.x, partyTarget.y, 34, true, false, "physical", {
+          targetKey: `proof_party_number_${stamp}`,
+        });
+        scene.showActionFocus(partyActor, enemyTarget, {
+          tracerColor: 0xbb88ff,
+          targetColor: 0xbb88ff,
+        });
+        scene.hitFx(enemyTarget.x, enemyTarget.y, 19, false, false, "magical", {
+          targetKey: `proof_magic_number_${stamp}`,
+          element: "dark",
+        });
+      } else {
+        throw new Error(`Unknown battle visibility demo: ${kind}`);
+      }
+
+      await nextFrame();
+      await nextFrame();
+      return visibleBattleFxSnapshot(scene);
     },
 
     clickMenuButton(label, sceneKey) {

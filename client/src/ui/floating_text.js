@@ -4,33 +4,44 @@ import Phaser from "phaser";
 const FLOAT_STYLES = {
   physical: {
     color: "#ffffff",
-    fontSize: "16px",
+    fontSize: "18px",
     rise: 35,
     duration: 700,
     prefix: "-",
+    bounceScale: 1.15,
+    stroke: "#111111",
+    strokeThickness: 2,
   },
   crit: {
     color: "#ffcc00",
-    fontSize: "22px",
+    fontSize: "24px",
     rise: 50,
     duration: 900,
     prefix: "-",
     suffix: "!",
-    punchScale: 1.4,
+    bounceScale: 1.28,
+    stroke: "#1f1300",
+    strokeThickness: 2,
   },
   magical: {
     color: "#bb88ff",
-    fontSize: "16px",
+    fontSize: "18px",
     rise: 35,
     duration: 700,
     prefix: "-",
+    bounceScale: 1.15,
+    stroke: "#111111",
+    strokeThickness: 2,
   },
   heal: {
     color: "#44ff44",
-    fontSize: "16px",
+    fontSize: "18px",
     rise: 30,
     duration: 800,
     prefix: "+",
+    bounceScale: 1.12,
+    stroke: "#0b1a0b",
+    strokeThickness: 2,
   },
   miss: {
     color: "#888888",
@@ -39,13 +50,19 @@ const FLOAT_STYLES = {
     duration: 500,
     text: "MISS",
     fontStyle: "italic",
+    bounceScale: 1.1,
+    stroke: "#111111",
+    strokeThickness: 2,
   },
   party_hit: {
     color: "#ff8800",
-    fontSize: "16px",
+    fontSize: "24px",
     rise: 35,
     duration: 700,
     prefix: "-",
+    bounceScale: 1.18,
+    stroke: "#140808",
+    strokeThickness: 2,
   },
   defeated: {
     color: "#ff4444",
@@ -54,6 +71,9 @@ const FLOAT_STYLES = {
     duration: 1000,
     delay: 300,
     text: "DEFEATED!",
+    bounceScale: 1.08,
+    stroke: "#220808",
+    strokeThickness: 2,
   },
 };
 
@@ -78,6 +98,12 @@ const BASE_STYLE = {
   fontFamily: "monospace",
   fontStyle: "bold",
 };
+
+function applyTextStroke(textObj, stroke, thickness) {
+  if (typeof textObj.setStroke === "function") {
+    textObj.setStroke(stroke, thickness);
+  }
+}
 
 export class FloatingTextPool {
   constructor(scene) {
@@ -134,6 +160,7 @@ export class FloatingTextPool {
       .setFontSize(16)
       .setColor("#ffffff")
       .setFontStyle("bold");
+    applyTextStroke(t, "#000000", 0);
     if (t._targetKey) {
       this._decrementTarget(t._targetKey);
       t._targetKey = null;
@@ -224,12 +251,13 @@ export class FloatingTextPool {
       .setActive(true)
       .setVisible(true)
       .setDepth(25);
+    applyTextStroke(t, style.stroke || "#111111", style.strokeThickness || 2);
 
     t._targetKey = targetKey;
     this.active.push(t);
 
-    // Punch-in scale for crits
-    const startScale = style.punchScale || 1;
+    // Brief bounce on spawn so even normal hits read as impact.
+    const startScale = style.bounceScale || 1.12;
     t.setScale(startScale);
 
     if (startScale > 1) {

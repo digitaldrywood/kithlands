@@ -54,6 +54,17 @@ const ELEMENT_SFX = {
   ice: "sfx_ice",
   lightning: "sfx_lightning",
 };
+const ACTION_TRACER_COLORS = {
+  enemyToParty: 0xff8800,
+  partyToEnemy: 0xffffff,
+  magical: 0xbb88ff,
+};
+const ACTION_RETICLE_COLORS = {
+  actor: 0xffff88,
+  partyTarget: 0xff6666,
+  enemyTarget: 0xffffff,
+  magicalTarget: 0xbb88ff,
+};
 const CLASS_SPRITES = {
   warrior: "warrior",
   cinder: "cinder",
@@ -72,6 +83,12 @@ const CLASS_SPRITES = {
 
 function normalizeLastRoundActions(actions) {
   return Array.isArray(actions) && actions.length > 0 ? actions : null;
+}
+
+function isLowHpDanger(nextHP, maxHP) {
+  return Number.isFinite(nextHP) && Number.isFinite(maxHP) && maxHP > 0
+    ? nextHP / maxHP < 0.25
+    : false;
 }
 
 export class BattleScene extends Phaser.Scene {
@@ -163,6 +180,7 @@ export class BattleScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setDepth(5);
+    this.createLowHpVignette();
 
     this.setupKeyboard();
 
@@ -809,6 +827,249 @@ export class BattleScene extends Phaser.Scene {
         fontFamily: "monospace",
         wordWrap: { width: 760 },
       });
+    }
+  }
+
+  createLowHpVignette() {
+    if (this.lowHpVignette) {
+      this.lowHpVignette.destroy();
+    }
+    const g = this.add.graphics().setDepth(18).setAlpha(0);
+    g.fillStyle(0x660000, 0.12);
+    g.fillRect(0, 0, 800, 600);
+    g.lineStyle(56, 0xaa0000, 0.22);
+    g.strokeRect(0, 0, 800, 600);
+    g.lineStyle(24, 0xff4444, 0.2);
+    g.strokeRect(20, 20, 760, 560);
+    this.lowHpVignette = g;
+  }
+
+  scaledMs(ms) {
+    return Math.max(0, ms * battleSpeedMul());
+  }
+
+  setSpritePosition(sprite, x, y) {
+    if (!sprite) return;
+    if (typeof sprite.setPosition === "function") {
+      sprite.setPosition(x, y);
+      return;
+    }
+    sprite.x = x;
+    sprite.y = y;
+  }
+
+  resolveVisualEntry(entry) {
+    if (!entry) return null;
+    const sprite = entry.sprite || entry;
+    const x = entry.x ?? sprite.x;
+    const y = entry.y ?? sprite.y;
+    if (typeof x !== "number" || typeof y !== "number") return null;
+
+    return {
+      sprite,
+      x,
+      y,
+      width: Math.max(
+        42,
+        Math.round((sprite.displayWidth || sprite.width || 56) * 0.72),
+      ),
+      height: Math.max(
+        42,
+        Math.round((sprite.displayHeight || sprite.height || 56) * 0.72),
+      ),
+    };
+  }
+
+  findEnemySpriteForAction(action, fallbackName = "") {
+    if (action?.actor_id != null && this.enemySprites[action.actor_id]) {
+      return this.enemySprites[action.actor_id];
+    }
+    if (!fallbackName) return null;
+    return (
+      Object.values(this.enemySprites).find(
+        (entry) =>
+          entry && !entry.dead && !entry.dying && entry.name === fallbackName,
+      ) || null
+    );
+  }
+
+  findPartySpriteForTarget(targetName, targetId, fallbackName = "") {
+    if (targetName && this.partySprites[targetName]) {
+      return this.partySprites[targetName];
+    }
+    if (fallbackName && this.partySprites[fallbackName]) {
+      return this.partySprites[fallbackName];
+    }
+    if (
+      typeof targetId === "number" &&
+      Array.isArray(this.gameState?.party) &&
+      this.gameState.party[targetId]
+    ) {
+      return this.partySprites[this.gameState.party[targetId].name] || null;
+    }
+    return null;
+  }
+
+  spawnActionReticle(entry, color, duration = 320) {
+    const visual = this.resolveVisualEntry(entry);
+    if (!visual) return null;
+
+    const g = this.add.graphics().setDepth(14);
+    g._combatFxTag = "reticle";
+    const { x, y, width, height } = visual;
+    const halfW = width / 2;
+    const halfH = height / 2;
+    const corner = Math.max(10, Math.min(width, height) * 0.28);
+
+    g.lineStyle(2, color, 0.95);
+    g.lineBetween(x - halfW, y - halfH, x - halfW + corner, y - halfH);
+    g.lineBetween(x - halfW, y - halfH, x - halfW, y - halfH + corner);
+    g.lineBetween(x + halfW, y - halfH, x + halfW - corner, y - halfH);
+    g.lineBetween(x + halfW, y - halfH, x + halfW, y - halfH + corner);
+    g.lineBetween(x - halfW, y + halfH, x - halfW + corner, y + halfH);
+    g.lineBetween(x - halfW, y + halfH, x - halfW, y + halfH - corner);
+    g.lineBetween(x + halfW, y + halfH, x + halfW - corner, y + halfH);
+    g.lineBetween(x + halfW, y + halfH, x + halfW, y + halfH - corner);
+
+    this.tweens.add({
+      targets: g,
+      alpha: { from: 1, to: 0.25 },
+      duration: this.scaledMs(duration / 2),
+      yoyo: true,
+      repeat: 1,
+      onComplete: () => g.destroy(),
+    });
+    return g;
+  }
+
+  spawnActionTracer(fromEntry, toEntry, color, duration = 320) {
+    const from = this.resolveVisualEntry(fromEntry);
+    const to = this.resolveVisualEntry(toEntry);
+    if (!from || !to) return null;
+
+    const g = this.add.graphics().setDepth(6);
+    g._combatFxTag = "tracer";
+    g.lineStyle(3, color, 0.9);
+    g.lineBetween(from.x, from.y, to.x, to.y);
+
+    const angle = Math.atan2(to.y - from.y, to.x - from.x);
+    const head = 14;
+    const wing = Math.PI / 7;
+    g.lineStyle(2, color, 0.9);
+    g.lineBetween(
+      to.x,
+      to.y,
+      to.x - Math.cos(angle - wing) * head,
+      to.y - Math.sin(angle - wing) * head,
+    );
+    g.lineBetween(
+      to.x,
+      to.y,
+      to.x - Math.cos(angle + wing) * head,
+      to.y - Math.sin(angle + wing) * head,
+    );
+
+    this.tweens.add({
+      targets: g,
+      alpha: 0,
+      duration: this.scaledMs(duration),
+      ease: "Quad.Out",
+      onComplete: () => g.destroy(),
+    });
+    return g;
+  }
+
+  showActionFocus(
+    actorEntry,
+    targetEntry,
+    { tracerColor, actorColor, targetColor, duration = 320 } = {},
+  ) {
+    if (actorEntry) {
+      this.spawnActionReticle(
+        actorEntry,
+        actorColor || ACTION_RETICLE_COLORS.actor,
+        duration,
+      );
+    }
+    if (targetEntry) {
+      this.spawnActionReticle(
+        targetEntry,
+        targetColor || tracerColor || ACTION_RETICLE_COLORS.enemyTarget,
+        duration,
+      );
+    }
+    if (actorEntry && targetEntry && tracerColor) {
+      this.spawnActionTracer(actorEntry, targetEntry, tracerColor, duration);
+    }
+  }
+
+  spawnPartyImpactBurst(x, y, color = 0xff6633, duration = 200) {
+    const g = this.add.graphics().setDepth(21);
+    g._combatFxTag = "burst";
+    g.lineStyle(2, color, 1);
+    for (let i = 0; i < 8; i++) {
+      const angle = (Math.PI * 2 * i) / 8;
+      const inner = 7;
+      const outer = 22;
+      g.lineBetween(
+        x + Math.cos(angle) * inner,
+        y + Math.sin(angle) * inner,
+        x + Math.cos(angle) * outer,
+        y + Math.sin(angle) * outer,
+      );
+    }
+    this.tweens.add({
+      targets: g,
+      alpha: 0,
+      duration: this.scaledMs(duration),
+      ease: "Quad.Out",
+      onComplete: () => g.destroy(),
+    });
+  }
+
+  pulseLowHpVignette() {
+    if (!this.lowHpVignette) return;
+    this.tweens.killTweensOf(this.lowHpVignette);
+    this.lowHpVignette.setAlpha(0);
+    this.tweens.add({
+      targets: this.lowHpVignette,
+      alpha: 1,
+      duration: this.scaledMs(90),
+      hold: this.scaledMs(40),
+      yoyo: true,
+      ease: "Sine.easeOut",
+      onComplete: () => this.lowHpVignette?.setAlpha(0),
+    });
+  }
+
+  playPartyHitReaction(targetEntry, { newHP, maxHP } = {}) {
+    const visual = this.resolveVisualEntry(targetEntry);
+    if (!visual) return;
+
+    const { sprite, x, y } = visual;
+
+    if (sprite?.setTint) {
+      sprite.setTint(0xff0000);
+      this.scaledDelay(120, () => sprite.setTint?.(0xff8888));
+      this.scaledDelay(320, () => sprite.clearTint?.());
+    }
+
+    this.tweens.killTweensOf(sprite);
+    this.setSpritePosition(sprite, x, y);
+    this.tweens.add({
+      targets: sprite,
+      x: x + 3,
+      duration: this.scaledMs(40),
+      yoyo: true,
+      repeat: 3,
+      ease: "Sine.easeInOut",
+      onStart: () => this.setSpritePosition(sprite, x - 3, y),
+      onComplete: () => this.setSpritePosition(sprite, x, y),
+    });
+
+    this.cameras.main.shake(this.scaledMs(150), 0.003);
+    if (isLowHpDanger(newHP, maxHP)) {
+      this.pulseLowHpVignette();
     }
   }
 
@@ -1543,6 +1804,7 @@ export class BattleScene extends Phaser.Scene {
         (attackMatch && action.kind !== "spell")
       ) {
         const attacker = action.actor_name || (attackMatch && attackMatch[1]);
+        const attackerEnemy = this.findEnemySpriteForAction(action, attacker);
         const targetId =
           action.target_id || (attackMatch && parseInt(attackMatch[3]));
         const dmg = action.damage || (attackMatch && parseInt(attackMatch[4]));
@@ -1552,6 +1814,10 @@ export class BattleScene extends Phaser.Scene {
         const pe = this.partySprites[attacker];
         const ee = this.enemySprites[targetId];
         if (pe && ee) {
+          this.showActionFocus(pe, ee, {
+            tracerColor: ACTION_TRACER_COLORS.partyToEnemy,
+            targetColor: ACTION_RETICLE_COLORS.enemyTarget,
+          });
           for (const a of this.partyArrows) a.setVisible(false);
           pe.arrow.setVisible(true);
           this.revealLine(`${attacker} attacks!`, "#ff4444");
@@ -1582,9 +1848,11 @@ export class BattleScene extends Phaser.Scene {
 
         // Hit effect on target
         playSFX("sfx_slash");
-        const pt =
-          this.partySprites[action.target_name] ||
-          this.partySprites[attackMatch?.[2]];
+        const pt = this.findPartySpriteForTarget(
+          action.target_name,
+          targetId,
+          attackMatch?.[2],
+        );
         if (ee) {
           const targetKey = `enemy_${targetId}`;
           playSFX(defeatMatch ? "sfx_death" : "sfx_hit");
@@ -1593,12 +1861,12 @@ export class BattleScene extends Phaser.Scene {
             missed: action.missed,
             targetKey,
           });
-          if (ee.sprite.setTint) {
+          if (!action.missed && ee.sprite.setTint) {
             ee.sprite.setTint(0xff4444);
             this.scaledDelay(200, () => ee.sprite.clearTint?.());
           }
           // Animate HP bar drain — integer math only, see systems/hpBar.js
-          if (ee.hpBar) {
+          if (!action.missed && ee.hpBar) {
             const newHP = applyDamage(ee.hpBar.currentHP, dmg);
             this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
           }
@@ -1608,6 +1876,10 @@ export class BattleScene extends Phaser.Scene {
           const targetKey = `party_${action.target_name || attackMatch?.[2]}`;
           const atkName = action.actor_name || attackMatch?.[1] || attacker;
           const tgtName = action.target_name || attackMatch?.[2] || "";
+          this.showActionFocus(attackerEnemy, pt, {
+            tracerColor: ACTION_TRACER_COLORS.enemyToParty,
+            targetColor: ACTION_RETICLE_COLORS.partyTarget,
+          });
           this.revealLine(`${atkName} attacks ${tgtName}!`, "#ff8800");
           playSFX("sfx_party_hit");
           await this.hitFx(pt.x, pt.y, dmg, true, false, dmgType, {
@@ -1615,16 +1887,15 @@ export class BattleScene extends Phaser.Scene {
             missed: action.missed,
             targetKey,
           });
-          if (pt.sprite.setTint) {
-            pt.sprite.setTint(0xff4444);
-            this.scaledDelay(200, () => pt.sprite.clearTint?.());
-          }
           // Animate party HP bar drain — integer math only
-          if (pt.hpBar) {
+          if (!action.missed && pt.hpBar) {
             const newHP = applyDamage(pt.hpBar.currentHP, dmg);
             this.animateHPBar(pt.hpBar, newHP, pt.hpBar.maxHP);
+            this.playPartyHitReaction(pt, {
+              newHP,
+              maxHP: pt.hpBar.maxHP,
+            });
           }
-          this.cameras.main.shake(80, 0.005);
         }
         await this.wait(200);
       } else if (action.kind === "counter" || counterMatch) {
@@ -1637,8 +1908,13 @@ export class BattleScene extends Phaser.Scene {
         const dmgType = action.damage_type || "physical";
         this.revealLine(line, "#ff8800");
         playSFX("sfx_slash");
+        const pe = this.partySprites[actorName];
         const ee = this.enemySprites[targetId];
         if (ee) {
+          this.showActionFocus(pe, ee, {
+            tracerColor: ACTION_TRACER_COLORS.partyToEnemy,
+            targetColor: ACTION_RETICLE_COLORS.enemyTarget,
+          });
           const targetKey = `enemy_${targetId}`;
           await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch, dmgType, {
             crit: action.crit,
@@ -1662,6 +1938,7 @@ export class BattleScene extends Phaser.Scene {
         const dmgType = action.damage_type || "magical";
 
         const pe = this.partySprites[caster];
+        const enemyCaster = this.findEnemySpriteForAction(action, caster);
         if (pe) {
           for (const a of this.partyArrows) a.setVisible(false);
           pe.arrow.setVisible(true);
@@ -1680,7 +1957,15 @@ export class BattleScene extends Phaser.Scene {
         this.scaledDelay(200, () => flash.destroy());
 
         // Check for multi-target: group consecutive entries with same caster + spell
-        const targets = [{ targetId, dmg, defeated: defeatMatch }];
+        const targets = [
+          {
+            targetId,
+            targetName: action.target_name || spellMatch?.[3],
+            dmg,
+            missed: action.missed,
+            defeated: defeatMatch,
+          },
+        ];
         while (i + 1 < log.length) {
           const nextAction = actions[i + 1] || {};
           if (
@@ -1691,7 +1976,9 @@ export class BattleScene extends Phaser.Scene {
             i++;
             targets.push({
               targetId: nextAction.target_id,
+              targetName: nextAction.target_name,
               dmg: nextAction.damage,
+              missed: nextAction.missed,
               defeated: log[i].includes("DEFEATED"),
             });
           } else {
@@ -1704,6 +1991,17 @@ export class BattleScene extends Phaser.Scene {
         for (let t = 0; t < targets.length; t++) {
           const tgt = targets[t];
           const ee = this.enemySprites[tgt.targetId];
+          const pt = this.findPartySpriteForTarget(
+            tgt.targetName,
+            tgt.targetId,
+            spellMatch?.[3],
+          );
+          const actorEntry = pe || enemyCaster;
+          const targetEntry = ee || pt;
+          this.showActionFocus(actorEntry, targetEntry, {
+            tracerColor: ACTION_TRACER_COLORS.magical,
+            targetColor: ACTION_RETICLE_COLORS.magicalTarget,
+          });
           if (ee) {
             for (let j = 0; j < 6; j++) {
               const px = ee.x + Phaser.Math.Between(-25, 25);
@@ -1725,13 +2023,28 @@ export class BattleScene extends Phaser.Scene {
               false,
               tgt.defeated,
               dmgType,
-              { targetKey, element },
+              { targetKey, element, missed: tgt.missed },
             );
-            if (ee.hpBar) {
+            if (!tgt.missed && ee.hpBar) {
               const newHP = applyDamage(ee.hpBar.currentHP, tgt.dmg);
               this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
             }
             if (tgt.defeated) await this.enemyDeathFx(ee);
+          } else if (pt) {
+            const targetKey = `party_${tgt.targetName || spellMatch?.[3]}`;
+            await this.hitFx(pt.x, pt.y, tgt.dmg, true, false, dmgType, {
+              targetKey,
+              element,
+              missed: tgt.missed,
+            });
+            if (!tgt.missed && pt.hpBar) {
+              const newHP = applyDamage(pt.hpBar.currentHP, tgt.dmg);
+              this.animateHPBar(pt.hpBar, newHP, pt.hpBar.maxHP);
+              this.playPartyHitReaction(pt, {
+                newHP,
+                maxHP: pt.hpBar.maxHP,
+              });
+            }
           }
           if (t < targets.length - 1) await this.wait(200);
         }
@@ -1813,8 +2126,15 @@ export class BattleScene extends Phaser.Scene {
         const dmg = action.damage;
         this.revealLine(line, "#dddd44");
         playSFX("sfx_hit");
+        const actorEntry =
+          this.partySprites[action.actor_name] ||
+          this.findEnemySpriteForAction(action, action.actor_name);
         const ee = this.enemySprites[targetId];
         if (ee) {
+          this.showActionFocus(actorEntry, ee, {
+            tracerColor: ACTION_TRACER_COLORS.partyToEnemy,
+            targetColor: ACTION_RETICLE_COLORS.enemyTarget,
+          });
           await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch, "physical");
           if (defeatMatch) await this.enemyDeathFx(ee);
         } else {
@@ -1825,6 +2145,10 @@ export class BattleScene extends Phaser.Scene {
               ? this.partySprites[gs.party[targetId].name]
               : null;
           if (targetMember) {
+            this.showActionFocus(actorEntry, targetMember, {
+              tracerColor: ACTION_TRACER_COLORS.enemyToParty,
+              targetColor: ACTION_RETICLE_COLORS.partyTarget,
+            });
             await this.hitFx(
               targetMember.x,
               targetMember.y,
@@ -1833,12 +2157,19 @@ export class BattleScene extends Phaser.Scene {
               false,
               "physical",
             );
-            if (targetMember.sprite?.setTint) {
-              targetMember.sprite.setTint(0xff4444);
-              this.scaledDelay(200, () => targetMember.sprite.clearTint?.());
+            if (targetMember.hpBar) {
+              const newHP = applyDamage(targetMember.hpBar.currentHP, dmg);
+              this.animateHPBar(
+                targetMember.hpBar,
+                newHP,
+                targetMember.hpBar.maxHP,
+              );
+              this.playPartyHitReaction(targetMember, {
+                newHP,
+                maxHP: targetMember.hpBar.maxHP,
+              });
             }
           }
-          this.cameras.main.shake(80, 0.005);
         }
         await this.wait(300);
       } else if (action.kind === "status_effect") {
@@ -1850,8 +2181,21 @@ export class BattleScene extends Phaser.Scene {
         // Backstab with damage gets hit effect
         if (action.damage > 0) {
           playSFX("sfx_slash");
+          const actorEntry =
+            this.partySprites[action.actor_name] ||
+            this.findEnemySpriteForAction(action, action.actor_name);
           const ee = this.enemySprites[action.target_id];
           if (ee) {
+            this.showActionFocus(actorEntry, ee, {
+              tracerColor:
+                action.damage_type === "magical"
+                  ? ACTION_TRACER_COLORS.magical
+                  : ACTION_TRACER_COLORS.partyToEnemy,
+              targetColor:
+                action.damage_type === "magical"
+                  ? ACTION_RETICLE_COLORS.magicalTarget
+                  : ACTION_RETICLE_COLORS.enemyTarget,
+            });
             const targetKey = `enemy_${action.target_id}`;
             await this.hitFx(
               ee.x,
@@ -1876,11 +2220,14 @@ export class BattleScene extends Phaser.Scene {
 
   hitFx(x, y, dmg, isParty, defeated, damageType, opts = {}) {
     return new Promise((resolve) => {
-      // Slash graphic (kept from original)
-      const g = this.add.graphics().setDepth(20);
-      g.lineStyle(3, isParty ? 0xff8800 : 0xffffff, 1);
-      g.lineBetween(x - 20, y - 15, x + 20, y + 15);
-      this.scaledDelay(150, () => g.destroy());
+      if (isParty && !opts.missed) {
+        this.spawnPartyImpactBurst(x, y);
+      } else {
+        const g = this.add.graphics().setDepth(20);
+        g.lineStyle(3, damageType === "magical" ? 0xbb88ff : 0xffffff, 1);
+        g.lineBetween(x - 20, y - 15, x + 20, y + 15);
+        this.scaledDelay(150, () => g.destroy());
+      }
 
       const targetKey = opts.targetKey || `pos_${x}_${y}`;
 
