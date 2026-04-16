@@ -1205,7 +1205,12 @@ export function installDevTestBridge(game) {
         npcKeys: (scene.npcs || []).map(
           (npc) => npc.image?.texture?.key || null,
         ),
+        npcScales: (scene.npcs || []).map((npc) => npc.image?.scaleX ?? null),
+        npcDisplayHeights: (scene.npcs || []).map(
+          (npc) => npc.image?.displayHeight ?? null,
+        ),
         npcPositions: (scene.npcs || []).map((npc) => ({ x: npc.x, y: npc.y })),
+        playerScale: scene.player?.scaleX ?? null,
       };
     },
 
