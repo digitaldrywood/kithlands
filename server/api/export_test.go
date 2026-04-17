@@ -7,6 +7,7 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/combat"
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
+	"github.com/digitaldrywood/kithlands/internal/inventory"
 )
 
 // OverrideFormationsForTest replaces the game's formation pool with a
@@ -27,6 +28,15 @@ func ForceWorldPhaseForTest(g *Game) {
 	defer g.mu.Unlock()
 	g.phase = "world"
 	g.enemies = nil
+}
+
+// ClearEquipmentForTest strips all equipped gear from every party slot. Used
+// by first-encounter balance tests that need to verify the opener without any
+// starting weapon or armor assistance.
+func ClearEquipmentForTest(g *Game) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.inv.Equipment = [4]inventory.EquipmentSlots{}
 }
 
 // ForceQuestCompletePhaseForTest drops the game into the post-quest state

@@ -135,6 +135,90 @@ func TestIssue212_FirstEncounterNormalDifficultyHasNoSoloWipes(t *testing.T) {
 	}
 }
 
+func TestIssue212_FirstEncounterStarterPartyNoEquipmentHasNoWipesOrDeaths(t *testing.T) {
+	t.Helper()
+
+	gd := gamedata.Load("../../shared")
+	gm := api.NewGameManager(gd, "../../shared")
+
+	const runs = 1000
+	wipes := 0
+	deathRuns := 0
+	memberDeaths := 0
+	totalRemainingHPPct := 0.0
+	minRemainingHPPct := 1.0
+
+	for seed := 0; seed < runs; seed++ {
+		game, err := gm.CreateGame(api.NewGameRequest{
+			TownName:    "Cadott",
+			People:      []api.WizardPersonReq{{Name: "Bob", Relation: "friendly"}},
+			Places:      []string{"School", "Store"},
+			BigBuilding: "Town Hall",
+			Party: []api.PartyMemberReq{
+				{Name: "Pyre", ClassID: "cinder"},
+				{Name: "Mercy", ClassID: "mender"},
+				{Name: "Guard", ClassID: "warrior"},
+			},
+			Difficulty: "normal",
+			RNGSeed:    int64(seed + 1),
+		})
+		if err != nil {
+			t.Fatalf("create game seed %d: %v", seed, err)
+		}
+		api.ClearEquipmentForTest(game)
+
+		state, err := game.ProcessAction(api.GameActionRequest{Type: "encounter"})
+		if err != nil {
+			t.Fatalf("encounter seed %d: %v", seed, err)
+		}
+
+		finalState, _ := resolveEncounterWithBasicAttacks(t, game, state)
+		if finalState.Phase == "defeat" {
+			wipes++
+			deathRuns++
+			memberDeaths += len(finalState.Party)
+			continue
+		}
+
+		runDeaths := 0
+		runRemaining := 0.0
+		for _, member := range finalState.Party {
+			if member.HP <= 0 {
+				runDeaths++
+				memberDeaths++
+				continue
+			}
+			hpPct := float64(member.HP) / float64(member.MaxHP)
+			runRemaining += hpPct
+			if hpPct < minRemainingHPPct {
+				minRemainingHPPct = hpPct
+			}
+		}
+		if runDeaths > 0 {
+			deathRuns++
+		}
+		totalRemainingHPPct += runRemaining / float64(len(finalState.Party))
+	}
+
+	t.Logf("first-encounter starter-party summary: party=cinder,mender,warrior equipment=none runs=%d wipes=%d wipe_rate=%.1f%% death_runs=%d death_run_rate=%.1f%% member_deaths=%d member_death_rate=%.1f%% avg_hp_remaining=%.1f%% min_hp_remaining=%.1f%%",
+		runs,
+		wipes,
+		float64(wipes)/runs*100,
+		deathRuns,
+		float64(deathRuns)/runs*100,
+		memberDeaths,
+		float64(memberDeaths)/(float64(runs)*3)*100,
+		totalRemainingHPPct/float64(runs)*100,
+		minRemainingHPPct*100,
+	)
+	if wipes != 0 {
+		t.Fatalf("starter party wiped %d/%d first encounters", wipes, runs)
+	}
+	if deathRuns != 0 || memberDeaths != 0 {
+		t.Fatalf("starter party deaths detected: death_runs=%d member_deaths=%d", deathRuns, memberDeaths)
+	}
+}
+
 func resolveEncounterWithBasicAttacks(t *testing.T, game *api.Game, state *api.GameState) (*api.GameState, int) {
 	t.Helper()
 
