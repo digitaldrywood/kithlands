@@ -85,6 +85,18 @@ func debugTestServer(t *testing.T) (*api.Server, *httptest.Server) {
 		}
 		writeJSON(w, game.State())
 	})
+	mux.HandleFunc("POST /api/debug/game/{id}/force-victory", func(w http.ResponseWriter, r *http.Request) {
+		game := getGame(r)
+		if game == nil {
+			writeErr(w, "not found", http.StatusNotFound)
+			return
+		}
+		if err := game.DebugForceVictory(); err != nil {
+			writeErr(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		writeJSON(w, game.State())
+	})
 	mux.HandleFunc("POST /api/debug/game/{id}/give-item", func(w http.ResponseWriter, r *http.Request) {
 		game := getGame(r)
 		if game == nil {
@@ -266,6 +278,43 @@ func TestDebug_ForceEncounterStart_RejectsNonCombat(t *testing.T) {
 		`{"start":"ambush"}`)
 	if status != http.StatusBadRequest {
 		t.Errorf("expected 400 in world phase, got %d (%s)", status, body)
+	}
+}
+
+func TestDebug_ForceVictory_ResolvesEncounter(t *testing.T) {
+	_, ts := debugTestServer(t)
+	gameID := newGameViaHTTP(t, ts)
+
+	code, body := postDebugJSON(t, ts,
+		"/api/debug/game/"+gameID+"/force-encounter",
+		`{"monster_ids":["slime"],"level":8}`)
+	if code != http.StatusOK {
+		t.Fatalf("force-encounter: got %d (%s)", code, body)
+	}
+
+	code, body = postDebugJSON(t, ts,
+		"/api/debug/game/"+gameID+"/force-victory",
+		`{}`)
+	if code != http.StatusOK {
+		t.Fatalf("force-victory: got %d (%s)", code, body)
+	}
+
+	var state map[string]any
+	_ = json.Unmarshal(body, &state)
+	if got, _ := state["phase"].(string); got == "combat" {
+		t.Fatalf("phase after force-victory = %q, want non-combat", got)
+	}
+	log, _ := state["combat_log"].([]any)
+	foundVictory := false
+	for _, raw := range log {
+		line, _ := raw.(string)
+		if strings.Contains(line, "Victory!") {
+			foundVictory = true
+			break
+		}
+	}
+	if !foundVictory {
+		t.Fatalf("combat log missing victory line: %+v", log)
 	}
 }
 

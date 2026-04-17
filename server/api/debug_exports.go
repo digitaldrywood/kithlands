@@ -100,6 +100,29 @@ func (g *Game) DebugForceEncounter(monsterIDs []string, level int) error {
 	return nil
 }
 
+// DebugForceVictory resolves the active encounter through the normal
+// combat-victory path so Playwright proof flows can deterministically reach
+// the victory screen without relying on combat RNG.
+func (g *Game) DebugForceVictory() error {
+	g.mu.Lock()
+	if g.phase != "combat" {
+		g.mu.Unlock()
+		return errors.New("not in combat phase")
+	}
+	for _, e := range g.enemies {
+		e.CurrentHP = 0
+	}
+	g.mu.Unlock()
+
+	_, err := g.ProcessAction(GameActionRequest{
+		Type: "attack",
+		Actions: []MemberActionReq{
+			{Slot: 0, Type: "defend"},
+		},
+	})
+	return err
+}
+
 // DebugGiveItem adds n copies of the named consumable to the inventory.
 // Unknown IDs are accepted silently (the inventory is a map) but the
 // handler validates against gamedata before calling this.
