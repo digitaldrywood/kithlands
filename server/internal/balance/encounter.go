@@ -35,6 +35,8 @@ func EncounterLevel(partyLevels []int, difficulty string, flavorMod, distanceMod
 // ScaleMonster creates a combat-ready combatant from a monster definition,
 // scaled by encounter level and difficulty multipliers.
 func ScaleMonster(m *gamedata.Monster, id int, encounterLevel int, diff Difficulty) *combat.Combatant {
+	diff = ProtectEarlyEncounterDifficulty(diff, encounterLevel)
+
 	// Scale stats by encounter level relative to monster tier
 	levelScale := encounterLevel - m.Tier
 	if levelScale < 0 {

@@ -405,6 +405,7 @@ type Game struct {
 	collectedHiddenItems map[string]bool // town hidden-item keys already picked up
 	visitedNodes         map[string]bool // node IDs the player has entered (sequence-break tracking)
 	formation            string          // current encounter layout type
+	worldEncounterCount  int             // successful overworld encounters started on this save
 	lastRoundActions     []MemberActionReq
 	// encounterStart records preemptive/ambush state for the current fight so
 	// the first call to ResolveTurn can skip one side's actions.

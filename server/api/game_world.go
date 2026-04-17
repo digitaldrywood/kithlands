@@ -193,7 +193,15 @@ func (g *Game) startRandomEncounter(terrainTag string) (*GameState, error) {
 		partyLevels[i] = c.Level
 	}
 	encLvl := balance.EncounterLevel(partyLevels, "normal", 0, g.currentQ)
-	result := balance.GenerateFormationEncounter(g.gd, encLvl, g.diff, terrainTag, g.rng)
+	encounterIndex := g.worldEncounterCount
+	result := balance.GenerateFormationEncounterWithProfile(
+		g.gd,
+		encLvl,
+		g.diff,
+		terrainTag,
+		balance.EncounterProfile{WorldEncounterIndex: encounterIndex},
+		g.rng,
+	)
 	if len(result.Combatants) == 0 {
 		// Formation generation can legitimately return zero combatants
 		// (unknown monster IDs in data, or every slot clipped to zero by
@@ -207,7 +215,12 @@ func (g *Game) startRandomEncounter(terrainTag string) (*GameState, error) {
 	g.formation = result.Layout
 	g.phase = "combat"
 	g.spellBuffs = nil
-	g.rollEncounterStartForNewFight()
+	if encounterIndex == 0 {
+		g.resetEncounterStartState()
+	} else {
+		g.rollEncounterStartForNewFight()
+	}
+	g.worldEncounterCount++
 
 	if g.discovered == nil {
 		g.discovered = make(map[string]bool)

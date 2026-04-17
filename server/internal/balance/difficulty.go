@@ -3,13 +3,15 @@ package balance
 // Difficulty defines multipliers applied at encounter generation time per Section 12.1.
 // Multipliers are applied to monster stats when the encounter is created, not at runtime.
 type Difficulty struct {
-	ID               string  `json:"id"`
-	Name             string  `json:"name"`
-	EnemyHPMult      float64 `json:"enemy_hp_mult"`
-	EnemyDamageMult  float64 `json:"enemy_damage_mult"`
-	XPGainMult       float64 `json:"xp_gain_mult"`
+	ID                string  `json:"id"`
+	Name              string  `json:"name"`
+	EnemyHPMult       float64 `json:"enemy_hp_mult"`
+	EnemyDamageMult   float64 `json:"enemy_damage_mult"`
+	XPGainMult        float64 `json:"xp_gain_mult"`
 	EncounterRateMult float64 `json:"encounter_rate_mult"`
 }
+
+const protectedEarlyEncounterLevel = 2
 
 var Difficulties = map[string]Difficulty{
 	"easy": {
@@ -39,4 +41,20 @@ func GetDifficulty(id string) Difficulty {
 		return d
 	}
 	return Difficulties["normal"]
+}
+
+// ProtectEarlyEncounterDifficulty clamps only punishing high-difficulty stat
+// multipliers during the first encounter band so hard/classic do not spike the
+// opener before the player has had a chance to learn the system.
+func ProtectEarlyEncounterDifficulty(diff Difficulty, encounterLevel int) Difficulty {
+	if encounterLevel > protectedEarlyEncounterLevel {
+		return diff
+	}
+	if diff.EnemyHPMult > 1.0 {
+		diff.EnemyHPMult = 1.0
+	}
+	if diff.EnemyDamageMult > 1.0 {
+		diff.EnemyDamageMult = 1.0
+	}
+	return diff
 }
