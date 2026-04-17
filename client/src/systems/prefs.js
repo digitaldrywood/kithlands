@@ -126,12 +126,24 @@ function clampInt(v, lo, hi, fallback) {
   return Math.max(lo, Math.min(hi, n));
 }
 
+export const BATTLE_SPEED_DEFAULT = "cinematic";
+const BATTLE_SPEED_DEFAULT_LEVEL = {
+  cinematic: 3,
+};
+const DEFAULT_BATTLE_SPEED =
+  BATTLE_SPEED_DEFAULT_LEVEL[BATTLE_SPEED_DEFAULT] ?? 3;
+
 export function getBattleSpeed() {
-  return clampInt(getPref("battleSpeed", 3), 1, 6, 3);
+  return clampInt(
+    getPref("battleSpeed", DEFAULT_BATTLE_SPEED),
+    1,
+    6,
+    DEFAULT_BATTLE_SPEED,
+  );
 }
 
 export function setBattleSpeed(n) {
-  setPref("battleSpeed", clampInt(n, 1, 6, 3));
+  setPref("battleSpeed", clampInt(n, 1, 6, DEFAULT_BATTLE_SPEED));
 }
 
 export function getMessageSpeed() {

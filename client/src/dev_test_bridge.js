@@ -637,10 +637,17 @@ function visibleBattleFxSnapshot(scene) {
     ).length;
 
   return {
+    actorCursors: taggedCount("actor-cursor"),
     reticles: taggedCount("reticle"),
     tracers: taggedCount("tracer"),
     bursts: taggedCount("burst"),
+    cursors: taggedCount("target-cursor"),
+    titleCards: taggedCount("title-card"),
     vignetteAlpha: scene?.lowHpVignette?.alpha ?? 0,
+    messageWindow: {
+      visible: scene?.messageWindow?.container?.visible !== false,
+      text: scene?.messageWindow?.getText?.() ?? "",
+    },
     floatingTexts: (scene?.floatingText?.active || [])
       .filter(
         (text) =>
@@ -1105,6 +1112,12 @@ export function installDevTestBridge(game) {
           targetKey: `proof_magic_number_${stamp}`,
           element: "dark",
         });
+      } else if (kind === "message_window") {
+        scene.revealLine("Bruno attacks Goblin!", "#ff8844");
+      } else if (kind === "target_cursor") {
+        scene.enterTargetingMode();
+      } else if (kind === "cinematic") {
+        return await scene.runCinematicProofDemo();
       } else {
         throw new Error(`Unknown battle visibility demo: ${kind}`);
       }

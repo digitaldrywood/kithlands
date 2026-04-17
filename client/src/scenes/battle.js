@@ -12,6 +12,8 @@ import {
 } from "../systems/hpBar.js";
 import { buildVictoryXPSegments } from "../systems/victoryXp.js";
 import { FloatingTextPool } from "../ui/floating_text.js";
+import { MessageWindow } from "../ui/message_window.js";
+import { TargetCursor } from "../ui/target_cursor.js";
 import { ENEMY_SPRITES } from "../data/monsterSprites.js";
 import { battleSpeedMul, messageCharMs } from "../systems/prefs.js";
 import { toggleDebugPanel, closeDebugPanel } from "./debug_panel.js";
@@ -64,6 +66,23 @@ const ACTION_RETICLE_COLORS = {
   partyTarget: 0xff6666,
   enemyTarget: 0xffffff,
   magicalTarget: 0xbb88ff,
+};
+const CURSOR_TINTS = {
+  actor: 0xffd36b,
+  enemy: 0xff6666,
+  ally: 0x66ff99,
+};
+const ACTION_BEAT_MS = {
+  titleDisplay: 500,
+  titleLead: 140,
+  preImpact: 300,
+  postDamage: 500,
+  interAction: 600,
+  multiTargetGap: 240,
+  briefStatus: 420,
+  infoPause: 460,
+  recovery: 120,
+  critShake: 80,
 };
 const CLASS_SPRITES = {
   warrior: "warrior",
@@ -139,11 +158,33 @@ export class BattleScene extends Phaser.Scene {
     this.targetHighlightTween = null;
     this.pickerOverlay = null;
     this.pickerItems = [];
+    this.actorCursor = null;
+    this.targetCursor = null;
 
     // Floating text pool for damage/heal numbers
     if (this.floatingText) this.floatingText.destroy();
     this.floatingText = new FloatingTextPool(this);
-    this.events.once("shutdown", () => this.floatingText?.destroy());
+    if (this.messageWindow) this.messageWindow.destroy();
+    this.messageWindow = new MessageWindow(this, {
+      x: 20,
+      y: 510,
+      width: 760,
+      height: 85,
+      depth: 20,
+    });
+    this.promptText = this.messageWindow;
+    this.actorCursor = new TargetCursor(this, {
+      depth: 12,
+      scale: 2,
+      tag: "actor-cursor",
+    });
+    this.targetCursor = new TargetCursor(this, { depth: 15, scale: 2 });
+    this.events.once("shutdown", () => {
+      this.floatingText?.destroy();
+      this.messageWindow?.destroy();
+      this.actorCursor?.destroy();
+      this.targetCursor?.destroy();
+    });
 
     const gs = this.gameState;
     if (!gs || gs.phase !== "combat" || !gs.enemies?.length) {
@@ -171,15 +212,6 @@ export class BattleScene extends Phaser.Scene {
     this.drawEnemies(gs);
     this.drawParty(gs);
     this.drawLog(gs);
-
-    this.promptText = this.add
-      .text(400, 340, "", {
-        fontSize: "11px",
-        color: "#ffff44",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5)
-      .setDepth(5);
     this.createLowHpVignette();
 
     this.setupKeyboard();
@@ -563,6 +595,8 @@ export class BattleScene extends Phaser.Scene {
     this.pendingAction = null;
     this.pendingSpellId = null;
     this.pendingSpellEffect = null;
+    this.targetCursor?.hide();
+    this.showActorCursor(this.partySprites[member.name]);
 
     // Draw action buttons for this member
     this.drawActions(gs, slot);
@@ -726,6 +760,7 @@ export class BattleScene extends Phaser.Scene {
         arrow,
         x: x + 15,
         y,
+        name: p.name,
         alive,
         slot: i,
       };
@@ -818,10 +853,10 @@ export class BattleScene extends Phaser.Scene {
   }
 
   drawLog(gs) {
-    this.add.rectangle(400, 488, 780, 55, 0x000000, 0.85);
+    this.add.rectangle(400, 430, 780, 55, 0x000000, 0.78);
     const log = gs.combat_log || [];
     for (let i = 0; i < Math.min(log.length, 3); i++) {
-      this.add.text(20, 498 - i * 16, log[log.length - 1 - i], {
+      this.add.text(20, 440 - i * 16, log[log.length - 1 - i], {
         fontSize: "10px",
         color: "#cccccc",
         fontFamily: "monospace",
@@ -1073,6 +1108,121 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
+  showActorCursor(entry) {
+    const visual = this.resolveVisualEntry(entry);
+    if (!visual || !this.actorCursor) return;
+    this.actorCursor.showFor(visual, {
+      tint: CURSOR_TINTS.actor,
+      side: "right",
+      offsetX: 14,
+    });
+  }
+
+  showTargetCursor(entry, mode = "enemy") {
+    const visual = this.resolveVisualEntry(entry);
+    if (!visual || !this.targetCursor) return;
+    const isPartyTarget = mode === "party";
+    this.targetCursor.showFor(visual, {
+      tint: isPartyTarget ? CURSOR_TINTS.ally : CURSOR_TINTS.enemy,
+      side: isPartyTarget ? "right" : "left",
+      offsetX: 12,
+    });
+  }
+
+  hideAllCursors() {
+    this.actorCursor?.hide();
+    this.targetCursor?.hide();
+  }
+
+  actionTitleFor(action, line) {
+    if (action?.spell_name) return action.spell_name;
+    if (action?.kind === "attack" || action?.kind === "counter") {
+      return "ATTACK";
+    }
+    if (action?.kind === "ability") {
+      const match = line?.match(/\b(?:uses|used) (.+?)(?: on| for|!|$)/i);
+      return match?.[1] || "ABILITY";
+    }
+    return "";
+  }
+
+  showActionTitle(anchorEntry, label, color = "#ffffff") {
+    const title = String(label || "")
+      .trim()
+      .toUpperCase();
+    if (!title) return Promise.resolve();
+
+    const anchor = this.resolveVisualEntry(anchorEntry) || {
+      x: 400,
+      y: 250,
+      height: 56,
+    };
+    const width = Math.max(94, title.length * 12 + 28);
+    const panelY = anchor.y - anchor.height / 2 - 38;
+    const container = this.add
+      .container(anchor.x, panelY)
+      .setDepth(23)
+      .setAlpha(0);
+    container._combatFxTag = "title-card";
+
+    const bg = this.add
+      .rectangle(0, 0, width, 28, 0x05070e, 0.92)
+      .setStrokeStyle(2, 0x2f3444);
+    const accent = this.add.rectangle(-width / 2 + 10, 0, 6, 20, 0xffffff, 1);
+    const text = this.add
+      .text(0, 0, title, {
+        fontSize: "16px",
+        color,
+        fontFamily: "monospace",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5);
+    container.add([bg, accent, text]);
+
+    this.tweens.add({
+      targets: container,
+      alpha: 1,
+      y: panelY - 4,
+      duration: this.scaledMs(120),
+      ease: "Back.easeOut",
+    });
+    this.scaledDelay(ACTION_BEAT_MS.titleDisplay, () => {
+      this.tweens.add({
+        targets: container,
+        alpha: 0,
+        y: container.y - 8,
+        duration: this.scaledMs(180),
+        ease: "Quad.In",
+        onComplete: () => container.destroy(),
+      });
+    });
+    return this.wait(ACTION_BEAT_MS.titleLead);
+  }
+
+  async lungePartySprite(actorEntry, targetEntry) {
+    if (!actorEntry?.sprite || !targetEntry) return;
+    const dx = targetEntry.x - actorEntry.x;
+    const dy = targetEntry.y - actorEntry.y;
+    const lungeX = actorEntry.x + dx * 0.38;
+    const lungeY = actorEntry.y + dy * 0.38;
+    await this.tweenP(actorEntry.sprite, {
+      x: lungeX,
+      y: lungeY,
+      duration: 150,
+      ease: "Power2",
+    });
+  }
+
+  async resetPartySprite(actorEntry) {
+    if (!actorEntry?.sprite) return;
+    await this.tweenP(actorEntry.sprite, {
+      x: actorEntry.x,
+      y: actorEntry.y,
+      duration: ACTION_BEAT_MS.recovery,
+      ease: "Power1",
+    });
+  }
+
   drawActions(gs, slot) {
     // Remove old buttons
     if (this.actionBtns) {
@@ -1088,17 +1238,18 @@ export class BattleScene extends Phaser.Scene {
       autoMode: this.autoMode,
     });
 
+    const buttonY = 472;
     const tw = btns.length * 145,
       sx = 400 - tw / 2 + 72;
     for (let i = 0; i < btns.length; i++) {
       const b = btns[i],
         x = sx + i * 145;
       const bg = this.add
-        .rectangle(x, 555, 125, 30, 0x1a1a44)
+        .rectangle(x, buttonY, 125, 30, 0x1a1a44)
         .setStrokeStyle(1, 0x444488)
         .setInteractive({ useHandCursor: true });
       const txt = this.add
-        .text(x, 555, b.label, {
+        .text(x, buttonY, b.label, {
           fontSize: "12px",
           color: b.color,
           fontFamily: "monospace",
@@ -1325,15 +1476,7 @@ export class BattleScene extends Phaser.Scene {
       en.text.setAlpha(0.3);
     }
 
-    // Remove highlight
-    if (this.targetHighlightTween) {
-      this.targetHighlightTween.stop();
-      this.targetHighlightTween = null;
-    }
-    if (this.targetHighlight) {
-      this.targetHighlight.destroy();
-      this.targetHighlight = null;
-    }
+    this.targetCursor?.hide();
   }
 
   updateTargetHighlight() {
@@ -1344,34 +1487,12 @@ export class BattleScene extends Phaser.Scene {
     const es = this.enemySprites[enemy.id];
     if (!es) return;
 
-    // Remove old highlight
-    if (this.targetHighlightTween) {
-      this.targetHighlightTween.stop();
-      this.targetHighlightTween = null;
-    }
-    if (this.targetHighlight) {
-      this.targetHighlight.destroy();
-    }
-
-    // Create pulsing highlight around selected enemy
-    const sz = enemy.name === "Dark Knight" ? 90 : 60;
-    this.targetHighlight = this.add
-      .rectangle(es.x, es.y, sz, sz)
-      .setStrokeStyle(2, 0xffff44)
-      .setFillStyle(0xffff44, 0.1)
-      .setDepth(9);
-
-    this.targetHighlightTween = this.tweens.add({
-      targets: this.targetHighlight,
-      alpha: { from: 1, to: 0.3 },
-      duration: 500,
-      yoyo: true,
-      repeat: -1,
-    });
+    this.showTargetCursor(es, "enemy");
 
     // Show the position number from the full enemy list (matches displayed number)
     const fullIdx = this.gameState.enemies.findIndex((e) => e.id === enemy.id);
     this.promptText.setText(`Target: ${enemy.name} [${fullIdx + 1}]`);
+    this.promptText.setColor("#ff6666");
   }
 
   updatePartyTargetHighlight() {
@@ -1382,29 +1503,10 @@ export class BattleScene extends Phaser.Scene {
     const ps = this.partySprites[target.name];
     if (!ps) return;
 
-    if (this.targetHighlightTween) {
-      this.targetHighlightTween.stop();
-      this.targetHighlightTween = null;
-    }
-    if (this.targetHighlight) {
-      this.targetHighlight.destroy();
-    }
-
-    this.targetHighlight = this.add
-      .rectangle(ps.x, ps.y, 60, 60)
-      .setStrokeStyle(2, 0x44ff44)
-      .setFillStyle(0x44ff44, 0.15)
-      .setDepth(9);
-
-    this.targetHighlightTween = this.tweens.add({
-      targets: this.targetHighlight,
-      alpha: { from: 1, to: 0.3 },
-      duration: 500,
-      yoyo: true,
-      repeat: -1,
-    });
+    this.showTargetCursor(ps, "party");
 
     this.promptText.setText(`Target: ${target.name} [${target.slot + 1}]`);
+    this.promptText.setColor("#66ff99");
   }
 
   showSpellPicker(slot) {
@@ -1676,6 +1778,7 @@ export class BattleScene extends Phaser.Scene {
 
   async doFlee() {
     this.animating = true;
+    this.hideAllCursors();
     this.promptText.setText("");
     const result = await gameAction(this.gameState.id, { type: "flee" });
     this.gameState = result;
@@ -1691,6 +1794,7 @@ export class BattleScene extends Phaser.Scene {
 
   async submitAllActions() {
     this.animating = true;
+    this.hideAllCursors();
     this.promptText.setText("Resolving combat...").setColor("#ffffff");
 
     try {
@@ -1756,6 +1860,7 @@ export class BattleScene extends Phaser.Scene {
   // server believes is true, or punt back to the World scene if combat is
   // already resolved.
   async recoverFromCombatError() {
+    this.hideAllCursors();
     this.promptText.setText("Combat error — recovering...").setColor("#ff8844");
     try {
       const fresh = await getGame(this.gameState.id);
@@ -1809,10 +1914,15 @@ export class BattleScene extends Phaser.Scene {
           action.target_id || (attackMatch && parseInt(attackMatch[3]));
         const dmg = action.damage || (attackMatch && parseInt(attackMatch[4]));
         const dmgType = action.damage_type || "physical";
+        const attackTitle = this.actionTitleFor(action, line);
 
-        // Party member lunge toward target
         const pe = this.partySprites[attacker];
         const ee = this.enemySprites[targetId];
+        const pt = this.findPartySpriteForTarget(
+          action.target_name,
+          targetId,
+          attackMatch?.[2],
+        );
         if (pe && ee) {
           this.showActionFocus(pe, ee, {
             tracerColor: ACTION_TRACER_COLORS.partyToEnemy,
@@ -1820,39 +1930,27 @@ export class BattleScene extends Phaser.Scene {
           });
           for (const a of this.partyArrows) a.setVisible(false);
           pe.arrow.setVisible(true);
-          this.revealLine(`${attacker} attacks!`, "#ff4444");
-          // Lunge toward enemy position
-          const dx = ee.x - pe.x,
-            dy = ee.y - pe.y;
-          const lungeX = pe.x + dx * 0.4,
-            lungeY = pe.y + dy * 0.4;
-          await this.tweenP(pe.sprite, {
-            x: lungeX,
-            y: lungeY,
-            duration: 150,
-            ease: "Power2",
-          });
-          await this.tweenP(pe.sprite, {
-            x: pe.x,
-            y: pe.y,
-            duration: 100,
-            ease: "Power1",
-          });
+          this.revealLine(`${attacker} attacks ${ee.name}!`, "#ff8844");
+          await this.showActionTitle(pe, attackTitle, "#ffcc66");
+          await this.lungePartySprite(pe, ee);
+          await this.wait(ACTION_BEAT_MS.preImpact);
         } else if (pe) {
           for (const a of this.partyArrows) a.setVisible(false);
           pe.arrow.setVisible(true);
-          this.revealLine(`${attacker} attacks!`, "#ff4444");
-          await this.tweenP(pe.sprite, { x: pe.x - 30, duration: 150 });
-          await this.tweenP(pe.sprite, { x: pe.x, duration: 100 });
+          this.revealLine(`${attacker} attacks!`, "#ff8844");
+          await this.showActionTitle(pe, attackTitle, "#ffcc66");
+          await this.wait(ACTION_BEAT_MS.preImpact);
+        } else if (attackerEnemy && pt) {
+          this.showActionFocus(attackerEnemy, pt, {
+            tracerColor: ACTION_TRACER_COLORS.enemyToParty,
+            targetColor: ACTION_RETICLE_COLORS.partyTarget,
+          });
+          this.revealLine(`${attacker} attacks ${pt.name}!`, "#ff9966");
+          await this.showActionTitle(attackerEnemy, attackTitle, "#ff9966");
+          await this.wait(ACTION_BEAT_MS.preImpact);
         }
 
-        // Hit effect on target
         playSFX("sfx_slash");
-        const pt = this.findPartySpriteForTarget(
-          action.target_name,
-          targetId,
-          attackMatch?.[2],
-        );
         if (ee) {
           const targetKey = `enemy_${targetId}`;
           playSFX(defeatMatch ? "sfx_death" : "sfx_hit");
@@ -1870,17 +1968,15 @@ export class BattleScene extends Phaser.Scene {
             const newHP = applyDamage(ee.hpBar.currentHP, dmg);
             this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
           }
-          // Enemy death animation
+          await this.resetPartySprite(pe);
           if (defeatMatch) await this.enemyDeathFx(ee);
         } else if (pt) {
           const targetKey = `party_${action.target_name || attackMatch?.[2]}`;
           const atkName = action.actor_name || attackMatch?.[1] || attacker;
           const tgtName = action.target_name || attackMatch?.[2] || "";
-          this.showActionFocus(attackerEnemy, pt, {
-            tracerColor: ACTION_TRACER_COLORS.enemyToParty,
-            targetColor: ACTION_RETICLE_COLORS.partyTarget,
-          });
-          this.revealLine(`${atkName} attacks ${tgtName}!`, "#ff8800");
+          if (!attackerEnemy) {
+            this.revealLine(`${atkName} attacks ${tgtName}!`, "#ff8800");
+          }
           playSFX("sfx_party_hit");
           await this.hitFx(pt.x, pt.y, dmg, true, false, dmgType, {
             crit: action.crit,
@@ -1897,7 +1993,8 @@ export class BattleScene extends Phaser.Scene {
             });
           }
         }
-        await this.wait(200);
+        await this.wait(ACTION_BEAT_MS.postDamage);
+        await this.wait(ACTION_BEAT_MS.interAction);
       } else if (action.kind === "counter" || counterMatch) {
         const actorName =
           action.actor_name || (counterMatch && counterMatch[1]);
@@ -1915,6 +2012,8 @@ export class BattleScene extends Phaser.Scene {
             tracerColor: ACTION_TRACER_COLORS.partyToEnemy,
             targetColor: ACTION_RETICLE_COLORS.enemyTarget,
           });
+          await this.showActionTitle(pe, this.actionTitleFor(action, line), "#ffcc66");
+          await this.wait(ACTION_BEAT_MS.preImpact);
           const targetKey = `enemy_${targetId}`;
           await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch, dmgType, {
             crit: action.crit,
@@ -1925,9 +2024,11 @@ export class BattleScene extends Phaser.Scene {
             const newHP = applyDamage(ee.hpBar.currentHP, dmg);
             this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
           }
+          await this.resetPartySprite(pe);
           if (defeatMatch) await this.enemyDeathFx(ee);
         }
-        await this.wait(200);
+        await this.wait(ACTION_BEAT_MS.postDamage);
+        await this.wait(ACTION_BEAT_MS.interAction);
       } else if (action.kind === "spell" || spellMatch) {
         const caster = action.actor_name || (spellMatch && spellMatch[1]);
         const spellName = action.spell_name || (spellMatch && spellMatch[2]);
@@ -1942,10 +2043,13 @@ export class BattleScene extends Phaser.Scene {
         if (pe) {
           for (const a of this.partyArrows) a.setVisible(false);
           pe.arrow.setVisible(true);
-          this.promptText
-            .setText(`${caster} casts ${spellName}!`)
-            .setColor("#8888ff");
         }
+        this.revealLine(`${caster} casts ${spellName}!`, "#88aaff");
+        await this.showActionTitle(
+          pe || enemyCaster,
+          spellName,
+          `#${(ELEMENT_COLORS[element] || 0x8888ff).toString(16).padStart(6, "0")}`,
+        );
 
         // Element-specific SFX and flash
         const sfx = ELEMENT_SFX[element] || "sfx_spell";
@@ -2046,9 +2150,10 @@ export class BattleScene extends Phaser.Scene {
               });
             }
           }
-          if (t < targets.length - 1) await this.wait(200);
+          if (t < targets.length - 1) await this.wait(ACTION_BEAT_MS.multiTargetGap);
         }
-        await this.wait(250);
+        await this.wait(ACTION_BEAT_MS.postDamage);
+        await this.wait(ACTION_BEAT_MS.interAction);
       } else if (action.kind === "heal" || line.includes("healed")) {
         this.revealLine(line, "#44ff44");
         const healMatch = line.match(/healed (\d+)/);
@@ -2073,10 +2178,10 @@ export class BattleScene extends Phaser.Scene {
             this.animateHPBar(healTarget.hpBar, newHP, healTarget.hpBar.maxHP);
           }
         }
-        await this.wait(300);
+        await this.wait(ACTION_BEAT_MS.briefStatus);
       } else if (line.includes("Found:")) {
         this.revealLine(line, "#44ff44");
-        await this.wait(400);
+        await this.wait(ACTION_BEAT_MS.infoPause);
       } else if (action.kind === "poison_tick") {
         // Poison damage at start of round
         const targetId = action.target_id;
@@ -2119,7 +2224,7 @@ export class BattleScene extends Phaser.Scene {
           }
           if (ee && defeatMatch) await this.enemyDeathFx(ee);
         }
-        await this.wait(300);
+        await this.wait(ACTION_BEAT_MS.briefStatus);
       } else if (action.kind === "confusion") {
         // Confused actor attacks randomly — target may be ally or enemy
         const targetId = action.target_id;
@@ -2129,6 +2234,8 @@ export class BattleScene extends Phaser.Scene {
         const actorEntry =
           this.partySprites[action.actor_name] ||
           this.findEnemySpriteForAction(action, action.actor_name);
+        await this.showActionTitle(actorEntry, "CONFUSE", "#dddd44");
+        await this.wait(ACTION_BEAT_MS.preImpact);
         const ee = this.enemySprites[targetId];
         if (ee) {
           this.showActionFocus(actorEntry, ee, {
@@ -2171,19 +2278,25 @@ export class BattleScene extends Phaser.Scene {
             }
           }
         }
-        await this.wait(300);
+        await this.wait(ACTION_BEAT_MS.postDamage);
+        await this.wait(ACTION_BEAT_MS.interAction);
       } else if (action.kind === "status_effect") {
         // Status spell landed or resisted
         this.revealLine(line, "#cc88ff");
-        await this.wait(400);
+        await this.wait(ACTION_BEAT_MS.briefStatus);
       } else if (action.kind === "ability") {
         this.revealLine(line, "#ff88ff");
+        const actorEntry =
+          this.partySprites[action.actor_name] ||
+          this.findEnemySpriteForAction(action, action.actor_name);
+        await this.showActionTitle(
+          actorEntry,
+          this.actionTitleFor(action, line),
+          "#ff88ff",
+        );
         // Backstab with damage gets hit effect
         if (action.damage > 0) {
           playSFX("sfx_slash");
-          const actorEntry =
-            this.partySprites[action.actor_name] ||
-            this.findEnemySpriteForAction(action, action.actor_name);
           const ee = this.enemySprites[action.target_id];
           if (ee) {
             this.showActionFocus(actorEntry, ee, {
@@ -2196,6 +2309,7 @@ export class BattleScene extends Phaser.Scene {
                   ? ACTION_RETICLE_COLORS.magicalTarget
                   : ACTION_RETICLE_COLORS.enemyTarget,
             });
+            await this.wait(ACTION_BEAT_MS.preImpact);
             const targetKey = `enemy_${action.target_id}`;
             await this.hitFx(
               ee.x,
@@ -2213,13 +2327,82 @@ export class BattleScene extends Phaser.Scene {
             if (defeatMatch) await this.enemyDeathFx(ee);
           }
         }
-        await this.wait(300);
+        await this.wait(ACTION_BEAT_MS.postDamage);
+        await this.wait(ACTION_BEAT_MS.interAction);
       }
     }
   }
 
+  async runCinematicProofDemo() {
+    const partyEntries = Object.values(this.partySprites || {}).sort(
+      (a, b) => (a.slot ?? 0) - (b.slot ?? 0),
+    );
+    const enemyEntries = Object.values(this.enemySprites || {}).filter(
+      (entry) => entry && !entry.dead && !entry.dying,
+    );
+    const actorEntry = partyEntries[0];
+    const targetEntry = enemyEntries[0];
+    if (!actorEntry || !targetEntry) {
+      return {
+        total: 0,
+        titleLead: 0,
+        preImpact: 0,
+        postDamage: 0,
+      };
+    }
+
+    const now = () => globalThis.performance?.now?.() ?? Date.now();
+    const start = now();
+    const targetKey = `proof_cinematic_${Date.now()}`;
+
+    this.showActorCursor(actorEntry);
+    this.showTargetCursor(targetEntry, "enemy");
+    this.showActionFocus(actorEntry, targetEntry, {
+      tracerColor: ACTION_TRACER_COLORS.partyToEnemy,
+      targetColor: ACTION_RETICLE_COLORS.enemyTarget,
+    });
+    this.revealLine(`${actorEntry.name} attacks ${targetEntry.name}!`, "#ff8844");
+    await this.showActionTitle(actorEntry, "SLASH", "#ffcc66");
+    const afterTitle = now();
+    await this.lungePartySprite(actorEntry, targetEntry);
+    const lungePeak = now();
+    await this.wait(ACTION_BEAT_MS.preImpact);
+    const impactStart = now();
+    playSFX("sfx_slash");
+    await this.hitFx(
+      targetEntry.x,
+      targetEntry.y,
+      42,
+      false,
+      false,
+      "physical",
+      {
+        crit: true,
+        targetKey,
+      },
+    );
+    await this.resetPartySprite(actorEntry);
+    await this.wait(ACTION_BEAT_MS.postDamage);
+    const afterDamageHold = now();
+    await this.wait(ACTION_BEAT_MS.interAction);
+    const done = now();
+
+    return {
+      titleLead: afterTitle - start,
+      preImpact: impactStart - lungePeak,
+      postDamage: afterDamageHold - impactStart,
+      total: done - start,
+    };
+  }
+
   hitFx(x, y, dmg, isParty, defeated, damageType, opts = {}) {
     return new Promise((resolve) => {
+      if (opts.missed) {
+        playSFX("sfx_miss");
+      } else if (opts.crit) {
+        playSFX("sfx_crit");
+        this.cameras.main.shake(this.scaledMs(ACTION_BEAT_MS.critShake), 0.0045);
+      }
       if (isParty && !opts.missed) {
         this.spawnPartyImpactBurst(x, y);
       } else {
@@ -2250,7 +2433,7 @@ export class BattleScene extends Phaser.Scene {
         this.floatingText.spawn(x, y + 30, 0, "defeated", targetKey);
       }
 
-      this.scaledDelay(150, resolve);
+      this.scaledDelay(opts.crit ? 180 : 150, resolve);
     });
   }
 
