@@ -1159,41 +1159,51 @@ export class BattleScene extends Phaser.Scene {
     };
     const width = Math.max(94, title.length * 12 + 28);
     const panelY = anchor.y - anchor.height / 2 - 38;
-    const container = this.add
-      .container(anchor.x, panelY)
-      .setDepth(23)
-      .setAlpha(0);
-    container._combatFxTag = "title-card";
-
     const bg = this.add
-      .rectangle(0, 0, width, 28, 0x05070e, 0.92)
-      .setStrokeStyle(2, 0x2f3444);
-    const accent = this.add.rectangle(-width / 2 + 10, 0, 6, 20, 0xffffff, 1);
+      .rectangle(anchor.x, panelY, width, 28, 0x05070e, 0.92)
+      .setDepth(23)
+      .setStrokeStyle(2, 0x2f3444)
+      .setAlpha(0);
+    bg._combatFxTag = "title-card";
+    const accent = this.add
+      .rectangle(anchor.x - width / 2 + 10, panelY, 6, 20, 0xffffff, 1)
+      .setDepth(24)
+      .setAlpha(0);
     const text = this.add
-      .text(0, 0, title, {
+      .text(anchor.x, panelY, title, {
         fontSize: "16px",
         color,
         fontFamily: "monospace",
         fontStyle: "bold",
       })
-      .setOrigin(0.5);
-    container.add([bg, accent, text]);
+      .setOrigin(0.5)
+      .setDepth(24)
+      .setAlpha(0);
 
     this.tweens.add({
-      targets: container,
+      targets: [bg, accent, text],
       alpha: 1,
+      duration: this.scaledMs(120),
+      ease: "Back.easeOut",
+    });
+    this.tweens.add({
+      targets: [bg, accent, text],
       y: panelY - 4,
       duration: this.scaledMs(120),
       ease: "Back.easeOut",
     });
     this.scaledDelay(ACTION_BEAT_MS.titleDisplay, () => {
       this.tweens.add({
-        targets: container,
+        targets: [bg, accent, text],
         alpha: 0,
-        y: container.y - 8,
+        y: panelY - 12,
         duration: this.scaledMs(180),
         ease: "Quad.In",
-        onComplete: () => container.destroy(),
+        onComplete: () => {
+          bg.destroy();
+          accent.destroy();
+          text.destroy();
+        },
       });
     });
     return this.wait(ACTION_BEAT_MS.titleLead);
@@ -2392,6 +2402,35 @@ export class BattleScene extends Phaser.Scene {
       preImpact: impactStart - lungePeak,
       postDamage: afterDamageHold - impactStart,
       total: done - start,
+    };
+  }
+
+  async runCinematicProofFrame() {
+    const partyEntries = Object.values(this.partySprites || {}).sort(
+      (a, b) => (a.slot ?? 0) - (b.slot ?? 0),
+    );
+    const enemyEntries = Object.values(this.enemySprites || {}).filter(
+      (entry) => entry && !entry.dead && !entry.dying,
+    );
+    const actorEntry = partyEntries[0];
+    const targetEntry = enemyEntries[0];
+    if (!actorEntry || !targetEntry) {
+      return null;
+    }
+
+    this.showActorCursor(actorEntry);
+    this.showTargetCursor(targetEntry, "enemy");
+    this.showActionFocus(actorEntry, targetEntry, {
+      tracerColor: ACTION_TRACER_COLORS.partyToEnemy,
+      targetColor: ACTION_RETICLE_COLORS.enemyTarget,
+    });
+    this.revealLine(`${actorEntry.name} attacks ${targetEntry.name}!`, "#ff8844");
+    void this.showActionTitle(actorEntry, "SLASH", "#ffcc66");
+    await this.lungePartySprite(actorEntry, targetEntry);
+    await this.wait(120);
+    return {
+      actorX: actorEntry.sprite?.x ?? actorEntry.x,
+      targetX: targetEntry.x,
     };
   }
 

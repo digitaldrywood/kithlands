@@ -1116,6 +1116,8 @@ export function installDevTestBridge(game) {
         scene.revealLine("Bruno attacks Goblin!", "#ff8844");
       } else if (kind === "target_cursor") {
         scene.enterTargetingMode();
+      } else if (kind === "cinematic_frame") {
+        await scene.runCinematicProofFrame();
       } else if (kind === "cinematic") {
         return await scene.runCinematicProofDemo();
       } else {

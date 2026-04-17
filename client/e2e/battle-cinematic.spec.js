@@ -85,12 +85,25 @@ test.describe("battle cinematic proof — issue #211", () => {
     );
     expect(cursorSnapshot.cursors).toBeGreaterThan(0);
 
-    await setProofLabel(page, "After: message window + target cursor");
+    await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("cinematic_frame"),
+    );
+    await page.waitForFunction(() => {
+      const snapshot = window.__kithlandsTest.battleVisibilitySnapshot();
+      return (
+        snapshot.messageWindow?.text?.includes("attacks") &&
+        snapshot.cursors > 0 &&
+        snapshot.titleCards > 0
+      );
+    });
+
+    await setProofLabel(page, "After: cinematic pre-impact hold");
     await page.screenshot({
       path: testInfo.outputPath(`battle-cinematic-after-${RUN_ID}.png`),
       fullPage: true,
     });
 
+    await page.waitForTimeout(1400);
     const timings = await page.evaluate(async () => {
       const startedAt = performance.now();
       const beat = await window.__kithlandsTest.playBattleVisibilityDemo(
