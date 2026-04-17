@@ -60,6 +60,10 @@ export async function debugForceEncounter(gameId, monsterIds, level) {
   });
 }
 
+export async function debugForceVictory(gameId) {
+  return apiCall("POST", `/debug/game/${gameId}/force-victory`, {});
+}
+
 export async function debugGiveItem(gameId, itemId, qty) {
   return apiCall("POST", `/debug/game/${gameId}/give-item`, {
     item_id: itemId,

@@ -21,6 +21,7 @@ func DebugEnabled() bool {
 func (s *Server) registerDebugRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/debug/game/{id}/force-encounter-start", s.auth.Middleware(http.HandlerFunc(s.handleDebugForceEncounterStart)))
 	mux.Handle("POST /api/debug/game/{id}/force-encounter", s.auth.Middleware(http.HandlerFunc(s.handleDebugForceEncounter)))
+	mux.Handle("POST /api/debug/game/{id}/force-victory", s.auth.Middleware(http.HandlerFunc(s.handleDebugForceVictory)))
 	mux.Handle("POST /api/debug/game/{id}/give-item", s.auth.Middleware(http.HandlerFunc(s.handleDebugGiveItem)))
 	mux.Handle("POST /api/debug/game/{id}/set-gold", s.auth.Middleware(http.HandlerFunc(s.handleDebugSetGold)))
 	mux.Handle("POST /api/debug/game/{id}/heal-party", s.auth.Middleware(http.HandlerFunc(s.handleDebugHealParty)))
@@ -64,6 +65,19 @@ func (s *Server) handleDebugForceEncounter(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if err := game.DebugForceEncounter(req.MonsterIDs, req.Level); err != nil {
+		httpError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	jsonResp(w, game.State())
+}
+
+func (s *Server) handleDebugForceVictory(w http.ResponseWriter, r *http.Request) {
+	game := s.games.GetGame(r.PathValue("id"))
+	if game == nil {
+		httpError(w, "game not found", http.StatusNotFound)
+		return
+	}
+	if err := game.DebugForceVictory(); err != nil {
 		httpError(w, err.Error(), http.StatusBadRequest)
 		return
 	}

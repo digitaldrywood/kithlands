@@ -1,12 +1,17 @@
 import {
   buyItem,
   debugForceEncounter,
+  debugForceVictory,
   debugGiveItem,
   debugSetGold,
   debugSetPartyLevels,
   debugSetPartyVitals,
+  debugWarpQuest,
   gameAction,
+  listSaves as listSavesApi,
+  loadSave as loadSaveApi,
   newGame,
+  saveGame as saveGameApi,
 } from "./api.js";
 import { getCurrentMusicKey, getPlayingSoundKeys } from "./systems/audio.js";
 import {
@@ -98,6 +103,24 @@ function waitFor(check, timeoutMs = 5000, intervalMs = 25) {
 
 function nextFrame() {
   return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
+
+function normalizeKeyEventName(key) {
+  if (!key) return "";
+  const names = {
+    Escape: "ESC",
+    Enter: "ENTER",
+    " ": "SPACE",
+    Space: "SPACE",
+    Spacebar: "SPACE",
+    Tab: "TAB",
+    ArrowLeft: "LEFT",
+    ArrowRight: "RIGHT",
+    ArrowUp: "UP",
+    ArrowDown: "DOWN",
+    "`": "BACKTICK",
+  };
+  return names[key] || String(key).toUpperCase();
 }
 
 function clickGameObject(obj) {
@@ -853,6 +876,19 @@ export function installDevTestBridge(game) {
       return this.gameState("World");
     },
 
+    async startWizardFromTitle(email = `playwright_${Date.now()}@kithlands.dev`) {
+      const title = getScene(game, "Title");
+      if (!title || typeof title.startGame !== "function") {
+        throw new Error("Title scene is not ready");
+      }
+      await waitFor(() => !!title.statusText);
+      await title.startGame({ value: email }, false);
+      await waitFor(() => game.scene.isActive("Wizard"));
+      await nextFrame();
+      await nextFrame();
+      return this.sceneAuditInfo("Wizard");
+    },
+
     async startCustomGame(gameData) {
       const result = await newGame(gameData);
       if (result?.error) {
@@ -942,6 +978,24 @@ export function installDevTestBridge(game) {
       return clone(result);
     },
 
+    async forceVictory(sceneKey = "Battle") {
+      const scene = getScene(game, sceneKey);
+      const gameId = scene?.gameState?.id;
+      if (!gameId) throw new Error("Active scene has no game id");
+      const result = await debugForceVictory(gameId);
+      if (!result?.error) {
+        if (scene?.scene?.key === "Battle") {
+          game.scene.start("Battle", { gameState: result });
+          await waitFor(() => game.scene.isActive("Battle"));
+          await nextFrame();
+          await nextFrame();
+        } else {
+          applySceneGameState(game, scene, result);
+        }
+      }
+      return clone(result);
+    },
+
     async submitAction(action, sceneKey) {
       const scene = getScene(game, sceneKey);
       const gameId = scene?.gameState?.id;
@@ -952,6 +1006,37 @@ export function installDevTestBridge(game) {
         if (scene?.scene?.key === "Battle" && result.phase === "world") {
           await this.waitForSceneReady("World");
         }
+      }
+      return clone(result);
+    },
+
+    async saveGame(name, sceneKey = "World") {
+      const scene = getScene(game, sceneKey);
+      const gameId = scene?.gameState?.id;
+      if (!gameId) throw new Error("Active scene has no game id");
+      return clone(await saveGameApi(gameId, name));
+    },
+
+    async listSaves() {
+      return clone(await listSavesApi());
+    },
+
+    async loadSave(saveId) {
+      const result = await loadSaveApi(saveId);
+      if (!result?.error) {
+        game.scene.start("World", { gameState: result });
+        await this.waitForSceneReady("World");
+      }
+      return clone(result);
+    },
+
+    async warpQuest(questIdx, sceneKey = "World") {
+      const scene = getScene(game, sceneKey);
+      const gameId = scene?.gameState?.id;
+      if (!gameId) throw new Error("Active scene has no game id");
+      const result = await debugWarpQuest(gameId, questIdx);
+      if (!result?.error) {
+        applySceneGameState(game, scene, result);
       }
       return clone(result);
     },
@@ -1328,6 +1413,20 @@ export function installDevTestBridge(game) {
         clearInterval(interval);
       }
       return this.gameState(sceneKey);
+    },
+
+    pressKey(key, sceneKey) {
+      const scene = getScene(game, sceneKey) || activeScene(game);
+      if (!scene?.input?.keyboard) {
+        throw new Error("Scene keyboard is not ready");
+      }
+      const event = { key };
+      scene.input.keyboard.emit("keydown", event);
+      const normalized = normalizeKeyEventName(key);
+      if (normalized) {
+        scene.input.keyboard.emit(`keydown-${normalized}`, event);
+      }
+      return true;
     },
 
     beginInteract(sceneKey = "Town") {
