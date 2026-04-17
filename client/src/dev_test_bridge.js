@@ -876,7 +876,9 @@ export function installDevTestBridge(game) {
       return this.gameState("World");
     },
 
-    async startWizardFromTitle(email = `playwright_${Date.now()}@kithlands.dev`) {
+    async startWizardFromTitle(
+      email = `playwright_${Date.now()}@kithlands.dev`,
+    ) {
       const title = getScene(game, "Title");
       if (!title || typeof title.startGame !== "function") {
         throw new Error("Title scene is not ready");
