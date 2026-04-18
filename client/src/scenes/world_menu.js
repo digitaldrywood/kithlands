@@ -260,7 +260,14 @@ function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
   const rowPressFill = alive ? 0x25406c : 0x243044;
 
   const rowBg = scene.add
-    .rectangle(x + w / 2, y + rowH / 2, w, Math.max(56, rowH - 6), rowFill, 0.96)
+    .rectangle(
+      x + w / 2,
+      y + rowH / 2,
+      w,
+      Math.max(56, rowH - 6),
+      rowFill,
+      0.96,
+    )
     .setStrokeStyle(1, 0x4488ff)
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);

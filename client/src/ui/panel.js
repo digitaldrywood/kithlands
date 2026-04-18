@@ -312,14 +312,7 @@ export function drawLabeledStatBar(
 
   const fillW = barFillWidth(cur, max, trackW);
   const fill = scene.add
-    .rectangle(
-      trackX,
-      trackY,
-      Math.max(1, fillW),
-      style.height,
-      style.fill,
-      1,
-    )
+    .rectangle(trackX, trackY, Math.max(1, fillW), style.height, style.fill, 1)
     .setOrigin(0, 0.5)
     .setScrollFactor(0)
     .setDepth(style.depth + 1);

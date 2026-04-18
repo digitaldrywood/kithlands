@@ -328,7 +328,8 @@ function describeObject(entry, index) {
       target?.constructor?.name ||
       `entry_${index}`,
     bounds: objectBounds(entry),
-    statBarMeta: target?.__kithlandsStatBar || entry?.__kithlandsStatBar || null,
+    statBarMeta:
+      target?.__kithlandsStatBar || entry?.__kithlandsStatBar || null,
     partyMenuMeta:
       target?.__kithlandsPartyMenu || entry?.__kithlandsPartyMenu || null,
     partyMenuActionMeta:

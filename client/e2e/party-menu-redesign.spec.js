@@ -57,8 +57,9 @@ async function addProofOverlay(page, label) {
           `slot ${row.slot + 1}: ${row.portraitKind}${row.portraitKey ? ` (${row.portraitKey})` : ""}`,
       )
       .join("\n");
-    const actionSummary = [...new Set(summary.actionIcons.map((icon) => icon.label))]
-      .join(", ");
+    const actionSummary = [
+      ...new Set(summary.actionIcons.map((icon) => icon.label)),
+    ].join(", ");
     const barSummary = layout.statBars
       .map((bar) => `${bar.prefix} ${bar.trackWidth}px`)
       .join(" | ");
@@ -101,7 +102,9 @@ test.describe("party menu redesign", () => {
       true,
     );
 
-    const actionLabels = [...new Set(summary.actionIcons.map((icon) => icon.label))];
+    const actionLabels = [
+      ...new Set(summary.actionIcons.map((icon) => icon.label)),
+    ];
     expect(actionLabels).toEqual(
       expect.arrayContaining([
         "ITEMS",
