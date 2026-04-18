@@ -7,6 +7,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"embed"
 	"encoding/json"
 	"errors"
@@ -17,6 +19,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"sort"
@@ -60,6 +63,7 @@ type scanner struct {
 	openclawDir  string
 	tmpDir       string
 	worktreeGlob string // basename prefix required for sibling dirs (e.g. "kithlands")
+	repoRoot     string // absolute path used for `git worktree list` discovery
 }
 
 type scannerConfig struct {
@@ -67,6 +71,7 @@ type scannerConfig struct {
 	openclawDir  string
 	tmpDir       string
 	worktreeGlob string // basename prefix a sibling must match to be considered a worktree
+	repoRoot     string // path of the current repo worktree (fallback discovery root)
 }
 
 func defaultScannerConfig() scannerConfig {
@@ -78,10 +83,13 @@ func defaultScannerConfig() scannerConfig {
 	}
 	projects := ""
 	glob := ""
-	// Derive the projects dir and sibling glob from the running binary's repo
-	// root: go up one level and require siblings to share this repo's name
-	// prefix so we don't ingest unrelated projects under the same parent.
+	repoRoot := ""
+	// Derive the projects dir, sibling glob, and repo root from the running
+	// binary's working dir: go up one level and require siblings to share
+	// this repo's name prefix so we don't ingest unrelated projects under
+	// the same parent.
 	if wd, err := os.Getwd(); err == nil {
+		repoRoot = wd
 		parent := filepath.Dir(wd)
 		if fi, err := os.Stat(parent); err == nil && fi.IsDir() {
 			projects = parent
@@ -97,6 +105,7 @@ func defaultScannerConfig() scannerConfig {
 		openclawDir:  filepath.Join(home, ".openclaw", "workspace", "tmp"),
 		tmpDir:       "/tmp",
 		worktreeGlob: glob,
+		repoRoot:     repoRoot,
 	}
 }
 
@@ -106,10 +115,48 @@ func newScanner(cfg scannerConfig) *scanner {
 		openclawDir:  cfg.openclawDir,
 		tmpDir:       cfg.tmpDir,
 		worktreeGlob: cfg.worktreeGlob,
+		repoRoot:     cfg.repoRoot,
 	}
 }
 
+// gitWorktreeList returns the absolute paths of every linked worktree that
+// git knows about. This is the authoritative source of truth for "which
+// sibling directories belong to this repo" — it rejects unrelated prefix
+// collisions like `kithlands-old` or `kithlands-sandbox` that are NOT
+// checkouts of the current project. On any error (git missing, not a repo,
+// etc.) it returns nil and the caller falls back to the prefix heuristic.
+func gitWorktreeList(repoRoot string) []string {
+	if repoRoot == "" {
+		return nil
+	}
+	ctxCmd := exec.Command("git", "-C", repoRoot, "worktree", "list", "--porcelain")
+	out, err := ctxCmd.Output()
+	if err != nil {
+		return nil
+	}
+	var paths []string
+	scanner := bufio.NewScanner(bytes.NewReader(out))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if rest, ok := strings.CutPrefix(line, "worktree "); ok {
+			paths = append(paths, strings.TrimSpace(rest))
+		}
+	}
+	return paths
+}
+
 func (s *scanner) worktreeDirs() []string {
+	// Preferred path: ask git. `git worktree list` returns exactly the
+	// checkouts that belong to the current repo, so prefix collisions like
+	// `kithlands-old` or `kithlands-sandbox` are rejected even when they sit
+	// next to real worktrees under the same parent dir.
+	if dirs := gitWorktreeList(s.repoRoot); len(dirs) > 0 {
+		sort.Strings(dirs)
+		return dirs
+	}
+	// Fallback: enumerate siblings by basename prefix. Used when git is
+	// unavailable or the binary is launched outside a checkout — still
+	// narrower than "every .git sibling".
 	if s.projectsDir == "" {
 		return nil
 	}
@@ -123,14 +170,10 @@ func (s *scanner) worktreeDirs() []string {
 			continue
 		}
 		name := e.Name()
-		// Only consider siblings that share the repo's name prefix so we
-		// don't accidentally ingest unrelated projects stored under the same
-		// parent. An empty glob (rare edge case) accepts every .git dir.
 		if s.worktreeGlob != "" && !strings.HasPrefix(name, s.worktreeGlob) {
 			continue
 		}
 		path := filepath.Join(s.projectsDir, name)
-		// Require a .git entry (worktree or repo) before treating as source.
 		if _, err := os.Stat(filepath.Join(path, ".git")); err != nil {
 			continue
 		}
@@ -152,9 +195,15 @@ func walkPNGs(root string) []Image {
 			return nil
 		}
 		if d.IsDir() {
-			// Skip common noise dirs.
+			// Skip common noise dirs. Browser/Playwright caches belong
+			// here because `client/tmp` is a sanctioned worktree source
+			// but also where Playwright unpacks browser binaries and
+			// xdg-cache state — those PNGs would crowd out real proof
+			// screenshots under the per-group cap.
 			base := d.Name()
-			if base == "node_modules" || base == ".git" || base == "vendor" {
+			switch base {
+			case "node_modules", ".git", "vendor",
+				"ms-playwright", "xdg-cache", ".cache", "playwright-cache":
 				return fs.SkipDir
 			}
 			return nil

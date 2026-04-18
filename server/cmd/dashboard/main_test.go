@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -257,6 +258,58 @@ func TestWalkAndGlobSkipSymlinks(t *testing.T) {
 	for _, img := range walk {
 		if img.Path == link {
 			t.Errorf("walkPNGs surfaced symlink %q — symlinks must be skipped", link)
+		}
+	}
+}
+
+func TestWalkPNGsSkipsBrowserCacheDirs(t *testing.T) {
+	root := t.TempDir()
+	writePNG(t, filepath.Join(root, "proof.png"))
+	writePNG(t, filepath.Join(root, "ms-playwright", "chrome", "cached.png"))
+	writePNG(t, filepath.Join(root, "xdg-cache", "thumbnails", "thumb.png"))
+	writePNG(t, filepath.Join(root, ".cache", "node-gyp", "cache.png"))
+
+	got := walkPNGs(root)
+	if len(got) != 1 {
+		t.Fatalf("expected only proof.png to survive the skip list, got %d (%+v)", len(got), got)
+	}
+	if filepath.Base(got[0].Path) != "proof.png" {
+		t.Errorf("surfaced unexpected file: %s", got[0].Path)
+	}
+}
+
+func TestWorktreeDiscoveryPrefersGitWorktreeList(t *testing.T) {
+	base := t.TempDir()
+	projects := filepath.Join(base, "projects")
+	if err := os.MkdirAll(projects, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Real worktree set up with `git init`.
+	real := filepath.Join(projects, "kithlands-real")
+	if err := os.MkdirAll(real, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// `git init` silently succeeds; if git is missing the test skips.
+	if err := exec.Command("git", "-C", real, "init", "-q").Run(); err != nil {
+		t.Skipf("git unavailable: %v", err)
+	}
+	// Prefix-matching sibling that is NOT part of the real worktree — it's
+	// its own git repo. git worktree list from `real` must NOT include it.
+	impostor := filepath.Join(projects, "kithlands-old")
+	if err := os.MkdirAll(impostor, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := exec.Command("git", "-C", impostor, "init", "-q").Run(); err != nil {
+		t.Fatal(err)
+	}
+
+	dirs := gitWorktreeList(real)
+	if len(dirs) == 0 {
+		t.Fatalf("gitWorktreeList returned nothing for %s", real)
+	}
+	for _, d := range dirs {
+		if d == impostor {
+			t.Errorf("git worktree list must NOT include unrelated sibling repo %q", impostor)
 		}
 	}
 }
