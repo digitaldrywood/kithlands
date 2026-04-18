@@ -203,13 +203,28 @@ test.describe("wizard start flow", () => {
 
     await clickWizardText(page, "FIND & CONTINUE");
 
-    await waitForWizardText(page, "Searching...");
-    await expect(page.locator('input[type="text"]')).toBeDisabled();
+    await waitForWizardText(page, "Searching Cadott...");
+    await expect(page.locator('input[type="text"]')).toHaveCount(0);
+    await expect(page.locator('input[type="range"]')).toHaveCount(0);
 
-    await addProofOverlay(page, "Search locked with spinner", "Wizard", [
+    const busyTexts = await page.evaluate(() =>
+      window.__kithlandsTest.visibleTexts("Wizard").map((entry) => entry.text),
+    );
+    expect(busyTexts.some((text) => text.includes("Searching Cadott..."))).toBe(
+      true,
+    );
+    expect(busyTexts).not.toContain("Looking up location...");
+    expect(
+      busyTexts.some((text) => text.includes("Use real-world map data")),
+    ).toBe(false);
+    expect(busyTexts.some((text) => text.includes("Search radius:"))).toBe(
+      false,
+    );
+    expect(busyTexts).not.toContain("[ FIND & CONTINUE ]");
+
+    await addProofOverlay(page, "Search loading panel", "Wizard", [
       "LOCALITY WIZARD",
-      "Searching...",
-      "Looking up location",
+      "Searching Cadott...",
     ]);
     await page.screenshot({
       path: testInfo.outputPath(`issue-219-search-busy-${RUN_ID}.png`),
@@ -253,5 +268,63 @@ test.describe("wizard start flow", () => {
     );
 
     expect(pageErrors).toEqual([]);
+  });
+
+  test("restores the search form with an error banner when OSM preview fails", async ({
+    page,
+  }) => {
+    await page.route("**/api/geocode", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          lat: 44.9475,
+          lng: -91.1504,
+          display_name: "Cadott, WI, USA",
+        }),
+      });
+    });
+
+    await page.route("**/api/osm/preview", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: "osm temporarily unavailable",
+        }),
+      });
+    });
+
+    await page.goto("/");
+    await waitForBridge(page);
+    await page
+      .locator('input[type="email"]')
+      .fill(`wizard-error-${RUN_ID}@kithlands.dev`);
+    await page.evaluate(() =>
+      window.__kithlandsTest.clickInteractiveText("NEW GAME", "Title"),
+    );
+    await page.waitForFunction(
+      () => window.__kithlandsTest.activeSceneKey() === "Wizard",
+    );
+
+    await page.locator('input[type="text"]').fill("Cadott, WI");
+    await clickWizardText(page, "FIND & CONTINUE");
+
+    await waitForWizardText(page, "Searching Cadott...");
+    await waitForWizardText(page, "Map lookup failed. Try again.");
+
+    await expect(page.locator('input[type="text"]')).toHaveValue("Cadott, WI");
+    await expect(page.locator('input[type="range"]')).toHaveCount(1);
+
+    const visibleTexts = await page.evaluate(() =>
+      window.__kithlandsTest.visibleTexts("Wizard").map((entry) => entry.text),
+    );
+    expect(visibleTexts).toContain("Map lookup failed. Try again.");
+    expect(
+      visibleTexts.some((text) => text.includes("Use real-world map data")),
+    ).toBe(true);
+    expect(visibleTexts).toContain("[ FIND & CONTINUE ]");
   });
 });
