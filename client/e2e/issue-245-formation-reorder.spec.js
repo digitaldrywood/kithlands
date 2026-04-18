@@ -145,20 +145,16 @@ test.describe("issue #245 formation reorder proof", () => {
     expect(pendingSummary.pickedIdx).toBe(0);
     expect(pendingSummary.focusedIdx).toBe(2);
     expect(pendingSummary.preview.some((entry) => entry.moved)).toBe(true);
-    await setProofOverlay(
-      page,
-      "Issue #245 — pick active with ghost preview",
-      [
-        `picked slot: ${pendingSummary.pickedIdx + 1}`,
-        `focused slot: ${pendingSummary.focusedIdx + 1}`,
-        ...pendingSummary.preview
-          .filter((entry) => entry.moved)
-          .map(
-            (entry) =>
-              `preview slot ${entry.slot + 1}: ${entry.name} (${entry.row})`,
-          ),
-      ],
-    );
+    await setProofOverlay(page, "Issue #245 — pick active with ghost preview", [
+      `picked slot: ${pendingSummary.pickedIdx + 1}`,
+      `focused slot: ${pendingSummary.focusedIdx + 1}`,
+      ...pendingSummary.preview
+        .filter((entry) => entry.moved)
+        .map(
+          (entry) =>
+            `preview slot ${entry.slot + 1}: ${entry.name} (${entry.row})`,
+        ),
+    ]);
     await page.screenshot({
       path: testInfo.outputPath(`issue-245-formation-pick-${RUN_ID}.png`),
       fullPage: true,

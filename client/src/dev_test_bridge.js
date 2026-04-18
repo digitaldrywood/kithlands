@@ -551,7 +551,9 @@ function formationMenuSummary(scene) {
   return {
     focusedIdx: state.focusedIdx ?? null,
     pickedIdx: state.pickedIdx ?? null,
-    reorder: (state.draftParty || []).map((member) => member?.originalSlot ?? null),
+    reorder: (state.draftParty || []).map(
+      (member) => member?.originalSlot ?? null,
+    ),
     previewPanelBounds: objectBounds(state.previewPanel),
     listPanelBounds: objectBounds(state.listPanel),
     rows: state.rowObjects.map((entry) => ({

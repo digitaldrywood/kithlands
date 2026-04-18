@@ -11,12 +11,22 @@ describe("buildFormationDraft", () => {
   it("preserves original slots and normalizes row defaults", () => {
     const draft = buildFormationDraft([
       { name: "Ayla", class_id: "warrior", max_hp: 100, max_mp: 0 },
-      { name: "Mira", class_id: "mender", max_hp: 30, max_mp: 12, row: "front" },
+      {
+        name: "Mira",
+        class_id: "mender",
+        max_hp: 30,
+        max_mp: 12,
+        row: "front",
+      },
       { name: "Cato", class_id: "cinder", max_hp: 24, max_mp: 10 },
     ]);
 
     expect(draft.map((member) => member.originalSlot)).toEqual([0, 1, 2]);
-    expect(draft.map((member) => member.row)).toEqual(["front", "front", "back"]);
+    expect(draft.map((member) => member.row)).toEqual([
+      "front",
+      "front",
+      "back",
+    ]);
   });
 });
 
@@ -30,8 +40,16 @@ describe("swapDraftSlots", () => {
 
     const swapped = swapDraftSlots(draft, 0, 2);
 
-    expect(draft.map((member) => member.name)).toEqual(["Ayla", "Mira", "Cato"]);
-    expect(swapped.map((member) => member.name)).toEqual(["Cato", "Mira", "Ayla"]);
+    expect(draft.map((member) => member.name)).toEqual([
+      "Ayla",
+      "Mira",
+      "Cato",
+    ]);
+    expect(swapped.map((member) => member.name)).toEqual([
+      "Cato",
+      "Mira",
+      "Ayla",
+    ]);
   });
 });
 
@@ -45,7 +63,11 @@ describe("buildPreviewDraft", () => {
 
     const preview = buildPreviewDraft(draft, 0, 2);
 
-    expect(preview.map((member) => member.name)).toEqual(["Cato", "Mira", "Ayla"]);
+    expect(preview.map((member) => member.name)).toEqual([
+      "Cato",
+      "Mira",
+      "Ayla",
+    ]);
   });
 });
 
@@ -59,9 +81,7 @@ describe("buildFormationPayload", () => {
       ]),
       0,
       2,
-    ).map((member, slot) =>
-      slot === 2 ? { ...member, row: "back" } : member,
-    );
+    ).map((member, slot) => (slot === 2 ? { ...member, row: "back" } : member));
 
     const payload = buildFormationPayload(swapped);
 

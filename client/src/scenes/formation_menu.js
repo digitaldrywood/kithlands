@@ -315,24 +315,20 @@ export function showFormationMenu(scene) {
       const member = previewParty[slot];
       const placement = previewLayout[slot];
       const x =
-        paneLeft + 8 + ((placement.x - minX) / spanX) * (paneWidth - cardW - 20);
+        paneLeft +
+        8 +
+        ((placement.x - minX) / spanX) * (paneWidth - cardW - 20);
       const y =
-        paneTop + 18 + ((placement.y - minY) / spanY) * (paneHeight - cardH - 28);
+        paneTop +
+        18 +
+        ((placement.y - minY) / spanY) * (paneHeight - cardH - 28);
       const rowColors = rowBadgeColor(member.row);
-      const fill =
-        member.row === "back" ? PREVIEW_BACK : PREVIEW_FRONT;
+      const fill = member.row === "back" ? PREVIEW_BACK : PREVIEW_FRONT;
       const moved =
         currentSlots.get(member.originalSlot) != null &&
         currentSlots.get(member.originalSlot) !== slot;
       const card = scene.add
-        .rectangle(
-          x + cardW / 2,
-          y + cardH / 2,
-          cardW,
-          cardH,
-          fill,
-          0.96,
-        )
+        .rectangle(x + cardW / 2, y + cardH / 2, cardW, cardH, fill, 0.96)
         .setStrokeStyle(
           2,
           slot === state.focusedIdx
@@ -423,8 +419,7 @@ export function showFormationMenu(scene) {
         row: member.row,
         moved,
         card,
-        bounds:
-          typeof card.getBounds === "function" ? card.getBounds() : null,
+        bounds: typeof card.getBounds === "function" ? card.getBounds() : null,
       });
     }
   }
@@ -490,17 +485,12 @@ export function showFormationMenu(scene) {
         portrait.setScale(30 / srcSize);
       } else {
         portrait = scene.add
-          .text(
-            rightLeft + 30,
-            y + 28,
-            (member.class_name || "?")[0] || "?",
-            {
-              fontSize: "18px",
-              fontStyle: "bold",
-              color: "#eef7ff",
-              fontFamily: "Georgia",
-            },
-          )
+          .text(rightLeft + 30, y + 28, (member.class_name || "?")[0] || "?", {
+            fontSize: "18px",
+            fontStyle: "bold",
+            color: "#eef7ff",
+            fontFamily: "Georgia",
+          })
           .setOrigin(0.5)
           .setScrollFactor(0)
           .setDepth(DEPTH_CONTENT + 2);
