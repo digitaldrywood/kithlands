@@ -23,6 +23,12 @@ export const T_PEW = 13;
 export const T_BOOKSHELF = 14;
 export const T_CHAIR = 15;
 export const T_TABLE = 16;
+export const T_STAIR_UP = 17;
+export const T_STAIR_DOWN = 18;
+export const T_SECRET_WALL = 19;
+export const T_LOCKED_DOOR = 20;
+export const T_CHEST_CLOSED = 21;
+export const T_CHEST_OPEN = 22;
 
 export const TILE_COLORS = {
   [T_WALL]: 0x5d4037,
@@ -42,6 +48,12 @@ export const TILE_COLORS = {
   [T_BOOKSHELF]: 0x4e342e,
   [T_CHAIR]: 0x795548,
   [T_TABLE]: 0x8d6e63,
+  [T_STAIR_UP]: 0xcfd8dc,
+  [T_STAIR_DOWN]: 0xb0bec5,
+  [T_SECRET_WALL]: 0x5d4037,
+  [T_LOCKED_DOOR]: 0xffca28,
+  [T_CHEST_CLOSED]: 0x8d6e63,
+  [T_CHEST_OPEN]: 0xa1887f,
 };
 
 export const TILE_WALKABLE = {
@@ -62,7 +74,72 @@ export const TILE_WALKABLE = {
   [T_BOOKSHELF]: false,
   [T_CHAIR]: false,
   [T_TABLE]: false,
+  [T_STAIR_UP]: true,
+  [T_STAIR_DOWN]: true,
+  [T_SECRET_WALL]: true,
+  [T_LOCKED_DOOR]: false,
+  [T_CHEST_CLOSED]: false,
+  [T_CHEST_OPEN]: false,
 };
+
+const TEMPLATE_TILE_BY_SYMBOL = {
+  W: T_WALL,
+  ".": T_FLOOR,
+  D: T_DOOR,
+  C: T_COUNTER,
+  O: T_BOOKSHELF,
+  B: T_BED,
+  A: T_ALTAR,
+  K: T_DESK,
+  R: T_RUG,
+  F: T_FIREPLACE,
+  X: T_CRATE,
+  N: T_CANDLE,
+  T: T_STATUE,
+  P: T_PEW,
+  H: T_CHAIR,
+  M: T_TABLE,
+  U: T_STAIR_UP,
+  V: T_STAIR_DOWN,
+  S: T_SECRET_WALL,
+  L: T_LOCKED_DOOR,
+};
+
+export function buildInteriorFromTemplate(template, floorIndex = 0) {
+  const floor = template?.floors?.[floorIndex];
+  if (!floor) {
+    throw new Error(`missing floor ${floorIndex} for template ${template?.id}`);
+  }
+
+  const tiles = floor.rows.map((row) =>
+    [...row].map((symbol) => {
+      const tile = TEMPLATE_TILE_BY_SYMBOL[symbol];
+      if (tile === undefined) {
+        throw new Error(
+          `unknown interior symbol ${symbol} in template ${template.id}`,
+        );
+      }
+      return tile;
+    }),
+  );
+
+  for (const chest of floor.chest_anchors || []) {
+    tiles[chest.y][chest.x] = T_CHEST_CLOSED;
+  }
+
+  return {
+    roomW: floor.width,
+    roomH: floor.height,
+    tiles,
+    floor,
+    entrance: floor.entrance || null,
+    npcAnchors: floor.npc_anchors || [],
+    chestAnchors: floor.chest_anchors || [],
+    stairsByPosition: new Map(
+      (floor.stairs || []).map((stair) => [`${stair.x},${stair.y}`, stair]),
+    ),
+  };
+}
 
 export function roomDimensions(buildingType, seed, rngFactory) {
   const rng = (rngFactory || defaultRngFactory)(seed);
@@ -136,9 +213,15 @@ function floorTextureKey(buildingType) {
 export function tileTextureKey(tile, buildingType) {
   switch (tile) {
     case T_WALL:
+    case T_SECRET_WALL:
       return wallTextureKey(buildingType);
     case T_FLOOR:
     case T_DOOR:
+    case T_STAIR_UP:
+    case T_STAIR_DOWN:
+    case T_LOCKED_DOOR:
+    case T_CHEST_CLOSED:
+    case T_CHEST_OPEN:
     case T_RUG:
     case T_CANDLE:
       return floorTextureKey(buildingType);

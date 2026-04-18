@@ -1,0 +1,32 @@
+{
+  "id": "house_abandoned_passage_1f",
+  "building_type": "house",
+  "floors": [
+    {
+      "floor_id": 0,
+      "width": 16,
+      "height": 12,
+      "rows": [
+        "WWWWWWWWWWWWWWWW",
+        "W.O..........O.W",
+        "W....X.........W",
+        "W..............W",
+        "W..S...........W",
+        "W...........X..W",
+        "W......K.......W",
+        "W..............W",
+        "W....BB........W",
+        "W....BB...O....W",
+        "W......F.......W",
+        "WWWWWWWDWWWWWWWW"
+      ],
+      "entrance": { "x": 7, "y": 11, "from": "overworld" },
+      "npc_anchors": [
+        { "role": "flavor", "x": 6, "y": 6 }
+      ],
+      "chest_anchors": [
+        { "id": "abandoned_wall_cache", "x": 12, "y": 5 }
+      ]
+    }
+  ]
+}

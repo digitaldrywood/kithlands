@@ -409,6 +409,7 @@ func (s *Server) handleLoadSave(w http.ResponseWriter, r *http.Request) {
 		httpError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	s.games.applyInteriorTemplates(game.tileMap)
 
 	s.games.mu.Lock()
 	s.games.games[game.id] = game

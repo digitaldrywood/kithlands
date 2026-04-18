@@ -13,6 +13,7 @@ import { nextWalkFrame, walkSheetKey, walkFrameIndex } from "./walkFrame.js";
 import { getLeaderIndex } from "./world.js";
 import { buildingTypeFromTags, isRestBuilding } from "./building_type.js";
 import {
+  buildInteriorFromTemplate,
   extraNpcSpritesForTags,
   furnitureDensity,
   minimumNpcSpacing,
@@ -24,15 +25,21 @@ import {
   T_BOOKSHELF,
   T_CANDLE,
   T_CHAIR,
+  T_CHEST_CLOSED,
+  T_CHEST_OPEN,
   T_COUNTER,
   T_CRATE,
   T_DESK,
   T_DOOR,
   T_FIREPLACE,
   T_FLOOR,
+  T_LOCKED_DOOR,
   T_PEW,
   T_RUG,
   T_SHELF,
+  T_SECRET_WALL,
+  T_STAIR_DOWN,
+  T_STAIR_UP,
   T_STATUE,
   T_TABLE,
   T_WALL,
@@ -372,6 +379,85 @@ function buildingMusicForTags(tags) {
   return { key: "music_inn", loop: false };
 }
 
+const INTERIOR_APPEARANCES = {
+  inn: [
+    { floor: 0xffffff, wall: 0xf0d2a8, wood: 0xe5b87d, accent: 0xffd180 },
+    { floor: 0xf8f4e3, wall: 0xd7c4a3, wood: 0xc89666, accent: 0xffe082 },
+    { floor: 0xf1efe6, wall: 0xe3c58e, wood: 0xd7a86e, accent: 0xffcc80 },
+  ],
+  shop: [
+    { floor: 0xffffff, wall: 0xd9c19a, wood: 0xf0b36a, accent: 0xfff59d },
+    { floor: 0xf7f3ea, wall: 0xe4c78f, wood: 0xc98c5d, accent: 0xffd54f },
+    { floor: 0xf1ede1, wall: 0xd5b58a, wood: 0xe8a96b, accent: 0xffecb3 },
+  ],
+  temple: [
+    { floor: 0xffffff, wall: 0xd9dfe8, wood: 0xc0c7cf, accent: 0xfff59d },
+    { floor: 0xf5f7fa, wall: 0xcfd8dc, wood: 0xb0bec5, accent: 0xffecb3 },
+    { floor: 0xf8f9fb, wall: 0xd7dde5, wood: 0xc7ced6, accent: 0xfff176 },
+  ],
+  house: [
+    { floor: 0xffffff, wall: 0xe0c2a2, wood: 0xc99263, accent: 0xffcc80 },
+    { floor: 0xf7f2e8, wall: 0xd5b28d, wood: 0xb97a56, accent: 0xffe0b2 },
+    { floor: 0xf4efe4, wall: 0xe4c98d, wood: 0xd39a6b, accent: 0xffd180 },
+  ],
+};
+
+const ROLE_SPRITES = {
+  innkeeper: ["npc_innkeeper"],
+  shopkeeper: ["npc_merchant"],
+  priestess: ["npc_priestess"],
+  priest: ["npc_priestess"],
+  blacksmith: ["npc_blacksmith"],
+  guard: ["npc_guard"],
+  elder: ["npc_elder"],
+  widow: ["npc_elder"],
+  merchant_wandering: ["npc_merchant", "npc_guard"],
+  quest_giver: ["npc_elder", "npc_guard"],
+  gossip: ["npc_elder", "npc_guard"],
+  flavor: ["npc_elder", "npc_blacksmith", "npc_guard"],
+};
+
+function authoredInteriorAppearance(buildingType, seed) {
+  const palettes =
+    INTERIOR_APPEARANCES[buildingType] || INTERIOR_APPEARANCES.house;
+  return palettes[hashCode(`${buildingType}:${seed}`) % palettes.length];
+}
+
+function tintForTile(tile, appearance) {
+  if (!appearance) return null;
+  if (
+    tile === T_WALL ||
+    tile === T_SECRET_WALL ||
+    tile === T_LOCKED_DOOR
+  ) {
+    return appearance.wall;
+  }
+  if (
+    tile === T_COUNTER ||
+    tile === T_SHELF ||
+    tile === T_DESK ||
+    tile === T_CRATE ||
+    tile === T_BOOKSHELF ||
+    tile === T_CHAIR ||
+    tile === T_TABLE ||
+    tile === T_BED ||
+    tile === T_CHEST_CLOSED ||
+    tile === T_CHEST_OPEN
+  ) {
+    return appearance.wood;
+  }
+  if (tile === T_ALTAR || tile === T_STATUE || tile === T_PEW) {
+    return appearance.accent;
+  }
+  return appearance.floor;
+}
+
+function spriteForNpcRole(role, buildingType, tags, seed, index) {
+  const choices = ROLE_SPRITES[role] || extraNpcSpritesForTags(tags);
+  const pick = hashCode(`${role}:${buildingType}:${seed}:${index}`);
+  return choices[pick % choices.length];
+}
+
 function fallbackOverlayForTile(tile) {
   switch (tile) {
     case T_DOOR:
@@ -388,6 +474,16 @@ function fallbackOverlayForTile(tile) {
       return { color: 0x6d4c41, alpha: 0.85, inset: 5 };
     case T_CHAIR:
       return { color: 0x795548, alpha: 0.85, inset: 6 };
+    case T_STAIR_UP:
+      return { kind: "stairs_up" };
+    case T_STAIR_DOWN:
+      return { kind: "stairs_down" };
+    case T_LOCKED_DOOR:
+      return { kind: "locked_door" };
+    case T_CHEST_CLOSED:
+      return { kind: "chest_closed" };
+    case T_CHEST_OPEN:
+      return { kind: "chest_open" };
     default:
       return null;
   }
@@ -406,6 +502,8 @@ export class TownScene extends Phaser.Scene {
   init(data) {
     this.gameState = data.gameState;
     this.spawn = data.spawn;
+    this.floorIndex = data.floorIndex || 0;
+    this.playerStart = data.playerStart || null;
   }
 
   create() {
@@ -418,36 +516,64 @@ export class TownScene extends Phaser.Scene {
     this.buildingType = buildingType;
     const interiorSeed =
       this.spawn.interior_seed || hashCode(this.spawn.node_id || "default");
+    const template = this.spawn.interior_template || null;
+    const authoredInterior = template
+      ? buildInteriorFromTemplate(template, this.floorIndex)
+      : null;
+    this.interiorTemplate = template;
+    this.interiorAppearance = authoredInteriorAppearance(
+      buildingType,
+      interiorSeed,
+    );
 
-    // Determine room dimensions
-    const dims = roomDimensions(buildingType, interiorSeed, mulberry32);
-    this.roomW = dims.w;
-    this.roomH = dims.h;
+    if (authoredInterior) {
+      this.roomW = authoredInterior.roomW;
+      this.roomH = authoredInterior.roomH;
+      this.tiles = authoredInterior.tiles;
+      this.stairsByPosition = authoredInterior.stairsByPosition;
+      this.templateChestAnchors = authoredInterior.chestAnchors;
+      this.currentFloor = authoredInterior.floor;
+    } else {
+      const dims = roomDimensions(buildingType, interiorSeed, mulberry32);
+      this.roomW = dims.w;
+      this.roomH = dims.h;
+      this.stairsByPosition = new Map();
+      this.templateChestAnchors = [];
+      this.currentFloor = null;
+    }
 
     const { key: musicKey, loop: musicLoop } = buildingMusicForTags(tags);
     playMusic(musicKey, musicLoop);
 
-    // Generate interior first, then place NPCs on walkable tiles
-    const numNpcs = npcCount(buildingType);
-    let tiles;
     let npcPositions;
-    for (let attempt = 0; attempt < 5; attempt++) {
-      tiles = generateInterior(
-        buildingType,
-        this.roomW,
-        this.roomH,
-        interiorSeed + attempt,
-      );
-      npcPositions = this.placeNPCs(
+    if (authoredInterior) {
+      npcPositions = this.placeTemplateNPCs(
         buildingType,
         tags,
-        numNpcs,
-        interiorSeed + attempt,
-        tiles,
+        interiorSeed,
+        authoredInterior.npcAnchors,
       );
-      if (validateLayout(tiles, this.roomW, this.roomH, npcPositions)) break;
+    } else {
+      const numNpcs = npcCount(buildingType);
+      for (let attempt = 0; attempt < 5; attempt++) {
+        this.tiles = generateInterior(
+          buildingType,
+          this.roomW,
+          this.roomH,
+          interiorSeed + attempt,
+        );
+        npcPositions = this.placeNPCs(
+          buildingType,
+          tags,
+          numNpcs,
+          interiorSeed + attempt,
+          this.tiles,
+        );
+        if (validateLayout(this.tiles, this.roomW, this.roomH, npcPositions)) {
+          break;
+        }
+      }
     }
-    this.tiles = tiles;
 
     // Center the room on screen
     const roomPixelW = this.roomW * RENDERED_TILE;
@@ -470,15 +596,28 @@ export class TownScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(5);
 
+    if (template?.floors?.length > 1) {
+      this.add
+        .text(400, this.offsetY - 2, `Floor ${this.floorIndex + 1}`, {
+          fontSize: "10px",
+          color: "#bbbbbb",
+          fontFamily: "monospace",
+        })
+        .setOrigin(0.5)
+        .setDepth(5);
+    }
+
     // Place NPCs
     this.npcs = [];
-    const extraNpcSprites = extraNpcSpritesForTags(tags);
     for (let i = 0; i < npcPositions.length; i++) {
       const pos = npcPositions[i];
       const sprite =
-        i === 0
+        pos.sprite ||
+        (i === 0
           ? npcSpriteForTags(tags)
-          : extraNpcSprites[(i - 1) % extraNpcSprites.length];
+          : extraNpcSpritesForTags(tags)[
+              (i - 1) % extraNpcSpritesForTags(tags).length
+            ]);
       const npcImage = this.add
         .image(
           this.offsetX + pos.x * RENDERED_TILE + RENDERED_TILE / 2,
@@ -494,16 +633,28 @@ export class TownScene extends Phaser.Scene {
       this.npcs.push({
         x: pos.x,
         y: pos.y,
+        role: pos.role || null,
         image: npcImage,
-        isProprietor: i === 0,
+        isProprietor: pos.isProprietor ?? i === 0,
         index: i,
       });
     }
 
-    // Player starts near door
-    const doorX = Math.floor(this.roomW / 2);
-    this.playerX = doorX;
-    this.playerY = this.roomH - 2;
+    const entrance =
+      authoredInterior?.entrance || {
+        x: Math.floor(this.roomW / 2),
+        y: this.roomH - 1,
+      };
+    const initialPlayerStart =
+      this.playerStart ||
+      (authoredInterior
+        ? {
+            x: entrance.x,
+            y: entrance.y >= this.roomH - 1 ? entrance.y - 1 : entrance.y,
+          }
+        : { x: Math.floor(this.roomW / 2), y: this.roomH - 2 });
+    this.playerX = initialPlayerStart.x;
+    this.playerY = initialPlayerStart.y;
     this.playerDir = "up";
     this.walkFrame = 0;
     const leaderIdx = getLeaderIndex();
@@ -551,13 +702,14 @@ export class TownScene extends Phaser.Scene {
     const collected = new Set(
       Object.keys(this.gameState?.collected_hidden_items || {}),
     );
+    const primaryNpc = npcPositions[0] || { x: this.playerX, y: this.playerY };
     this.hiddenItems = generateHiddenItems(
       this.spawn.node_id,
       this.tiles,
       this.roomW,
       this.roomH,
-      this.npcTileX,
-      this.npcTileY,
+      primaryNpc.x,
+      primaryNpc.y,
     ).filter((h) => !collected.has(h.key));
     this.nearHiddenItem = null;
     this.searchPrompt = null;
@@ -678,6 +830,16 @@ export class TownScene extends Phaser.Scene {
     return positions;
   }
 
+  placeTemplateNPCs(buildingType, tags, seed, npcAnchors) {
+    return (npcAnchors || []).map((anchor, index) => ({
+      x: anchor.x,
+      y: anchor.y,
+      role: anchor.role,
+      isProprietor: index === 0,
+      sprite: spriteForNpcRole(anchor.role, buildingType, tags, seed, index),
+    }));
+  }
+
   update(time) {
     if (isWorldInputLocked(this)) return;
     if (time - this.lastMoveTime < this.moveCooldown) return;
@@ -744,8 +906,14 @@ export class TownScene extends Phaser.Scene {
       ease: "Linear",
     });
 
+    const stair = this.stairsByPosition?.get(`${nx},${ny}`);
+    if (stair) {
+      this.useStairs(stair);
+      return;
+    }
+
     // Check if on door tile -> exit
-    if (tile === T_DOOR) {
+    if (tile === T_DOOR && this.floorIndex === 0) {
       this.exitToWorld();
       return;
     }
@@ -944,6 +1112,20 @@ export class TownScene extends Phaser.Scene {
     this.messageText.setVisible(false);
   }
 
+  useStairs(stair) {
+    this.animating = true;
+    playSFX("sfx_door");
+    this.cameras.main.fadeOut(180, 0, 0, 0);
+    this.cameras.main.once("camerafadeoutcomplete", () => {
+      this.scene.restart({
+        gameState: this.gameState,
+        spawn: this.spawn,
+        floorIndex: stair.to_floor,
+        playerStart: { x: stair.to_x, y: stair.to_y },
+      });
+    });
+  }
+
   // Stubs for compatibility with shop overlay (HUD lives in WorldScene)
   updateHUD() {}
   flashSaveIcon() {}
@@ -960,12 +1142,15 @@ export class TownScene extends Phaser.Scene {
         const tileY = this.offsetY + y * RENDERED_TILE;
         const textureKey = tileTextureKey(tile, this.buildingType);
         if (textureKey && this.textures.exists(textureKey)) {
-          this.tileLayer.add(
-            this.add
-              .image(tileX, tileY, textureKey)
-              .setOrigin(0)
-              .setScale(SCALE),
-          );
+          const image = this.add
+            .image(tileX, tileY, textureKey)
+            .setOrigin(0)
+            .setScale(SCALE);
+          const tint = tintForTile(tile, this.interiorAppearance);
+          if (tint) {
+            image.setTint(tint);
+          }
+          this.tileLayer.add(image);
         } else {
           const color = TILE_COLORS[tile] || 0x000000;
           this.tileGraphics.fillStyle(color, 1);
@@ -978,7 +1163,49 @@ export class TownScene extends Phaser.Scene {
         }
 
         const overlay = fallbackOverlayForTile(tile);
-        if (overlay) {
+        if (overlay?.kind === "stairs_up" || overlay?.kind === "stairs_down") {
+          this.tileGraphics.fillStyle(0xffffff, 0.85);
+          const baseY = tileY + RENDERED_TILE - 6;
+          for (let step = 0; step < 3; step++) {
+            const width = 5 + step * 4;
+            const y = baseY - step * 5;
+            const x =
+              overlay.kind === "stairs_up"
+                ? tileX + 4
+                : tileX + RENDERED_TILE - width - 4;
+            this.tileGraphics.fillRect(x, y, width, 3);
+          }
+        } else if (overlay?.kind === "locked_door") {
+          this.tileGraphics.fillStyle(0xffca28, 0.9);
+          this.tileGraphics.fillRect(
+            tileX + 5,
+            tileY + 3,
+            RENDERED_TILE - 10,
+            RENDERED_TILE - 6,
+          );
+          this.tileGraphics.fillStyle(0x5d4037, 0.9);
+          this.tileGraphics.fillCircle(
+            tileX + RENDERED_TILE - 7,
+            tileY + RENDERED_TILE / 2,
+            2,
+          );
+        } else if (
+          overlay?.kind === "chest_closed" ||
+          overlay?.kind === "chest_open"
+        ) {
+          this.tileGraphics.fillStyle(0x5d4037, 0.95);
+          this.tileGraphics.fillRect(
+            tileX + 4,
+            tileY + 8,
+            RENDERED_TILE - 8,
+            RENDERED_TILE - 12,
+          );
+          this.tileGraphics.fillStyle(
+            overlay.kind === "chest_open" ? 0xffe082 : 0xd7a86e,
+            0.95,
+          );
+          this.tileGraphics.fillRect(tileX + 4, tileY + 5, RENDERED_TILE - 8, 5);
+        } else if (overlay) {
           this.tileGraphics.fillStyle(overlay.color, overlay.alpha);
           this.tileGraphics.fillRect(
             tileX + overlay.inset,

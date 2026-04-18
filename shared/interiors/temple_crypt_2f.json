@@ -1,0 +1,61 @@
+{
+  "id": "temple_crypt_2f",
+  "building_type": "temple",
+  "floors": [
+    {
+      "floor_id": 0,
+      "width": 18,
+      "height": 12,
+      "rows": [
+        "WWWWWWWWWWWWWWWWWW",
+        "W......TTTT......W",
+        "W....NNAAAANN....W",
+        "W................W",
+        "W..PPPP....PPPP..W",
+        "W..PPPP....PPPP..W",
+        "W.......V........W",
+        "W................W",
+        "W....O......O....W",
+        "W................W",
+        "W......R.........W",
+        "WWWWWWWWDWWWWWWWWW"
+      ],
+      "entrance": { "x": 8, "y": 11, "from": "overworld" },
+      "stairs": [
+        { "x": 8, "y": 6, "to_floor": 1, "to_x": 7, "to_y": 6, "kind": "down" }
+      ],
+      "npc_anchors": [
+        { "role": "priestess", "x": 8, "y": 6 },
+        { "role": "gossip", "x": 5, "y": 8 }
+      ],
+      "chest_anchors": []
+    },
+    {
+      "floor_id": 1,
+      "width": 18,
+      "height": 10,
+      "rows": [
+        "WWWWWWWWWWWWWWWWWW",
+        "W....TT.......S..W",
+        "W....NN..M.......W",
+        "W................W",
+        "W..X.............W",
+        "W......S.....X...W",
+        "W......U.........W",
+        "W................W",
+        "W...O.......O....W",
+        "WWWWWWWWWWWWWWWWWW"
+      ],
+      "stairs": [
+        { "x": 7, "y": 6, "to_floor": 0, "to_x": 8, "to_y": 6, "kind": "up" }
+      ],
+      "npc_anchors": [
+        { "role": "guard", "x": 3, "y": 4 }
+      ],
+      "chest_anchors": [
+        { "id": "crypt_cache", "x": 13, "y": 5 },
+        { "id": "crypt_reliquary", "x": 14, "y": 1 }
+      ]
+    }
+  ]
+}

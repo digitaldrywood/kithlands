@@ -1,0 +1,32 @@
+{
+  "id": "shop_corner_goods_1f",
+  "building_type": "shop",
+  "floors": [
+    {
+      "floor_id": 0,
+      "width": 16,
+      "height": 12,
+      "rows": [
+        "WWWWWWWWWWWWWWWW",
+        "W.O..........O.W",
+        "W.XXXX....XXXX.W",
+        "W..............W",
+        "W.CCCCCCCCCCCC.W",
+        "W..............W",
+        "W..M...H...M...W",
+        "W..............W",
+        "W....O.....O...W",
+        "W..............W",
+        "W......R.......W",
+        "WWWWWWWDWWWWWWWW"
+      ],
+      "entrance": { "x": 7, "y": 11, "from": "overworld" },
+      "npc_anchors": [
+        { "role": "shopkeeper", "x": 7, "y": 3 },
+        { "role": "merchant_wandering", "x": 3, "y": 6 },
+        { "role": "guard", "x": 10, "y": 6 }
+      ],
+      "chest_anchors": []
+    }
+  ]
+}

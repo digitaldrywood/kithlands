@@ -1343,10 +1343,11 @@ export function installDevTestBridge(game) {
       return this.gameState(sceneKey);
     },
 
-    startTownScene(spawn, fromSceneKey = "World") {
+    startTownScene(spawn, fromSceneKey = "World", sceneData = {}) {
       const scene = getScene(game, fromSceneKey) || activeScene(game);
       const sourceGameState = clone(scene?.gameState) || defaultGameState();
       game.scene.start("Town", {
+        ...clone(sceneData),
         gameState: sourceGameState,
         spawn: {
           node_id: "test_house",
@@ -1384,10 +1385,15 @@ export function installDevTestBridge(game) {
       if (!scene) throw new Error("Town scene is not active");
       return {
         buildingType: scene.buildingType ?? null,
+        templateId: scene.interiorTemplate?.id ?? null,
+        floorIndex: scene.floorIndex ?? 0,
+        floorCount: scene.interiorTemplate?.floors?.length ?? 0,
         offsetX: scene.offsetX ?? null,
         offsetY: scene.offsetY ?? null,
         roomW: scene.roomW ?? null,
         roomH: scene.roomH ?? null,
+        playerX: scene.playerX ?? null,
+        playerY: scene.playerY ?? null,
         npcKeys: (scene.npcs || []).map(
           (npc) => npc.image?.texture?.key || null,
         ),
@@ -1396,6 +1402,12 @@ export function installDevTestBridge(game) {
           (npc) => npc.image?.displayHeight ?? null,
         ),
         npcPositions: (scene.npcs || []).map((npc) => ({ x: npc.x, y: npc.y })),
+        chestAnchors: clone(scene.templateChestAnchors || []),
+        stairs: Array.from(scene.stairsByPosition?.values?.() || []).map(
+          (stair) => clone(stair),
+        ),
+        secretWallCount: (scene.tiles || []).flat().filter((tile) => tile === 19)
+          .length,
         playerScale: scene.player?.scaleX ?? null,
       };
     },

@@ -152,3 +152,29 @@ func TestHashStr(t *testing.T) {
 		t.Errorf("hashStr collision: %q and %q both produce %d", "test_node_123", "test_node_456", h1)
 	}
 }
+
+func TestNewGameStateIncludesAuthoredInteriorTemplates(t *testing.T) {
+	game := newTownTestGame(t)
+	state := game.State()
+	if state.TileMap == nil {
+		t.Fatal("expected tilemap in game state")
+	}
+
+	foundTemplate := false
+	for _, spawn := range state.TileMap.Spawns {
+		switch spawn.BuildingType {
+		case "inn", "shop", "temple", "house":
+			if spawn.Interior == nil {
+				t.Fatalf("spawn %q (%s) missing authored interior template", spawn.Name, spawn.BuildingType)
+			}
+			if spawn.Interior.BuildingType != spawn.BuildingType {
+				t.Fatalf("spawn %q got mismatched template type %q", spawn.Name, spawn.Interior.BuildingType)
+			}
+			foundTemplate = true
+		}
+	}
+
+	if !foundTemplate {
+		t.Fatal("expected at least one authored building spawn")
+	}
+}

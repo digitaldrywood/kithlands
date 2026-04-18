@@ -3,6 +3,8 @@ package locality
 import (
 	"container/heap"
 	"math"
+
+	"github.com/digitaldrywood/kithlands/internal/interiors"
 )
 
 // TileType represents what kind of tile is at a map position.
@@ -94,14 +96,15 @@ type TileMap struct {
 
 // MapSpawn marks where a locality node appears on the map.
 type MapSpawn struct {
-	NodeID       string   `json:"node_id"`
-	Name         string   `json:"name"`
-	Kind         string   `json:"kind"`
-	Tags         []string `json:"tags"`
-	X            int      `json:"x"`
-	Y            int      `json:"y"`
-	BuildingType string   `json:"building_type"`
-	InteriorSeed int64    `json:"interior_seed"`
+	NodeID       string              `json:"node_id"`
+	Name         string              `json:"name"`
+	Kind         string              `json:"kind"`
+	Tags         []string            `json:"tags"`
+	X            int                 `json:"x"`
+	Y            int                 `json:"y"`
+	BuildingType string              `json:"building_type"`
+	InteriorSeed int64               `json:"interior_seed"`
+	Interior     *interiors.Template `json:"interior_template,omitempty"`
 }
 
 // BuildingTypeFromTags derives a building category string from a node's tags.

@@ -1,0 +1,32 @@
+{
+  "id": "inn_hearthside_1f",
+  "building_type": "inn",
+  "floors": [
+    {
+      "floor_id": 0,
+      "width": 16,
+      "height": 12,
+      "rows": [
+        "WWWWWWWWWWWWWWWW",
+        "W....O.....O...W",
+        "W.BB......BB...W",
+        "W.BB..R...BB.F.W",
+        "W..............W",
+        "W....MMMM......W",
+        "W....H..H......W",
+        "W......KCCCK...W",
+        "W..............W",
+        "W....F.........W",
+        "W......R.......W",
+        "WWWWWWWDWWWWWWWW"
+      ],
+      "entrance": { "x": 7, "y": 11, "from": "overworld" },
+      "npc_anchors": [
+        { "role": "innkeeper", "x": 7, "y": 6 },
+        { "role": "flavor", "x": 4, "y": 5 },
+        { "role": "guard", "x": 10, "y": 5 }
+      ],
+      "chest_anchors": []
+    }
+  ]
+}
