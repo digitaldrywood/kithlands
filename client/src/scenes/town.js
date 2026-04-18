@@ -425,11 +425,7 @@ function authoredInteriorAppearance(buildingType, seed) {
 
 function tintForTile(tile, appearance) {
   if (!appearance) return null;
-  if (
-    tile === T_WALL ||
-    tile === T_SECRET_WALL ||
-    tile === T_LOCKED_DOOR
-  ) {
+  if (tile === T_WALL || tile === T_SECRET_WALL || tile === T_LOCKED_DOOR) {
     return appearance.wall;
   }
   if (
@@ -640,11 +636,10 @@ export class TownScene extends Phaser.Scene {
       });
     }
 
-    const entrance =
-      authoredInterior?.entrance || {
-        x: Math.floor(this.roomW / 2),
-        y: this.roomH - 1,
-      };
+    const entrance = authoredInterior?.entrance || {
+      x: Math.floor(this.roomW / 2),
+      y: this.roomH - 1,
+    };
     const initialPlayerStart =
       this.playerStart ||
       (authoredInterior
@@ -1204,7 +1199,12 @@ export class TownScene extends Phaser.Scene {
             overlay.kind === "chest_open" ? 0xffe082 : 0xd7a86e,
             0.95,
           );
-          this.tileGraphics.fillRect(tileX + 4, tileY + 5, RENDERED_TILE - 8, 5);
+          this.tileGraphics.fillRect(
+            tileX + 4,
+            tileY + 5,
+            RENDERED_TILE - 8,
+            5,
+          );
         } else if (overlay) {
           this.tileGraphics.fillStyle(overlay.color, overlay.alpha);
           this.tileGraphics.fillRect(

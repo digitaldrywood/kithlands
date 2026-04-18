@@ -1406,8 +1406,9 @@ export function installDevTestBridge(game) {
         stairs: Array.from(scene.stairsByPosition?.values?.() || []).map(
           (stair) => clone(stair),
         ),
-        secretWallCount: (scene.tiles || []).flat().filter((tile) => tile === 19)
-          .length,
+        secretWallCount: (scene.tiles || [])
+          .flat()
+          .filter((tile) => tile === 19).length,
         playerScale: scene.player?.scaleX ?? null,
       };
     },

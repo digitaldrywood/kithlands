@@ -115,8 +115,12 @@ test.describe("interior templates proof", () => {
     );
     expect(templeSnapshot.templateId).toBe("temple_crypt_2f");
     expect(templeSnapshot.secretWallCount).toBeGreaterThan(0);
-    await page.evaluate(() => window.__kithlandsTest.movePlayer("right", "Town"));
-    await page.evaluate(() => window.__kithlandsTest.movePlayer("right", "Town"));
+    await page.evaluate(() =>
+      window.__kithlandsTest.movePlayer("right", "Town"),
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.movePlayer("right", "Town"),
+    );
     const templeSecretSnapshot = await page.evaluate(() =>
       window.__kithlandsTest.townSnapshot("Town"),
     );
