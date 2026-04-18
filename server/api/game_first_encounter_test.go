@@ -260,6 +260,9 @@ func resolveEncounterWithBasicAttacks(t *testing.T, game *api.Game, state *api.G
 			t.Fatalf("combat round %d: %v", round, err)
 		}
 		state = next
+		if state.Phase != "combat" {
+			return state, round
+		}
 	}
 
 	t.Fatalf("encounter did not resolve within 10 rounds")

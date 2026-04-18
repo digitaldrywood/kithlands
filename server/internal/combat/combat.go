@@ -127,9 +127,48 @@ func ResolveTurn(
 		allCombatants[c.ID] = c
 	}
 
-	var results []ResolvedAction
+	results := ResolveRoundStart(party, enemies)
 
-	// Poison tick at start of round per Section 6.5: -5% max HP per turn.
+	// Roll a weighted initiative for each acting combatant once per round,
+	// then sort descending by that roll. Ties still break on a coin flip.
+	for i := range actions {
+		if actor := allCombatants[actions[i].ActorID]; actor != nil {
+			actions[i].Initiative = RollInitiative(actor.AGI, rng)
+		}
+	}
+	sort.SliceStable(actions, func(i, j int) bool {
+		return actions[i].Initiative > actions[j].Initiative
+	})
+	for start := 0; start < len(actions); {
+		end := start + 1
+		for end < len(actions) && actions[end].Initiative == actions[start].Initiative {
+			end++
+		}
+		if end-start > 1 {
+			rng.Shuffle(end-start, func(i, j int) {
+				actions[start+i], actions[start+j] = actions[start+j], actions[start+i]
+			})
+		}
+		start = end
+	}
+
+	for _, action := range actions {
+		if CheckVictory(enemies) || CheckDefeat(party) {
+			break
+		}
+		results = append(results, ResolveAction(party, enemies, action, stats, rng)...)
+	}
+
+	// Tick buffs at end of round and clear any stale counters.
+	TickBuffs(party, enemies)
+
+	return results
+}
+
+// ResolveRoundStart applies start-of-round effects before any queued action
+// resolves. Today that means poison ticks per Section 6.5.
+func ResolveRoundStart(party, enemies []*Combatant) []ResolvedAction {
+	var results []ResolvedAction
 	for _, group := range [][]*Combatant{party, enemies} {
 		for _, c := range group {
 			if c == nil || c.CurrentHP <= 0 {
@@ -150,98 +189,95 @@ func ResolveTurn(
 			}
 		}
 	}
-
-	// Roll a weighted initiative for each acting combatant once per round,
-	// then sort descending by that roll. Ties still break on a coin flip.
-	for i := range actions {
-		if actor := allCombatants[actions[i].ActorID]; actor != nil {
-			actions[i].Initiative = RollInitiative(actor.AGI, rng)
-		}
-	}
-	sort.Slice(actions, func(i, j int) bool {
-		if actions[i].Initiative != actions[j].Initiative {
-			return actions[i].Initiative > actions[j].Initiative
-		}
-		return rng.IntN(2) == 0
-	})
-
-	for _, action := range actions {
-		actor := allCombatants[action.ActorID]
-		if actor == nil || actor.CurrentHP <= 0 {
-			continue
-		}
-		if actor.Status == character.StatusSleep || actor.Status == character.StatusStone || actor.Status == character.StatusDeath {
-			continue
-		}
-
-		// Confusion: confused actors attack a random combatant per Section 6.5.
-		if ProcessConfusion(actor, rng) {
-			allLiving := allLivingCombatants(party, enemies)
-			if len(allLiving) == 0 {
-				continue
-			}
-			confuseTarget := allLiving[rng.IntN(len(allLiving))]
-			resolved := resolveAttack(actor, confuseTarget, stats, rng)
-			resolved.Kind = ActionConfusion
-			resolved.Initiative = action.Initiative
-			results = append(results, resolved)
-			// Wake sleeping targets hit by confusion attack.
-			if resolved.TotalDmg > 0 && confuseTarget.Status == character.StatusSleep {
-				ProcessSleepOnDamage(confuseTarget)
-			}
-			continue
-		}
-
-		target := allCombatants[action.TargetID]
-		if target == nil || target.CurrentHP <= 0 {
-			// Retarget to first living enemy/ally
-			target = retarget(actor, party, enemies)
-			// Self-targeted abilities (focus, counter) don't need a live enemy.
-			if target == nil && !selfTargetAbility(action) {
-				continue
-			}
-		}
-
-		switch action.Kind {
-		case ActionAttack:
-			resolved := resolveAttack(actor, target, stats, rng)
-			resolved.Initiative = action.Initiative
-			results = append(results, resolved)
-			// Wake sleeping targets on damage per Section 6.5.
-			if resolved.TotalDmg > 0 && target.Status == character.StatusSleep {
-				ProcessSleepOnDamage(target)
-			}
-			// Counter hook: if the defender is alive and was countering, they
-			// reactively attack back once. Only once per incoming action.
-			if resolved.TotalDmg > 0 && target.CurrentHP > 0 && target.Countering {
-				counter := resolveAttack(target, actor, stats, rng)
-				counter.Kind = ActionCounter
-				target.Countering = false
-				results = append(results, counter)
-			}
-		case ActionDefend:
-			results = append(results, ResolvedAction{
-				ActorID:    actor.ID,
-				ActorName:  actor.Name,
-				Kind:       ActionDefend,
-				Initiative: action.Initiative,
-			})
-		case ActionAbility:
-			allies := alliesOf(actor, party, enemies)
-			resolved := ResolveAbility(actor, target, allies, action.AbilityID, action.IgnoreRow, stats, rng)
-			resolved.Initiative = action.Initiative
-			results = append(results, resolved)
-			// Wake sleeping targets hit by abilities (e.g. backstab).
-			if resolved.TotalDmg > 0 && target != nil && target.Status == character.StatusSleep {
-				ProcessSleepOnDamage(target)
-			}
-		}
-	}
-
-	// Tick buffs at end of round and clear any stale counters.
-	TickBuffs(party, enemies)
-
 	return results
+}
+
+// ResolveAction resolves a single queued action against the live combat state.
+// Callers are responsible for applying round-start and round-end effects.
+func ResolveAction(
+	party []*Combatant,
+	enemies []*Combatant,
+	action Action,
+	stats *gamedata.CombatConfig,
+	rng *rand.Rand,
+) []ResolvedAction {
+	allCombatants := make(map[int]*Combatant, len(party)+len(enemies))
+	for _, c := range party {
+		allCombatants[c.ID] = c
+	}
+	for _, c := range enemies {
+		allCombatants[c.ID] = c
+	}
+
+	actor := allCombatants[action.ActorID]
+	if actor == nil || actor.CurrentHP <= 0 {
+		return nil
+	}
+	if actor.Status == character.StatusSleep || actor.Status == character.StatusStone || actor.Status == character.StatusDeath {
+		return nil
+	}
+
+	// Confusion: confused actors attack a random combatant per Section 6.5.
+	if ProcessConfusion(actor, rng) {
+		allLiving := allLivingCombatants(party, enemies)
+		if len(allLiving) == 0 {
+			return nil
+		}
+		confuseTarget := allLiving[rng.IntN(len(allLiving))]
+		resolved := resolveAttack(actor, confuseTarget, stats, rng)
+		resolved.Kind = ActionConfusion
+		resolved.Initiative = action.Initiative
+		if resolved.TotalDmg > 0 && confuseTarget.Status == character.StatusSleep {
+			ProcessSleepOnDamage(confuseTarget)
+		}
+		return []ResolvedAction{resolved}
+	}
+
+	target := allCombatants[action.TargetID]
+	if target == nil || target.CurrentHP <= 0 {
+		// Retarget to first living enemy/ally.
+		target = retarget(actor, party, enemies)
+		// Self-targeted abilities (focus, counter) don't need a live enemy.
+		if target == nil && !selfTargetAbility(action) {
+			return nil
+		}
+	}
+
+	switch action.Kind {
+	case ActionAttack:
+		resolved := resolveAttack(actor, target, stats, rng)
+		resolved.Initiative = action.Initiative
+		results := []ResolvedAction{resolved}
+		if resolved.TotalDmg > 0 && target.Status == character.StatusSleep {
+			ProcessSleepOnDamage(target)
+		}
+		// Counter hook: if the defender is alive and was countering, they
+		// reactively attack back once. Only once per incoming action.
+		if resolved.TotalDmg > 0 && target.CurrentHP > 0 && target.Countering {
+			counter := resolveAttack(target, actor, stats, rng)
+			counter.Kind = ActionCounter
+			target.Countering = false
+			results = append(results, counter)
+		}
+		return results
+	case ActionDefend:
+		return []ResolvedAction{{
+			ActorID:    actor.ID,
+			ActorName:  actor.Name,
+			Kind:       ActionDefend,
+			Initiative: action.Initiative,
+		}}
+	case ActionAbility:
+		allies := alliesOf(actor, party, enemies)
+		resolved := ResolveAbility(actor, target, allies, action.AbilityID, action.IgnoreRow, stats, rng)
+		resolved.Initiative = action.Initiative
+		if resolved.TotalDmg > 0 && target != nil && target.Status == character.StatusSleep {
+			ProcessSleepOnDamage(target)
+		}
+		return []ResolvedAction{resolved}
+	default:
+		return nil
+	}
 }
 
 // selfTargetAbility returns true if the action is a no-target ability.
