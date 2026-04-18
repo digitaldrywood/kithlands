@@ -119,7 +119,7 @@ describe("FloatingTextPool", () => {
 
     const active = pool.active[0];
     expect(active.text).toBe("-33");
-    expect(active.fontSize).toBe(24);
+    expect(active.fontSize).toBe(26);
     expect(active.color).toBe("#ff8800");
     expect(active.stroke).toBe("#140808");
     expect(active.strokeThickness).toBe(2);
@@ -149,7 +149,7 @@ describe("FloatingTextPool", () => {
     expect(scene.tweenCalls[1]).toMatchObject({
       targets: active,
       alpha: 0,
-      duration: 700,
+      duration: 760,
     });
   });
 });

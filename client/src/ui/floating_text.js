@@ -4,38 +4,38 @@ import Phaser from "phaser";
 const FLOAT_STYLES = {
   physical: {
     color: "#ffffff",
-    fontSize: "18px",
+    fontSize: "22px",
     rise: 35,
-    duration: 700,
+    duration: 760,
     prefix: "-",
-    bounceScale: 1.15,
+    bounceScale: 1.18,
     stroke: "#111111",
     strokeThickness: 2,
   },
   crit: {
     color: "#ffcc00",
-    fontSize: "24px",
+    fontSize: "30px",
     rise: 50,
-    duration: 900,
+    duration: 960,
     prefix: "-",
     suffix: "!",
-    bounceScale: 1.28,
+    bounceScale: 1.34,
     stroke: "#1f1300",
     strokeThickness: 2,
   },
   magical: {
     color: "#bb88ff",
-    fontSize: "18px",
+    fontSize: "22px",
     rise: 35,
-    duration: 700,
+    duration: 760,
     prefix: "-",
-    bounceScale: 1.15,
+    bounceScale: 1.18,
     stroke: "#111111",
     strokeThickness: 2,
   },
   heal: {
     color: "#44ff44",
-    fontSize: "18px",
+    fontSize: "20px",
     rise: 30,
     duration: 800,
     prefix: "+",
@@ -45,7 +45,7 @@ const FLOAT_STYLES = {
   },
   miss: {
     color: "#888888",
-    fontSize: "13px",
+    fontSize: "14px",
     rise: 20,
     duration: 500,
     text: "MISS",
@@ -56,11 +56,11 @@ const FLOAT_STYLES = {
   },
   party_hit: {
     color: "#ff8800",
-    fontSize: "24px",
+    fontSize: "26px",
     rise: 35,
-    duration: 700,
+    duration: 760,
     prefix: "-",
-    bounceScale: 1.18,
+    bounceScale: 1.22,
     stroke: "#140808",
     strokeThickness: 2,
   },
@@ -265,8 +265,18 @@ export class FloatingTextPool {
         targets: t,
         scaleX: 1,
         scaleY: 1,
-        duration: 120,
+        duration: type === "crit" ? 150 : 120,
         ease: "Back.easeOut",
+      });
+    }
+
+    if (type === "crit") {
+      this.scene.tweens.add({
+        targets: t,
+        alpha: { from: 0.75, to: 1 },
+        duration: 90,
+        yoyo: true,
+        repeat: 1,
       });
     }
 

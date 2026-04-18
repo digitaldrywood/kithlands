@@ -66,6 +66,20 @@ export class BootScene extends Phaser.Scene {
     this.load.image("icon_paralyze", "/sprites/ui/icon_paralyze.png");
     this.load.image("icon_slow", "/sprites/ui/icon_slow.png");
     this.load.image("icon_confuse", "/sprites/ui/icon_confuse.png");
+    this.load.image("target_cursor", "/sprites/ui/target_cursor.png");
+    for (const key of [
+      "border_t",
+      "border_b",
+      "border_l",
+      "border_r",
+      "border_tl",
+      "border_tr",
+      "border_bl",
+      "border_br",
+      "border_fill",
+    ]) {
+      this.load.image(key, `/sprites/ui/${key}.png`);
+    }
 
     // Monster sprites — see client/src/data/monsterSprites.js for the
     // single source of truth shared with battle.js ENEMY_SPRITES.
