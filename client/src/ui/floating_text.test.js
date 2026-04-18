@@ -130,6 +130,12 @@ describe("FloatingTextPool", () => {
       scaleY: 1,
       duration: 120,
     });
+    expect(scene.tweenCalls[1]).toMatchObject({
+      targets: active,
+      alpha: 0,
+      duration: 1080,
+      y: 174,
+    });
   });
 
   it("applies elemental magical colors without dropping the default stroke", async () => {
@@ -149,7 +155,7 @@ describe("FloatingTextPool", () => {
     expect(scene.tweenCalls[1]).toMatchObject({
       targets: active,
       alpha: 0,
-      duration: 760,
+      duration: 960,
     });
   });
 });

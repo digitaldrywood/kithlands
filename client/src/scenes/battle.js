@@ -18,6 +18,10 @@ import { ENEMY_SPRITES } from "../data/monsterSprites.js";
 import { battleSpeedMul, messageCharMs } from "../systems/prefs.js";
 import { toggleDebugPanel, closeDebugPanel } from "./debug_panel.js";
 import {
+  buildPartyBattleLayout,
+  floatingTextAnchorForEntry,
+} from "./battle_layout.js";
+import {
   buildBattleActionButtons,
   planSmartRound,
   resolveAction,
@@ -733,15 +737,26 @@ export class BattleScene extends Phaser.Scene {
   }
 
   drawParty(gs) {
-    const px = 560;
+    const layout = buildPartyBattleLayout(gs.party);
     for (let i = 0; i < gs.party.length; i++) {
       const p = gs.party[i];
-      const x = px,
-        y = 160 + i * 85;
+      const placement = layout[i];
+      const x = placement.x;
+      const y = placement.y;
       const alive = p.hp > 0;
 
       const arrow = this.add
-        .triangle(x - 18, y, 0, -8, 0, 8, 10, 0, 0xffff44)
+        .triangle(
+          placement.arrowX,
+          placement.arrowY,
+          0,
+          -8,
+          0,
+          8,
+          10,
+          0,
+          0xffff44,
+        )
         .setDepth(2)
         .setVisible(false);
       this.partyArrows[i] = arrow;
@@ -750,19 +765,26 @@ export class BattleScene extends Phaser.Scene {
       const composition = p.composition || {
         base_sprite: fallbackKey || "",
       };
-      const sprite = createComposedSprite(this, x + 15, y, composition, {
-        alive,
-        targetSize: 100,
-        fallbackKey,
-      });
+      const sprite = createComposedSprite(
+        this,
+        placement.spriteX,
+        placement.spriteY,
+        composition,
+        {
+          alive,
+          targetSize: 100,
+          fallbackKey,
+        },
+      );
       this.partySprites[p.name] = {
         sprite,
         arrow,
-        x: x + 15,
-        y,
+        x: placement.spriteX,
+        y: placement.spriteY,
         name: p.name,
         alive,
         slot: i,
+        row: placement.row,
       };
 
       if (alive) {
@@ -847,6 +869,7 @@ export class BattleScene extends Phaser.Scene {
         if (this.textures.exists(iconKey)) {
           const icon = this.add.image(x + 35, y - 20, iconKey).setDepth(10);
           icon.setScale(16 / Math.max(icon.width, icon.height));
+          this.partySprites[p.name].statusIcon = icon;
         }
       }
     }
@@ -1968,6 +1991,7 @@ export class BattleScene extends Phaser.Scene {
             crit: action.crit,
             missed: action.missed,
             targetKey,
+            entry: ee,
           });
           if (!action.missed && ee.sprite.setTint) {
             ee.sprite.setTint(0xff4444);
@@ -1992,6 +2016,7 @@ export class BattleScene extends Phaser.Scene {
             crit: action.crit,
             missed: action.missed,
             targetKey,
+            entry: pt,
           });
           // Animate party HP bar drain — integer math only
           if (!action.missed && pt.hpBar) {
@@ -2033,6 +2058,7 @@ export class BattleScene extends Phaser.Scene {
             crit: action.crit,
             missed: action.missed,
             targetKey,
+            entry: ee,
           });
           if (ee.hpBar) {
             const newHP = applyDamage(ee.hpBar.currentHP, dmg);
@@ -2141,7 +2167,7 @@ export class BattleScene extends Phaser.Scene {
               false,
               tgt.defeated,
               dmgType,
-              { targetKey, element, missed: tgt.missed },
+              { targetKey, element, missed: tgt.missed, entry: ee },
             );
             if (!tgt.missed && ee.hpBar) {
               const newHP = applyDamage(ee.hpBar.currentHP, tgt.dmg);
@@ -2154,6 +2180,7 @@ export class BattleScene extends Phaser.Scene {
               targetKey,
               element,
               missed: tgt.missed,
+              entry: pt,
             });
             if (!tgt.missed && pt.hpBar) {
               const newHP = applyDamage(pt.hpBar.currentHP, tgt.dmg);
@@ -2177,12 +2204,20 @@ export class BattleScene extends Phaser.Scene {
           const healTarget =
             this.partySprites[action.target_name] ||
             this.partySprites[action.actor_name];
-          const hx = healTarget ? healTarget.x : 600;
-          const hy = healTarget ? healTarget.y : 220;
+          const anchor = floatingTextAnchorForEntry(healTarget, {
+            x: healTarget ? healTarget.x : 600,
+            y: healTarget ? healTarget.y : 220,
+          });
           const targetKey = healTarget
             ? `party_${action.target_name || action.actor_name}`
             : "party_heal";
-          this.floatingText.spawn(hx, hy, healMatch[1], "heal", targetKey);
+          this.floatingText.spawn(
+            anchor.x,
+            anchor.y,
+            healMatch[1],
+            "heal",
+            targetKey,
+          );
           // Animate HP bar up — integer math only
           if (healTarget?.hpBar) {
             const newHP = applyHeal(
@@ -2257,7 +2292,9 @@ export class BattleScene extends Phaser.Scene {
             tracerColor: ACTION_TRACER_COLORS.partyToEnemy,
             targetColor: ACTION_RETICLE_COLORS.enemyTarget,
           });
-          await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch, "physical");
+          await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch, "physical", {
+            entry: ee,
+          });
           if (defeatMatch) await this.enemyDeathFx(ee);
         } else {
           // Target is a party member — find by slot ID
@@ -2278,6 +2315,7 @@ export class BattleScene extends Phaser.Scene {
               true,
               false,
               "physical",
+              { entry: targetMember },
             );
             if (targetMember.hpBar) {
               const newHP = applyDamage(targetMember.hpBar.currentHP, dmg);
@@ -2333,7 +2371,7 @@ export class BattleScene extends Phaser.Scene {
               false,
               defeatMatch,
               action.damage_type || "physical",
-              { crit: action.crit, targetKey },
+              { crit: action.crit, targetKey, entry: ee },
             );
             if (ee.hpBar) {
               const newHP = applyDamage(ee.hpBar.currentHP, action.damage);
@@ -2397,6 +2435,7 @@ export class BattleScene extends Phaser.Scene {
       {
         crit: true,
         targetKey,
+        entry: targetEntry,
       },
     );
     await this.resetPartySprite(actorEntry);
@@ -2466,24 +2505,62 @@ export class BattleScene extends Phaser.Scene {
       }
 
       const targetKey = opts.targetKey || `pos_${x}_${y}`;
+      const textAnchor = floatingTextAnchorForEntry(opts.entry, { x, y });
 
       // Determine floating text type
       if (opts.missed) {
-        this.floatingText.spawn(x, y, 0, "miss", targetKey);
+        this.floatingText.spawn(
+          textAnchor.x,
+          textAnchor.y,
+          0,
+          "miss",
+          targetKey,
+        );
       } else if (opts.crit) {
-        this.floatingText.spawn(x, y, dmg, "crit", targetKey);
+        this.floatingText.spawn(
+          textAnchor.x,
+          textAnchor.y,
+          dmg,
+          "crit",
+          targetKey,
+        );
       } else if (isParty) {
-        this.floatingText.spawn(x, y, dmg, "party_hit", targetKey);
+        this.floatingText.spawn(
+          textAnchor.x,
+          textAnchor.y,
+          dmg,
+          "party_hit",
+          targetKey,
+        );
       } else if (damageType === "magical") {
-        this.floatingText.spawn(x, y, dmg, "magical", targetKey, {
-          element: opts.element,
-        });
+        this.floatingText.spawn(
+          textAnchor.x,
+          textAnchor.y,
+          dmg,
+          "magical",
+          targetKey,
+          {
+            element: opts.element,
+          },
+        );
       } else {
-        this.floatingText.spawn(x, y, dmg, "physical", targetKey);
+        this.floatingText.spawn(
+          textAnchor.x,
+          textAnchor.y,
+          dmg,
+          "physical",
+          targetKey,
+        );
       }
 
       if (defeated) {
-        this.floatingText.spawn(x, y + 30, 0, "defeated", targetKey);
+        this.floatingText.spawn(
+          textAnchor.x,
+          textAnchor.y + 30,
+          0,
+          "defeated",
+          targetKey,
+        );
       }
 
       this.scaledDelay(opts.crit ? 180 : 150, resolve);

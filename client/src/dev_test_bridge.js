@@ -772,6 +772,27 @@ function visibleBattleFxSnapshot(scene) {
         child.visible !== false &&
         (child.alpha ?? 1) > 0.01,
     ).length;
+  const partyMembers = Object.values(scene?.partySprites || {})
+    .sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0))
+    .map((entry) => ({
+      name: entry?.name || null,
+      slot: entry?.slot ?? null,
+      row: entry?.row || null,
+      x: entry?.x ?? null,
+      y: entry?.y ?? null,
+      spriteBounds: objectBounds(entry?.sprite),
+      hpBarBounds: objectBounds(entry?.hpBar?.bg),
+    }));
+  const enemyMembers = Object.values(scene?.enemySprites || {})
+    .filter((entry) => entry && !entry.dead && !entry.dying)
+    .map((entry) => ({
+      id: entry?.id ?? null,
+      name: entry?.name || null,
+      x: entry?.x ?? null,
+      y: entry?.y ?? null,
+      spriteBounds: objectBounds(entry?.sprite),
+      hpBarBounds: objectBounds(entry?.hpBar?.bg),
+    }));
 
   return {
     actorCursors: taggedCount("actor-cursor"),
@@ -786,6 +807,8 @@ function visibleBattleFxSnapshot(scene) {
       text: scene?.messageWindow?.getText?.() ?? "",
       ...(scene?.messageWindow?.getLayoutMetrics?.() ?? {}),
     },
+    partyMembers,
+    enemyMembers,
     floatingTexts: (scene?.floatingText?.active || [])
       .filter(
         (text) =>
@@ -797,6 +820,7 @@ function visibleBattleFxSnapshot(scene) {
         text: text.text,
         x: text.x ?? null,
         y: text.y ?? null,
+        targetKey: text._targetKey || null,
         color: text.style?.color || text.color || null,
         fontSize: text.style?.fontSize || text.fontSize || null,
       })),
@@ -1230,6 +1254,7 @@ export function installDevTestBridge(game) {
         });
         scene.hitFx(partyTarget.x, partyTarget.y, 27, true, false, "physical", {
           targetKey: `proof_party_hit_${stamp}`,
+          entry: partyTarget,
         });
         scene.playPartyHitReaction(partyTarget, {
           newHP: Math.max(
@@ -1241,6 +1266,7 @@ export function installDevTestBridge(game) {
       } else if (kind === "floating_text") {
         scene.hitFx(partyTarget.x, partyTarget.y, 34, true, false, "physical", {
           targetKey: `proof_party_number_${stamp}`,
+          entry: partyTarget,
         });
         scene.showActionFocus(partyActor, enemyTarget, {
           tracerColor: 0xbb88ff,
@@ -1249,6 +1275,7 @@ export function installDevTestBridge(game) {
         scene.hitFx(enemyTarget.x, enemyTarget.y, 19, false, false, "magical", {
           targetKey: `proof_magic_number_${stamp}`,
           element: "dark",
+          entry: enemyTarget,
         });
       } else if (kind === "message_window") {
         scene.revealLine("Bruno attacks Goblin!", "#ff8844");
