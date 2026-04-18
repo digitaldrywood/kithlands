@@ -8,6 +8,7 @@ CLAUDE.local.md
 
 # Go
 server/kithlands
+server/dashboard
 *.exe
 
 # Node

@@ -1,4 +1,4 @@
-.PHONY: play stop run test test-e2e test-scripts test-worktree-lifecycle test-visual test-walk-classes walk-previews test-visual-local test-visual-update build demo migrate setup-db teardown-db balance-sim simulate validate-data client-dev client-build lint vet fmt pre-commit docker-up docker-down
+.PHONY: play stop run test test-e2e test-scripts test-worktree-lifecycle test-visual test-walk-classes walk-previews test-visual-local test-visual-update build demo migrate setup-db teardown-db balance-sim simulate validate-data client-dev client-build lint vet fmt pre-commit docker-up docker-down dashboard dashboard-stop dashboard-status
 
 # Per-worktree isolation: these are populated by scripts/worktree-env.sh via
 # direnv. Defaults below keep the Makefile usable without direnv (for CI, or
@@ -139,3 +139,14 @@ docker-up:
 
 docker-down:
 	docker compose down
+
+# PM-facing screenshot dashboard (cross-worktree). Fixed port 3999, separate
+# from per-worktree `make play` stacks. Prints localhost + Tailscale URLs.
+dashboard:
+	@./scripts/dashboard-serve.sh start
+
+dashboard-stop:
+	@./scripts/dashboard-serve.sh stop
+
+dashboard-status:
+	@./scripts/dashboard-serve.sh status
