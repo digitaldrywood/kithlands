@@ -2,17 +2,30 @@ import { updatePartyFormation } from "../api.js";
 import { playSFX } from "../systems/audio.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 import { drawButton, drawPanel } from "../ui/panel.js";
-import { inferPartyRow } from "./battle_layout.js";
+import { buildPartyBattleLayout, inferPartyRow } from "./battle_layout.js";
 import { toggleMenu } from "./world_menu.js";
 
 const PANEL_CX = 400;
 const PANEL_CY = 300;
-const PANEL_W = 620;
-const PANEL_H = 420;
+const PANEL_W = 760;
+const PANEL_H = 540;
 const PANEL_LEFT = PANEL_CX - PANEL_W / 2;
 const PANEL_TOP = PANEL_CY - PANEL_H / 2;
+const PANEL_BOTTOM = PANEL_CY + PANEL_H / 2;
+const LEFT_PANE_W = 280;
+const RIGHT_PANE_W = 430;
 const DEPTH_BG = 50;
 const DEPTH_CONTENT = 51;
+const FF6_BLUE = 0x4d78bf;
+const FF6_GOLD = 0xf4d881;
+const FF6_GOLD_DARK = 0xa66b1d;
+const FF6_GLOW = 0x9bc7ff;
+const ROW_FILL = 0x16274a;
+const ROW_FILL_HOVER = 0x21406e;
+const ROW_FILL_SELECTED = 0x2d5a93;
+const PICK_FILL = 0x4b3e24;
+const PREVIEW_FRONT = 0x53411f;
+const PREVIEW_BACK = 0x1f3358;
 
 function normalizeRow(row) {
   return row === "front" || row === "back" ? row : "";
@@ -22,160 +35,592 @@ function resolveMemberRow(member) {
   return normalizeRow(member?.row) || inferPartyRow(member);
 }
 
+function rowBadgeLabel(row) {
+  return row === "back" ? "BACK" : "FRONT";
+}
+
+function rowBadgeColor(row) {
+  return row === "back"
+    ? { fill: 0x2a446f, stroke: 0xb9c8ff }
+    : { fill: 0x5d4920, stroke: FF6_GOLD };
+}
+
+function resolvePortraitTextureKey(scene, member) {
+  const candidates = [
+    member?.sprite_id,
+    member?.class_id,
+    String(member?.class_name || "")
+      .trim()
+      .toLowerCase(),
+  ];
+  return candidates.find((key) => key && scene.textures.exists(key)) || null;
+}
+
+function applyTextGlow(text, color, blur = 2) {
+  if (typeof text?.setShadow !== "function") return;
+  text.setShadow(0, 0, color, blur, false, true);
+}
+
+export function buildFormationDraft(party = []) {
+  return party.map((member, originalSlot) => ({
+    ...member,
+    row: resolveMemberRow(member),
+    originalSlot,
+  }));
+}
+
+export function swapDraftSlots(draftParty, left, right) {
+  if (
+    left === right ||
+    left < 0 ||
+    right < 0 ||
+    left >= draftParty.length ||
+    right >= draftParty.length
+  ) {
+    return draftParty.slice();
+  }
+  const next = draftParty.slice();
+  [next[left], next[right]] = [next[right], next[left]];
+  return next;
+}
+
+export function buildPreviewDraft(draftParty, pickedIdx, focusedIdx) {
+  if (
+    pickedIdx == null ||
+    focusedIdx == null ||
+    pickedIdx === focusedIdx ||
+    pickedIdx < 0 ||
+    focusedIdx < 0
+  ) {
+    return draftParty.slice();
+  }
+  return swapDraftSlots(draftParty, pickedIdx, focusedIdx);
+}
+
+export function buildFormationPayload(draftParty) {
+  return {
+    reorder: draftParty.map((member) => member.originalSlot),
+    updates: draftParty.map((member, slot) => ({
+      slot,
+      row: normalizeRow(member.row) || "front",
+    })),
+  };
+}
+
 export function showFormationMenu(scene) {
   pauseWorldFor(scene, "formation_menu");
 
-  const overlay = [];
-  const party = Array.isArray(scene?.gameState?.party)
-    ? scene.gameState.party
-    : [];
-  const draftRows = party.map((member) => resolveMemberRow(member));
-  const rowObjects = [];
-  let focusedIdx = 0;
-  let closing = false;
-
-  const panel = drawPanel(scene, PANEL_CX, PANEL_CY, PANEL_W, PANEL_H, {
-    depth: DEPTH_BG,
-  });
-  overlay.push(panel.bg);
+  const staticObjects = [];
+  const state = {
+    dynamicObjects: [],
+    rowObjects: [],
+    previewEntries: [],
+    draftParty: buildFormationDraft(scene?.gameState?.party || []),
+    draftRows: [],
+    focusedIdx: 0,
+    pickedIdx: null,
+    closing: false,
+    hoveredIdx: null,
+    focusSlot(slot) {
+      if (slot < 0 || slot >= state.draftParty.length) return;
+      state.focusedIdx = slot;
+      renderDynamic();
+    },
+    setRow(slot, row) {
+      if (slot < 0 || slot >= state.draftParty.length) return;
+      const normalized = normalizeRow(row);
+      if (!normalized) return;
+      state.draftParty[slot] = { ...state.draftParty[slot], row: normalized };
+      renderDynamic();
+    },
+    activateFocused() {
+      if (state.draftParty.length === 0) return;
+      if (state.pickedIdx == null) {
+        state.pickedIdx = state.focusedIdx;
+        renderDynamic();
+        return;
+      }
+      if (state.pickedIdx === state.focusedIdx) {
+        state.pickedIdx = null;
+        renderDynamic();
+        return;
+      }
+      state.draftParty = swapDraftSlots(
+        state.draftParty,
+        state.pickedIdx,
+        state.focusedIdx,
+      );
+      state.pickedIdx = null;
+      renderDynamic();
+      playSFX("sfx_cursor");
+    },
+    cancelPick() {
+      if (state.pickedIdx == null) return false;
+      state.pickedIdx = null;
+      renderDynamic();
+      return true;
+    },
+    saveBtn: null,
+    closeAndSave: null,
+    hintText: null,
+    previewPanel: null,
+    listPanel: null,
+  };
 
   const title = scene.add
-    .text(PANEL_CX, PANEL_TOP + 34, "FORMATION", {
-      fontSize: "20px",
-      color: "#ffff44",
+    .text(PANEL_LEFT + 62, PANEL_TOP + 30, "FORMATION", {
+      fontSize: "24px",
+      fontStyle: "bold",
+      color: "#fff5c2",
+      fontFamily: "Georgia",
+    })
+    .setOrigin(0, 0.5)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT);
+  applyTextGlow(title, "#2c5f9d", 2);
+
+  const hintText = scene.add
+    .text(PANEL_CX, PANEL_TOP + 58, "", {
+      fontSize: "10px",
+      color: "#dbe9ff",
       fontFamily: "monospace",
     })
     .setOrigin(0.5)
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
-  overlay.push(title);
+  state.hintText = hintText;
 
-  const hint = scene.add
-    .text(
-      PANEL_CX,
-      PANEL_TOP + 58,
-      "UP/DOWN select    LEFT/RIGHT toggle row    ENTER flip row    ESC save",
-      {
-        fontSize: "10px",
-        color: "#8899bb",
-        fontFamily: "monospace",
-      },
-    )
-    .setOrigin(0.5)
+  const shell = drawPanel(scene, PANEL_CX, PANEL_CY, PANEL_W, PANEL_H, {
+    depth: DEPTH_BG,
+    interactive: false,
+    variant: "ff6",
+  });
+  const previewPanel = drawPanel(
+    scene,
+    PANEL_LEFT + 24 + LEFT_PANE_W / 2,
+    PANEL_TOP + 112 + 340 / 2,
+    LEFT_PANE_W,
+    340,
+    {
+      depth: DEPTH_BG + 0.5,
+      interactive: false,
+      variant: "ff6",
+      outerFill: 0x3b66a4,
+      innerTop: 0x214875,
+      innerBottom: 0x112341,
+      radius: 16,
+    },
+  );
+  const listPanel = drawPanel(
+    scene,
+    PANEL_LEFT + 46 + LEFT_PANE_W + RIGHT_PANE_W / 2,
+    PANEL_TOP + 112 + 340 / 2,
+    RIGHT_PANE_W,
+    340,
+    {
+      depth: DEPTH_BG + 0.5,
+      interactive: false,
+      variant: "ff6",
+      outerFill: 0x3b66a4,
+      innerTop: 0x214875,
+      innerBottom: 0x112341,
+      radius: 16,
+    },
+  );
+  state.previewPanel = previewPanel.bg;
+  state.listPanel = listPanel.bg;
+
+  const previewTitle = scene.add
+    .text(PANEL_LEFT + 42, PANEL_TOP + 92, "BATTLE PREVIEW", {
+      fontSize: "14px",
+      fontStyle: "bold",
+      color: "#fff1c2",
+      fontFamily: "Georgia",
+    })
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
-  overlay.push(hint);
+  const previewHelp = scene.add
+    .text(PANEL_LEFT + 42, PANEL_TOP + 112, "FRONT", {
+      fontSize: "10px",
+      color: "#f4d881",
+      fontFamily: "monospace",
+    })
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT);
+  const previewHelpRight = scene.add
+    .text(PANEL_LEFT + 170, PANEL_TOP + 112, "BACK", {
+      fontSize: "10px",
+      color: "#b9c8ff",
+      fontFamily: "monospace",
+    })
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT);
+  const listTitle = scene.add
+    .text(PANEL_LEFT + LEFT_PANE_W + 64, PANEL_TOP + 92, "ORDER", {
+      fontSize: "14px",
+      fontStyle: "bold",
+      color: "#fff1c2",
+      fontFamily: "Georgia",
+    })
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT);
 
-  function setDraftRow(slot, row) {
-    draftRows[slot] = row;
-    syncRow(slot);
+  staticObjects.push(
+    shell.bg,
+    previewPanel.bg,
+    listPanel.bg,
+    title,
+    hintText,
+    previewTitle,
+    previewHelp,
+    previewHelpRight,
+    listTitle,
+  );
+
+  function destroyObjects(objects) {
+    for (const entry of objects) entry?.destroy?.();
   }
 
-  function setFocus(nextIdx) {
-    if (rowObjects.length === 0) return;
-    const clamped = Phaser.Math.Wrap(nextIdx, 0, rowObjects.length);
-    if (rowObjects[focusedIdx]) {
-      rowObjects[focusedIdx].rowBg.setStrokeStyle(1, 0x4488ff);
-    }
-    focusedIdx = clamped;
-    rowObjects[focusedIdx].rowBg.setStrokeStyle(2, 0xffcc44);
+  function clearDynamic() {
+    destroyObjects(state.dynamicObjects);
+    state.dynamicObjects = [];
+    state.rowObjects = [];
+    state.previewEntries = [];
   }
 
-  function syncRow(slot) {
-    const entry = rowObjects[slot];
-    if (!entry) return;
-    const isFront = draftRows[slot] === "front";
-    entry.frontBtn.setActive(isFront);
-    entry.backBtn.setActive(!isFront);
-    entry.rowLabel.setText(isFront ? "Front line" : "Back line");
-  }
+  function renderPreview() {
+    const previewParty = buildPreviewDraft(
+      state.draftParty,
+      state.pickedIdx,
+      state.focusedIdx,
+    );
+    const currentSlots = new Map(
+      state.draftParty.map((member, slot) => [member.originalSlot, slot]),
+    );
+    const previewLayout = buildPartyBattleLayout(previewParty);
+    const minX = Math.min(...previewLayout.map((entry) => entry.x));
+    const maxX = Math.max(...previewLayout.map((entry) => entry.x));
+    const minY = Math.min(...previewLayout.map((entry) => entry.y));
+    const maxY = Math.max(...previewLayout.map((entry) => entry.y));
+    const paneLeft = PANEL_LEFT + 34;
+    const paneTop = PANEL_TOP + 126;
+    const paneWidth = LEFT_PANE_W - 24;
+    const paneHeight = 286;
+    const cardW = 108;
+    const cardH = 52;
+    const spanX = Math.max(1, maxX - minX);
+    const spanY = Math.max(1, maxY - minY);
 
-  const rowTop = PANEL_TOP + 108;
-  const rowHeight = 64;
-  for (let i = 0; i < party.length; i++) {
-    const member = party[i];
-    const y = rowTop + i * rowHeight;
-    const rowBg = scene.add
-      .rectangle(PANEL_CX, y + 20, PANEL_W - 40, 50, 0x10192d, 0.96)
-      .setStrokeStyle(1, 0x4488ff)
-      .setScrollFactor(0)
-      .setDepth(DEPTH_CONTENT);
-    rowBg.setInteractive({ useHandCursor: true });
-    rowBg.on("pointerdown", () => setFocus(i));
-    overlay.push(rowBg);
-
-    const name = scene.add
-      .text(PANEL_LEFT + 34, y + 8, member.name, {
-        fontSize: "13px",
-        color: "#ffffff",
-        fontFamily: "monospace",
-      })
-      .setScrollFactor(0)
-      .setDepth(DEPTH_CONTENT + 1);
-    const subtitle = scene.add
-      .text(
-        PANEL_LEFT + 34,
-        y + 24,
-        `${member.class_name || "Adventurer"}  HP ${member.hp}/${member.max_hp}`,
-        {
+    for (let slot = 0; slot < previewParty.length; slot += 1) {
+      const member = previewParty[slot];
+      const placement = previewLayout[slot];
+      const x =
+        paneLeft +
+        8 +
+        ((placement.x - minX) / spanX) * (paneWidth - cardW - 20);
+      const y =
+        paneTop +
+        18 +
+        ((placement.y - minY) / spanY) * (paneHeight - cardH - 28);
+      const rowColors = rowBadgeColor(member.row);
+      const fill = member.row === "back" ? PREVIEW_BACK : PREVIEW_FRONT;
+      const moved =
+        currentSlots.get(member.originalSlot) != null &&
+        currentSlots.get(member.originalSlot) !== slot;
+      const card = scene.add
+        .rectangle(x + cardW / 2, y + cardH / 2, cardW, cardH, fill, 0.96)
+        .setStrokeStyle(
+          2,
+          slot === state.focusedIdx
+            ? FF6_GOLD
+            : moved
+              ? FF6_GLOW
+              : rowColors.stroke,
+        )
+        .setScrollFactor(0)
+        .setDepth(DEPTH_CONTENT);
+      const slotBadge = scene.add
+        .rectangle(x + 16, y + 12, 22, 18, 0x132947, 1)
+        .setStrokeStyle(1, 0xe7f2ff, 0.8)
+        .setScrollFactor(0)
+        .setDepth(DEPTH_CONTENT + 1);
+      const slotLabel = scene.add
+        .text(x + 16, y + 12, `${slot + 1}`, {
           fontSize: "10px",
-          color: "#aab4cc",
+          fontStyle: "bold",
+          color: "#fff7d6",
+          fontFamily: "Courier New",
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(DEPTH_CONTENT + 2);
+      const portraitKey = resolvePortraitTextureKey(scene, member);
+      let portrait = null;
+      if (portraitKey) {
+        portrait = scene.add
+          .image(x + 38, y + cardH / 2, portraitKey)
+          .setScrollFactor(0)
+          .setDepth(DEPTH_CONTENT + 2);
+        const srcSize = Math.max(portrait.width || 64, portrait.height || 64);
+        portrait.setScale(30 / srcSize);
+      } else {
+        portrait = scene.add
+          .text(x + 38, y + cardH / 2, (member.class_name || "?")[0] || "?", {
+            fontSize: "18px",
+            fontStyle: "bold",
+            color: "#eef7ff",
+            fontFamily: "Georgia",
+          })
+          .setOrigin(0.5)
+          .setScrollFactor(0)
+          .setDepth(DEPTH_CONTENT + 2);
+      }
+      const name = scene.add
+        .text(x + 56, y + 10, member.name, {
+          fontSize: "10px",
+          fontStyle: "bold",
+          color: "#f7fbff",
+          fontFamily: "Trebuchet MS",
+        })
+        .setScrollFactor(0)
+        .setDepth(DEPTH_CONTENT + 2);
+      const badge = scene.add
+        .text(x + 56, y + 26, rowBadgeLabel(member.row), {
+          fontSize: "9px",
+          color: member.row === "back" ? "#d5e2ff" : "#fff0b4",
           fontFamily: "monospace",
-        },
-      )
-      .setScrollFactor(0)
-      .setDepth(DEPTH_CONTENT + 1);
-    const rowLabel = scene.add
-      .text(PANEL_LEFT + 240, y + 16, "", {
-        fontSize: "11px",
-        color: "#ffcc44",
-        fontFamily: "monospace",
-      })
-      .setScrollFactor(0)
-      .setDepth(DEPTH_CONTENT + 1);
-    overlay.push(name, subtitle, rowLabel);
+        })
+        .setScrollFactor(0)
+        .setDepth(DEPTH_CONTENT + 2);
+      const movedTag = moved
+        ? scene.add
+            .text(x + 56, y + 38, "SWAP PREVIEW", {
+              fontSize: "8px",
+              color: "#8fd7ff",
+              fontFamily: "monospace",
+            })
+            .setScrollFactor(0)
+            .setDepth(DEPTH_CONTENT + 2)
+        : null;
 
-    const frontBtn = drawButton(
-      scene,
-      PANEL_LEFT + 420,
-      y + 20,
-      92,
-      30,
-      "FRONT",
-      () => {
-        setFocus(i);
-        setDraftRow(i, "front");
-      },
-      { depth: DEPTH_CONTENT },
-    );
-    const backBtn = drawButton(
-      scene,
-      PANEL_LEFT + 528,
-      y + 20,
-      92,
-      30,
-      "BACK",
-      () => {
-        setFocus(i);
-        setDraftRow(i, "back");
-      },
-      { depth: DEPTH_CONTENT },
-    );
-    overlay.push(frontBtn, backBtn);
+      state.dynamicObjects.push(
+        card,
+        slotBadge,
+        slotLabel,
+        portrait,
+        name,
+        badge,
+      );
+      if (movedTag) state.dynamicObjects.push(movedTag);
+      state.previewEntries.push({
+        slot,
+        originalSlot: member.originalSlot,
+        name: member.name,
+        row: member.row,
+        moved,
+        card,
+        bounds: typeof card.getBounds === "function" ? card.getBounds() : null,
+      });
+    }
+  }
 
-    rowObjects.push({
-      slot: i,
-      rowBg,
-      rowLabel,
-      frontBtn,
-      backBtn,
-      name,
-    });
-    syncRow(i);
+  function renderRows() {
+    const rightLeft = PANEL_LEFT + LEFT_PANE_W + 56;
+    const rowTop = PANEL_TOP + 126;
+    const rowHeight = 68;
+
+    for (let slot = 0; slot < state.draftParty.length; slot += 1) {
+      const member = state.draftParty[slot];
+      const y = rowTop + slot * rowHeight;
+      const selected = slot === state.focusedIdx;
+      const picked = slot === state.pickedIdx;
+      const hovered = slot === state.hoveredIdx;
+      const rowColors = rowBadgeColor(member.row);
+      const rowFill = picked
+        ? PICK_FILL
+        : selected
+          ? ROW_FILL_SELECTED
+          : hovered
+            ? ROW_FILL_HOVER
+            : ROW_FILL;
+
+      const rowBg = scene.add
+        .rectangle(
+          rightLeft + (RIGHT_PANE_W - 36) / 2,
+          y + rowHeight / 2 - 2,
+          RIGHT_PANE_W - 36,
+          rowHeight - 10,
+          rowFill,
+          0.98,
+        )
+        .setStrokeStyle(2, picked ? FF6_GOLD : selected ? FF6_GLOW : FF6_BLUE)
+        .setScrollFactor(0)
+        .setDepth(DEPTH_CONTENT);
+      rowBg.setInteractive({ useHandCursor: true });
+      rowBg.on("pointerdown", () => state.focusSlot(slot));
+      rowBg.on("pointerover", () => {
+        state.hoveredIdx = slot;
+        renderDynamic();
+      });
+      rowBg.on("pointerout", () => {
+        if (state.hoveredIdx === slot) {
+          state.hoveredIdx = null;
+          renderDynamic();
+        }
+      });
+
+      const portraitKey = resolvePortraitTextureKey(scene, member);
+      const portraitFrame = scene.add
+        .rectangle(rightLeft + 30, y + 28, 42, 42, 0x10233f, 1)
+        .setStrokeStyle(2, rowColors.stroke)
+        .setScrollFactor(0)
+        .setDepth(DEPTH_CONTENT + 1);
+      let portrait = null;
+      if (portraitKey) {
+        portrait = scene.add
+          .image(rightLeft + 30, y + 28, portraitKey)
+          .setScrollFactor(0)
+          .setDepth(DEPTH_CONTENT + 2);
+        const srcSize = Math.max(portrait.width || 64, portrait.height || 64);
+        portrait.setScale(30 / srcSize);
+      } else {
+        portrait = scene.add
+          .text(rightLeft + 30, y + 28, (member.class_name || "?")[0] || "?", {
+            fontSize: "18px",
+            fontStyle: "bold",
+            color: "#eef7ff",
+            fontFamily: "Georgia",
+          })
+          .setOrigin(0.5)
+          .setScrollFactor(0)
+          .setDepth(DEPTH_CONTENT + 2);
+      }
+
+      const slotText = scene.add
+        .text(rightLeft + 60, y + 8, `${slot + 1}. ${member.name}`, {
+          fontSize: "13px",
+          fontStyle: "bold",
+          color: "#f7fbff",
+          fontFamily: "Trebuchet MS",
+        })
+        .setScrollFactor(0)
+        .setDepth(DEPTH_CONTENT + 2);
+      const classText = scene.add
+        .text(rightLeft + 60, y + 24, member.class_name || "Adventurer", {
+          fontSize: "10px",
+          color: "#d2bdd7",
+          fontFamily: "Georgia",
+        })
+        .setScrollFactor(0)
+        .setDepth(DEPTH_CONTENT + 2);
+      const statsText = scene.add
+        .text(
+          rightLeft + 210,
+          y + 8,
+          `Lv ${member.level}   HP ${member.hp}/${member.max_hp}   MP ${member.mp || 0}/${member.max_mp || 0}`,
+          {
+            fontSize: "10px",
+            color: "#dbe9ff",
+            fontFamily: "Courier New",
+          },
+        )
+        .setScrollFactor(0)
+        .setDepth(DEPTH_CONTENT + 2);
+      const rowBadgeBg = scene.add
+        .rectangle(
+          rightLeft + RIGHT_PANE_W - 92,
+          y + 28,
+          76,
+          22,
+          rowColors.fill,
+          1,
+        )
+        .setStrokeStyle(2, rowColors.stroke)
+        .setScrollFactor(0)
+        .setDepth(DEPTH_CONTENT + 1);
+      rowBadgeBg.setInteractive({ useHandCursor: true });
+      rowBadgeBg.on("pointerdown", () => {
+        state.focusSlot(slot);
+        state.setRow(slot, member.row === "front" ? "back" : "front");
+      });
+      const rowBadgeText = scene.add
+        .text(
+          rightLeft + RIGHT_PANE_W - 92,
+          y + 28,
+          rowBadgeLabel(member.row),
+          {
+            fontSize: "10px",
+            fontStyle: "bold",
+            color: member.row === "back" ? "#e6f0ff" : "#fff5d1",
+            fontFamily: "monospace",
+          },
+        )
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(DEPTH_CONTENT + 2);
+      const pickedText = picked
+        ? scene.add
+            .text(rightLeft + RIGHT_PANE_W - 92, y + 8, "PICKED", {
+              fontSize: "8px",
+              fontStyle: "bold",
+              color: "#ffef9f",
+              fontFamily: "monospace",
+            })
+            .setOrigin(0.5)
+            .setScrollFactor(0)
+            .setDepth(DEPTH_CONTENT + 2)
+        : null;
+
+      state.dynamicObjects.push(
+        rowBg,
+        portraitFrame,
+        portrait,
+        slotText,
+        classText,
+        statsText,
+        rowBadgeBg,
+        rowBadgeText,
+      );
+      if (pickedText) state.dynamicObjects.push(pickedText);
+
+      state.rowObjects.push({
+        slot,
+        rowBg,
+        name: slotText,
+        rowBadge: { bg: rowBadgeBg, label: rowBadgeText },
+        row: member.row,
+      });
+    }
+  }
+
+  const syncBridgeState = () => {
+    if (!scene.formationMenuState) return;
+    scene.formationMenuState.rowObjects = state.rowObjects;
+    scene.formationMenuState.draftParty = state.draftParty;
+    scene.formationMenuState.draftRows = state.draftRows;
+    scene.formationMenuState.focusedIdx = state.focusedIdx;
+    scene.formationMenuState.pickedIdx = state.pickedIdx;
+    scene.formationMenuState.previewEntries = state.previewEntries;
+  };
+
+  function renderDynamic() {
+    clearDynamic();
+    state.draftRows = state.draftParty.map((member) => member.row);
+    renderPreview();
+    renderRows();
+    if (state.hintText) {
+      state.hintText.setText(
+        state.pickedIdx == null
+          ? "UP/DOWN move  ENTER pick  LEFT/RIGHT row  ESC save"
+          : "UP/DOWN target  ENTER swap  LEFT/RIGHT row  ESC cancel pick",
+      );
+    }
+    syncBridgeState();
   }
 
   const teardown = () => {
-    overlay.forEach((entry) => entry?.destroy?.());
+    clearDynamic();
+    destroyObjects(staticObjects);
     if (scene.formationMenuState?.keyHandlers) {
       const { up, down, left, right, enter, esc } =
         scene.formationMenuState.keyHandlers;
@@ -191,27 +636,29 @@ export function showFormationMenu(scene) {
   };
 
   const closeAndSave = async () => {
-    if (closing) return;
-    closing = true;
-    saveBtn.setLabel("SAVING...");
-    saveBtn.setEnabled(false);
+    if (state.closing) return;
+    state.closing = true;
+    state.saveBtn.setLabel("SAVING...");
+    state.saveBtn.setEnabled(false);
     try {
+      const payload = buildFormationPayload(state.draftParty);
       const result = await updatePartyFormation(
         scene.gameState.id,
-        draftRows.map((row, slot) => ({ slot, row })),
+        payload.updates,
+        payload.reorder,
       );
       if (result?.error) {
         throw new Error(result.error);
       }
-      teardown();
       scene.gameState = result;
       if (typeof scene.updateHUD === "function") scene.updateHUD();
+      teardown();
       playSFX("sfx_save");
       toggleMenu(scene);
     } catch (error) {
-      closing = false;
-      saveBtn.setLabel("SAVE & CLOSE");
-      saveBtn.setEnabled(true);
+      state.closing = false;
+      state.saveBtn.setLabel("SAVE & CLOSE");
+      state.saveBtn.setEnabled(true);
       const reason =
         typeof error?.message === "string" && error.message
           ? error.message
@@ -221,29 +668,46 @@ export function showFormationMenu(scene) {
     }
   };
 
-  const saveBtn = drawButton(
+  state.closeAndSave = closeAndSave;
+  state.saveBtn = drawButton(
     scene,
     PANEL_CX,
-    PANEL_TOP + PANEL_H - 38,
-    190,
+    PANEL_BOTTOM - 38,
+    204,
     34,
     "SAVE & CLOSE",
     closeAndSave,
-    { depth: DEPTH_CONTENT },
+    {
+      depth: DEPTH_CONTENT,
+      fill: 0x294a7a,
+      fillHover: 0x335c95,
+      fillPress: 0x3a6ca8,
+      fillActive: 0x335c95,
+      stroke: FF6_GOLD_DARK,
+      strokeActive: FF6_GOLD,
+    },
   );
-  overlay.push(saveBtn);
+  staticObjects.push(state.saveBtn);
 
-  const onUp = () => setFocus(focusedIdx - 1);
-  const onDown = () => setFocus(focusedIdx + 1);
-  const onLeft = () => setDraftRow(focusedIdx, "front");
-  const onRight = () => setDraftRow(focusedIdx, "back");
-  const onEnter = () =>
-    setDraftRow(
-      focusedIdx,
-      draftRows[focusedIdx] === "front" ? "back" : "front",
+  const onUp = () => {
+    if (state.draftParty.length === 0) return;
+    state.focusSlot(
+      Phaser.Math.Wrap(state.focusedIdx - 1, 0, state.draftParty.length),
     );
+  };
+  const onDown = () => {
+    if (state.draftParty.length === 0) return;
+    state.focusSlot(
+      Phaser.Math.Wrap(state.focusedIdx + 1, 0, state.draftParty.length),
+    );
+  };
+  const onLeft = () => state.setRow(state.focusedIdx, "front");
+  const onRight = () => state.setRow(state.focusedIdx, "back");
+  const onEnter = () => state.activateFocused();
   const onEsc = () => {
-    void closeAndSave();
+    if (!state.cancelPick()) {
+      void closeAndSave();
+    }
   };
   scene.input.keyboard.on("keydown-UP", onUp);
   scene.input.keyboard.on("keydown-DOWN", onDown);
@@ -253,11 +717,29 @@ export function showFormationMenu(scene) {
   scene.input.keyboard.on("keydown-ESC", onEsc);
 
   scene.formationMenuState = {
-    overlay,
-    rowObjects,
-    draftRows,
-    saveBtn,
+    rowObjects: state.rowObjects,
+    draftParty: state.draftParty,
+    draftRows: state.draftRows,
+    focusedIdx: state.focusedIdx,
+    pickedIdx: state.pickedIdx,
+    saveBtn: state.saveBtn,
     closeAndSave,
+    previewEntries: state.previewEntries,
+    previewPanel: state.previewPanel,
+    listPanel: state.listPanel,
+    focusSlot(slot) {
+      state.focusSlot(slot);
+    },
+    setRow(slot, row) {
+      state.setRow(slot, row);
+    },
+    activateSlot(slot) {
+      state.focusSlot(slot);
+      state.activateFocused();
+    },
+    activateFocused() {
+      state.activateFocused();
+    },
     keyHandlers: {
       up: onUp,
       down: onDown,
@@ -267,5 +749,6 @@ export function showFormationMenu(scene) {
       esc: onEsc,
     },
   };
-  setFocus(0);
+
+  renderDynamic();
 }

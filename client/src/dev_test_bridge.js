@@ -551,12 +551,28 @@ function formationMenuSummary(scene) {
   const state = scene?.formationMenuState;
   if (!state?.rowObjects) return null;
   return {
+    focusedIdx: state.focusedIdx ?? null,
+    pickedIdx: state.pickedIdx ?? null,
+    reorder: (state.draftParty || []).map(
+      (member) => member?.originalSlot ?? null,
+    ),
+    previewPanelBounds: objectBounds(state.previewPanel),
+    listPanelBounds: objectBounds(state.listPanel),
     rows: state.rowObjects.map((entry) => ({
       slot: entry.slot,
       name: entry.name?.text || null,
       row: state.draftRows?.[entry.slot] || null,
-      frontActive: entry.frontBtn?.isActive?.() || false,
-      backActive: entry.backBtn?.isActive?.() || false,
+      originalSlot: state.draftParty?.[entry.slot]?.originalSlot ?? null,
+      frontActive: (state.draftRows?.[entry.slot] || null) === "front",
+      backActive: (state.draftRows?.[entry.slot] || null) === "back",
+    })),
+    preview: (state.previewEntries || []).map((entry) => ({
+      slot: entry.slot,
+      originalSlot: entry.originalSlot ?? null,
+      name: entry.name || null,
+      row: entry.row || null,
+      moved: !!entry.moved,
+      bounds: objectBounds(entry.card),
     })),
   };
 }
@@ -1482,10 +1498,28 @@ export function installDevTestBridge(game) {
 
     clickFormationToggle(slot, row, sceneKey) {
       const scene = getScene(game, sceneKey);
-      const entry = scene?.formationMenuState?.rowObjects?.[slot];
-      if (!entry) throw new Error(`Formation row not found: ${slot}`);
-      const button = row === "back" ? entry.backBtn?.bg : entry.frontBtn?.bg;
-      clickGameObject(button);
+      const state = scene?.formationMenuState;
+      if (!state) throw new Error("Formation menu is not open");
+      if (typeof state.setRow === "function") {
+        state.setRow(slot, row);
+      } else {
+        const entry = state.rowObjects?.[slot];
+        if (!entry) throw new Error(`Formation row not found: ${slot}`);
+        const button = row === "back" ? entry.backBtn?.bg : entry.frontBtn?.bg;
+        clickGameObject(button);
+      }
+      return clone(formationMenuSummary(scene));
+    },
+
+    activateFormationSlot(slot, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      const state = scene?.formationMenuState;
+      if (!state) throw new Error("Formation menu is not open");
+      if (typeof state.activateSlot === "function") {
+        state.activateSlot(slot);
+      } else {
+        throw new Error("Formation activation is unavailable");
+      }
       return clone(formationMenuSummary(scene));
     },
 
@@ -1497,8 +1531,8 @@ export function installDevTestBridge(game) {
       return true;
     },
 
-    updateFormation(gameId, updates) {
-      return updatePartyFormationApi(gameId, updates).then(clone);
+    updateFormation(gameId, updates, reorder = null) {
+      return updatePartyFormationApi(gameId, updates, reorder).then(clone);
     },
 
     partyMenuRowPosition(slot, sceneKey) {

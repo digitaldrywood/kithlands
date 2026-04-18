@@ -967,6 +967,28 @@ func TestInitiativeAllowsUpsets(t *testing.T) {
 	}
 }
 
+func TestSortActionsByInitiativeBreaksTiesByPartySlotOrder(t *testing.T) {
+	party := []*combat.Combatant{
+		{ID: 10, Name: "Slot0", IsPlayer: true},
+		{ID: 11, Name: "Slot1", IsPlayer: true},
+		{ID: 12, Name: "Slot2", IsPlayer: true},
+	}
+	enemies := []*combat.Combatant{
+		{ID: 99, Name: "Goblin"},
+	}
+	actions := []combat.Action{
+		{ActorID: 12, Kind: combat.ActionAttack, Initiative: 22},
+		{ActorID: 99, Kind: combat.ActionAttack, Initiative: 22},
+		{ActorID: 10, Kind: combat.ActionAttack, Initiative: 22},
+	}
+
+	combat.SortActionsByInitiativeForTest(actions, party, enemies)
+
+	if got := []int{actions[0].ActorID, actions[1].ActorID, actions[2].ActorID}; got[0] != 10 || got[1] != 12 || got[2] != 99 {
+		t.Fatalf("equal-initiative order = %v, want [10 12 99]", got)
+	}
+}
+
 func TestInitiativeVariesAcrossRounds(t *testing.T) {
 	gd := loadTestData(t)
 	stats := &gd.Stats.Combat

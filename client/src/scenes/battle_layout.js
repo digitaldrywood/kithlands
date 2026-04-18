@@ -3,11 +3,11 @@ const PARTY_LAYOUT = {
   backX: 556,
   spriteOffsetX: 15,
   arrowOffsetX: -18,
-  bandStartY: 150,
-  bandGapY: 180,
-  frontYOffset: 34,
-  backYOffset: -26,
-  slotJitterY: [-4, 4],
+  slotStartY: 142,
+  slotGapY: 74,
+  frontYOffset: 22,
+  backYOffset: -12,
+  slotJitterY: [-4, 2, 0, -2],
   floatingTextLift: 12,
 };
 
@@ -38,12 +38,12 @@ export function inferPartyRow(member = {}) {
 export function buildPartyBattleLayout(party = []) {
   return party.map((member, slot) => {
     const row = inferPartyRow(member);
-    const band = Math.floor(slot / 2);
-    const pairSlot = slot % 2;
-    const baseY = PARTY_LAYOUT.bandStartY + band * PARTY_LAYOUT.bandGapY;
+    const jitter =
+      PARTY_LAYOUT.slotJitterY[slot % PARTY_LAYOUT.slotJitterY.length] || 0;
+    const baseY = PARTY_LAYOUT.slotStartY + slot * PARTY_LAYOUT.slotGapY;
     const yOffset =
       row === "front" ? PARTY_LAYOUT.frontYOffset : PARTY_LAYOUT.backYOffset;
-    const y = baseY + yOffset + PARTY_LAYOUT.slotJitterY[pairSlot];
+    const y = baseY + yOffset + jitter;
     const x = row === "front" ? PARTY_LAYOUT.frontX : PARTY_LAYOUT.backX;
 
     return {

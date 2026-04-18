@@ -109,9 +109,45 @@ func RollInitiative(agi int, rng *rand.Rand) int {
 	return agi + rng.IntN(agi/2+10)
 }
 
+func buildTurnOrderPriorities(party, enemies []*Combatant) map[int]int {
+	priorities := make(map[int]int, len(party)+len(enemies))
+	for slot, combatant := range party {
+		if combatant != nil {
+			priorities[combatant.ID] = slot
+		}
+	}
+	base := len(party)
+	for idx, combatant := range enemies {
+		if combatant != nil {
+			priorities[combatant.ID] = base + idx
+		}
+	}
+	return priorities
+}
+
+func actionActsBefore(a, b Action, priorities map[int]int) bool {
+	if a.Initiative != b.Initiative {
+		return a.Initiative > b.Initiative
+	}
+	aPriority, aOK := priorities[a.ActorID]
+	bPriority, bOK := priorities[b.ActorID]
+	if aOK && bOK && aPriority != bPriority {
+		return aPriority < bPriority
+	}
+	return a.ActorID < b.ActorID
+}
+
+func sortActionsByInitiative(actions []Action, party, enemies []*Combatant) {
+	priorities := buildTurnOrderPriorities(party, enemies)
+	sort.SliceStable(actions, func(i, j int) bool {
+		return actionActsBefore(actions[i], actions[j], priorities)
+	})
+}
+
 // ResolveTurn resolves one round of combat per Section 6.1.
 // Each combatant rolls a weighted initiative (AGI + rand spread) once per
-// round and actions are sorted descending by that roll, ties broken randomly.
+// round and actions are sorted descending by that roll. Equal initiatives are
+// broken by party slot order so saved formation order matters consistently.
 func ResolveTurn(
 	party []*Combatant,
 	enemies []*Combatant,
@@ -136,21 +172,7 @@ func ResolveTurn(
 			actions[i].Initiative = RollInitiative(actor.AGI, rng)
 		}
 	}
-	sort.SliceStable(actions, func(i, j int) bool {
-		return actions[i].Initiative > actions[j].Initiative
-	})
-	for start := 0; start < len(actions); {
-		end := start + 1
-		for end < len(actions) && actions[end].Initiative == actions[start].Initiative {
-			end++
-		}
-		if end-start > 1 {
-			rng.Shuffle(end-start, func(i, j int) {
-				actions[start+i], actions[start+j] = actions[start+j], actions[start+i]
-			})
-		}
-		start = end
-	}
+	sortActionsByInitiative(actions, party, enemies)
 
 	for _, action := range actions {
 		if CheckVictory(enemies) || CheckDefeat(party) {
