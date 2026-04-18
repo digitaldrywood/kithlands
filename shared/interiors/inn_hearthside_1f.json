@@ -26,6 +26,10 @@
         { "role": "flavor", "x": 4, "y": 5 },
         { "role": "guard", "x": 10, "y": 5 }
       ],
+      "window_anchors": [
+        { "x": 4, "y": 0, "side": "north" },
+        { "x": 11, "y": 0, "side": "north" }
+      ],
       "chest_anchors": []
     }
   ]

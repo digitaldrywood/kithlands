@@ -4,6 +4,7 @@ import {
   extraNpcSpritesForTags,
   furnitureDensity,
   minimumNpcSpacing,
+  npcSpriteForRole,
   roomDimensions,
   T_ALTAR,
   T_FLOOR,
@@ -61,17 +62,17 @@ describe("inn layout tuning", () => {
 describe("extraNpcSpritesForTags", () => {
   it("keeps inn guests visually distinct from the innkeeper", () => {
     expect(extraNpcSpritesForTags(["rest"])).toEqual([
-      "npc_guard",
-      "npc_blacksmith",
-      "npc_elder",
+      "npc_flavor_amber",
+      "npc_flavor_bram",
+      "npc_gossip",
     ]);
   });
 });
 
 describe("tileTextureKey", () => {
   it("uses themed walls and floors per building type", () => {
-    expect(tileTextureKey(T_WALL, "temple")).toBe("tile_stone_wall");
-    expect(tileTextureKey(T_WALL, "shop")).toBe("tile_wooden_wall");
+    expect(tileTextureKey(T_WALL, "temple")).toBe("tile_temple_wall");
+    expect(tileTextureKey(T_WALL, "shop")).toBe("tile_shop_wall");
     expect(tileTextureKey(T_FLOOR, "shop")).toBe("tile_shop_floor");
     expect(tileTextureKey(T_FLOOR, "inn")).toBe("tile_inn_floor");
   });
@@ -79,6 +80,49 @@ describe("tileTextureKey", () => {
   it("maps furniture tiles to interior sprites instead of flat fills", () => {
     expect(tileTextureKey(T_SHELF, "shop")).toBe("tile_bookshelf");
     expect(tileTextureKey(T_ALTAR, "temple")).toBe("tile_altar");
+  });
+
+  it("rotates among authored surface variants for floors and walls", () => {
+    const floorVariants = new Set([
+      tileTextureKey(T_FLOOR, "inn", 1, 1, 77),
+      tileTextureKey(T_FLOOR, "inn", 2, 1, 77),
+      tileTextureKey(T_FLOOR, "inn", 3, 2, 77),
+      tileTextureKey(T_FLOOR, "inn", 4, 3, 77),
+    ]);
+    const wallVariants = new Set([
+      tileTextureKey(T_WALL, "house", 0, 0, 19),
+      tileTextureKey(T_WALL, "house", 1, 0, 19),
+      tileTextureKey(T_WALL, "house", 2, 0, 19),
+    ]);
+
+    expect(floorVariants.size).toBeGreaterThanOrEqual(3);
+    expect(wallVariants.size).toBe(3);
+  });
+});
+
+describe("npcSpriteForRole", () => {
+  it("pins authored roles to distinct silhouettes", () => {
+    expect(npcSpriteForRole("elder", "house", [], 7, 0)).toBe("npc_elder");
+    expect(npcSpriteForRole("gossip", "house", [], 7, 0)).toBe("npc_gossip");
+    expect(npcSpriteForRole("quest_giver", "house", [], 7, 0)).toBe(
+      "npc_quest_giver",
+    );
+    expect(npcSpriteForRole("blacksmith", "house", [], 7, 0)).toBe(
+      "npc_blacksmith",
+    );
+  });
+
+  it("keeps flavor villagers within the non-proprietor pool", () => {
+    const picks = new Set([
+      npcSpriteForRole("flavor", "house", [], 12, 0),
+      npcSpriteForRole("flavor", "house", [], 12, 1),
+      npcSpriteForRole("flavor", "house", [], 12, 2),
+    ]);
+
+    expect([...picks]).toEqual(
+      expect.arrayContaining(["npc_flavor_amber", "npc_flavor_bram"]),
+    );
+    expect(picks.has("npc_innkeeper")).toBe(false);
   });
 });
 

@@ -26,6 +26,14 @@
         { "role": "merchant_wandering", "x": 4, "y": 6 },
         { "role": "flavor", "x": 11, "y": 7 }
       ],
+      "window_anchors": [
+        { "x": 4, "y": 0, "side": "north" },
+        { "x": 11, "y": 0, "side": "north" }
+      ],
+      "light_anchors": [
+        { "x": 5, "y": 1, "kind": "lantern" },
+        { "x": 10, "y": 1, "kind": "lantern" }
+      ],
       "chest_anchors": []
     }
   ]

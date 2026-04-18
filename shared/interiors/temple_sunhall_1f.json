@@ -26,6 +26,10 @@
         { "role": "gossip", "x": 4, "y": 8 },
         { "role": "guard", "x": 10, "y": 8 }
       ],
+      "window_anchors": [
+        { "x": 4, "y": 0, "side": "north" },
+        { "x": 11, "y": 0, "side": "north" }
+      ],
       "chest_anchors": [
         { "id": "sunhall_offering_chest", "x": 12, "y": 9 }
       ]
