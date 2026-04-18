@@ -411,6 +411,55 @@ function partyMenuLayoutSnapshot(scene) {
     });
   }
 
+  const rowMetrics = entries
+    .filter((entry) => entry?.partyMenuMeta?.role === "row")
+    .map((row) => {
+      const slot = row.partyMenuMeta.slot;
+      const classText = entries.find(
+        (entry) =>
+          entry?.partyMenuMeta?.role === "class_text" &&
+          entry.partyMenuMeta.slot === slot,
+      );
+      const hpTrack = entries.find(
+        (entry) =>
+          entry?.partyMenuMeta?.role === "stat_bar_track" &&
+          entry.partyMenuMeta.slot === slot &&
+          entry.partyMenuMeta.prefix === "HP",
+      );
+      const mpTrack = entries.find(
+        (entry) =>
+          entry?.partyMenuMeta?.role === "stat_bar_track" &&
+          entry.partyMenuMeta.slot === slot &&
+          entry.partyMenuMeta.prefix === "MP",
+      );
+      const xpTrack = entries.find(
+        (entry) =>
+          entry?.partyMenuMeta?.role === "stat_bar_track" &&
+          entry.partyMenuMeta.slot === slot &&
+          entry.partyMenuMeta.prefix === "XP",
+      );
+
+      return {
+        slot,
+        classTextBounds: classText?.bounds || null,
+        hpTrackBounds: hpTrack?.bounds || null,
+        mpTrackBounds: mpTrack?.bounds || null,
+        xpTrackBounds: xpTrack?.bounds || null,
+        classToHpGap:
+          classText?.bounds && hpTrack?.bounds
+            ? hpTrack.bounds.top - classText.bounds.bottom
+            : null,
+        hpToMpGap:
+          hpTrack?.bounds && mpTrack?.bounds
+            ? mpTrack.bounds.top - hpTrack.bounds.bottom
+            : null,
+        mpToXpGap:
+          mpTrack?.bounds && xpTrack?.bounds
+            ? xpTrack.bounds.top - mpTrack.bounds.bottom
+            : null,
+      };
+    });
+
   return {
     panelBounds,
     entryCount: entries.length,
@@ -441,6 +490,7 @@ function partyMenuLayoutSnapshot(scene) {
       ).length,
     },
     statBars,
+    rowMetrics,
   };
 }
 

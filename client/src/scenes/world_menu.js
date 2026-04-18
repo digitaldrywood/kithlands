@@ -326,16 +326,16 @@ function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
 
   const infoX = x + 68;
   const nameText = scene.add
-    .text(infoX, y + 6, member.name, {
-      fontSize: "13px",
+    .text(infoX, y + 4, member.name, {
+      fontSize: "12px",
       color: nameColor,
       fontFamily: "monospace",
     })
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT + 1);
   const levelText = scene.add
-    .text(x + w - 14, y + 6, `Lv.${member.level}`, {
-      fontSize: "12px",
+    .text(x + w - 14, y + 4, `Lv.${member.level}`, {
+      fontSize: "11px",
       color: nameColor,
       fontFamily: "monospace",
     })
@@ -343,13 +343,14 @@ function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT + 1);
   const classText = scene.add
-    .text(infoX, y + 20, member.class_name || "Adventurer", {
-      fontSize: "11px",
+    .text(infoX, y + 15, member.class_name || "Adventurer", {
+      fontSize: "10px",
       color: classColor,
       fontFamily: "monospace",
     })
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT + 1);
+  classText.__kithlandsPartyMenu = { role: "class_text", slot };
   group.push(nameText, levelText, classText);
 
   const hpBar = drawLabeledStatBar(
@@ -410,6 +411,21 @@ function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
       valueWidth: 48,
     },
   );
+  hpBar.track.__kithlandsPartyMenu = {
+    role: "stat_bar_track",
+    slot,
+    prefix: "HP",
+  };
+  mpBar.track.__kithlandsPartyMenu = {
+    role: "stat_bar_track",
+    slot,
+    prefix: "MP",
+  };
+  xpBar.track.__kithlandsPartyMenu = {
+    role: "stat_bar_track",
+    slot,
+    prefix: "XP",
+  };
   group.push(
     hpBar.prefixLabel,
     hpBar.track,
