@@ -88,7 +88,7 @@ Bars: ${barSummary}`;
 }
 
 test.describe("party menu redesign", () => {
-  test("renders portraits, icon-labeled actions, and hoverable rows", async ({
+  test("renders portraits, icon-labeled actions, and distinct row states", async ({
     page,
   }) => {
     await startPartyMenuGame(page);
@@ -107,9 +107,10 @@ test.describe("party menu redesign", () => {
     ];
     expect(actionLabels).toEqual(
       expect.arrayContaining([
+        "CHARACTER",
         "ITEMS",
         "MAGIC",
-        "EQUIP",
+        "FORMATION",
         "QUEST LOG",
         "WORLD MAP",
         "SAVE",
@@ -118,6 +119,11 @@ test.describe("party menu redesign", () => {
       ]),
     );
     expect(actionLabels.some((label) => label.startsWith("AUTO:"))).toBe(true);
+    expect(summary.resourceChips.map((chip) => chip.key).sort()).toEqual([
+      "ether",
+      "gold",
+      "potions",
+    ]);
 
     const layout = await page.evaluate(() =>
       window.__kithlandsTest.partyMenuLayout("World"),
@@ -145,6 +151,7 @@ test.describe("party menu redesign", () => {
       window.__kithlandsTest.partyMenuSummary("World"),
     );
     const hoveredSlotOne = hoveredSummary.rows.find((row) => row.slot === 1);
+    expect(hoveredSlotOne.state).toBe("hover");
     expect(hoveredSlotOne.fillColor).not.toBe(slotOne.fillColor);
 
     await addProofOverlay(page, "Issue #223 proof: hovered row highlight");

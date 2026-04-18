@@ -384,23 +384,15 @@ function partyMenuLayoutSnapshot(scene) {
       })
     : [];
 
-  const barRects = entries.filter((entry) => {
-    const bounds = entry.bounds;
-    return (
-      bounds &&
-      bounds.height >= 6 &&
-      bounds.height <= 12 &&
-      bounds.width > 0 &&
-      Number.isFinite(entry.fillColor)
-    );
-  });
-
   const trackEntries = entries.filter(
     (entry) => entry?.statBarMeta?.role === "track" && entry?.bounds,
   );
+  const fillEntries = entries.filter(
+    (entry) => entry?.statBarMeta?.role === "fill" && entry?.bounds,
+  );
   for (const track of trackEntries) {
     const prefix = track.statBarMeta.prefix;
-    const fill = entries.find(
+    const fill = fillEntries.find(
       (entry) =>
         entry?.statBarMeta?.role === "fill" &&
         entry.statBarMeta.prefix === prefix &&
@@ -471,12 +463,13 @@ function partyMenuLayoutSnapshot(scene) {
     entryCount: entries.length,
     outOfBounds,
     barCounts: {
-      track: barRects.filter((entry) => entry.fillColor === 0x222244).length,
-      hp: barRects.filter((entry) =>
-        [0x44ff44, 0xff8800, 0xff0000, 0x333333].includes(entry.fillColor),
-      ).length,
-      mp: barRects.filter((entry) => entry.fillColor === 0x4488ff).length,
-      xp: barRects.filter((entry) => entry.fillColor === 0xffcc44).length,
+      track: trackEntries.length,
+      hp: fillEntries.filter((entry) => entry.statBarMeta.prefix === "HP")
+        .length,
+      mp: fillEntries.filter((entry) => entry.statBarMeta.prefix === "MP")
+        .length,
+      xp: fillEntries.filter((entry) => entry.statBarMeta.prefix === "XP")
+        .length,
     },
     labelCounts: {
       hp: entries.filter(
@@ -515,6 +508,7 @@ function partyMenuSummary(scene) {
       );
       return {
         slot: entry.partyMenuMeta.slot,
+        state: entry.partyMenuMeta.state || "default",
         fillColor: entry.fillColor,
         bounds: entry.bounds,
         portraitKind: portrait?.partyMenuMeta?.kind || null,
@@ -526,12 +520,20 @@ function partyMenuSummary(scene) {
     .filter((entry) => entry?.partyMenuActionMeta)
     .map((entry) => ({
       label: entry.partyMenuActionMeta.label,
+      hotkey: entry.partyMenuActionMeta.hotkey || null,
       kind: entry.partyMenuActionMeta.kind,
       key: entry.partyMenuActionMeta.key || null,
       bounds: entry.bounds,
     }));
 
-  return { rows, actionIcons };
+  const resourceChips = entries
+    .filter((entry) => entry?.partyMenuMeta?.role === "resource_chip")
+    .map((entry) => ({
+      key: entry.partyMenuMeta.key || null,
+      bounds: entry.bounds,
+    }));
+
+  return { rows, actionIcons, resourceChips };
 }
 
 function findPartyMenuRow(scene, slot) {

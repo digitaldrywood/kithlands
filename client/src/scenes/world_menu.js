@@ -8,6 +8,7 @@ import { showOptions } from "./options.js";
 import { showItemMenu } from "./item_menu.js";
 import { hasCastableFieldSpell, showFieldMagicMenu } from "./field_magic.js";
 import { showFormationMenu } from "./formation_menu.js";
+import { inferPartyRow } from "./battle_layout.js";
 import { drawPanel, drawButton, drawLabeledStatBar } from "../ui/panel.js";
 import { hpBarColorPct } from "../systems/hpBar.js";
 import {
@@ -29,11 +30,28 @@ const PANEL_TOP = PANEL_CY - PANEL_H / 2; // 30
 const PANEL_BOTTOM = PANEL_CY + PANEL_H / 2; // 570
 const DEPTH_BG = 40;
 const DEPTH_CONTENT = 41;
+const HEADER_Y = PANEL_TOP + 34;
+const TITLE_Y = PANEL_TOP + 29;
+const HEADER_DIVIDER_Y = PANEL_TOP + 64;
+const MENU_FRAME_VARIANT = "ff6";
+const FF6_BLUE = 0x4d78bf;
+const FF6_NAVY = 0x122545;
+const FF6_GLOW = 0x9bc7ff;
+const FF6_GOLD = 0xf4d881;
+const FF6_GOLD_DARK = 0xa66b1d;
+const FF6_ROW_FILL = 0x16274a;
+const FF6_ROW_FILL_HOVER = 0x21406e;
+const FF6_ROW_FILL_SELECTED = 0x2d5a93;
+const FF6_ROW_FILL_DEAD = 0x11182b;
+const FF6_ROW_GLOW = 0x7fc7ff;
+const FF6_TRACK = 0x142442;
+const FF6_TRACK_INNER = 0x20365f;
+const FF6_BAR_TEXT = "#f4f7ff";
 
 // The body region starts below the title strip and ends above the footer
 // button rows. rowH is computed dynamically so 4–6 party members all fit.
 const BODY_TOP = PANEL_TOP + 70; // title area reserved above
-const FOOTER_TOP = PANEL_BOTTOM - 120; // two 30px button rows + margins
+const FOOTER_TOP = PANEL_BOTTOM - 108; // two button rows + margins
 const BODY_H = FOOTER_TOP - BODY_TOP;
 
 export function toggleMenu(scene) {
@@ -45,44 +63,74 @@ export function toggleMenu(scene) {
   scene.menuOpen = true;
   pauseWorldFor(scene, "party_menu");
   scene.menuGroup = [];
+  scene.partyMenuState = { selectedSlot: 0, rows: [] };
   const gs = scene.gameState;
 
   const panel = drawPanel(scene, PANEL_CX, PANEL_CY, PANEL_W, PANEL_H, {
     depth: DEPTH_BG,
+    interactive: false,
+    variant: MENU_FRAME_VARIANT,
   });
   scene.menuGroup.push(panel.bg);
 
   const title = scene.add
-    .text(PANEL_CX, PANEL_TOP + 32, "PARTY MENU", {
-      fontSize: "20px",
-      color: "#ffff44",
-      fontFamily: "monospace",
+    .text(PANEL_LEFT + 62, TITLE_Y, "PARTY MENU", {
+      fontSize: "24px",
+      fontStyle: "bold",
+      color: "#fff5c2",
+      fontFamily: "Georgia",
     })
-    .setOrigin(0.5)
+    .setOrigin(0, 0.5)
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
+  applyTextGlow(title, "#2c5f9d", 2);
   scene.menuGroup.push(title);
 
-  // Top-right inventory strip: Gold + Potions. Moved out of the body so
-  // party rows can take the full body width.
-  const inv = scene.add
-    .text(
-      PANEL_RIGHT - 20,
-      PANEL_TOP + 32,
-      `Gold: ${gs.gold}   Potions: ${gs.potions}   Ether: ${(gs.ethers || 0) + (gs.hi_ethers || 0) + (gs.x_ethers || 0)}`,
-      { fontSize: "12px", color: "#ffcc44", fontFamily: "monospace" },
-    )
-    .setOrigin(1, 0.5)
-    .setScrollFactor(0)
-    .setDepth(DEPTH_CONTENT);
-  scene.menuGroup.push(inv);
+  const resourceStrip = [
+    {
+      key: "gold",
+      value: gs.gold || 0,
+      width: 86,
+      iconKey: "icon_gold",
+      accent: 0xf8d56c,
+    },
+    {
+      key: "potions",
+      value: gs.potions || 0,
+      width: 84,
+      iconKey: "icon_potion",
+      accent: 0x8ed2ff,
+    },
+    {
+      key: "ether",
+      value: (gs.ethers || 0) + (gs.hi_ethers || 0) + (gs.x_ethers || 0),
+      width: 84,
+      accent: 0xc8b6ff,
+      iconType: "orb",
+    },
+  ];
+  let resourceCursor = PANEL_RIGHT - 28;
+  for (let i = resourceStrip.length - 1; i >= 0; i -= 1) {
+    const chip = drawResourceChip(
+      scene,
+      scene.menuGroup,
+      resourceCursor - resourceStrip[i].width / 2,
+      HEADER_Y,
+      resourceStrip[i].width,
+      resourceStrip[i],
+    );
+    resourceCursor -= chip.width + 10;
+  }
 
-  // Horizontal divider under the title.
-  const divider = scene.add
-    .rectangle(PANEL_CX, PANEL_TOP + 58, PANEL_W - 40, 1, 0x4488ff, 0.6)
+  const dividerShadow = scene.add
+    .rectangle(PANEL_CX, HEADER_DIVIDER_Y + 2, PANEL_W - 64, 2, 0x071123, 0.55)
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
-  scene.menuGroup.push(divider);
+  const divider = scene.add
+    .rectangle(PANEL_CX, HEADER_DIVIDER_Y, PANEL_W - 72, 2, 0x8ebeff, 0.72)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT + 1);
+  scene.menuGroup.push(dividerShadow, divider);
 
   // Body: party rows. Row height scales so 4 or 6 members both fit cleanly.
   const party = Array.isArray(gs.party) ? gs.party : [];
@@ -101,6 +149,7 @@ export function toggleMenu(scene) {
       i,
     );
   }
+  repaintPartyRows(scene);
 
   // Footer row A — primary actions.
   const itemsEnabled = Array.isArray(gs.items)
@@ -109,10 +158,20 @@ export function toggleMenu(scene) {
   const magicEnabled = Array.isArray(gs.party)
     ? gs.party.some((member) => hasCastableFieldSpell(member, gs.party))
     : false;
-  layoutButtonRow(scene, scene.menuGroup, PANEL_CX, FOOTER_TOP + 15, [
+  layoutButtonRow(scene, scene.menuGroup, PANEL_CX, FOOTER_TOP + 16, [
+    {
+      label: "CHARACTER",
+      hotkey: "C",
+      primary: true,
+      w: 154,
+      iconFallback: "C",
+      onClick: () => openSelectedCharacter(scene),
+    },
     {
       label: "ITEMS",
-      w: 118,
+      hotkey: "I",
+      primary: true,
+      w: 128,
       iconKey: "icon_potion",
       iconFallback: "I",
       enabled: itemsEnabled,
@@ -126,7 +185,9 @@ export function toggleMenu(scene) {
     },
     {
       label: "MAGIC",
-      w: 118,
+      hotkey: "M",
+      primary: true,
+      w: 128,
       iconKey: "icon_spell",
       iconFallback: "M",
       enabled: magicEnabled,
@@ -139,29 +200,14 @@ export function toggleMenu(scene) {
     },
     {
       label: "FORMATION",
-      w: 136,
+      hotkey: "F",
+      primary: true,
+      w: 154,
       iconKey: "icon_sword",
       iconFallback: "F",
       onClick: () => {
         closeMenu(scene);
         showFormationMenu(scene);
-      },
-    },
-    {
-      label: "QUEST LOG",
-      w: 136,
-      iconKey: "icon_xp",
-      iconFallback: "Q",
-      onClick: () => showQuestLog(scene),
-    },
-    {
-      label: "WORLD MAP",
-      w: 136,
-      iconKey: "target_cursor",
-      iconFallback: "M",
-      onClick: () => {
-        closeMenu(scene);
-        showWorldMap(scene);
       },
     },
   ]);
@@ -174,11 +220,31 @@ export function toggleMenu(scene) {
     scene,
     scene.menuGroup,
     PANEL_CX,
-    FOOTER_TOP + 65,
+    FOOTER_TOP + 58,
     [
       {
+        label: "QUEST LOG",
+        hotkey: "Q",
+        w: 126,
+        iconKey: "icon_xp",
+        iconFallback: "Q",
+        onClick: () => showQuestLog(scene),
+      },
+      {
+        label: "WORLD MAP",
+        hotkey: "W",
+        w: 126,
+        iconKey: "target_cursor",
+        iconFallback: "W",
+        onClick: () => {
+          closeMenu(scene);
+          showWorldMap(scene);
+        },
+      },
+      {
         label: "SAVE",
-        w: 130,
+        hotkey: "S",
+        w: 96,
         iconKey: "icon_gold",
         iconFallback: "S",
         onClick: async () => {
@@ -199,7 +265,8 @@ export function toggleMenu(scene) {
       },
       {
         label: autoEnabled ? "AUTO: ON" : "AUTO: OFF",
-        w: 170,
+        hotkey: "A",
+        w: 122,
         iconKey: "icon_gold",
         iconFallback: "A",
         onClick: () => {
@@ -216,8 +283,9 @@ export function toggleMenu(scene) {
       },
       {
         label: "OPTIONS",
-        w: 110,
-        iconFallback: "*",
+        hotkey: "O",
+        w: 104,
+        iconFallback: "O",
         onClick: () => {
           closeMenu(scene);
           showOptions(scene);
@@ -225,7 +293,8 @@ export function toggleMenu(scene) {
       },
       {
         label: "CLOSE",
-        w: 132,
+        hotkey: "ESC",
+        w: 104,
         iconFallback: "X",
         onClick: () => closeMenu(scene),
       },
@@ -242,57 +311,153 @@ function closeMenu(scene) {
     scene.menuGroup.forEach((c) => c.destroy());
     scene.menuGroup = null;
   }
+  scene.partyMenuState = null;
   if (scene.menuOpen) {
     scene.menuOpen = false;
     resumeWorldFor(scene, "party_menu");
   }
 }
 
-// drawPartyRow renders a single member's block: portrait slot, name /
-// class / level header, HP bar, XP bar, and (for casters) MP bar. All
-// objects it creates are pushed into `group` so closeMenu can tear them
-// down cleanly.
+function openSelectedCharacter(scene) {
+  const slot = scene.partyMenuState?.selectedSlot ?? 0;
+  openCharacterDetail(scene, slot);
+}
+
+function applyTextGlow(text, shadowColor, blur = 1) {
+  if (typeof text.setShadow === "function") {
+    text.setShadow(1, 1, shadowColor, blur, true, true);
+  }
+  return text;
+}
+
+function drawResourceChip(scene, group, x, y, w, spec) {
+  const chipShadow = scene.add
+    .rectangle(x + 2, y + 2, w, 24, 0x071123, 0.4)
+    .setStrokeStyle(0)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT);
+  const chipBg = scene.add
+    .rectangle(x, y, w, 24, 0x1a3156, 0.98)
+    .setStrokeStyle(2, FF6_GLOW)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT + 1);
+  chipBg.__kithlandsPartyMenu = { role: "resource_chip", key: spec.key };
+  const chipInner = scene.add
+    .rectangle(x, y, w - 6, 18, 0x10203d, 0.95)
+    .setStrokeStyle(1, spec.accent || FF6_GOLD)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT + 2);
+
+  const iconX = x - w / 2 + 15;
+  const iconY = y;
+  if (spec.iconKey && scene.textures.exists(spec.iconKey)) {
+    const icon = scene.add
+      .image(iconX, iconY, spec.iconKey)
+      .setScrollFactor(0)
+      .setDepth(DEPTH_CONTENT + 3);
+    const srcSize = Math.max(icon.width || 16, icon.height || 16);
+    icon.setScale(13 / srcSize);
+    group.push(icon);
+  } else if (spec.iconType === "orb") {
+    const orb = scene.add
+      .circle(iconX, iconY, 6, spec.accent || 0xc8b6ff, 1)
+      .setStrokeStyle(1, 0xf4f7ff, 0.9)
+      .setScrollFactor(0)
+      .setDepth(DEPTH_CONTENT + 3);
+    const orbHighlight = scene.add
+      .circle(iconX - 2, iconY - 2, 2, 0xffffff, 0.65)
+      .setScrollFactor(0)
+      .setDepth(DEPTH_CONTENT + 4);
+    group.push(orb, orbHighlight);
+  }
+
+  const value = scene.add
+    .text(x - w / 2 + 28, y, `${spec.value}`, {
+      fontSize: "12px",
+      fontStyle: "bold",
+      color: "#f7fbff",
+      fontFamily: "Trebuchet MS",
+    })
+    .setOrigin(0, 0.5)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT + 3);
+  group.push(chipShadow, chipBg, chipInner, value);
+  return { width: w };
+}
+
+// drawPartyRow renders a single member's block: framed portrait, separated
+// name/class strip, and FF-style HP/MP/XP bars. All created objects are
+// pushed into `group` so closeMenu can tear them down cleanly.
 function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
   const alive = (member.hp || 0) > 0;
-  const nameColor = alive ? "#ffffff" : "#8a8f9d";
-  const classColor = alive ? "#ffcc44" : "#6e7282";
-  const rowFill = alive ? 0x10192d : 0x0d1018;
-  const rowHoverFill = alive ? 0x1a3156 : 0x1a2231;
-  const rowPressFill = alive ? 0x25406c : 0x243044;
-
+  const compact = rowH < 64;
+  const frameH = Math.max(52, rowH - 8);
+  const top = y + Math.floor((rowH - frameH) / 2);
+  const centerY = top + frameH / 2;
+  const rowShadow = scene.add
+    .rectangle(x + w / 2 + 2, centerY + 2, w, frameH, 0x07111f, 0.36)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT - 1);
   const rowBg = scene.add
     .rectangle(
       x + w / 2,
-      y + rowH / 2,
+      centerY,
       w,
-      Math.max(56, rowH - 6),
-      rowFill,
-      0.96,
+      frameH,
+      alive ? FF6_ROW_FILL : FF6_ROW_FILL_DEAD,
+      0.98,
     )
-    .setStrokeStyle(1, 0x4488ff)
+    .setStrokeStyle(2, FF6_BLUE)
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
-  rowBg.__kithlandsPartyMenu = { role: "row", slot };
+  const rowInner = scene.add
+    .rectangle(x + w / 2, centerY, w - 8, frameH - 8, FF6_NAVY, 0.3)
+    .setStrokeStyle(1, 0x7fa7de, 0.85)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT + 0.25);
+  const rowGlow = scene.add
+    .rectangle(x + w / 2, centerY, w - 14, frameH - 12, FF6_GLOW, 0.12)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT + 0.1)
+    .setVisible(false);
+  rowBg.__kithlandsPartyMenu = { role: "row", slot, state: "default" };
   rowBg.setInteractive({ useHandCursor: true });
-  group.push(rowBg);
+  group.push(rowShadow, rowGlow, rowBg, rowInner);
 
-  const portraitX = x + 34;
-  const portraitY = y + rowH / 2;
-  const portraitFrame = scene.add
-    .rectangle(portraitX, portraitY, 54, 54, 0x1a2a4a, 1)
-    .setStrokeStyle(1, 0x4488ff)
+  const formationRow = inferPartyRow(member);
+  const portraitAccent = formationRow === "back" ? 0xb9c8ff : FF6_GOLD;
+  const portraitBackdrop = scene.add
+    .rectangle(x + 40, centerY, 60, frameH - 10, 0x0b1324, 0.98)
+    .setStrokeStyle(2, portraitAccent)
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT + 1);
-  group.push(portraitFrame);
+  const portraitPlate = scene.add
+    .rectangle(
+      x + 40,
+      centerY,
+      50,
+      compact ? 40 : 44,
+      formationRow === "back" ? 0x27395e : 0x4b3e24,
+      1,
+    )
+    .setStrokeStyle(1, 0xe7f2ff, 0.8)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT + 2);
+  const portraitFrame = scene.add
+    .rectangle(x + 40, centerY, 42, compact ? 34 : 38, 0x162949, 1)
+    .setStrokeStyle(2, portraitAccent)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT + 3);
+  group.push(portraitBackdrop, portraitPlate, portraitFrame);
 
   const portraitKey = resolvePortraitTextureKey(scene, member);
   if (portraitKey) {
     const portrait = scene.add
-      .image(portraitX, portraitY, portraitKey)
+      .image(x + 40, centerY, portraitKey)
       .setScrollFactor(0)
-      .setDepth(DEPTH_CONTENT + 2);
+      .setDepth(DEPTH_CONTENT + 4);
     const srcSize = Math.max(portrait.width || 64, portrait.height || 64);
-    portrait.setScale(46 / srcSize);
+    portrait.setScale((compact ? 34 : 38) / srcSize);
     portrait.__kithlandsPartyMenu = {
       role: "portrait",
       slot,
@@ -302,114 +467,169 @@ function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
     group.push(portrait);
   } else {
     const fallbackBg = scene.add
-      .rectangle(portraitX, portraitY, 46, 46, 0x10233f, 1)
+      .rectangle(x + 40, centerY, 34, 34, 0x10233f, 1)
       .setStrokeStyle(1, 0x88ccff)
       .setScrollFactor(0)
-      .setDepth(DEPTH_CONTENT + 2);
+      .setDepth(DEPTH_CONTENT + 4);
     fallbackBg.__kithlandsPartyMenu = {
       role: "portrait",
       slot,
       kind: "fallback",
     };
-    group.push(fallbackBg);
-    group.push(
-      scene.add
-        .text(portraitX, portraitY, (member.class_name || "?")[0] || "?", {
-          fontSize: "22px",
-          color: "#88ccff",
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5)
-        .setScrollFactor(0)
-        .setDepth(DEPTH_CONTENT + 3),
-    );
+    const fallbackGlyph = scene.add
+      .text(x + 40, centerY, (member.class_name || "?")[0] || "?", {
+        fontSize: compact ? "18px" : "20px",
+        fontStyle: "bold",
+        color: "#eef7ff",
+        fontFamily: "Georgia",
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(DEPTH_CONTENT + 5);
+    group.push(fallbackBg, fallbackGlyph);
   }
 
-  const infoX = x + 68;
+  const infoX = x + 80;
   const nameText = scene.add
-    .text(infoX, y + 4, member.name, {
-      fontSize: "12px",
-      color: nameColor,
-      fontFamily: "monospace",
+    .text(infoX, top + (compact ? 5 : 7), member.name, {
+      fontSize: compact ? "13px" : "15px",
+      fontStyle: "bold",
+      color: alive ? "#f7fbff" : "#a1adbe",
+      fontFamily: "Trebuchet MS",
     })
     .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT + 2);
+  applyTextGlow(nameText, "#0d1830", 1);
+
+  const levelFrame = scene.add
+    .rectangle(
+      x + w - 42,
+      top + (compact ? 13 : 15),
+      66,
+      compact ? 18 : 20,
+      0x132947,
+      0.98,
+    )
+    .setStrokeStyle(2, FF6_GOLD_DARK)
+    .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT + 1);
+  const levelInner = scene.add
+    .rectangle(
+      x + w - 42,
+      top + (compact ? 13 : 15),
+      58,
+      compact ? 12 : 14,
+      0x2b4a75,
+      0.9,
+    )
+    .setStrokeStyle(1, FF6_GOLD)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT + 2);
   const levelText = scene.add
-    .text(x + w - 14, y + 4, `Lv.${member.level}`, {
-      fontSize: "11px",
-      color: nameColor,
-      fontFamily: "monospace",
+    .text(x + w - 42, top + (compact ? 13 : 15), `Lv ${member.level}`, {
+      fontSize: compact ? "9px" : "10px",
+      fontStyle: "bold",
+      color: "#fff5d1",
+      fontFamily: "Courier New",
     })
-    .setOrigin(1, 0)
+    .setOrigin(0.5)
     .setScrollFactor(0)
-    .setDepth(DEPTH_CONTENT + 1);
+    .setDepth(DEPTH_CONTENT + 3);
+
   const classText = scene.add
-    .text(infoX, y + 15, member.class_name || "Adventurer", {
-      fontSize: "10px",
-      color: classColor,
-      fontFamily: "monospace",
+    .text(infoX, top + (compact ? 17 : 21), member.class_name || "Adventurer", {
+      fontSize: compact ? "9px" : "10px",
+      fontStyle: "italic",
+      color: alive ? "#d2bdd7" : "#7b8193",
+      fontFamily: "Georgia",
     })
     .setScrollFactor(0)
-    .setDepth(DEPTH_CONTENT + 1);
+    .setDepth(DEPTH_CONTENT + 2);
   classText.__kithlandsPartyMenu = { role: "class_text", slot };
-  group.push(nameText, levelText, classText);
+  group.push(nameText, levelFrame, levelInner, levelText, classText);
+
+  const compactBarTop = top + (compact ? 27 : 33);
+  const compactBarGap = compact ? 9 : 11;
+  const barHeight = compact ? 5 : 6;
+  const trackYOffset = compact ? 3 : 4;
+  const statBarBaseStyle = {
+    depth: DEPTH_CONTENT + 1,
+    width: 258,
+    height: barHeight,
+    trackYOffset,
+    labelWidth: 22,
+    valueWidth: 50,
+    valueGap: 6,
+    labelFontSize: compact ? "9px" : "10px",
+    labelFontStyle: "bold",
+    labelFontFamily: "Trebuchet MS",
+    valueFontSize: compact ? "9px" : "10px",
+    valueFontStyle: "bold",
+    valueFontFamily: "Courier New",
+    valueColor: FF6_BAR_TEXT,
+    track: FF6_TRACK,
+    trackShadow: 0x08111f,
+    trackInner: FF6_TRACK_INNER,
+    stroke: 0xa7c7ff,
+    strokeWidth: 1,
+    tickHeight: compact ? 3 : 4,
+  };
 
   const hpBar = drawLabeledStatBar(
     scene,
     infoX,
-    y + 28,
-    258,
+    compactBarTop,
+    statBarBaseStyle.width,
     member.hp,
     member.max_hp,
     "HP",
     {
-      depth: DEPTH_CONTENT,
-      height: 8,
-      trackYOffset: 4,
-      labelFontSize: "10px",
-      valueFontSize: "10px",
+      ...statBarBaseStyle,
       labelColor: colorHex(hpColorFor(member.hp, member.max_hp)),
       fill: hpColorFor(member.hp, member.max_hp),
-      valueWidth: 48,
+      fillShadow: 0x0d3a1f,
+      highlightFill: 0xffffff,
+      tickCount: 3,
+      valueText: statValueText(member.hp, member.max_hp),
     },
   );
   const mpBar = drawLabeledStatBar(
     scene,
     infoX,
-    y + 40,
-    258,
+    compactBarTop + compactBarGap,
+    statBarBaseStyle.width,
     member.mp || 0,
     member.max_mp || 0,
     "MP",
     {
-      depth: DEPTH_CONTENT,
-      height: 8,
-      trackYOffset: 4,
-      labelFontSize: "10px",
-      valueFontSize: "10px",
-      labelColor: "#88aaff",
-      fill: 0x4488ff,
-      valueWidth: 48,
-      valueText: (member.max_mp || 0) > 0 ? null : "\u2014",
+      ...statBarBaseStyle,
+      labelColor: "#92b5ff",
+      fill: 0x4d83ff,
+      fillShadow: 0x102458,
+      highlightFill: 0xffffff,
+      tickCount: 3,
+      valueText:
+        (member.max_mp || 0) > 0
+          ? statValueText(member.mp || 0, member.max_mp || 0)
+          : "\u2014",
     },
   );
   const xpBar = drawLabeledStatBar(
     scene,
     infoX,
-    y + 52,
-    258,
+    compactBarTop + compactBarGap * 2,
+    statBarBaseStyle.width,
     member.xp,
     member.xp_next,
     "XP",
     {
-      depth: DEPTH_CONTENT,
-      height: 8,
-      trackYOffset: 4,
-      labelFontSize: "10px",
-      valueFontSize: "10px",
-      labelColor: "#ffcc44",
-      fill: 0xffcc44,
-      valueWidth: 48,
+      ...statBarBaseStyle,
+      labelColor: "#ffe18a",
+      fill: 0xe0b14d,
+      fillShadow: 0x624218,
+      highlightFill: 0xffffff,
+      tickCount: 0,
+      valueText: statValueText(member.xp, member.xp_next),
     },
   );
   hpBar.track.__kithlandsPartyMenu = {
@@ -428,35 +648,78 @@ function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
     prefix: "XP",
   };
   group.push(
+    ...hpBar.extras,
     hpBar.prefixLabel,
     hpBar.track,
     hpBar.fill,
     hpBar.valueLabel,
+    ...mpBar.extras,
     mpBar.prefixLabel,
     mpBar.track,
     mpBar.fill,
     mpBar.valueLabel,
+    ...xpBar.extras,
     xpBar.prefixLabel,
     xpBar.track,
     xpBar.fill,
     xpBar.valueLabel,
   );
 
-  const hoverOn = () => {
-    rowBg.setFillStyle(rowHoverFill, 0.98);
-    rowBg.setStrokeStyle(1, 0x88ccff);
-    portraitFrame.setStrokeStyle(1, 0x88ccff);
+  const rowHandle = {
+    slot,
+    hovered: false,
+    repaint() {
+      const selected = scene.partyMenuState?.selectedSlot === slot;
+      const fill = !alive
+        ? FF6_ROW_FILL_DEAD
+        : selected
+          ? FF6_ROW_FILL_SELECTED
+          : rowHandle.hovered
+            ? FF6_ROW_FILL_HOVER
+            : FF6_ROW_FILL;
+      const stroke = selected
+        ? FF6_GOLD
+        : rowHandle.hovered
+          ? FF6_ROW_GLOW
+          : FF6_BLUE;
+      rowBg.setFillStyle(fill, 0.98);
+      rowBg.setStrokeStyle(2, stroke);
+      rowInner.setStrokeStyle(
+        1,
+        selected ? FF6_GOLD : rowHandle.hovered ? FF6_ROW_GLOW : 0x7fa7de,
+        0.85,
+      );
+      rowGlow.setVisible(selected);
+      rowGlow.setAlpha(selected ? 0.18 : 0.08);
+      portraitBackdrop.setStrokeStyle(
+        2,
+        selected ? FF6_GOLD : rowHandle.hovered ? FF6_ROW_GLOW : portraitAccent,
+      );
+      portraitPlate.setStrokeStyle(1, selected ? FF6_GOLD : 0xe7f2ff, 0.8);
+      portraitFrame.setStrokeStyle(
+        2,
+        selected ? FF6_GOLD : rowHandle.hovered ? FF6_ROW_GLOW : portraitAccent,
+      );
+      rowBg.__kithlandsPartyMenu = {
+        role: "row",
+        slot,
+        state: selected ? "selected" : rowHandle.hovered ? "hover" : "default",
+      };
+    },
   };
-  const hoverOff = () => {
-    rowBg.setFillStyle(rowFill, 0.96);
-    rowBg.setStrokeStyle(1, 0x4488ff);
-    portraitFrame.setStrokeStyle(1, 0x4488ff);
-  };
-  rowBg.on("pointerover", hoverOn);
-  rowBg.on("pointerout", hoverOff);
-  rowBg.on("pointerdown", () => rowBg.setFillStyle(rowPressFill, 0.98));
+  scene.partyMenuState?.rows.push(rowHandle);
+
+  rowBg.on("pointerover", () => {
+    rowHandle.hovered = true;
+    rowHandle.repaint();
+  });
+  rowBg.on("pointerout", () => {
+    rowHandle.hovered = false;
+    rowHandle.repaint();
+  });
+  rowBg.on("pointerdown", () => selectPartySlot(scene, slot));
   rowBg.on("pointerup", () => {
-    hoverOn();
+    selectPartySlot(scene, slot);
     openCharacterDetail(scene, slot);
   });
 }
@@ -484,11 +747,27 @@ function colorHex(color) {
   return `#${color.toString(16).padStart(6, "0")}`;
 }
 
+function statValueText(cur, max) {
+  return `${Math.max(0, cur || 0)} / ${Math.max(0, max || 0)}`;
+}
+
+function selectPartySlot(scene, slot) {
+  if (!scene.partyMenuState) return;
+  scene.partyMenuState.selectedSlot = slot;
+  repaintPartyRows(scene);
+}
+
+function repaintPartyRows(scene) {
+  for (const row of scene.partyMenuState?.rows || []) {
+    row.repaint();
+  }
+}
+
 // Horizontally layout a row of drawButton specs centered on `cx`. Returns
 // the list of button handles (in order) so the caller can mutate individual
 // ones (setLabel, setEnabled) later. 12px gap between buttons.
 function layoutButtonRow(scene, group, cx, y, specs) {
-  const gap = 12;
+  const gap = specs.some((spec) => spec.primary) ? 12 : 8;
   const totalW =
     specs.reduce((sum, s) => sum + s.w, 0) + gap * (specs.length - 1);
   let cursor = cx - totalW / 2;
@@ -504,50 +783,103 @@ function layoutButtonRow(scene, group, cx, y, specs) {
 }
 
 function drawActionButton(scene, group, x, y, w, label, spec) {
-  const btn = drawButton(scene, x, y, w, 34, label, spec.onClick);
+  const primary = !!spec.primary;
+  const h = primary ? 38 : 30;
+  const btn = drawButton(scene, x, y, w, h, label, spec.onClick, {
+    fontSize: primary ? "10px" : "9px",
+    fontStyle: "bold",
+    fontFamily: "Trebuchet MS",
+    fill: primary ? 0x23497c : 0x1b3660,
+    fillHover: primary ? 0x3166a3 : 0x27538a,
+    fillPress: primary ? 0x183b65 : 0x17304d,
+    fillDisabled: 0x10192d,
+    fillActive: primary ? 0x3166a3 : 0x27538a,
+    stroke: 0xb6d2ff,
+    strokeActive: FF6_GOLD,
+    strokeWidth: 2,
+    depth: DEPTH_CONTENT + 1,
+  });
+  btn.label.setOrigin(0, 0.5);
+  btn.label.x = x - w / 2 + 34;
+  btn.label.y = y + (primary ? 1 : 0);
+  applyTextGlow(btn.label, "#0d1830", 1);
   group.push(btn);
-  if (!spec.iconKey && !spec.iconFallback) return btn;
 
-  const iconObjects = [];
-  const iconX = x - w / 2 + 18;
+  const ornament = scene.add
+    .rectangle(x, y - h / 2 + 5, w - 12, 6, 0xffffff, primary ? 0.12 : 0.08)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT + 2);
+
+  const iconObjects = [ornament];
+  const iconX = x - w / 2 + 16;
   const iconY = y;
   if (spec.iconKey && scene.textures.exists(spec.iconKey)) {
     const icon = scene.add
       .image(iconX, iconY, spec.iconKey)
       .setScrollFactor(0)
-      .setDepth(DEPTH_CONTENT + 2);
+      .setDepth(DEPTH_CONTENT + 3);
     const srcSize = Math.max(icon.width || 16, icon.height || 16);
-    icon.setScale(14 / srcSize);
+    icon.setScale((primary ? 15 : 13) / srcSize);
     icon.__kithlandsPartyMenuAction = {
       label,
+      hotkey: spec.hotkey || null,
       kind: "image",
       key: spec.iconKey,
     };
     iconObjects.push(icon);
-  } else {
+  } else if (spec.iconFallback) {
     const badge = scene.add
-      .rectangle(iconX, iconY, 16, 16, 0x0b1324, 1)
-      .setStrokeStyle(1, 0x88ccff)
+      .rectangle(
+        iconX,
+        iconY,
+        primary ? 18 : 16,
+        primary ? 18 : 16,
+        0x0d1830,
+        1,
+      )
+      .setStrokeStyle(1, FF6_GLOW)
       .setScrollFactor(0)
-      .setDepth(DEPTH_CONTENT + 1);
+      .setDepth(DEPTH_CONTENT + 2);
     badge.__kithlandsPartyMenuAction = {
       label,
+      hotkey: spec.hotkey || null,
       kind: "fallback",
       key: spec.iconFallback || null,
     };
     const glyph = scene.add
       .text(iconX, iconY, spec.iconFallback || "?", {
-        fontSize: "9px",
-        color: "#88ccff",
-        fontFamily: "monospace",
+        fontSize: primary ? "9px" : "8px",
+        fontStyle: "bold",
+        color: "#d7ecff",
+        fontFamily: "Courier New",
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
-      .setDepth(DEPTH_CONTENT + 2);
+      .setDepth(DEPTH_CONTENT + 3);
     iconObjects.push(badge, glyph);
   }
 
-  btn.label.x += 8;
+  let hotkeyText = null;
+  if (spec.hotkey) {
+    hotkeyText = scene.add
+      .text(x + w / 2 - 10, y, `[${spec.hotkey}]`, {
+        fontSize: primary ? "10px" : "9px",
+        fontStyle: "bold",
+        color: "#fff0ad",
+        fontFamily: "Courier New",
+      })
+      .setOrigin(1, 0.5)
+      .setScrollFactor(0)
+      .setDepth(DEPTH_CONTENT + 3);
+    hotkeyText.__kithlandsPartyMenuAction = {
+      label,
+      hotkey: spec.hotkey,
+      kind: "hotkey",
+      key: spec.hotkey,
+    };
+    iconObjects.push(hotkeyText);
+  }
+
   group.push(...iconObjects);
 
   const baseSetEnabled = btn.setEnabled;
@@ -556,6 +888,9 @@ function drawActionButton(scene, group, x, y, w, label, spec) {
     for (const obj of iconObjects) {
       if (typeof obj.setAlpha === "function") obj.setAlpha(enabled ? 1 : 0.45);
       obj.alpha = enabled ? 1 : 0.45;
+    }
+    if (hotkeyText && typeof hotkeyText.setColor === "function") {
+      hotkeyText.setColor(enabled ? "#fff0ad" : "#8f8a72");
     }
   };
   return btn;
