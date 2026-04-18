@@ -142,6 +142,9 @@ func (s *scanner) worktreeDirs() []string {
 
 // walkPNGs recursively walks root collecting every *.png file. Returns
 // silently on errors (directories might not exist — that is expected).
+// Symlinks are skipped: a symlinked PNG inside a scanned directory could
+// otherwise surface a file outside the allow-root and be served by
+// handleImage after filepath.EvalSymlinks expands it.
 func walkPNGs(root string) []Image {
 	var imgs []Image
 	_ = filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
@@ -154,6 +157,9 @@ func walkPNGs(root string) []Image {
 			if base == "node_modules" || base == ".git" || base == "vendor" {
 				return fs.SkipDir
 			}
+			return nil
+		}
+		if d.Type()&fs.ModeSymlink != 0 {
 			return nil
 		}
 		if !strings.HasSuffix(strings.ToLower(d.Name()), ".png") {
@@ -175,7 +181,9 @@ func walkPNGs(root string) []Image {
 }
 
 // globPNGs returns PNGs directly inside dir (non-recursive) that match an
-// optional prefix filter (empty prefix = all .png).
+// optional prefix filter (empty prefix = all .png). Symlinks are skipped for
+// the same reason walkPNGs skips them — we do not want a symlink target
+// outside the allow-root to be served through handleImage.
 func globPNGs(dir, prefix string) []Image {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -184,6 +192,9 @@ func globPNGs(dir, prefix string) []Image {
 	var imgs []Image
 	for _, e := range entries {
 		if e.IsDir() {
+			continue
+		}
+		if e.Type()&fs.ModeSymlink != 0 {
 			continue
 		}
 		name := e.Name()

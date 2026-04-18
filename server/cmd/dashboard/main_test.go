@@ -236,6 +236,31 @@ func TestScannerRunSurfacesOnlyConfiguredRoots(t *testing.T) {
 	}
 }
 
+func TestWalkAndGlobSkipSymlinks(t *testing.T) {
+	dir := t.TempDir()
+	secret := filepath.Join(t.TempDir(), "secret.png")
+	writePNG(t, secret)
+	writePNG(t, filepath.Join(dir, "real.png"))
+	link := filepath.Join(dir, "escape.png")
+	if err := os.Symlink(secret, link); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+
+	glob := globPNGs(dir, "")
+	for _, img := range glob {
+		if img.Path == link {
+			t.Errorf("globPNGs surfaced symlink %q — symlinks must be skipped", link)
+		}
+	}
+
+	walk := walkPNGs(dir)
+	for _, img := range walk {
+		if img.Path == link {
+			t.Errorf("walkPNGs surfaced symlink %q — symlinks must be skipped", link)
+		}
+	}
+}
+
 func TestCapImages(t *testing.T) {
 	in := make([]Image, 500)
 	out := capImages(in, 200)
