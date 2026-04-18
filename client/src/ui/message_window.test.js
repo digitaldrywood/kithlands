@@ -41,6 +41,36 @@ function makeNode(kind) {
     },
     setText(text) {
       this.text = text;
+      if (this.kind === "text") {
+        const fontSize = parseInt(this.style?.fontSize || "16", 10) || 16;
+        const wrapWidth = this.style?.wordWrap?.width || 320;
+        const charsPerLine = Math.max(8, Math.floor(wrapWidth / (fontSize * 0.55)));
+        const lines = Math.max(
+          1,
+          String(text || "")
+            .split("\n")
+            .reduce(
+              (count, line) => count + Math.max(1, Math.ceil(line.length / charsPerLine)),
+              0,
+            ),
+        );
+        this.width = Math.min(wrapWidth, String(text || "").length * fontSize * 0.55);
+        this.height = lines * (fontSize + 4);
+      }
+      return this;
+    },
+    setPosition(x, y) {
+      this.x = x;
+      this.y = y;
+      return this;
+    },
+    setSize(width, height) {
+      this.width = width;
+      this.height = height;
+      return this;
+    },
+    setWordWrapWidth(width) {
+      if (this.style?.wordWrap) this.style.wordWrap.width = width;
       return this;
     },
     setColor(color) {
@@ -141,5 +171,45 @@ describe("MessageWindow", () => {
     expect(metrics.textBounds.y).toBeGreaterThanOrEqual(
       metrics.contentBounds.y,
     );
+  });
+
+  it("shrinks for a short one-line prompt while keeping the bottom anchored", () => {
+    const scene = makeScene();
+    const window = new MessageWindow(scene, {
+      x: 388,
+      y: 490,
+      width: 392,
+      height: 98,
+      minHeight: 68,
+      maxHeight: 108,
+    });
+
+    const beforeBottom = window.getLayoutMetrics().bounds.y + window.getLayoutMetrics().bounds.height;
+    window.setText("Hero's turn -- choose an action");
+    const metrics = window.getLayoutMetrics();
+    const afterBottom = metrics.bounds.y + metrics.bounds.height;
+
+    expect(metrics.bounds.height).toBeLessThan(98);
+    expect(afterBottom).toBe(beforeBottom);
+  });
+
+  it("grows for wrapped prompts without exceeding the configured max height", () => {
+    const scene = makeScene();
+    const window = new MessageWindow(scene, {
+      x: 388,
+      y: 490,
+      width: 392,
+      height: 98,
+      minHeight: 68,
+      maxHeight: 108,
+    });
+
+    window.setText(
+      "Hero's turn -- choose an action, cast a very long spell name, or select a target now!",
+    );
+    const metrics = window.getLayoutMetrics();
+
+    expect(metrics.bounds.height).toBeGreaterThanOrEqual(92);
+    expect(metrics.bounds.height).toBeLessThanOrEqual(108);
   });
 });

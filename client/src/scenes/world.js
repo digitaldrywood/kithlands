@@ -592,7 +592,10 @@ export class WorldScene extends Phaser.Scene {
         playSFX("sfx_encounter");
         this.cameras.main.flash(300, 255, 255, 255);
         this.time.delayedCall(400, () => {
-          this.scene.start("Battle", { gameState: result });
+          this.scene.start("Battle", {
+            gameState: result,
+            encounterTileType: tile,
+          });
         });
       } else {
         this.animating = false;
