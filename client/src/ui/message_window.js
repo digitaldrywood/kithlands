@@ -1,5 +1,7 @@
 const FRAME_SCALE = 0.5;
 const FRAME_TILE = 64 * FRAME_SCALE;
+const TEXT_PADDING_X = 12;
+const TEXT_PADDING_Y = 4;
 
 function toColorInt(color, fallback = 0xffff44) {
   if (typeof color === "number" && Number.isFinite(color)) return color;
@@ -28,14 +30,22 @@ export class MessageWindow {
       .setOrigin(0, 0.5)
       .setDepth(depth + 1);
     this.text = scene.add
-      .text(x + 34, y + 14, "", {
-        fontSize: "16px",
-        color: "#ffffff",
-        fontFamily: "monospace",
-        fontStyle: "bold",
-        wordWrap: { width: width - 58, useAdvancedWrap: true },
-        lineSpacing: 4,
-      })
+      .text(
+        this.contentBounds.x + TEXT_PADDING_X,
+        this.contentBounds.y + TEXT_PADDING_Y,
+        "",
+        {
+          fontSize: "16px",
+          color: "#ffffff",
+          fontFamily: "monospace",
+          fontStyle: "bold",
+          wordWrap: {
+            width: this.contentBounds.width - TEXT_PADDING_X * 2,
+            useAdvancedWrap: true,
+          },
+          lineSpacing: 4,
+        },
+      )
       .setOrigin(0, 0)
       .setDepth(depth + 2);
     if (typeof this.text.setShadow === "function") {
@@ -48,12 +58,18 @@ export class MessageWindow {
   buildFrame(x, y, width, height, depth) {
     const innerWidth = Math.max(FRAME_TILE, width - FRAME_TILE * 2);
     const innerHeight = Math.max(FRAME_TILE, height - FRAME_TILE * 2);
+    this.contentBounds = {
+      x: x + FRAME_TILE,
+      y: y + FRAME_TILE,
+      width: innerWidth,
+      height: innerHeight,
+    };
     const fill = this.scene.add
       .tileSprite(
-        x + FRAME_TILE,
-        y + FRAME_TILE,
-        innerWidth,
-        innerHeight,
+        this.contentBounds.x,
+        this.contentBounds.y,
+        this.contentBounds.width,
+        this.contentBounds.height,
         "border_fill",
       )
       .setOrigin(0, 0)
@@ -111,6 +127,19 @@ export class MessageWindow {
 
   getText() {
     return this.currentText;
+  }
+
+  getLayoutMetrics() {
+    return {
+      bounds: { ...this.bounds },
+      contentBounds: { ...this.contentBounds },
+      textBounds: {
+        x: this.text?.x ?? null,
+        y: this.text?.y ?? null,
+        width: this.text?.width ?? this.text?.displayWidth ?? null,
+        height: this.text?.height ?? this.text?.displayHeight ?? null,
+      },
+    };
   }
 
   setColor(color) {
