@@ -322,11 +322,11 @@ function drawPartyRow(scene, group, x, y, w, member, _equip, slot) {
     });
   }
 
-  // XP bar (full-width).
+  // XP bar.
   drawStatBar(scene, group, {
     x: infoX,
     y: xpY,
-    w: 340,
+    w: hpBarW,
     h: barH,
     cur: member.xp,
     max: member.xp_next,
