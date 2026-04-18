@@ -124,20 +124,105 @@ export class BootScene extends Phaser.Scene {
 
     this.load.image("object_chest_closed", "/sprites/objects/chest_closed.png");
     this.load.image("object_chest_open", "/sprites/objects/chest_open.png");
+    this.load.image(
+      "object_chest_sparkle",
+      "/sprites/objects/chest_sparkle.png",
+    );
 
     // Interior tilesets
     this.load.image("tile_altar", "/tilesets/interiors/altar.png");
     this.load.image("tile_bed", "/tilesets/interiors/bed.png");
     this.load.image("tile_bookshelf", "/tilesets/interiors/bookshelf.png");
+    this.load.image("tile_candle", "/tilesets/interiors/candle.png");
+    this.load.image("tile_chair", "/tilesets/interiors/chair.png");
     this.load.image("tile_counter", "/tilesets/interiors/counter.png");
+    this.load.image("tile_crate", "/tilesets/interiors/crate.png");
+    this.load.image("tile_desk", "/tilesets/interiors/desk.png");
+    this.load.image("tile_door", "/tilesets/interiors/door.png");
+    this.load.image("tile_fireplace", "/tilesets/interiors/fireplace.png");
+    this.load.image("tile_house_floor", "/tilesets/interiors/house_floor.png");
+    this.load.image(
+      "tile_house_floor_b",
+      "/tilesets/interiors/house_floor_b.png",
+    );
+    this.load.image(
+      "tile_house_floor_c",
+      "/tilesets/interiors/house_floor_c.png",
+    );
+    this.load.image(
+      "tile_house_floor_d",
+      "/tilesets/interiors/house_floor_d.png",
+    );
+    this.load.image("tile_house_wall", "/tilesets/interiors/house_wall.png");
+    this.load.image(
+      "tile_house_wall_b",
+      "/tilesets/interiors/house_wall_b.png",
+    );
+    this.load.image(
+      "tile_house_wall_c",
+      "/tilesets/interiors/house_wall_c.png",
+    );
     this.load.image("tile_inn_floor", "/tilesets/interiors/inn_floor.png");
+    this.load.image("tile_inn_floor_b", "/tilesets/interiors/inn_floor_b.png");
+    this.load.image("tile_inn_floor_c", "/tilesets/interiors/inn_floor_c.png");
+    this.load.image("tile_inn_floor_d", "/tilesets/interiors/inn_floor_d.png");
+    this.load.image("tile_inn_wall", "/tilesets/interiors/inn_wall.png");
+    this.load.image("tile_inn_wall_b", "/tilesets/interiors/inn_wall_b.png");
+    this.load.image("tile_inn_wall_c", "/tilesets/interiors/inn_wall_c.png");
+    this.load.image("tile_lantern", "/tilesets/interiors/lantern.png");
+    this.load.image("tile_locked_door", "/tilesets/interiors/locked_door.png");
+    this.load.image("tile_pew", "/tilesets/interiors/pew.png");
+    this.load.image("tile_rug_house", "/tilesets/interiors/rug_house.png");
+    this.load.image("tile_rug_inn", "/tilesets/interiors/rug_inn.png");
+    this.load.image("tile_rug_shop", "/tilesets/interiors/rug_shop.png");
+    this.load.image("tile_rug_temple", "/tilesets/interiors/rug_temple.png");
     this.load.image("tile_shop_floor", "/tilesets/interiors/shop_floor.png");
+    this.load.image(
+      "tile_shop_floor_b",
+      "/tilesets/interiors/shop_floor_b.png",
+    );
+    this.load.image(
+      "tile_shop_floor_c",
+      "/tilesets/interiors/shop_floor_c.png",
+    );
+    this.load.image(
+      "tile_shop_floor_d",
+      "/tilesets/interiors/shop_floor_d.png",
+    );
+    this.load.image("tile_shop_wall", "/tilesets/interiors/shop_wall.png");
+    this.load.image("tile_shop_wall_b", "/tilesets/interiors/shop_wall_b.png");
+    this.load.image("tile_shop_wall_c", "/tilesets/interiors/shop_wall_c.png");
     this.load.image(
       "tile_temple_floor",
       "/tilesets/interiors/temple_floor.png",
     );
-    this.load.image("tile_stone_wall", "/tilesets/interiors/stone_wall.png");
-    this.load.image("tile_wooden_wall", "/tilesets/interiors/wooden_wall.png");
+    this.load.image(
+      "tile_temple_floor_b",
+      "/tilesets/interiors/temple_floor_b.png",
+    );
+    this.load.image(
+      "tile_temple_floor_c",
+      "/tilesets/interiors/temple_floor_c.png",
+    );
+    this.load.image(
+      "tile_temple_floor_d",
+      "/tilesets/interiors/temple_floor_d.png",
+    );
+    this.load.image("tile_temple_wall", "/tilesets/interiors/temple_wall.png");
+    this.load.image(
+      "tile_temple_wall_b",
+      "/tilesets/interiors/temple_wall_b.png",
+    );
+    this.load.image(
+      "tile_temple_wall_c",
+      "/tilesets/interiors/temple_wall_c.png",
+    );
+    this.load.image("tile_statue", "/tilesets/interiors/statue.png");
+    this.load.image("tile_stairs_down", "/tilesets/interiors/stairs_down.png");
+    this.load.image("tile_stairs_up", "/tilesets/interiors/stairs_up.png");
+    this.load.image("tile_table", "/tilesets/interiors/table.png");
+    this.load.image("tile_window", "/tilesets/interiors/window.png");
+    this.load.image("tile_secret_hint", "/tilesets/interiors/secret_hint.png");
 
     // Overworld terrain tilesets
     this.load.image("tile_grass", "/tilesets/grass.png");
@@ -158,6 +243,10 @@ export class BootScene extends Phaser.Scene {
     this.load.image("npc_blacksmith", "/sprites/npcs/blacksmith.png");
     this.load.image("npc_guard", "/sprites/npcs/guard.png");
     this.load.image("npc_elder", "/sprites/npcs/elder.png");
+    this.load.image("npc_gossip", "/sprites/npcs/gossip.png");
+    this.load.image("npc_quest_giver", "/sprites/npcs/quest_giver.png");
+    this.load.image("npc_flavor_amber", "/sprites/npcs/flavor_amber.png");
+    this.load.image("npc_flavor_bram", "/sprites/npcs/flavor_bram.png");
   }
 
   create() {

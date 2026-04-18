@@ -22,6 +22,8 @@ describe("buildInteriorFromTemplate", () => {
           stairs: [{ x: 2, y: 2, to_floor: 1, to_x: 1, to_y: 1, kind: "up" }],
           chest_anchors: [{ id: "c1", x: 4, y: 2 }],
           npc_anchors: [{ role: "innkeeper", x: 1, y: 1 }],
+          window_anchors: [{ x: 1, y: 0, side: "north" }],
+          light_anchors: [{ x: 4, y: 1, kind: "lantern" }],
         },
       ],
     };
@@ -42,6 +44,8 @@ describe("buildInteriorFromTemplate", () => {
       kind: "up",
     });
     expect(interior.chestAnchors).toEqual([{ id: "c1", x: 4, y: 2 }]);
+    expect(interior.windowAnchors).toEqual([{ x: 1, y: 0, side: "north" }]);
+    expect(interior.lightAnchors).toEqual([{ x: 4, y: 1, kind: "lantern" }]);
     expect(TILE_WALKABLE[T_SECRET_WALL]).toBe(true);
   });
 });

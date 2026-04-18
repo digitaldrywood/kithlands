@@ -135,6 +135,8 @@ export function buildInteriorFromTemplate(template, floorIndex = 0) {
     entrance: floor.entrance || null,
     npcAnchors: floor.npc_anchors || [],
     chestAnchors: floor.chest_anchors || [],
+    windowAnchors: floor.window_anchors || [],
+    lightAnchors: floor.light_anchors || [],
     stairsByPosition: new Map(
       (floor.stairs || []).map((stair) => [`${stair.x},${stair.y}`, stair]),
     ),
@@ -184,61 +186,168 @@ export function minimumNpcSpacing(buildingType) {
 export function extraNpcSpritesForTags(tags) {
   const tagSet = new Set(tags || []);
   if (tagSet.has("rest")) {
-    return ["npc_guard", "npc_blacksmith", "npc_elder"];
+    return ["npc_flavor_amber", "npc_flavor_bram", "npc_gossip"];
   }
   if (tagSet.has("shop") || tagSet.has("commerce")) {
-    return ["npc_guard", "npc_elder"];
+    return ["npc_flavor_bram", "npc_gossip"];
   }
   if (tagSet.has("temple") || tagSet.has("revive")) {
-    return ["npc_guard", "npc_elder", "npc_blacksmith"];
+    return ["npc_guard", "npc_flavor_amber", "npc_gossip"];
   }
-  return ["npc_guard", "npc_blacksmith", "npc_elder"];
+  return ["npc_flavor_amber", "npc_flavor_bram", "npc_gossip"];
 }
 
-function wallTextureKey(buildingType) {
-  return buildingType === "temple" ? "tile_stone_wall" : "tile_wooden_wall";
-}
+const ROLE_SPRITES = {
+  innkeeper: ["npc_innkeeper"],
+  shopkeeper: ["npc_merchant"],
+  priestess: ["npc_priestess"],
+  priest: ["npc_priestess"],
+  blacksmith: ["npc_blacksmith"],
+  guard: ["npc_guard"],
+  elder: ["npc_elder"],
+  widow: ["npc_elder"],
+  merchant_wandering: ["npc_flavor_bram"],
+  quest_giver: ["npc_quest_giver"],
+  gossip: ["npc_gossip"],
+  flavor: ["npc_flavor_amber", "npc_flavor_bram", "npc_gossip"],
+};
 
-function floorTextureKey(buildingType) {
-  switch (buildingType) {
-    case "shop":
-      return "tile_shop_floor";
-    case "temple":
-      return "tile_temple_floor";
-    default:
-      return "tile_inn_floor";
+const FLOOR_TEXTURES = {
+  house: [
+    "tile_house_floor",
+    "tile_house_floor_b",
+    "tile_house_floor_c",
+    "tile_house_floor_d",
+  ],
+  inn: [
+    "tile_inn_floor",
+    "tile_inn_floor_b",
+    "tile_inn_floor_c",
+    "tile_inn_floor_d",
+  ],
+  shop: [
+    "tile_shop_floor",
+    "tile_shop_floor_b",
+    "tile_shop_floor_c",
+    "tile_shop_floor_d",
+  ],
+  temple: [
+    "tile_temple_floor",
+    "tile_temple_floor_b",
+    "tile_temple_floor_c",
+    "tile_temple_floor_d",
+  ],
+};
+
+const WALL_TEXTURES = {
+  house: ["tile_house_wall", "tile_house_wall_b", "tile_house_wall_c"],
+  inn: ["tile_inn_wall", "tile_inn_wall_b", "tile_inn_wall_c"],
+  shop: ["tile_shop_wall", "tile_shop_wall_b", "tile_shop_wall_c"],
+  temple: ["tile_temple_wall", "tile_temple_wall_b", "tile_temple_wall_c"],
+};
+
+const RUG_TEXTURES = {
+  house: ["tile_rug_house"],
+  inn: ["tile_rug_inn"],
+  shop: ["tile_rug_shop"],
+  temple: ["tile_rug_temple"],
+};
+
+function hashCode(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) {
+    h = (h * 33 + str.charCodeAt(i)) | 0;
   }
+  return h >>> 0;
 }
 
-export function tileTextureKey(tile, buildingType) {
+function pickVariant(family, buildingType, x, y, variantSeed) {
+  const textures = family[buildingType] || family.house || family.inn;
+  if (!textures?.length) return null;
+  if (x === undefined || y === undefined) return textures[0];
+  const buildingBias = hashCode(buildingType) % textures.length;
+  const variant =
+    Math.abs(x * 7 + y * 11 + variantSeed * 13 + buildingBias) %
+    textures.length;
+  return textures[variant];
+}
+
+export function npcSpriteForRole(
+  role,
+  buildingType,
+  tags,
+  seed = 0,
+  index = 0,
+) {
+  const choices = ROLE_SPRITES[role] || extraNpcSpritesForTags(tags);
+  const pick = hashCode(`${role}:${buildingType}:${seed}:${index}`);
+  return choices[pick % choices.length];
+}
+
+export function tileTextureKey(tile, buildingType, x, y, variantSeed = 0) {
   switch (tile) {
     case T_WALL:
     case T_SECRET_WALL:
-      return wallTextureKey(buildingType);
+      return pickVariant(WALL_TEXTURES, buildingType, x, y, variantSeed);
     case T_FLOOR:
+      return pickVariant(FLOOR_TEXTURES, buildingType, x, y, variantSeed);
     case T_DOOR:
+      return "tile_door";
     case T_STAIR_UP:
+      return "tile_stairs_up";
     case T_STAIR_DOWN:
+      return "tile_stairs_down";
     case T_LOCKED_DOOR:
+      return "tile_locked_door";
     case T_CHEST_CLOSED:
     case T_CHEST_OPEN:
+      return pickVariant(FLOOR_TEXTURES, buildingType, x, y, variantSeed);
     case T_RUG:
+      return pickVariant(RUG_TEXTURES, buildingType, x, y, variantSeed);
+    case T_FIREPLACE:
+      return "tile_fireplace";
+    case T_CRATE:
+      return "tile_crate";
     case T_CANDLE:
-      return floorTextureKey(buildingType);
+      return "tile_candle";
+    case T_STATUE:
+      return "tile_statue";
+    case T_PEW:
+      return "tile_pew";
     case T_COUNTER:
-    case T_DESK:
-    case T_TABLE:
       return "tile_counter";
+    case T_DESK:
+      return "tile_desk";
+    case T_TABLE:
+      return "tile_table";
+    case T_CHAIR:
+      return "tile_chair";
     case T_SHELF:
     case T_BOOKSHELF:
-    case T_CRATE:
       return "tile_bookshelf";
     case T_BED:
       return "tile_bed";
     case T_ALTAR:
-    case T_STATUE:
-    case T_PEW:
       return "tile_altar";
+    default:
+      return null;
+  }
+}
+
+export function surfaceVariantKey(
+  buildingType,
+  surface,
+  x,
+  y,
+  variantSeed = 0,
+) {
+  switch (surface) {
+    case "floor":
+      return pickVariant(FLOOR_TEXTURES, buildingType, x, y, variantSeed);
+    case "wall":
+      return pickVariant(WALL_TEXTURES, buildingType, x, y, variantSeed);
+    case "rug":
+      return pickVariant(RUG_TEXTURES, buildingType, x, y, variantSeed);
     default:
       return null;
   }

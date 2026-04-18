@@ -28,6 +28,10 @@
         { "role": "priestess", "x": 8, "y": 6 },
         { "role": "gossip", "x": 5, "y": 8 }
       ],
+      "window_anchors": [
+        { "x": 5, "y": 0, "side": "north" },
+        { "x": 12, "y": 0, "side": "north" }
+      ],
       "chest_anchors": []
     },
     {
@@ -51,6 +55,13 @@
       ],
       "npc_anchors": [
         { "role": "guard", "x": 3, "y": 4 }
+      ],
+      "window_anchors": [
+        { "x": 5, "y": 0, "side": "north" },
+        { "x": 12, "y": 0, "side": "north" }
+      ],
+      "light_anchors": [
+        { "x": 10, "y": 1, "kind": "lantern" }
       ],
       "chest_anchors": [
         { "id": "crypt_cache", "x": 13, "y": 5 },

@@ -18,6 +18,7 @@ import {
   extraNpcSpritesForTags,
   furnitureDensity,
   minimumNpcSpacing,
+  npcSpriteForRole,
   RENDERED_TILE,
   roomDimensions,
   SCALE,
@@ -49,6 +50,7 @@ import {
   tileTextureKey,
 } from "./town_layout.js";
 import { walkStepMs } from "../systems/prefs.js";
+import { drawPanel } from "../ui/panel.js";
 import {
   hasWorldLock,
   isWorldInputLocked,
@@ -405,20 +407,15 @@ const INTERIOR_APPEARANCES = {
   ],
 };
 
-const ROLE_SPRITES = {
-  innkeeper: ["npc_innkeeper"],
-  shopkeeper: ["npc_merchant"],
-  priestess: ["npc_priestess"],
-  priest: ["npc_priestess"],
-  blacksmith: ["npc_blacksmith"],
-  guard: ["npc_guard"],
-  elder: ["npc_elder"],
-  widow: ["npc_elder"],
-  merchant_wandering: ["npc_merchant", "npc_guard"],
-  quest_giver: ["npc_elder", "npc_guard"],
-  gossip: ["npc_elder", "npc_guard"],
-  flavor: ["npc_elder", "npc_blacksmith", "npc_guard"],
-};
+const DEPTH_ROW = 20;
+const DEPTH_BASE = 0;
+const DEPTH_TRIM = 2;
+const DEPTH_LIGHT = 3;
+const DEPTH_PROP = 8;
+const DEPTH_ACTOR = 12;
+const DEPTH_UI = 1400;
+const FRAME_SCALE = 0.25;
+const FRAME_TILE = 64 * FRAME_SCALE;
 
 function authoredInteriorAppearance(buildingType, seed) {
   const palettes =
@@ -432,27 +429,22 @@ function tintForTile(tile, appearance) {
     return appearance.wall;
   }
   if (
-    tile === T_COUNTER ||
-    tile === T_SHELF ||
-    tile === T_DESK ||
-    tile === T_CRATE ||
-    tile === T_BOOKSHELF ||
-    tile === T_CHAIR ||
-    tile === T_TABLE ||
-    tile === T_BED
+    tile === T_FLOOR ||
+    tile === T_DOOR ||
+    tile === T_STAIR_UP ||
+    tile === T_STAIR_DOWN
   ) {
-    return appearance.wood;
+    return appearance.floor;
   }
-  if (tile === T_ALTAR || tile === T_STATUE || tile === T_PEW) {
+  if (
+    tile === T_ALTAR ||
+    tile === T_STATUE ||
+    tile === T_PEW ||
+    tile === T_CANDLE
+  ) {
     return appearance.accent;
   }
-  return appearance.floor;
-}
-
-function spriteForNpcRole(role, buildingType, tags, seed, index) {
-  const choices = ROLE_SPRITES[role] || extraNpcSpritesForTags(tags);
-  const pick = hashCode(`${role}:${buildingType}:${seed}:${index}`);
-  return choices[pick % choices.length];
+  return null;
 }
 
 function fallbackOverlayForTile(tile) {
@@ -485,6 +477,31 @@ function fallbackOverlayForTile(tile) {
 function canTogglePartyMenu(scene) {
   const topLock = topWorldLock(scene);
   return !topLock || topLock === "shop" || topLock === "party_menu";
+}
+
+function depthForRow(y, layer = DEPTH_BASE) {
+  return y * DEPTH_ROW + layer;
+}
+
+function tileDepth(tile, y) {
+  switch (tile) {
+    case T_RUG:
+      return depthForRow(y, DEPTH_TRIM);
+    case T_WALL:
+    case T_SECRET_WALL:
+    case T_FLOOR:
+    case T_DOOR:
+    case T_STAIR_UP:
+    case T_STAIR_DOWN:
+    case T_LOCKED_DOOR:
+      return depthForRow(y, DEPTH_BASE);
+    default:
+      return depthForRow(y, DEPTH_PROP);
+  }
+}
+
+function actorDepth(y) {
+  return depthForRow(y, DEPTH_ACTOR);
 }
 
 export class TownScene extends Phaser.Scene {
@@ -526,6 +543,8 @@ export class TownScene extends Phaser.Scene {
       this.tiles = authoredInterior.tiles;
       this.stairsByPosition = authoredInterior.stairsByPosition;
       this.templateChestAnchors = authoredInterior.chestAnchors;
+      this.windowAnchors = authoredInterior.windowAnchors;
+      this.lightAnchors = authoredInterior.lightAnchors;
       this.currentFloor = authoredInterior.floor;
     } else {
       const dims = roomDimensions(buildingType, interiorSeed, mulberry32);
@@ -533,6 +552,8 @@ export class TownScene extends Phaser.Scene {
       this.roomH = dims.h;
       this.stairsByPosition = new Map();
       this.templateChestAnchors = [];
+      this.windowAnchors = [];
+      this.lightAnchors = [];
       this.currentFloor = null;
     }
 
@@ -576,8 +597,9 @@ export class TownScene extends Phaser.Scene {
     this.offsetY = Math.floor((600 - roomPixelH) / 2);
 
     // Draw tiles
-    this.tileLayer = this.add.container(0, 0);
-    this.tileGraphics = this.add.graphics();
+    this.roomDrawables = [];
+    this.roomOverlays = [];
+    this.secretHintDrawables = [];
     this.chests = (this.templateChestAnchors || []).map((anchor) => ({
       ...anchor,
       opened: isChestOpen(
@@ -589,27 +611,7 @@ export class TownScene extends Phaser.Scene {
     this.syncChestTiles();
     this.drawRoom();
     this.renderChests();
-
-    // Location name
-    this.add
-      .text(400, this.offsetY - 20, this.spawn.name, {
-        fontSize: "16px",
-        color: "#ffff44",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5)
-      .setDepth(5);
-
-    if (template?.floors?.length > 1) {
-      this.add
-        .text(400, this.offsetY - 2, `Floor ${this.floorIndex + 1}`, {
-          fontSize: "10px",
-          color: "#bbbbbb",
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5)
-        .setDepth(5);
-    }
+    this.drawLabelBar();
 
     // Place NPCs
     this.npcs = [];
@@ -628,7 +630,7 @@ export class TownScene extends Phaser.Scene {
           this.offsetY + pos.y * RENDERED_TILE + RENDERED_TILE / 2,
           sprite,
         )
-        .setDepth(10);
+        .setDepth(actorDepth(pos.y));
       npcImage.setScale(
         interiorCharacterScale(
           Math.max(npcImage.width || 0, npcImage.height || 0, 1),
@@ -679,11 +681,11 @@ export class TownScene extends Phaser.Scene {
           walkFrameIndex(this.playerDir, 0),
         )
         .setScale((RENDERED_TILE / 128) * SCALE)
-        .setDepth(10);
+        .setDepth(actorDepth(this.playerY));
     } else {
       this.player = this.add
         .image(playerCx, playerCy, `player_${this.playerDir}`)
-        .setDepth(10);
+        .setDepth(actorDepth(this.playerY));
       this.player.setScale(
         interiorCharacterScale(
           Math.max(this.player.width || 0, this.player.height || 0, 1),
@@ -758,7 +760,7 @@ export class TownScene extends Phaser.Scene {
         align: "center",
       })
       .setOrigin(0.5)
-      .setDepth(30)
+      .setDepth(DEPTH_UI + 10)
       .setVisible(false);
 
     if (this.entryMessage) {
@@ -766,20 +768,7 @@ export class TownScene extends Phaser.Scene {
       this.time.delayedCall(1800, () => this.hideMessage());
     }
 
-    // Instructions
-    this.add
-      .text(
-        400,
-        590,
-        "Arrow keys: move | ENTER/SPACE: talk | M: menu | ESC: exit",
-        {
-          fontSize: "10px",
-          color: "#666666",
-          fontFamily: "monospace",
-        },
-      )
-      .setOrigin(0.5)
-      .setDepth(5);
+    this.drawHelpStrip();
 
     this.updateInteractionTargets();
   }
@@ -847,8 +836,149 @@ export class TownScene extends Phaser.Scene {
       y: anchor.y,
       role: anchor.role,
       isProprietor: index === 0,
-      sprite: spriteForNpcRole(anchor.role, buildingType, tags, seed, index),
+      sprite: npcSpriteForRole(anchor.role, buildingType, tags, seed, index),
     }));
+  }
+
+  addRoomDrawable(drawable) {
+    this.roomDrawables.push(drawable);
+    return drawable;
+  }
+
+  addOverlayDrawable(drawable) {
+    this.roomOverlays.push(drawable);
+    return drawable;
+  }
+
+  clearDrawables(listName) {
+    for (const drawable of this[listName] || []) {
+      drawable?.destroy?.();
+    }
+    this[listName] = [];
+  }
+
+  drawLabelBar() {
+    this.labelBar?.forEach((entry) => entry.destroy());
+    this.labelBar = [];
+    const width = 340;
+    const height = this.interiorTemplate?.floors?.length > 1 ? 56 : 40;
+    const x = Math.floor((800 - width) / 2);
+    const y = 12;
+    const depth = DEPTH_UI;
+    const innerWidth = Math.max(FRAME_TILE, width - FRAME_TILE * 2);
+    const innerHeight = Math.max(FRAME_TILE, height - FRAME_TILE * 2);
+
+    const frame = [
+      this.add
+        .tileSprite(x + FRAME_TILE, y, innerWidth, FRAME_TILE, "border_t")
+        .setOrigin(0, 0)
+        .setScale(1)
+        .setDepth(depth),
+      this.add
+        .tileSprite(
+          x + FRAME_TILE,
+          y + height - FRAME_TILE,
+          innerWidth,
+          FRAME_TILE,
+          "border_b",
+        )
+        .setOrigin(0, 0)
+        .setScale(1)
+        .setDepth(depth),
+      this.add
+        .tileSprite(x, y + FRAME_TILE, FRAME_TILE, innerHeight, "border_l")
+        .setOrigin(0, 0)
+        .setScale(1)
+        .setDepth(depth),
+      this.add
+        .tileSprite(
+          x + width - FRAME_TILE,
+          y + FRAME_TILE,
+          FRAME_TILE,
+          innerHeight,
+          "border_r",
+        )
+        .setOrigin(0, 0)
+        .setScale(1)
+        .setDepth(depth),
+      this.add
+        .tileSprite(
+          x + FRAME_TILE,
+          y + FRAME_TILE,
+          innerWidth,
+          innerHeight,
+          "border_fill",
+        )
+        .setOrigin(0, 0)
+        .setScale(1)
+        .setDepth(depth - 1),
+    ];
+    const corners = [
+      ["border_tl", x, y],
+      ["border_tr", x + width - FRAME_TILE, y],
+      ["border_bl", x, y + height - FRAME_TILE],
+      ["border_br", x + width - FRAME_TILE, y + height - FRAME_TILE],
+    ].map(([key, px, py]) =>
+      this.add
+        .image(px, py, key)
+        .setOrigin(0, 0)
+        .setScale(FRAME_SCALE)
+        .setDepth(depth),
+    );
+    const accent = this.add
+      .rectangle(x + 14, y + height / 2, 6, height - 18, 0xf0c96b, 1)
+      .setOrigin(0, 0.5)
+      .setDepth(depth + 1);
+    const title = this.add
+      .text(400, y + 17, this.spawn.name, {
+        fontSize: "16px",
+        color: "#ffffff",
+        fontFamily: "monospace",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5)
+      .setDepth(depth + 2);
+    this.labelBar.push(...frame, ...corners, accent, title);
+
+    if (this.interiorTemplate?.floors?.length > 1) {
+      this.labelBar.push(
+        this.add
+          .text(400, y + 35, `Floor ${this.floorIndex + 1}`, {
+            fontSize: "10px",
+            color: "#e8d8a8",
+            fontFamily: "monospace",
+          })
+          .setOrigin(0.5)
+          .setDepth(depth + 2),
+      );
+    }
+  }
+
+  drawHelpStrip() {
+    this.helpStrip?.panel?.bg?.destroy?.();
+    this.helpStrip?.text?.destroy?.();
+    const panel = drawPanel(this, 400, 584, 760, 26, {
+      fill: 0x09111f,
+      fillAlpha: 0.92,
+      stroke: 0xc7a458,
+      strokeWidth: 2,
+      depth: DEPTH_UI,
+      interactive: false,
+    });
+    const text = this.add
+      .text(
+        400,
+        584,
+        "MOVE  Arrow Keys / WASD   TALK  Enter / Space   MENU  M   EXIT  Esc",
+        {
+          fontSize: "10px",
+          color: "#d7ddf4",
+          fontFamily: "monospace",
+        },
+      )
+      .setOrigin(0.5)
+      .setDepth(DEPTH_UI + 1);
+    this.helpStrip = { panel, text };
   }
 
   update(time) {
@@ -908,6 +1038,7 @@ export class TownScene extends Phaser.Scene {
     } else {
       this.player.setTexture(`player_${this.playerDir}`);
     }
+    this.player.setDepth(actorDepth(this.playerY));
 
     this.tweens.add({
       targets: this.player,
@@ -1089,7 +1220,7 @@ export class TownScene extends Phaser.Scene {
         padding: { x: 6, y: 3 },
       })
       .setOrigin(0.5)
-      .setDepth(15);
+      .setDepth(DEPTH_UI + 5);
   }
 
   hideInteractPrompt() {
@@ -1111,7 +1242,7 @@ export class TownScene extends Phaser.Scene {
         padding: { x: 6, y: 3 },
       })
       .setOrigin(0.5)
-      .setDepth(15);
+      .setDepth(DEPTH_UI + 5);
   }
 
   hideSearchPrompt() {
@@ -1166,12 +1297,16 @@ export class TownScene extends Phaser.Scene {
   }
 
   renderChests() {
-    this.chestLayer?.destroy(true);
-    this.chestLayer = this.add.container(0, 0).setDepth(9);
+    for (const drawable of this.chestDrawables || []) {
+      drawable?.destroy?.();
+    }
+    this.chestDrawables = [];
     this.chestSprites = new Map();
+    this.chestSparkles = new Map();
 
     for (const chest of this.chests || []) {
       const key = chest.opened ? "object_chest_open" : "object_chest_closed";
+      const depth = depthForRow(chest.y, DEPTH_PROP + 1);
       const sprite = this.add
         .image(
           this.offsetX + chest.x * RENDERED_TILE + RENDERED_TILE / 2,
@@ -1179,9 +1314,27 @@ export class TownScene extends Phaser.Scene {
           key,
         )
         .setScale(SCALE)
-        .setDepth(9);
-      this.chestLayer.add(sprite);
+        .setDepth(depth);
+      this.chestDrawables.push(sprite);
       this.chestSprites.set(chest.id, sprite);
+      if (!chest.opened && this.textures.exists("object_chest_sparkle")) {
+        const sparkle = this.add
+          .image(sprite.x + 8, sprite.y - 10, "object_chest_sparkle")
+          .setScale(SCALE)
+          .setDepth(depth + 1)
+          .setAlpha(0.9);
+        this.tweens.add({
+          targets: sparkle,
+          alpha: 0.25,
+          y: sparkle.y - 2,
+          duration: 900,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.InOut",
+        });
+        this.chestDrawables.push(sparkle);
+        this.chestSparkles.set(chest.id, sparkle);
+      }
     }
   }
 
@@ -1191,6 +1344,7 @@ export class TownScene extends Phaser.Scene {
     chest.opened = true;
     this.syncChestTiles();
     this.chestSprites?.get(chestId)?.setTexture("object_chest_open");
+    this.chestSparkles?.get(chestId)?.destroy();
   }
 
   animateChestOpen(chestId) {
@@ -1262,78 +1416,293 @@ export class TownScene extends Phaser.Scene {
     }
     this.hideInteractPrompt();
     this.hideSearchPrompt();
+    this.renderSecretHints();
+  }
+
+  drawFloorTrim(x, y) {
+    const tile = this.tiles[y][x];
+    if (tile !== T_FLOOR && tile !== T_RUG) return;
+    const above = y > 0 ? this.tiles[y - 1][x] : null;
+    const left = x > 0 ? this.tiles[y][x - 1] : null;
+    const right = x < this.roomW - 1 ? this.tiles[y][x + 1] : null;
+    const tileX = this.offsetX + x * RENDERED_TILE;
+    const tileY = this.offsetY + y * RENDERED_TILE;
+    const depth = depthForRow(y, DEPTH_TRIM);
+
+    if (above === T_WALL || above === T_SECRET_WALL) {
+      this.addOverlayDrawable(
+        this.add
+          .rectangle(
+            tileX + RENDERED_TILE / 2,
+            tileY + 2,
+            RENDERED_TILE - 4,
+            3,
+            0x7f5a2c,
+            0.5,
+          )
+          .setDepth(depth),
+      );
+    }
+    if (left === T_WALL || left === T_SECRET_WALL) {
+      this.addOverlayDrawable(
+        this.add
+          .rectangle(
+            tileX + 2,
+            tileY + RENDERED_TILE / 2,
+            3,
+            RENDERED_TILE - 4,
+            0x58351c,
+            0.35,
+          )
+          .setDepth(depth),
+      );
+    }
+    if (right === T_WALL || right === T_SECRET_WALL) {
+      this.addOverlayDrawable(
+        this.add
+          .rectangle(
+            tileX + RENDERED_TILE - 2,
+            tileY + RENDERED_TILE / 2,
+            3,
+            RENDERED_TILE - 4,
+            0x58351c,
+            0.35,
+          )
+          .setDepth(depth),
+      );
+    }
+  }
+
+  drawWindowDecor() {
+    for (const anchor of this.windowAnchors || []) {
+      const tileX = this.offsetX + anchor.x * RENDERED_TILE;
+      const tileY = this.offsetY + anchor.y * RENDERED_TILE;
+      const baseDepth = depthForRow(anchor.y, DEPTH_PROP);
+      const textureKey = "tile_window";
+      if (this.textures.exists(textureKey)) {
+        this.addOverlayDrawable(
+          this.add
+            .image(tileX, tileY, textureKey)
+            .setOrigin(0)
+            .setScale(SCALE)
+            .setDepth(baseDepth),
+        );
+      }
+      for (let step = 1; step <= 2; step++) {
+        const projectionY = tileY + step * RENDERED_TILE - RENDERED_TILE / 3;
+        this.addOverlayDrawable(
+          this.add
+            .rectangle(
+              tileX + RENDERED_TILE / 2,
+              projectionY,
+              RENDERED_TILE + 8 - step * 2,
+              RENDERED_TILE - 6,
+              0xa9d7ff,
+              0.16 - step * 0.04,
+            )
+            .setDepth(depthForRow(anchor.y + step, DEPTH_LIGHT)),
+        );
+      }
+    }
+  }
+
+  collectLightAnchors() {
+    const anchors = [...(this.lightAnchors || [])];
+    for (let y = 0; y < this.roomH; y++) {
+      for (let x = 0; x < this.roomW; x++) {
+        const tile = this.tiles[y][x];
+        if (tile === T_FIREPLACE) anchors.push({ x, y, kind: "fireplace" });
+        if (tile === T_CANDLE) anchors.push({ x, y, kind: "candle" });
+      }
+    }
+    return anchors;
+  }
+
+  drawLightSources() {
+    for (const anchor of this.collectLightAnchors()) {
+      const tileX = this.offsetX + anchor.x * RENDERED_TILE;
+      const tileY = this.offsetY + anchor.y * RENDERED_TILE;
+      const centerX = tileX + RENDERED_TILE / 2;
+      const centerY = tileY + RENDERED_TILE / 2 + 2;
+      const isLantern = anchor.kind === "lantern";
+      if (isLantern && this.textures.exists("tile_lantern")) {
+        this.addOverlayDrawable(
+          this.add
+            .image(tileX, tileY, "tile_lantern")
+            .setOrigin(0)
+            .setScale(SCALE)
+            .setDepth(depthForRow(anchor.y, DEPTH_PROP + 1)),
+        );
+      }
+      this.addOverlayDrawable(
+        this.add
+          .ellipse(
+            centerX,
+            centerY + (isLantern ? 8 : 2),
+            isLantern ? RENDERED_TILE * 2.4 : RENDERED_TILE * 2.1,
+            isLantern ? RENDERED_TILE * 1.9 : RENDERED_TILE * 1.7,
+            0xffc978,
+            isLantern ? 0.18 : 0.22,
+          )
+          .setDepth(depthForRow(anchor.y + 1, DEPTH_LIGHT)),
+      );
+      this.addOverlayDrawable(
+        this.add
+          .ellipse(
+            centerX,
+            centerY + (isLantern ? 8 : 2),
+            isLantern ? RENDERED_TILE * 1.4 : RENDERED_TILE * 1.2,
+            isLantern ? RENDERED_TILE * 1.2 : RENDERED_TILE * 1.1,
+            0xffefb3,
+            isLantern ? 0.14 : 0.18,
+          )
+          .setDepth(depthForRow(anchor.y + 1, DEPTH_LIGHT + 1)),
+      );
+    }
+  }
+
+  renderSecretHints() {
+    this.clearDrawables("secretHintDrawables");
+    if (!Number.isFinite(this.playerX) || !Number.isFinite(this.playerY)) {
+      return;
+    }
+    for (const [dx, dy] of [
+      [0, 1],
+      [0, -1],
+      [1, 0],
+      [-1, 0],
+    ]) {
+      const x = this.playerX + dx;
+      const y = this.playerY + dy;
+      if (x < 0 || x >= this.roomW || y < 0 || y >= this.roomH) continue;
+      if (this.tiles[y][x] !== T_SECRET_WALL) continue;
+      const tileX = this.offsetX + x * RENDERED_TILE;
+      const tileY = this.offsetY + y * RENDERED_TILE;
+      if (this.textures.exists("tile_secret_hint")) {
+        this.secretHintDrawables.push(
+          this.add
+            .image(tileX, tileY, "tile_secret_hint")
+            .setOrigin(0)
+            .setScale(SCALE)
+            .setDepth(depthForRow(y, DEPTH_PROP + 2)),
+        );
+      } else {
+        this.secretHintDrawables.push(
+          this.add
+            .rectangle(
+              tileX + RENDERED_TILE / 2,
+              tileY + RENDERED_TILE / 2,
+              RENDERED_TILE - 8,
+              RENDERED_TILE - 8,
+              0xdab57a,
+              0.18,
+            )
+            .setDepth(depthForRow(y, DEPTH_PROP + 2)),
+        );
+      }
+    }
   }
 
   drawRoom() {
-    if (this.tileLayer) {
-      this.tileLayer.removeAll(true);
-    }
-    this.tileGraphics.clear();
+    this.clearDrawables("roomDrawables");
+    this.clearDrawables("roomOverlays");
     for (let y = 0; y < this.roomH; y++) {
       for (let x = 0; x < this.roomW; x++) {
         const tile = this.tiles[y][x];
         const tileX = this.offsetX + x * RENDERED_TILE;
         const tileY = this.offsetY + y * RENDERED_TILE;
-        const textureKey = tileTextureKey(tile, this.buildingType);
+        const textureKey = tileTextureKey(
+          tile,
+          this.buildingType,
+          x,
+          y,
+          this.spawn.interior_seed || 0,
+        );
+        const depth = tileDepth(tile, y);
         if (textureKey && this.textures.exists(textureKey)) {
-          const image = this.add
-            .image(tileX, tileY, textureKey)
-            .setOrigin(0)
-            .setScale(SCALE);
+          const image = this.addRoomDrawable(
+            this.add
+              .image(tileX, tileY, textureKey)
+              .setOrigin(0)
+              .setScale(SCALE)
+              .setDepth(depth),
+          );
           const tint = tintForTile(tile, this.interiorAppearance);
           if (tint) {
             image.setTint(tint);
           }
-          this.tileLayer.add(image);
         } else {
           const color = TILE_COLORS[tile] || 0x000000;
-          this.tileGraphics.fillStyle(color, 1);
-          this.tileGraphics.fillRect(
-            tileX,
-            tileY,
-            RENDERED_TILE,
-            RENDERED_TILE,
+          this.addRoomDrawable(
+            this.add
+              .rectangle(
+                tileX + RENDERED_TILE / 2,
+                tileY + RENDERED_TILE / 2,
+                RENDERED_TILE,
+                RENDERED_TILE,
+                color,
+                1,
+              )
+              .setDepth(depth),
           );
         }
+        this.drawFloorTrim(x, y);
 
         const overlay = fallbackOverlayForTile(tile);
         if (overlay?.kind === "stairs_up" || overlay?.kind === "stairs_down") {
-          this.tileGraphics.fillStyle(0xffffff, 0.85);
           const baseY = tileY + RENDERED_TILE - 6;
           for (let step = 0; step < 3; step++) {
             const width = 5 + step * 4;
-            const y = baseY - step * 5;
-            const x =
+            const stairY = baseY - step * 5;
+            const stairX =
               overlay.kind === "stairs_up"
                 ? tileX + 4
                 : tileX + RENDERED_TILE - width - 4;
-            this.tileGraphics.fillRect(x, y, width, 3);
+            this.addOverlayDrawable(
+              this.add
+                .rectangle(
+                  stairX + width / 2,
+                  stairY + 1.5,
+                  width,
+                  3,
+                  0xffffff,
+                  0.55,
+                )
+                .setDepth(depthForRow(y, DEPTH_PROP + 1)),
+            );
           }
         } else if (overlay?.kind === "locked_door") {
-          this.tileGraphics.fillStyle(0xffca28, 0.9);
-          this.tileGraphics.fillRect(
-            tileX + 5,
-            tileY + 3,
-            RENDERED_TILE - 10,
-            RENDERED_TILE - 6,
-          );
-          this.tileGraphics.fillStyle(0x5d4037, 0.9);
-          this.tileGraphics.fillCircle(
-            tileX + RENDERED_TILE - 7,
-            tileY + RENDERED_TILE / 2,
-            2,
+          this.addOverlayDrawable(
+            this.add
+              .rectangle(
+                tileX + RENDERED_TILE / 2,
+                tileY + RENDERED_TILE / 2,
+                RENDERED_TILE - 10,
+                RENDERED_TILE - 6,
+                0xffca28,
+                0.3,
+              )
+              .setDepth(depthForRow(y, DEPTH_PROP + 1)),
           );
         } else if (overlay) {
-          this.tileGraphics.fillStyle(overlay.color, overlay.alpha);
-          this.tileGraphics.fillRect(
-            tileX + overlay.inset,
-            tileY + overlay.inset,
-            RENDERED_TILE - overlay.inset * 2,
-            RENDERED_TILE - overlay.inset * 2,
+          this.addOverlayDrawable(
+            this.add
+              .rectangle(
+                tileX + RENDERED_TILE / 2,
+                tileY + RENDERED_TILE / 2,
+                RENDERED_TILE - overlay.inset * 2,
+                RENDERED_TILE - overlay.inset * 2,
+                overlay.color,
+                overlay.alpha,
+              )
+              .setDepth(depthForRow(y, DEPTH_PROP + 1)),
           );
         }
       }
     }
+    this.drawWindowDecor();
+    this.drawLightSources();
+    this.renderSecretHints();
   }
 }
 

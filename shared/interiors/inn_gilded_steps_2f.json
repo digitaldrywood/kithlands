@@ -29,6 +29,13 @@
         { "role": "flavor", "x": 4, "y": 5 },
         { "role": "guard", "x": 12, "y": 5 }
       ],
+      "window_anchors": [
+        { "x": 4, "y": 0, "side": "north" },
+        { "x": 13, "y": 0, "side": "north" }
+      ],
+      "light_anchors": [
+        { "x": 14, "y": 1, "kind": "lantern" }
+      ],
       "chest_anchors": []
     },
     {
@@ -52,6 +59,13 @@
       ],
       "npc_anchors": [
         { "role": "gossip", "x": 11, "y": 4 }
+      ],
+      "window_anchors": [
+        { "x": 4, "y": 0, "side": "north" },
+        { "x": 12, "y": 0, "side": "north" }
+      ],
+      "light_anchors": [
+        { "x": 9, "y": 1, "kind": "lantern" }
       ],
       "chest_anchors": [
         { "id": "gilded_guest_chest", "x": 14, "y": 2 }
