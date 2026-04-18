@@ -37,10 +37,7 @@ export class TargetCursor {
     const x = entry?.x ?? entry?.sprite?.x ?? 0;
     const y = entry?.y ?? entry?.sprite?.y ?? 0;
     const fullWidth =
-      entry?.width ??
-      entry?.sprite?.displayWidth ??
-      entry?.sprite?.width ??
-      48;
+      entry?.width ?? entry?.sprite?.displayWidth ?? entry?.sprite?.width ?? 48;
     const direction = side === "right" ? 1 : -1;
     this.baseX = x + direction * (fullWidth / 2 + offsetX);
 

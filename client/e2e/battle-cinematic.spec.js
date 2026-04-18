@@ -106,9 +106,8 @@ test.describe("battle cinematic proof — issue #211", () => {
     await page.waitForTimeout(1400);
     const timings = await page.evaluate(async () => {
       const startedAt = performance.now();
-      const beat = await window.__kithlandsTest.playBattleVisibilityDemo(
-        "cinematic",
-      );
+      const beat =
+        await window.__kithlandsTest.playBattleVisibilityDemo("cinematic");
       return {
         ...beat,
         elapsed: performance.now() - startedAt,

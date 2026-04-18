@@ -2022,7 +2022,11 @@ export class BattleScene extends Phaser.Scene {
             tracerColor: ACTION_TRACER_COLORS.partyToEnemy,
             targetColor: ACTION_RETICLE_COLORS.enemyTarget,
           });
-          await this.showActionTitle(pe, this.actionTitleFor(action, line), "#ffcc66");
+          await this.showActionTitle(
+            pe,
+            this.actionTitleFor(action, line),
+            "#ffcc66",
+          );
           await this.wait(ACTION_BEAT_MS.preImpact);
           const targetKey = `enemy_${targetId}`;
           await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch, dmgType, {
@@ -2160,7 +2164,8 @@ export class BattleScene extends Phaser.Scene {
               });
             }
           }
-          if (t < targets.length - 1) await this.wait(ACTION_BEAT_MS.multiTargetGap);
+          if (t < targets.length - 1)
+            await this.wait(ACTION_BEAT_MS.multiTargetGap);
         }
         await this.wait(ACTION_BEAT_MS.postDamage);
         await this.wait(ACTION_BEAT_MS.interAction);
@@ -2371,7 +2376,10 @@ export class BattleScene extends Phaser.Scene {
       tracerColor: ACTION_TRACER_COLORS.partyToEnemy,
       targetColor: ACTION_RETICLE_COLORS.enemyTarget,
     });
-    this.revealLine(`${actorEntry.name} attacks ${targetEntry.name}!`, "#ff8844");
+    this.revealLine(
+      `${actorEntry.name} attacks ${targetEntry.name}!`,
+      "#ff8844",
+    );
     await this.showActionTitle(actorEntry, "SLASH", "#ffcc66");
     const afterTitle = now();
     await this.lungePartySprite(actorEntry, targetEntry);
@@ -2424,7 +2432,10 @@ export class BattleScene extends Phaser.Scene {
       tracerColor: ACTION_TRACER_COLORS.partyToEnemy,
       targetColor: ACTION_RETICLE_COLORS.enemyTarget,
     });
-    this.revealLine(`${actorEntry.name} attacks ${targetEntry.name}!`, "#ff8844");
+    this.revealLine(
+      `${actorEntry.name} attacks ${targetEntry.name}!`,
+      "#ff8844",
+    );
     void this.showActionTitle(actorEntry, "SLASH", "#ffcc66");
     await this.lungePartySprite(actorEntry, targetEntry);
     await this.wait(120);
@@ -2440,7 +2451,10 @@ export class BattleScene extends Phaser.Scene {
         playSFX("sfx_miss");
       } else if (opts.crit) {
         playSFX("sfx_crit");
-        this.cameras.main.shake(this.scaledMs(ACTION_BEAT_MS.critShake), 0.0045);
+        this.cameras.main.shake(
+          this.scaledMs(ACTION_BEAT_MS.critShake),
+          0.0045,
+        );
       }
       if (isParty && !opts.missed) {
         this.spawnPartyImpactBurst(x, y);
