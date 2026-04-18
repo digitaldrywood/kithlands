@@ -921,7 +921,11 @@ export class BattleScene extends Phaser.Scene {
 
   findEnemySpriteForAction(action, fallbackName = "") {
     if (action?.actor_id != null && this.enemySprites[action.actor_id]) {
-      return this.enemySprites[action.actor_id];
+      const entry = this.enemySprites[action.actor_id];
+      if (entry?.dead || entry?.dying) {
+        return null;
+      }
+      return entry;
     }
     if (!fallbackName) return null;
     return (
@@ -930,6 +934,14 @@ export class BattleScene extends Phaser.Scene {
           entry && !entry.dead && !entry.dying && entry.name === fallbackName,
       ) || null
     );
+  }
+
+  isDefeatedEnemyActor(action) {
+    if (action?.actor_id == null) {
+      return false;
+    }
+    const entry = this.enemySprites[action.actor_id];
+    return !!(entry && (entry.dead || entry.dying));
   }
 
   findPartySpriteForTarget(targetName, targetId, fallbackName = "") {
@@ -1973,6 +1985,9 @@ export class BattleScene extends Phaser.Scene {
         action.kind === "attack" ||
         (attackMatch && action.kind !== "spell")
       ) {
+        if (this.isDefeatedEnemyActor(action)) {
+          continue;
+        }
         const attacker = action.actor_name || (attackMatch && attackMatch[1]);
         const attackerEnemy = this.findEnemySpriteForAction(action, attacker);
         const targetId =
@@ -2061,6 +2076,9 @@ export class BattleScene extends Phaser.Scene {
         await this.wait(ACTION_BEAT_MS.postDamage);
         await this.wait(ACTION_BEAT_MS.interAction);
       } else if (action.kind === "counter" || counterMatch) {
+        if (this.isDefeatedEnemyActor(action)) {
+          continue;
+        }
         const actorName =
           action.actor_name || (counterMatch && counterMatch[1]);
         const targetId =
@@ -2099,6 +2117,9 @@ export class BattleScene extends Phaser.Scene {
         await this.wait(ACTION_BEAT_MS.postDamage);
         await this.wait(ACTION_BEAT_MS.interAction);
       } else if (action.kind === "spell" || spellMatch) {
+        if (this.isDefeatedEnemyActor(action)) {
+          continue;
+        }
         const caster = action.actor_name || (spellMatch && spellMatch[1]);
         const spellName = action.spell_name || (spellMatch && spellMatch[2]);
         const targetId =
@@ -2296,6 +2317,9 @@ export class BattleScene extends Phaser.Scene {
         }
         await this.wait(ACTION_BEAT_MS.briefStatus);
       } else if (action.kind === "confusion") {
+        if (this.isDefeatedEnemyActor(action)) {
+          continue;
+        }
         // Confused actor attacks randomly — target may be ally or enemy
         const targetId = action.target_id;
         const dmg = action.damage;
@@ -2355,6 +2379,9 @@ export class BattleScene extends Phaser.Scene {
         this.revealLine(line, "#cc88ff");
         await this.wait(ACTION_BEAT_MS.briefStatus);
       } else if (action.kind === "ability") {
+        if (this.isDefeatedEnemyActor(action)) {
+          continue;
+        }
         this.revealLine(line, "#ff88ff");
         const actorEntry =
           this.partySprites[action.actor_name] ||

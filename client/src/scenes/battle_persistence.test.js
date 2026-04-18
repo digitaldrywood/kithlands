@@ -215,6 +215,86 @@ describe("BattleScene repeat memory", () => {
   });
 });
 
+describe("BattleScene dead actor guard", () => {
+  it("skips animating an action from an enemy already marked dead", async () => {
+    const scene = new BattleScene();
+    scene.gameState = makeCombatState({
+      party: [
+        {
+          name: "Bruno",
+          class_id: "warrior",
+          hp: 30,
+          max_hp: 30,
+          mp: 0,
+          max_mp: 0,
+        },
+      ],
+    });
+    scene.enemySprites = {
+      7: {
+        id: 7,
+        name: "Slime",
+        dead: true,
+        dying: false,
+        x: 120,
+        y: 140,
+        sprite: {
+          setTint: vi.fn(),
+          clearTint: vi.fn(),
+        },
+        hpBar: {
+          currentHP: 0,
+          maxHP: 12,
+        },
+      },
+    };
+    scene.partySprites = {
+      Bruno: {
+        name: "Bruno",
+        x: 240,
+        y: 280,
+        arrow: {
+          setVisible: vi.fn(),
+        },
+        hpBar: {
+          currentHP: 30,
+          maxHP: 30,
+        },
+      },
+    };
+    scene.enemyNumbers = [];
+    scene.revealLine = vi.fn();
+    scene.showActionTitle = vi.fn().mockResolvedValue(undefined);
+    scene.lungePartySprite = vi.fn().mockResolvedValue(undefined);
+    scene.wait = vi.fn().mockResolvedValue(undefined);
+    scene.hitFx = vi.fn().mockResolvedValue(undefined);
+    scene.resetPartySprite = vi.fn().mockResolvedValue(undefined);
+    scene.animateHPBar = vi.fn();
+    scene.playPartyHitReaction = vi.fn();
+    scene.showActionFocus = vi.fn();
+
+    await scene.animateCombatLog(
+      ["Slime attacks Bruno[0] for 4 damage"],
+      [
+        {
+          kind: "attack",
+          actor_id: 7,
+          actor_name: "Slime",
+          target_id: 0,
+          target_name: "Bruno",
+          damage: 4,
+          damage_type: "physical",
+        },
+      ],
+    );
+
+    expect(scene.revealLine).not.toHaveBeenCalled();
+    expect(scene.hitFx).not.toHaveBeenCalled();
+    expect(scene.animateHPBar).not.toHaveBeenCalled();
+    expect(scene.playPartyHitReaction).not.toHaveBeenCalled();
+  });
+});
+
 describe("save-load persistence", () => {
   it("keeps authoritative last_round_actions when loading a save", async () => {
     const loadedGame = {
