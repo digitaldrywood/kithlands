@@ -11,6 +11,7 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
 	"github.com/digitaldrywood/kithlands/internal/generator"
+	"github.com/digitaldrywood/kithlands/internal/interiors"
 	"github.com/digitaldrywood/kithlands/internal/inventory"
 	"github.com/digitaldrywood/kithlands/internal/locality"
 	"github.com/digitaldrywood/kithlands/internal/magic"
@@ -23,6 +24,7 @@ type GameManager struct {
 	sharedDir         string
 	sidePool          []generator.SideQuestEntry
 	buildingQuestPool []generator.BuildingSideQuestEntry
+	interiorTemplates *interiors.Registry
 	games             map[string]*Game
 	mu                sync.RWMutex
 }
@@ -36,6 +38,11 @@ func NewGameManager(gd *gamedata.GameData, sharedDir string) *GameManager {
 		if pool, err := generator.LoadBuildingSideQuestPool(sharedDir); err == nil {
 			gm.buildingQuestPool = pool
 		}
+		registry, err := interiors.LoadDir(sharedDir)
+		if err != nil {
+			panic(fmt.Sprintf("loading interiors: %v", err))
+		}
+		gm.interiorTemplates = registry
 	}
 	return gm
 }
@@ -157,6 +164,7 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 	quests := generator.GenerateCampaign(loc, spawnID, rng, gm.sidePool)
 	walk := locality.Walk(loc, spawnID)
 	tileMap := locality.GenerateTileMap(loc, spawnID, walk)
+	gm.applyInteriorTemplates(tileMap)
 	buildingSideQuests := generator.GenerateBuildingSideQuests(loc, walk, rng, gm.buildingQuestPool)
 
 	game := &Game{
@@ -185,6 +193,16 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 	gm.mu.Unlock()
 
 	return game, nil
+}
+
+func (gm *GameManager) applyInteriorTemplates(tileMap *locality.TileMap) {
+	if gm == nil || gm.interiorTemplates == nil || tileMap == nil {
+		return
+	}
+	for i := range tileMap.Spawns {
+		spawn := &tileMap.Spawns[i]
+		spawn.Interior = gm.interiorTemplates.Pick(spawn.BuildingType, spawn.InteriorSeed)
+	}
 }
 
 func (gm *GameManager) GetGame(id string) *Game {

@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
+	"github.com/digitaldrywood/kithlands/internal/interiors"
 )
 
 func main() {
@@ -30,7 +31,12 @@ func run(sharedDir string) (err error) {
 	}()
 
 	gd := gamedata.Load(sharedDir)
+	registry, err := interiors.LoadDir(sharedDir)
+	if err != nil {
+		return err
+	}
 	fmt.Printf("loaded %d classes, %d spells, %d monsters, %d formations\n",
 		len(gd.Classes), len(gd.Spells.Spells), len(gd.Monsters), len(gd.Formations))
+	fmt.Printf("loaded %d interior templates\n", len(registry.Templates))
 	return nil
 }

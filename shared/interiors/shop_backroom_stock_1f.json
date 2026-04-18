@@ -1,0 +1,34 @@
+{
+  "id": "shop_backroom_stock_1f",
+  "building_type": "shop",
+  "floors": [
+    {
+      "floor_id": 0,
+      "width": 18,
+      "height": 12,
+      "rows": [
+        "WWWWWWWWWWWWWWWWWW",
+        "W.O...........O..W",
+        "W.XXXX...O..XXXX.W",
+        "W................W",
+        "W.CCCCCCCCCCCC...W",
+        "W................W",
+        "W..O......M......W",
+        "W..O......H......W",
+        "W..O......M...X..W",
+        "W..O......H...X..W",
+        "W................W",
+        "WWWWWWWWDWWWWWWWWW"
+      ],
+      "entrance": { "x": 8, "y": 11, "from": "overworld" },
+      "npc_anchors": [
+        { "role": "shopkeeper", "x": 8, "y": 3 },
+        { "role": "merchant_wandering", "x": 10, "y": 8 },
+        { "role": "guard", "x": 3, "y": 8 }
+      ],
+      "chest_anchors": [
+        { "id": "stockroom_cache", "x": 14, "y": 9 }
+      ]
+    }
+  ]
+}

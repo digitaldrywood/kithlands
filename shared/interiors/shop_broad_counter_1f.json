@@ -1,0 +1,32 @@
+{
+  "id": "shop_broad_counter_1f",
+  "building_type": "shop",
+  "floors": [
+    {
+      "floor_id": 0,
+      "width": 16,
+      "height": 12,
+      "rows": [
+        "WWWWWWWWWWWWWWWW",
+        "W....O....O....W",
+        "W.XXXX......XX.W",
+        "W..............W",
+        "W.CCCCCCCCCCCC.W",
+        "W..............W",
+        "W..M...H...M...W",
+        "W....H..H......W",
+        "W..............W",
+        "W..O.......O...W",
+        "W.......R......W",
+        "WWWWWWWDWWWWWWWW"
+      ],
+      "entrance": { "x": 7, "y": 11, "from": "overworld" },
+      "npc_anchors": [
+        { "role": "shopkeeper", "x": 8, "y": 3 },
+        { "role": "merchant_wandering", "x": 4, "y": 6 },
+        { "role": "flavor", "x": 11, "y": 7 }
+      ],
+      "chest_anchors": []
+    }
+  ]
+}
