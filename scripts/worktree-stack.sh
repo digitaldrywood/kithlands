@@ -212,7 +212,11 @@ start_server() {
 
 start_client() {
   echo "Starting Phaser client on ${client_url}..."
-  spawn_detached "$repo_root/client" "$client_log" env VITE_PORT="$VITE_PORT" API_PORT="$PORT" npx vite --host 0.0.0.0 --port "$VITE_PORT"
+  # Clear stale Vite dep-bundle cache so every `make play` sees the current
+  # source. Without this, Vite reuses client/node_modules/.vite/deps across
+  # restarts and can serve pre-bundled modules built from older commits.
+  rm -rf "$repo_root/client/node_modules/.vite" "$repo_root/client/dist"
+  spawn_detached "$repo_root/client" "$client_log" env VITE_PORT="$VITE_PORT" API_PORT="$PORT" npx vite --host 0.0.0.0 --port "$VITE_PORT" --force
 
   wait_for_listener "$VITE_PORT" "client"
   wait_for_http "$client_url" "client"
