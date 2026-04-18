@@ -68,33 +68,41 @@ async function expandToSixMemberParty(page) {
 }
 
 async function addProofOverlay(page, layout) {
-  await page.evaluate(({ labelText, nextLayout }) => {
-    const existing = document.getElementById("party-menu-class-spacing-proof");
-    if (existing) existing.remove();
+  await page.evaluate(
+    ({ labelText, nextLayout }) => {
+      const existing = document.getElementById(
+        "party-menu-class-spacing-proof",
+      );
+      if (existing) existing.remove();
 
-    const panel = document.createElement("div");
-    panel.id = "party-menu-class-spacing-proof";
-    panel.style.position = "fixed";
-    panel.style.top = "8px";
-    panel.style.left = "8px";
-    panel.style.zIndex = "9999";
-    panel.style.background = "rgba(15, 23, 42, 0.92)";
-    panel.style.color = "#e2e8f0";
-    panel.style.padding = "10px 12px";
-    panel.style.border = "1px solid rgba(148, 163, 184, 0.7)";
-    panel.style.borderRadius = "8px";
-    panel.style.fontFamily = "monospace";
-    panel.style.fontSize = "12px";
-    panel.style.whiteSpace = "pre";
-    panel.textContent = `${labelText}
+      const panel = document.createElement("div");
+      panel.id = "party-menu-class-spacing-proof";
+      panel.style.position = "fixed";
+      panel.style.top = "8px";
+      panel.style.left = "8px";
+      panel.style.zIndex = "9999";
+      panel.style.background = "rgba(15, 23, 42, 0.92)";
+      panel.style.color = "#e2e8f0";
+      panel.style.padding = "10px 12px";
+      panel.style.border = "1px solid rgba(148, 163, 184, 0.7)";
+      panel.style.borderRadius = "8px";
+      panel.style.fontFamily = "monospace";
+      panel.style.fontSize = "12px";
+      panel.style.whiteSpace = "pre";
+      panel.textContent = `${labelText}
 ${nextLayout.rowMetrics
   .map(
     (row) =>
       `slot ${row.slot + 1}: class->HP ${row.classToHpGap}px | HP->MP ${row.hpToMpGap}px | MP->XP ${row.mpToXpGap}px`,
   )
   .join("\n")}`;
-    document.body.appendChild(panel);
-  }, { labelText: `Issue #235 ${PROOF_STAGE}: class/bar spacing`, nextLayout: layout });
+      document.body.appendChild(panel);
+    },
+    {
+      labelText: `Issue #235 ${PROOF_STAGE}: class/bar spacing`,
+      nextLayout: layout,
+    },
+  );
 }
 
 test.describe("party menu class spacing", () => {

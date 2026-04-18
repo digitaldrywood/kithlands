@@ -411,9 +411,21 @@ function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
       valueWidth: 48,
     },
   );
-  hpBar.track.__kithlandsPartyMenu = { role: "stat_bar_track", slot, prefix: "HP" };
-  mpBar.track.__kithlandsPartyMenu = { role: "stat_bar_track", slot, prefix: "MP" };
-  xpBar.track.__kithlandsPartyMenu = { role: "stat_bar_track", slot, prefix: "XP" };
+  hpBar.track.__kithlandsPartyMenu = {
+    role: "stat_bar_track",
+    slot,
+    prefix: "HP",
+  };
+  mpBar.track.__kithlandsPartyMenu = {
+    role: "stat_bar_track",
+    slot,
+    prefix: "MP",
+  };
+  xpBar.track.__kithlandsPartyMenu = {
+    role: "stat_bar_track",
+    slot,
+    prefix: "XP",
+  };
   group.push(
     hpBar.prefixLabel,
     hpBar.track,
