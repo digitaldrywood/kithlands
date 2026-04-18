@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/combat"
@@ -55,6 +56,20 @@ func allMissed(hits []combat.Hit) bool {
 	return len(hits) > 0
 }
 
+type scheduledRoundActionKind string
+
+const (
+	scheduledRoundActionCombat scheduledRoundActionKind = "combat"
+	scheduledRoundActionSpell  scheduledRoundActionKind = "spell"
+)
+
+type scheduledRoundAction struct {
+	kind         scheduledRoundActionKind
+	initiative   int
+	combatAction combat.Action
+	memberAction MemberActionReq
+}
+
 func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 	stats := &g.gd.Stats.Combat
 
@@ -88,7 +103,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 	combatants := g.makeCombatants()
 
 	// Build party actions from per-member actions if provided
-	var actions []combat.Action
+	var roundActions []scheduledRoundAction
 
 	// Revives (Phoenix Down / raise) that fire during the per-member loop.
 	// We deliberately do NOT mutate combatants[targetIdx] — that would let a
@@ -110,6 +125,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 			if pc.CurrentHP <= 0 {
 				continue
 			}
+			initiative := combat.RollInitiative(pc.AGI, g.rng)
 
 			switch ma.Type {
 			case "item":
@@ -207,132 +223,20 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 				continue
 
 			case "spell":
-				// Silence check per Section 6.5: silenced casters cannot cast.
-				if g.party[ma.Slot].Status == character.StatusSilence {
-					g.logCombat(
-						fmt.Sprintf("%s is silenced and cannot cast!", g.party[ma.Slot].Name),
-						CombatActionEntry{Kind: "info", ActorID: pc.ID, ActorName: g.party[ma.Slot].Name})
+				spell := g.gd.SpellByID(ma.SpellID)
+				if spell == nil {
 					continue
 				}
-				// Resolve spell inline
-				spell := g.gd.SpellByID(ma.SpellID)
-				if spell != nil {
-					// Find caster character
-					caster := g.party[ma.Slot]
-					if _, ok := g.spellBooks[caster.Name]; !ok {
-						g.logCombat(
-							fmt.Sprintf("%s has no spells!", caster.Name),
-							CombatActionEntry{Kind: "info", ActorID: pc.ID, ActorName: caster.Name})
-						continue
-					}
-					if !magic.CanCast(caster, spell) {
-						g.logCombat(
-							fmt.Sprintf("%s doesn't have enough MP to cast %s (%d/%d)!",
-								caster.Name, spell.Name, caster.CurrentMP, spell.MPCost),
-							CombatActionEntry{Kind: "info", ActorID: pc.ID, ActorName: caster.Name})
-						continue
-					}
-					_ = magic.ConsumeMP(caster, spell)
-					{
-						switch spell.Effect {
-						case "damage":
-							for _, e := range g.enemies {
-								if (ma.TargetID > 0 && e.ID != ma.TargetID) && spell.Target == "single_enemy" {
-									continue
-								}
-								if e.CurrentHP <= 0 {
-									continue
-								}
-								target := &magic.SpellTarget{}
-								for _, m := range g.gd.Monsters {
-									if m.Name == e.Name {
-										target.Weaknesses = m.Weaknesses
-										target.Resistances = m.Resistances
-									}
-								}
-								dmg := magic.ResolveSpellDamage(spell, target, g.rng)
-								e.CurrentHP -= dmg
-								// Wake sleeping enemies on spell damage per Section 6.5.
-								if dmg > 0 && e.Status == character.StatusSleep {
-									combat.ProcessSleepOnDamage(e)
-								}
-								killed := e.CurrentHP <= 0
-								if killed {
-									e.CurrentHP = 0
-									g.logCombat(
-										fmt.Sprintf("%s casts %s on %s[%d] for %d damage - DEFEATED!", caster.Name, spell.Name, e.Name, e.ID, dmg),
-										CombatActionEntry{Kind: "spell", Element: spell.Element, DamageType: "magical",
-											ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, TargetName: e.Name, Damage: dmg, Killed: true, SpellName: spell.Name})
-								} else {
-									g.logCombat(
-										fmt.Sprintf("%s casts %s on %s[%d] for %d damage", caster.Name, spell.Name, e.Name, e.ID, dmg),
-										CombatActionEntry{Kind: "spell", Element: spell.Element, DamageType: "magical",
-											ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, TargetName: e.Name, Damage: dmg, SpellName: spell.Name})
-								}
-								if spell.Target == "single_enemy" {
-									break
-								}
-							}
-						case "heal":
-							amt := magic.ResolveHealSpell(spell, g.rng)
-							g.resolveHealSpell(combatants, pc, caster, spell, ma.TargetID, amt)
-						case "buff":
-							g.resolveBuffSpell(combatants, pc, caster, spell, ma.TargetID)
-						case "status":
-							// Status effect spells (sleep, mute, poison_powder, slow)
-							for _, e := range g.enemies {
-								if (ma.TargetID > 0 && e.ID != ma.TargetID) && spell.Target == "single_enemy" {
-									continue
-								}
-								if e.CurrentHP <= 0 {
-									continue
-								}
-								if magic.ResolveStatusSpell(spell, e.VIT, g.rng) {
-									combat.ApplyStatus(e, character.Status(spell.StatusEffect))
-									g.logCombat(
-										fmt.Sprintf("%s casts %s on %s[%d] - %s!", caster.Name, spell.Name, e.Name, e.ID, spell.StatusEffect),
-										CombatActionEntry{Kind: "status_effect", ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, SpellName: spell.Name})
-								} else {
-									g.logCombat(
-										fmt.Sprintf("%s casts %s on %s[%d] - resisted!", caster.Name, spell.Name, e.Name, e.ID),
-										CombatActionEntry{Kind: "status_effect", ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, SpellName: spell.Name})
-								}
-								if spell.Target == "single_enemy" {
-									break
-								}
-							}
-						case "cure_status":
-							// Cure status spells (cure_poison, dispel)
-							if spell.Target == "all_allies" {
-								for _, c := range g.party {
-									if !c.IsAlive() {
-										continue
-									}
-									if spell.CuresStatus == "all" {
-										if c.Status != character.StatusNone && c.Status != character.StatusDeath {
-											c.Status = character.StatusNone
-										}
-									} else if c.Status == character.Status(spell.CuresStatus) {
-										c.Status = character.StatusNone
-									}
-								}
-								g.logCombat(
-									fmt.Sprintf("%s casts %s - statuses cured!", caster.Name, spell.Name),
-									CombatActionEntry{Kind: "heal", ActorID: pc.ID, ActorName: caster.Name, SpellName: spell.Name})
-							} else {
-								// Single ally target
-								targetIdx := ma.TargetID
-								if targetIdx >= 0 && targetIdx < len(g.party) && g.party[targetIdx].IsAlive() {
-									magic.ApplySpellToCharacter(g.party[targetIdx], spell, 0)
-									g.logCombat(
-										fmt.Sprintf("%s casts %s on %s - cured!", caster.Name, spell.Name, g.party[targetIdx].Name),
-										CombatActionEntry{Kind: "heal", ActorID: pc.ID, ActorName: caster.Name, SpellName: spell.Name})
-								}
-							}
-						}
-					}
-					continue // don't add a combat.Action for spells, already resolved
-				}
+				roundActions = append(roundActions, scheduledRoundAction{
+					kind:       scheduledRoundActionSpell,
+					initiative: initiative,
+					combatAction: combat.Action{
+						ActorID:    pc.ID,
+						Initiative: initiative,
+					},
+					memberAction: ma,
+				})
+				continue
 
 			case "ability":
 				// Dispatch a class ability through combat.ResolveTurn so it
@@ -358,11 +262,27 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 				if target != nil {
 					targetID = target.ID
 				}
-				actions = append(actions, combat.Action{
-					ActorID:   pc.ID,
-					Kind:      combat.ActionAbility,
-					TargetID:  targetID,
-					AbilityID: ma.AbilityID,
+				roundActions = append(roundActions, scheduledRoundAction{
+					kind:       scheduledRoundActionCombat,
+					initiative: initiative,
+					combatAction: combat.Action{
+						ActorID:    pc.ID,
+						Kind:       combat.ActionAbility,
+						TargetID:   targetID,
+						AbilityID:  ma.AbilityID,
+						Initiative: initiative,
+					},
+				})
+
+			case "defend":
+				roundActions = append(roundActions, scheduledRoundAction{
+					kind:       scheduledRoundActionCombat,
+					initiative: initiative,
+					combatAction: combat.Action{
+						ActorID:    pc.ID,
+						Kind:       combat.ActionDefend,
+						Initiative: initiative,
+					},
 				})
 
 			default:
@@ -385,7 +305,16 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 					}
 				}
 				if target != nil {
-					actions = append(actions, combat.Action{ActorID: pc.ID, Kind: combat.ActionAttack, TargetID: target.ID})
+					roundActions = append(roundActions, scheduledRoundAction{
+						kind:       scheduledRoundActionCombat,
+						initiative: initiative,
+						combatAction: combat.Action{
+							ActorID:    pc.ID,
+							Kind:       combat.ActionAttack,
+							TargetID:   target.ID,
+							Initiative: initiative,
+						},
+					})
 				}
 			}
 		}
@@ -413,7 +342,17 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 				}
 			}
 			if target != nil {
-				actions = append(actions, combat.Action{ActorID: pc.ID, Kind: combat.ActionAttack, TargetID: target.ID})
+				initiative := combat.RollInitiative(pc.AGI, g.rng)
+				roundActions = append(roundActions, scheduledRoundAction{
+					kind:       scheduledRoundActionCombat,
+					initiative: initiative,
+					combatAction: combat.Action{
+						ActorID:    pc.ID,
+						Kind:       combat.ActionAttack,
+						TargetID:   target.ID,
+						Initiative: initiative,
+					},
+				})
 			}
 		}
 	}
@@ -422,7 +361,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 	// actions the client may have submitted for round 1. The UI auto-sends
 	// a "wait" action in this case, but drop stragglers server-side.
 	if g.combatRound == 0 && g.encounterStart == combat.EncounterStartAmbush {
-		actions = actions[:0]
+		roundActions = roundActions[:0]
 	}
 
 	// Preemptive round: enemies take zero actions on round 1.
@@ -436,7 +375,17 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 			}
 			target := combat.SelectEnemyTarget(combatants, g.rng)
 			if target != nil {
-				actions = append(actions, combat.Action{ActorID: e.ID, Kind: combat.ActionAttack, TargetID: target.ID})
+				initiative := combat.RollInitiative(e.AGI, g.rng)
+				roundActions = append(roundActions, scheduledRoundAction{
+					kind:       scheduledRoundActionCombat,
+					initiative: initiative,
+					combatAction: combat.Action{
+						ActorID:    e.ID,
+						Kind:       combat.ActionAttack,
+						TargetID:   target.ID,
+						Initiative: initiative,
+					},
+				})
 			}
 		}
 	}
@@ -450,119 +399,43 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 		}
 	}
 
-	results := combat.ResolveTurn(combatants, g.enemies, actions, stats, g.rng)
+	sort.SliceStable(roundActions, func(i, j int) bool {
+		return roundActions[i].initiative > roundActions[j].initiative
+	})
+	for start := 0; start < len(roundActions); {
+		end := start + 1
+		for end < len(roundActions) && roundActions[end].initiative == roundActions[start].initiative {
+			end++
+		}
+		if end-start > 1 {
+			g.rng.Shuffle(end-start, func(i, j int) {
+				roundActions[start+i], roundActions[start+j] = roundActions[start+j], roundActions[start+i]
+			})
+		}
+		start = end
+	}
+
+	for _, r := range combat.ResolveRoundStart(combatants, g.enemies) {
+		g.logResolvedCombatAction(combatants, abilityByActor, r)
+	}
+	for _, action := range roundActions {
+		if combat.CheckVictory(g.enemies) || combat.CheckDefeat(combatants) {
+			break
+		}
+		switch action.kind {
+		case scheduledRoundActionSpell:
+			g.resolveScheduledSpell(combatants, action.memberAction)
+		default:
+			for _, resolved := range combat.ResolveAction(combatants, g.enemies, action.combatAction, stats, g.rng) {
+				g.logResolvedCombatAction(combatants, abilityByActor, resolved)
+			}
+		}
+	}
+	combat.TickBuffs(combatants, g.enemies)
 	if len(req.Actions) > 0 {
 		g.lastRoundActions = cloneMemberActionReqs(req.Actions)
 	}
 	g.combatRound++
-	for _, r := range results {
-		switch r.Kind {
-		case combat.ActionPoisonTick:
-			status := ""
-			if r.Killed {
-				status = " - DEFEATED!"
-			}
-			g.logCombat(
-				fmt.Sprintf("%s takes %d poison damage%s", r.ActorName, r.TotalDmg, status),
-				CombatActionEntry{Kind: "poison_tick",
-					ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Damage: r.TotalDmg, Killed: r.Killed})
-		case combat.ActionConfusion:
-			targetName := g.findCombatantName(combatants, r.TargetID)
-			if targetName == "?" {
-				// Target might be an enemy
-				for _, e := range g.enemies {
-					if e.ID == r.TargetID {
-						targetName = e.Name
-						break
-					}
-				}
-			}
-			status := ""
-			if r.Killed {
-				status = " - DEFEATED!"
-			}
-			g.logCombat(
-				fmt.Sprintf("%s is confused and attacks %s[%d] for %d damage%s",
-					r.ActorName, targetName, r.TargetID, r.TotalDmg, status),
-				CombatActionEntry{Kind: "confusion", DamageType: "physical",
-					ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Damage: r.TotalDmg, Killed: r.Killed,
-					Initiative: r.Initiative})
-		case combat.ActionCounter:
-			if r.TotalDmg > 0 {
-				targetName := g.findCombatantName(combatants, r.TargetID)
-				status := ""
-				if r.Killed {
-					status = " - DEFEATED!"
-				}
-				g.logCombat(
-					fmt.Sprintf("%s counter-attacks %s[%d] for %d damage%s",
-						r.ActorName, targetName, r.TargetID, r.TotalDmg, status),
-					CombatActionEntry{Kind: "counter", DamageType: "physical",
-						ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, TargetName: targetName,
-						Damage: r.TotalDmg, Killed: r.Killed, Crit: anyCrit(r.Hits), Missed: allMissed(r.Hits), Hits: toHitEntries(r.Hits),
-						Initiative: r.Initiative})
-			}
-		case combat.ActionAbility:
-			abilityID := abilityByActor[r.ActorID]
-			targetName := g.findCombatantName(combatants, r.TargetID)
-			switch abilityID {
-			case "focus":
-				g.logCombat(
-					fmt.Sprintf("%s focuses - next attacks hit harder!", r.ActorName),
-					CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, Initiative: r.Initiative})
-			case "counter":
-				g.logCombat(
-					fmt.Sprintf("%s braces to counter!", r.ActorName),
-					CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, Initiative: r.Initiative})
-			case "inspire":
-				g.logCombat(
-					fmt.Sprintf("%s inspires the party!", r.ActorName),
-					CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, Initiative: r.Initiative})
-			case "backstab":
-				status := ""
-				if r.Killed {
-					status = " - DEFEATED!"
-				}
-				g.logCombat(
-					fmt.Sprintf("%s backstabs %s for %d damage%s",
-						r.ActorName, targetName, r.TotalDmg, status),
-					CombatActionEntry{Kind: "ability", DamageType: "physical",
-						ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, TargetName: targetName,
-						Damage: r.TotalDmg, Killed: r.Killed, Crit: anyCrit(r.Hits), Hits: toHitEntries(r.Hits),
-						Initiative: r.Initiative})
-			case "steal":
-				if itemID, itemName, ok := g.tryStealFrom(r.TargetID); ok {
-					g.inv.Consumables[itemID]++
-					g.logCombat(
-						fmt.Sprintf("%s steals %s from %s!", r.ActorName, itemName, targetName),
-						CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Initiative: r.Initiative})
-				} else {
-					g.logCombat(
-						fmt.Sprintf("%s tries to steal from %s but finds nothing.", r.ActorName, targetName),
-						CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Initiative: r.Initiative})
-				}
-			default:
-				g.logCombat(
-					fmt.Sprintf("%s uses an ability.", r.ActorName),
-					CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, Initiative: r.Initiative})
-			}
-		default:
-			if r.TotalDmg > 0 {
-				targetName := g.findCombatantName(combatants, r.TargetID)
-				status := ""
-				if r.Killed {
-					status = " - DEFEATED!"
-				}
-				g.logCombat(
-					fmt.Sprintf("%s attacks %s[%d] for %d damage%s",
-						r.ActorName, targetName, r.TargetID, r.TotalDmg, status),
-					CombatActionEntry{Kind: "attack", DamageType: "physical",
-						ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, TargetName: targetName,
-						Damage: r.TotalDmg, Killed: r.Killed, Crit: anyCrit(r.Hits), Missed: allMissed(r.Hits), Hits: toHitEntries(r.Hits),
-						Initiative: r.Initiative})
-			}
-		}
-	}
 
 	// Sync HP back
 	for i, pc := range combatants {
@@ -681,6 +554,259 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 
 	state := g.stateUnlocked()
 	return &state, nil
+}
+
+func (g *Game) logResolvedCombatAction(
+	combatants []*combat.Combatant,
+	abilityByActor map[int]string,
+	r combat.ResolvedAction,
+) {
+	switch r.Kind {
+	case combat.ActionPoisonTick:
+		status := ""
+		if r.Killed {
+			status = " - DEFEATED!"
+		}
+		g.logCombat(
+			fmt.Sprintf("%s takes %d poison damage%s", r.ActorName, r.TotalDmg, status),
+			CombatActionEntry{Kind: "poison_tick",
+				ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Damage: r.TotalDmg, Killed: r.Killed})
+	case combat.ActionConfusion:
+		targetName := g.findCombatantName(combatants, r.TargetID)
+		if targetName == "?" {
+			for _, e := range g.enemies {
+				if e.ID == r.TargetID {
+					targetName = e.Name
+					break
+				}
+			}
+		}
+		status := ""
+		if r.Killed {
+			status = " - DEFEATED!"
+		}
+		g.logCombat(
+			fmt.Sprintf("%s is confused and attacks %s[%d] for %d damage%s",
+				r.ActorName, targetName, r.TargetID, r.TotalDmg, status),
+			CombatActionEntry{Kind: "confusion", DamageType: "physical",
+				ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Damage: r.TotalDmg, Killed: r.Killed,
+				Initiative: r.Initiative})
+	case combat.ActionCounter:
+		if r.TotalDmg > 0 {
+			targetName := g.findCombatantName(combatants, r.TargetID)
+			status := ""
+			if r.Killed {
+				status = " - DEFEATED!"
+			}
+			g.logCombat(
+				fmt.Sprintf("%s counter-attacks %s[%d] for %d damage%s",
+					r.ActorName, targetName, r.TargetID, r.TotalDmg, status),
+				CombatActionEntry{Kind: "counter", DamageType: "physical",
+					ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, TargetName: targetName,
+					Damage: r.TotalDmg, Killed: r.Killed, Crit: anyCrit(r.Hits), Missed: allMissed(r.Hits), Hits: toHitEntries(r.Hits),
+					Initiative: r.Initiative})
+		}
+	case combat.ActionAbility:
+		abilityID := abilityByActor[r.ActorID]
+		targetName := g.findCombatantName(combatants, r.TargetID)
+		switch abilityID {
+		case "focus":
+			g.logCombat(
+				fmt.Sprintf("%s focuses - next attacks hit harder!", r.ActorName),
+				CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, Initiative: r.Initiative})
+		case "counter":
+			g.logCombat(
+				fmt.Sprintf("%s braces to counter!", r.ActorName),
+				CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, Initiative: r.Initiative})
+		case "inspire":
+			g.logCombat(
+				fmt.Sprintf("%s inspires the party!", r.ActorName),
+				CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, Initiative: r.Initiative})
+		case "backstab":
+			status := ""
+			if r.Killed {
+				status = " - DEFEATED!"
+			}
+			g.logCombat(
+				fmt.Sprintf("%s backstabs %s for %d damage%s",
+					r.ActorName, targetName, r.TotalDmg, status),
+				CombatActionEntry{Kind: "ability", DamageType: "physical",
+					ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, TargetName: targetName,
+					Damage: r.TotalDmg, Killed: r.Killed, Crit: anyCrit(r.Hits), Hits: toHitEntries(r.Hits),
+					Initiative: r.Initiative})
+		case "steal":
+			if itemID, itemName, ok := g.tryStealFrom(r.TargetID); ok {
+				g.inv.Consumables[itemID]++
+				g.logCombat(
+					fmt.Sprintf("%s steals %s from %s!", r.ActorName, itemName, targetName),
+					CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Initiative: r.Initiative})
+			} else {
+				g.logCombat(
+					fmt.Sprintf("%s tries to steal from %s but finds nothing.", r.ActorName, targetName),
+					CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Initiative: r.Initiative})
+			}
+		default:
+			g.logCombat(
+				fmt.Sprintf("%s uses an ability.", r.ActorName),
+				CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, Initiative: r.Initiative})
+		}
+	default:
+		if r.TotalDmg > 0 {
+			targetName := g.findCombatantName(combatants, r.TargetID)
+			status := ""
+			if r.Killed {
+				status = " - DEFEATED!"
+			}
+			g.logCombat(
+				fmt.Sprintf("%s attacks %s[%d] for %d damage%s",
+					r.ActorName, targetName, r.TargetID, r.TotalDmg, status),
+				CombatActionEntry{Kind: "attack", DamageType: "physical",
+					ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, TargetName: targetName,
+					Damage: r.TotalDmg, Killed: r.Killed, Crit: anyCrit(r.Hits), Missed: allMissed(r.Hits), Hits: toHitEntries(r.Hits),
+					Initiative: r.Initiative})
+		}
+	}
+}
+
+func (g *Game) resolveScheduledSpell(combatants []*combat.Combatant, ma MemberActionReq) {
+	if ma.Slot < 0 || ma.Slot >= len(combatants) {
+		return
+	}
+	pc := combatants[ma.Slot]
+	if pc == nil || pc.CurrentHP <= 0 {
+		return
+	}
+	if pc.Status == character.StatusSleep || pc.Status == character.StatusStone || pc.Status == character.StatusDeath {
+		return
+	}
+	caster := g.party[ma.Slot]
+	if caster.Status == character.StatusSilence {
+		g.logCombat(
+			fmt.Sprintf("%s is silenced and cannot cast!", caster.Name),
+			CombatActionEntry{Kind: "info", ActorID: pc.ID, ActorName: caster.Name})
+		return
+	}
+
+	spell := g.gd.SpellByID(ma.SpellID)
+	if spell == nil {
+		return
+	}
+	if _, ok := g.spellBooks[caster.Name]; !ok {
+		g.logCombat(
+			fmt.Sprintf("%s has no spells!", caster.Name),
+			CombatActionEntry{Kind: "info", ActorID: pc.ID, ActorName: caster.Name})
+		return
+	}
+	if !magic.CanCast(caster, spell) {
+		g.logCombat(
+			fmt.Sprintf("%s doesn't have enough MP to cast %s (%d/%d)!",
+				caster.Name, spell.Name, caster.CurrentMP, spell.MPCost),
+			CombatActionEntry{Kind: "info", ActorID: pc.ID, ActorName: caster.Name})
+		return
+	}
+	_ = magic.ConsumeMP(caster, spell)
+
+	switch spell.Effect {
+	case "damage":
+		for _, e := range g.enemies {
+			if (ma.TargetID > 0 && e.ID != ma.TargetID) && spell.Target == "single_enemy" {
+				continue
+			}
+			if e.CurrentHP <= 0 {
+				continue
+			}
+			target := &magic.SpellTarget{}
+			for _, m := range g.gd.Monsters {
+				if m.Name == e.Name {
+					target.Weaknesses = m.Weaknesses
+					target.Resistances = m.Resistances
+				}
+			}
+			dmg := magic.ResolveSpellDamage(spell, target, g.rng)
+			e.CurrentHP -= dmg
+			if dmg > 0 && e.Status == character.StatusSleep {
+				combat.ProcessSleepOnDamage(e)
+			}
+			killed := e.CurrentHP <= 0
+			if killed {
+				e.CurrentHP = 0
+				g.logCombat(
+					fmt.Sprintf("%s casts %s on %s[%d] for %d damage - DEFEATED!", caster.Name, spell.Name, e.Name, e.ID, dmg),
+					CombatActionEntry{Kind: "spell", Element: spell.Element, DamageType: "magical",
+						ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, TargetName: e.Name, Damage: dmg, Killed: true, SpellName: spell.Name})
+			} else {
+				g.logCombat(
+					fmt.Sprintf("%s casts %s on %s[%d] for %d damage", caster.Name, spell.Name, e.Name, e.ID, dmg),
+					CombatActionEntry{Kind: "spell", Element: spell.Element, DamageType: "magical",
+						ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, TargetName: e.Name, Damage: dmg, SpellName: spell.Name})
+			}
+			if spell.Target == "single_enemy" {
+				break
+			}
+		}
+	case "heal":
+		amt := magic.ResolveHealSpell(spell, g.rng)
+		g.resolveHealSpell(combatants, pc, caster, spell, ma.TargetID, amt)
+	case "buff":
+		g.resolveBuffSpell(combatants, pc, caster, spell, ma.TargetID)
+	case "status":
+		for _, e := range g.enemies {
+			if (ma.TargetID > 0 && e.ID != ma.TargetID) && spell.Target == "single_enemy" {
+				continue
+			}
+			if e.CurrentHP <= 0 {
+				continue
+			}
+			if magic.ResolveStatusSpell(spell, e.VIT, g.rng) {
+				combat.ApplyStatus(e, character.Status(spell.StatusEffect))
+				g.logCombat(
+					fmt.Sprintf("%s casts %s on %s[%d] - %s!", caster.Name, spell.Name, e.Name, e.ID, spell.StatusEffect),
+					CombatActionEntry{Kind: "status_effect", ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, SpellName: spell.Name})
+			} else {
+				g.logCombat(
+					fmt.Sprintf("%s casts %s on %s[%d] - resisted!", caster.Name, spell.Name, e.Name, e.ID),
+					CombatActionEntry{Kind: "status_effect", ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, SpellName: spell.Name})
+			}
+			if spell.Target == "single_enemy" {
+				break
+			}
+		}
+	case "cure_status":
+		if spell.Target == "all_allies" {
+			for i, c := range g.party {
+				if !c.IsAlive() {
+					continue
+				}
+				if spell.CuresStatus == "all" {
+					if c.Status != character.StatusNone && c.Status != character.StatusDeath {
+						c.Status = character.StatusNone
+						if i < len(combatants) && combatants[i] != nil {
+							combatants[i].Status = character.StatusNone
+						}
+					}
+				} else if c.Status == character.Status(spell.CuresStatus) {
+					c.Status = character.StatusNone
+					if i < len(combatants) && combatants[i] != nil {
+						combatants[i].Status = character.StatusNone
+					}
+				}
+			}
+			g.logCombat(
+				fmt.Sprintf("%s casts %s - statuses cured!", caster.Name, spell.Name),
+				CombatActionEntry{Kind: "heal", ActorID: pc.ID, ActorName: caster.Name, SpellName: spell.Name})
+			return
+		}
+		targetIdx := ma.TargetID
+		if targetIdx >= 0 && targetIdx < len(g.party) && g.party[targetIdx].IsAlive() {
+			magic.ApplySpellToCharacter(g.party[targetIdx], spell, 0)
+			if targetIdx < len(combatants) && combatants[targetIdx] != nil {
+				combatants[targetIdx].Status = g.party[targetIdx].Status
+			}
+			g.logCombat(
+				fmt.Sprintf("%s casts %s on %s - cured!", caster.Name, spell.Name, g.party[targetIdx].Name),
+				CombatActionEntry{Kind: "heal", ActorID: pc.ID, ActorName: caster.Name, SpellName: spell.Name})
+		}
+	}
 }
 
 func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { //nolint:unused
