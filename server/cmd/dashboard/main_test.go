@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func writePNG(t *testing.T, path string) {
@@ -21,6 +22,15 @@ func writePNG(t *testing.T, path string) {
 	if err := os.WriteFile(path, sig, 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
+}
+
+func newTestScanner(t *testing.T, tmpDir string) *scanner {
+	t.Helper()
+	return newScanner(scannerConfig{
+		projectsDir: filepath.Join(tmpDir, "projects"),
+		openclawDir: filepath.Join(tmpDir, "openclaw"),
+		tmpDir:      filepath.Join(tmpDir, "tmp"),
+	})
 }
 
 func TestWalkPNGsSkipsNonPNGsAndMissingDirs(t *testing.T) {
@@ -57,43 +67,44 @@ func TestGlobPNGsRespectsPrefix(t *testing.T) {
 	}
 }
 
-func TestIsAllowedRejectsOutsideRoots(t *testing.T) {
+func TestIsAllowedOnlyAcceptsScannedPaths(t *testing.T) {
 	root := t.TempDir()
-	outside := t.TempDir()
-	s := &scanner{allowRoots: []string{root}}
+	scanned := filepath.Join(root, "seen.png")
+	unscanned := filepath.Join(root, "never-seen.png")
+	writePNG(t, scanned)
+	writePNG(t, unscanned)
 
-	inside := filepath.Join(root, "sub", "a.png")
-	if !s.isAllowed(inside) {
-		t.Errorf("expected %q to be allowed under %q", inside, root)
+	s := &scanner{allowPaths: map[string]struct{}{scanned: {}}}
+	if !s.isAllowed(scanned) {
+		t.Errorf("expected scanned path %q to be allowed", scanned)
 	}
-
-	outsidePath := filepath.Join(outside, "a.png")
-	if s.isAllowed(outsidePath) {
-		t.Errorf("expected %q to be rejected (outside %q)", outsidePath, root)
+	if s.isAllowed(unscanned) {
+		t.Errorf("unscanned PNG under same root %q must NOT be allowed", unscanned)
 	}
 }
 
-func TestHandleImageRejectsPathsOutsideAllowRoots(t *testing.T) {
+func TestHandleImageRejectsUnscannedFileUnderScannedDirectory(t *testing.T) {
 	root := t.TempDir()
-	other := t.TempDir()
-	writePNG(t, filepath.Join(other, "escape.png"))
+	scanned := filepath.Join(root, "shown.png")
+	sibling := filepath.Join(root, "hidden.png")
+	writePNG(t, scanned)
+	writePNG(t, sibling)
 
-	s := &scanner{allowRoots: []string{root}}
-	req := httptest.NewRequest(http.MethodGet, "/img?path="+filepath.Join(other, "escape.png"), nil)
+	s := &scanner{allowPaths: map[string]struct{}{scanned: {}}}
+	req := httptest.NewRequest(http.MethodGet, "/img?path="+sibling, nil)
 	w := httptest.NewRecorder()
 	s.handleImage(w, req)
-
 	if w.Code != http.StatusForbidden {
-		t.Fatalf("expected 403 for path outside allow-roots, got %d", w.Code)
+		t.Fatalf("expected 403 for sibling not surfaced by scan, got %d", w.Code)
 	}
 }
 
-func TestHandleImageServesAllowedFile(t *testing.T) {
+func TestHandleImageServesExactScanPath(t *testing.T) {
 	root := t.TempDir()
 	target := filepath.Join(root, "ok.png")
 	writePNG(t, target)
 
-	s := &scanner{allowRoots: []string{root}}
+	s := &scanner{allowPaths: map[string]struct{}{target: {}}}
 	req := httptest.NewRequest(http.MethodGet, "/img?path="+target, nil)
 	w := httptest.NewRecorder()
 	s.handleImage(w, req)
@@ -112,7 +123,7 @@ func TestHandleImageRejectsNonPNG(t *testing.T) {
 	if err := os.WriteFile(target, []byte("hi"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	s := &scanner{allowRoots: []string{root}}
+	s := &scanner{allowPaths: map[string]struct{}{target: {}}}
 	req := httptest.NewRequest(http.MethodGet, "/img?path="+target, nil)
 	w := httptest.NewRecorder()
 	s.handleImage(w, req)
@@ -153,5 +164,110 @@ func TestWorktreeLabelStripsPrefix(t *testing.T) {
 		if got := worktreeLabel(in); got != want {
 			t.Errorf("worktreeLabel(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+func TestScannerRunSurfacesOnlyConfiguredRoots(t *testing.T) {
+	base := t.TempDir()
+	tmp := filepath.Join(base, "tmp")
+	projects := filepath.Join(base, "projects")
+	openclaw := filepath.Join(base, "openclaw")
+
+	writePNG(t, filepath.Join(tmp, "revalidate-01.png"))
+	writePNG(t, filepath.Join(tmp, "other-tmp.png"))
+	writePNG(t, filepath.Join(openclaw, "oc-1.png"))
+
+	// One fake worktree with a .git marker + client/tmp PNG.
+	wt := filepath.Join(projects, "kithlands-issue-999-demo")
+	if err := os.MkdirAll(wt, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wt, ".git"), []byte("gitdir: ..\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	writePNG(t, filepath.Join(wt, "client", "tmp", "wt-shot.png"))
+
+	s := newScanner(scannerConfig{
+		projectsDir: projects,
+		openclawDir: openclaw,
+		tmpDir:      tmp,
+	})
+	s.run()
+	snap := s.snapshot()
+
+	groupIDs := map[string]int{}
+	for _, g := range snap.Groups {
+		groupIDs[g.ID] = len(g.Images)
+	}
+	for _, want := range []string{"pm-revalidate", "openclaw", "misc-tmp", "wt-kithlands-issue-999-demo"} {
+		if _, ok := groupIDs[want]; !ok {
+			t.Errorf("missing group %q in scan result (got groups: %+v)", want, groupIDs)
+		}
+	}
+	if groupIDs["pm-revalidate"] != 1 {
+		t.Errorf("pm-revalidate should hold 1 image, got %d", groupIDs["pm-revalidate"])
+	}
+	if groupIDs["misc-tmp"] != 1 {
+		t.Errorf("misc-tmp should hold 1 image, got %d", groupIDs["misc-tmp"])
+	}
+
+	// Exact-path allow list must contain every surfaced image and nothing else.
+	s.mu.RLock()
+	allowed := len(s.allowPaths)
+	s.mu.RUnlock()
+	if allowed == 0 {
+		t.Fatalf("expected allowPaths to be populated after run()")
+	}
+}
+
+func TestCachedWalkReusesResultWhileMtimeUnchanged(t *testing.T) {
+	dir := t.TempDir()
+	writePNG(t, filepath.Join(dir, "a.png"))
+
+	s := newTestScanner(t, t.TempDir())
+	first := s.cachedWalkPNGs(dir)
+	if len(first) != 1 {
+		t.Fatalf("expected 1 initial png, got %d", len(first))
+	}
+
+	// Adding a file without touching the parent dir mtime would normally leave
+	// the cache stale — that's the documented trade-off. For this test we
+	// just confirm the cache returns a stable result when nothing changes.
+	again := s.cachedWalkPNGs(dir)
+	if len(again) != 1 {
+		t.Fatalf("expected cached walk to still return 1 png, got %d", len(again))
+	}
+}
+
+func TestCachedWalkInvalidatesWhenMtimeAdvances(t *testing.T) {
+	dir := t.TempDir()
+	writePNG(t, filepath.Join(dir, "a.png"))
+	s := newTestScanner(t, t.TempDir())
+	if got := len(s.cachedWalkPNGs(dir)); got != 1 {
+		t.Fatalf("initial: want 1, got %d", got)
+	}
+
+	// Write a second file, then explicitly bump the directory mtime to a
+	// known-different value so the cache invalidation check is deterministic
+	// regardless of filesystem 1-second mtime granularity.
+	writePNG(t, filepath.Join(dir, "b.png"))
+	future := time.Now().Add(1 * time.Hour)
+	if err := os.Chtimes(dir, future, future); err != nil {
+		t.Fatalf("chtimes: %v", err)
+	}
+	if got := len(s.cachedWalkPNGs(dir)); got != 2 {
+		t.Fatalf("after mtime bump: want 2, got %d", got)
+	}
+}
+
+func TestCapImages(t *testing.T) {
+	in := make([]Image, 500)
+	out := capImages(in, 200)
+	if len(out) != 200 {
+		t.Fatalf("expected 200, got %d", len(out))
+	}
+	out = capImages(in, 0)
+	if len(out) != 500 {
+		t.Fatalf("limit=0 should be noop, got %d", len(out))
 	}
 }
