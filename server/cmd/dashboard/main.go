@@ -247,13 +247,19 @@ func (s *scanner) run() {
 	allow := make(map[string]struct{}, 128)
 	addGroup := func(g Group) {
 		g.Images = capImages(g.Images, maxImagesPerGroup)
+		if len(g.Images) == 0 {
+			// Empty tabs are actively harmful: the UI would land the viewer
+			// on one and show "No screenshots yet" while populated tabs
+			// sit further down the strip.
+			return
+		}
 		for _, img := range g.Images {
 			allow[img.Path] = struct{}{}
 		}
 		groups = append(groups, g)
 	}
 
-	// PM revalidation — highest signal, first tab.
+	// PM revalidation — highest signal when it exists, first tab.
 	reval := globPNGs(s.tmpDir, "revalidate-")
 	sortByNewest(reval)
 	addGroup(Group{ID: "pm-revalidate", Label: "PM Revalidation", Kind: "pm", Images: reval})
