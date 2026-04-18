@@ -95,10 +95,7 @@ async function startWizardGame(page) {
   await page.locator('input[type="text"]').nth(1).fill("Mira");
   await page.locator('input[type="text"]').nth(2).fill("Cato");
   await page.locator('input[type="text"]').nth(3).fill("Nia");
-  await clickWizardText(page, "NEXT");
-
-  await waitForWizardText(page, "CONFIRM YOUR GAME");
-  await clickWizardText(page, "BEGIN ADVENTURE");
+  await clickWizardText(page, "CREATE GAME");
   await waitForScene(page, "World");
 }
 

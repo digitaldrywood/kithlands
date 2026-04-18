@@ -1,12 +1,23 @@
-import { newGame, getClasses, geocode, osmPreview } from "../api.js";
+import { newGame, geocode, osmPreview } from "../api.js";
 import {
   getLastWizard,
   setLastWizard,
   addPartyToHistory,
   addNPCsToHistory,
-  getPartyHistory,
-  getNPCHistory,
 } from "../systems/prefs.js";
+
+const DEFAULT_PEOPLE = [
+  { name: "Bob", relation: "friendly" },
+  { name: "Mrs Henderson", relation: "neutral" },
+  { name: "Mayor Grimes", relation: "rival" },
+];
+const DEFAULT_PLACES = ["From Map", "From Map", "From Map"];
+const DEFAULT_BIG_BUILDING = "Town Hall";
+const SPINNER_FRAMES = ["|", "/", "-", "\\"];
+
+function sortPOIsByImportance(pois = []) {
+  return [...pois].sort((a, b) => (b.importance || 0) - (a.importance || 0));
+}
 
 export class WizardScene extends Phaser.Scene {
   constructor() {
@@ -42,12 +53,129 @@ export class WizardScene extends Phaser.Scene {
     return pois.filter((p) => p.name).length >= 5;
   }
 
+  usesStreamlinedOSMFlow() {
+    return (
+      this.wizardData.use_osm && (this.wizardData.osm_preview || []).length > 0
+    );
+  }
+
+  selectTopPOISpawn() {
+    const topPOI = sortPOIsByImportance(this.wizardData.osm_preview).find(
+      (poi) => poi?.id,
+    );
+    this.wizardData.spawn_node_id = topPOI?.id || "";
+  }
+
+  ensureOSMDefaults() {
+    this.selectTopPOISpawn();
+    if (!this.wizardData.people || this.wizardData.people.length === 0) {
+      this.wizardData.people = DEFAULT_PEOPLE.map((person) => ({ ...person }));
+    }
+    if (!this.wizardData.places || this.wizardData.places.length === 0) {
+      this.wizardData.places = [...DEFAULT_PLACES];
+    }
+    if (!this.wizardData.big_building) {
+      this.wizardData.big_building = DEFAULT_BIG_BUILDING;
+    }
+  }
+
+  addSpinner(x, y) {
+    const spinner = this.add
+      .text(x, y, "", {
+        fontSize: "16px",
+        color: "#ffcc44",
+        fontFamily: "monospace",
+      })
+      .setOrigin(0, 0.5)
+      .setVisible(false);
+    const label = this.add
+      .text(x + 20, y, "", {
+        fontSize: "12px",
+        color: "#ffcc44",
+        fontFamily: "monospace",
+      })
+      .setOrigin(0, 0.5)
+      .setVisible(false);
+
+    let frameIdx = 0;
+    let event = null;
+
+    this.contentGroup.add(spinner);
+    this.contentGroup.add(label);
+
+    return {
+      setBusy: (busy, text = "") => {
+        if (!busy) {
+          if (event) event.remove();
+          event = null;
+          frameIdx = 0;
+          spinner.setVisible(false);
+          label.setVisible(false);
+          return;
+        }
+
+        spinner.setVisible(true).setText(SPINNER_FRAMES[frameIdx]);
+        label.setVisible(true).setText(text);
+        if (event) event.remove();
+        event = this.time.addEvent({
+          delay: 120,
+          loop: true,
+          callback: () => {
+            frameIdx = (frameIdx + 1) % SPINNER_FRAMES.length;
+            spinner.setText(SPINNER_FRAMES[frameIdx]);
+          },
+        });
+      },
+    };
+  }
+
+  async createGameRequest() {
+    const saveData = { ...this.wizardData };
+    delete saveData.osm_preview;
+
+    setLastWizard(saveData);
+    if (this.wizardData.party) addPartyToHistory(this.wizardData.party);
+    if (this.wizardData.people) addNPCsToHistory(this.wizardData.people);
+
+    return newGame(saveData);
+  }
+
   clearContent() {
     this.contentGroup.clear(true, true);
     // Remove any DOM elements
     this.children.list
       .filter((c) => c.type === "DOMElement")
       .forEach((c) => c.destroy());
+  }
+
+  goBack() {
+    if (this.step <= 0) return;
+    if (this.usesStreamlinedOSMFlow() && this.step === 5) {
+      this.step = 0;
+      this.showStep();
+      return;
+    }
+
+    this.step--;
+    if (this.wizardData.use_osm) {
+      if (this.step === 4 || this.step === 3) {
+        if (this.shouldSkipNPCStep()) {
+          this.step = 1;
+        } else {
+          this.step = 2;
+        }
+      }
+      if (this.step === 2 && this.shouldSkipNPCStep()) {
+        this.step = 1;
+      }
+    }
+    if (!this.wizardData.use_osm && this.step === 1) {
+      this.step = 0;
+    }
+    if (!this.wizardData.use_osm && this.step === 6) {
+      this.step = 5;
+    }
+    this.showStep();
   }
 
   showStep() {
@@ -74,10 +202,10 @@ export class WizardScene extends Phaser.Scene {
         this.step === 3 &&
         (!this.wizardData.places || this.wizardData.places.length === 0)
       ) {
-        this.wizardData.places = ["From Map", "From Map", "From Map"];
+        this.wizardData.places = [...DEFAULT_PLACES];
       }
       if (this.step === 4 && !this.wizardData.big_building) {
-        this.wizardData.big_building = "Town Hall";
+        this.wizardData.big_building = DEFAULT_BIG_BUILDING;
       }
       this.step++;
       this.showStep();
@@ -177,39 +305,13 @@ export class WizardScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     btn.on("pointerover", () => btn.setColor("#aaaaaa"));
     btn.on("pointerout", () => btn.setColor("#888888"));
-    btn.on("pointerdown", () => {
-      this.step--;
-      // Skip past OSM-hidden steps when going back
-      if (this.wizardData.use_osm) {
-        // Skip big building (4) and places (3) going back
-        if (this.step === 4 || this.step === 3) {
-          if (this.shouldSkipNPCStep()) {
-            this.step = 1; // Jump back to POI picker
-          } else {
-            this.step = 2; // Jump back to NPCs
-          }
-        }
-        // If NPC step was skipped, jump from party back to POI
-        if (this.step === 2 && this.shouldSkipNPCStep()) {
-          this.step = 1;
-        }
-      }
-      // Skip POI step when not using OSM (going back)
-      if (!this.wizardData.use_osm && this.step === 1) {
-        this.step = 0;
-      }
-      // Skip map preview when not using OSM (going back)
-      if (!this.wizardData.use_osm && this.step === 6) {
-        this.step = 5;
-      }
-      this.showStep();
-    });
+    btn.on("pointerdown", () => this.goBack());
     this.contentGroup.add(btn);
   }
 
-  addButton(y, label, callback) {
+  addButton(y, label, callback, x = this.cx) {
     const btn = this.add
-      .text(this.cx, y, `[ ${label} ]`, {
+      .text(x, y, `[ ${label} ]`, {
         fontSize: "20px",
         color: "#44ff44",
         fontFamily: "monospace",
@@ -241,6 +343,7 @@ export class WizardScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
     this.contentGroup.add(status);
+    const searchSpinner = this.addSpinner(this.cx + 110, 300);
 
     // Use real map toggle
     let useOSM = this.wizardData.use_osm;
@@ -300,17 +403,46 @@ export class WizardScene extends Phaser.Scene {
       slider.setVisible(useOSM);
     });
 
-    this.addButton(300, "FIND & CONTINUE", async () => {
+    const findButton = this.addButton(300, "FIND & CONTINUE", async () => {
+      if (!findButton.input?.enabled) return;
+
       const townName = input.node.value.trim() || "Cadott, WI";
       this.wizardData.town_name = townName;
       this.wizardData.use_osm = useOSM;
       this.wizardData.radius_miles = parseFloat(sliderEl.value);
 
+      const setSearchBusy = (busy, busyLabel = "") => {
+        input.node.disabled = busy;
+        input.node.setAttribute("aria-busy", busy ? "true" : "false");
+        input.node.style.opacity = busy ? "0.7" : "1";
+        osmToggle[busy ? "disableInteractive" : "setInteractive"](
+          busy ? undefined : { useHandCursor: true },
+        );
+        sliderEl.disabled = busy;
+        sliderEl.style.opacity = busy ? "0.5" : "1";
+        slider.setVisible(useOSM);
+        sliderLabel.setVisible(useOSM);
+        if (busy) {
+          findButton.disableInteractive();
+          findButton.setColor("#668866");
+          findButton.setText("[ FIND & CONTINUE ]");
+          searchSpinner.setBusy(true, busyLabel);
+        } else {
+          findButton.setInteractive({ useHandCursor: true });
+          findButton.setColor("#44ff44");
+          searchSpinner.setBusy(false);
+        }
+      };
+
       if (useOSM) {
+        this.wizardData.osm_preview = null;
+        this.wizardData.spawn_node_id = "";
+        setSearchBusy(true, "Searching...");
         status.setText("Looking up location...").setColor("#ffcc44");
         try {
           const result = await geocode(townName);
           if (result.error) {
+            setSearchBusy(false);
             status.setText(`Not found: ${result.error}`).setColor("#ff4444");
             return;
           }
@@ -319,6 +451,7 @@ export class WizardScene extends Phaser.Scene {
           status.setText(`Found: ${result.display_name}`).setColor("#44ff44");
 
           // Scan for POIs
+          searchSpinner.setBusy(true, "Scanning map...");
           status
             .setText("Scanning map for points of interest...")
             .setColor("#ffcc44");
@@ -330,53 +463,68 @@ export class WizardScene extends Phaser.Scene {
             );
             if (preview.error) {
               status
-                .setText("Map scan failed. Continuing without preview.")
+                .setText("Map scan failed. Continuing with manual setup.")
                 .setColor("#ff8844");
               this.wizardData.osm_preview = null;
               this.wizardData.spawn_node_id = "";
+              setSearchBusy(false);
+              this.step = 1;
             } else {
               this.wizardData.osm_preview = preview.nodes || [];
               this.wizardData.radius_miles =
                 preview.radius_miles || this.wizardData.radius_miles;
-              status
-                .setText(
-                  `Found ${preview.nodes?.length || 0} points of interest`,
-                )
-                .setColor("#44ff44");
+              if ((preview.nodes || []).length > 0) {
+                this.ensureOSMDefaults();
+                status
+                  .setText(
+                    `Found ${preview.nodes?.length || 0} points of interest`,
+                  )
+                  .setColor("#44ff44");
+                setSearchBusy(false);
+                this.step = 5;
+              } else {
+                status
+                  .setText(
+                    "No points of interest found. Continuing with manual setup.",
+                  )
+                  .setColor("#ff8844");
+                this.wizardData.spawn_node_id = "";
+                setSearchBusy(false);
+                this.step = 1;
+              }
             }
           } catch (previewErr) {
             status
-              .setText("Map scan failed. Continuing without preview.")
+              .setText("Map scan failed. Continuing with manual setup.")
               .setColor("#ff8844");
             this.wizardData.osm_preview = null;
             this.wizardData.spawn_node_id = "";
+            setSearchBusy(false);
+            this.step = 1;
           }
-
-          // Brief pause to show result
-          this.time.delayedCall(1000, () => {
-            this.step++;
-            this.showStep();
-          });
+          this.showStep();
         } catch (e) {
-          status
-            .setText("Geocoding failed. Continuing without OSM.")
-            .setColor("#ff8844");
-          this.wizardData.use_osm = false;
-          this.time.delayedCall(1500, () => {
-            this.step++;
-            this.showStep();
-          });
+          setSearchBusy(false);
+          status.setText("Geocoding failed. Try again.").setColor("#ff4444");
         }
       } else {
+        this.wizardData.osm_preview = null;
+        this.wizardData.spawn_node_id = "";
         this.step++;
         this.showStep();
       }
+    });
+
+    input.node.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" || !findButton.input?.enabled) return;
+      event.preventDefault();
+      findButton.emit("pointerdown");
     });
   }
 
   showPOIStep() {
     this.addTitle("DISCOVERED LOCATIONS");
-    const pois = this.wizardData.osm_preview || [];
+    const pois = sortPOIsByImportance(this.wizardData.osm_preview || []);
 
     if (pois.length === 0) {
       this.addLabel(
@@ -390,9 +538,6 @@ export class WizardScene extends Phaser.Scene {
       });
       return;
     }
-
-    // Sort by importance (highest first) so most relevant POIs are visible
-    pois.sort((a, b) => (b.importance || 0) - (a.importance || 0));
 
     this.addLabel(
       70,
@@ -476,17 +621,11 @@ export class WizardScene extends Phaser.Scene {
       "Name 3 people from your town. They become NPCs --\nquest-givers, shopkeepers, or even the villain.\nThey are NOT your party (you pick your party next).",
     );
 
-    const defaults = [
-      { name: "Bob", rel: "friendly" },
-      { name: "Mrs Henderson", rel: "neutral" },
-      { name: "Mayor Grimes", rel: "rival" },
-    ];
-
     const inputs = [];
     for (let i = 0; i < 3; i++) {
       const prevNPC = this.wizardData.people[i];
-      const defName = prevNPC?.name || defaults[i].name;
-      const defRel = prevNPC?.relation || defaults[i].rel;
+      const defName = prevNPC?.name || DEFAULT_PEOPLE[i].name;
+      const defRel = prevNPC?.relation || DEFAULT_PEOPLE[i].relation;
       this.addLabel(165 + i * 80, `NPC ${i + 1}:`);
       const nameInput = this.addInput(195 + i * 80, defName, 200);
       if (prevNPC) nameInput.node.value = prevNPC.name;
@@ -535,13 +674,14 @@ export class WizardScene extends Phaser.Scene {
       80,
       "What's the biggest building in town?\nThis becomes the final dungeon or seat of power.",
     );
-    const defBuilding = this.wizardData.big_building || "Town Hall";
+    const defBuilding = this.wizardData.big_building || DEFAULT_BIG_BUILDING;
     const input = this.addInput(150, defBuilding);
     if (this.wizardData.big_building)
       input.node.value = this.wizardData.big_building;
     this.addBackButton(220);
     this.addButton(220, "NEXT", () => {
-      this.wizardData.big_building = input.node.value.trim() || "Town Hall";
+      this.wizardData.big_building =
+        input.node.value.trim() || DEFAULT_BIG_BUILDING;
       this.step++;
       this.showStep();
     });
@@ -664,8 +804,17 @@ export class WizardScene extends Phaser.Scene {
     }
 
     const buttonY = firstRowY + 4 * rowHeight + 10;
-    this.addBackButton(buttonY);
-    this.addButton(buttonY, "NEXT", () => {
+    const status = this.add
+      .text(this.cx, buttonY + 36, "", {
+        fontSize: "11px",
+        color: "#aaaaaa",
+        fontFamily: "monospace",
+      })
+      .setOrigin(0.5, 0);
+    this.contentGroup.add(status);
+    const createSpinner = this.addSpinner(this.cx + 120, buttonY);
+
+    const collectParty = () => {
       const party = [];
       rows.forEach((row, i) => {
         const name = row.nameInput.node.value.trim();
@@ -678,8 +827,80 @@ export class WizardScene extends Phaser.Scene {
         }
       });
       this.wizardData.party = party;
-      this.step++;
-      this.showStep();
+    };
+
+    const setPartyInputsDisabled = (disabled) => {
+      rows.forEach((row) => {
+        row.nameInput.node.disabled = disabled;
+        row.nameInput.node.style.opacity = disabled ? "0.7" : "1";
+      });
+    };
+
+    const cancelButton = this.add
+      .text(this.cx - 120, buttonY, "[ CANCEL ]", {
+        fontSize: "16px",
+        color: "#888888",
+        fontFamily: "monospace",
+      })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    cancelButton.on("pointerover", () => cancelButton.setColor("#aaaaaa"));
+    cancelButton.on("pointerout", () => cancelButton.setColor("#888888"));
+    cancelButton.on("pointerdown", () => this.goBack());
+    this.contentGroup.add(cancelButton);
+
+    const createButton = this.add
+      .text(this.cx + 40, buttonY, "[ CREATE GAME ]", {
+        fontSize: "20px",
+        color: "#44ff44",
+        fontFamily: "monospace",
+      })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    createButton.on("pointerover", () => createButton.setColor("#88ff88"));
+    createButton.on("pointerout", () => createButton.setColor("#44ff44"));
+    this.contentGroup.add(createButton);
+
+    const setCreateBusy = (busy, busyLabel = "Creating world...") => {
+      setPartyInputsDisabled(busy);
+      if (busy) {
+        createButton.disableInteractive();
+        createButton.setColor("#668866");
+        cancelButton.disableInteractive();
+        cancelButton.setColor("#555555");
+        createSpinner.setBusy(true, busyLabel);
+      } else {
+        createButton.setInteractive({ useHandCursor: true });
+        createButton.setColor("#44ff44");
+        cancelButton.setInteractive({ useHandCursor: true });
+        cancelButton.setColor("#888888");
+        createSpinner.setBusy(false);
+      }
+    };
+
+    createButton.on("pointerdown", async () => {
+      if (!createButton.input?.enabled) return;
+
+      collectParty();
+      if (this.wizardData.use_osm) {
+        this.ensureOSMDefaults();
+      }
+      status.setText("").setColor("#aaaaaa");
+      setCreateBusy(true);
+      try {
+        const result = await this.createGameRequest();
+        if (result.error) {
+          status.setText(`Error: ${result.error}`).setColor("#ff4444");
+          setCreateBusy(false);
+          return;
+        }
+        this.scene.start("World", { gameState: result });
+      } catch (e) {
+        status
+          .setText("Server error. Is the backend running?")
+          .setColor("#ff4444");
+        setCreateBusy(false);
+      }
     });
   }
 
@@ -849,19 +1070,8 @@ export class WizardScene extends Phaser.Scene {
       : "Generating locality, campaign, and encounters...";
     this.addLabel(100, osmMsg);
 
-    // Don't persist or send the large preview data
-    const saveData = { ...this.wizardData };
-    delete saveData.osm_preview;
-
-    // Save wizard prefs for next time (without preview payload)
-    setLastWizard(saveData);
-    if (this.wizardData.party) addPartyToHistory(this.wizardData.party);
-    if (this.wizardData.people) addNPCsToHistory(this.wizardData.people);
-
-    const gameData = saveData;
-
     try {
-      const result = await newGame(gameData);
+      const result = await this.createGameRequest();
       if (result.error) {
         this.addLabel(200, `Error: ${result.error}`).setColor("#ff4444");
         return;
