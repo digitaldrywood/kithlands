@@ -157,6 +157,20 @@ export async function collectHiddenItem(gameId, nodeId, itemKey, tags) {
   });
 }
 
+export async function openChest(gameId, nodeId, chestId) {
+  return apiCall("POST", `/game/${gameId}/chest/open`, {
+    node_id: nodeId,
+    chest_id: chestId,
+  });
+}
+
+export async function claimChest(gameId, nodeId, chestId) {
+  return apiCall("POST", `/game/${gameId}/chest/claim`, {
+    node_id: nodeId,
+    chest_id: chestId,
+  });
+}
+
 export async function geocode(query) {
   return apiCall("POST", "/geocode", { query });
 }

@@ -117,6 +117,36 @@ type ItemsData struct {
 	KeyItems    []KeyItem    `json:"key_items"`
 }
 
+// Chests
+
+type ChestCatalog map[string]ChestDefinition
+
+type ChestDefinition struct {
+	Kind               string         `json:"kind"`
+	ItemID             string         `json:"item_id,omitempty"`
+	Amount             int            `json:"amount,omitempty"`
+	LockFlag           string         `json:"lock_flag,omitempty"`
+	SetFlag            string         `json:"set_flag,omitempty"`
+	MonsterFormationID string         `json:"monster_formation_id,omitempty"`
+	RewardKind         string         `json:"reward_kind,omitempty"`
+	RewardItemID       string         `json:"reward_item_id,omitempty"`
+	RewardAmount       int            `json:"reward_amount,omitempty"`
+	Variants           []ChestVariant `json:"variants,omitempty"`
+}
+
+type ChestVariant struct {
+	IfFlag             string `json:"if_flag,omitempty"`
+	IfFlagNot          string `json:"if_flag_not,omitempty"`
+	Kind               string `json:"kind"`
+	ItemID             string `json:"item_id,omitempty"`
+	Amount             int    `json:"amount,omitempty"`
+	SetFlag            string `json:"set_flag,omitempty"`
+	MonsterFormationID string `json:"monster_formation_id,omitempty"`
+	RewardKind         string `json:"reward_kind,omitempty"`
+	RewardItemID       string `json:"reward_item_id,omitempty"`
+	RewardAmount       int    `json:"reward_amount,omitempty"`
+}
+
 type KeyItem struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`

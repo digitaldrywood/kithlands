@@ -14,7 +14,9 @@ vi.mock("../systems/audio.js", () => ({
 
 vi.mock("../api.js", () => ({
   autosaveGame: vi.fn(),
+  openChest: vi.fn(),
   collectHiddenItem: vi.fn(),
+  interactWithNpc: vi.fn(),
   restAtTown: vi.fn(),
   getNpcDialogue: vi.fn(),
 }));

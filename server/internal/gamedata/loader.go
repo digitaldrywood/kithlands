@@ -44,6 +44,7 @@ type GameData struct {
 	Classes    []Class
 	Stats      StatsConfig
 	Items      ItemsData
+	Chests     ChestCatalog
 	Spells     SpellsData
 	Monsters   []Monster
 	Formations []Formation
@@ -58,6 +59,7 @@ type GameData struct {
 	monsterByID   map[string]*Monster
 	formationByID map[string]*Formation
 	keyItemByID   map[string]*KeyItem
+	chestByID     map[string]*ChestDefinition
 }
 
 // Load reads and validates all game data from the shared directory.
@@ -70,6 +72,7 @@ func Load(sharedDir string) *GameData {
 	gd.Classes = loadJSON[[]Class](sharedDir, "classes.json")
 	gd.Stats = loadJSON[StatsConfig](sharedDir, "stats.json")
 	gd.Items = loadJSON[ItemsData](sharedDir, "items.json")
+	gd.Chests = loadJSON[ChestCatalog](sharedDir, "chests.json")
 	gd.Spells = loadJSON[SpellsData](sharedDir, "spells.json")
 	gd.Monsters = loadJSON[[]Monster](sharedDir, "monsters.json")
 	gd.Formations = loadJSON[[]Formation](sharedDir, "formations.json")
@@ -90,6 +93,9 @@ func (gd *GameData) SpellByID(id string) *Spell         { return gd.spellByID[id
 func (gd *GameData) MonsterByID(id string) *Monster     { return gd.monsterByID[id] }
 func (gd *GameData) FormationByID(id string) *Formation { return gd.formationByID[id] }
 func (gd *GameData) KeyItemByID(id string) *KeyItem     { return gd.keyItemByID[id] }
+func (gd *GameData) ChestByID(id string) *ChestDefinition {
+	return gd.chestByID[id]
+}
 
 func (gd *GameData) buildIndexes() {
 	gd.classByID = make(map[string]*Class, len(gd.Classes))
@@ -133,6 +139,12 @@ func (gd *GameData) buildIndexes() {
 	gd.keyItemByID = make(map[string]*KeyItem, len(gd.Items.KeyItems))
 	for i := range gd.Items.KeyItems {
 		gd.keyItemByID[gd.Items.KeyItems[i].ID] = &gd.Items.KeyItems[i]
+	}
+
+	gd.chestByID = make(map[string]*ChestDefinition, len(gd.Chests))
+	for id, chest := range gd.Chests {
+		chestCopy := chest
+		gd.chestByID[id] = &chestCopy
 	}
 }
 
@@ -225,6 +237,22 @@ func (gd *GameData) validate() {
 		}
 	}
 
+	if len(gd.Chests) == 0 {
+		panic("gamedata: chests.json is empty")
+	}
+	for id, chest := range gd.Chests {
+		if strings.TrimSpace(id) == "" {
+			panic("gamedata: chest with empty id")
+		}
+		validateChestReward(gd, id, chest.Kind, chest.ItemID, chest.Amount, chest.MonsterFormationID, chest.RewardKind, chest.RewardItemID, chest.RewardAmount)
+		for i, variant := range chest.Variants {
+			if variant.IfFlag == "" && variant.IfFlagNot == "" {
+				panic(fmt.Sprintf("gamedata: chest %q variant %d must set if_flag or if_flag_not", id, i))
+			}
+			validateChestReward(gd, fmt.Sprintf("%s variant %d", id, i), variant.Kind, variant.ItemID, variant.Amount, variant.MonsterFormationID, variant.RewardKind, variant.RewardItemID, variant.RewardAmount)
+		}
+	}
+
 	requiredArchetypes := []string{
 		"merchant", "priestess", "elder", "innkeeper", "guard", "blacksmith",
 		"child", "farmer", "sage", "traveler", "default",
@@ -299,6 +327,56 @@ func validateGrowth(classID, stat string, value int) {
 	if value < 0 || value > 8 {
 		panic(fmt.Sprintf("gamedata: class %q stat_growth_eighths.%s must be 0-8, got %d", classID, stat, value))
 	}
+}
+
+func validateChestReward(gd *GameData, label, kind, itemID string, amount int, formationID, rewardKind, rewardItemID string, rewardAmount int) {
+	validKinds := map[string]bool{
+		"item":        true,
+		"gil":         true,
+		"key_item":    true,
+		"monster_box": true,
+	}
+	if !validKinds[kind] {
+		panic(fmt.Sprintf("gamedata: chest %q has invalid kind %q", label, kind))
+	}
+
+	switch kind {
+	case "item":
+		if itemID == "" {
+			panic(fmt.Sprintf("gamedata: chest %q item reward missing item_id", label))
+		}
+		if !gd.validChestItemID(itemID) {
+			panic(fmt.Sprintf("gamedata: chest %q references unknown item %q", label, itemID))
+		}
+	case "gil":
+		if amount <= 0 {
+			panic(fmt.Sprintf("gamedata: chest %q gil reward must set amount > 0", label))
+		}
+	case "key_item":
+		if itemID == "" {
+			panic(fmt.Sprintf("gamedata: chest %q key_item reward missing item_id", label))
+		}
+		if gd.KeyItemByID(itemID) == nil {
+			panic(fmt.Sprintf("gamedata: chest %q references unknown key item %q", label, itemID))
+		}
+	case "monster_box":
+		if gd.FormationByID(formationID) == nil {
+			panic(fmt.Sprintf("gamedata: chest %q monster_box references unknown formation %q", label, formationID))
+		}
+		validateChestReward(gd, label+" reward", rewardKind, rewardItemID, rewardAmount, "", "", "", 0)
+	}
+}
+
+func (gd *GameData) validChestItemID(id string) bool {
+	if gd.WeaponByID(id) != nil || gd.ArmorByID(id) != nil {
+		return true
+	}
+	for i := range gd.Items.Consumables {
+		if gd.Items.Consumables[i].ID == id {
+			return true
+		}
+	}
+	return false
 }
 
 func loadJSON[T any](dir, filename string) T {

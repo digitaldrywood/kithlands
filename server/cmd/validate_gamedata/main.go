@@ -35,8 +35,24 @@ func run(sharedDir string) (err error) {
 	if err != nil {
 		return err
 	}
+	if err := validateChestAnchors(gd, registry); err != nil {
+		return err
+	}
 	fmt.Printf("loaded %d classes, %d spells, %d monsters, %d formations\n",
 		len(gd.Classes), len(gd.Spells.Spells), len(gd.Monsters), len(gd.Formations))
-	fmt.Printf("loaded %d interior templates\n", len(registry.Templates))
+	fmt.Printf("loaded %d interior templates and %d chest definitions\n", len(registry.Templates), len(gd.Chests))
+	return nil
+}
+
+func validateChestAnchors(gd *gamedata.GameData, registry *interiors.Registry) error {
+	for _, template := range registry.Templates {
+		for _, floor := range template.Floors {
+			for _, anchor := range floor.ChestAnchors {
+				if gd.ChestByID(anchor.ID) == nil {
+					return fmt.Errorf("template %q floor %d references unknown chest %q", template.ID, floor.FloorID, anchor.ID)
+				}
+			}
+		}
+	}
 	return nil
 }

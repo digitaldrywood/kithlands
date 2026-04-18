@@ -1,6 +1,7 @@
 import { initAudio, playSFX, playMusic } from "../systems/audio.js";
 import {
   autosaveGame,
+  openChest,
   collectHiddenItem,
   interactWithNpc,
   restAtTown,
@@ -53,6 +54,8 @@ import {
   isWorldInputLocked,
   topWorldLock,
 } from "../systems/modalLock.js";
+import { shouldStartBattle } from "./encounterFlow.js";
+import { isChestOpen } from "./town_chests.js";
 
 // Seeded PRNG (mulberry32). Returns a () => float [0,1) closure.
 function mulberry32(seed) {
@@ -436,9 +439,7 @@ function tintForTile(tile, appearance) {
     tile === T_BOOKSHELF ||
     tile === T_CHAIR ||
     tile === T_TABLE ||
-    tile === T_BED ||
-    tile === T_CHEST_CLOSED ||
-    tile === T_CHEST_OPEN
+    tile === T_BED
   ) {
     return appearance.wood;
   }
@@ -476,10 +477,6 @@ function fallbackOverlayForTile(tile) {
       return { kind: "stairs_down" };
     case T_LOCKED_DOOR:
       return { kind: "locked_door" };
-    case T_CHEST_CLOSED:
-      return { kind: "chest_closed" };
-    case T_CHEST_OPEN:
-      return { kind: "chest_open" };
     default:
       return null;
   }
@@ -500,6 +497,7 @@ export class TownScene extends Phaser.Scene {
     this.spawn = data.spawn;
     this.floorIndex = data.floorIndex || 0;
     this.playerStart = data.playerStart || null;
+    this.entryMessage = data.entryMessage || "";
   }
 
   create() {
@@ -580,7 +578,17 @@ export class TownScene extends Phaser.Scene {
     // Draw tiles
     this.tileLayer = this.add.container(0, 0);
     this.tileGraphics = this.add.graphics();
+    this.chests = (this.templateChestAnchors || []).map((anchor) => ({
+      ...anchor,
+      opened: isChestOpen(
+        this.gameState?.triggered_flags,
+        this.spawn.node_id,
+        anchor.id,
+      ),
+    }));
+    this.syncChestTiles();
     this.drawRoom();
+    this.renderChests();
 
     // Location name
     this.add
@@ -706,6 +714,7 @@ export class TownScene extends Phaser.Scene {
       primaryNpc.x,
       primaryNpc.y,
     ).filter((h) => !collected.has(h.key));
+    this.nearChest = null;
     this.nearHiddenItem = null;
     this.searchPrompt = null;
 
@@ -752,6 +761,11 @@ export class TownScene extends Phaser.Scene {
       .setDepth(30)
       .setVisible(false);
 
+    if (this.entryMessage) {
+      this.showMessage(this.entryMessage);
+      this.time.delayedCall(1800, () => this.hideMessage());
+    }
+
     // Instructions
     this.add
       .text(
@@ -766,6 +780,8 @@ export class TownScene extends Phaser.Scene {
       )
       .setOrigin(0.5)
       .setDepth(5);
+
+    this.updateInteractionTargets();
   }
 
   // Place NPCs: proprietor at anchor position, extras on walkable floor tiles.
@@ -913,52 +929,12 @@ export class TownScene extends Phaser.Scene {
       return;
     }
 
-    // Check proximity to nearest NPC
-    let closestIdx = -1;
-    let closestDist = Infinity;
-    for (let i = 0; i < this.npcs.length; i++) {
-      const dist =
-        Math.abs(this.playerX - this.npcs[i].x) +
-        Math.abs(this.playerY - this.npcs[i].y);
-      if (dist <= 2 && dist < closestDist) {
-        closestDist = dist;
-        closestIdx = i;
-      }
-    }
-
-    if (closestIdx >= 0) {
-      if (this.nearNpcIndex !== closestIdx) {
-        this.nearNpcIndex = closestIdx;
-        this.showInteractPrompt();
-      }
-    } else if (this.nearNpcIndex >= 0) {
-      this.nearNpcIndex = -1;
-      this.hideInteractPrompt();
-    }
-
-    // Check proximity to hidden items (Manhattan distance <= 1)
-    let closestHidden = null;
-    for (const h of this.hiddenItems) {
-      const dist =
-        Math.abs(this.playerX - h.tileX) + Math.abs(this.playerY - h.tileY);
-      if (dist <= 1) {
-        closestHidden = h;
-        break;
-      }
-    }
-    if (closestHidden) {
-      if (this.nearHiddenItem !== closestHidden) {
-        this.nearHiddenItem = closestHidden;
-        this.showSearchPrompt();
-      }
-    } else if (this.nearHiddenItem) {
-      this.nearHiddenItem = null;
-      this.hideSearchPrompt();
-    }
+    this.updateInteractionTargets();
   }
 
   async interact() {
     if (isWorldInputLocked(this)) return;
+    if (await this.openNearbyChest()) return;
     // Hidden item pickup takes priority
     if (this.nearHiddenItem) {
       this.hideSearchPrompt();
@@ -1041,13 +1017,69 @@ export class TownScene extends Phaser.Scene {
 
     // Re-show talk prompt if still near an NPC
     if (this.nearNpcIndex >= 0) {
-      this.showInteractPrompt();
+      this.showInteractPrompt("Talk");
     }
   }
 
-  showInteractPrompt() {
+  async openNearbyChest() {
+    if (!this.nearChest) return false;
+
+    const chest = this.nearChest;
     this.hideInteractPrompt();
-    const label = isTouchDevice() ? "[ TAP A ] Talk" : "[ ENTER / SPACE ] Talk";
+
+    if (chest.opened) {
+      playSFX("sfx_error");
+      this.showMessage("It's empty.");
+      this.time.delayedCall(1200, () => this.hideMessage());
+      return true;
+    }
+
+    const result = await openChest(
+      this.gameState.id,
+      this.spawn.node_id,
+      chest.id,
+    );
+    if (result?.error) {
+      playSFX("sfx_error");
+      this.showMessage(result.error);
+      this.time.delayedCall(1400, () => this.hideMessage());
+      return true;
+    }
+
+    Object.assign(this.gameState, result);
+
+    if (shouldStartBattle(result)) {
+      this.animating = true;
+      playSFX("sfx_encounter");
+      this.showMessage(result.message || "Monster-in-a-box!");
+      this.time.delayedCall(500, () => {
+        this.scene.start("Battle", {
+          gameState: result,
+          returnScene: {
+            sceneKey: "Town",
+            spawn: this.spawn,
+            floorIndex: this.floorIndex,
+            playerStart: { x: this.playerX, y: this.playerY },
+          },
+        });
+      });
+      return true;
+    }
+
+    playSFX("sfx_treasure");
+    this.markChestOpened(chest.id);
+    await this.animateChestOpen(chest.id);
+    this.showMessage(result.message || "Received treasure!");
+    this.time.delayedCall(1800, () => this.hideMessage());
+    this.updateInteractionTargets();
+    return true;
+  }
+
+  showInteractPrompt(action = "Talk") {
+    this.hideInteractPrompt();
+    const label = isTouchDevice()
+      ? `[ TAP A ] ${action}`
+      : `[ ENTER / SPACE ] ${action}`;
     this.interactPrompt = this.add
       .text(this.player.x, this.player.y - 25, label, {
         fontSize: "10px",
@@ -1125,6 +1157,113 @@ export class TownScene extends Phaser.Scene {
   updateHUD() {}
   flashSaveIcon() {}
 
+  syncChestTiles() {
+    for (const chest of this.chests || []) {
+      this.tiles[chest.y][chest.x] = chest.opened
+        ? T_CHEST_OPEN
+        : T_CHEST_CLOSED;
+    }
+  }
+
+  renderChests() {
+    this.chestLayer?.destroy(true);
+    this.chestLayer = this.add.container(0, 0).setDepth(9);
+    this.chestSprites = new Map();
+
+    for (const chest of this.chests || []) {
+      const key = chest.opened ? "object_chest_open" : "object_chest_closed";
+      const sprite = this.add
+        .image(
+          this.offsetX + chest.x * RENDERED_TILE + RENDERED_TILE / 2,
+          this.offsetY + chest.y * RENDERED_TILE + RENDERED_TILE / 2,
+          key,
+        )
+        .setScale(SCALE)
+        .setDepth(9);
+      this.chestLayer.add(sprite);
+      this.chestSprites.set(chest.id, sprite);
+    }
+  }
+
+  markChestOpened(chestId) {
+    const chest = (this.chests || []).find((entry) => entry.id === chestId);
+    if (!chest) return;
+    chest.opened = true;
+    this.syncChestTiles();
+    this.chestSprites?.get(chestId)?.setTexture("object_chest_open");
+  }
+
+  animateChestOpen(chestId) {
+    const sprite = this.chestSprites?.get(chestId);
+    if (!sprite) return Promise.resolve();
+    return new Promise((resolve) => {
+      this.tweens.add({
+        targets: sprite,
+        y: sprite.y - 5,
+        duration: 80,
+        yoyo: true,
+        ease: "Quad.Out",
+        onComplete: resolve,
+      });
+    });
+  }
+
+  updateInteractionTargets() {
+    let closestChest = null;
+    let closestChestDist = Infinity;
+    for (const chest of this.chests || []) {
+      const dist =
+        Math.abs(this.playerX - chest.x) + Math.abs(this.playerY - chest.y);
+      if (dist <= 1 && dist < closestChestDist) {
+        closestChest = chest;
+        closestChestDist = dist;
+      }
+    }
+    this.nearChest = closestChest;
+
+    let closestNpc = -1;
+    let closestNpcDist = Infinity;
+    for (let i = 0; i < this.npcs.length; i++) {
+      const dist =
+        Math.abs(this.playerX - this.npcs[i].x) +
+        Math.abs(this.playerY - this.npcs[i].y);
+      if (dist <= 2 && dist < closestNpcDist) {
+        closestNpc = i;
+        closestNpcDist = dist;
+      }
+    }
+    this.nearNpcIndex = closestNpc;
+
+    let closestHidden = null;
+    for (const h of this.hiddenItems) {
+      const dist =
+        Math.abs(this.playerX - h.tileX) + Math.abs(this.playerY - h.tileY);
+      if (dist <= 1) {
+        closestHidden = h;
+        break;
+      }
+    }
+    this.nearHiddenItem = closestHidden;
+
+    if (this.nearChest) {
+      this.hideSearchPrompt();
+      this.showInteractPrompt("Open");
+      return;
+    }
+    if (this.nearHiddenItem) {
+      this.hideInteractPrompt();
+      this.showSearchPrompt();
+      return;
+    }
+    if (this.nearNpcIndex >= 0) {
+      this.hideSearchPrompt();
+      this.showInteractPrompt("Talk");
+      return;
+    }
+    this.hideInteractPrompt();
+    this.hideSearchPrompt();
+  }
+
   drawRoom() {
     if (this.tileLayer) {
       this.tileLayer.removeAll(true);
@@ -1183,27 +1322,6 @@ export class TownScene extends Phaser.Scene {
             tileX + RENDERED_TILE - 7,
             tileY + RENDERED_TILE / 2,
             2,
-          );
-        } else if (
-          overlay?.kind === "chest_closed" ||
-          overlay?.kind === "chest_open"
-        ) {
-          this.tileGraphics.fillStyle(0x5d4037, 0.95);
-          this.tileGraphics.fillRect(
-            tileX + 4,
-            tileY + 8,
-            RENDERED_TILE - 8,
-            RENDERED_TILE - 12,
-          );
-          this.tileGraphics.fillStyle(
-            overlay.kind === "chest_open" ? 0xffe082 : 0xd7a86e,
-            0.95,
-          );
-          this.tileGraphics.fillRect(
-            tileX + 4,
-            tileY + 5,
-            RENDERED_TILE - 8,
-            5,
           );
         } else if (overlay) {
           this.tileGraphics.fillStyle(overlay.color, overlay.alpha);

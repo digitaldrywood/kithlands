@@ -25,7 +25,9 @@
         { "role": "blacksmith", "x": 6, "y": 5 },
         { "role": "flavor", "x": 4, "y": 2 }
       ],
-      "chest_anchors": []
+      "chest_anchors": [
+        { "id": "blacksmith_apprentice_cache", "x": 12, "y": 8 }
+      ]
     }
   ]
 }
