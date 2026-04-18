@@ -403,6 +403,12 @@ function render() {
     displayWidth: 84,
     displayHeight: 84,
   });
+
+  renderAssetGrid("background-grid", debuggerCatalog.backgrounds, {
+    badgeClass: "reference",
+    displayWidth: 320,
+    displayHeight: 240,
+  });
 }
 
 function setBackground(mode) {
@@ -417,6 +423,7 @@ function mountStaticMetadata() {
   document.getElementById("expected-geometry").innerHTML =
     `<div class="meta-line"><strong>Directionals:</strong> 128x128 PNG</div>` +
     `<div class="meta-line"><strong>Walk sheets:</strong> 4x4 PNG atlas imported from current runtime data</div>` +
+    `<div class="meta-line"><strong>Battle backgrounds:</strong> 800x600 PNG (pre-rendered Gemini scenes, +@2x companion)</div>` +
     `<div class="meta-line"><strong>Inspect cells:</strong> Click any grid cell to zoom and verify crop bounds</div>`;
 
   document.getElementById("route-notes").innerHTML =

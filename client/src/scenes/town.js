@@ -1186,6 +1186,7 @@ export class TownScene extends Phaser.Scene {
       this.time.delayedCall(500, () => {
         this.scene.start("Battle", {
           gameState: result,
+          buildingType: this.buildingType,
           returnScene: {
             sceneKey: "Town",
             spawn: this.spawn,

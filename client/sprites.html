@@ -118,6 +118,20 @@
         <div class="asset-grid" id="npc-grid"></div>
         <div class="asset-grid" id="ui-grid"></div>
       </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>Battle Backgrounds</h2>
+          <p>
+            Pre-rendered Gemini scenes blitted behind combatants (issue #258).
+            Each committed PNG is 800x600 with a 1600x1200 @2x companion on
+            disk. Missing tiles render as a red card — run
+            <code>python3 scripts/generate_battle_backgrounds.py</code> to fill
+            them in.
+          </p>
+        </div>
+        <div class="asset-grid" id="background-grid"></div>
+      </section>
     </div>
 
     <script type="module" src="/src/sprite-debugger/main.js"></script>

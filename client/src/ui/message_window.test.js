@@ -189,6 +189,10 @@ describe("MessageWindow", () => {
       height: 98,
       minHeight: 68,
       maxHeight: 108,
+      // Keep the original 16 px default here so the layout math stays within
+      // the legacy 98 px frame this test asserts against. Runtime battle
+      // usage now defaults to the FF6-readable 22 px (issue #258).
+      fontSize: "16px",
     });
 
     const beforeBottom =

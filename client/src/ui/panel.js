@@ -118,6 +118,66 @@ function drawFF6Panel(scene, x, y, w, h, opts = {}) {
   return { bg };
 }
 
+// Draw an opaque FF6-style horizontal strip across the bottom of the battle
+// scene (issue #258). The strip occludes the bottom third of the pre-rendered
+// background so the MessageWindow + ACTION_HUD panels on top have guaranteed
+// contrast regardless of the art behind them. Returns the graphics object so
+// the caller can destroy it alongside the rest of the backdrop.
+export function drawFF6BottomStrip(scene, opts = {}) {
+  const {
+    x = 0,
+    y = 420,
+    width = 800,
+    height = 180,
+    depth = 6,
+    outerStroke = 0xe4f3ff,
+    outerStrokeWidth = 3,
+    outerFill = 0x4f7dc4,
+    innerStroke = 0xc0d7ff,
+    innerStrokeWidth = 2,
+    innerTop = 0x2e5f9d,
+    innerBottom = 0x14294c,
+    innerInset = 6,
+    topEdgeColor = 0x08111f,
+    topEdgeAlpha = 0.55,
+    topEdgeHeight = 2,
+  } = opts;
+
+  const g = scene.add.graphics().setScrollFactor(0).setDepth(depth);
+
+  g.fillStyle(outerFill, 1);
+  g.fillRect(x, y, width, height);
+
+  g.lineStyle(outerStrokeWidth, outerStroke, 1);
+  g.strokeRect(x, y, width, height);
+
+  if (typeof g.fillGradientStyle === "function") {
+    g.fillGradientStyle(innerTop, innerTop, innerBottom, innerBottom, 1);
+  } else {
+    g.fillStyle(innerTop, 1);
+  }
+  g.fillRect(
+    x + innerInset,
+    y + innerInset,
+    width - innerInset * 2,
+    height - innerInset * 2,
+  );
+  g.lineStyle(innerStrokeWidth, innerStroke, 0.95);
+  g.strokeRect(
+    x + innerInset,
+    y + innerInset,
+    width - innerInset * 2,
+    height - innerInset * 2,
+  );
+
+  // Hard dark line at the very top edge so the strip reads as a distinct
+  // foreground layer instead of blending into the painted background.
+  g.fillStyle(topEdgeColor, topEdgeAlpha);
+  g.fillRect(x, y - topEdgeHeight, width, topEdgeHeight);
+
+  return g;
+}
+
 // Draw a rectangular button with hover / press / active / disabled visual
 // states and a centered label. Returns a handle with mutation methods.
 //

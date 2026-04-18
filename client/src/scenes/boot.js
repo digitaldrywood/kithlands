@@ -1,6 +1,7 @@
 import { MONSTER_SPRITE_LOAD } from "../data/monsterSprites.js";
 import { WALK_SHEET_CLASS_IDS } from "./walkFrame.js";
 import { registerGeneratedTerrainTextures } from "./terrainAutotile.js";
+import { enumerateBackgrounds } from "./battleBackgrounds.js";
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -235,6 +236,23 @@ export class BootScene extends Phaser.Scene {
     this.load.image("tile_forest", "/tilesets/forest.png");
     this.load.image("tile_hill", "/tilesets/hill.png");
     this.load.image("tile_sand", "/tilesets/sand.png");
+
+    // Battle backgrounds (pre-rendered Gemini scenes, issue #258). Missing
+    // files are expected until generate_battle_backgrounds.py has been run —
+    // battle.js falls back to the procedural backdrop when the texture is
+    // absent, and we swallow loaderror for these specific keys so the dev
+    // console doesn't fill with 404s.
+    const bgKeys = new Set();
+    for (const bg of enumerateBackgrounds()) {
+      bgKeys.add(bg.key);
+      this.load.image(bg.key, `/${bg.path}`);
+    }
+    this.load.on("loaderror", (file) => {
+      if (file && bgKeys.has(file.key)) {
+        // Expected: procedural fallback will handle it in battle.js.
+        return;
+      }
+    });
 
     // NPC sprites
     this.load.image("npc_priestess", "/sprites/npcs/priestess.png");
