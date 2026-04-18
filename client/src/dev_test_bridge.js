@@ -784,6 +784,7 @@ function visibleBattleFxSnapshot(scene) {
     messageWindow: {
       visible: scene?.messageWindow?.container?.visible !== false,
       text: scene?.messageWindow?.getText?.() ?? "",
+      ...(scene?.messageWindow?.getLayoutMetrics?.() ?? {}),
     },
     floatingTexts: (scene?.floatingText?.active || [])
       .filter(
@@ -1251,6 +1252,12 @@ export function installDevTestBridge(game) {
         });
       } else if (kind === "message_window") {
         scene.revealLine("Bruno attacks Goblin!", "#ff8844");
+      } else if (kind === "wrapped_prompt") {
+        scene.promptText
+          .setText(
+            "Hero's turn -- choose an action, cast a very long spell name, or select a target now!",
+          )
+          .setColor("#ffff44");
       } else if (kind === "target_cursor") {
         scene.enterTargetingMode();
       } else if (kind === "cinematic_frame") {

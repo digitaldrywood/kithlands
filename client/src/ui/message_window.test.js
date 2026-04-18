@@ -123,4 +123,23 @@ describe("MessageWindow", () => {
     expect(window.text.style.color).toBe("#ffffff");
     expect(window.container.children.length).toBeGreaterThan(3);
   });
+
+  it("anchors text inside the framed fill area", () => {
+    const scene = makeScene();
+    const window = new MessageWindow(scene, {
+      x: 20,
+      y: 510,
+      width: 760,
+      height: 85,
+    });
+
+    const metrics = window.getLayoutMetrics();
+
+    expect(metrics.textBounds.x).toBeGreaterThanOrEqual(
+      metrics.contentBounds.x,
+    );
+    expect(metrics.textBounds.y).toBeGreaterThanOrEqual(
+      metrics.contentBounds.y,
+    );
+  });
 });

@@ -167,9 +167,9 @@ export class BattleScene extends Phaser.Scene {
     if (this.messageWindow) this.messageWindow.destroy();
     this.messageWindow = new MessageWindow(this, {
       x: 20,
-      y: 510,
+      y: 488,
       width: 760,
-      height: 85,
+      height: 112,
       depth: 20,
     });
     this.promptText = this.messageWindow;
@@ -1248,7 +1248,7 @@ export class BattleScene extends Phaser.Scene {
       autoMode: this.autoMode,
     });
 
-    const buttonY = 472;
+    const buttonY = 468;
     const tw = btns.length * 145,
       sx = 400 - tw / 2 + 72;
     for (let i = 0; i < btns.length; i++) {
