@@ -167,6 +167,26 @@ const DEFAULT_PROGRESS_BAR_STYLE = {
   showLabel: true,
 };
 
+const DEFAULT_LABELED_STAT_BAR_STYLE = {
+  track: 0x222244,
+  fill: 0x4488ff,
+  stroke: 0x4488ff,
+  strokeWidth: 1,
+  depth: 41,
+  height: 10,
+  trackYOffset: 6,
+  labelColor: "#cccccc",
+  labelFontSize: "11px",
+  labelFontFamily: "monospace",
+  labelWidth: 24,
+  valueColor: "#ffffff",
+  valueFontSize: "10px",
+  valueFontFamily: "monospace",
+  valueWidth: 52,
+  valueGap: 6,
+  valueText: null,
+};
+
 // Draw a horizontal progress bar — a track rectangle plus a fill rectangle
 // that grows from the left. Built for the options screen (#142) so speed
 // settings show visual "X of max" instead of a bare number, but kept
@@ -241,6 +261,98 @@ export function drawProgressBar(scene, x, y, w, h, cur, max, opts = {}) {
       track.destroy();
       fill.destroy();
       if (label) label.destroy();
+    },
+  };
+}
+
+// Draw a compact JRPG-style stat bar with a short left label, a fixed-width
+// track, and a right-side numeric value. The created Phaser objects are tagged
+// so dev/proof tooling can identify party-menu and character-detail bars
+// without depending on fragile text adjacency.
+export function drawLabeledStatBar(
+  scene,
+  x,
+  y,
+  width,
+  cur,
+  max,
+  prefix,
+  opts = {},
+) {
+  const style = { ...DEFAULT_LABELED_STAT_BAR_STYLE, ...opts };
+  const valueText = style.valueText ?? barLabel(cur, max);
+  const trackX = x + style.labelWidth;
+  const trackW = Math.max(
+    1,
+    width - style.labelWidth - style.valueGap - style.valueWidth,
+  );
+  const trackY = y + style.trackYOffset;
+
+  const prefixLabel = scene.add
+    .text(x, y, prefix, {
+      fontSize: style.labelFontSize,
+      color: style.labelColor,
+      fontFamily: style.labelFontFamily,
+    })
+    .setOrigin(0, 0.5)
+    .setScrollFactor(0)
+    .setDepth(style.depth + 1);
+  if (typeof prefixLabel.setColor === "function") {
+    prefixLabel.setColor(style.labelColor);
+  }
+  prefixLabel.__kithlandsStatBar = { prefix, role: "prefix" };
+
+  const track = scene.add
+    .rectangle(trackX, trackY, trackW, style.height, style.track, 1)
+    .setOrigin(0, 0.5)
+    .setStrokeStyle(style.strokeWidth, style.stroke)
+    .setScrollFactor(0)
+    .setDepth(style.depth);
+  track.__kithlandsStatBar = { prefix, role: "track" };
+
+  const fillW = barFillWidth(cur, max, trackW);
+  const fill = scene.add
+    .rectangle(
+      trackX,
+      trackY,
+      Math.max(1, fillW),
+      style.height,
+      style.fill,
+      1,
+    )
+    .setOrigin(0, 0.5)
+    .setScrollFactor(0)
+    .setDepth(style.depth + 1);
+  fill.__kithlandsStatBar = { prefix, role: "fill" };
+  if (fillW <= 0) {
+    if (typeof fill.setVisible === "function") fill.setVisible(false);
+    else fill.visible = false;
+  }
+
+  const valueLabel = scene.add
+    .text(trackX + trackW + style.valueGap, y, valueText, {
+      fontSize: style.valueFontSize,
+      color: style.valueColor,
+      fontFamily: style.valueFontFamily,
+    })
+    .setOrigin(0, 0.5)
+    .setScrollFactor(0)
+    .setDepth(style.depth + 1);
+  if (typeof valueLabel.setColor === "function") {
+    valueLabel.setColor(style.valueColor);
+  }
+  valueLabel.__kithlandsStatBar = { prefix, role: "value" };
+
+  return {
+    prefixLabel,
+    track,
+    fill,
+    valueLabel,
+    destroy() {
+      prefixLabel.destroy();
+      track.destroy();
+      fill.destroy();
+      valueLabel.destroy();
     },
   };
 }
