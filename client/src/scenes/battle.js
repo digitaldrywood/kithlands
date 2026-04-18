@@ -26,6 +26,8 @@ import {
   planSmartRound,
   resolveAction,
 } from "../systems/auto_battle.js";
+import { drawButton, drawPanel } from "../ui/panel.js";
+import { TILE_COLORS, TILE_IDS } from "./tileConstants.js";
 
 const ENEMY_COLORS = {
   Slime: 0x42a5f5,
@@ -104,6 +106,107 @@ const CLASS_SPRITES = {
   wanderer: "wanderer",
 };
 
+const DEFAULT_BATTLE_TILE = TILE_IDS.grass;
+const ACTION_HUD = {
+  centerX: 190,
+  centerY: 535,
+  width: 340,
+  height: 132,
+  portraitX: 74,
+  portraitY: 514,
+  portraitSize: 60,
+  portraitFrame: 68,
+  buttonStartX: 168,
+  buttonStartY: 500,
+  buttonWidth: 82,
+  buttonHeight: 28,
+  buttonGapX: 10,
+  buttonGapY: 10,
+  buttonColumns: 3,
+};
+
+function mixColor(colorA, colorB, ratio = 0.5) {
+  const mix = clamp(ratio, 0, 1);
+  const a = Phaser.Display.Color.IntegerToColor(colorA);
+  const b = Phaser.Display.Color.IntegerToColor(colorB);
+  return Phaser.Display.Color.GetColor(
+    Math.round(a.red + (b.red - a.red) * mix),
+    Math.round(a.green + (b.green - a.green) * mix),
+    Math.round(a.blue + (b.blue - a.blue) * mix),
+  );
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function isLiquidTileType(tileType) {
+  return (
+    tileType === TILE_IDS.water ||
+    tileType === TILE_IDS.lake ||
+    tileType === TILE_IDS.river
+  );
+}
+
+function resolvePortraitTextureKey(scene, member = {}) {
+  const candidates = [
+    member.sprite_id,
+    member.class_id,
+    String(member.class_name || "")
+      .trim()
+      .toLowerCase(),
+  ];
+  return candidates.find((key) => key && scene.textures.exists(key)) || null;
+}
+
+function battleThemeForTile(tileType, inTown = false) {
+  const fallbackType = Number.isFinite(tileType)
+    ? tileType
+    : DEFAULT_BATTLE_TILE;
+  const base = TILE_COLORS[fallbackType] ?? TILE_COLORS[DEFAULT_BATTLE_TILE];
+  const skyTop = mixColor(base, inTown ? 0x1e2433 : 0x20304c, 0.78);
+  const skyBottom = mixColor(base, inTown ? 0x684d3b : 0xb88652, 0.36);
+  const far = mixColor(base, inTown ? 0x131925 : 0x182235, 0.68);
+  const near = mixColor(base, inTown ? 0x0c1320 : 0x0c1422, 0.8);
+  const ground = mixColor(base, inTown ? 0x27170f : 0x1a140e, 0.62);
+  const haze = mixColor(base, 0xf2d99b, 0.26);
+  const shadow = mixColor(base, 0x000000, 0.82);
+
+  let motif = "plains";
+  if (inTown) motif = "interior";
+  else if (
+    fallbackType === TILE_IDS.forest ||
+    fallbackType === TILE_IDS.darkGrass
+  )
+    motif = "forest";
+  else if (fallbackType === TILE_IDS.sand) motif = "dunes";
+  else if (fallbackType === TILE_IDS.hill || fallbackType === TILE_IDS.mountain)
+    motif = "mountains";
+  else if (fallbackType === TILE_IDS.snow) motif = "snow";
+  else if (fallbackType === TILE_IDS.marsh) motif = "marsh";
+  else if (isLiquidTileType(fallbackType)) motif = "shore";
+
+  return {
+    tileType: fallbackType,
+    motif,
+    skyTop,
+    skyBottom,
+    far,
+    near,
+    ground,
+    haze,
+    shadow,
+  };
+}
+
+function polygonPoints(values) {
+  const points = [];
+  for (let i = 0; i < values.length; i += 2) {
+    points.push(new Phaser.Geom.Point(values[i], values[i + 1]));
+  }
+  return points;
+}
+
 function normalizeLastRoundActions(actions) {
   return Array.isArray(actions) && actions.length > 0 ? actions : null;
 }
@@ -126,6 +229,11 @@ export class BattleScene extends Phaser.Scene {
     );
     this._autoMode = data.autoMode || false;
     this.returnScene = data.returnScene || null;
+    this.encounterTileType =
+      data.encounterTileType ??
+      data.gameState?.tile_type ??
+      this.encounterTileType ??
+      null;
   }
 
   create() {
@@ -140,6 +248,9 @@ export class BattleScene extends Phaser.Scene {
     this.pendingSpellId = null;
     this.pendingSpellEffect = null;
     this.actionBtns = null;
+    this.actionHudObjects = [];
+    this.combatShadows = [];
+    this.backdropObjects = [];
 
     // Per-member action collection
     this.memberActions = []; // array of {slot, type, target_id, spell_id}
@@ -171,10 +282,12 @@ export class BattleScene extends Phaser.Scene {
     this.floatingText = new FloatingTextPool(this);
     if (this.messageWindow) this.messageWindow.destroy();
     this.messageWindow = new MessageWindow(this, {
-      x: 20,
-      y: 488,
-      width: 760,
-      height: 112,
+      x: 376,
+      y: 490,
+      width: 404,
+      height: 98,
+      minHeight: 68,
+      maxHeight: 136,
       depth: 20,
     });
     this.promptText = this.messageWindow;
@@ -210,13 +323,10 @@ export class BattleScene extends Phaser.Scene {
     const isBoss = gs.enemies.some((e) => e.size === "boss");
     playMusic(isBoss ? "music_boss" : "music_battle");
 
-    // Background
-    this.add.rectangle(400, 300, 800, 600, 0x0a0a1e);
-    this.add.rectangle(400, 400, 800, 200, 0x111133);
+    this.drawBattleBackdrop();
 
     this.drawEnemies(gs);
     this.drawParty(gs);
-    this.drawLog(gs);
     this.createLowHpVignette();
 
     this.setupKeyboard();
@@ -372,6 +482,7 @@ export class BattleScene extends Phaser.Scene {
           this.scene.restart({
             gameState: this.gameState,
             returnScene: this.returnScene,
+            encounterTileType: this.encounterTileType,
           });
         }
       });
@@ -610,6 +721,105 @@ export class BattleScene extends Phaser.Scene {
     this.drawActions(gs, slot);
   }
 
+  drawBattleBackdrop() {
+    const theme = battleThemeForTile(
+      this.encounterTileType,
+      this.returnScene?.sceneKey === "Town",
+    );
+    this.backdropTheme = theme;
+
+    const stripeHeight = 44;
+    for (let i = 0; i < 8; i++) {
+      const ratio = i / 7;
+      const stripe = this.add
+        .rectangle(
+          400,
+          24 + i * stripeHeight + stripeHeight / 2,
+          800,
+          stripeHeight + 2,
+          mixColor(theme.skyTop, theme.skyBottom, ratio),
+          1,
+        )
+        .setDepth(-5);
+      stripe._combatFxTag = "battle-backdrop";
+      this.backdropObjects.push(stripe);
+    }
+
+    const glow = this.add
+      .circle(
+        theme.motif === "dunes" ? 636 : 158,
+        theme.motif === "snow" ? 114 : 138,
+        theme.motif === "interior" ? 52 : 74,
+        mixColor(theme.haze, 0xffffff, 0.18),
+        theme.motif === "interior" ? 0.2 : 0.3,
+      )
+      .setDepth(-4);
+    glow._combatFxTag = "battle-backdrop";
+    this.backdropObjects.push(glow);
+
+    const hazeBand = this.add
+      .rectangle(400, 256, 800, 120, theme.haze, 0.16)
+      .setDepth(-3);
+    hazeBand._combatFxTag = "battle-backdrop";
+    this.backdropObjects.push(hazeBand);
+
+    const farLayer = this.add.graphics().setDepth(-2);
+    farLayer._combatFxTag = "battle-backdrop";
+    farLayer.fillStyle(theme.far, 0.96);
+    const farPoints =
+      theme.motif === "forest"
+        ? [
+            0, 312, 60, 250, 138, 290, 216, 214, 316, 286, 418, 212, 530, 294,
+            618, 232, 726, 282, 800, 238, 800, 600, 0, 600,
+          ]
+        : [
+            0, 318, 92, 264, 188, 286, 286, 228, 392, 276, 506, 224, 624, 278,
+            728, 234, 800, 256, 800, 600, 0, 600,
+          ];
+    farLayer.fillPoints(polygonPoints(farPoints), true);
+    this.backdropObjects.push(farLayer);
+
+    const nearLayer = this.add.graphics().setDepth(-1);
+    nearLayer._combatFxTag = "battle-backdrop";
+    nearLayer.fillStyle(theme.near, 0.98);
+    const nearPoints =
+      theme.motif === "marsh"
+        ? [
+            0, 366, 84, 346, 168, 358, 246, 332, 336, 350, 432, 324, 540, 348,
+            646, 324, 744, 340, 800, 330, 800, 600, 0, 600,
+          ]
+        : [
+            0, 378, 96, 336, 186, 358, 280, 320, 386, 356, 484, 316, 590, 350,
+            694, 318, 800, 346, 800, 600, 0, 600,
+          ];
+    nearLayer.fillPoints(polygonPoints(nearPoints), true);
+    this.backdropObjects.push(nearLayer);
+
+    const groundBand = this.add.graphics().setDepth(0);
+    groundBand._combatFxTag = "ground-plane";
+    groundBand.fillStyle(theme.ground, 0.9);
+    groundBand.fillRoundedRect(16, 302, 768, 126, 22);
+    groundBand.fillStyle(mixColor(theme.ground, 0xffffff, 0.1), 0.1);
+    groundBand.fillRoundedRect(16, 302, 768, 24, 22);
+    this.backdropObjects.push(groundBand);
+  }
+
+  addCombatShadow(x, y, width, height, alpha = 0.3) {
+    const shadow = this.add
+      .ellipse(
+        x,
+        y,
+        Math.max(36, width),
+        Math.max(12, height),
+        this.backdropTheme?.shadow ?? 0x000000,
+        alpha,
+      )
+      .setDepth(1);
+    shadow._combatFxTag = "combat-shadow";
+    this.combatShadows.push(shadow);
+    return shadow;
+  }
+
   drawEnemies(gs) {
     const enemies = gs.enemies;
     const spacing = Math.min(130, 450 / Math.max(enemies.length, 1));
@@ -619,8 +829,9 @@ export class BattleScene extends Phaser.Scene {
     for (let i = 0; i < enemies.length; i++) {
       const e = enemies[i];
       const x = sx + i * spacing,
-        y = 240;
+        y = 236;
       const sz = e.name === "Dark Knight" ? 80 : 50;
+      this.addCombatShadow(x, y + sz / 2 + 22, sz + 30, 18, 0.28);
 
       const key = ENEMY_SPRITES[e.name];
       let sprite;
@@ -636,6 +847,7 @@ export class BattleScene extends Phaser.Scene {
           ENEMY_COLORS[e.name] || 0xff5722,
         );
       }
+      sprite.setDepth(3);
       sprite.setInteractive({ useHandCursor: true });
       sprite.on("pointerdown", () => {
         if (
@@ -780,6 +992,14 @@ export class BattleScene extends Phaser.Scene {
           fallbackKey,
         },
       );
+      this.addCombatShadow(
+        placement.spriteX + 4,
+        placement.spriteY + 34,
+        58,
+        16,
+        placement.row === "front" ? 0.32 : 0.24,
+      );
+      sprite.setDepth(4);
       this.partySprites[p.name] = {
         sprite,
         arrow,
@@ -1273,9 +1493,8 @@ export class BattleScene extends Phaser.Scene {
   }
 
   drawActions(gs, slot) {
-    // Remove old buttons
     if (this.actionBtns) {
-      this.actionBtns.forEach((o) => o.destroy());
+      this.actionBtns.forEach((o) => o?.destroy?.());
     }
     this.actionBtns = [];
 
@@ -1286,64 +1505,158 @@ export class BattleScene extends Phaser.Scene {
       hasLastRound: !!this.lastRoundActions,
       autoMode: this.autoMode,
     });
+    const frame = drawPanel(
+      this,
+      ACTION_HUD.centerX,
+      ACTION_HUD.centerY,
+      ACTION_HUD.width,
+      ACTION_HUD.height,
+      {
+        fill: 0x08111f,
+        fillAlpha: 0.9,
+        stroke: 0x6ea8ff,
+        strokeWidth: 2,
+        depth: 16,
+      },
+    );
+    frame.bg._combatFxTag = "action-panel";
+    this.actionBtns.push(frame.bg);
 
-    const buttonY = 468;
-    const tw = btns.length * 145,
-      sx = 400 - tw / 2 + 72;
-    for (let i = 0; i < btns.length; i++) {
-      const b = btns[i],
-        x = sx + i * 145;
-      const bg = this.add
-        .rectangle(x, buttonY, 125, 30, 0x1a1a44)
-        .setStrokeStyle(1, 0x444488)
-        .setInteractive({ useHandCursor: true });
-      const txt = this.add
-        .text(x, buttonY, b.label, {
-          fontSize: "12px",
-          color: b.color,
+    const portraitFrame = this.add
+      .rectangle(
+        ACTION_HUD.portraitX,
+        ACTION_HUD.portraitY,
+        ACTION_HUD.portraitFrame,
+        ACTION_HUD.portraitFrame,
+        0x13243d,
+        1,
+      )
+      .setStrokeStyle(2, 0x88ccff)
+      .setDepth(17);
+    this.actionBtns.push(portraitFrame);
+
+    const portraitKey = resolvePortraitTextureKey(this, member);
+    if (portraitKey) {
+      const portrait = this.add
+        .image(ACTION_HUD.portraitX, ACTION_HUD.portraitY, portraitKey)
+        .setDepth(18);
+      const srcSize = Math.max(portrait.width || 64, portrait.height || 64);
+      portrait.setScale(ACTION_HUD.portraitSize / srcSize);
+      this.actionBtns.push(portrait);
+    } else {
+      const fallback = this.add
+        .text(
+          ACTION_HUD.portraitX,
+          ACTION_HUD.portraitY,
+          member.name[0] || "?",
+          {
+            fontSize: "28px",
+            color: "#88ccff",
+            fontFamily: "monospace",
+            fontStyle: "bold",
+          },
+        )
+        .setOrigin(0.5)
+        .setDepth(18);
+      this.actionBtns.push(fallback);
+    }
+
+    this.actionBtns.push(
+      this.add
+        .text(ACTION_HUD.portraitX, 554, member.name, {
+          fontSize: "11px",
+          color: "#ffffff",
+          fontFamily: "monospace",
+          fontStyle: "bold",
+        })
+        .setOrigin(0.5)
+        .setDepth(18),
+      this.add
+        .text(ACTION_HUD.portraitX, 569, member.class_name, {
+          fontSize: "9px",
+          color: "#ffcc66",
           fontFamily: "monospace",
         })
-        .setOrigin(0.5);
+        .setOrigin(0.5)
+        .setDepth(18),
+      this.add
+        .text(166, 474, "COMMAND", {
+          fontSize: "11px",
+          color: "#cfe6ff",
+          fontFamily: "monospace",
+          fontStyle: "bold",
+        })
+        .setDepth(18),
+    );
 
-      this.actionBtns.push(bg, txt);
+    for (let i = 0; i < btns.length; i++) {
+      const button = btns[i];
+      const row = Math.floor(i / ACTION_HUD.buttonColumns);
+      const col = i % ACTION_HUD.buttonColumns;
+      const x =
+        ACTION_HUD.buttonStartX +
+        col * (ACTION_HUD.buttonWidth + ACTION_HUD.buttonGapX);
+      const y =
+        ACTION_HUD.buttonStartY +
+        row * (ACTION_HUD.buttonHeight + ACTION_HUD.buttonGapY);
+      const handle = drawButton(
+        this,
+        x,
+        y,
+        ACTION_HUD.buttonWidth,
+        ACTION_HUD.buttonHeight,
+        button.label,
+        () => this.handleActionButton(button, member, gs, slot),
+        {
+          depth: 17,
+          fontSize: "10px",
+          textColor: button.color,
+          textColorDisabled: "#6e7d91",
+          fill: 0x173054,
+          fillHover: 0x20406e,
+          fillPress: 0x2a548e,
+          fillActive: 0x26466f,
+          stroke: 0x5e91d6,
+          strokeActive: 0xffd36b,
+        },
+      );
+      if (button.type === "auto" && this.autoMode) {
+        handle.setActive(true);
+      }
+      this.actionBtns.push(handle);
+    }
+  }
 
-      bg.on("pointerover", () => bg.setFillStyle(0x2a2a66));
-      bg.on("pointerout", () => bg.setFillStyle(0x1a1a44));
-      bg.on("pointerdown", () => {
-        if (this.animating) return;
-        // Any manual action cancels auto-mode (issue #99)
-        if (b.type !== "repeat" && b.type !== "auto" && this.autoMode) {
-          this.autoMode = false;
-        }
-        if (b.type === "attack") {
-          this.pendingAction = "attack";
-          this.enterTargetingMode();
-          this.promptText
-            .setText(`${member.name}: Select a target to attack!`)
-            .setColor("#ff4444");
-        } else if (b.type === "spell") {
-          this.showSpellPicker(slot);
-        } else if (b.type === "ability") {
-          this.showAbilityPicker(slot);
-        } else if (b.type === "item") {
-          this.showItemPicker(slot);
-        } else if (b.type === "smart") {
-          this.executeSmartAttack();
-        } else if (b.type === "flee") {
-          // Flee sends immediately (whole party flees)
-          this.doFlee();
-        } else if (b.type === "repeat") {
-          this.executeRepeat();
-        } else if (b.type === "auto") {
-          this.autoMode = !this.autoMode;
-          if (this.autoMode) {
-            this.executeRepeat();
-          } else {
-            // Redraw buttons to update AUTO label
-            this.drawActions(gs, slot);
-          }
-        }
-      });
+  handleActionButton(button, member, gs, slot) {
+    if (this.animating) return;
+    if (button.type !== "repeat" && button.type !== "auto" && this.autoMode) {
+      this.autoMode = false;
+    }
+    if (button.type === "attack") {
+      this.pendingAction = "attack";
+      this.enterTargetingMode();
+      this.promptText
+        .setText(`${member.name}: Select a target to attack!`)
+        .setColor("#ff4444");
+    } else if (button.type === "spell") {
+      this.showSpellPicker(slot);
+    } else if (button.type === "ability") {
+      this.showAbilityPicker(slot);
+    } else if (button.type === "item") {
+      this.showItemPicker(slot);
+    } else if (button.type === "smart") {
+      this.executeSmartAttack();
+    } else if (button.type === "flee") {
+      this.doFlee();
+    } else if (button.type === "repeat") {
+      this.executeRepeat();
+    } else if (button.type === "auto") {
+      this.autoMode = !this.autoMode;
+      if (this.autoMode) {
+        this.executeRepeat();
+      } else {
+        this.drawActions(gs, slot);
+      }
     }
   }
 
@@ -1839,6 +2152,7 @@ export class BattleScene extends Phaser.Scene {
         this.scene.restart({
           gameState: result,
           returnScene: this.returnScene,
+          encounterTileType: this.encounterTileType,
         });
       }
     });
@@ -1900,6 +2214,7 @@ export class BattleScene extends Phaser.Scene {
             lastRoundActions: savedActions,
             autoMode: this.autoMode,
             returnScene: this.returnScene,
+            encounterTileType: this.encounterTileType,
           });
         }
       });
@@ -1928,6 +2243,7 @@ export class BattleScene extends Phaser.Scene {
             this.scene.restart({
               gameState: fresh,
               returnScene: this.returnScene,
+              encounterTileType: this.encounterTileType,
             });
           } else {
             this.returnFromBattle(fresh);

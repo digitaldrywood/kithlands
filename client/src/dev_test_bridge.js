@@ -139,7 +139,9 @@ function applySceneGameState(game, scene, result) {
   if (typeof scene.updateHUD === "function") scene.updateHUD();
 
   if (scene.scene?.key === "World" && result.phase === "combat") {
-    scene.scene.start("Battle", { gameState: result });
+    const encounterTileType =
+      scene.tileData?.[scene.playerY]?.[scene.playerX] ?? null;
+    scene.scene.start("Battle", { gameState: result, encounterTileType });
     return;
   }
   if (scene.scene?.key === "Battle" && result.phase !== "combat") {
@@ -829,6 +831,11 @@ function visibleBattleFxSnapshot(scene) {
       text: scene?.messageWindow?.getText?.() ?? "",
       ...(scene?.messageWindow?.getLayoutMetrics?.() ?? {}),
     },
+    encounterTileType: scene?.encounterTileType ?? null,
+    backdropCount: taggedCount("battle-backdrop"),
+    groundPlaneCount: taggedCount("ground-plane"),
+    shadowCount: taggedCount("combat-shadow"),
+    actionPanelCount: taggedCount("action-panel"),
     partyMembers,
     enemyMembers,
     floatingTexts: (scene?.floatingText?.active || [])
