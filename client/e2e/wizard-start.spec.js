@@ -236,11 +236,12 @@ test.describe("wizard start flow", () => {
     await page.locator('input[type="text"]').nth(2).fill("Cato");
     await page.locator('input[type="text"]').nth(3).fill("Nia");
 
-    await addProofOverlay(page, "Final wizard step with Create/Cancel", "Wizard", [
-      "PICK YOUR PARTY",
-      "CREATE GAME",
-      "CANCEL",
-    ]);
+    await addProofOverlay(
+      page,
+      "Final wizard step with Create/Cancel",
+      "Wizard",
+      ["PICK YOUR PARTY", "CREATE GAME", "CANCEL"],
+    );
     await page.screenshot({
       path: testInfo.outputPath(`issue-219-final-step-${RUN_ID}.png`),
       fullPage: true,
