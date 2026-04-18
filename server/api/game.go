@@ -142,6 +142,8 @@ type GameState struct {
 	ShopItems            []ShopItemState          `json:"shop_items,omitempty"`
 	Transport            TransportInfo            `json:"transport"`
 	CollectedHiddenItems map[string]bool          `json:"collected_hidden_items,omitempty"`
+	TriggeredFlags       map[string]bool          `json:"triggered_flags,omitempty"`
+	PendingChestClaim    *PendingChestClaimState  `json:"pending_chest_claim,omitempty"`
 }
 
 // TransportInfo is the transport tier state sent to the client.
@@ -403,10 +405,12 @@ type Game struct {
 	diedThisFight        []bool
 	discovered           map[string]bool // bestiary: monster IDs encountered
 	collectedHiddenItems map[string]bool // town hidden-item keys already picked up
+	triggeredFlags       map[string]bool // generic persistent event flags + chest-open state
 	visitedNodes         map[string]bool // node IDs the player has entered (sequence-break tracking)
 	formation            string          // current encounter layout type
 	worldEncounterCount  int             // successful overworld encounters started on this save
 	lastRoundActions     []MemberActionReq
+	pendingChestClaim    *PendingChestClaim
 	// encounterStart records preemptive/ambush state for the current fight so
 	// the first call to ResolveTurn can skip one side's actions.
 	encounterStart combat.EncounterStart
@@ -450,6 +454,8 @@ func (g *Game) State() GameState {
 
 	state.Transport = g.buildTransportInfo()
 	state.CollectedHiddenItems = g.collectedHiddenItems
+	state.TriggeredFlags = cloneBoolMap(g.triggeredFlags)
+	state.PendingChestClaim = clonePendingChestClaimState(g.pendingChestClaim)
 	g.fillInventoryState(&state)
 	g.fillExtras(&state)
 
@@ -765,6 +771,8 @@ func (g *Game) stateUnlocked() GameState {
 
 	state.Transport = g.buildTransportInfo()
 	state.CollectedHiddenItems = g.collectedHiddenItems
+	state.TriggeredFlags = cloneBoolMap(g.triggeredFlags)
+	state.PendingChestClaim = clonePendingChestClaimState(g.pendingChestClaim)
 	g.fillInventoryState(&state)
 	g.fillExtras(&state)
 	for i, c := range g.party {
@@ -851,6 +859,17 @@ func (g *Game) logCombat(text string, action CombatActionEntry) {
 func (g *Game) resetEncounterStartState() {
 	g.encounterStart = combat.EncounterStartNormal
 	g.combatRound = 0
+}
+
+func cloneBoolMap(in map[string]bool) map[string]bool {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[string]bool, len(in))
+	for key, value := range in {
+		out[key] = value
+	}
+	return out
 }
 
 // rollEncounterStartForNewFight resets the round counter and picks the

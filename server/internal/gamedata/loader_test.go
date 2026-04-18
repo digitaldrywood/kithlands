@@ -122,6 +122,19 @@ func TestPalettesLoaded(t *testing.T) {
 	}
 }
 
+func TestChestsLoaded(t *testing.T) {
+	gd := gamedata.Load("../../../shared")
+	if len(gd.Chests) < 8 {
+		t.Fatalf("expected authored chest catalog, got %d entries", len(gd.Chests))
+	}
+	if gd.ChestByID("crypt_reliquary") == nil {
+		t.Fatal("crypt_reliquary chest not loaded")
+	}
+	if gd.KeyItemByID("sun_seal") == nil {
+		t.Fatal("sun_seal key item not loaded")
+	}
+}
+
 func TestLoadPanicsOnMissingDir(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {

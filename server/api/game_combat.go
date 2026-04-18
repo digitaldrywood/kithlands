@@ -66,6 +66,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 			g.enemies = nil
 			g.formation = ""
 			g.spellBuffs = nil
+			g.clearPendingChestClaimUnlocked()
 			g.resetEncounterStartState()
 			state := g.stateUnlocked()
 			return &state, nil
@@ -674,6 +675,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 		g.phase = "defeat"
 		g.message = "Your party has fallen. Game over."
 		g.spellBuffs = nil
+		g.clearPendingChestClaimUnlocked()
 		g.resetEncounterStartState()
 	}
 
@@ -816,6 +818,7 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 		g.phase = "defeat"
 		g.message = "Your party has fallen."
 		g.spellBuffs = nil
+		g.clearPendingChestClaimUnlocked()
 		g.resetEncounterStartState()
 	}
 

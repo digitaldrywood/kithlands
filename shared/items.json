@@ -1045,6 +1045,20 @@
       "description": "A sigil wrested from the trial guardian. Proof of your right to ascend.",
       "buy_price": 0,
       "sell_price": 0
+    },
+    {
+      "id": "rusted_music_box",
+      "name": "Rusted Music Box",
+      "description": "A weathered keepsake that still chimes when wound.",
+      "buy_price": 0,
+      "sell_price": 0
+    },
+    {
+      "id": "sun_seal",
+      "name": "Sun Seal",
+      "description": "A warm brass seal stamped with an old temple crest.",
+      "buy_price": 0,
+      "sell_price": 0
     }
   ]
 }

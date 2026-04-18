@@ -25,7 +25,9 @@
         { "role": "elder", "x": 7, "y": 5 },
         { "role": "gossip", "x": 3, "y": 9 }
       ],
-      "chest_anchors": []
+      "chest_anchors": [
+        { "id": "widow_keepsake_box", "x": 12, "y": 7 }
+      ]
     }
   ]
 }

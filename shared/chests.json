@@ -1,0 +1,69 @@
+{
+  "abandoned_wall_cache": {
+    "kind": "key_item",
+    "item_id": "strange_coin",
+    "set_flag": "abandoned_cache_found"
+  },
+  "riverrest_guest_cache": {
+    "kind": "item",
+    "item_id": "potion",
+    "amount": 2
+  },
+  "gilded_guest_chest": {
+    "kind": "gil",
+    "amount": 180
+  },
+  "stockroom_cache": {
+    "kind": "gil",
+    "amount": 90
+  },
+  "crypt_cache": {
+    "kind": "item",
+    "item_id": "iron_sword",
+    "amount": 1
+  },
+  "crypt_reliquary": {
+    "kind": "monster_box",
+    "monster_formation_id": "skeleton_patrol",
+    "reward_kind": "item",
+    "reward_item_id": "phoenix_down",
+    "reward_amount": 2
+  },
+  "blacksmith_apprentice_cache": {
+    "kind": "gil",
+    "amount": 60
+  },
+  "elder_study_strongbox": {
+    "kind": "key_item",
+    "item_id": "rusted_music_box"
+  },
+  "widow_keepsake_box": {
+    "kind": "key_item",
+    "item_id": "sun_seal",
+    "lock_flag": "abandoned_cache_found"
+  },
+  "corner_goods_stash": {
+    "kind": "item",
+    "item_id": "antidote",
+    "amount": 2
+  },
+  "sunhall_offering_chest": {
+    "kind": "item",
+    "item_id": "ether",
+    "amount": 1,
+    "variants": [
+      {
+        "if_flag": "abandoned_cache_found",
+        "kind": "item",
+        "item_id": "hi_ether",
+        "amount": 1
+      },
+      {
+        "if_flag_not": "abandoned_cache_found",
+        "kind": "item",
+        "item_id": "ether",
+        "amount": 1
+      }
+    ]
+  }
+}

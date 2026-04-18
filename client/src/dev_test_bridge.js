@@ -1,5 +1,6 @@
 import {
   buyItem,
+  claimChest,
   debugForceEncounter,
   debugForceVictory,
   debugGiveItem,
@@ -141,6 +142,10 @@ function applySceneGameState(game, scene, result) {
     return;
   }
   if (scene.scene?.key === "Battle" && result.phase !== "combat") {
+    if (typeof scene.returnFromBattle === "function") {
+      scene.returnFromBattle(result);
+      return;
+    }
     scene.scene.start("World", { gameState: result });
   }
 }
@@ -1130,17 +1135,42 @@ export function installDevTestBridge(game) {
       const gameId = scene?.gameState?.id;
       if (!gameId) throw new Error("Active scene has no game id");
       const result = await debugForceVictory(gameId);
-      if (!result?.error) {
+      let finalResult = result;
+      let returnScene = scene?.returnScene || null;
+      if (
+        !result?.error &&
+        scene?.scene?.key === "Battle" &&
+        returnScene?.sceneKey === "Town" &&
+        result.phase !== "combat" &&
+        result.pending_chest_claim
+      ) {
+        const pending = result.pending_chest_claim;
+        const claimed = await claimChest(
+          result.id,
+          pending.node_id,
+          pending.chest_id,
+        );
+        if (!claimed?.error) {
+          finalResult = claimed;
+          if (claimed.message) {
+            returnScene = { ...returnScene, entryMessage: claimed.message };
+          }
+        }
+      }
+      if (!finalResult?.error) {
         if (scene?.scene?.key === "Battle") {
-          game.scene.start("Battle", { gameState: result });
+          game.scene.start("Battle", {
+            gameState: finalResult,
+            returnScene,
+          });
           await waitFor(() => game.scene.isActive("Battle"));
           await nextFrame();
           await nextFrame();
         } else {
-          applySceneGameState(game, scene, result);
+          applySceneGameState(game, scene, finalResult);
         }
       }
-      return clone(result);
+      return clone(finalResult);
     },
 
     async submitAction(action, sceneKey) {
@@ -1150,8 +1180,10 @@ export function installDevTestBridge(game) {
       const result = await gameAction(gameId, action);
       if (!result?.error) {
         applySceneGameState(game, scene, result);
-        if (scene?.scene?.key === "Battle" && result.phase === "world") {
-          await this.waitForSceneReady("World");
+        if (scene?.scene?.key === "Battle" && result.phase !== "combat") {
+          const destination =
+            scene.returnScene?.sceneKey === "Town" ? "Town" : "World";
+          await this.waitForSceneReady(destination);
         }
       }
       return clone(result);
@@ -1533,6 +1565,12 @@ export function installDevTestBridge(game) {
           (npc) => npc.image?.displayHeight ?? null,
         ),
         npcPositions: (scene.npcs || []).map((npc) => ({ x: npc.x, y: npc.y })),
+        chests: (scene.chests || []).map((chest) => ({
+          id: chest.id,
+          x: chest.x,
+          y: chest.y,
+          opened: !!chest.opened,
+        })),
         chestAnchors: clone(scene.templateChestAnchors || []),
         stairs: Array.from(scene.stairsByPosition?.values?.() || []).map(
           (stair) => clone(stair),
@@ -1553,32 +1591,14 @@ export function installDevTestBridge(game) {
         scene.player.x = scene.offsetX + x * 32 + 16;
         scene.player.y = scene.offsetY + y * 32 + 16;
       }
-      let closestIdx = -1;
-      let closestDist = Infinity;
-      for (let i = 0; i < (scene.npcs || []).length; i++) {
-        const dist =
-          Math.abs(scene.playerX - scene.npcs[i].x) +
-          Math.abs(scene.playerY - scene.npcs[i].y);
-        if (dist <= 2 && dist < closestDist) {
-          closestDist = dist;
-          closestIdx = i;
-        }
-      }
-      if (closestIdx >= 0) {
-        scene.nearNpcIndex = closestIdx;
-        if (typeof scene.showInteractPrompt === "function") {
-          scene.showInteractPrompt();
-        }
-      } else {
-        scene.nearNpcIndex = -1;
-        if (typeof scene.hideInteractPrompt === "function") {
-          scene.hideInteractPrompt();
-        }
+      if (typeof scene.updateInteractionTargets === "function") {
+        scene.updateInteractionTargets();
       }
       return {
         x: scene.playerX,
         y: scene.playerY,
         nearNpcIndex: scene.nearNpcIndex,
+        nearChestId: scene.nearChest?.id || null,
         npcPositions: (scene.npcs || []).map((npc) => ({ x: npc.x, y: npc.y })),
       };
     },

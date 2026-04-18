@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearPrefs } from "../systems/prefs.js";
 
 const apiMocks = vi.hoisted(() => ({
+  claimChest: vi.fn(),
   gameAction: vi.fn(),
   getGame: vi.fn(),
   loadSave: vi.fn(),
@@ -16,6 +17,7 @@ const apiMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../api.js", () => ({
+  claimChest: apiMocks.claimChest,
   gameAction: apiMocks.gameAction,
   getGame: apiMocks.getGame,
   loadSave: apiMocks.loadSave,

@@ -61,6 +61,7 @@ func (g *Game) ToSaveState(name, userID string) (*save.SaveState, error) {
 		"spell_books":            g.spellBooks,
 		"transport":              g.trans,
 		"collected_hidden_items": g.collectedHiddenItems,
+		"triggered_flags":        g.triggeredFlags,
 		"building_side_quests":   g.buildingSideQuests,
 		"last_round_actions":     g.lastRoundActions,
 		"world_encounter_count":  g.worldEncounterCount,
@@ -120,6 +121,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		SpellBooks           map[string]*magic.SpellBook            `json:"spell_books"`
 		Transport            *transport.State                       `json:"transport"`
 		CollectedHiddenItems map[string]bool                        `json:"collected_hidden_items"`
+		TriggeredFlags       map[string]bool                        `json:"triggered_flags"`
 		BuildingSideQuests   map[string]generator.BuildingSideQuest `json:"building_side_quests"`
 		LastRoundActions     []MemberActionReq                      `json:"last_round_actions"`
 		WorldEncounterCount  int                                    `json:"world_encounter_count"`
@@ -146,6 +148,10 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	collectedHidden := worldState.CollectedHiddenItems
 	if collectedHidden == nil {
 		collectedHidden = make(map[string]bool)
+	}
+	triggeredFlags := worldState.TriggeredFlags
+	if triggeredFlags == nil {
+		triggeredFlags = make(map[string]bool)
 	}
 	buildingSideQuests := worldState.BuildingSideQuests
 	if buildingSideQuests == nil {
@@ -176,6 +182,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		diff:                 balance.GetDifficulty(ss.Difficulty),
 		discovered:           discovered,
 		collectedHiddenItems: collectedHidden,
+		triggeredFlags:       triggeredFlags,
 		worldEncounterCount:  worldState.WorldEncounterCount,
 		trans:                trans,
 		lastRoundActions:     cloneMemberActionReqs(worldState.LastRoundActions),

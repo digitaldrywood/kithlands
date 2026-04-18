@@ -25,7 +25,9 @@
         { "role": "elder", "x": 7, "y": 6 },
         { "role": "quest_giver", "x": 4, "y": 8 }
       ],
-      "chest_anchors": []
+      "chest_anchors": [
+        { "id": "elder_study_strongbox", "x": 12, "y": 5 }
+      ]
     }
   ]
 }

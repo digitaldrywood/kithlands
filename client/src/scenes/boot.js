@@ -122,6 +122,9 @@ export class BootScene extends Phaser.Scene {
     this.load.audio("sfx_potion", "/audio/sfx/potion.wav");
     this.load.audio("sfx_equip", "/audio/sfx/equip.wav");
 
+    this.load.image("object_chest_closed", "/sprites/objects/chest_closed.png");
+    this.load.image("object_chest_open", "/sprites/objects/chest_open.png");
+
     // Interior tilesets
     this.load.image("tile_altar", "/tilesets/interiors/altar.png");
     this.load.image("tile_bed", "/tilesets/interiors/bed.png");

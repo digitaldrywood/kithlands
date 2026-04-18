@@ -185,6 +185,7 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 		rngSeed:              rngSeed,
 		discovered:           make(map[string]bool),
 		collectedHiddenItems: make(map[string]bool),
+		triggeredFlags:       make(map[string]bool),
 		trans:                transport.NewState(),
 	}
 

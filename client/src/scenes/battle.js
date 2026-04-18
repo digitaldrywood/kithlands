@@ -1,4 +1,4 @@
-import { gameAction, getGame } from "../api.js";
+import { claimChest, gameAction, getGame } from "../api.js";
 import { createComposedSprite } from "../sprites/composedSprite.js";
 import { initAudio, playMusic, playSFX, stopMusic } from "../systems/audio.js";
 import { shouldAcceptEnemySpriteClick } from "../systems/battleTargeting.js";
@@ -121,6 +121,7 @@ export class BattleScene extends Phaser.Scene {
       data.lastRoundActions ?? data.gameState?.last_round_actions,
     );
     this._autoMode = data.autoMode || false;
+    this.returnScene = data.returnScene || null;
   }
 
   create() {
@@ -189,7 +190,7 @@ export class BattleScene extends Phaser.Scene {
     const gs = this.gameState;
     if (!gs || gs.phase !== "combat" || !gs.enemies?.length) {
       if (gs?.combat_log?.length) this.showVictoryResults(gs);
-      else this.scene.start("World", { gameState: gs });
+      else this.returnFromBattle(gs);
       return;
     }
 
@@ -364,7 +365,10 @@ export class BattleScene extends Phaser.Scene {
         if (this.gameState.phase !== "combat") {
           this.showVictoryResults(this.gameState);
         } else {
-          this.scene.restart({ gameState: this.gameState });
+          this.scene.restart({
+            gameState: this.gameState,
+            returnScene: this.returnScene,
+          });
         }
       });
     } catch (e) {
@@ -1795,9 +1799,12 @@ export class BattleScene extends Phaser.Scene {
     this.scaledDelay(300, () => {
       this.animating = false;
       if (result.phase !== "combat") {
-        this.scene.start("World", { gameState: result });
+        this.returnFromBattle(result);
       } else {
-        this.scene.restart({ gameState: result });
+        this.scene.restart({
+          gameState: result,
+          returnScene: this.returnScene,
+        });
       }
     });
   }
@@ -1838,11 +1845,14 @@ export class BattleScene extends Phaser.Scene {
       // the user filed in issue #69.
       await this.reconcileEnemySprites(result.enemies || []);
 
-      this.gameState = result;
+      const finalResult = await this.resolvePendingTownChestClaim(result);
+      this.gameState = finalResult;
 
       // Persist this round's actions for REPEAT / AUTO from the
       // authoritative server state, not browser storage.
-      const savedActions = normalizeLastRoundActions(result.last_round_actions);
+      const savedActions = normalizeLastRoundActions(
+        finalResult.last_round_actions,
+      );
 
       this.scaledDelay(400, () => {
         this.animating = false;
@@ -1854,6 +1864,7 @@ export class BattleScene extends Phaser.Scene {
             gameState: this.gameState,
             lastRoundActions: savedActions,
             autoMode: this.autoMode,
+            returnScene: this.returnScene,
           });
         }
       });
@@ -1879,9 +1890,12 @@ export class BattleScene extends Phaser.Scene {
         this.time.delayedCall(600, () => {
           this.animating = false;
           if (fresh.phase === "combat") {
-            this.scene.restart({ gameState: fresh });
+            this.scene.restart({
+              gameState: fresh,
+              returnScene: this.returnScene,
+            });
           } else {
-            this.scene.start("World", { gameState: fresh });
+            this.returnFromBattle(fresh);
           }
         });
         return;
@@ -1893,8 +1907,49 @@ export class BattleScene extends Phaser.Scene {
     // the player isn't trapped.
     this.time.delayedCall(600, () => {
       this.animating = false;
-      this.scene.start("World", { gameState: this.gameState });
+      this.returnFromBattle(this.gameState);
     });
+  }
+
+  async resolvePendingTownChestClaim(result) {
+    if (
+      !this.returnScene ||
+      this.returnScene.sceneKey !== "Town" ||
+      result?.phase === "combat" ||
+      !result?.pending_chest_claim
+    ) {
+      return result;
+    }
+    const pending = result.pending_chest_claim;
+    const claimed = await claimChest(
+      result.id,
+      pending.node_id,
+      pending.chest_id,
+    );
+    if (!claimed?.error) {
+      if (claimed.message) {
+        this.returnScene = {
+          ...this.returnScene,
+          entryMessage: claimed.message,
+        };
+      }
+      return claimed;
+    }
+    return result;
+  }
+
+  returnFromBattle(gs) {
+    if (this.returnScene?.sceneKey === "Town") {
+      this.scene.start("Town", {
+        gameState: gs,
+        spawn: this.returnScene.spawn,
+        floorIndex: this.returnScene.floorIndex || 0,
+        playerStart: this.returnScene.playerStart || null,
+        entryMessage: this.returnScene.entryMessage || "",
+      });
+      return;
+    }
+    this.scene.start("World", { gameState: gs });
   }
 
   async animateCombatLog(log, actions) {
@@ -3109,12 +3164,8 @@ export class BattleScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     btn.on("pointerover", () => btn.setColor("#88ff88"));
     btn.on("pointerout", () => btn.setColor("#44ff44"));
-    btn.on("pointerdown", () => this.scene.start("World", { gameState: gs }));
-    this.input.keyboard.on("keydown-ENTER", () =>
-      this.scene.start("World", { gameState: gs }),
-    );
-    this.input.keyboard.on("keydown-SPACE", () =>
-      this.scene.start("World", { gameState: gs }),
-    );
+    btn.on("pointerdown", () => this.returnFromBattle(gs));
+    this.input.keyboard.on("keydown-ENTER", () => this.returnFromBattle(gs));
+    this.input.keyboard.on("keydown-SPACE", () => this.returnFromBattle(gs));
   }
 }
