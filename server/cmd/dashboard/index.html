@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kithlands · Worker Screenshot Dashboard</title>
+<style>
+  :root {
+    --bg:        #0e1116;
+    --panel:     #151a22;
+    --panel-2:   #1b222d;
+    --line:      #253040;
+    --ink:       #e6edf3;
+    --ink-dim:   #93a1b3;
+    --ink-faint: #5a6978;
+    --accent:    #7aa2ff;
+    --accent-2:  #2d7aff;
+    --good:      #8dd17a;
+    --warn:      #f2c94c;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+  }
+  header {
+    position: sticky; top: 0; z-index: 5;
+    background: linear-gradient(180deg, #0e1116 0%, #0e1116 70%, rgba(14,17,22,0.92) 100%);
+    border-bottom: 1px solid var(--line);
+    padding: 14px 22px 10px;
+  }
+  .title-row {
+    display: flex; align-items: baseline; gap: 14px;
+    flex-wrap: wrap;
+  }
+  h1 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: var(--ink);
+  }
+  h1 .mark {
+    display: inline-block;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--good);
+    margin-right: 8px;
+    box-shadow: 0 0 10px rgba(141,209,122,0.55);
+    vertical-align: 2px;
+  }
+  .status {
+    font-size: 12px;
+    color: var(--ink-dim);
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+  }
+  .status span.count { color: var(--ink); font-weight: 600; }
+  .status span.new   { color: var(--warn); margin-left: 8px; }
+  .tabs {
+    display: flex; gap: 4px;
+    margin-top: 12px;
+    overflow-x: auto;
+    padding-bottom: 1px;
+    scrollbar-width: thin;
+  }
+  .tab {
+    flex: none;
+    background: var(--panel);
+    color: var(--ink-dim);
+    border: 1px solid var(--line);
+    border-bottom: none;
+    padding: 7px 12px;
+    border-radius: 6px 6px 0 0;
+    font-size: 12.5px;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+    transition: background 120ms, color 120ms;
+  }
+  .tab:hover { background: var(--panel-2); color: var(--ink); }
+  .tab.active {
+    background: var(--panel-2);
+    color: var(--ink);
+    border-color: var(--accent);
+    border-bottom: 1px solid var(--panel-2);
+    margin-bottom: -1px;
+  }
+  .tab .badge {
+    background: var(--line);
+    color: var(--ink-dim);
+    font-variant-numeric: tabular-nums;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 11px;
+  }
+  .tab.active .badge { background: var(--accent-2); color: #fff; }
+  main {
+    padding: 18px 22px 40px;
+  }
+  .grid {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 120ms, border-color 120ms, box-shadow 120ms;
+    display: flex; flex-direction: column;
+  }
+  .card:hover {
+    transform: translateY(-1px);
+    border-color: var(--accent);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+  }
+  .card .thumb {
+    background: #05070b;
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .card img {
+    width: 100%; height: 100%; object-fit: contain;
+    display: block;
+    image-rendering: pixelated;
+  }
+  .card .meta {
+    padding: 8px 10px 9px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    line-height: 1.35;
+  }
+  .card .name {
+    color: var(--ink);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-variant-numeric: tabular-nums;
+  }
+  .card .when {
+    color: var(--ink-faint);
+    font-size: 11px;
+    margin-top: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .empty {
+    color: var(--ink-faint);
+    padding: 60px 0;
+    text-align: center;
+    font-size: 13px;
+  }
+  /* Modal */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(5,7,11,0.86);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 50;
+    padding: 28px;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    max-width: min(94vw, 1600px);
+    max-height: 92vh;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .modal-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .modal-head .name {
+    font-weight: 600; font-size: 13px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .modal-head .path {
+    color: var(--ink-faint);
+    font-size: 11.5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    margin-left: auto;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 60%;
+  }
+  .modal-head .when {
+    color: var(--ink-dim);
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .modal-head button {
+    background: transparent;
+    color: var(--ink-dim);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+  }
+  .modal-head button:hover { color: var(--ink); border-color: var(--accent); }
+  .modal-body {
+    background: #05070b;
+    overflow: auto;
+    display: flex; align-items: center; justify-content: center;
+    padding: 10px;
+  }
+  .modal-body img {
+    max-width: 100%; max-height: calc(92vh - 70px);
+    image-rendering: pixelated;
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="title-row">
+    <h1><span class="mark" id="live-mark" title="live"></span>Kithlands Worker Dashboard</h1>
+    <div class="status" id="status">—</div>
+  </div>
+  <nav class="tabs" id="tabs"></nav>
+</header>
+<main>
+  <div id="content"></div>
+</main>
+
+<div class="modal-backdrop" id="modal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="name" id="m-name"></div>
+      <div class="when" id="m-when"></div>
+      <div class="path" id="m-path" title=""></div>
+      <button aria-label="Close" id="m-close">×</button>
+    </div>
+    <div class="modal-body">
+      <img id="m-img" alt="">
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const state = {
+    groups: [],
+    activeTab: null,
+    lastScanned: 0,
+    seenKeys: new Set(),
+    newSince: 0,
+  };
+
+  const tabsEl    = document.getElementById('tabs');
+  const contentEl = document.getElementById('content');
+  const statusEl  = document.getElementById('status');
+  const modalEl   = document.getElementById('modal');
+  const mImg      = document.getElementById('m-img');
+  const mName     = document.getElementById('m-name');
+  const mPath     = document.getElementById('m-path');
+  const mWhen     = document.getElementById('m-when');
+  document.getElementById('m-close').addEventListener('click', closeModal);
+  modalEl.addEventListener('click', (e) => { if (e.target === modalEl) closeModal(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+  function fmtTime(unix) {
+    if (!unix) return '';
+    const d = new Date(unix * 1000);
+    const now = new Date();
+    const sameDay = d.toDateString() === now.toDateString();
+    const hh = String(d.getHours()).padStart(2,'0');
+    const mm = String(d.getMinutes()).padStart(2,'0');
+    const ss = String(d.getSeconds()).padStart(2,'0');
+    if (sameDay) return `${hh}:${mm}:${ss}`;
+    const mo = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    return `${mo}-${dd} ${hh}:${mm}`;
+  }
+
+  function relAgo(unix) {
+    if (!unix) return '';
+    const s = Math.max(0, Math.floor(Date.now()/1000 - unix));
+    if (s < 60)    return `${s}s ago`;
+    if (s < 3600)  return `${Math.floor(s/60)}m ago`;
+    if (s < 86400) return `${Math.floor(s/3600)}h ago`;
+    return `${Math.floor(s/86400)}d ago`;
+  }
+
+  function keyOf(img) { return img.path + '@' + img.mod_time; }
+
+  function renderTabs() {
+    tabsEl.innerHTML = '';
+    for (const g of state.groups) {
+      const btn = document.createElement('button');
+      btn.className = 'tab' + (g.id === state.activeTab ? ' active' : '');
+      btn.innerHTML = `<span>${escapeHtml(g.label)}</span><span class="badge">${g.images.length}</span>`;
+      btn.addEventListener('click', () => {
+        state.activeTab = g.id;
+        renderTabs();
+        renderContent();
+      });
+      tabsEl.appendChild(btn);
+    }
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+  }
+
+  function renderContent() {
+    const g = state.groups.find(x => x.id === state.activeTab);
+    if (!g) { contentEl.innerHTML = '<div class="empty">No sources scanned yet.</div>'; return; }
+    if (!g.images.length) { contentEl.innerHTML = '<div class="empty">No screenshots in this group yet.</div>'; return; }
+
+    const grid = document.createElement('div');
+    grid.className = 'grid';
+    for (const img of g.images) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <div class="thumb"><img loading="lazy" src="/img?path=${encodeURIComponent(img.path)}&t=${img.mod_time}" alt="${escapeHtml(img.name)}"></div>
+        <div class="meta">
+          <div class="name" title="${escapeHtml(img.path)}">${escapeHtml(img.name)}</div>
+          <div class="when">${fmtTime(img.mod_time)} · ${relAgo(img.mod_time)}</div>
+        </div>`;
+      card.addEventListener('click', () => openModal(img));
+      grid.appendChild(card);
+    }
+    contentEl.innerHTML = '';
+    contentEl.appendChild(grid);
+  }
+
+  function openModal(img) {
+    mImg.src = `/img?path=${encodeURIComponent(img.path)}&t=${img.mod_time}`;
+    mName.textContent = img.name;
+    mPath.textContent = img.path;
+    mPath.title = img.path;
+    mWhen.textContent = `${fmtTime(img.mod_time)} · ${relAgo(img.mod_time)}`;
+    modalEl.classList.add('open');
+  }
+  function closeModal() {
+    modalEl.classList.remove('open');
+    mImg.src = '';
+  }
+
+  let firstPaint = true;
+  async function poll() {
+    try {
+      const resp = await fetch('/api/sources', { cache: 'no-store' });
+      if (!resp.ok) throw new Error('bad status ' + resp.status);
+      const data = await resp.json();
+
+      // Count new arrivals since last paint (per-image key).
+      const currentKeys = new Set();
+      let totalImgs = 0;
+      for (const g of data.groups) {
+        for (const img of g.images) {
+          const k = keyOf(img);
+          currentKeys.add(k);
+          if (!firstPaint && !state.seenKeys.has(k)) state.newSince++;
+          totalImgs++;
+        }
+      }
+      state.seenKeys = currentKeys;
+      state.lastScanned = data.scanned_at;
+      state.groups = data.groups;
+
+      // Preserve active tab if still present, otherwise jump to first group.
+      if (!state.groups.find(g => g.id === state.activeTab)) {
+        state.activeTab = state.groups[0]?.id || null;
+      }
+      renderTabs();
+      renderContent();
+
+      statusEl.innerHTML = `
+        <span class="count">${totalImgs}</span> screenshots ·
+        scanned ${relAgo(state.lastScanned)}
+        ${state.newSince ? `<span class="new">+${state.newSince} new</span>` : ''}`;
+      firstPaint = false;
+    } catch (err) {
+      statusEl.textContent = 'disconnected · retrying…';
+    }
+  }
+
+  // Reset "new" counter when the user interacts.
+  window.addEventListener('focus', () => { state.newSince = 0; });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) state.newSince = 0; });
+
+  poll();
+  setInterval(poll, 3000);
+})();
+</script>
+</body>
+</html>
