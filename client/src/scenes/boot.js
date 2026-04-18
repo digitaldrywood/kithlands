@@ -124,7 +124,10 @@ export class BootScene extends Phaser.Scene {
 
     this.load.image("object_chest_closed", "/sprites/objects/chest_closed.png");
     this.load.image("object_chest_open", "/sprites/objects/chest_open.png");
-    this.load.image("object_chest_sparkle", "/sprites/objects/chest_sparkle.png");
+    this.load.image(
+      "object_chest_sparkle",
+      "/sprites/objects/chest_sparkle.png",
+    );
 
     // Interior tilesets
     this.load.image("tile_altar", "/tilesets/interiors/altar.png");
@@ -138,12 +141,27 @@ export class BootScene extends Phaser.Scene {
     this.load.image("tile_door", "/tilesets/interiors/door.png");
     this.load.image("tile_fireplace", "/tilesets/interiors/fireplace.png");
     this.load.image("tile_house_floor", "/tilesets/interiors/house_floor.png");
-    this.load.image("tile_house_floor_b", "/tilesets/interiors/house_floor_b.png");
-    this.load.image("tile_house_floor_c", "/tilesets/interiors/house_floor_c.png");
-    this.load.image("tile_house_floor_d", "/tilesets/interiors/house_floor_d.png");
+    this.load.image(
+      "tile_house_floor_b",
+      "/tilesets/interiors/house_floor_b.png",
+    );
+    this.load.image(
+      "tile_house_floor_c",
+      "/tilesets/interiors/house_floor_c.png",
+    );
+    this.load.image(
+      "tile_house_floor_d",
+      "/tilesets/interiors/house_floor_d.png",
+    );
     this.load.image("tile_house_wall", "/tilesets/interiors/house_wall.png");
-    this.load.image("tile_house_wall_b", "/tilesets/interiors/house_wall_b.png");
-    this.load.image("tile_house_wall_c", "/tilesets/interiors/house_wall_c.png");
+    this.load.image(
+      "tile_house_wall_b",
+      "/tilesets/interiors/house_wall_b.png",
+    );
+    this.load.image(
+      "tile_house_wall_c",
+      "/tilesets/interiors/house_wall_c.png",
+    );
     this.load.image("tile_inn_floor", "/tilesets/interiors/inn_floor.png");
     this.load.image("tile_inn_floor_b", "/tilesets/interiors/inn_floor_b.png");
     this.load.image("tile_inn_floor_c", "/tilesets/interiors/inn_floor_c.png");
@@ -159,9 +177,18 @@ export class BootScene extends Phaser.Scene {
     this.load.image("tile_rug_shop", "/tilesets/interiors/rug_shop.png");
     this.load.image("tile_rug_temple", "/tilesets/interiors/rug_temple.png");
     this.load.image("tile_shop_floor", "/tilesets/interiors/shop_floor.png");
-    this.load.image("tile_shop_floor_b", "/tilesets/interiors/shop_floor_b.png");
-    this.load.image("tile_shop_floor_c", "/tilesets/interiors/shop_floor_c.png");
-    this.load.image("tile_shop_floor_d", "/tilesets/interiors/shop_floor_d.png");
+    this.load.image(
+      "tile_shop_floor_b",
+      "/tilesets/interiors/shop_floor_b.png",
+    );
+    this.load.image(
+      "tile_shop_floor_c",
+      "/tilesets/interiors/shop_floor_c.png",
+    );
+    this.load.image(
+      "tile_shop_floor_d",
+      "/tilesets/interiors/shop_floor_d.png",
+    );
     this.load.image("tile_shop_wall", "/tilesets/interiors/shop_wall.png");
     this.load.image("tile_shop_wall_b", "/tilesets/interiors/shop_wall_b.png");
     this.load.image("tile_shop_wall_c", "/tilesets/interiors/shop_wall_c.png");

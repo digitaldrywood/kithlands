@@ -272,7 +272,13 @@ function pickVariant(family, buildingType, x, y, variantSeed) {
   return textures[variant];
 }
 
-export function npcSpriteForRole(role, buildingType, tags, seed = 0, index = 0) {
+export function npcSpriteForRole(
+  role,
+  buildingType,
+  tags,
+  seed = 0,
+  index = 0,
+) {
   const choices = ROLE_SPRITES[role] || extraNpcSpritesForTags(tags);
   const pick = hashCode(`${role}:${buildingType}:${seed}:${index}`);
   return choices[pick % choices.length];
@@ -328,7 +334,13 @@ export function tileTextureKey(tile, buildingType, x, y, variantSeed = 0) {
   }
 }
 
-export function surfaceVariantKey(buildingType, surface, x, y, variantSeed = 0) {
+export function surfaceVariantKey(
+  buildingType,
+  surface,
+  x,
+  y,
+  variantSeed = 0,
+) {
   switch (surface) {
     case "floor":
       return pickVariant(FLOOR_TEXTURES, buildingType, x, y, variantSeed);

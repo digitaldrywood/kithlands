@@ -428,10 +428,20 @@ function tintForTile(tile, appearance) {
   if (tile === T_WALL || tile === T_SECRET_WALL || tile === T_LOCKED_DOOR) {
     return appearance.wall;
   }
-  if (tile === T_FLOOR || tile === T_DOOR || tile === T_STAIR_UP || tile === T_STAIR_DOWN) {
+  if (
+    tile === T_FLOOR ||
+    tile === T_DOOR ||
+    tile === T_STAIR_UP ||
+    tile === T_STAIR_DOWN
+  ) {
     return appearance.floor;
   }
-  if (tile === T_ALTAR || tile === T_STATUE || tile === T_PEW || tile === T_CANDLE) {
+  if (
+    tile === T_ALTAR ||
+    tile === T_STATUE ||
+    tile === T_PEW ||
+    tile === T_CANDLE
+  ) {
     return appearance.accent;
   }
   return null;
@@ -1309,11 +1319,7 @@ export class TownScene extends Phaser.Scene {
       this.chestSprites.set(chest.id, sprite);
       if (!chest.opened && this.textures.exists("object_chest_sparkle")) {
         const sparkle = this.add
-          .image(
-            sprite.x + 8,
-            sprite.y - 10,
-            "object_chest_sparkle",
-          )
+          .image(sprite.x + 8, sprite.y - 10, "object_chest_sparkle")
           .setScale(SCALE)
           .setDepth(depth + 1)
           .setAlpha(0.9);
@@ -1440,7 +1446,14 @@ export class TownScene extends Phaser.Scene {
     if (left === T_WALL || left === T_SECRET_WALL) {
       this.addOverlayDrawable(
         this.add
-          .rectangle(tileX + 2, tileY + RENDERED_TILE / 2, 3, RENDERED_TILE - 4, 0x58351c, 0.35)
+          .rectangle(
+            tileX + 2,
+            tileY + RENDERED_TILE / 2,
+            3,
+            RENDERED_TILE - 4,
+            0x58351c,
+            0.35,
+          )
           .setDepth(depth),
       );
     }
@@ -1609,10 +1622,10 @@ export class TownScene extends Phaser.Scene {
         if (textureKey && this.textures.exists(textureKey)) {
           const image = this.addRoomDrawable(
             this.add
-            .image(tileX, tileY, textureKey)
-            .setOrigin(0)
-            .setScale(SCALE)
-            .setDepth(depth),
+              .image(tileX, tileY, textureKey)
+              .setOrigin(0)
+              .setScale(SCALE)
+              .setDepth(depth),
           );
           const tint = tintForTile(tile, this.interiorAppearance);
           if (tint) {

@@ -78,7 +78,9 @@ async function startTown(page, spawn, sceneData = {}) {
       window.__kithlandsTest.startTownScene(nextSpawn, "World", nextSceneData),
     { nextSpawn: spawn, nextSceneData: sceneData },
   );
-  await page.waitForFunction(() => window.__kithlandsTest.sceneIsActive("Town"));
+  await page.waitForFunction(() =>
+    window.__kithlandsTest.sceneIsActive("Town"),
+  );
   await page.waitForTimeout(180);
   return page.evaluate(() => window.__kithlandsTest.townSnapshot("Town"));
 }
@@ -224,11 +226,7 @@ test("captures issue 246 proof set", async ({ page }) => {
     interior_seed: 24605,
     interior_template: ROLE_TEMPLATE,
   });
-  expect(roles.npcKeys).toEqual([
-    "npc_elder",
-    "npc_quest_giver",
-    "npc_gossip",
-  ]);
+  expect(roles.npcKeys).toEqual(["npc_elder", "npc_quest_giver", "npc_gossip"]);
   const minNpcX = Math.min(...roles.npcPositions.map((npc) => npc.x));
   const maxNpcX = Math.max(...roles.npcPositions.map((npc) => npc.x));
   const minNpcY = Math.min(...roles.npcPositions.map((npc) => npc.y));
