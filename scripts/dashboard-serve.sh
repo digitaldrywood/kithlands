@@ -23,17 +23,43 @@ fi
 
 port="${DASHBOARD_PORT:-3999}"
 
-# Default to loopback. Only expose beyond the host when Tailscale is wired up,
-# so the server doesn't sit open on untrusted networks (coffee shop wifi, etc).
-if [ -n "${TAILSCALE_HOSTNAME:-}" ]; then
-  listen_addr="${DASHBOARD_LISTEN:-0.0.0.0:${port}}"
-else
-  listen_addr="${DASHBOARD_LISTEN:-127.0.0.1:${port}}"
+# Always bind loopback. When Tailscale is wired up AND its IP is resolvable,
+# ALSO bind explicitly to the Tailscale interface IP — that way the dashboard
+# is reachable over Tailscale but NOT on the local LAN / public wifi.
+listen_addr="127.0.0.1:${port}"
+if [ -n "${DASHBOARD_LISTEN:-}" ]; then
+  listen_addr="$DASHBOARD_LISTEN"
+elif [ -n "${TAILSCALE_HOSTNAME:-}" ]; then
+  if command -v tailscale >/dev/null 2>&1; then
+    ts_ip=$(tailscale ip -4 2>/dev/null | head -1 | tr -d '[:space:]')
+    if [ -n "$ts_ip" ]; then
+      listen_addr="127.0.0.1:${port},${ts_ip}:${port}"
+    fi
+  fi
 fi
 
 # projects-dir defaults to the repo's parent; no need to plumb this through
 # unless the user explicitly overrides.
 projects_dir="${DASHBOARD_PROJECTS_DIR:-$(cd "$repo_root/.." && pwd)}"
+
+# Derive the sibling-worktree name prefix from the MAIN repo root (not this
+# worktree) so `kithlands-issue-250-foo` still matches `kithlands` siblings
+# rather than requiring every sibling to share its hyphenated feature slug.
+worktree_glob="${DASHBOARD_WORKTREE_GLOB:-}"
+if [ -z "$worktree_glob" ]; then
+  common_dir=$(git -C "$repo_root" rev-parse --git-common-dir 2>/dev/null || true)
+  if [ -n "$common_dir" ]; then
+    # --git-common-dir prints the .git dir of the main repo; its parent is
+    # the main checkout root.
+    case "$common_dir" in
+      /*) main_root=$(cd "$common_dir/.." && pwd) ;;
+      *)  main_root=$(cd "$repo_root/$common_dir/.." && pwd) ;;
+    esac
+    worktree_glob=$(basename "$main_root")
+  else
+    worktree_glob="$(basename "$repo_root")"
+  fi
+fi
 
 # User-global state (same across every worktree).
 state_dir="${XDG_CACHE_HOME:-$HOME/.cache}/kithlands-dashboard"
@@ -150,7 +176,7 @@ rm -f "$pid_file"
 (cd server && go build -o "$bin_path" ./cmd/dashboard)
 
 # Launch detached, capture the PID, redirect logs.
-nohup "$bin_path" -listen "$listen_addr" -projects-dir "$projects_dir" >"$log_file" 2>&1 &
+nohup "$bin_path" -listen "$listen_addr" -projects-dir "$projects_dir" -worktree-glob "$worktree_glob" >"$log_file" 2>&1 &
 pid=$!
 echo "$pid" >"$pid_file"
 

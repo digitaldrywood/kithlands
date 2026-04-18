@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/user"
@@ -51,33 +52,21 @@ type scanResult struct {
 	Groups    []Group `json:"groups"`
 }
 
-// dirCacheEntry remembers the walk result for a directory so we can skip the
-// full recursive walk when nothing in the tree has changed since the last
-// scan. We use the directory's own mtime as a coarse invalidation signal:
-// most scanners (Playwright, PM revalidation scripts, walk-sheet generators)
-// touch the parent mtime when they write a new file.
-type dirCacheEntry struct {
-	mtime   int64
-	entries []Image
-}
-
 type scanner struct {
-	mu          sync.RWMutex
-	latest      scanResult
-	allowPaths  map[string]struct{}
-	projectsDir string
-	openclawDir string
-	tmpDir      string
-
-	// walkCache keys the last walk of a recursive root by its stat mtime.
-	// Serialized via mu alongside the scan result.
-	walkCache map[string]dirCacheEntry
+	mu           sync.RWMutex
+	latest       scanResult
+	allowPaths   map[string]struct{}
+	projectsDir  string
+	openclawDir  string
+	tmpDir       string
+	worktreeGlob string // basename prefix required for sibling dirs (e.g. "kithlands")
 }
 
 type scannerConfig struct {
-	projectsDir string // parent dir that holds sibling kithlands-* worktrees
-	openclawDir string
-	tmpDir      string
+	projectsDir  string // parent dir that holds sibling kithlands worktrees
+	openclawDir  string
+	tmpDir       string
+	worktreeGlob string // basename prefix a sibling must match to be considered a worktree
 }
 
 func defaultScannerConfig() scannerConfig {
@@ -88,30 +77,35 @@ func defaultScannerConfig() scannerConfig {
 		}
 	}
 	projects := ""
-	// Derive the projects dir from the running binary's repo root: go up one
-	// level from the repo so the dashboard works in any clone path.
+	glob := ""
+	// Derive the projects dir and sibling glob from the running binary's repo
+	// root: go up one level and require siblings to share this repo's name
+	// prefix so we don't ingest unrelated projects under the same parent.
 	if wd, err := os.Getwd(); err == nil {
 		parent := filepath.Dir(wd)
 		if fi, err := os.Stat(parent); err == nil && fi.IsDir() {
 			projects = parent
+			glob = filepath.Base(wd)
 		}
 	}
 	if projects == "" && home != "" {
 		projects = filepath.Join(home, "projects", "digitaldrywood")
+		glob = "kithlands"
 	}
 	return scannerConfig{
-		projectsDir: projects,
-		openclawDir: filepath.Join(home, ".openclaw", "workspace", "tmp"),
-		tmpDir:      "/tmp",
+		projectsDir:  projects,
+		openclawDir:  filepath.Join(home, ".openclaw", "workspace", "tmp"),
+		tmpDir:       "/tmp",
+		worktreeGlob: glob,
 	}
 }
 
 func newScanner(cfg scannerConfig) *scanner {
 	return &scanner{
-		projectsDir: cfg.projectsDir,
-		openclawDir: cfg.openclawDir,
-		tmpDir:      cfg.tmpDir,
-		walkCache:   map[string]dirCacheEntry{},
+		projectsDir:  cfg.projectsDir,
+		openclawDir:  cfg.openclawDir,
+		tmpDir:       cfg.tmpDir,
+		worktreeGlob: cfg.worktreeGlob,
 	}
 }
 
@@ -128,7 +122,14 @@ func (s *scanner) worktreeDirs() []string {
 		if !e.IsDir() {
 			continue
 		}
-		path := filepath.Join(s.projectsDir, e.Name())
+		name := e.Name()
+		// Only consider siblings that share the repo's name prefix so we
+		// don't accidentally ingest unrelated projects stored under the same
+		// parent. An empty glob (rare edge case) accepts every .git dir.
+		if s.worktreeGlob != "" && !strings.HasPrefix(name, s.worktreeGlob) {
+			continue
+		}
+		path := filepath.Join(s.projectsDir, name)
 		// Require a .git entry (worktree or repo) before treating as source.
 		if _, err := os.Stat(filepath.Join(path, ".git")); err != nil {
 			continue
@@ -170,33 +171,6 @@ func walkPNGs(root string) []Image {
 		})
 		return nil
 	})
-	return imgs
-}
-
-// cachedWalkPNGs walks `root` unless the directory subtree looks unchanged
-// since the previous scan (stat mtime of the root matches the cached value).
-// The root mtime is a deliberately coarse signal — it catches the common
-// Playwright / script "new file landed in a known dir" case without a real
-// fsnotify dependency.
-func (s *scanner) cachedWalkPNGs(root string) []Image {
-	info, err := os.Stat(root)
-	if err != nil || !info.IsDir() {
-		return nil
-	}
-	mtime := info.ModTime().Unix()
-
-	s.mu.RLock()
-	prev, ok := s.walkCache[root]
-	s.mu.RUnlock()
-	if ok && prev.mtime == mtime {
-		return prev.entries
-	}
-
-	imgs := walkPNGs(root)
-
-	s.mu.Lock()
-	s.walkCache[root] = dirCacheEntry{mtime: mtime, entries: imgs}
-	s.mu.Unlock()
 	return imgs
 }
 
@@ -274,10 +248,11 @@ func (s *scanner) run() {
 	addGroup(Group{ID: "pm-revalidate", Label: "PM Revalidation", Kind: "pm", Images: reval})
 
 	// Per-worktree PNGs (client/tmp, client/test-results, client/e2e/tmp).
+	// Walked every rescan — the per-group cap bounds the result size.
 	for _, wt := range s.worktreeDirs() {
 		var all []Image
 		for _, sub := range []string{"client/tmp", "client/test-results", "client/e2e/tmp"} {
-			all = append(all, s.cachedWalkPNGs(filepath.Join(wt, sub))...)
+			all = append(all, walkPNGs(filepath.Join(wt, sub))...)
 		}
 		sortByNewest(all)
 		if len(all) == 0 {
@@ -292,20 +267,9 @@ func (s *scanner) run() {
 	if len(oc) > 0 {
 		addGroup(Group{ID: "openclaw", Label: "OpenClaw", Kind: "openclaw", Images: oc})
 	}
-
-	// Misc /tmp/*.png (everything that's not revalidate-*.png).
-	allTmp := globPNGs(s.tmpDir, "")
-	misc := make([]Image, 0, len(allTmp))
-	for _, img := range allTmp {
-		if strings.HasPrefix(img.Name, "revalidate-") {
-			continue
-		}
-		misc = append(misc, img)
-	}
-	sortByNewest(misc)
-	if len(misc) > 0 {
-		addGroup(Group{ID: "misc-tmp", Label: "Misc /tmp", Kind: "misc", Images: misc})
-	}
+	// /tmp is intentionally scoped to the PM-revalidation prefix. A broader
+	// `/tmp/*.png` scan would surface every screenshot any other tool drops
+	// there, which is a privacy leak on a shared dev workstation.
 
 	s.mu.Lock()
 	s.latest = scanResult{ScannedAt: time.Now().Unix(), Groups: groups}
@@ -372,14 +336,18 @@ func (s *scanner) handleImage(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	listen := flag.String("listen", "127.0.0.1:3999", "listen address (host:port). Default is loopback; pass :3999 or a specific interface to expose on Tailscale.")
+	listen := flag.String("listen", "127.0.0.1:3999", "comma-separated listen addresses (host:port,host:port). Loopback-only by default; the launcher appends the Tailscale interface IP when TAILSCALE_HOSTNAME is configured.")
 	scanInterval := flag.Duration("scan-interval", 3*time.Second, "directory rescan interval")
 	projectsDir := flag.String("projects-dir", "", "parent directory that holds sibling kithlands worktrees (defaults to the parent of the process working dir)")
+	worktreeGlob := flag.String("worktree-glob", "", "basename prefix a sibling must match to be considered a worktree (defaults to this repo's directory name)")
 	flag.Parse()
 
 	cfg := defaultScannerConfig()
 	if *projectsDir != "" {
 		cfg.projectsDir = *projectsDir
+	}
+	if *worktreeGlob != "" {
+		cfg.worktreeGlob = *worktreeGlob
 	}
 	s := newScanner(cfg)
 	s.run() // initial scan before starting ticker
@@ -400,8 +368,48 @@ func main() {
 	})
 	mux.Handle("/", http.FileServer(http.FS(staticFS)))
 
-	log.Printf("dashboard listening on %s (projects-dir=%s)", *listen, cfg.projectsDir)
-	if err := http.ListenAndServe(*listen, mux); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		log.Fatalf("listen: %v", err)
+	addrs := parseListenAddrs(*listen)
+	if len(addrs) == 0 {
+		log.Fatalf("no listen addresses parsed from %q", *listen)
 	}
+	log.Printf("dashboard config: projects-dir=%s worktree-glob=%s scan-interval=%s", cfg.projectsDir, cfg.worktreeGlob, *scanInterval)
+
+	errs := make(chan error, len(addrs))
+	for _, addr := range addrs {
+		addr := addr
+		ln, err := net.Listen("tcp", addr)
+		if err != nil {
+			log.Fatalf("listen %s: %v", addr, err)
+		}
+		log.Printf("dashboard listening on %s", addr)
+		go func() {
+			if err := http.Serve(ln, mux); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				errs <- fmt.Errorf("serve %s: %w", addr, err)
+				return
+			}
+			errs <- nil
+		}()
+	}
+	// Block on the first listener error; a clean shutdown on any listener
+	// signals that something went wrong (the binary is meant to run until
+	// killed).
+	if err := <-errs; err != nil {
+		log.Fatalf("listener exited: %v", err)
+	}
+}
+
+// parseListenAddrs splits a comma-separated listen spec and trims each entry.
+// Empty entries are dropped so `,,127.0.0.1:3999` is equivalent to a single
+// address. Kept separate from main() so tests can exercise it.
+func parseListenAddrs(spec string) []string {
+	parts := strings.Split(spec, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		out = append(out, p)
+	}
+	return out
 }
