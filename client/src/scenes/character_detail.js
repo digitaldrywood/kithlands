@@ -1,5 +1,5 @@
-import { drawPanel, drawButton } from "../ui/panel.js";
-import { barFillWidth, barLabel, hpBarColorPct } from "../systems/hpBar.js";
+import { drawPanel, drawButton, drawLabeledStatBar } from "../ui/panel.js";
+import { hpBarColorPct } from "../systems/hpBar.js";
 import { showEquipPicker } from "./world_menu.js";
 import { buildFieldSpellList, showFieldMagicMenu } from "./field_magic.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
@@ -244,7 +244,7 @@ function drawPortrait(scene, group, member, cx, cy) {
       .setDepth(DEPTH_CONTENT),
   );
 
-  const portraitKey = member.sprite_id || member.class_id;
+  const portraitKey = resolvePortraitTextureKey(scene, member);
   if (portraitKey && scene.textures.exists(portraitKey)) {
     const img = scene.add
       .image(cx, cy, portraitKey)
@@ -270,36 +270,63 @@ function drawPortrait(scene, group, member, cx, cy) {
 
 function drawStatBlock(scene, group, member, equip, x, y) {
   // HP / MP / XP bars — re-using the integer-safe helpers from hpBar.js.
-  drawBar(scene, group, x, y, 240, member.hp, member.max_hp, "HP", (pct) =>
-    pct > 0.5 ? 0x44ff44 : pct > 0.25 ? 0xff8800 : 0xff0000,
-  );
-
-  if ((member.max_mp || 0) > 0) {
-    drawBar(
-      scene,
-      group,
-      x,
-      y + 26,
-      240,
-      member.mp,
-      member.max_mp,
-      "MP",
-      () => 0x88aaff,
-    );
-  } else {
-    group.push(plainText(scene, x, y + 26, "MP —", "#666666", "11px"));
-  }
-
-  drawBar(
+  const hpFill = hpColorFor(member.hp, member.max_hp);
+  const hpBar = drawLabeledStatBar(
     scene,
-    group,
+    x,
+    y,
+    240,
+    member.hp,
+    member.max_hp,
+    "HP",
+    {
+      depth: DEPTH_CONTENT,
+      fill: hpFill,
+      labelColor: colorHex(hpFill),
+    },
+  );
+  const mpBar = drawLabeledStatBar(
+    scene,
+    x,
+    y + 26,
+    240,
+    member.mp || 0,
+    member.max_mp || 0,
+    "MP",
+    {
+      depth: DEPTH_CONTENT,
+      fill: 0x88aaff,
+      labelColor: "#88aaff",
+      valueText: (member.max_mp || 0) > 0 ? null : "\u2014",
+    },
+  );
+  const xpBar = drawLabeledStatBar(
+    scene,
     x,
     y + 52,
     240,
     member.xp,
     member.xp_next,
     "XP",
-    () => 0xffcc44,
+    {
+      depth: DEPTH_CONTENT,
+      fill: 0xffcc44,
+      labelColor: "#ffcc44",
+    },
+  );
+  group.push(
+    hpBar.prefixLabel,
+    hpBar.track,
+    hpBar.fill,
+    hpBar.valueLabel,
+    mpBar.prefixLabel,
+    mpBar.track,
+    mpBar.fill,
+    mpBar.valueLabel,
+    xpBar.prefixLabel,
+    xpBar.track,
+    xpBar.fill,
+    xpBar.valueLabel,
   );
 
   // Scalar stats + status + perks.
@@ -322,42 +349,27 @@ function derivedAttack(member, equip) {
   return (member?.str || 0) + (equip?.weapon_power || 0);
 }
 
-function drawBar(scene, group, x, y, width, cur, max, prefix, colorFn) {
-  const labelW = 24;
-  const trackX = x + labelW;
-  const trackW = width - labelW - 60;
-  const h = 10;
+function hpColorFor(hp, max) {
+  const pct = hpBarColorPct(hp, max);
+  if (pct > 0.5) return 0x44ff44;
+  if (pct > 0.25) return 0xff8800;
+  if (pct > 0) return 0xff0000;
+  return 0x333333;
+}
 
-  group.push(plainText(scene, x, y, prefix, "#cccccc", "11px"));
-  group.push(
-    scene.add
-      .rectangle(trackX, y + 6, trackW, h, 0x222244)
-      .setOrigin(0, 0.5)
-      .setStrokeStyle(1, 0x4488ff)
-      .setScrollFactor(0)
-      .setDepth(DEPTH_CONTENT),
-  );
-  const fillW = barFillWidth(cur, max, trackW);
-  if (fillW > 0) {
-    const color = colorFn(hpBarColorPct(cur, max));
-    group.push(
-      scene.add
-        .rectangle(trackX, y + 6, fillW, h, color)
-        .setOrigin(0, 0.5)
-        .setScrollFactor(0)
-        .setDepth(DEPTH_CONTENT + 1),
-    );
-  }
-  group.push(
-    plainText(
-      scene,
-      trackX + trackW + 6,
-      y,
-      barLabel(cur, max),
-      "#ffffff",
-      "10px",
-    ),
-  );
+function resolvePortraitTextureKey(scene, member) {
+  const candidates = [
+    member?.sprite_id,
+    member?.class_id,
+    String(member?.class_name || "")
+      .trim()
+      .toLowerCase(),
+  ];
+  return candidates.find((key) => key && scene.textures.exists(key)) || null;
+}
+
+function colorHex(color) {
+  return `#${color.toString(16).padStart(6, "0")}`;
 }
 
 function drawEquipSlot(scene, group, cx, cy, slotLabel, itemName, onClick) {

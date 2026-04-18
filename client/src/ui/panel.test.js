@@ -1,5 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
-import { drawPanel, drawButton, drawProgressBar } from "./panel.js";
+import {
+  drawPanel,
+  drawButton,
+  drawProgressBar,
+  drawLabeledStatBar,
+} from "./panel.js";
 import { barFillWidth } from "../systems/hpBar.js";
 
 // Fake scene shim — Phaser objects are just dumb recorders so we can assert
@@ -312,5 +317,47 @@ describe("drawProgressBar", () => {
     bar.setValue(3);
     expect(bar.fill.w).toBe(200);
     expect(bar.label.text).toBe("3/3");
+  });
+});
+
+describe("drawLabeledStatBar", () => {
+  it("creates prefix/value labels and a fixed-width track", () => {
+    const scene = freshScene();
+    const bar = drawLabeledStatBar(scene, 40, 80, 260, 18, 30, "HP", {
+      fill: 0x44ff44,
+      labelColor: "#44ff44",
+    });
+
+    expect(bar.prefixLabel.text).toBe("HP");
+    expect(bar.prefixLabel.color).toBe("#44ff44");
+    expect(bar.track.w).toBe(178);
+    expect(bar.fill.w).toBe(barFillWidth(18, 30, 178));
+    expect(bar.valueLabel.text).toBe("18/30");
+    expect(bar.track.__kithlandsStatBar).toEqual({
+      prefix: "HP",
+      role: "track",
+    });
+  });
+
+  it("hides the fill when the current value is zero", () => {
+    const scene = freshScene();
+    const bar = drawLabeledStatBar(scene, 0, 0, 200, 0, 10, "MP");
+
+    expect(bar.fill.visible).toBe(false);
+    expect(bar.valueLabel.text).toBe("0/10");
+  });
+
+  it("supports a custom value label and tears down all objects", () => {
+    const scene = freshScene();
+    const bar = drawLabeledStatBar(scene, 0, 0, 220, 0, 0, "MP", {
+      valueText: "\u2014",
+    });
+
+    expect(bar.valueLabel.text).toBe("\u2014");
+    bar.destroy();
+    expect(bar.prefixLabel.destroyed).toBe(true);
+    expect(bar.track.destroyed).toBe(true);
+    expect(bar.fill.destroyed).toBe(true);
+    expect(bar.valueLabel.destroyed).toBe(true);
   });
 });

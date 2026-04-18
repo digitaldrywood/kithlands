@@ -328,6 +328,14 @@ function describeObject(entry, index) {
       target?.constructor?.name ||
       `entry_${index}`,
     bounds: objectBounds(entry),
+    statBarMeta:
+      target?.__kithlandsStatBar || entry?.__kithlandsStatBar || null,
+    partyMenuMeta:
+      target?.__kithlandsPartyMenu || entry?.__kithlandsPartyMenu || null,
+    partyMenuActionMeta:
+      target?.__kithlandsPartyMenuAction ||
+      entry?.__kithlandsPartyMenuAction ||
+      null,
     fillColor:
       target?.fillColor ??
       target?.fill ??
@@ -381,20 +389,21 @@ function partyMenuLayoutSnapshot(scene) {
     );
   });
 
-  for (let i = 2; i < entries.length; i++) {
-    const label = entries[i];
-    const fill = entries[i - 1];
-    const track = entries[i - 2];
-    if (
-      !label?.label?.match(/^(HP|MP|XP) /) ||
-      track?.fillColor !== 0x222244 ||
-      !track?.bounds ||
-      !fill?.bounds
-    ) {
-      continue;
-    }
+  const trackEntries = entries.filter(
+    (entry) => entry?.statBarMeta?.role === "track" && entry?.bounds,
+  );
+  for (const track of trackEntries) {
+    const prefix = track.statBarMeta.prefix;
+    const fill = entries.find(
+      (entry) =>
+        entry?.statBarMeta?.role === "fill" &&
+        entry.statBarMeta.prefix === prefix &&
+        entry.bounds &&
+        Math.abs(entry.bounds.top - track.bounds.top) <= 6,
+    );
+    if (!fill?.bounds) continue;
     statBars.push({
-      prefix: label.label.slice(0, 2),
+      prefix,
       trackWidth: track.bounds.width,
       fillWidth: fill.bounds.width,
       x: track.bounds.left,
@@ -415,12 +424,67 @@ function partyMenuLayoutSnapshot(scene) {
       xp: barRects.filter((entry) => entry.fillColor === 0xffcc44).length,
     },
     labelCounts: {
-      hp: entries.filter((entry) => entry.label?.startsWith("HP ")).length,
-      mp: entries.filter((entry) => entry.label?.startsWith("MP ")).length,
-      xp: entries.filter((entry) => entry.label?.startsWith("XP ")).length,
+      hp: entries.filter(
+        (entry) =>
+          entry?.statBarMeta?.role === "prefix" &&
+          entry.statBarMeta.prefix === "HP",
+      ).length,
+      mp: entries.filter(
+        (entry) =>
+          entry?.statBarMeta?.role === "prefix" &&
+          entry.statBarMeta.prefix === "MP",
+      ).length,
+      xp: entries.filter(
+        (entry) =>
+          entry?.statBarMeta?.role === "prefix" &&
+          entry.statBarMeta.prefix === "XP",
+      ).length,
     },
     statBars,
   };
+}
+
+function partyMenuSummary(scene) {
+  if (!scene?.menuGroup) return null;
+  const flattened = flattenMenuEntries(scene.menuGroup);
+  const entries = flattened.map((entry, index) => describeObject(entry, index));
+
+  const rows = entries
+    .filter((entry) => entry?.partyMenuMeta?.role === "row")
+    .map((entry) => {
+      const portrait = entries.find(
+        (candidate) =>
+          candidate?.partyMenuMeta?.role === "portrait" &&
+          candidate.partyMenuMeta.slot === entry.partyMenuMeta.slot,
+      );
+      return {
+        slot: entry.partyMenuMeta.slot,
+        fillColor: entry.fillColor,
+        bounds: entry.bounds,
+        portraitKind: portrait?.partyMenuMeta?.kind || null,
+        portraitKey: portrait?.partyMenuMeta?.key || null,
+      };
+    });
+
+  const actionIcons = entries
+    .filter((entry) => entry?.partyMenuActionMeta)
+    .map((entry) => ({
+      label: entry.partyMenuActionMeta.label,
+      kind: entry.partyMenuActionMeta.kind,
+      key: entry.partyMenuActionMeta.key || null,
+      bounds: entry.bounds,
+    }));
+
+  return { rows, actionIcons };
+}
+
+function findPartyMenuRow(scene, slot) {
+  if (!scene?.menuGroup) return null;
+  return flattenMenuEntries(scene.menuGroup).find(
+    (entry) =>
+      (entry?.bg || entry)?.__kithlandsPartyMenu?.role === "row" &&
+      (entry?.bg || entry).__kithlandsPartyMenu.slot === slot,
+  );
 }
 
 function findCharacterDetailSlot(scene, slotLabel) {
@@ -1227,6 +1291,16 @@ export function installDevTestBridge(game) {
     partyMenuLayout(sceneKey) {
       const scene = getScene(game, sceneKey);
       return clone(partyMenuLayoutSnapshot(scene));
+    },
+
+    partyMenuSummary(sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return clone(partyMenuSummary(scene));
+    },
+
+    partyMenuRowPosition(slot, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return gameObjectCenter(game, findPartyMenuRow(scene, slot));
     },
 
     messageState(sceneKey) {
