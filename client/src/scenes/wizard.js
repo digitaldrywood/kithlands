@@ -26,6 +26,11 @@ export class WizardScene extends Phaser.Scene {
 
   create() {
     this.step = 0;
+    this.townSearchState = {
+      busy: false,
+      label: "",
+      error: "",
+    };
     const last = getLastWizard() || {};
     this.wizardData = {
       town_name: last.town_name || "",
@@ -325,32 +330,127 @@ export class WizardScene extends Phaser.Scene {
     return btn;
   }
 
+  setTownSearchState(nextState = {}) {
+    this.townSearchState = {
+      ...this.townSearchState,
+      ...nextState,
+    };
+  }
+
+  formatTownSearchLabel(townName) {
+    const primaryLabel = (townName || "").split(",")[0].trim().slice(0, 24);
+    return `Searching ${primaryLabel || "your town"}...`;
+  }
+
+  addFramedPanel(x, y, width, height, opts = {}) {
+    const fill = opts.fill ?? 0x10192d;
+    const fillAlpha = opts.fillAlpha ?? 0.96;
+    const stroke = opts.stroke ?? 0x4488ff;
+    const strokeAlpha = opts.strokeAlpha ?? 1;
+    const accent = opts.accent ?? 0xffcc44;
+
+    const outer = this.add
+      .rectangle(x, y, width, height, fill, fillAlpha)
+      .setStrokeStyle(2, stroke, strokeAlpha);
+    const inner = this.add
+      .rectangle(x, y, width - 18, height - 18, 0x081225, 0.35)
+      .setStrokeStyle(1, 0x24456f, 0.95);
+    const accentRule = this.add.rectangle(
+      x,
+      y - height / 2 + 16,
+      width - 52,
+      2,
+      accent,
+      0.8,
+    );
+
+    this.contentGroup.addMultiple([outer, inner, accentRule]);
+    return { outer, inner, accentRule };
+  }
+
+  addErrorBanner(y, text) {
+    const height = 50;
+    this.addFramedPanel(this.cx, y, 520, height, {
+      fill: 0x241018,
+      stroke: 0xaa4455,
+      accent: 0xffcc44,
+    });
+    const bannerText = this.add
+      .text(this.cx, y, text, {
+        fontSize: "12px",
+        color: "#ffd7d7",
+        fontFamily: "monospace",
+        align: "center",
+        wordWrap: { width: 460 },
+      })
+      .setOrigin(0.5);
+    this.contentGroup.add(bannerText);
+  }
+
+  addLoadingPanel(y, label) {
+    this.addFramedPanel(this.cx, y, 360, 92, {
+      fill: 0x10192d,
+      stroke: 0x4488ff,
+      accent: 0xffcc44,
+    });
+
+    const loadingLine = this.add
+      .text(this.cx, y, `${SPINNER_FRAMES[0]} ${label}`, {
+        fontSize: "18px",
+        color: "#ffcc44",
+        fontFamily: "monospace",
+      })
+      .setOrigin(0.5);
+    this.contentGroup.add(loadingLine);
+
+    let frameIdx = 0;
+    let event = this.time.addEvent({
+      delay: 120,
+      loop: true,
+      callback: () => {
+        frameIdx = (frameIdx + 1) % SPINNER_FRAMES.length;
+        loadingLine.setText(`${SPINNER_FRAMES[frameIdx]} ${label}`);
+      },
+    });
+    loadingLine.once("destroy", () => {
+      if (!event) return;
+      event.remove();
+      event = null;
+    });
+
+    return loadingLine;
+  }
+
   showTownStep() {
     this.addTitle("LOCALITY WIZARD");
+    const searchState = this.townSearchState || {};
+    if (searchState.busy) {
+      this.addLoadingPanel(210, searchState.label || "Searching...");
+      return;
+    }
+
     this.addLabel(
       80,
       "Where do you live? This becomes the world of your game.\nEnter a town name or address to build from real-world map data.",
     );
-    const input = this.addInput(140, "Town name or address (e.g. Cadott, WI)");
-    if (this.wizardData.town_name) input.node.value = this.wizardData.town_name;
 
-    // Status text for geocoding
-    const status = this.add
-      .text(this.cx, 175, "", {
-        fontSize: "11px",
-        color: "#aaaaaa",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5);
-    this.contentGroup.add(status);
-    const searchSpinner = this.addSpinner(this.cx + 110, 300);
+    if (searchState.error) {
+      this.addErrorBanner(145, searchState.error);
+    }
+
+    const formOffset = searchState.error ? 35 : 0;
+    const input = this.addInput(
+      140 + formOffset,
+      "Town name or address (e.g. Cadott, WI)",
+    );
+    if (this.wizardData.town_name) input.node.value = this.wizardData.town_name;
 
     // Use real map toggle
     let useOSM = this.wizardData.use_osm;
     const osmToggle = this.add
       .text(
         this.cx,
-        200,
+        200 + formOffset,
         `[${useOSM ? "X" : " "}] Use real-world map data (OpenStreetMap)`,
         {
           fontSize: "12px",
@@ -366,7 +466,7 @@ export class WizardScene extends Phaser.Scene {
     const sliderLabel = this.add
       .text(
         this.cx,
-        230,
+        230 + formOffset,
         `Search radius: ${this.wizardData.radius_miles} miles`,
         {
           fontSize: "12px",
@@ -385,7 +485,7 @@ export class WizardScene extends Phaser.Scene {
     sliderEl.step = "1";
     sliderEl.value = String(this.wizardData.radius_miles || 1.5);
     sliderEl.style.cssText = "width:250px;accent-color:#44aaff;";
-    const slider = this.add.dom(this.cx, 255, sliderEl);
+    const slider = this.add.dom(this.cx, 255 + formOffset, sliderEl);
     slider.setVisible(useOSM);
     this.contentGroup.add(slider);
 
@@ -403,117 +503,112 @@ export class WizardScene extends Phaser.Scene {
       slider.setVisible(useOSM);
     });
 
-    const findButton = this.addButton(300, "FIND & CONTINUE", async () => {
-      if (!findButton.input?.enabled) return;
+    const findButton = this.addButton(
+      300 + formOffset,
+      "FIND & CONTINUE",
+      async () => {
+        if (!findButton.input?.enabled) return;
 
-      const townName = input.node.value.trim() || "Cadott, WI";
-      this.wizardData.town_name = townName;
-      this.wizardData.use_osm = useOSM;
-      this.wizardData.radius_miles = parseFloat(sliderEl.value);
+        const townName = input.node.value.trim() || "Cadott, WI";
+        this.wizardData.town_name = townName;
+        this.wizardData.use_osm = useOSM;
+        this.wizardData.radius_miles = parseFloat(sliderEl.value);
 
-      const setSearchBusy = (busy, busyLabel = "") => {
-        input.node.disabled = busy;
-        input.node.setAttribute("aria-busy", busy ? "true" : "false");
-        input.node.style.opacity = busy ? "0.7" : "1";
-        osmToggle[busy ? "disableInteractive" : "setInteractive"](
-          busy ? undefined : { useHandCursor: true },
-        );
-        sliderEl.disabled = busy;
-        sliderEl.style.opacity = busy ? "0.5" : "1";
-        slider.setVisible(useOSM);
-        sliderLabel.setVisible(useOSM);
-        if (busy) {
-          findButton.disableInteractive();
-          findButton.setColor("#668866");
-          findButton.setText("[ FIND & CONTINUE ]");
-          searchSpinner.setBusy(true, busyLabel);
-        } else {
-          findButton.setInteractive({ useHandCursor: true });
-          findButton.setColor("#44ff44");
-          searchSpinner.setBusy(false);
-        }
-      };
-
-      if (useOSM) {
-        this.wizardData.osm_preview = null;
-        this.wizardData.spawn_node_id = "";
-        setSearchBusy(true, "Searching...");
-        status.setText("Looking up location...").setColor("#ffcc44");
-        try {
-          const result = await geocode(townName);
-          if (result.error) {
-            setSearchBusy(false);
-            status.setText(`Not found: ${result.error}`).setColor("#ff4444");
-            return;
-          }
-          this.wizardData.lat = result.lat;
-          this.wizardData.lng = result.lng;
-          status.setText(`Found: ${result.display_name}`).setColor("#44ff44");
-
-          // Scan for POIs
-          searchSpinner.setBusy(true, "Scanning map...");
-          status
-            .setText("Scanning map for points of interest...")
-            .setColor("#ffcc44");
+        if (useOSM) {
+          this.wizardData.osm_preview = null;
+          this.wizardData.spawn_node_id = "";
+          this.setTownSearchState({
+            busy: true,
+            error: "",
+            label: this.formatTownSearchLabel(townName),
+          });
+          this.showStep();
           try {
-            const preview = await osmPreview(
-              result.lat,
-              result.lng,
-              this.wizardData.radius_miles,
-            );
-            if (preview.error) {
-              status
-                .setText("Map scan failed. Continuing with manual setup.")
-                .setColor("#ff8844");
+            const result = await geocode(townName);
+            if (result.error) {
+              this.setTownSearchState({
+                busy: false,
+                label: "",
+                error: "Location not found. Try another town or address.",
+              });
+              this.showStep();
+              return;
+            }
+            this.wizardData.lat = result.lat;
+            this.wizardData.lng = result.lng;
+
+            // Scan for POIs
+            try {
+              const preview = await osmPreview(
+                result.lat,
+                result.lng,
+                this.wizardData.radius_miles,
+              );
+              if (preview.error) {
+                this.wizardData.osm_preview = null;
+                this.wizardData.spawn_node_id = "";
+                this.setTownSearchState({
+                  busy: false,
+                  label: "",
+                  error: "Map lookup failed. Try again.",
+                });
+                this.showStep();
+                return;
+              } else {
+                this.wizardData.osm_preview = preview.nodes || [];
+                this.wizardData.radius_miles =
+                  preview.radius_miles || this.wizardData.radius_miles;
+                if ((preview.nodes || []).length > 0) {
+                  this.ensureOSMDefaults();
+                  this.setTownSearchState({
+                    busy: false,
+                    label: "",
+                    error: "",
+                  });
+                  this.step = 5;
+                } else {
+                  this.wizardData.spawn_node_id = "";
+                  this.setTownSearchState({
+                    busy: false,
+                    label: "",
+                    error: "",
+                  });
+                  this.step = 1;
+                }
+              }
+            } catch {
               this.wizardData.osm_preview = null;
               this.wizardData.spawn_node_id = "";
-              setSearchBusy(false);
-              this.step = 1;
-            } else {
-              this.wizardData.osm_preview = preview.nodes || [];
-              this.wizardData.radius_miles =
-                preview.radius_miles || this.wizardData.radius_miles;
-              if ((preview.nodes || []).length > 0) {
-                this.ensureOSMDefaults();
-                status
-                  .setText(
-                    `Found ${preview.nodes?.length || 0} points of interest`,
-                  )
-                  .setColor("#44ff44");
-                setSearchBusy(false);
-                this.step = 5;
-              } else {
-                status
-                  .setText(
-                    "No points of interest found. Continuing with manual setup.",
-                  )
-                  .setColor("#ff8844");
-                this.wizardData.spawn_node_id = "";
-                setSearchBusy(false);
-                this.step = 1;
-              }
+              this.setTownSearchState({
+                busy: false,
+                label: "",
+                error: "Map lookup failed. Try again.",
+              });
+              this.showStep();
+              return;
             }
-          } catch (previewErr) {
-            status
-              .setText("Map scan failed. Continuing with manual setup.")
-              .setColor("#ff8844");
-            this.wizardData.osm_preview = null;
-            this.wizardData.spawn_node_id = "";
-            setSearchBusy(false);
-            this.step = 1;
+            this.showStep();
+          } catch {
+            this.setTownSearchState({
+              busy: false,
+              label: "",
+              error: "Geocoding failed. Try again.",
+            });
+            this.showStep();
           }
+        } else {
+          this.setTownSearchState({
+            busy: false,
+            label: "",
+            error: "",
+          });
+          this.wizardData.osm_preview = null;
+          this.wizardData.spawn_node_id = "";
+          this.step++;
           this.showStep();
-        } catch (e) {
-          setSearchBusy(false);
-          status.setText("Geocoding failed. Try again.").setColor("#ff4444");
         }
-      } else {
-        this.wizardData.osm_preview = null;
-        this.wizardData.spawn_node_id = "";
-        this.step++;
-        this.showStep();
-      }
-    });
+      },
+    );
 
     input.node.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" || !findButton.input?.enabled) return;
