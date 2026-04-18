@@ -18,8 +18,10 @@ type Combatant struct {
 	HitPct                  int
 	MaxHP, CurrentHP        int
 	Status                  character.Status
+	Row                     string
 
 	WeaponPower int
+	LongRange   bool
 	ArmorAbsorb int
 
 	// Bare-hand damage for Brawlers: base + (level * STR/2)
@@ -60,6 +62,7 @@ type Action struct {
 	Kind       ActionKind
 	TargetID   int
 	AbilityID  string // populated when Kind == ActionAbility
+	IgnoreRow  bool   // populated when Kind == ActionAbility
 	Initiative int    // weighted initiative roll, assigned by ResolveTurn
 }
 
@@ -225,7 +228,7 @@ func ResolveTurn(
 			})
 		case ActionAbility:
 			allies := alliesOf(actor, party, enemies)
-			resolved := ResolveAbility(actor, target, allies, action.AbilityID, stats, rng)
+			resolved := ResolveAbility(actor, target, allies, action.AbilityID, action.IgnoreRow, stats, rng)
 			resolved.Initiative = action.Initiative
 			results = append(results, resolved)
 			// Wake sleeping targets hit by abilities (e.g. backstab).
@@ -293,6 +296,7 @@ func ResolveAbility(
 	actor, target *Combatant,
 	allies []*Combatant,
 	abilityID string,
+	ignoreRow bool,
 	stats *gamedata.CombatConfig,
 	rng *rand.Rand,
 ) ResolvedAction {
@@ -324,7 +328,7 @@ func ResolveAbility(
 		if target == nil || target.CurrentHP <= 0 {
 			return ResolvedAction{ActorID: actor.ID, ActorName: actor.Name, Kind: ActionAbility}
 		}
-		return resolveBackstab(actor, target, stats, rng)
+		return resolveBackstab(actor, target, ignoreRow, stats, rng)
 	case "steal":
 		// No damage; signal only. Caller handles inventory.
 		return ResolvedAction{
@@ -404,6 +408,37 @@ func rollPhysicalDamage(baseDamage, mitigation, minDamage int, rng *rand.Rand) i
 	return dmg
 }
 
+func halveRoundedUp(v int) int {
+	if v <= 1 {
+		return v
+	}
+	return (v + 1) / 2
+}
+
+func physicalBaseDamage(attacker *Combatant) int {
+	baseDamage := attacker.STR + attacker.WeaponPower
+	if attacker.BareHandDamage > 0 {
+		baseDamage = attacker.BareHandDamage
+	}
+	if mult := damageMultiplier(attacker); mult != 100 {
+		baseDamage = baseDamage * mult / 100
+	}
+	return baseDamage
+}
+
+func applyPhysicalRowModifiers(baseDamage int, attacker, defender *Combatant, applyRow bool) int {
+	if !applyRow {
+		return baseDamage
+	}
+	if attacker != nil && attacker.Row == "back" && !attacker.LongRange {
+		baseDamage = halveRoundedUp(baseDamage)
+	}
+	if defender != nil && defender.Row == "back" {
+		baseDamage = halveRoundedUp(baseDamage)
+	}
+	return baseDamage
+}
+
 // resolveAttack implements the damage formula from Section 6.2.
 func resolveAttack(attacker, defender *Combatant, stats *gamedata.CombatConfig, rng *rand.Rand) ResolvedAction {
 	attackerHitPct := EffectiveHitPct(attacker)
@@ -422,14 +457,12 @@ func resolveAttack(attacker, defender *Combatant, stats *gamedata.CombatConfig, 
 		}
 
 		// Damage per Section 6.2
-		baseDamage := attacker.STR + attacker.WeaponPower
-		if attacker.BareHandDamage > 0 {
-			baseDamage = attacker.BareHandDamage
-		}
-		// Apply active damage buffs (focus, inspire).
-		if mult := damageMultiplier(attacker); mult != 100 {
-			baseDamage = baseDamage * mult / 100
-		}
+		baseDamage := applyPhysicalRowModifiers(
+			physicalBaseDamage(attacker),
+			attacker,
+			defender,
+			true,
+		)
 		mitigation := EffectiveArmorAbsorb(defender)
 		dmg := rollPhysicalDamage(baseDamage, mitigation, stats.MinDamagePerHit, rng)
 
@@ -468,15 +501,9 @@ func resolveAttack(attacker, defender *Combatant, stats *gamedata.CombatConfig, 
 // resolveBackstab is a single high-damage guaranteed-hit strike. Base damage
 // is tripled (after existing buffs), still rolls for crit, and ignores
 // multi-hit scaling. Armor mitigation still applies.
-func resolveBackstab(attacker, defender *Combatant, stats *gamedata.CombatConfig, rng *rand.Rand) ResolvedAction {
-	baseDamage := attacker.STR + attacker.WeaponPower
-	if attacker.BareHandDamage > 0 {
-		baseDamage = attacker.BareHandDamage
-	}
-	if mult := damageMultiplier(attacker); mult != 100 {
-		baseDamage = baseDamage * mult / 100
-	}
-	baseDamage *= 3
+func resolveBackstab(attacker, defender *Combatant, ignoreRow bool, stats *gamedata.CombatConfig, rng *rand.Rand) ResolvedAction {
+	baseDamage := physicalBaseDamage(attacker) * 3
+	baseDamage = applyPhysicalRowModifiers(baseDamage, attacker, defender, !ignoreRow)
 
 	mitigation := EffectiveArmorAbsorb(defender)
 	dmg := rollPhysicalDamage(baseDamage, mitigation, stats.MinDamagePerHit, rng)

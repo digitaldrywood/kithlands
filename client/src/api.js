@@ -135,6 +135,10 @@ export async function equipItem(gameId, slot, itemId, type) {
   });
 }
 
+export async function updatePartyFormation(gameId, updates) {
+  return apiCall("POST", `/game/${gameId}/formation`, { updates });
+}
+
 export async function learnSpell(gameId, charName, spellId) {
   return apiCall("POST", `/game/${gameId}/learn`, {
     char_name: charName,

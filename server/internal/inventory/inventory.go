@@ -143,6 +143,16 @@ func (inv *Inventory) WeaponHitBonus(slot int, gd *gamedata.GameData) int {
 	return 0
 }
 
+// WeaponLongRange reports whether the equipped weapon ignores back-row attack penalties.
+func (inv *Inventory) WeaponLongRange(slot int, gd *gamedata.GameData) bool {
+	if id := inv.Equipment[slot].WeaponID; id != "" {
+		if w := gd.WeaponByID(id); w != nil {
+			return w.LongRange
+		}
+	}
+	return false
+}
+
 // BuyItem purchases a consumable from a shop.
 func (inv *Inventory) BuyItem(item *gamedata.Consumable, qty int) error {
 	cost := item.BuyPrice * qty

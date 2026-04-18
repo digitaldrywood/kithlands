@@ -13,6 +13,7 @@ import {
   loadSave as loadSaveApi,
   newGame,
   saveGame as saveGameApi,
+  updatePartyFormation as updatePartyFormationApi,
 } from "./api.js";
 import { getCurrentMusicKey, getPlayingSoundKeys } from "./systems/audio.js";
 import {
@@ -540,6 +541,20 @@ function findPartyMenuRow(scene, slot) {
       (entry?.bg || entry)?.__kithlandsPartyMenu?.role === "row" &&
       (entry?.bg || entry).__kithlandsPartyMenu.slot === slot,
   );
+}
+
+function formationMenuSummary(scene) {
+  const state = scene?.formationMenuState;
+  if (!state?.rowObjects) return null;
+  return {
+    rows: state.rowObjects.map((entry) => ({
+      slot: entry.slot,
+      name: entry.name?.text || null,
+      row: state.draftRows?.[entry.slot] || null,
+      frontActive: entry.frontBtn?.isActive?.() || false,
+      backActive: entry.backBtn?.isActive?.() || false,
+    })),
+  };
 }
 
 function findCharacterDetailSlot(scene, slotLabel) {
@@ -1332,6 +1347,43 @@ export function installDevTestBridge(game) {
       return visibleBattleFxSnapshot(scene);
     },
 
+    async showPartyDamageNumber(damage, sceneKey = "Battle") {
+      const scene = getScene(game, sceneKey);
+      if (!scene || scene.scene?.key !== "Battle") {
+        throw new Error("Battle scene is not active");
+      }
+      const partyEntries = Object.values(scene.partySprites || {}).sort(
+        (a, b) => (a.slot ?? 0) - (b.slot ?? 0),
+      );
+      const enemyEntries = Object.values(scene.enemySprites || {}).filter(
+        (entry) => entry && !entry.dead && !entry.dying,
+      );
+      const partyTarget = partyEntries[0] || null;
+      const enemyActor = enemyEntries[0] || null;
+      if (!partyTarget || !enemyActor) {
+        throw new Error("Battle scene has no proof targets");
+      }
+      scene.showActionFocus(enemyActor, partyTarget, {
+        tracerColor: 0xff8800,
+        targetColor: 0xff6666,
+      });
+      scene.hitFx(
+        partyTarget.x,
+        partyTarget.y,
+        damage,
+        true,
+        false,
+        "physical",
+        {
+          targetKey: `proof_party_damage_${Date.now()}`,
+          entry: partyTarget,
+        },
+      );
+      await nextFrame();
+      await nextFrame();
+      return visibleBattleFxSnapshot(scene);
+    },
+
     clickMenuButton(label, sceneKey, occurrence = 0) {
       const scene = getScene(game, sceneKey);
       const button = findMenuButtonAt(scene, label, occurrence);
@@ -1412,6 +1464,32 @@ export function installDevTestBridge(game) {
     partyMenuSummary(sceneKey) {
       const scene = getScene(game, sceneKey);
       return clone(partyMenuSummary(scene));
+    },
+
+    formationMenuSummary(sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return clone(formationMenuSummary(scene));
+    },
+
+    clickFormationToggle(slot, row, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      const entry = scene?.formationMenuState?.rowObjects?.[slot];
+      if (!entry) throw new Error(`Formation row not found: ${slot}`);
+      const button = row === "back" ? entry.backBtn?.bg : entry.frontBtn?.bg;
+      clickGameObject(button);
+      return clone(formationMenuSummary(scene));
+    },
+
+    saveFormation(sceneKey) {
+      const scene = getScene(game, sceneKey);
+      const button = scene?.formationMenuState?.saveBtn?.bg;
+      if (!button) throw new Error("Formation save button not found");
+      clickGameObject(button);
+      return true;
+    },
+
+    updateFormation(gameId, updates) {
+      return updatePartyFormationApi(gameId, updates).then(clone);
     },
 
     partyMenuRowPosition(slot, sceneKey) {

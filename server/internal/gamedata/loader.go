@@ -44,6 +44,7 @@ type GameData struct {
 	Classes    []Class
 	Stats      StatsConfig
 	Items      ItemsData
+	Abilities  []Ability
 	Chests     ChestCatalog
 	Spells     SpellsData
 	Monsters   []Monster
@@ -54,6 +55,7 @@ type GameData struct {
 
 	classByID     map[string]*Class
 	weaponByID    map[string]*Weapon
+	abilityByID   map[string]*Ability
 	armorByID     map[string]*Armor
 	spellByID     map[string]*Spell
 	monsterByID   map[string]*Monster
@@ -72,6 +74,7 @@ func Load(sharedDir string) *GameData {
 	gd.Classes = loadJSON[[]Class](sharedDir, "classes.json")
 	gd.Stats = loadJSON[StatsConfig](sharedDir, "stats.json")
 	gd.Items = loadJSON[ItemsData](sharedDir, "items.json")
+	gd.Abilities = loadJSON[[]Ability](sharedDir, "abilities.json")
 	gd.Chests = loadJSON[ChestCatalog](sharedDir, "chests.json")
 	gd.Spells = loadJSON[SpellsData](sharedDir, "spells.json")
 	gd.Monsters = loadJSON[[]Monster](sharedDir, "monsters.json")
@@ -88,6 +91,7 @@ func Load(sharedDir string) *GameData {
 
 func (gd *GameData) ClassByID(id string) *Class         { return gd.classByID[id] }
 func (gd *GameData) WeaponByID(id string) *Weapon       { return gd.weaponByID[id] }
+func (gd *GameData) AbilityByID(id string) *Ability     { return gd.abilityByID[id] }
 func (gd *GameData) ArmorByID(id string) *Armor         { return gd.armorByID[id] }
 func (gd *GameData) SpellByID(id string) *Spell         { return gd.spellByID[id] }
 func (gd *GameData) MonsterByID(id string) *Monster     { return gd.monsterByID[id] }
@@ -106,6 +110,11 @@ func (gd *GameData) buildIndexes() {
 	gd.weaponByID = make(map[string]*Weapon, len(gd.Items.Weapons))
 	for i := range gd.Items.Weapons {
 		gd.weaponByID[gd.Items.Weapons[i].ID] = &gd.Items.Weapons[i]
+	}
+
+	gd.abilityByID = make(map[string]*Ability, len(gd.Abilities))
+	for i := range gd.Abilities {
+		gd.abilityByID[gd.Abilities[i].ID] = &gd.Abilities[i]
 	}
 
 	gd.armorByID = make(map[string]*Armor, len(gd.Items.Armor))
@@ -160,6 +169,9 @@ func (gd *GameData) validate() {
 		if c.Name == "" {
 			panic(fmt.Sprintf("gamedata: class %q has empty name", c.ID))
 		}
+		if c.DefaultRow != "" && c.DefaultRow != "front" && c.DefaultRow != "back" {
+			panic(fmt.Sprintf("gamedata: class %q has invalid default_row: %q", c.ID, c.DefaultRow))
+		}
 		if c.HPPerLevel <= 0 {
 			panic(fmt.Sprintf("gamedata: class %q has invalid hp_per_level: %d", c.ID, c.HPPerLevel))
 		}
@@ -200,6 +212,15 @@ func (gd *GameData) validate() {
 		}
 		if w.Power < 0 {
 			panic(fmt.Sprintf("gamedata: weapon %q has negative power", w.ID))
+		}
+	}
+
+	for _, a := range gd.Abilities {
+		if a.ID == "" {
+			panic("gamedata: ability with empty id")
+		}
+		if a.Name == "" {
+			panic(fmt.Sprintf("gamedata: ability %q has empty name", a.ID))
 		}
 	}
 

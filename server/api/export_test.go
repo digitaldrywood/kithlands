@@ -119,6 +119,20 @@ func PartyStatusForTest(g *Game, idx int) character.Status {
 	return g.party[idx].Status
 }
 
+// PartyRowForTest returns the current row for the party member at idx.
+func PartyRowForTest(g *Game, idx int) character.Row {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.party[idx].Row
+}
+
+// SetPartyRowForTest overrides the row for the party member at idx.
+func SetPartyRowForTest(g *Game, idx int, row character.Row) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.party[idx].Row = row
+}
+
 // DamagePartyMPForTest subtracts n MP from the given party slot without
 // letting it go negative. Used by no-rest tests to verify combat victory
 // does not refill MP.

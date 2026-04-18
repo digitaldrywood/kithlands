@@ -240,11 +240,19 @@ func resolveEncounterWithBasicAttacks(t *testing.T, game *api.Game, state *api.G
 			if member.HP <= 0 {
 				continue
 			}
-			actions = append(actions, api.MemberActionReq{
+			action := api.MemberActionReq{
 				Slot:     slot,
 				Type:     "attack",
 				TargetID: targetID,
-			})
+			}
+			for _, spell := range member.Spells {
+				if spell.Castable && spell.Effect == "damage" {
+					action.Type = "spell"
+					action.SpellID = spell.ID
+					break
+				}
+			}
+			actions = append(actions, action)
 		}
 
 		next, err := game.ProcessAction(api.GameActionRequest{Type: "attack", Actions: actions})

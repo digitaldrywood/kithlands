@@ -358,11 +358,16 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 				if target != nil {
 					targetID = target.ID
 				}
+				ignoreRow := false
+				if ability := g.gd.AbilityByID(ma.AbilityID); ability != nil {
+					ignoreRow = ability.IgnoresRow
+				}
 				actions = append(actions, combat.Action{
 					ActorID:   pc.ID,
 					Kind:      combat.ActionAbility,
 					TargetID:  targetID,
 					AbilityID: ma.AbilityID,
+					IgnoreRow: ignoreRow,
 				})
 
 			default:

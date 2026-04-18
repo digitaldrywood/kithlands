@@ -118,6 +118,9 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 			return nil, fmt.Errorf("unknown class: %s", pm.ClassID)
 		}
 		c := character.New(pm.Name, pm.ClassID, cls)
+		if row := character.NormalizeRow(pm.Row); row != "" {
+			c.Row = row
+		}
 		party = append(party, c)
 
 		// Equip starting gear
