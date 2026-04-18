@@ -354,6 +354,7 @@ function partyMenuLayoutSnapshot(scene) {
   const panel = describeObject(flattened[0], 0);
   const panelBounds = panel.bounds;
   const entries = flattened.map((entry, index) => describeObject(entry, index));
+  const statBars = [];
 
   const outOfBounds = panelBounds
     ? entries.filter((entry) => {
@@ -380,6 +381,27 @@ function partyMenuLayoutSnapshot(scene) {
     );
   });
 
+  for (let i = 2; i < entries.length; i++) {
+    const label = entries[i];
+    const fill = entries[i - 1];
+    const track = entries[i - 2];
+    if (
+      !label?.label?.match(/^(HP|MP|XP) /) ||
+      track?.fillColor !== 0x222244 ||
+      !track?.bounds ||
+      !fill?.bounds
+    ) {
+      continue;
+    }
+    statBars.push({
+      prefix: label.label.slice(0, 2),
+      trackWidth: track.bounds.width,
+      fillWidth: fill.bounds.width,
+      x: track.bounds.left,
+      y: track.bounds.top,
+    });
+  }
+
   return {
     panelBounds,
     entryCount: entries.length,
@@ -397,6 +419,7 @@ function partyMenuLayoutSnapshot(scene) {
       mp: entries.filter((entry) => entry.label?.startsWith("MP ")).length,
       xp: entries.filter((entry) => entry.label?.startsWith("XP ")).length,
     },
+    statBars,
   };
 }
 
@@ -1308,6 +1331,14 @@ export function installDevTestBridge(game) {
         if (Object.hasOwn(update, "mp")) member.mp = update.mp;
         if (Object.hasOwn(update, "status")) member.status = update.status;
       }
+      if (typeof scene.updateHUD === "function") scene.updateHUD();
+      return this.gameState(sceneKey);
+    },
+
+    setPartyStateLocal(party, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      if (!scene?.gameState) throw new Error("Scene has no game state");
+      scene.gameState.party = clone(party || []);
       if (typeof scene.updateHUD === "function") scene.updateHUD();
       return this.gameState(sceneKey);
     },
