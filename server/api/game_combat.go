@@ -70,6 +70,46 @@ type scheduledRoundAction struct {
 	memberAction MemberActionReq
 }
 
+func buildScheduledTurnOrderPriorities(
+	party []*combat.Combatant,
+	enemies []*combat.Combatant,
+) map[int]int {
+	priorities := make(map[int]int, len(party)+len(enemies))
+	for slot, combatant := range party {
+		if combatant != nil {
+			priorities[combatant.ID] = slot
+		}
+	}
+	base := len(party)
+	for idx, combatant := range enemies {
+		if combatant != nil {
+			priorities[combatant.ID] = base + idx
+		}
+	}
+	return priorities
+}
+
+func sortScheduledRoundActions(
+	actions []scheduledRoundAction,
+	party []*combat.Combatant,
+	enemies []*combat.Combatant,
+) {
+	priorities := buildScheduledTurnOrderPriorities(party, enemies)
+	sort.SliceStable(actions, func(i, j int) bool {
+		if actions[i].initiative != actions[j].initiative {
+			return actions[i].initiative > actions[j].initiative
+		}
+		left := actions[i].combatAction.ActorID
+		right := actions[j].combatAction.ActorID
+		leftPriority, leftOK := priorities[left]
+		rightPriority, rightOK := priorities[right]
+		if leftOK && rightOK && leftPriority != rightPriority {
+			return leftPriority < rightPriority
+		}
+		return left < right
+	})
+}
+
 func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 	stats := &g.gd.Stats.Combat
 
@@ -404,21 +444,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 		}
 	}
 
-	sort.SliceStable(roundActions, func(i, j int) bool {
-		return roundActions[i].initiative > roundActions[j].initiative
-	})
-	for start := 0; start < len(roundActions); {
-		end := start + 1
-		for end < len(roundActions) && roundActions[end].initiative == roundActions[start].initiative {
-			end++
-		}
-		if end-start > 1 {
-			g.rng.Shuffle(end-start, func(i, j int) {
-				roundActions[start+i], roundActions[start+j] = roundActions[start+j], roundActions[start+i]
-			})
-		}
-		start = end
-	}
+	sortScheduledRoundActions(roundActions, combatants, g.enemies)
 
 	for _, r := range combat.ResolveRoundStart(combatants, g.enemies) {
 		g.logResolvedCombatAction(combatants, abilityByActor, r)

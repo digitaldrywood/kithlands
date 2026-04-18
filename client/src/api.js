@@ -135,8 +135,12 @@ export async function equipItem(gameId, slot, itemId, type) {
   });
 }
 
-export async function updatePartyFormation(gameId, updates) {
-  return apiCall("POST", `/game/${gameId}/formation`, { updates });
+export async function updatePartyFormation(gameId, updates, reorder = null) {
+  const body = { updates };
+  if (Array.isArray(reorder) && reorder.length > 0) {
+    body.reorder = reorder;
+  }
+  return apiCall("POST", `/game/${gameId}/formation`, body);
 }
 
 export async function learnSpell(gameId, charName, spellId) {
