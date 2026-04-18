@@ -401,6 +401,12 @@ export class WizardScene extends Phaser.Scene {
         fontFamily: "monospace",
       })
       .setOrigin(0.5);
+    loadingLine.__kithlandsWizardLoadingPanel = {
+      cx: this.cx,
+      cy: y,
+      width: 360,
+      height: 92,
+    };
     this.contentGroup.add(loadingLine);
 
     let frameIdx = 0;
