@@ -238,9 +238,7 @@ export class BattleScene extends Phaser.Scene {
     // Building type forwarded by Town (e.g. "temple", "inn", "shop", "house")
     // so interior battles can pick the matching pre-rendered background.
     this.buildingType =
-      data.buildingType ??
-      data.returnScene?.spawn?.building_type ??
-      null;
+      data.buildingType ?? data.returnScene?.spawn?.building_type ?? null;
   }
 
   create() {
