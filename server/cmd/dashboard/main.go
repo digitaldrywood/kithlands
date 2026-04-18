@@ -9,6 +9,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"embed"
 	"encoding/json"
 	"errors"
@@ -129,7 +130,12 @@ func gitWorktreeList(repoRoot string) []string {
 	if repoRoot == "" {
 		return nil
 	}
-	ctxCmd := exec.Command("git", "-C", repoRoot, "worktree", "list", "--porcelain")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// repoRoot is derived from the binary's own working directory at startup;
+	// it is never sourced from request input. gosec flags the variable arg
+	// even though the command itself ("git") is fixed.
+	ctxCmd := exec.CommandContext(ctx, "git", "-C", repoRoot, "worktree", "list", "--porcelain") //nolint:gosec // trusted internal path
 	out, err := ctxCmd.Output()
 	if err != nil {
 		return nil
@@ -430,7 +436,7 @@ func main() {
 	mux.HandleFunc("/img", s.handleImage)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, "ok")
+		_, _ = fmt.Fprintln(w, "ok")
 	})
 	mux.Handle("/", http.FileServer(http.FS(staticFS)))
 
@@ -441,15 +447,23 @@ func main() {
 	log.Printf("dashboard config: projects-dir=%s worktree-glob=%s scan-interval=%s", cfg.projectsDir, cfg.worktreeGlob, *scanInterval)
 
 	errs := make(chan error, len(addrs))
+	lc := net.ListenConfig{}
 	for _, addr := range addrs {
 		addr := addr
-		ln, err := net.Listen("tcp", addr)
+		ln, err := lc.Listen(context.Background(), "tcp", addr)
 		if err != nil {
 			log.Fatalf("listen %s: %v", addr, err)
 		}
 		log.Printf("dashboard listening on %s", addr)
+		srv := &http.Server{
+			Handler:           mux,
+			ReadHeaderTimeout: 10 * time.Second,
+			ReadTimeout:       30 * time.Second,
+			WriteTimeout:      60 * time.Second,
+			IdleTimeout:       120 * time.Second,
+		}
 		go func() {
-			if err := http.Serve(ln, mux); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 				errs <- fmt.Errorf("serve %s: %w", addr, err)
 				return
 			}
