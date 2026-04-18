@@ -26,7 +26,9 @@ export function showFormationMenu(scene) {
   pauseWorldFor(scene, "formation_menu");
 
   const overlay = [];
-  const party = Array.isArray(scene?.gameState?.party) ? scene.gameState.party : [];
+  const party = Array.isArray(scene?.gameState?.party)
+    ? scene.gameState.party
+    : [];
   const draftRows = party.map((member) => resolveMemberRow(member));
   const rowObjects = [];
   let focusedIdx = 0;
@@ -175,7 +177,8 @@ export function showFormationMenu(scene) {
   const teardown = () => {
     overlay.forEach((entry) => entry?.destroy?.());
     if (scene.formationMenuState?.keyHandlers) {
-      const { up, down, left, right, enter, esc } = scene.formationMenuState.keyHandlers;
+      const { up, down, left, right, enter, esc } =
+        scene.formationMenuState.keyHandlers;
       scene.input.keyboard.off("keydown-UP", up);
       scene.input.keyboard.off("keydown-DOWN", down);
       scene.input.keyboard.off("keydown-LEFT", left);
@@ -235,7 +238,10 @@ export function showFormationMenu(scene) {
   const onLeft = () => setDraftRow(focusedIdx, "front");
   const onRight = () => setDraftRow(focusedIdx, "back");
   const onEnter = () =>
-    setDraftRow(focusedIdx, draftRows[focusedIdx] === "front" ? "back" : "front");
+    setDraftRow(
+      focusedIdx,
+      draftRows[focusedIdx] === "front" ? "back" : "front",
+    );
   const onEsc = () => {
     void closeAndSave();
   };

@@ -16,7 +16,10 @@ async function bootToWorld(page) {
 }
 
 async function startCustomGame(page, gameData) {
-  await page.evaluate((data) => window.__kithlandsTest.startCustomGame(data), gameData);
+  await page.evaluate(
+    (data) => window.__kithlandsTest.startCustomGame(data),
+    gameData,
+  );
   await page.waitForFunction(
     () => window.__kithlandsTest.activeSceneKey() === "World",
   );
@@ -49,7 +52,10 @@ async function setProofOverlay(page, title, lines = []) {
 }
 
 async function saveAndReload(page, name) {
-  await page.evaluate((saveName) => window.__kithlandsTest.saveGame(saveName), name);
+  await page.evaluate(
+    (saveName) => window.__kithlandsTest.saveGame(saveName),
+    name,
+  );
   const saves = await page.evaluate(() => window.__kithlandsTest.listSaves());
   const saveId = saves?.saves?.[0]?.id;
   expect(saveId).toBeTruthy();
@@ -126,10 +132,14 @@ test.describe("battle row system proof — issue #231", () => {
     expect(formationSummary.rows[0].row).toBe("back");
     expect(formationSummary.rows[1].row).toBe("front");
 
-    await setProofOverlay(page, "Formation menu", formationSummary.rows.map((row) => {
-      const line = row.row === "front" ? "FRONT" : "BACK";
-      return `slot ${row.slot + 1} ${row.name}: ${line}`;
-    }));
+    await setProofOverlay(
+      page,
+      "Formation menu",
+      formationSummary.rows.map((row) => {
+        const line = row.row === "front" ? "FRONT" : "BACK";
+        return `slot ${row.slot + 1} ${row.name}: ${line}`;
+      }),
+    );
     await page.screenshot({
       path: testInfo.outputPath(`battle-row-formation-menu-${RUN_ID}.png`),
       fullPage: true,
@@ -138,14 +148,23 @@ test.describe("battle row system proof — issue #231", () => {
     await page.evaluate(() => window.__kithlandsTest.saveFormation("World"));
     await page.waitForFunction(() => {
       const state = window.__kithlandsTest.gameState("World");
-      return state?.party?.[0]?.row === "back" && state?.party?.[1]?.row === "front";
+      return (
+        state?.party?.[0]?.row === "back" && state?.party?.[1]?.row === "front"
+      );
     });
 
     await saveAndReload(page, `Issue 231 ${RUN_ID}`);
     const reloadedRows = await page.evaluate(() =>
-      window.__kithlandsTest.gameState("World").party.map((member) => member.row),
+      window.__kithlandsTest
+        .gameState("World")
+        .party.map((member) => member.row),
     );
-    expect(reloadedRows.slice(0, 4)).toEqual(["back", "front", "back", "front"]);
+    expect(reloadedRows.slice(0, 4)).toEqual([
+      "back",
+      "front",
+      "back",
+      "front",
+    ]);
 
     await page.evaluate(() =>
       window.__kithlandsTest.forceEncounter(["slime", "goblin"], 2),
@@ -216,7 +235,8 @@ test.describe("battle row system proof — issue #231", () => {
     expect(backDamage).toBeLessThan(frontDamage);
 
     await page.evaluate(
-      (damage) => window.__kithlandsTest.showPartyDamageNumber(damage, "Battle"),
+      (damage) =>
+        window.__kithlandsTest.showPartyDamageNumber(damage, "Battle"),
       backDamage,
     );
     await page.waitForFunction(() => {
