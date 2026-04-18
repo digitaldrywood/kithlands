@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/digitaldrywood/kithlands/api"
-	"github.com/digitaldrywood/kithlands/internal/combat"
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
 )
 
@@ -27,20 +26,16 @@ func newGameWithParty(t *testing.T, party []api.PartyMemberReq) *api.Game {
 	return game
 }
 
-// Drive the game into combat and return the state so the test can issue
-// ability actions against whatever formation was spawned.
+// Drive the game into a deterministic combat fixture so generic combat tests
+// do not depend on the scripted tutorial opener or encounter RNG.
 func enterCombat(t *testing.T, game *api.Game) *api.GameState {
 	t.Helper()
-	// The "default" world action triggers an encounter.
-	state, err := game.ProcessAction(api.GameActionRequest{Type: "encounter"})
-	if err != nil {
-		t.Fatalf("encounter: %v", err)
-	}
+	api.EnterCombatForTest(game, []string{"goblin", "slime"}, 1)
+	state := game.State()
 	if state.Phase != "combat" {
 		t.Fatalf("phase after encounter: %q, want combat", state.Phase)
 	}
-	api.SetEncounterStartForTest(game, combat.EncounterStartNormal)
-	return state
+	return &state
 }
 
 func TestPartyStateSurfacesClassAbilities(t *testing.T) {

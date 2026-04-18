@@ -63,6 +63,7 @@ func (g *Game) ToSaveState(name, userID string) (*save.SaveState, error) {
 		"collected_hidden_items": g.collectedHiddenItems,
 		"building_side_quests":   g.buildingSideQuests,
 		"last_round_actions":     g.lastRoundActions,
+		"world_encounter_count":  g.worldEncounterCount,
 	}
 	worldJSON, err := json.Marshal(worldState)
 	if err != nil {
@@ -121,6 +122,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		CollectedHiddenItems map[string]bool                        `json:"collected_hidden_items"`
 		BuildingSideQuests   map[string]generator.BuildingSideQuest `json:"building_side_quests"`
 		LastRoundActions     []MemberActionReq                      `json:"last_round_actions"`
+		WorldEncounterCount  int                                    `json:"world_encounter_count"`
 	}
 	if err := json.Unmarshal(ss.WorldState, &worldState); err != nil {
 		return nil, fmt.Errorf("unmarshaling world state: %w", err)
@@ -174,6 +176,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		diff:                 balance.GetDifficulty(ss.Difficulty),
 		discovered:           discovered,
 		collectedHiddenItems: collectedHidden,
+		worldEncounterCount:  worldState.WorldEncounterCount,
 		trans:                trans,
 		lastRoundActions:     cloneMemberActionReqs(worldState.LastRoundActions),
 	}

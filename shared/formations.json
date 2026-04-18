@@ -1,5 +1,55 @@
 [
   {
+    "id": "tutorial_slime",
+    "weight": 1,
+    "min_encounter_level": 1,
+    "max_encounter_level": 1,
+    "tutorial_only": true,
+    "starter_safe": true,
+    "terrain_tags": ["any"],
+    "layout": "line",
+    "slots": [
+      { "monster_id": "slime", "min": 1, "max": 1 }
+    ]
+  },
+  {
+    "id": "starter_slime_pair",
+    "weight": 30,
+    "min_encounter_level": 1,
+    "max_encounter_level": 2,
+    "starter_safe": true,
+    "terrain_tags": ["grass", "dark_grass", "sand"],
+    "layout": "line",
+    "slots": [
+      { "monster_id": "slime", "min": 1, "max": 2 }
+    ]
+  },
+  {
+    "id": "starter_goblin_scout",
+    "weight": 25,
+    "min_encounter_level": 1,
+    "max_encounter_level": 2,
+    "starter_safe": true,
+    "terrain_tags": ["path", "grass", "sand"],
+    "layout": "line",
+    "slots": [
+      { "monster_id": "goblin", "min": 1, "max": 1 }
+    ]
+  },
+  {
+    "id": "starter_mixed_duo",
+    "weight": 20,
+    "min_encounter_level": 1,
+    "max_encounter_level": 2,
+    "starter_safe": true,
+    "terrain_tags": ["path", "grass"],
+    "layout": "scattered",
+    "slots": [
+      { "monster_id": "slime", "min": 1, "max": 1 },
+      { "monster_id": "goblin", "min": 1, "max": 1 }
+    ]
+  },
+  {
     "id": "slime_pack",
     "weight": 40,
     "min_encounter_level": 1,

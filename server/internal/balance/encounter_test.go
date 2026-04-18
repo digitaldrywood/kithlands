@@ -34,9 +34,12 @@ func TestFormationEligibilityByLevel(t *testing.T) {
 	// At level 1, only level-1-eligible formations should appear.
 	// Formations with min_encounter_level > 1 must never be picked.
 	level1Only := map[string]bool{
-		"slime_pack":    true,
-		"goblin_rabble": true,
-		"scattered_mob": true,
+		"slime_pack":           true,
+		"goblin_rabble":        true,
+		"scattered_mob":        true,
+		"starter_slime_pair":   true,
+		"starter_goblin_scout": true,
+		"starter_mixed_duo":    true,
 	}
 
 	for seed := uint64(0); seed < 1000; seed++ {
@@ -141,20 +144,20 @@ func TestDeterminismWithSeed(t *testing.T) {
 	}
 }
 
-func TestFallbackWhenNoEligible(t *testing.T) {
+func TestHighLevelEncounterRelaxesAuthoredMaxCaps(t *testing.T) {
 	gd := loadTestData(t)
 	diff := balance.GetDifficulty("normal")
 	rng := rand.New(rand.NewPCG(42, 0))
 
-	// Level 99 is beyond all max_encounter_level values (except 0 = unbounded)
-	// but all formations with max=0 have weight=0 (boss only).
-	// This should trigger the fallback.
+	// Level 99 is beyond every authored max cap, so encounter generation should
+	// reuse the authored formations on the relaxed path instead of collapsing
+	// into the single-monster fallback.
 	result := balance.GenerateFormationEncounter(gd, 99, diff, "", rng)
 	if len(result.Combatants) == 0 {
-		t.Fatal("expected fallback to produce at least one combatant")
+		t.Fatal("expected relaxed high-level path to produce at least one combatant")
 	}
-	if result.Layout != "line" {
-		t.Errorf("expected fallback layout 'line', got %q", result.Layout)
+	if result.FormationID == "" {
+		t.Fatal("expected a real authored formation on the relaxed high-level path")
 	}
 }
 
