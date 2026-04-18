@@ -103,6 +103,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	// a non-zero starting MMP or mp_per_level. Characters saved under the
 	// MP system already have MaxMP > 0 and are skipped.
 	migrateLegacyMP(party, gd)
+	migrateLegacyRows(party, gd)
 
 	var inv inventory.Inventory
 	if err := json.Unmarshal(ss.Inventory, &inv); err != nil {
@@ -219,6 +220,15 @@ func migrateLegacyMP(party []*character.Character, gd *gamedata.GameData) {
 		}
 		c.MaxMP = cls.StartingStats.MMP + cls.MPPerLevel*levels
 		c.CurrentMP = c.MaxMP
+	}
+}
+
+func migrateLegacyRows(party []*character.Character, gd *gamedata.GameData) {
+	for _, c := range party {
+		if c == nil || c.Row != "" {
+			continue
+		}
+		c.Row = character.DefaultRow(gd.ClassByID(c.ClassID))
 	}
 }
 

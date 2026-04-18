@@ -80,6 +80,7 @@
       "crit_pct": 0,
       "element": "none",
       "classes": ["rogue", "wayfarer"],
+      "long_range": true,
       "special": "",
       "buy_price": 12,
       "sell_price": 6
@@ -150,6 +151,7 @@
       "crit_pct": 2,
       "element": "none",
       "classes": ["rogue", "wayfarer"],
+      "long_range": true,
       "special": "",
       "buy_price": 70,
       "sell_price": 35
@@ -276,6 +278,7 @@
       "crit_pct": 3,
       "element": "none",
       "classes": ["rogue", "wayfarer"],
+      "long_range": true,
       "special": "",
       "buy_price": 1100,
       "sell_price": 550
@@ -360,6 +363,7 @@
       "crit_pct": 4,
       "element": "none",
       "classes": ["rogue", "wayfarer"],
+      "long_range": true,
       "special": "",
       "buy_price": 3200,
       "sell_price": 1600
@@ -444,6 +448,7 @@
       "crit_pct": 5,
       "element": "lightning",
       "classes": ["rogue", "wayfarer"],
+      "long_range": true,
       "special": "",
       "buy_price": 9500,
       "sell_price": 4750
@@ -528,6 +533,7 @@
       "crit_pct": 8,
       "element": "none",
       "classes": ["rogue", "wayfarer"],
+      "long_range": true,
       "special": "",
       "buy_price": 28000,
       "sell_price": 14000

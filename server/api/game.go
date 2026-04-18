@@ -84,6 +84,7 @@ type OSMPreviewResponse struct {
 type PartyMemberReq struct {
 	Name    string `json:"name"`
 	ClassID string `json:"class_id"`
+	Row     string `json:"row,omitempty"`
 }
 
 type GameActionRequest struct {
@@ -220,6 +221,7 @@ type PartyMemberState struct {
 	Name        string              `json:"name"`
 	ClassID     string              `json:"class_id"`
 	ClassName   string              `json:"class_name"`
+	Row         string              `json:"row"`
 	SpriteID    string              `json:"sprite_id"`
 	Composition sprites.Composition `json:"composition"`
 	Promoted    bool                `json:"promoted"`
@@ -617,6 +619,7 @@ func (g *Game) buildPartyMemberState(c *character.Character, slot int) PartyMemb
 		Name:        c.Name,
 		ClassID:     c.ClassID,
 		ClassName:   className,
+		Row:         string(c.Row),
 		SpriteID:    spriteID,
 		Composition: composition,
 		Promoted:    c.Promoted,

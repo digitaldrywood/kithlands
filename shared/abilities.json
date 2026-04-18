@@ -1,0 +1,23 @@
+[
+  {
+    "id": "focus",
+    "name": "Focus"
+  },
+  {
+    "id": "counter",
+    "name": "Counter"
+  },
+  {
+    "id": "steal",
+    "name": "Steal"
+  },
+  {
+    "id": "backstab",
+    "name": "Backstab",
+    "ignores_row": true
+  },
+  {
+    "id": "inspire",
+    "name": "Inspire"
+  }
+]

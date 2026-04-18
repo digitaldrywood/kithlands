@@ -262,6 +262,10 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 				if target != nil {
 					targetID = target.ID
 				}
+				ignoreRow := false
+				if ability := g.gd.AbilityByID(ma.AbilityID); ability != nil {
+					ignoreRow = ability.IgnoresRow
+				}
 				roundActions = append(roundActions, scheduledRoundAction{
 					kind:       scheduledRoundActionCombat,
 					initiative: initiative,
@@ -270,6 +274,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 						Kind:       combat.ActionAbility,
 						TargetID:   targetID,
 						AbilityID:  ma.AbilityID,
+						IgnoreRow:  ignoreRow,
 						Initiative: initiative,
 					},
 				})

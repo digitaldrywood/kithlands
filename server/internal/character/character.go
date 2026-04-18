@@ -13,6 +13,7 @@ import (
 type Character struct {
 	Name     string `json:"name"`
 	ClassID  string `json:"class_id"`
+	Row      Row    `json:"row,omitempty"`
 	Level    int    `json:"level"`
 	XP       int    `json:"xp"`
 	Promoted bool   `json:"promoted"`
@@ -38,6 +39,7 @@ type Character struct {
 }
 
 type Status string
+type Row string
 
 const (
 	StatusNone    Status = ""
@@ -47,6 +49,9 @@ const (
 	StatusStone   Status = "stone"
 	StatusDeath   Status = "death"
 	StatusConfuse Status = "confuse"
+
+	RowFront Row = "front"
+	RowBack  Row = "back"
 )
 
 // New creates a character of the given class with starting stats.
@@ -54,6 +59,7 @@ func New(name, classID string, class *gamedata.Class) *Character {
 	return &Character{
 		Name:      name,
 		ClassID:   classID,
+		Row:       DefaultRow(class),
 		Level:     1,
 		XP:        0,
 		STR:       class.StartingStats.STR,
@@ -68,6 +74,27 @@ func New(name, classID string, class *gamedata.Class) *Character {
 		CurrentMP: class.StartingStats.MMP,
 		Status:    StatusNone,
 	}
+}
+
+func NormalizeRow(row string) Row {
+	switch Row(row) {
+	case RowFront:
+		return RowFront
+	case RowBack:
+		return RowBack
+	default:
+		return ""
+	}
+}
+
+func DefaultRow(class *gamedata.Class) Row {
+	if class == nil {
+		return RowFront
+	}
+	if row := NormalizeRow(class.DefaultRow); row != "" {
+		return row
+	}
+	return RowFront
 }
 
 // XPToNextLevel returns the XP needed to reach the next level per Section 5.2.

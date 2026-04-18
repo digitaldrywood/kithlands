@@ -409,7 +409,9 @@ func (g *Game) makeCombatants() []*combat.Combatant {
 			STR: c.STR, AGI: c.AGI, INT: c.INT, VIT: c.VIT, LCK: c.LCK,
 			HitPct: c.HitPct, MaxHP: c.MaxHP, CurrentHP: c.CurrentHP,
 			Status:         c.Status,
+			Row:            string(c.Row),
 			WeaponPower:    g.inv.WeaponPower(i, g.gd),
+			LongRange:      g.inv.WeaponLongRange(i, g.gd),
 			ArmorAbsorb:    g.inv.TotalAbsorb(i, g.gd),
 			BareHandDamage: bareHand,
 		}

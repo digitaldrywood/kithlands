@@ -5,6 +5,7 @@ type Class struct {
 	ID               string           `json:"id"`
 	Name             string           `json:"name"`
 	Role             string           `json:"role"`
+	DefaultRow       string           `json:"default_row,omitempty"`
 	PromotesTo       string           `json:"promotes_to"`
 	PromotedName     string           `json:"promoted_name"`
 	StartingStats    StartingStats    `json:"starting_stats"`
@@ -165,9 +166,16 @@ type Weapon struct {
 	CritPct   int      `json:"crit_pct"`
 	Element   string   `json:"element"`
 	Classes   []string `json:"classes"`
+	LongRange bool     `json:"long_range,omitempty"`
 	Special   string   `json:"special"`
 	BuyPrice  int      `json:"buy_price"`
 	SellPrice int      `json:"sell_price"`
+}
+
+type Ability struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	IgnoresRow bool   `json:"ignores_row,omitempty"`
 }
 
 type Armor struct {

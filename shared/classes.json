@@ -3,6 +3,7 @@
     "id": "warrior",
     "name": "Warrior",
     "role": "Front-line tank",
+    "default_row": "front",
     "promotes_to": "knight",
     "promoted_name": "Knight",
     "starting_stats": {
@@ -45,6 +46,7 @@
     "id": "brawler",
     "name": "Brawler",
     "role": "Glass-cannon striker",
+    "default_row": "front",
     "promotes_to": "champion",
     "promoted_name": "Champion",
     "starting_stats": {
@@ -91,6 +93,7 @@
     "id": "rogue",
     "name": "Rogue",
     "role": "Fast utility",
+    "default_row": "front",
     "promotes_to": "shadow",
     "promoted_name": "Shadow",
     "starting_stats": {
@@ -139,6 +142,7 @@
     "id": "mender",
     "name": "Mender",
     "role": "Healer / support",
+    "default_row": "back",
     "promotes_to": "sage",
     "promoted_name": "Sage",
     "starting_stats": {
@@ -181,6 +185,7 @@
     "id": "cinder",
     "name": "Cinder",
     "role": "Damage caster",
+    "default_row": "back",
     "promotes_to": "pyromancer",
     "promoted_name": "Pyromancer",
     "starting_stats": {
@@ -223,6 +228,7 @@
     "id": "wayfarer",
     "name": "Wayfarer",
     "role": "Jack-of-all-trades",
+    "default_row": "front",
     "promotes_to": "wanderer",
     "promoted_name": "Wanderer",
     "starting_stats": {

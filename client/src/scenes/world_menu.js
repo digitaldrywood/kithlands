@@ -7,6 +7,7 @@ import { openCharacterDetail } from "./character_detail.js";
 import { showOptions } from "./options.js";
 import { showItemMenu } from "./item_menu.js";
 import { hasCastableFieldSpell, showFieldMagicMenu } from "./field_magic.js";
+import { showFormationMenu } from "./formation_menu.js";
 import { drawPanel, drawButton, drawLabeledStatBar } from "../ui/panel.js";
 import { hpBarColorPct } from "../systems/hpBar.js";
 import {
@@ -137,13 +138,13 @@ export function toggleMenu(scene) {
       },
     },
     {
-      label: "EQUIP",
-      w: 118,
+      label: "FORMATION",
+      w: 136,
       iconKey: "icon_sword",
-      iconFallback: "E",
+      iconFallback: "F",
       onClick: () => {
-        scene.showMessage("Equipment screen — coming in #95");
-        scene.time.delayedCall(1500, () => scene.hideMessage());
+        closeMenu(scene);
+        showFormationMenu(scene);
       },
     },
     {
