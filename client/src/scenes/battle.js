@@ -160,7 +160,9 @@ function resolvePortraitTextureKey(scene, member = {}) {
 }
 
 function battleThemeForTile(tileType, inTown = false) {
-  const fallbackType = Number.isFinite(tileType) ? tileType : DEFAULT_BATTLE_TILE;
+  const fallbackType = Number.isFinite(tileType)
+    ? tileType
+    : DEFAULT_BATTLE_TILE;
   const base = TILE_COLORS[fallbackType] ?? TILE_COLORS[DEFAULT_BATTLE_TILE];
   const skyTop = mixColor(base, inTown ? 0x1e2433 : 0x20304c, 0.78);
   const skyBottom = mixColor(base, inTown ? 0x684d3b : 0xb88652, 0.36);
@@ -172,7 +174,10 @@ function battleThemeForTile(tileType, inTown = false) {
 
   let motif = "plains";
   if (inTown) motif = "interior";
-  else if (fallbackType === TILE_IDS.forest || fallbackType === TILE_IDS.darkGrass)
+  else if (
+    fallbackType === TILE_IDS.forest ||
+    fallbackType === TILE_IDS.darkGrass
+  )
     motif = "forest";
   else if (fallbackType === TILE_IDS.sand) motif = "dunes";
   else if (fallbackType === TILE_IDS.hill || fallbackType === TILE_IDS.mountain)
@@ -181,7 +186,17 @@ function battleThemeForTile(tileType, inTown = false) {
   else if (fallbackType === TILE_IDS.marsh) motif = "marsh";
   else if (isLiquidTileType(fallbackType)) motif = "shore";
 
-  return { tileType: fallbackType, motif, skyTop, skyBottom, far, near, ground, haze, shadow };
+  return {
+    tileType: fallbackType,
+    motif,
+    skyTop,
+    skyBottom,
+    far,
+    near,
+    ground,
+    haze,
+    shadow,
+  };
 }
 
 function polygonPoints(values) {
@@ -1530,12 +1545,17 @@ export class BattleScene extends Phaser.Scene {
       this.actionBtns.push(portrait);
     } else {
       const fallback = this.add
-        .text(ACTION_HUD.portraitX, ACTION_HUD.portraitY, member.name[0] || "?", {
-          fontSize: "28px",
-          color: "#88ccff",
-          fontFamily: "monospace",
-          fontStyle: "bold",
-        })
+        .text(
+          ACTION_HUD.portraitX,
+          ACTION_HUD.portraitY,
+          member.name[0] || "?",
+          {
+            fontSize: "28px",
+            color: "#88ccff",
+            fontFamily: "monospace",
+            fontStyle: "bold",
+          },
+        )
         .setOrigin(0.5)
         .setDepth(18);
       this.actionBtns.push(fallback);

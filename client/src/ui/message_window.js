@@ -166,11 +166,15 @@ export class MessageWindow {
     this.frame.fill
       .setPosition(this.contentBounds.x, this.contentBounds.y)
       .setSize(this.contentBounds.width, this.contentBounds.height);
-    this.frame.top.setPosition(x + FRAME_TILE, y).setSize(innerWidth, FRAME_TILE);
+    this.frame.top
+      .setPosition(x + FRAME_TILE, y)
+      .setSize(innerWidth, FRAME_TILE);
     this.frame.bottom
       .setPosition(x + FRAME_TILE, y + height - FRAME_TILE)
       .setSize(innerWidth, FRAME_TILE);
-    this.frame.left.setPosition(x, y + FRAME_TILE).setSize(FRAME_TILE, innerHeight);
+    this.frame.left
+      .setPosition(x, y + FRAME_TILE)
+      .setSize(FRAME_TILE, innerHeight);
     this.frame.right
       .setPosition(x + width - FRAME_TILE, y + FRAME_TILE)
       .setSize(FRAME_TILE, innerHeight);
@@ -194,7 +198,8 @@ export class MessageWindow {
         true,
       );
     } else if (this.text.style?.wordWrap) {
-      this.text.style.wordWrap.width = this.contentBounds.width - TEXT_PADDING_X * 2;
+      this.text.style.wordWrap.width =
+        this.contentBounds.width - TEXT_PADDING_X * 2;
     }
   }
 

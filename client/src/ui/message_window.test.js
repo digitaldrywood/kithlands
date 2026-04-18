@@ -44,17 +44,24 @@ function makeNode(kind) {
       if (this.kind === "text") {
         const fontSize = parseInt(this.style?.fontSize || "16", 10) || 16;
         const wrapWidth = this.style?.wordWrap?.width || 320;
-        const charsPerLine = Math.max(8, Math.floor(wrapWidth / (fontSize * 0.55)));
+        const charsPerLine = Math.max(
+          8,
+          Math.floor(wrapWidth / (fontSize * 0.55)),
+        );
         const lines = Math.max(
           1,
           String(text || "")
             .split("\n")
             .reduce(
-              (count, line) => count + Math.max(1, Math.ceil(line.length / charsPerLine)),
+              (count, line) =>
+                count + Math.max(1, Math.ceil(line.length / charsPerLine)),
               0,
             ),
         );
-        this.width = Math.min(wrapWidth, String(text || "").length * fontSize * 0.55);
+        this.width = Math.min(
+          wrapWidth,
+          String(text || "").length * fontSize * 0.55,
+        );
         this.height = lines * (fontSize + 4);
       }
       return this;
@@ -184,7 +191,9 @@ describe("MessageWindow", () => {
       maxHeight: 108,
     });
 
-    const beforeBottom = window.getLayoutMetrics().bounds.y + window.getLayoutMetrics().bounds.height;
+    const beforeBottom =
+      window.getLayoutMetrics().bounds.y +
+      window.getLayoutMetrics().bounds.height;
     window.setText("Hero's turn -- choose an action");
     const metrics = window.getLayoutMetrics();
     const afterBottom = metrics.bounds.y + metrics.bounds.height;
