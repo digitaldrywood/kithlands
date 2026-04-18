@@ -36,6 +36,7 @@ func TestUserFromContext(t *testing.T) {
 	got := UserFromContext(ctx)
 	if got == nil {
 		t.Fatal("UserFromContext(ctx) = nil, want user")
+		return
 	}
 
 	if *got != *want {

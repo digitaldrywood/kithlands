@@ -91,6 +91,7 @@ func TestCautiousHealsWoundedAlly(t *testing.T) {
 	}
 	if casterAction == nil {
 		t.Fatal("no action for caster slot 1")
+		return
 	}
 	if casterAction.Type != "spell" {
 		t.Errorf("caster action: got %q, want spell", casterAction.Type)
@@ -142,6 +143,7 @@ func TestHealerHeavyGroupHealsWhenMultipleWounded(t *testing.T) {
 	}
 	if menderAction == nil {
 		t.Fatal("no action for mender slot 2")
+		return
 	}
 	if menderAction.SpellID != "heal" {
 		t.Errorf("mender spell: got %q, want heal (group)", menderAction.SpellID)
