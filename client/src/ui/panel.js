@@ -9,6 +9,7 @@ import { barFillWidth, barLabel } from "../systems/hpBar.js";
 const DEFAULT_BUTTON_STYLE = {
   fontSize: "12px",
   fontFamily: "monospace",
+  fontStyle: "",
   textColor: "#ffffff",
   textColorDisabled: "#666666",
   fill: 0x1a2a4a,
@@ -26,6 +27,10 @@ const DEFAULT_BUTTON_STYLE = {
 // objects, so callers can push them into their lifetime group and destroy
 // them together on close.
 export function drawPanel(scene, x, y, w, h, opts = {}) {
+  if (opts.variant === "ff6") {
+    return drawFF6Panel(scene, x, y, w, h, opts);
+  }
+
   const {
     fill = 0x000000,
     fillAlpha = 0.95,
@@ -41,6 +46,75 @@ export function drawPanel(scene, x, y, w, h, opts = {}) {
     .setScrollFactor(0)
     .setDepth(depth);
   if (interactive) bg.setInteractive();
+  return { bg };
+}
+
+function drawFF6Panel(scene, x, y, w, h, opts = {}) {
+  const {
+    depth = 40,
+    radius = 18,
+    interactive = false,
+    shadowColor = 0x08111f,
+    shadowAlpha = 0.45,
+    shadowOffsetX = 3,
+    shadowOffsetY = 3,
+    outerStroke = 0xe4f3ff,
+    outerStrokeWidth = 3,
+    outerFill = 0x4f7dc4,
+    innerStroke = 0xc0d7ff,
+    innerStrokeWidth = 2,
+    innerTop = 0x2e5f9d,
+    innerBottom = 0x14294c,
+    innerInset = 6,
+    sheenColor = 0xffffff,
+    sheenAlpha = 0.12,
+  } = opts;
+
+  const bg = scene.add.graphics().setScrollFactor(0).setDepth(depth);
+  const left = x - w / 2;
+  const top = y - h / 2;
+
+  bg.fillStyle(shadowColor, shadowAlpha);
+  bg.fillRoundedRect(left + shadowOffsetX, top + shadowOffsetY, w, h, radius);
+
+  bg.lineStyle(outerStrokeWidth, outerStroke, 1);
+  bg.fillStyle(outerFill, 1);
+  bg.fillRoundedRect(left, top, w, h, radius);
+  bg.strokeRoundedRect(left, top, w, h, radius);
+
+  if (typeof bg.fillGradientStyle === "function") {
+    bg.fillGradientStyle(innerTop, innerTop, innerBottom, innerBottom, 1);
+  } else {
+    bg.fillStyle(innerTop, 1);
+  }
+  bg.lineStyle(innerStrokeWidth, innerStroke, 0.95);
+  bg.fillRoundedRect(
+    left + innerInset,
+    top + innerInset,
+    w - innerInset * 2,
+    h - innerInset * 2,
+    Math.max(4, radius - innerInset + 2),
+  );
+  bg.strokeRoundedRect(
+    left + innerInset,
+    top + innerInset,
+    w - innerInset * 2,
+    h - innerInset * 2,
+    Math.max(4, radius - innerInset + 2),
+  );
+
+  bg.fillStyle(sheenColor, sheenAlpha);
+  bg.fillRoundedRect(
+    left + innerInset + 4,
+    top + innerInset + 4,
+    w - innerInset * 2 - 8,
+    Math.max(18, Math.floor(h * 0.16)),
+    Math.max(4, radius - innerInset + 2),
+  );
+
+  if (interactive && typeof bg.setInteractive === "function") {
+    bg.setInteractive();
+  }
   return { bg };
 }
 
@@ -69,6 +143,7 @@ export function drawButton(scene, x, y, w, h, label, onClick, opts = {}) {
   const text = scene.add
     .text(x, y, label, {
       fontSize: style.fontSize,
+      fontStyle: style.fontStyle,
       color: style.textColor,
       fontFamily: style.fontFamily,
     })
@@ -178,13 +253,27 @@ const DEFAULT_LABELED_STAT_BAR_STYLE = {
   labelColor: "#cccccc",
   labelFontSize: "11px",
   labelFontFamily: "monospace",
+  labelFontStyle: "",
   labelWidth: 24,
   valueColor: "#ffffff",
   valueFontSize: "10px",
   valueFontFamily: "monospace",
+  valueFontStyle: "",
   valueWidth: 52,
   valueGap: 6,
   valueText: null,
+  trackShadow: null,
+  trackShadowAlpha: 0.35,
+  trackInner: null,
+  trackInnerAlpha: 1,
+  fillShadow: null,
+  fillShadowAlpha: 0.28,
+  highlightFill: null,
+  highlightAlpha: 0.55,
+  tickCount: 0,
+  tickColor: 0xffffff,
+  tickAlpha: 0.18,
+  tickHeight: null,
 };
 
 // Draw a horizontal progress bar — a track rectangle plus a fill rectangle
@@ -287,12 +376,14 @@ export function drawLabeledStatBar(
     width - style.labelWidth - style.valueGap - style.valueWidth,
   );
   const trackY = y + style.trackYOffset;
+  const extras = [];
 
   const prefixLabel = scene.add
     .text(x, y, prefix, {
       fontSize: style.labelFontSize,
       color: style.labelColor,
       fontFamily: style.labelFontFamily,
+      fontStyle: style.labelFontStyle,
     })
     .setOrigin(0, 0.5)
     .setScrollFactor(0)
@@ -302,6 +393,22 @@ export function drawLabeledStatBar(
   }
   prefixLabel.__kithlandsStatBar = { prefix, role: "prefix" };
 
+  if (style.trackShadow != null) {
+    const shadow = scene.add
+      .rectangle(
+        trackX,
+        trackY + 1,
+        trackW,
+        style.height,
+        style.trackShadow,
+        style.trackShadowAlpha,
+      )
+      .setOrigin(0, 0.5)
+      .setScrollFactor(0)
+      .setDepth(style.depth - 1);
+    extras.push(shadow);
+  }
+
   const track = scene.add
     .rectangle(trackX, trackY, trackW, style.height, style.track, 1)
     .setOrigin(0, 0.5)
@@ -310,7 +417,38 @@ export function drawLabeledStatBar(
     .setDepth(style.depth);
   track.__kithlandsStatBar = { prefix, role: "track" };
 
+  if (style.trackInner != null) {
+    const inner = scene.add
+      .rectangle(
+        trackX + 1,
+        trackY,
+        Math.max(1, trackW - 2),
+        Math.max(1, style.height - 2),
+        style.trackInner,
+        style.trackInnerAlpha,
+      )
+      .setOrigin(0, 0.5)
+      .setScrollFactor(0)
+      .setDepth(style.depth + 0.25);
+    extras.push(inner);
+  }
+
   const fillW = barFillWidth(cur, max, trackW);
+  if (style.fillShadow != null && fillW > 0) {
+    const fillShadow = scene.add
+      .rectangle(
+        trackX,
+        trackY + 1,
+        Math.max(1, fillW),
+        Math.max(1, style.height - 2),
+        style.fillShadow,
+        style.fillShadowAlpha,
+      )
+      .setOrigin(0, 0.5)
+      .setScrollFactor(0)
+      .setDepth(style.depth + 0.5);
+    extras.push(fillShadow);
+  }
   const fill = scene.add
     .rectangle(trackX, trackY, Math.max(1, fillW), style.height, style.fill, 1)
     .setOrigin(0, 0.5)
@@ -322,11 +460,47 @@ export function drawLabeledStatBar(
     else fill.visible = false;
   }
 
+  if (style.highlightFill != null && fillW > 2) {
+    const highlight = scene.add
+      .rectangle(
+        trackX + 1,
+        trackY - style.height / 2 + 1,
+        Math.max(1, fillW - 2),
+        Math.max(1, Math.floor(style.height / 3)),
+        style.highlightFill,
+        style.highlightAlpha,
+      )
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setDepth(style.depth + 1.5);
+    extras.push(highlight);
+  }
+
+  if (style.tickCount > 0) {
+    const tickHeight = style.tickHeight ?? Math.max(2, style.height - 2);
+    for (let i = 1; i <= style.tickCount; i += 1) {
+      const tick = scene.add
+        .rectangle(
+          trackX + Math.round((trackW * i) / (style.tickCount + 1)),
+          trackY,
+          1,
+          tickHeight,
+          style.tickColor,
+          style.tickAlpha,
+        )
+        .setOrigin(0.5, 0.5)
+        .setScrollFactor(0)
+        .setDepth(style.depth + 1.25);
+      extras.push(tick);
+    }
+  }
+
   const valueLabel = scene.add
     .text(trackX + trackW + style.valueGap, y, valueText, {
       fontSize: style.valueFontSize,
       color: style.valueColor,
       fontFamily: style.valueFontFamily,
+      fontStyle: style.valueFontStyle,
     })
     .setOrigin(0, 0.5)
     .setScrollFactor(0)
@@ -341,7 +515,9 @@ export function drawLabeledStatBar(
     track,
     fill,
     valueLabel,
+    extras,
     destroy() {
+      for (const extra of extras) extra.destroy();
       prefixLabel.destroy();
       track.destroy();
       fill.destroy();
