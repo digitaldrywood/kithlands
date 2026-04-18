@@ -379,7 +379,7 @@ function partyMenuLayoutSnapshot(scene) {
       bounds.width > 0 &&
       Number.isFinite(entry.fillColor)
     );
-      });
+  });
 
   for (let i = 2; i < entries.length; i++) {
     const label = entries[i];
