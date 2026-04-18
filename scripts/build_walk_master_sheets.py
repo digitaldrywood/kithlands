@@ -37,6 +37,8 @@ CLASS_SCALE_MULTIPLIER = {
     "knight": 1.08,
 }
 
+KNIGHT_SWAPPED_SIDE_SOURCE_CLASSES = {"knight"}
+
 
 
 def parse_args() -> argparse.Namespace:
@@ -72,6 +74,12 @@ def scale_to_body_height(img: Image.Image, target_h: int) -> Image.Image:
 
 def prepare_master(direction: str, img: Image.Image, target_h: int) -> Image.Image:
     return scale_to_body_height(img, target_h)
+
+
+def sheet_row_directions(class_id: str) -> list[str]:
+    if class_id in KNIGHT_SWAPPED_SIDE_SOURCE_CLASSES:
+        return ["down", "up", "right", "left"]
+    return ["down", "up", "left", "right"]
 
 
 def split_front_back(base: Image.Image) -> dict[str, tuple[int, int, int, int]]:
@@ -275,7 +283,7 @@ def build_sheet_for_class(class_id: str) -> Image.Image:
         for direction in ["down", "up", "left", "right"]
     }
     sheet = Image.new("RGBA", (SHEET, SHEET), (0, 0, 0, 0))
-    for row_idx, direction in enumerate(["down", "up", "right", "left"]):
+    for row_idx, direction in enumerate(sheet_row_directions(class_id)):
         base = masters[direction]
         for col_idx in range(4):
             frame = pose_frame(base, direction, col_idx)
