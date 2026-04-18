@@ -116,7 +116,7 @@ func (g *Game) openChest(nodeID, chestID string) (*GameState, error) {
 		return nil, err
 	}
 	if g.hasTriggeredFlagUnlocked(chestOpenFlag(nodeID, chestID)) {
-		return nil, fmt.Errorf("It's empty.")
+		return nil, fmt.Errorf("it's empty")
 	}
 
 	def := g.gd.ChestByID(chestID)
@@ -124,7 +124,7 @@ func (g *Game) openChest(nodeID, chestID string) (*GameState, error) {
 		return nil, fmt.Errorf("unknown chest %q", chestID)
 	}
 	if def.LockFlag != "" && !g.hasTriggeredFlagUnlocked(def.LockFlag) {
-		return nil, fmt.Errorf("It's locked.")
+		return nil, fmt.Errorf("it's locked")
 	}
 
 	outcome := g.resolveChestOutcomeUnlocked(def)
