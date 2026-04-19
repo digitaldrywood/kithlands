@@ -287,9 +287,9 @@ export class BattleScene extends Phaser.Scene {
     this.floatingText = new FloatingTextPool(this);
     if (this.messageWindow) this.messageWindow.destroy();
     this.messageWindow = new MessageWindow(this, {
-      x: 370,
+      x: 384,
       y: 478,
-      width: 416,
+      width: 406,
       height: 112,
       minHeight: 96,
       maxHeight: 140,

@@ -834,6 +834,52 @@ function visibleBattleFxSnapshot(scene) {
       hpBarBounds: objectBounds(entry?.hpBar?.bg),
     }));
 
+  // Find tagged UI bounds so design-validation runner can verify layout
+  // without relying on pixel-scraping (issue #258 gate).
+  const taggedObject = (tag) =>
+    children.find(
+      (child) =>
+        child?._combatFxTag === tag &&
+        child.active !== false &&
+        child.visible !== false &&
+        (child.alpha ?? 1) > 0.01,
+    ) || null;
+  const actionPanel = taggedObject("action-panel");
+  const bottomStrip = taggedObject("bottom-strip");
+  const messageLayout = scene?.messageWindow?.getLayoutMetrics?.() ?? {};
+  const messageWindowBounds = messageLayout.bounds
+    ? {
+        left: messageLayout.bounds.x,
+        top: messageLayout.bounds.y,
+        right: messageLayout.bounds.x + messageLayout.bounds.width,
+        bottom: messageLayout.bounds.y + messageLayout.bounds.height,
+        width: messageLayout.bounds.width,
+        height: messageLayout.bounds.height,
+      }
+    : null;
+  // ACTION_HUD renders the portrait as a 60px image on top of a 68px frame.
+  // Phaser Graphics objects don't always expose getBounds for the frame, so
+  // derive bounds from the ACTION_HUD constants used to place it.
+  const portrait = children.find(
+    (child) =>
+      child?.type === "Image" &&
+      typeof child.texture?.key === "string" &&
+      (child.texture.key.endsWith("warrior") ||
+        child.texture.key.endsWith("brawler") ||
+        child.texture.key.endsWith("rogue") ||
+        child.texture.key.endsWith("mender") ||
+        child.texture.key.endsWith("cinder") ||
+        child.texture.key.endsWith("wayfarer") ||
+        child.texture.key.endsWith("knight") ||
+        child.texture.key.endsWith("champion") ||
+        child.texture.key.endsWith("shadow") ||
+        child.texture.key.endsWith("sage") ||
+        child.texture.key.endsWith("pyromancer") ||
+        child.texture.key.endsWith("wanderer")) &&
+      (child._combatFxTag == null || child._combatFxTag === "action-panel") &&
+      (child.y ?? 0) > 480,
+  );
+
   return {
     actorCursors: taggedCount("actor-cursor"),
     reticles: taggedCount("reticle"),
@@ -845,8 +891,29 @@ function visibleBattleFxSnapshot(scene) {
     messageWindow: {
       visible: scene?.messageWindow?.container?.visible !== false,
       text: scene?.messageWindow?.getText?.() ?? "",
-      ...(scene?.messageWindow?.getLayoutMetrics?.() ?? {}),
+      ...messageLayout,
     },
+    // Flat bounds for design-validation runner.
+    actionPanelBounds: objectBounds(actionPanel),
+    bottomStripBounds: objectBounds(bottomStrip),
+    messageWindowBounds,
+    portraitBounds: objectBounds(portrait),
+    backdropType: taggedCount("battle-backdrop") > 0 ? "image" : "procedural",
+    spriteBounds: partyMembers.map((m) => ({
+      side: "party",
+      row: m.row,
+      x: m.x,
+      y: m.y,
+      ...((m.spriteBounds && {
+        left: m.spriteBounds.left,
+        right: m.spriteBounds.right,
+        top: m.spriteBounds.top,
+        bottom: m.spriteBounds.bottom,
+      }) ||
+        {}),
+    })),
+    targetCursorVisible: taggedCount("target-cursor") > 0,
+    messageWindowTextBounds: messageLayout.textBounds || null,
     encounterTileType: scene?.encounterTileType ?? null,
     backdropCount: taggedCount("battle-backdrop"),
     groundPlaneCount: taggedCount("ground-plane"),
