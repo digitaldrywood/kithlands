@@ -146,7 +146,11 @@ def main():
         else OUT_DIR / f"{motif}.png"
     )
     path = make_template(motif, out)
-    print(f"wrote {path.relative_to(REPO_ROOT)}")
+    try:
+        display = path.relative_to(REPO_ROOT)
+    except ValueError:
+        display = path
+    print(f"wrote {display}")
 
 
 if __name__ == "__main__":
