@@ -242,6 +242,10 @@ export class BootScene extends Phaser.Scene {
     // battle.js falls back to the procedural backdrop when the texture is
     // absent, and we swallow loaderror for these specific keys so the dev
     // console doesn't fill with 404s.
+    // TODO(follow-up): 26 × ~700 KB backgrounds add ~17 MB to the Boot
+    // preload payload. Consider moving these into a scene-level preload on
+    // BattleScene (lazy-loaded on first battle) so the overworld boot is
+    // lighter on slow connections.
     const bgKeys = new Set();
     for (const bg of enumerateBackgrounds()) {
       bgKeys.add(bg.key);

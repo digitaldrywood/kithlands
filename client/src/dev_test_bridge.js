@@ -898,7 +898,17 @@ function visibleBattleFxSnapshot(scene) {
     bottomStripBounds: objectBounds(bottomStrip),
     messageWindowBounds,
     portraitBounds: objectBounds(portrait),
-    backdropType: taggedCount("battle-backdrop") > 0 ? "image" : "procedural",
+    backdropType: children.some(
+      (child) =>
+        child?._combatFxTag === "battle-backdrop" &&
+        child?._combatFxVariant === "image" &&
+        child.active !== false &&
+        child.visible !== false,
+    )
+      ? "image"
+      : taggedCount("battle-backdrop") > 0
+        ? "procedural"
+        : "none",
     spriteBounds: partyMembers.map((m) => ({
       side: "party",
       row: m.row,

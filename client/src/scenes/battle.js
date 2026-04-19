@@ -735,15 +735,20 @@ export class BattleScene extends Phaser.Scene {
     this.backdropTheme = theme;
 
     // Prefer a pre-rendered Gemini background when the motif's texture exists.
-    // Seeded from encounter tile + stage count so replaying the same battle
-    // returns the same painting. Falls back to the procedural path below when
-    // the PNG is missing (e.g. before scripts/generate_battle_backgrounds.py
+    // Seed from tile + enemy composition so distinct encounters pick distinct
+    // variants while the same line-up on the same tile is reproducible. The
+    // server-side GameState does not expose a per-encounter counter, so the
+    // enemy id list is the best available signal. Falls back to the procedural
+    // path below when the PNG is missing (e.g. before the generator script
     // has been run, or when the fallback test renames the folder out).
     const gs = this.gameState;
+    const enemyFingerprint = Array.isArray(gs?.enemies)
+      ? gs.enemies.map((e) => `${e?.id ?? ""}:${e?.name ?? ""}`).join(",")
+      : "";
     const seedParts = [
       this.encounterTileType ?? "x",
-      gs?.stage ?? gs?.encounter_count ?? 0,
       this.buildingType ?? "",
+      enemyFingerprint,
     ].join("|");
     const key = pickBackgroundKey(theme.motif, seedParts, this.buildingType);
     if (key && this.textures.exists(key)) {
@@ -752,6 +757,7 @@ export class BattleScene extends Phaser.Scene {
         .setDepth(-5)
         .setDisplaySize(800, 600);
       bg._combatFxTag = "battle-backdrop";
+      bg._combatFxVariant = "image";
       this.backdropObjects.push(bg);
       return;
     }
