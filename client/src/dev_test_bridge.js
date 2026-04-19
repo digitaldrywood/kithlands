@@ -1818,7 +1818,9 @@ export function installDevTestBridge(game) {
         if (typeof obj.text !== "string") return false;
         const t = obj.text.trim();
         if (!t) return false;
-        return /\b(Looking|Searching|Loading|Fetching|Connecting|Resolving)\b/i.test(t);
+        return /\b(Looking|Searching|Loading|Fetching|Connecting|Resolving)\b/i.test(
+          t,
+        );
       }).length;
       const formInputs = (scene.contentGroup || []).filter((obj) => {
         if (!obj || obj.active === false || obj.visible === false) return false;
