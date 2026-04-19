@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { GRID_DIMENSION, buildSheetCells, debuggerCatalog } from "./model.js";
+import {
+  GRID_DIMENSION,
+  buildSheetCells,
+  debuggerCatalog,
+  totalBackgroundCount,
+} from "./model.js";
 import { WALK_SHEET_CLASS_IDS, WALK_DIRS } from "../scenes/walkFrame.js";
+import { BG_VARIANTS } from "../scenes/battleBackgrounds.js";
 
 describe("sprite debugger model", () => {
   it("uses the runtime walk-sheet class list for debugger coverage", () => {
@@ -40,5 +46,16 @@ describe("sprite debugger model", () => {
   it("rejects sheet dimensions that cannot form an even 4x4 grid", () => {
     expect(() => buildSheetCells(510, 512)).toThrow(/4x4/i);
     expect(() => buildSheetCells(512, 510)).toThrow(/4x4/i);
+  });
+
+  it("exposes one debugger entry per committed battle background variant", () => {
+    const expected = Object.values(BG_VARIANTS).reduce((a, n) => a + n, 0);
+    expect(debuggerCatalog.backgrounds).toHaveLength(expected);
+    expect(totalBackgroundCount()).toBe(expected);
+    for (const bg of debuggerCatalog.backgrounds) {
+      expect(bg.path).toMatch(/\/backgrounds\/[^/]+\/[^/]+\.png$/);
+      expect(bg.id).toMatch(/^bg_[a-z]+_\d+$/);
+      expect(bg.badgeLabel).toBe("BG");
+    }
   });
 });

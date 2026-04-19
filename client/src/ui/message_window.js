@@ -4,6 +4,11 @@ const TEXT_PADDING_X = 12;
 const TEXT_PADDING_Y = 4;
 const DEFAULT_MIN_HEIGHT = 72;
 const DEFAULT_MAX_HEIGHT = 112;
+// Default message text size bumped for FF6-style readability (issue #258).
+// 22 px combined with the default 98–112 px frame gives ~40 px of interior
+// text space, enough for two lines of bold monospace without clipping.
+const DEFAULT_FONT_SIZE = "22px";
+const DEFAULT_LINE_SPACING = 6;
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -31,6 +36,8 @@ export class MessageWindow {
       maxHeight = DEFAULT_MAX_HEIGHT,
       anchorBottom = true,
       depth = 20,
+      fontSize = DEFAULT_FONT_SIZE,
+      lineSpacing = DEFAULT_LINE_SPACING,
     } = {},
   ) {
     this.scene = scene;
@@ -54,7 +61,7 @@ export class MessageWindow {
         this.contentBounds.y + TEXT_PADDING_Y,
         "",
         {
-          fontSize: "16px",
+          fontSize,
           color: "#ffffff",
           fontFamily: "monospace",
           fontStyle: "bold",
@@ -62,7 +69,7 @@ export class MessageWindow {
             width: this.contentBounds.width - TEXT_PADDING_X * 2,
             useAdvancedWrap: true,
           },
-          lineSpacing: 4,
+          lineSpacing,
         },
       )
       .setOrigin(0, 0)

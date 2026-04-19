@@ -575,6 +575,8 @@ Following FF1, some levels are "strong" — they grant guaranteed stat bonuses a
 
 Turn-based, party of four vs. up to nine enemies, classic JRPG layout. Phaser handles the visuals, the Go server resolves the math.
 
+**Visual layer (issue #258):** the battle scene blits a pre-rendered Gemini scene per biome (committed at `client/public/backgrounds/<motif>/`) and overlays an opaque FF6-style bottom strip so the MessageWindow and command HUD always have contrast regardless of the painting behind them. If a motif PNG is missing, `drawBattleBackdrop()` falls back to the original procedural layers. Regenerate backgrounds with `python3 scripts/generate_battle_backgrounds.py` (see `client/src/scenes/battleBackgrounds.js` for the motif manifest).
+
 A round of combat:
 
 1. Each combatant (player and enemy) selects an action.

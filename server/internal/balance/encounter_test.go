@@ -315,6 +315,7 @@ func TestGenerateFormationEncounterHighLevelAvoidsFallback(t *testing.T) {
 	wolf := gd.MonsterByID("wolf")
 	if wolf == nil {
 		t.Fatal("expected wolf monster data")
+		return
 	}
 	if got := result.Combatants[0].MonsterID; got != "wolf" {
 		t.Fatalf("expected wolf combatant, got %q", got)

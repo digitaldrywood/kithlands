@@ -26,8 +26,9 @@ import {
   planSmartRound,
   resolveAction,
 } from "../systems/auto_battle.js";
-import { drawButton, drawPanel } from "../ui/panel.js";
+import { drawButton, drawFF6BottomStrip, drawPanel } from "../ui/panel.js";
 import { TILE_COLORS, TILE_IDS } from "./tileConstants.js";
+import { pickBackgroundKey } from "./battleBackgrounds.js";
 
 const ENEMY_COLORS = {
   Slime: 0x42a5f5,
@@ -234,6 +235,10 @@ export class BattleScene extends Phaser.Scene {
       data.gameState?.tile_type ??
       this.encounterTileType ??
       null;
+    // Building type forwarded by Town (e.g. "temple", "inn", "shop", "house")
+    // so interior battles can pick the matching pre-rendered background.
+    this.buildingType =
+      data.buildingType ?? data.returnScene?.spawn?.building_type ?? null;
   }
 
   create() {
@@ -282,12 +287,12 @@ export class BattleScene extends Phaser.Scene {
     this.floatingText = new FloatingTextPool(this);
     if (this.messageWindow) this.messageWindow.destroy();
     this.messageWindow = new MessageWindow(this, {
-      x: 376,
-      y: 490,
-      width: 404,
-      height: 98,
-      minHeight: 68,
-      maxHeight: 136,
+      x: 384,
+      y: 478,
+      width: 406,
+      height: 112,
+      minHeight: 96,
+      maxHeight: 140,
       depth: 20,
     });
     this.promptText = this.messageWindow;
@@ -324,6 +329,7 @@ export class BattleScene extends Phaser.Scene {
     playMusic(isBoss ? "music_boss" : "music_battle");
 
     this.drawBattleBackdrop();
+    this.drawBottomStrip_();
 
     this.drawEnemies(gs);
     this.drawParty(gs);
@@ -728,6 +734,63 @@ export class BattleScene extends Phaser.Scene {
     );
     this.backdropTheme = theme;
 
+    // Prefer a pre-rendered Gemini background when the motif's texture exists.
+    // Seed from tile + enemy composition so distinct encounters pick distinct
+    // variants while the same line-up on the same tile is reproducible. The
+    // server-side GameState does not expose a per-encounter counter, so the
+    // enemy id list is the best available signal. Falls back to the procedural
+    // path below when the PNG is missing (e.g. before the generator script
+    // has been run, or when the fallback test renames the folder out).
+    const gs = this.gameState;
+    const enemyFingerprint = Array.isArray(gs?.enemies)
+      ? gs.enemies.map((e) => `${e?.id ?? ""}:${e?.name ?? ""}`).join(",")
+      : "";
+    const seedParts = [
+      this.encounterTileType ?? "x",
+      this.buildingType ?? "",
+      enemyFingerprint,
+    ].join("|");
+    const key = pickBackgroundKey(theme.motif, seedParts, this.buildingType);
+    if (key && this.textures.exists(key)) {
+      const bg = this.add
+        .image(400, 300, key)
+        .setDepth(-5)
+        .setDisplaySize(800, 600);
+      bg._combatFxTag = "battle-backdrop";
+      bg._combatFxVariant = "image";
+      this.backdropObjects.push(bg);
+      return;
+    }
+    this.drawProceduralBackdrop_(theme);
+  }
+
+  // Opaque FF6-style strip that occludes the bottom third of the (pre-rendered
+  // or procedural) backdrop, so the MessageWindow + ACTION_HUD panels above
+  // never have to fight the background for contrast. Placed at depth 6, which
+  // is above the backdrop image (-5) but below combatants (party sprites run
+  // at depth 4 for torsos but their own shadows are at 1 — strip at 6 covers
+  // the painted lower third, and combatant sprites still render in front
+  // because their bodies extend up into the non-strip region. Party sprite
+  // feet around y=420 are at the top of the strip, which is visually correct
+  // for a JRPG — they appear to stand at the strip edge.)
+  drawBottomStrip_() {
+    // Depth 2 places the strip above the backdrop image (-5) and the
+    // procedural ground layer (0), but BELOW party sprites (depth 4) and the
+    // HUD/MessageWindow panels (depth 16+) so combatants and UI render in
+    // front. y=470 aligns the top edge with the MessageWindow at y=478 so
+    // the message panel reads as a cell within the strip.
+    const strip = drawFF6BottomStrip(this, {
+      x: 0,
+      y: 470,
+      width: 800,
+      height: 130,
+      depth: 2,
+    });
+    strip._combatFxTag = "bottom-strip";
+    this.backdropObjects.push(strip);
+  }
+
+  drawProceduralBackdrop_(theme) {
     const stripeHeight = 44;
     for (let i = 0; i < 8; i++) {
       const ratio = i / 7;

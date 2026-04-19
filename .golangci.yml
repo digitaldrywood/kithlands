@@ -40,6 +40,13 @@ linters:
           - errcheck
           - gosec
           - noctx
+      # Test files: staticcheck SA5011 false-positives after t.Fatal guards.
+      # t.Fatal ends execution, but staticcheck does not trace into the
+      # testing package so it still warns about later dereferences.
+      - path: _test\.go
+        linters:
+          - staticcheck
+        text: "SA5011"
       # CLI tools: relaxed error checking for demo/sim binaries
       - path: cmd/(demo|balance_sim)/
         linters:

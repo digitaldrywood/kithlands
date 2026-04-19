@@ -4,6 +4,10 @@ import {
   WALK_FRAME_COUNT,
   WALK_SHEET_CLASS_IDS,
 } from "../scenes/walkFrame.js";
+import {
+  BG_VARIANTS,
+  enumerateBackgrounds,
+} from "../scenes/battleBackgrounds.js";
 
 export const GRID_DIMENSION = WALK_FRAME_COUNT;
 const UPPERCASE_TOKENS = new Set(["xp"]);
@@ -59,6 +63,14 @@ export const debuggerCatalog = {
     asset("priestess", "/sprites/npcs/priestess.png", "NPC"),
     asset("guard", "/sprites/npcs/guard.png", "NPC"),
   ],
+  backgrounds: enumerateBackgrounds().map(({ motif, variant, key, path }) => ({
+    id: key,
+    label: `${titleCase(motif)} #${variant}`,
+    badgeLabel: "BG",
+    path: `/${path}`,
+    motif,
+    variant,
+  })),
   ui: [
     asset("sword", "/sprites/ui/icon_sword.png", "UI"),
     asset("shield", "/sprites/ui/icon_shield.png", "UI"),
@@ -109,4 +121,8 @@ export function buildSheetCells(imageWidth, imageHeight) {
 
 export function formatSpriteLabel(value) {
   return titleCase(value);
+}
+
+export function totalBackgroundCount() {
+  return Object.values(BG_VARIANTS).reduce((acc, n) => acc + n, 0);
 }
