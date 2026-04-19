@@ -80,99 +80,208 @@ TARGET_W = 800
 TARGET_H = 600
 
 STYLE_SUFFIX = (
-    "Final Fantasy Pixel Remaster battle background. Richly painted wide-angle "
-    "scene, cinematic composition, clear horizon line, mid-ground depth, soft "
-    "atmospheric perspective, vivid but not cartoonish colors. No characters, "
-    "no UI, no text, no borders. The bottom third of the frame is visually "
-    "quieter (ground plane) so combatants can stand in front of it. 4:3 "
-    "aspect ratio."
+    "Final Fantasy Pixel Remaster battle background, 800x600 at 4:3, cinematic "
+    "painted scene. "
+    "CRITICAL LAYOUT CONSTRAINTS (follow these exactly): "
+    "(1) The LEFT THIRD of the frame — roughly x=80 to 430, y=100 to 320 — "
+    "must stay compositionally OPEN. Only sky, distant haze, or atmospheric "
+    "depth here. NO foreground trees, pillars, statues, mountains, or any "
+    "tall vertical subject. Combatants will stand in this zone. "
+    "(2) The RIGHT THIRD of the frame — roughly x=460 to 720, y=100 to 320 — "
+    "must also stay compositionally OPEN, same rule. Combatants stand there "
+    "too. A subject centered in either of these zones will clutter the scene. "
+    "(3) The BOTTOM 130 PX (y=470 to 600) will be fully covered by a solid "
+    "UI panel — treat that entire band as throwaway filler. "
+    "(4) Place the painting's FOCAL SUBJECT (a tree, pillar, distant peak, "
+    "statue, lantern, etc.) in ONE of three safe bands: the upper sky "
+    "(y=0 to 100), the mid-distance above the UI strip (y=320 to 470), or a "
+    "narrow central hint between the combatants (x=430 to 460). Never inside "
+    "the combatant zones. "
+    "(5) The horizon line should sit in y=320 to 470 so it reads below the "
+    "combatants' feet and above the UI strip. "
+    "(6) Any distant treeline, mountain ridge, or far-off building row must "
+    "render as a LOW SILHOUETTE BAND entirely inside y=320 to 470. NO tree "
+    "trunks, pine spires, or vertical structures rising up from the treeline "
+    "into the combatant zones. If the biome naturally has trees, render them "
+    "as a distant dark silhouette only — treat individual trunks and "
+    "spires above y=320 as forbidden. "
+    "(7) HEIGHT CAP ON THE FOCAL SUBJECT: the focal subject MUST fit "
+    "entirely between y=370 and y=470 (that is, no taller than ~100 px on "
+    "an 800x600 canvas). This means small scale only — a low boulder, a "
+    "short shrub, a distant lantern at ground level, a small altar, a "
+    "bridge silhouette. ABSOLUTELY NO tall towers, spires, obelisks, "
+    "pillars, dead trees, brazier columns, or any monument rising up into "
+    "the y=100-320 combatant zones. If you are tempted to draw a tall "
+    "central object, draw it smaller or omit it entirely — a great painted "
+    "scene with no hero subject is better than one with a subject that "
+    "occludes the combatants. "
+    "Atmospheric perspective, vivid but not cartoonish colors. No characters, "
+    "no UI, no text, no borders, no watermarks."
 )
 
 # Each motif maps to a list of per-variant subject descriptors. Number of
 # entries = variant count. Index + 1 becomes the filename suffix.
 MOTIF_PROMPTS = {
     "plains": [
-        "Open grassland under a warm afternoon sky, gently rolling green hills, "
-        "scattered wildflowers, a single old oak on the ridge.",
-        "Wildflower meadow at late spring, waist-high grass in golden light, "
-        "butterflies, distant thatched windmill silhouette.",
-        "Dry plains at sunset, tall pale grasses, low mesas on the far horizon, "
-        "warm ochre and lilac sky.",
+        "Open grassland under a warm afternoon sky. Distant treeline and a "
+        "single small oak silhouette on the far horizon (y=320-470 band). "
+        "Foreground is a wide, empty grass clearing with no tall objects in "
+        "the left or right thirds. Upper sky has soft cumulus clouds.",
+        "Wildflower meadow at late spring dusk. A tiny distant windmill "
+        "silhouette sits dead-center on the far horizon between where the "
+        "combatants will stand. Left and right of the frame are empty gently "
+        "rolling grass — no trees, no buildings. Upper sky golden and soft.",
+        "Dry plains at sunset. Low mesas as a thin silhouette along the far "
+        "horizon (y=320-470). Foreground is short pale grass and dirt with "
+        "nothing tall. Upper sky is warm ochre, lilac, and rose.",
     ],
     "forest": [
-        "Ancient deciduous forest at golden hour, dappled sunlight through the "
-        "canopy, moss-covered roots, ferns, a faint mist between the trees.",
-        "Deep pine forest at twilight under a full moon, cool blue and silver "
-        "light, bioluminescent mushrooms at the base of the trunks.",
-        "Mossy old-growth grove, massive gnarled trunks wrapped in ivy, warm "
-        "shafts of light, soft bed of leaves on the forest floor.",
-        "Autumn forest at dawn, red and amber leaves on birch and maple, "
-        "pale fog low to the ground, soft rose-gold sky.",
+        "Forest clearing at golden hour. A dense distant treeline forms a "
+        "silhouette band along the far mid-ground (y=320-470). The left and "
+        "right thirds of the frame are clear forest floor — grass, ferns, "
+        "scattered leaves — with NO tree trunks rising into them. Upper half "
+        "is pale sky with soft sun rays filtering through the distant canopy.",
+        "Pine forest clearing at twilight under a full moon. Distant pine "
+        "silhouettes line the far horizon. The full moon sits dead-center in "
+        "the upper sky between the combatants. Foreground is open mossy "
+        "ground with bioluminescent hints low to the earth, no tall trunks "
+        "in the left or right thirds.",
+        "Mossy forest clearing at dawn. A warm god-ray beam comes down from "
+        "the upper-center sky. Distant canopy silhouette forms a band along "
+        "the far horizon. Foreground is a clear mossy forest floor; left "
+        "and right thirds are open — no tree trunks, no ferns tall enough to "
+        "crowd the combatants.",
+        "Autumn forest clearing at dawn. Distant band of red and amber "
+        "birches along the far horizon (y=320-470). Foreground is an open "
+        "leaf-strewn clearing with low scattered leaves only. Sky is soft "
+        "rose-gold. No vertical trunks in the left or right thirds.",
     ],
     "dunes": [
-        "Rolling desert dunes at high noon, sharp wind-sculpted ridgelines, "
-        "pale warm sand, hazy turquoise sky.",
-        "Desert oasis at dusk, palm cluster around a small reflective pool, "
-        "distant sand sea under a violet-orange sky.",
-        "Canyon edge at sunset, layered red and ochre sandstone walls, deep "
-        "shadow in the gorge, warm copper light on the rim.",
+        "Rolling desert dunes at high noon. The left and right thirds of the "
+        "frame are smooth empty sand, no dunes rising tall into them. A "
+        "single distant dune crest and small caravan silhouette sit on the "
+        "far horizon. Upper sky is hazy turquoise fading to pale.",
+        "Desert oasis at dusk. A small distant palm silhouette and reflective "
+        "pool sit dead-center on the far horizon. Left and right thirds are "
+        "empty smooth sand. Upper sky is violet fading to orange.",
+        "Open desert at sunset. Layered sandstone silhouette along the far "
+        "horizon (y=320-470). Foreground is flat empty sand, no formations "
+        "in the left or right thirds. Upper sky is warm copper and deep rose.",
     ],
     "mountains": [
-        "High rocky pass between snow-capped peaks, pale slate cliffs, windswept "
-        "pines clinging to the slopes, cold blue sky with thin clouds.",
-        "Sheer cliff face under a bright alpine afternoon, granite wall with "
-        "mineral streaks, a vast valley opening to the right, wisps of cloud.",
-        "Mountain summit at sunrise above the cloud sea, jagged basalt peaks, "
-        "warm pink and gold light on the snow, cold blue shadows.",
+        "Mountain pass viewed from a plateau. Jagged snow-capped peaks form a "
+        "distant silhouette along the far horizon (y=320-470). Left and "
+        "right thirds of the frame are open stone plateau, no tall rocks or "
+        "pines in them. Upper sky is cold blue with thin clouds.",
+        "Alpine valley overlook. The far peaks sit along the horizon as a "
+        "distant silhouette. Foreground is open stone with a few very low "
+        "scattered rocks. Left and right thirds are empty. Upper sky has "
+        "wisps of cloud catching afternoon light.",
+        "Mountain plateau at sunrise. Warm pink and gold peaks form the far "
+        "horizon silhouette. Foreground is open rocky ground, left and right "
+        "thirds empty. Upper sky has cold blue shadow fading to warm gold.",
     ],
     "snow": [
-        "Wide snowfield at midday under a pale cold sun, sparse dark evergreens "
-        "on the far treeline, soft lavender shadows, crisp blue sky.",
-        "Snow-laden pine forest edge at dusk, heavy snow on the boughs, warm "
-        "amber light glowing from behind the trees, cool blue shadows on the snow.",
-        "Frozen lake shore under overcast sky, cracked ice, distant mountains "
-        "across the water, pale greys and frozen blues with a hint of pink.",
+        "Wide snowfield at midday. Distant dark evergreens along the far "
+        "horizon as a thin silhouette. Left and right thirds are smooth "
+        "empty snow, no pines in them. Upper sky is crisp blue with soft "
+        "lavender shadows on the snow.",
+        "Snowy plain at dusk. A far-distant treeline of snow-laden pines "
+        "along the horizon, warm amber light glowing from behind. Foreground "
+        "is open snow. Left and right thirds are empty. Upper sky cool blue "
+        "fading to warm peach near the treeline.",
+        "Frozen lakeshore. Cracked ice in the foreground. Distant mountains "
+        "form a pale silhouette along the far horizon. Left and right "
+        "thirds are open ice and snow. Upper sky overcast pale grey with a "
+        "hint of pink.",
     ],
     "marsh": [
-        "Swamp at dawn, still dark water between cypress trees draped in moss, "
-        "thick low mist, warm amber light filtering through.",
-        "Reed marsh at late afternoon, tall golden reeds, a winding channel of "
-        "water reflecting the sky, scattered lily pads in the foreground.",
-        "Bog at dusk with gnarled dead trees, green-glow firefly spores in the "
-        "mist, deep teal water, violet horizon.",
+        "Swamp clearing at dawn. Distant cypress silhouettes form a treeline "
+        "along the far horizon. Foreground is open shallow water reflecting "
+        "the sky. Left and right thirds are empty water, no cypress trunks "
+        "in them. Upper sky is amber mist.",
+        "Reed marsh at late afternoon. A winding channel of water runs "
+        "across the mid-ground, reflecting a pale sky. Distant reed-line on "
+        "the horizon. Left and right thirds are open water with only very "
+        "short foreground reeds. Upper sky is warm gold and green.",
+        "Bog at dusk. Distant gnarled dead trees form a silhouette band "
+        "along the far horizon. Foreground is shallow dark water with "
+        "faint green firefly spores. Left and right thirds are empty water, "
+        "no vertical trunks in them. Upper sky deep teal and violet.",
     ],
     "shore": [
-        "Sandy beach at golden hour, gentle surf, palm-lined dune in the "
-        "background, warm coral and amber sky reflected on wet sand.",
-        "Riverbank on a bright summer afternoon, smooth stones and clear water, "
-        "willow trees leaning over the river, distant green hills.",
-        "Old stone arched bridge over a wide slow river at dusk, weathered stone "
-        "piers, reflected lantern glow on the water, lavender sky.",
+        "Sandy beach at golden hour. Open wet sand foreground reflecting the "
+        "sky. Distant palm silhouette and horizon line along the far band. "
+        "Left and right thirds are empty sand. Upper sky coral and amber.",
+        "Riverbank on a bright summer afternoon. The river runs horizontally "
+        "across the mid-ground, reflecting a pale sky. Distant green hills "
+        "silhouette on the far horizon. Foreground is open pebble bank; "
+        "left and right thirds are empty. Upper sky pale blue with soft cloud.",
+        "Stone arched bridge at dusk, bridge silhouette centered on the far "
+        "horizon over a wide slow river. Foreground is open riverbank. "
+        "Left and right thirds are empty. Upper sky lavender with warm "
+        "lantern glow reflecting on the water.",
     ],
     # Interior variants are ordered to match INTERIOR_VARIANT_BY_BUILDING in
     # client/src/scenes/battleBackgrounds.js: 1=temple, 2=inn, 3=shop, 4=house.
     "interior": [
-        "Interior of a stone temple nave with tall pillars, warm candle "
-        "light on flagstones, stained-glass windows casting colored beams, "
-        "distant altar with glowing brazier. Painted, wide-angle, no figures.",
-        "Interior of a cozy wooden inn common room, warm firelight from a "
-        "stone hearth, long oak tables, hanging lanterns, rafters in shadow, "
-        "barrels and crates along the walls. No figures, no text.",
-        "Interior of a crowded magic shop, shelves stacked with potion bottles, "
-        "herbs, scrolls, and curios, warm oil-lamp light, a worn rug underfoot, "
-        "counter in the background. No shopkeeper visible.",
-        "Interior of a modest stone-and-timber house, simple wooden table and "
-        "chairs, a small hearth with embers, wool rug, window with soft daylight "
-        "behind linen curtains. Warm and quiet, no figures.",
+        "Stone temple interior, very LOW camera angle looking along the "
+        "flagstone floor. The far back wall is small on the horizon "
+        "(y=320-470) with a tiny distant altar silhouette and soft warm "
+        "candle glow. NO pillars anywhere in the frame. NO tall columns. "
+        "Upper half is smooth dim stone ceiling and wall colors fading "
+        "into shadow — no architectural verticals rising up. Only the "
+        "floor plane and a short distant altar. Stained-glass light as a "
+        "soft warm tint on the flagstones, not as visible windows. No "
+        "figures, no pillars, no columns.",
+        "Cozy inn common room viewed down the center aisle. The stone "
+        "hearth and hanging lanterns sit dead-center on the far wall. "
+        "Left and right thirds are open wooden floor with low stools pushed "
+        "against the far walls only. Upper area has rafters in shadow. "
+        "No figures, no text.",
+        "Magic shop interior viewed down the center aisle. The shopkeeper's "
+        "counter sits dead-center on the far wall with shelves of potion "
+        "bottles behind it. Left and right thirds of the foreground are "
+        "open wooden floor with a narrow rug running down the center. No "
+        "shelves rising into the combatant zones. No shopkeeper visible.",
+        "Modest stone-and-timber house interior viewed down the center "
+        "aisle. A small hearth with glowing embers sits dead-center on the "
+        "far wall, with a window above it catching soft daylight through "
+        "linen curtains. Left and right thirds of the foreground are open "
+        "wooden floor with a woven rug running down the center. Simple "
+        "chairs and a table pushed against the far walls only, nothing "
+        "rising into the combatant zones. No figures, no text.",
     ],
 }
 
 
-def generate_image(prompt, aspect_ratio="4:3"):
-    """Call Gemini and return a PIL Image, or None on failure."""
+def generate_image(prompt, aspect_ratio="4:3", reference_png=None):
+    """Call Gemini and return a PIL Image, or None on failure.
+
+    If reference_png (path or bytes) is provided, it's sent as inline_data
+    alongside the text prompt so Gemini 2.5 Flash Image can use it as a
+    composition reference (up to 14 images supported per request).
+    """
     _ensure_pil()
+    parts = [{"text": prompt}]
+    if reference_png is not None:
+        if isinstance(reference_png, (str, bytes, os.PathLike)) and not isinstance(
+            reference_png, bytes
+        ):
+            with open(reference_png, "rb") as f:
+                raw = f.read()
+        else:
+            raw = reference_png
+        parts.append(
+            {
+                "inline_data": {
+                    "mime_type": "image/png",
+                    "data": base64.b64encode(raw).decode("ascii"),
+                }
+            }
+        )
     payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
+        "contents": [{"parts": parts}],
         "generationConfig": {
             "responseModalities": ["TEXT", "IMAGE"],
             "imageConfig": {"aspectRatio": aspect_ratio},
@@ -255,6 +364,18 @@ def save_variants(img, motif, index):
     return lo_path, hi_path
 
 
+LAYOUT_TEMPLATE_DIR = os.path.join(
+    os.path.dirname(__file__), "..", "tmp", "layout_templates"
+)
+
+
+def layout_template_for(motif):
+    """Return path to the rendered composition template for this motif,
+    or None if not present. Generated by scripts/make_layout_template.py."""
+    path = os.path.join(LAYOUT_TEMPLATE_DIR, f"{motif}.png")
+    return path if os.path.exists(path) else None
+
+
 def generate_for_motif(motif, variant_count, force):
     if motif not in MOTIF_PROMPTS:
         print(f"Unknown motif: {motif}")
@@ -262,18 +383,34 @@ def generate_for_motif(motif, variant_count, force):
     prompts = MOTIF_PROMPTS[motif]
     n = min(variant_count, len(prompts)) if variant_count else len(prompts)
     written = 0
+    ref = layout_template_for(motif)
+    if ref:
+        print(f"  using composition reference {os.path.relpath(ref)}")
+    else:
+        print(
+            f"  WARNING: no composition template for {motif} — generate one "
+            f"via scripts/make_layout_template.py {motif}"
+        )
     for i in range(1, n + 1):
         out = os.path.join(BG_DIR, motif, f"{motif}_{i}.png")
         if os.path.exists(out) and not force:
             print(f"  skip {motif}_{i}.png (exists)")
             continue
         subject = prompts[i - 1]
-        prompt = f"{subject} {STYLE_SUFFIX}"
+        prompt = (
+            f"{subject} {STYLE_SUFFIX}\n\n"
+            "A reference composition image is attached. Match that layout "
+            "exactly: sky in upper portion, distant horizon silhouette, "
+            "open foreground in the left and right thirds (no subjects in "
+            "those zones), focal subject centered on the horizon where the "
+            "reference shows a small dark shape, and the bottom dark band "
+            "is throwaway (will be covered by a UI panel in game)."
+        )
         print(f"  generating {motif}_{i}.png")
-        img = generate_image(prompt, aspect_ratio="4:3")
+        img = generate_image(prompt, aspect_ratio="4:3", reference_png=ref)
         if img is None:
             print(f"  fallback to 1:1 for {motif}_{i}")
-            img = generate_image(prompt, aspect_ratio="1:1")
+            img = generate_image(prompt, aspect_ratio="1:1", reference_png=ref)
         if img is None:
             print(f"  FAILED: {motif}_{i}")
             continue
