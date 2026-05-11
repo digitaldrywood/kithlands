@@ -12,11 +12,42 @@
 //
 // Re-run as: node generate_placeholders.mjs
 
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+
 const require = createRequire(import.meta.url);
-const sharp = require("/home/loganlanou/.claude/skills/design-validation/node_modules/sharp");
+
+// Resolve sharp portably: prefer a normal `npm install sharp` in the same
+// directory as this script, then fall back to the design-validation skill
+// install, then to the user's home as a last resort. No author-local absolute
+// path baked in.
+function resolveSharp() {
+  const candidates = [
+    "sharp",
+    path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "node_modules/sharp",
+    ),
+    process.env.HOME &&
+      path.join(
+        process.env.HOME,
+        ".claude/skills/design-validation/node_modules/sharp",
+      ),
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    try {
+      return require(candidate);
+    } catch {
+      /* try next */
+    }
+  }
+  throw new Error(
+    "sharp not found. Run `npm install sharp` in docs/design-references/ or install the design-validation skill (~/.claude/skills/design-validation/).",
+  );
+}
+const sharp = resolveSharp();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -105,8 +136,16 @@ const REFERENCES = [
 ];
 
 function escapeXml(str) {
-  return str.replace(/[<>&"']/g, (c) =>
-    ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&apos;" })[c],
+  return str.replace(
+    /[<>&"']/g,
+    (c) =>
+      ({
+        "<": "&lt;",
+        ">": "&gt;",
+        "&": "&amp;",
+        '"': "&quot;",
+        "'": "&apos;",
+      })[c],
   );
 }
 
@@ -132,8 +171,19 @@ function svgFor({ title, source, bg, accent }) {
 }
 
 async function main() {
+  // Pass --force to regenerate every placeholder (overwriting any real
+  // screenshots with synthetic placeholders). Without --force, existing
+  // files are skipped so this script is safe to re-run after a real
+  // reference has been dropped in.
+  const force = process.argv.includes("--force");
   for (const ref of REFERENCES) {
     const out = path.join(__dirname, ref.file);
+    if (existsSync(out) && !force) {
+      process.stdout.write(
+        `skip ${ref.file} (already exists; pass --force to overwrite)\n`,
+      );
+      continue;
+    }
     await sharp(Buffer.from(svgFor(ref)))
       .png({ compressionLevel: 9 })
       .toFile(out);

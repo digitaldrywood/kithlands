@@ -1806,14 +1806,18 @@ export function installDevTestBridge(game) {
       const scene = getScene(game, sceneKey);
       if (!scene) throw new Error("Wizard scene is not active");
       const state = scene.townSearchState || {};
+      // WizardScene tracks the current step as numeric `scene.step`; step 5
+      // is the party-selection step (see showPartyStep dispatch in wizard.js).
       const phase = state.error
         ? "error"
         : state.busy
           ? "loading"
-          : scene.currentStep === "party"
+          : scene.step === 5
             ? "party"
             : "idle";
-      const visibleStatusLines = (scene.contentGroup || []).filter((obj) => {
+      // contentGroup is a Phaser Group, not an Array — pull its children list.
+      const children = scene.contentGroup?.getChildren?.() || [];
+      const visibleStatusLines = children.filter((obj) => {
         if (!obj || obj.active === false || obj.visible === false) return false;
         if (typeof obj.text !== "string") return false;
         const t = obj.text.trim();
@@ -1822,11 +1826,11 @@ export function installDevTestBridge(game) {
           t,
         );
       }).length;
-      const formInputs = (scene.contentGroup || []).filter((obj) => {
+      const formInputs = children.filter((obj) => {
         if (!obj || obj.active === false || obj.visible === false) return false;
         return obj.node?.tagName === "INPUT" || obj.input?.enabled;
       });
-      const loadingMarker = (scene.contentGroup || []).find(
+      const loadingMarker = children.find(
         (obj) => obj?.__kithlandsWizardLoadingPanel,
       );
       const loadingPanelBounds = loadingMarker?.__kithlandsWizardLoadingPanel
