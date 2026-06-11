@@ -1,0 +1,44 @@
+name: Migration Lint
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "server/internal/db/migrations/*.sql"
+      - "server/internal/db/migrations/**/*.sql"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  squawk:
+    name: Squawk (warning-only)
+    runs-on: [self-hosted, linux, x64, personal, prometheus]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Find modified migrations
+        id: changed
+        env:
+          MIGRATIONS_DIR: server/internal/db/migrations
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          BASE_SHA="$(git merge-base HEAD "origin/${{ github.base_ref }}")"
+          files=$(git diff --name-only --diff-filter=ACMRT "$BASE_SHA" HEAD -- "$MIGRATIONS_DIR" | grep -E '\.sql$' | tr '\n' ' ' | sed 's/[[:space:]]*$//' || true)
+          echo "files=$files" >> "$GITHUB_OUTPUT"
+          if [ -z "$files" ]; then
+            echo "No modified migration SQL files."
+          else
+            echo "Modified migration SQL files: $files"
+          fi
+
+      - name: Lint modified migrations
+        if: steps.changed.outputs.files != ''
+        uses: sbdchd/squawk-action@v2
+        with:
+          files: ${{ steps.changed.outputs.files }}
+          version: "2.57.0"
+          fail-on-violations: "false"
