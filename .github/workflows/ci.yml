@@ -8,7 +8,7 @@ on:
 
 jobs:
   server-and-data:
-    runs-on: [self-hosted, linux, x64, personal, prometheus]
+    runs-on: [self-hosted, linux, personal]
     steps:
       - uses: actions/checkout@v6
 
@@ -59,7 +59,7 @@ jobs:
         run: go run ./cmd/validate_gamedata -shared=../shared
 
   client:
-    runs-on: [self-hosted, linux, x64, personal, prometheus]
+    runs-on: [self-hosted, linux, personal]
     steps:
       - uses: actions/checkout@v6
 
@@ -86,7 +86,7 @@ jobs:
 
   pr-size:
     if: github.event_name == 'pull_request'
-    runs-on: [self-hosted, linux, x64, personal, prometheus]
+    runs-on: [self-hosted, linux, personal]
     permissions:
       contents: read
       pull-requests: write
