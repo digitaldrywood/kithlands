@@ -9,8 +9,18 @@ on:
 jobs:
   server-and-data:
     runs-on: [self-hosted, linux, personal]
+    env:
+      CGO_ENABLED: "1"
     steps:
       - uses: actions/checkout@v6
+
+      - name: Ensure C compiler
+        run: |
+          if command -v gcc >/dev/null; then
+            exit 0
+          fi
+          sudo apt-get update
+          sudo apt-get install -y build-essential
 
       - uses: actions/setup-go@v6
         with:
@@ -40,6 +50,10 @@ jobs:
       - name: Balance sim smoke test
         working-directory: server
         run: go run ./cmd/balance_sim -battles=10 -shared=../shared
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
 
       - name: Validate shared JSON files
         run: |
@@ -90,21 +104,44 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      issues: write
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Check PR size
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+      - name: Compute PR size
+        id: size
         run: |
           TOTAL=$(git diff --numstat origin/main...HEAD | awk '{ add += $1; del += $2 } END { print add + del }')
           echo "PR changes: $TOTAL lines"
+          echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
           if [ "$TOTAL" -gt 500 ]; then
-            EXISTING=$(gh pr view "$PR_NUMBER" --json comments --jq '.comments[].body' | grep -c "PR size warning" || true)
-            if [ "$EXISTING" -eq 0 ]; then
-              gh pr comment "$PR_NUMBER" --body "<!-- PR size warning -->**Warning:** This PR has $TOTAL lines changed (threshold: 500). Consider splitting into smaller PRs."
-            fi
+            echo "oversized=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "oversized=false" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Comment on large PR
+        if: steps.size.outputs.oversized == 'true'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const marker = '<!-- PR size warning -->';
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            if (comments.some((comment) => comment.body?.includes(marker))) {
+              return;
+            }
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number,
+              body: `${marker}**Warning:** This PR has ${{ steps.size.outputs.total }} lines changed (threshold: 500). Consider splitting into smaller PRs.`,
+            });
