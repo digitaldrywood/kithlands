@@ -14,7 +14,7 @@ permissions:
 jobs:
   squawk:
     name: Squawk (warning-only)
-    runs-on: [self-hosted, linux, x64, personal, prometheus]
+    runs-on: [self-hosted, linux, personal]
     steps:
       - uses: actions/checkout@v6
         with:
