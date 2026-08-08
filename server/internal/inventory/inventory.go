@@ -9,23 +9,32 @@ import (
 
 // Inventory holds a party's items and equipment state.
 type Inventory struct {
-	Gold        int               `json:"gold"`
-	Consumables map[string]int    `json:"consumables"`
-	KeyItems    []string          `json:"key_items"`
-	Equipment   [4]EquipmentSlots `json:"equipment"` // indexed by party slot
+	SchemaVersion int                           `json:"schema_version,omitempty"`
+	Gold          int                           `json:"gold"`
+	Consumables   map[string]int                `json:"consumables"`
+	Gems          map[string]int                `json:"gems,omitempty"`
+	Instances     map[string]*EquipmentInstance `json:"instances,omitempty"`
+	NextInstance  uint64                        `json:"next_instance,omitempty"`
+	KeyItems      []string                      `json:"key_items"`
+	Equipment     [4]EquipmentSlots             `json:"equipment"` // indexed by party slot
 }
 
 // EquipmentSlots tracks what a single character has equipped.
 type EquipmentSlots struct {
-	WeaponID string `json:"weapon_id,omitempty"`
-	ArmorID  string `json:"armor_id,omitempty"`
-	ShieldID string `json:"shield_id,omitempty"`
-	HelmetID string `json:"helmet_id,omitempty"`
+	WeaponID         string `json:"weapon_id,omitempty"`
+	WeaponInstanceID string `json:"weapon_instance_id,omitempty"`
+	ArmorID          string `json:"armor_id,omitempty"`
+	ArmorInstanceID  string `json:"armor_instance_id,omitempty"`
+	ShieldID         string `json:"shield_id,omitempty"`
+	HelmetID         string `json:"helmet_id,omitempty"`
 }
 
 func New() *Inventory {
 	return &Inventory{
-		Consumables: make(map[string]int),
+		SchemaVersion: 1,
+		Consumables:   make(map[string]int),
+		Gems:          make(map[string]int),
+		Instances:     make(map[string]*EquipmentInstance),
 	}
 }
 
