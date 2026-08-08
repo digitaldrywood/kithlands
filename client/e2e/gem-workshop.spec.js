@@ -86,7 +86,7 @@ test("previews and sockets equipped gear from the character screen", async ({
     expect.arrayContaining([
       "GEM WORKSHOP",
       "SOCKET GEMS",
-      "REFINE  •  1 READY",
+      "TRANSMUTE  •  1 READY",
       "1  CHOOSE EQUIPMENT",
       "2  CHOOSE A GEM",
       "3  REVIEW & CONFIRM",
@@ -105,7 +105,10 @@ test("previews and sockets equipped gear from the character screen", async ({
   });
 
   await page.evaluate(() =>
-    window.__kithlandsTest.clickInteractiveText("REFINE  •  1 READY", "World"),
+    window.__kithlandsTest.clickInteractiveText(
+      "TRANSMUTE  •  1 READY",
+      "World",
+    ),
   );
   await page.waitForFunction(() =>
     window.__kithlandsTest
@@ -119,7 +122,7 @@ test("previews and sockets equipped gear from the character screen", async ({
   expect(recipeTexts.some((text) => text.includes("Weapon Power:"))).toBe(true);
   expect(recipeTexts.some((text) => text.includes("Armor Absorb:"))).toBe(true);
   expect(recipeTexts.some((text) => text.includes("owned 3"))).toBe(true);
-  expect(recipeTexts).toContain("CREATE GEM — THEN SOCKET");
+  expect(recipeTexts).toContain("TRANSMUTE GEM — THEN SOCKET");
   expect(
     recipeTexts.some((text) => text.includes("Step 1: Create the gem")),
   ).toBe(true);
@@ -131,7 +134,7 @@ test("previews and sockets equipped gear from the character screen", async ({
 
   await page.evaluate(() =>
     window.__kithlandsTest.clickInteractiveText(
-      "CREATE GEM — THEN SOCKET",
+      "TRANSMUTE GEM — THEN SOCKET",
       "World",
     ),
   );
@@ -249,7 +252,7 @@ test("keeps the comparison readable at desktop and mobile viewports", async ({
   });
 });
 
-test("advertises a ready recipe and recommends its stronger output", async ({
+test("advertises a ready transmutation and recommends its stronger output", async ({
   page,
 }) => {
   await startLevelOneGame(page);
@@ -268,19 +271,22 @@ test("advertises a ready recipe and recommends its stronger output", async ({
   await page.waitForFunction(() =>
     window.__kithlandsTest
       .visibleTexts("World")
-      .some((entry) => entry.text === "REFINE  •  1 READY"),
+      .some((entry) => entry.text === "TRANSMUTE  •  1 READY"),
   );
   await page.evaluate(() =>
-    window.__kithlandsTest.clickInteractiveText("REFINE  •  1 READY", "World"),
+    window.__kithlandsTest.clickInteractiveText(
+      "TRANSMUTE  •  1 READY",
+      "World",
+    ),
   );
   await page.waitForFunction(() =>
     window.__kithlandsTest
       .visibleTexts("World")
-      .some((entry) => entry.text === "CREATE GEM — THEN SOCKET"),
+      .some((entry) => entry.text === "TRANSMUTE GEM — THEN SOCKET"),
   );
   await page.evaluate(() =>
     window.__kithlandsTest.clickInteractiveText(
-      "CREATE GEM — THEN SOCKET",
+      "TRANSMUTE GEM — THEN SOCKET",
       "World",
     ),
   );
@@ -308,7 +314,7 @@ test("advertises a ready recipe and recommends its stronger output", async ({
   expect(texts.some((text) => text.includes("not socketed yet"))).toBe(true);
 
   await page.screenshot({
-    path: `tmp/gem-workshop-refined-recommendation-${RUN_ID}.png`,
+    path: `tmp/gem-workshop-transmuted-recommendation-${RUN_ID}.png`,
     fullPage: true,
   });
 });

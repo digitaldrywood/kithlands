@@ -188,7 +188,7 @@ export function recipeReadiness(recipe, gs = {}) {
       return `Need ${input.count - owned} more ${input.gem_name || input.gem_id}`;
     }
   }
-  return "Ready to refine";
+  return "Ready to transmute";
 }
 
 export function recommendedRecipes(gs) {
@@ -322,18 +322,18 @@ function addTabs(scene, group, mode, gs, setMode) {
     { depth: DEPTH, fontStyle: "bold" },
   );
   socketTab.setActive(mode === "socket");
-  const refineTab = drawButton(
+  const transmuteTab = drawButton(
     scene,
     500,
     112,
     242,
     34,
-    ready > 0 ? `REFINE  •  ${ready} READY` : "REFINE RECIPES",
-    () => setMode("refine"),
+    ready > 0 ? `TRANSMUTE  •  ${ready} READY` : "TRANSMUTE RECIPES",
+    () => setMode("transmute"),
     { depth: DEPTH, fontStyle: "bold" },
   );
-  refineTab.setActive(mode === "refine");
-  group.push(socketTab, refineTab);
+  transmuteTab.setActive(mode === "transmute");
+  group.push(socketTab, transmuteTab);
 }
 
 function renderSocketMode(scene, group, state) {
@@ -608,7 +608,7 @@ function renderSocketPreview(
   });
 }
 
-function renderRefineMode(scene, group, state) {
+function renderTransmuteMode(scene, group, state) {
   const recipes = recommendedRecipes(state.gs);
   const selected = recipes.find(
     ({ recipe }) => recipe.id === state.selectedRecipeID,
@@ -655,7 +655,7 @@ function renderRefineMode(scene, group, state) {
     476,
     260,
     38,
-    state.busy ? "WORKING..." : "CREATE GEM — THEN SOCKET",
+    state.busy ? "WORKING..." : "TRANSMUTE GEM — THEN SOCKET",
     state.confirmRecipe,
     {
       depth: DEPTH,
@@ -848,7 +848,7 @@ export function showGemWorkshop(
     if (!recipe?.craftable) return;
     await runAction(
       () => craftGem(scene.gameState.id, recipe.id),
-      `✓ ${recipe.output.gem_name} refined — not socketed yet. Review and confirm above.`,
+      `✓ ${recipe.output.gem_name} transmuted — not socketed yet. Review and confirm above.`,
       () => {
         mode = "socket";
         selectedGemID = recipe.output.gem_id;
@@ -880,8 +880,8 @@ export function showGemWorkshop(
       mode = nextMode;
       render();
     });
-    if (mode === "refine") {
-      renderRefineMode(scene, content, {
+    if (mode === "transmute") {
+      renderTransmuteMode(scene, content, {
         gs,
         busy,
         selectedRecipeID,

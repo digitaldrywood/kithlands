@@ -165,7 +165,7 @@ describe("Gem Workshop selectors", () => {
   it("shows recipe readiness and the output improvement before crafting", () => {
     const [recipe] = knownRecipes(state);
     expect(craftableRecipeCount(state)).toBe(1);
-    expect(recipeReadiness(recipe, state)).toBe("Ready to refine");
+    expect(recipeReadiness(recipe, state)).toBe("Ready to transmute");
     expect(recipeUpgradePreview(recipe)).toEqual([
       {
         kind: "weapon",

@@ -57,7 +57,7 @@ Affix eligibility is additionally constrained by item level. Authored sequence
 break rewards may bypass normal acquisition gates; there is no universal base
 item equip lock.
 
-Shard-to-gem refinement and the resulting tier-2 gems are usable at level 1 so
+Shard-to-gem transmutation and the resulting tier-2 gems are usable at level 1 so
 the starter recipe is a real choice rather than a trap. Crystal recipes and
 crystal socketing remain level-gated endgame progression.
 

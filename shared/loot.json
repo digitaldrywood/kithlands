@@ -19,10 +19,10 @@
     {"id": "ward_crystal", "name": "Ward Crystal", "tier": 4, "required_level": 20, "description": "Greatly strengthens socketed armor.", "effects": [{"kind": "weapon", "stat": "power", "value": 4}, {"kind": "armor", "stat": "absorb", "value": 8}]}
   ],
   "recipes": [
-    {"id": "refine_ember_gem", "name": "Refine Ember Gem", "required_level": 1, "inputs": [{"gem_id": "ember_shard", "count": 3}], "output": {"gem_id": "ember_gem", "count": 1}},
-    {"id": "refine_ember_crystal", "name": "Refine Ember Crystal", "required_level": 20, "inputs": [{"gem_id": "ember_gem", "count": 3}], "output": {"gem_id": "ember_crystal", "count": 1}},
-    {"id": "refine_ward_gem", "name": "Refine Ward Gem", "required_level": 1, "inputs": [{"gem_id": "ward_shard", "count": 3}], "output": {"gem_id": "ward_gem", "count": 1}},
-    {"id": "refine_ward_crystal", "name": "Refine Ward Crystal", "required_level": 20, "inputs": [{"gem_id": "ward_gem", "count": 3}], "output": {"gem_id": "ward_crystal", "count": 1}}
+    {"id": "refine_ember_gem", "name": "Transmute Ember Gem", "required_level": 1, "inputs": [{"gem_id": "ember_shard", "count": 3}], "output": {"gem_id": "ember_gem", "count": 1}},
+    {"id": "refine_ember_crystal", "name": "Transmute Ember Crystal", "required_level": 20, "inputs": [{"gem_id": "ember_gem", "count": 3}], "output": {"gem_id": "ember_crystal", "count": 1}},
+    {"id": "refine_ward_gem", "name": "Transmute Ward Gem", "required_level": 1, "inputs": [{"gem_id": "ward_shard", "count": 3}], "output": {"gem_id": "ward_gem", "count": 1}},
+    {"id": "refine_ward_crystal", "name": "Transmute Ward Crystal", "required_level": 20, "inputs": [{"gem_id": "ward_gem", "count": 3}], "output": {"gem_id": "ward_crystal", "count": 1}}
   ],
   "starter": {"gem_id": "ember_shard", "gem_count": 3, "min_sockets": 1}
 }
