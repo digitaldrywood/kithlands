@@ -710,8 +710,7 @@ func (g *Game) logResolvedCombatAction(
 					Damage: r.TotalDmg, Killed: r.Killed, Crit: anyCrit(r.Hits), Hits: toHitEntries(r.Hits),
 					Initiative: r.Initiative}))
 		case "steal":
-			if itemID, itemName, ok := g.tryStealFrom(r.TargetID); ok {
-				g.inv.Consumables[itemID]++
+			if _, itemName, ok := g.tryStealFrom(r.TargetID); ok {
 				g.logCombat(
 					fmt.Sprintf("%s steals %s from %s!", r.ActorName, itemName, targetName),
 					g.abilityCombatAction(abilityID, CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Initiative: r.Initiative}))
@@ -1258,30 +1257,31 @@ func (g *Game) tryStealFrom(targetID int) (string, string, bool) {
 	if enemy == nil {
 		return "", "", false
 	}
-	var drops []string
-	for _, m := range g.gd.Monsters {
-		if m.Name == enemy.Name {
-			for _, drop := range m.Drops {
-				if g.rng.IntN(100) < drop.ChancePct {
-					drops = append(drops, drop.ItemID)
-				}
+	monster := g.gd.MonsterByID(enemy.MonsterID)
+	if monster == nil {
+		for i := range g.gd.Monsters {
+			if g.gd.Monsters[i].Name == enemy.Name {
+				monster = &g.gd.Monsters[i]
+				break
 			}
-			break
+		}
+	}
+	if monster == nil {
+		return "", "", false
+	}
+	var drops []string
+	for _, drop := range monster.Drops {
+		if g.rng.IntN(100) < drop.ChancePct {
+			drops = append(drops, drop.ItemID)
 		}
 	}
 	if len(drops) == 0 {
 		return "", "", false
 	}
 	itemID := drops[g.rng.IntN(len(drops))]
-	itemName := itemID
-	for _, c := range g.gd.Items.Consumables {
-		if c.ID == itemID {
-			itemName = c.Name
-			break
-		}
-	}
-	if w := g.gd.WeaponByID(itemID); w != nil {
-		itemName = w.Name
+	itemName, err := g.grantLoot(itemID, monster.Tier, 0)
+	if err != nil {
+		return "", "", false
 	}
 	return itemID, itemName, true
 }
