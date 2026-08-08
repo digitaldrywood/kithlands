@@ -23,7 +23,9 @@ import {
 import { showEquipPicker } from "./scenes/world_menu.js";
 import {
   walkSheetKey,
+  walkSheetGeometryForClass,
   walkFrameIndex,
+  walkFrameSequence,
   walkSpritePosition,
   walkSpriteScale,
   fallbackWalkSpriteScale,
@@ -824,6 +826,14 @@ function playerSnapshot(scene, moved) {
     y: scene?.playerY ?? null,
     screenX,
     screenY,
+    displayWidth: scene?.player?.displayWidth ?? null,
+    displayHeight: scene?.player?.displayHeight ?? null,
+    originX: scene?.player?.originX ?? null,
+    originY: scene?.player?.originY ?? null,
+    scaleX: scene?.player?.scaleX ?? null,
+    scaleY: scene?.player?.scaleY ?? null,
+    frameWidth: frame?.cutWidth ?? frame?.width ?? null,
+    frameHeight: frame?.cutHeight ?? frame?.height ?? null,
   };
 }
 
@@ -1013,10 +1023,12 @@ function findCharacterDetailButton(scene, label) {
   return null;
 }
 
-function findStraightAuditAnchor(scene, dir, steps) {
+function findStraightAuditAnchor(scene, dir, steps, preferCenter = false) {
   const [dx, dy] = DIR_DELTAS[dir] || [0, 0];
   const width = scene?.mapW ?? scene?.roomW;
   const height = scene?.mapH ?? scene?.roomH;
+  let best = null;
+  let bestDistance = Infinity;
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
       if (!canWalk(scene, x, y)) continue;
@@ -1027,10 +1039,16 @@ function findStraightAuditAnchor(scene, dir, steps) {
           break;
         }
       }
-      if (ok) return { x, y };
+      if (!ok) continue;
+      if (!preferCenter) return { x, y };
+      const distance = (x - width / 2) ** 2 + (y - height / 2) ** 2;
+      if (distance < bestDistance) {
+        best = { x, y };
+        bestDistance = distance;
+      }
     }
   }
-  return null;
+  return best;
 }
 
 function setSceneLeaderClass(scene, classId, sceneKey) {
@@ -1135,6 +1153,13 @@ export function installDevTestBridge(game) {
         roomH: scene?.roomH ?? null,
         hasCanWalkTile: typeof scene?.canWalkTile === "function",
         leaderClass: scene?.leaderClass || null,
+        playerFrameIndex: scene?.player?.frame?.index ?? null,
+        playerDisplayWidth: scene?.player?.displayWidth ?? null,
+        playerDisplayHeight: scene?.player?.displayHeight ?? null,
+        playerOriginX: scene?.player?.originX ?? null,
+        playerOriginY: scene?.player?.originY ?? null,
+        playerScaleX: scene?.player?.scaleX ?? null,
+        playerScaleY: scene?.player?.scaleY ?? null,
         hudAttached: scene?.hudText?.scene === scene,
         hudFooterAttached: scene?.hudFooter?.scene === scene,
       };
@@ -1244,6 +1269,20 @@ export function installDevTestBridge(game) {
 
     walkSheetClassIds() {
       return [...WALK_SHEET_CLASS_IDS];
+    },
+
+    walkSheetContract(classId) {
+      const geometry = walkSheetGeometryForClass(classId);
+      return clone({
+        ...geometry,
+        frameSequence: walkFrameSequence(classId),
+        baseFrameByDirection: Object.fromEntries(
+          Object.keys(DIR_DELTAS).map((dir) => [
+            dir,
+            walkFrameIndex(dir, 0, classId),
+          ]),
+        ),
+      });
     },
 
     async debugGiveItem(itemId, qty = 1, sceneKey) {
@@ -1664,9 +1703,9 @@ export function installDevTestBridge(game) {
       return findDirectionAuditAnchor(scene);
     },
 
-    findStraightAuditAnchor(dir, steps = 1, sceneKey) {
+    findStraightAuditAnchor(dir, steps = 1, sceneKey, preferCenter = false) {
       const scene = getScene(game, sceneKey);
-      return findStraightAuditAnchor(scene, dir, steps);
+      return findStraightAuditAnchor(scene, dir, steps, preferCenter);
     },
 
     setPlayerFacing(dir, sceneKey) {
@@ -1682,6 +1721,15 @@ export function installDevTestBridge(game) {
       const scene = getScene(game, sceneKey);
       if (!scene?.player) throw new Error("Scene has no player");
       setPlayerTile(scene, x, y);
+      return playerSnapshot(scene, false);
+    },
+
+    centerCameraOnPlayer(sceneKey) {
+      const scene = getScene(game, sceneKey);
+      if (!scene?.player || !scene?.cameras?.main) {
+        throw new Error("Scene has no player camera");
+      }
+      scene.cameras.main.centerOn(scene.player.x, scene.player.y);
       return playerSnapshot(scene, false);
     },
 

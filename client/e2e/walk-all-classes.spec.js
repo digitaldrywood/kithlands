@@ -16,20 +16,12 @@ const CLASS_IDS = [
 ];
 
 const DIRS = ["down", "up", "left", "right"];
-const WALK_FRAME_COUNT = 8;
 const OPPOSITE_DIR = {
   down: "up",
   up: "down",
   left: "right",
   right: "left",
 };
-const BASE_FRAME = {
-  down: 0,
-  up: WALK_FRAME_COUNT,
-  left: WALK_FRAME_COUNT * 2,
-  right: WALK_FRAME_COUNT * 3,
-};
-
 async function startGame(page) {
   await page.goto("/");
   await page.waitForFunction(() => !!window.__kithlandsTest);
@@ -55,6 +47,10 @@ async function restartSceneWithLeaderClass(page, sceneKey, classId) {
 
 async function auditClassScene(page, sceneKey, classId) {
   await restartSceneWithLeaderClass(page, sceneKey, classId);
+  const contract = await page.evaluate(
+    (id) => window.__kithlandsTest.walkSheetContract(id),
+    classId,
+  );
 
   for (const dir of DIRS) {
     const anchor = await page.evaluate(
@@ -90,13 +86,36 @@ async function auditClassScene(page, sceneKey, classId) {
     ).toBe(true);
     const auditedFrames = sequence
       .at(-1)
-      .walkFrameAudit.map((entry) => entry.frameIndex);
-    expect(auditedFrames).toContain(BASE_FRAME[dir] + 0);
-    expect(auditedFrames.some((frame) => frame > BASE_FRAME[dir] + 0)).toBe(
+      .walkFrameAudit.filter((entry) => entry.dir === dir)
+      .map((entry) => entry.frameIndex);
+    const expectedFrames = contract.frameSequence.map(
+      (frame) => contract.baseFrameByDirection[dir] + frame,
+    );
+    expect(auditedFrames.every((frame) => expectedFrames.includes(frame))).toBe(
+      true,
+    );
+    expect(new Set(auditedFrames).size).toBeGreaterThanOrEqual(
+      Math.min(4, contract.frameSequence.length),
+    );
+    const passingFrames = [2, 6]
+      .filter((frame) => contract.frameSequence.includes(frame))
+      .map((frame) => contract.baseFrameByDirection[dir] + frame);
+    expect(auditedFrames.some((frame) => passingFrames.includes(frame))).toBe(
       true,
     );
     expect(auditedFrames).toContain(sequence.at(-1).frameIndex);
-    expect(new Set(auditedFrames).size).toBeGreaterThan(1);
+    expect(
+      sequence.every((step) => step.frameWidth === contract.cellSize),
+    ).toBe(true);
+    expect(
+      sequence.every((step) => step.frameHeight === contract.cellSize),
+    ).toBe(true);
+    expect(sequence.every((step) => step.originX === 0.5)).toBe(true);
+    expect(sequence.every((step) => step.originY === 1)).toBe(true);
+    expect(new Set(sequence.map((step) => step.displayWidth)).size).toBe(1);
+    expect(new Set(sequence.map((step) => step.displayHeight)).size).toBe(1);
+    expect(new Set(sequence.map((step) => step.scaleX)).size).toBe(1);
+    expect(new Set(sequence.map((step) => step.scaleY)).size).toBe(1);
   }
 
   const perDirection = {};

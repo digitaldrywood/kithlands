@@ -87,8 +87,7 @@ function randomEncountersDisabledForDebug() {
 
 function setPlayerWalkFrame(scene, frame) {
   if (!scene.player) return;
-  const selectedFrame =
-    frame === WALK_IDLE_FRAME && scene.leaderClass === "warrior" ? 3 : frame;
+  const selectedFrame = frame;
   scene.walkFrameAudit?.push({
     dir: scene.playerDir,
     frame: selectedFrame,
@@ -544,23 +543,9 @@ export class WorldScene extends Phaser.Scene {
     this.currentDoorSpawn = null;
     this.interactPrompt = null;
     this.input.keyboard.addCapture(Phaser.Input.Keyboard.KeyCodes.SPACE);
-    this.handleWindowSpaceCycle = (event) => {
-      if (
-        event.code !== "Space" &&
-        event.key !== " " &&
-        event.key !== "Spacebar"
-      ) {
-        return;
-      }
-      event.preventDefault();
-      cycleWorldLeader(this);
-    };
-    window.addEventListener("keydown", this.handleWindowSpaceCycle);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      window.removeEventListener("keydown", this.handleWindowSpaceCycle);
-    });
     this.input.keyboard.on("keydown-ENTER", () => interactWithDoor(this));
-    this.input.keyboard.on("keydown-SPACE", () => {
+    this.input.keyboard.on("keydown-SPACE", (event) => {
+      event?.preventDefault?.();
       cycleWorldLeader(this);
     });
 

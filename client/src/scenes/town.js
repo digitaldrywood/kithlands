@@ -429,8 +429,7 @@ const FRAME_TILE = 64 * FRAME_SCALE;
 
 function setPlayerWalkFrame(scene, frame) {
   if (!scene.player) return;
-  const selectedFrame =
-    frame === WALK_IDLE_FRAME && scene.leaderClass === "warrior" ? 3 : frame;
+  const selectedFrame = frame;
   scene.walkFrameAudit?.push({
     dir: scene.playerDir,
     frame: selectedFrame,

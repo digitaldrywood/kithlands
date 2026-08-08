@@ -26,6 +26,12 @@ test("real Space key cycles world leader without falling back to generic player 
   );
   expect(before.leaderClass).toBe("warrior");
   expect(before.playerTextureKey).toBe("warrior_walk");
+  const state = await page.evaluate(() =>
+    window.__kithlandsTest.gameState("World"),
+  );
+  const expectedClasses = state.party.map(
+    (member) => member.sprite_id || member.class_id || "warrior",
+  );
 
   const seen = [];
   for (let i = 0; i < 4; i++) {
@@ -35,6 +41,9 @@ test("real Space key cycles world leader without falling back to generic player 
       window.__kithlandsTest.sceneAuditInfo("World"),
     );
     seen.push(after);
+    expect(after.leaderClass).toBe(
+      expectedClasses[(i + 1) % expectedClasses.length],
+    );
     expect(after.playerTextureKey).toBe(`${after.leaderClass}_walk`);
     expect(after.playerTextureKey.startsWith("player_")).toBe(false);
 
@@ -57,10 +66,30 @@ test("real Space key cycles world leader without falling back to generic player 
     expect(
       new Set(moved.map((sample) => sample.frameIndex)).size,
     ).toBeGreaterThan(1);
+    expect(new Set(moved.map((sample) => sample.displayWidth)).size).toBe(1);
+    expect(new Set(moved.map((sample) => sample.displayHeight)).size).toBe(1);
+    expect(moved.every((sample) => sample.originX === 0.5)).toBe(true);
+    expect(moved.every((sample) => sample.originY === 1)).toBe(true);
   }
-  expect(
-    new Set(seen.map((snapshot) => snapshot.leaderClass)).size,
-  ).toBeGreaterThan(1);
+  expect(seen.map((snapshot) => snapshot.leaderClass)).toEqual(
+    Array.from(
+      { length: seen.length },
+      (_, index) => expectedClasses[(index + 1) % expectedClasses.length],
+    ),
+  );
+
+  const proofAnchor = await page.evaluate(() =>
+    window.__kithlandsTest.findStraightAuditAnchor("down", 2, "World", true),
+  );
+  expect(proofAnchor).toBeTruthy();
+  await page.evaluate(
+    ({ x, y }) => window.__kithlandsTest.setPlayerTile(x, y, "World"),
+    proofAnchor,
+  );
+  await page.evaluate(() => {
+    window.__kithlandsTest.setPlayerFacing("down", "World");
+    window.__kithlandsTest.centerCameraOnPlayer("World");
+  });
 
   const screenshotPath = testInfo.outputPath(
     `world-space-cycle-${Date.now()}.png`,
