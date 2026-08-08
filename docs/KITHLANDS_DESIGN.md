@@ -671,6 +671,12 @@ Status effects do not stack — a character is either poisoned or not. This is a
 
 The player should be able to look at a weapon and understand *why* it's better than the previous one. No hidden modifiers, no opaque stats. A bigger number is a bigger sword.
 
+The expanded character loadout, comparison flow, socket/transmutation return
+flow, recommendation preview, DOM boundary, and future icon contract are
+defined in [docs/EQUIPMENT_SCREEN_CONTRACT.md](EQUIPMENT_SCREEN_CONTRACT.md).
+The full equipment manager is separate from the compact character summary, and
+battle presentation remains a later decision.
+
 Each weapon has:
 - **Power** (added to STR for damage)
 - **Hit%** (added to character's hit%)
