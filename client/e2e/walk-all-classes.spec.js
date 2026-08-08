@@ -112,6 +112,12 @@ async function auditClassScene(page, sceneKey, classId) {
     ).toBe(true);
     expect(sequence.every((step) => step.originX === 0.5)).toBe(true);
     expect(sequence.every((step) => step.originY === 1)).toBe(true);
+    expect(sequence.every((step) => step.framePixels?.opaquePixels > 120)).toBe(
+      true,
+    );
+    expect(sequence.every((step) => step.framePixels?.edgePixels === 0)).toBe(
+      true,
+    );
     expect(new Set(sequence.map((step) => step.displayWidth)).size).toBe(1);
     expect(new Set(sequence.map((step) => step.displayHeight)).size).toBe(1);
     expect(new Set(sequence.map((step) => step.scaleX)).size).toBe(1);

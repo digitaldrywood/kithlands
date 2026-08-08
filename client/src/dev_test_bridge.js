@@ -763,6 +763,66 @@ function frameHash(scene) {
   return `${textureKey}:${hash >>> 0}`;
 }
 
+function framePixelAudit(scene) {
+  const frame = scene?.player?.frame;
+  const image = frame?.source?.image;
+  if (!frame || !image) return null;
+
+  const width = frame.cutWidth;
+  const height = frame.cutHeight;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.clearRect(0, 0, width, height);
+  ctx.drawImage(
+    image,
+    frame.cutX,
+    frame.cutY,
+    width,
+    height,
+    0,
+    0,
+    width,
+    height,
+  );
+  const pixels = ctx.getImageData(0, 0, width, height).data;
+  let opaquePixels = 0;
+  let edgePixels = 0;
+  let left = width;
+  let top = height;
+  let right = -1;
+  let bottom = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (pixels[(y * width + x) * 4 + 3] <= 8) continue;
+      opaquePixels++;
+      if (x === 0 || y === 0 || x === width - 1 || y === height - 1) {
+        edgePixels++;
+      }
+      left = Math.min(left, x);
+      top = Math.min(top, y);
+      right = Math.max(right, x);
+      bottom = Math.max(bottom, y);
+    }
+  }
+  return {
+    opaquePixels,
+    edgePixels,
+    bounds:
+      right >= left
+        ? {
+            left,
+            top,
+            right,
+            bottom,
+            width: right - left + 1,
+            height: bottom - top + 1,
+          }
+        : null,
+  };
+}
+
 function exportPlayerFrame(scene) {
   const player = scene?.player;
   const frame = player?.frame;
@@ -822,6 +882,7 @@ function playerSnapshot(scene, moved) {
     leaderClass: scene?.leaderClass || null,
     walkFrameAudit: clone(scene?.walkFrameAudit || []),
     frameHash: frameHash(scene),
+    framePixels: framePixelAudit(scene),
     x: scene?.playerX ?? null,
     y: scene?.playerY ?? null,
     screenX,

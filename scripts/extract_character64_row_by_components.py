@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Extract one 8-frame 64px animation row from a generated row image.
+"""Extract one 64px animation row from a generated row image.
 
 This is the row-first counterpart to the full-atlas extractor. It expects a
-single generated row/strip and refuses to output anything unless exactly eight
-sprite components can be isolated left-to-right.
+single generated row/strip and refuses to output anything unless exactly the
+requested number of sprite components can be isolated left-to-right.
 """
 
 from __future__ import annotations
@@ -100,6 +100,7 @@ def main() -> None:
     parser.add_argument("--padding", type=int, default=18)
     parser.add_argument("--cell", type=int, default=64)
     parser.add_argument("--inset", type=int, default=2)
+    parser.add_argument("--frames", type=int, default=8)
     args = parser.parse_args()
 
     source = Image.open(args.input).convert("RGBA")
@@ -113,10 +114,12 @@ def main() -> None:
         and b["width"] > 12
         and b["height"] > 20
     ]
-    boxes = sorted(boxes, key=lambda b: b["area"], reverse=True)[:8]
+    boxes = sorted(boxes, key=lambda b: b["area"], reverse=True)[: args.frames]
     boxes = sorted(boxes, key=lambda b: b["x"])
-    if len(boxes) != 8:
-        raise SystemExit(f"expected 8 sprite components, found {len(boxes)}")
+    if len(boxes) != args.frames:
+        raise SystemExit(
+            f"expected {args.frames} sprite components, found {len(boxes)}"
+        )
     areas = sorted(b["area"] for b in boxes)
     median_area = areas[len(areas) // 2]
     weak = [b for b in boxes if b["area"] < median_area * 0.45]
@@ -125,11 +128,13 @@ def main() -> None:
     ]
     if weak or edge_fragments:
         raise SystemExit(
-            "rejected row: components are not eight complete frames "
+            f"rejected row: components are not {args.frames} complete frames "
             f"(weak={len(weak)}, edge_fragments={len(edge_fragments)})"
         )
 
-    out = Image.new("RGBA", (args.cell * 8, args.cell), (0, 0, 0, 0))
+    out = Image.new(
+        "RGBA", (args.cell * args.frames, args.cell), (0, 0, 0, 0)
+    )
     for i, box in enumerate(boxes):
         x0 = max(0, box["x"] - args.padding)
         y0 = max(0, box["y"] - args.padding)

@@ -141,6 +141,17 @@ describe("walk sheet geometry", () => {
     expect(walkFrameSequence("warrior")).toEqual([0, 1, 2, 3, 4, 5]);
   });
 
+  it("loads regenerated Cinder as native six-frame geometry", () => {
+    expect(walkSheetGeometryForClass("cinder")).toMatchObject({
+      formatId: "gameCharacter64",
+      cellSize: 64,
+      columns: 6,
+      rows: 8,
+    });
+    expect(walkFrameCount("cinder")).toBe(6);
+    expect(walkFrameSequence("cinder")).toEqual([0, 1, 2, 3, 4, 5]);
+  });
+
   it("loads brawler as native 8-step Game Character 64 geometry", () => {
     expect(walkSheetGeometryForClass("brawler")).toMatchObject({
       formatId: "gameCharacter64Eight",

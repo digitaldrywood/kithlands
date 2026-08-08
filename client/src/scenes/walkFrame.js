@@ -174,7 +174,7 @@ export const WALK_SHEET_FORMAT_BY_CLASS = {
   brawler: "gameCharacter64Eight",
   rogue: "gameCharacter64Eight",
   mender: "gameCharacter64Eight",
-  cinder: "gameCharacter64Eight",
+  cinder: "gameCharacter64",
   wayfarer: "gameCharacter64Eight",
   knight: "gameCharacter64Eight",
   champion: "gameCharacter64Eight",
