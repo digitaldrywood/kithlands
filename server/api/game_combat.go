@@ -528,38 +528,41 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 
 	if combat.CheckVictory(g.enemies) {
 		totalXP, totalGold := 0, 0
-		var drops []string
+		type dropRoll struct {
+			itemID    string
+			itemLevel int
+		}
+		var drops []dropRoll
 		for _, e := range g.enemies {
 			// XP comes straight off the scaled combatant — issue #121. Gold
 			// and drops still need the base Monster record.
 			totalXP += e.XPReward
-			for _, m := range g.gd.Monsters {
-				if m.Name == e.Name {
-					totalGold += m.GoldReward
-					// Roll drops
-					for _, drop := range m.Drops {
-						if g.rng.IntN(100) < drop.ChancePct {
-							drops = append(drops, drop.ItemID)
-						}
+			monster := g.gd.MonsterByID(e.MonsterID)
+			if monster == nil {
+				for i := range g.gd.Monsters {
+					if g.gd.Monsters[i].Name == e.Name {
+						monster = &g.gd.Monsters[i]
+						break
 					}
-					break
+				}
+			}
+			if monster != nil {
+				totalGold += monster.GoldReward
+				// Roll drops
+				for _, drop := range monster.Drops {
+					if g.rng.IntN(100) < drop.ChancePct {
+						drops = append(drops, dropRoll{itemID: drop.ItemID, itemLevel: monster.Tier})
+					}
 				}
 			}
 		}
 		g.inv.Gold += totalGold
 		// Add dropped items to inventory
-		for _, itemID := range drops {
-			g.inv.Consumables[itemID]++
-			// Find item name for log
-			itemName := itemID
-			for _, c := range g.gd.Items.Consumables {
-				if c.ID == itemID {
-					itemName = c.Name
-					break
-				}
-			}
-			if w := g.gd.WeaponByID(itemID); w != nil {
-				itemName = w.Name
+		for _, drop := range drops {
+			itemName, err := g.grantLoot(drop.itemID, drop.itemLevel, 0)
+			if err != nil {
+				g.logCombat(fmt.Sprintf("Loot error: %v", err), CombatActionEntry{Kind: "info"})
+				continue
 			}
 			g.logCombat(fmt.Sprintf("Found: %s!", itemName), CombatActionEntry{Kind: "info"})
 		}
