@@ -1950,5 +1950,127 @@ export function installDevTestBridge(game) {
       scene.interact();
       return true;
     },
+
+    wizardSearchState(sceneKey = "Wizard") {
+      const scene = getScene(game, sceneKey);
+      if (!scene) throw new Error("Wizard scene is not active");
+      const state = scene.townSearchState || {};
+      // WizardScene tracks the current step as numeric `scene.step`; step 5
+      // is the party-selection step (see showPartyStep dispatch in wizard.js).
+      const phase = state.error
+        ? "error"
+        : state.busy
+          ? "loading"
+          : scene.step === 5
+            ? "party"
+            : "idle";
+      // contentGroup is a Phaser Group, not an Array — pull its children list.
+      const children = scene.contentGroup?.getChildren?.() || [];
+      const visibleStatusLines = children.filter((obj) => {
+        if (!obj || obj.active === false || obj.visible === false) return false;
+        if (typeof obj.text !== "string") return false;
+        const t = obj.text.trim();
+        if (!t) return false;
+        return /\b(Looking|Searching|Loading|Fetching|Connecting|Resolving)\b/i.test(
+          t,
+        );
+      }).length;
+      const formInputs = children.filter((obj) => {
+        if (!obj || obj.active === false || obj.visible === false) return false;
+        return obj.node?.tagName === "INPUT" || obj.input?.enabled;
+      });
+      const loadingMarker = children.find(
+        (obj) => obj?.__kithlandsWizardLoadingPanel,
+      );
+      const loadingPanelBounds = loadingMarker?.__kithlandsWizardLoadingPanel
+        ? {
+            left:
+              loadingMarker.__kithlandsWizardLoadingPanel.cx -
+              loadingMarker.__kithlandsWizardLoadingPanel.width / 2,
+            top:
+              loadingMarker.__kithlandsWizardLoadingPanel.cy -
+              loadingMarker.__kithlandsWizardLoadingPanel.height / 2,
+            right:
+              loadingMarker.__kithlandsWizardLoadingPanel.cx +
+              loadingMarker.__kithlandsWizardLoadingPanel.width / 2,
+            bottom:
+              loadingMarker.__kithlandsWizardLoadingPanel.cy +
+              loadingMarker.__kithlandsWizardLoadingPanel.height / 2,
+            width: loadingMarker.__kithlandsWizardLoadingPanel.width,
+            height: loadingMarker.__kithlandsWizardLoadingPanel.height,
+          }
+        : null;
+      return {
+        phase,
+        visibleStatusLines,
+        loadingPanelBounds,
+        formVisible: phase !== "loading" && formInputs.length > 0,
+      };
+    },
+
+    overworldBuildingRegions(sceneKey = "World") {
+      const scene = getScene(game, sceneKey);
+      if (!scene?.tileData) throw new Error("World scene is not ready");
+      const TILE = 16 * 2; // RENDERED_TILE = TILE_SIZE(16) * SCALE(2)
+      const camera = scene.cameras?.main;
+      const regions = [];
+      const tiles = scene.tileData;
+      for (let y = 0; y < tiles.length; y += 1) {
+        for (let x = 0; x < tiles[y].length; x += 1) {
+          if (tiles[y][x] !== 4) continue;
+          const worldX = x * TILE;
+          const worldY = y * TILE;
+          const screenX = camera ? worldX - camera.worldView.x : worldX;
+          const screenY = camera ? worldY - camera.worldView.y : worldY;
+          regions.push({
+            tileX: x,
+            tileY: y,
+            type: "building",
+            pxBounds: {
+              left: screenX,
+              top: screenY,
+              right: screenX + TILE,
+              bottom: screenY + TILE,
+              width: TILE,
+              height: TILE,
+            },
+          });
+        }
+      }
+      const usedRenderer = scene.usesSpriteBuildings ? "sprite" : "fillRect";
+      return { buildingRegions: regions, usedRenderer };
+    },
+
+    walkSpriteContactSheet(classId) {
+      if (!WALK_SHEET_CLASS_IDS.includes(classId)) {
+        throw new Error(`Unknown walk-sheet class: ${classId}`);
+      }
+      const key = walkSheetKey(classId);
+      if (!game.textures.exists(key)) {
+        throw new Error(`Walk-sheet texture missing: ${key}`);
+      }
+      const texture = game.textures.get(key);
+      const source = texture.getSourceImage();
+      const canvas = document.createElement("canvas");
+      canvas.width = source.width;
+      canvas.height = source.height;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      ctx.imageSmoothingEnabled = false;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(source, 0, 0);
+      return {
+        classId,
+        textureKey: key,
+        width: canvas.width,
+        height: canvas.height,
+        rowHeight: Math.floor(canvas.height / 4),
+        dataUrl: canvas.toDataURL("image/png"),
+      };
+    },
+
+    walkSpriteContactSheets(classIds) {
+      const ids = Array.isArray(classIds) ? classIds : WALK_SHEET_CLASS_IDS;
+      return ids.map((classId) => this.walkSpriteContactSheet(classId));
+    },
   };
 }
