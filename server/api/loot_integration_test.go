@@ -93,6 +93,82 @@ func TestStarterLootCanBeSocketedAndEquippedAtLevelOne(t *testing.T) {
 	}
 }
 
+func TestEveryBaseClassReceivesItsAuthoredStarterLoadout(t *testing.T) {
+	t.Parallel()
+	gd := gamedata.Load("../../shared")
+	manager := api.NewGameManager(gd, "../../shared")
+
+	for _, classID := range []string{"warrior", "brawler", "rogue", "mender", "cinder", "wayfarer"} {
+		classID := classID
+		t.Run(classID, func(t *testing.T) {
+			game, err := manager.CreateGame(api.NewGameRequest{
+				TownName: "Test", Places: []string{"Square"}, BigBuilding: "Hall",
+				Party:      []api.PartyMemberReq{{Name: "Hero", ClassID: classID}},
+				Difficulty: "normal", RNGSeed: 42,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			state := game.State()
+			class := gd.ClassByID(classID)
+			for slotID, baseID := range class.StartingLoadout {
+				var equipped api.EquipSlotState
+				for _, slot := range state.Equipment[0].Loadout {
+					if slot.ID == slotID {
+						equipped = slot
+						break
+					}
+				}
+				if equipped.Item == nil || equipped.ItemID != baseID || equipped.InstanceID == "" {
+					t.Fatalf("starter %s = %+v, want rolled %s", slotID, equipped, baseID)
+				}
+				if equipped.Item.IconKey == "" {
+					t.Fatalf("starter %s missing icon key: %+v", slotID, equipped.Item)
+				}
+			}
+		})
+	}
+}
+
+func TestStartingShopSellsExpandedClassGearAsRolledInventory(t *testing.T) {
+	t.Parallel()
+	gd := gamedata.Load("../../shared")
+	manager := api.NewGameManager(gd, "../../shared")
+	game, err := manager.CreateGame(api.NewGameRequest{
+		TownName: "Test", Places: []string{"Square"}, BigBuilding: "Hall",
+		Party:      []api.PartyMemberReq{{Name: "Bram", ClassID: "brawler"}},
+		Difficulty: "normal", RNGSeed: 99,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	found := false
+	for _, item := range game.GetShopItems("") {
+		if item.ID == "training_wraps" {
+			found = item.Type == "equipment" && item.Category == "gloves" && item.IconKey != "" && item.Stats["power"] == 2
+		}
+	}
+	if !found {
+		t.Fatal("starting shop missing Hearthbound Wraps equipment metadata")
+	}
+	before := game.State().Gold
+	if err := game.BuyItem("training_wraps", "equipment"); err != nil {
+		t.Fatal(err)
+	}
+	after := game.State()
+	if after.Gold >= before {
+		t.Fatalf("gold did not decrease: before=%d after=%d", before, after.Gold)
+	}
+	owned := false
+	for _, item := range after.Items {
+		owned = owned || item.Category == "gloves" && item.InstanceID != "" && item.IconKey != ""
+	}
+	if !owned {
+		t.Fatalf("purchased expanded gear missing from rolled inventory: %+v", after.Items)
+	}
+}
+
 func TestExpandedGearInventoryEquipAndUnequipFlow(t *testing.T) {
 	t.Parallel()
 	gd := gamedata.Load("../../shared")

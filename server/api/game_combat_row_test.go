@@ -56,6 +56,13 @@ func TestDefaultRowsSurfaceInPartyState(t *testing.T) {
 func TestBackRowPartyMemberTakesLessPhysicalDamage(t *testing.T) {
 	front := newSeededGameWithParty(t, 77, []api.PartyMemberReq{{Name: "Tank", ClassID: "warrior"}})
 	back := newSeededGameWithParty(t, 77, []api.PartyMemberReq{{Name: "Tank", ClassID: "warrior"}})
+	// Isolate row mitigation from the randomized starter armor roll.
+	if err := front.UnequipItem(0, "body"); err != nil {
+		t.Fatal(err)
+	}
+	if err := back.UnequipItem(0, "body"); err != nil {
+		t.Fatal(err)
+	}
 
 	api.SetPartyRowForTest(front, 0, character.RowFront)
 	api.SetPartyRowForTest(back, 0, character.RowBack)
@@ -137,14 +144,14 @@ func TestCombatItemsIgnoreRows(t *testing.T) {
 	api.DamagePartyForTest(back, 0, 10)
 
 	frontState, err := front.ProcessAction(api.GameActionRequest{
-		Type: "attack",
+		Type:    "attack",
 		Actions: []api.MemberActionReq{{Slot: 0, Type: "item", ItemID: "potion", TargetID: 0}},
 	})
 	if err != nil {
 		t.Fatalf("front item use: %v", err)
 	}
 	backState, err := back.ProcessAction(api.GameActionRequest{
-		Type: "attack",
+		Type:    "attack",
 		Actions: []api.MemberActionReq{{Slot: 0, Type: "item", ItemID: "potion", TargetID: 0}},
 	})
 	if err != nil {

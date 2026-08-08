@@ -158,6 +158,7 @@ func (g *Game) GetShopItems(nodeID string) []ShopItemState {
 		items = append(items, ShopItemState{
 			ID:       w.ID,
 			Name:     w.Name,
+			IconKey:  w.IconKey,
 			Type:     "weapon",
 			Price:    w.BuyPrice,
 			Power:    w.Power,
@@ -177,6 +178,7 @@ func (g *Game) GetShopItems(nodeID string) []ShopItemState {
 		items = append(items, ShopItemState{
 			ID:           a.ID,
 			Name:         a.Name,
+			IconKey:      a.IconKey,
 			Type:         "armor",
 			Price:        a.BuyPrice,
 			Absorb:       a.Absorb,
@@ -185,6 +187,25 @@ func (g *Game) GetShopItems(nodeID string) []ShopItemState {
 			Element:      a.ElementResist,
 			Classes:      strings.Join(a.Classes, ", "),
 			ClassIDs:     append([]string(nil), a.Classes...),
+		})
+	}
+
+	// Expanded slots share the armor storefront but keep their authored
+	// category so the client can compare against the correct paper-doll slot.
+	for _, gear := range g.gd.Items.Gear {
+		if gear.Tier > maxTier {
+			continue
+		}
+		items = append(items, ShopItemState{
+			ID:       gear.ID,
+			Name:     gear.Name,
+			IconKey:  gear.IconKey,
+			Type:     "equipment",
+			Category: gear.Category,
+			Stats:    cloneStats(gear.Stats),
+			Price:    gear.BuyPrice,
+			Classes:  strings.Join(gear.Classes, ", "),
+			ClassIDs: append([]string(nil), gear.Classes...),
 		})
 	}
 
@@ -276,6 +297,23 @@ func (g *Game) BuyItem(itemID, itemType string) error {
 		}
 		g.inv.Gold -= a.BuyPrice
 		g.inv.Consumables["arm_"+itemID]++
+		return nil
+	case "equipment":
+		base := g.gd.EquipmentBaseByID(itemID)
+		if base == nil || base.Category == "weapon" || base.Category == "armor" {
+			return fmt.Errorf("expanded equipment not found: %s", itemID)
+		}
+		if g.inv.Gold < base.BuyPrice {
+			return fmt.Errorf("need %d gold, have %d", base.BuyPrice, g.inv.Gold)
+		}
+		grant, err := g.grantLoot(itemID, g.maxPartyLevel(), 0)
+		if err != nil {
+			return err
+		}
+		if grant.InstanceID == "" {
+			return fmt.Errorf("buying %q did not create equipment", itemID)
+		}
+		g.inv.Gold -= base.BuyPrice
 		return nil
 	case "key_item":
 		ki := g.gd.KeyItemByID(itemID)

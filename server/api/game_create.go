@@ -112,7 +112,7 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 	inv.Gold = 100
 	inv.Consumables["potion"] = 5
 
-	for i, pm := range req.Party {
+	for _, pm := range req.Party {
 		cls := gm.gd.ClassByID(pm.ClassID)
 		if cls == nil {
 			return nil, fmt.Errorf("unknown class: %s", pm.ClassID)
@@ -122,25 +122,6 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 			c.Row = row
 		}
 		party = append(party, c)
-
-		// Equip starting gear
-		switch pm.ClassID {
-		case "warrior":
-			_, _ = inv.EquipWeapon(i, "short_sword", pm.ClassID, gm.gd)
-			_, _ = inv.EquipArmor(i, "leather_armor", pm.ClassID, gm.gd)
-		case "cinder":
-			_, _ = inv.EquipWeapon(i, "wooden_staff", pm.ClassID, gm.gd)
-			_, _ = inv.EquipArmor(i, "cloth_robe", pm.ClassID, gm.gd)
-		case "mender":
-			_, _ = inv.EquipWeapon(i, "wooden_staff", pm.ClassID, gm.gd)
-			_, _ = inv.EquipArmor(i, "cloth_robe", pm.ClassID, gm.gd)
-		case "rogue":
-			_, _ = inv.EquipWeapon(i, "rusty_dagger", pm.ClassID, gm.gd)
-			_, _ = inv.EquipArmor(i, "leather_armor", pm.ClassID, gm.gd)
-		case "wayfarer":
-			_, _ = inv.EquipWeapon(i, "short_sword", pm.ClassID, gm.gd)
-			_, _ = inv.EquipArmor(i, "leather_armor", pm.ClassID, gm.gd)
-		}
 
 		// Spell books for casters (unified MP pool lives on Character, GDD §8.1).
 		if len(cls.Magic.Schools) > 0 {

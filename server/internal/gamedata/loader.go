@@ -232,15 +232,17 @@ func (gd *GameData) buildEquipmentIndex() {
 	}
 	for _, item := range gd.Items.Weapons {
 		add(EquipmentBase{
-			ID: item.ID, Name: item.Name, Kind: "weapon", Category: "weapon", Tier: item.Tier,
+			ID: item.ID, Name: item.Name, IconKey: item.IconKey, Kind: "weapon", Category: "weapon", Tier: item.Tier,
 			RequiredLevel: 1, Classes: item.Classes,
+			BuyPrice: item.BuyPrice, SellPrice: item.SellPrice,
 			Stats: map[string]int{"power": item.Power, "hit_pct": item.HitPct, "crit_pct": item.CritPct},
 		})
 	}
 	for _, item := range gd.Items.Armor {
 		add(EquipmentBase{
-			ID: item.ID, Name: item.Name, Kind: "armor", Category: "armor", Tier: item.Tier,
+			ID: item.ID, Name: item.Name, IconKey: item.IconKey, Kind: "armor", Category: "armor", Tier: item.Tier,
 			RequiredLevel: 1, Classes: item.Classes,
+			BuyPrice: item.BuyPrice, SellPrice: item.SellPrice,
 			Stats: map[string]int{
 				"absorb": item.Absorb, "magic_defense": item.MagicDefense, "evade_penalty": item.EvadePenalty,
 			},
@@ -248,21 +250,24 @@ func (gd *GameData) buildEquipmentIndex() {
 	}
 	for _, item := range gd.Items.Shields {
 		add(EquipmentBase{
-			ID: item.ID, Name: item.Name, Kind: "armor", Category: "shield", Tier: item.Tier,
+			ID: item.ID, Name: item.Name, IconKey: item.IconKey, Kind: "armor", Category: "shield", Tier: item.Tier,
 			RequiredLevel: 1, Classes: item.Classes,
+			BuyPrice: item.BuyPrice, SellPrice: item.SellPrice,
 			Stats: map[string]int{"absorb": item.Absorb, "evade_penalty": item.EvadePenalty},
 		})
 	}
 	for _, item := range gd.Items.Helmets {
 		add(EquipmentBase{
-			ID: item.ID, Name: item.Name, Kind: "armor", Category: "helmet", Tier: item.Tier,
+			ID: item.ID, Name: item.Name, IconKey: item.IconKey, Kind: "armor", Category: "helmet", Tier: item.Tier,
 			RequiredLevel: 1, Classes: item.Classes, Stats: map[string]int{"absorb": item.Absorb},
+			BuyPrice: item.BuyPrice, SellPrice: item.SellPrice,
 		})
 	}
 	for _, item := range gd.Items.Gear {
 		add(EquipmentBase{
-			ID: item.ID, Name: item.Name, Kind: item.Kind, Category: item.Category, Tier: item.Tier,
+			ID: item.ID, Name: item.Name, IconKey: item.IconKey, Kind: item.Kind, Category: item.Category, Tier: item.Tier,
 			RequiredLevel: item.RequiredLevel, Classes: item.Classes, Stats: item.Stats,
+			BuyPrice: item.BuyPrice, SellPrice: item.SellPrice,
 		})
 	}
 }
@@ -396,6 +401,25 @@ func (gd *GameData) validate() {
 			panic(fmt.Sprintf("gamedata: gear %q category %q has no equipment slot", gear.ID, gear.Category))
 		}
 		validateClassRefs("gear", gear.ID, gear.Classes, classIDs)
+	}
+
+	for _, class := range gd.Classes {
+		for slotID, itemID := range class.StartingLoadout {
+			slot := gd.EquipmentSlotByID(slotID)
+			if slot == nil {
+				panic(fmt.Sprintf("gamedata: class %q starter slot %q not found", class.ID, slotID))
+			}
+			base := gd.EquipmentBaseByID(itemID)
+			if base == nil {
+				panic(fmt.Sprintf("gamedata: class %q starter equipment %q not found", class.ID, itemID))
+			}
+			if !slices.Contains(slot.Accepts, base.Category) {
+				panic(fmt.Sprintf("gamedata: class %q starter equipment %q does not fit slot %q", class.ID, itemID, slotID))
+			}
+			if !slices.Contains(base.Classes, class.ID) {
+				panic(fmt.Sprintf("gamedata: class %q cannot equip starter equipment %q", class.ID, itemID))
+			}
+		}
 	}
 
 	for _, a := range gd.Abilities {

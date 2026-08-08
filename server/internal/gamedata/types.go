@@ -2,23 +2,24 @@ package gamedata
 
 // Class represents a playable character class loaded from shared/classes.json.
 type Class struct {
-	ID               string           `json:"id"`
-	Name             string           `json:"name"`
-	Role             string           `json:"role"`
-	DefaultRow       string           `json:"default_row,omitempty"`
-	PromotesTo       string           `json:"promotes_to"`
-	PromotedName     string           `json:"promoted_name"`
-	StartingStats    StartingStats    `json:"starting_stats"`
-	StatGrowthEights StatGrowthEights `json:"stat_growth_eighths"`
-	HPPerLevel       int              `json:"hp_per_level"`
-	MPPerLevel       int              `json:"mp_per_level"`
-	StrongLevelRate  int              `json:"strong_level_rate_pct"`
-	StrongLevelBonus int              `json:"strong_level_bonus_hp"`
-	Equipment        Equipment        `json:"equipment"`
-	Magic            Magic            `json:"magic"`
-	Abilities        []string         `json:"abilities"`
-	BareHand         *BareHand        `json:"bare_hand,omitempty"`
-	Description      string           `json:"description"`
+	ID               string            `json:"id"`
+	Name             string            `json:"name"`
+	Role             string            `json:"role"`
+	DefaultRow       string            `json:"default_row,omitempty"`
+	PromotesTo       string            `json:"promotes_to"`
+	PromotedName     string            `json:"promoted_name"`
+	StartingStats    StartingStats     `json:"starting_stats"`
+	StatGrowthEights StatGrowthEights  `json:"stat_growth_eighths"`
+	HPPerLevel       int               `json:"hp_per_level"`
+	MPPerLevel       int               `json:"mp_per_level"`
+	StrongLevelRate  int               `json:"strong_level_rate_pct"`
+	StrongLevelBonus int               `json:"strong_level_bonus_hp"`
+	Equipment        Equipment         `json:"equipment"`
+	Magic            Magic             `json:"magic"`
+	Abilities        []string          `json:"abilities"`
+	StartingLoadout  map[string]string `json:"starting_loadout,omitempty"`
+	BareHand         *BareHand         `json:"bare_hand,omitempty"`
+	Description      string            `json:"description"`
 }
 
 type StartingStats struct {
@@ -213,6 +214,7 @@ type ItemsData struct {
 type Gear struct {
 	ID            string         `json:"id"`
 	Name          string         `json:"name"`
+	IconKey       string         `json:"icon_key,omitempty"`
 	Kind          string         `json:"kind"`
 	Category      string         `json:"category"`
 	Tier          int            `json:"tier"`
@@ -228,12 +230,15 @@ type Gear struct {
 type EquipmentBase struct {
 	ID            string
 	Name          string
+	IconKey       string
 	Kind          string
 	Category      string
 	Tier          int
 	RequiredLevel int
 	Classes       []string
 	Stats         map[string]int
+	BuyPrice      int
+	SellPrice     int
 }
 
 // EquipmentSlotDefinition describes one position in a character loadout.
@@ -288,6 +293,7 @@ type KeyItem struct {
 type Weapon struct {
 	ID           string   `json:"id"`
 	Name         string   `json:"name"`
+	IconKey      string   `json:"icon_key,omitempty"`
 	Type         string   `json:"type"`
 	Tier         int      `json:"tier"`
 	Power        int      `json:"power"`
@@ -314,6 +320,7 @@ type Ability struct {
 type Armor struct {
 	ID            string   `json:"id"`
 	Name          string   `json:"name"`
+	IconKey       string   `json:"icon_key,omitempty"`
 	Type          string   `json:"type"`
 	Tier          int      `json:"tier"`
 	Absorb        int      `json:"absorb"`
@@ -328,6 +335,7 @@ type Armor struct {
 type Shield struct {
 	ID           string   `json:"id"`
 	Name         string   `json:"name"`
+	IconKey      string   `json:"icon_key,omitempty"`
 	Tier         int      `json:"tier"`
 	Absorb       int      `json:"absorb"`
 	EvadePenalty int      `json:"evade_penalty"`
@@ -341,6 +349,7 @@ type Shield struct {
 type Helmet struct {
 	ID        string   `json:"id"`
 	Name      string   `json:"name"`
+	IconKey   string   `json:"icon_key,omitempty"`
 	Type      string   `json:"type"`
 	Tier      int      `json:"tier"`
 	Absorb    int      `json:"absorb"`

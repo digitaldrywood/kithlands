@@ -199,6 +199,7 @@ type ItemState struct {
 	Kind           string            `json:"kind,omitempty"`
 	Category       string            `json:"category,omitempty"`
 	Name           string            `json:"name"`
+	IconKey        string            `json:"icon_key,omitempty"`
 	Count          int               `json:"count"`
 	Rarity         string            `json:"rarity,omitempty"`
 	ItemLevel      int               `json:"item_level,omitempty"`
@@ -308,7 +309,10 @@ type EquipSlotState struct {
 type ShopItemState struct {
 	ID           string              `json:"id"`
 	Name         string              `json:"name"`
+	IconKey      string              `json:"icon_key,omitempty"`
 	Type         string              `json:"type"` // weapon, armor, consumable, spell
+	Category     string              `json:"category,omitempty"`
+	Stats        map[string]int      `json:"stats,omitempty"`
 	Price        int                 `json:"price"`
 	Power        int                 `json:"power,omitempty"`
 	Absorb       int                 `json:"absorb,omitempty"`
@@ -347,6 +351,8 @@ type PartyMemberState struct {
 	STR         int                 `json:"str"`
 	AGI         int                 `json:"agi"`
 	INT         int                 `json:"int_stat"`
+	VIT         int                 `json:"vit"`
+	LCK         int                 `json:"lck"`
 	XP          int                 `json:"xp"`
 	XPNext      int                 `json:"xp_next"`
 	Status      string              `json:"status"`
@@ -762,6 +768,8 @@ func (g *Game) buildPartyMemberState(c *character.Character, slot int) PartyMemb
 		STR:         c.STR,
 		AGI:         c.AGI,
 		INT:         c.INT,
+		VIT:         c.VIT,
+		LCK:         c.LCK,
 		XP:          c.XP,
 		XPNext:      character.XPToNextLevel(c.Level, &g.gd.Stats.XPCurve),
 		Status:      string(c.Status),

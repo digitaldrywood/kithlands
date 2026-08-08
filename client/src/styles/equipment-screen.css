@@ -195,9 +195,41 @@
 .character-summary-panel {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   overflow: auto;
   padding: 12px;
+}
+
+.character-detail-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+}
+
+.character-detail-tab {
+  min-width: 0;
+  padding: 6px 3px;
+  border: 1px solid #315d8d;
+  border-radius: 3px 3px 0 0;
+  color: var(--sheet-muted);
+  background: #0b2039;
+  cursor: pointer;
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.character-detail-tab[aria-selected="true"] {
+  border-color: #d8bd68;
+  color: #fff4b4;
+  background: #214a78;
+}
+
+.character-detail-panel {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .character-resource-bars {
@@ -293,6 +325,35 @@
   display: grid;
   gap: 7px;
   margin-top: auto;
+}
+
+.character-ability-list {
+  display: grid;
+  gap: 7px;
+  overflow: auto;
+}
+
+.character-ability-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 8px;
+  padding: 8px;
+  border: 1px solid rgba(109, 104, 198, 0.75);
+  border-radius: 4px;
+  background: #171d3c;
+  font-size: 10px;
+}
+
+.character-ability-cost {
+  color: #aebdff;
+}
+
+.character-ability-effect,
+.character-detail-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--sheet-muted);
+  font-size: 9px;
 }
 
 .spell-chip-list {
@@ -439,6 +500,14 @@
 .equipment-placeholder-icon.small {
   width: 33px;
   height: 33px;
+}
+
+.equipment-item-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: auto;
 }
 
 .equipment-sockets {
@@ -1029,16 +1098,22 @@
   }
 
   .character-summary-panel {
+    display: flex;
+    gap: 7px;
+    max-height: 250px;
+    padding: 8px;
+    overflow: auto;
+  }
+
+  .character-detail-panel {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 7px 12px;
-    padding: 8px;
-    overflow: visible;
   }
 
-  .character-summary-panel > .section-title,
-  .character-conditions,
-  .character-spells {
+  .character-detail-panel > .character-conditions,
+  .character-detail-panel > .character-ability-list,
+  .character-detail-panel > .character-detail-empty {
     grid-column: 1 / -1;
   }
 

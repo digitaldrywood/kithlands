@@ -51,22 +51,43 @@ func (g *Game) grantStarterLoot() error {
 		g.inv.Normalize()
 		g.inv.Gems[starter.GemID] += starter.GemCount
 	}
-	if len(g.party) == 0 {
-		return nil
+	for partySlot, member := range g.party {
+		if member == nil {
+			continue
+		}
+		class := g.gd.ClassByID(member.ClassID)
+		if class == nil {
+			return fmt.Errorf("starter loadout class %q not found", member.ClassID)
+		}
+		for _, loadoutSlot := range g.gd.Items.EquipmentSlots {
+			baseID := class.StartingLoadout[loadoutSlot.ID]
+			if baseID == "" {
+				continue
+			}
+			minSockets := 0
+			if partySlot == 0 && loadoutSlot.ID == "main_hand" {
+				minSockets = starter.MinSockets
+			}
+			grant, err := g.grantLoot(baseID, member.Level, minSockets)
+			if err != nil {
+				return fmt.Errorf("granting %s starter gear: %w", member.Name, err)
+			}
+			if grant.InstanceID == "" {
+				return fmt.Errorf("starter equipment %q did not create an instance", baseID)
+			}
+			if _, err := g.inv.EquipInstanceAt(
+				partySlot,
+				loadoutSlot.ID,
+				grant.InstanceID,
+				member.ClassID,
+				member.Level,
+				g.gd,
+			); err != nil {
+				return fmt.Errorf("equipping %s starter gear %q: %w", member.Name, baseID, err)
+			}
+		}
 	}
-	baseID := g.inv.Equipment[0].WeaponID
-	if baseID == "" {
-		baseID = g.inv.Equipment[0].ArmorID
-	}
-	if baseID == "" {
-		return nil
-	}
-	grant, err := g.grantLoot(baseID, 1, starter.MinSockets)
-	if err != nil || grant.InstanceID == "" {
-		return err
-	}
-	_, err = g.inv.EquipInstance(0, grant.InstanceID, g.party[0].ClassID, g.party[0].Level, g.gd)
-	return err
+	return nil
 }
 
 func (g *Game) maxPartyLevel() int {
@@ -90,7 +111,7 @@ func (g *Game) rolledItemState(id string, item *inventory.EquipmentInstance) (It
 	}
 	state := ItemState{
 		ID: equipmentStateID(base.Category, id), InstanceID: id, Kind: item.Kind, Category: base.Category,
-		Name: resolved.Name, Count: 1,
+		Name: resolved.Name, IconKey: base.IconKey, Count: 1,
 		ItemLevel: item.ItemLevel, RequiredLevel: item.RequiredLevel,
 		Power: resolved.Power, Absorb: resolved.Absorb, Stats: cloneStats(resolved.Stats),
 		AllowedClasses: append([]string(nil), base.Classes...),
@@ -115,7 +136,7 @@ func (g *Game) rolledItemState(id string, item *inventory.EquipmentInstance) (It
 func baseItemState(base *gamedata.EquipmentBase) ItemState {
 	return ItemState{
 		ID: equipmentStateID(base.Category, base.ID), Kind: base.Kind, Category: base.Category,
-		Name: base.Name, Count: 1, RequiredLevel: base.RequiredLevel,
+		Name: base.Name, IconKey: base.IconKey, Count: 1, RequiredLevel: base.RequiredLevel,
 		Power: base.Stats["power"], Absorb: base.Stats["absorb"], Stats: cloneStats(base.Stats),
 		AllowedClasses: append([]string(nil), base.Classes...),
 	}

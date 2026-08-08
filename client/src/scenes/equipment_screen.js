@@ -9,6 +9,11 @@ import { showGemWorkshop } from "./gem_workshop.js";
 
 const LOCK_NAME = "equipment_screen";
 const CORE_STATS = ["str", "agi", "int", "vit", "lck"];
+const DETAIL_TABS = [
+  ["summary", "Summary"],
+  ["spells", "Spells"],
+  ["special", "Special"],
+];
 const STAT_ORDER = [
   "power",
   "absorb",
@@ -71,12 +76,20 @@ export function showEquipmentScreen(scene, partyIndex = 0, options = {}) {
   pauseWorldFor(scene, LOCK_NAME);
   const host = document.querySelector("#game-ui") || document.body;
   host.append(root);
+  // Phaser listens for pointer input at the window level. Keep interactions
+  // with this DOM overlay from activating the older canvas menu underneath.
+  for (const eventName of ["pointerdown", "pointerup", "click"]) {
+    root.addEventListener(eventName, (event) => event.stopPropagation());
+  }
   const dom = { destroy: () => root.remove() };
   const state = {
     scene,
     root,
     dom,
     partyIndex,
+    detailTab: DETAIL_TABS.some(([id]) => id === options.detailTab)
+      ? options.detailTab
+      : "summary",
     selectedSlotID: options.selectedSlotID || "",
     selectedCandidateKey: "",
     goal: options.goal || "balanced",
@@ -86,7 +99,9 @@ export function showEquipmentScreen(scene, partyIndex = 0, options = {}) {
     statusTone: "",
     onClose: options.onClose,
     previousFocus: document.activeElement,
+    previousPhaserInputEnabled: scene.input?.enabled,
   };
+  if (scene.input) scene.input.enabled = false;
   state.resizeHandler = () =>
     root.classList.toggle(
       "is-compact",
@@ -110,6 +125,9 @@ export function closeEquipmentScreen(scene, { callOnClose = true } = {}) {
   if (!state) return;
   scene.equipmentScreenState = null;
   window.removeEventListener("resize", state.resizeHandler);
+  if (state.scene.input && state.previousPhaserInputEnabled != null) {
+    state.scene.input.enabled = state.previousPhaserInputEnabled;
+  }
   state.dom?.destroy();
   resumeWorldFor(scene, LOCK_NAME);
   if (state.previousFocus?.isConnected) state.previousFocus.focus();
@@ -289,6 +307,10 @@ function renderHeader(state, model) {
     () => cycleParty(state, 1),
     "Next character",
   );
+  previous.dataset.direction = "previous";
+  next.dataset.direction = "next";
+  previous.disabled = party.length < 2;
+  next.disabled = party.length < 2;
   const identity = element("div", "equipment-identity");
   const title = element("h1", "", "Character");
   title.id = "equipment-screen-title";
@@ -373,7 +395,7 @@ function renderMain(
     ),
   );
 
-  main.append(renderCharacterSummary(model), loadout);
+  main.append(renderCharacterSummary(state, model), loadout);
   if (selectedSlot) {
     main.append(
       renderEquipmentDrawer(
@@ -389,13 +411,57 @@ function renderMain(
   return main;
 }
 
-function renderCharacterSummary(model) {
+function renderCharacterSummary(state, model) {
   const member = model.member;
   const panel = element("section", "character-summary-panel");
   panel.setAttribute("aria-labelledby", "character-summary-title");
-  const title = element("h2", "section-title", "Status");
+  const title = element("h2", "section-title", "Character Details");
   title.id = "character-summary-title";
   panel.append(title);
+
+  const tabList = element("div", "character-detail-tabs");
+  tabList.setAttribute("role", "tablist");
+  tabList.setAttribute("aria-label", "Character details");
+  for (const [id, label] of DETAIL_TABS) {
+    const tab = button(label, "character-detail-tab", () => {
+      state.detailTab = id;
+      renderEquipmentScreen(state);
+      requestAnimationFrame(() =>
+        state.root.querySelector(`[data-detail-tab="${id}"]`)?.focus(),
+      );
+    });
+    tab.dataset.detailTab = id;
+    tab.id = `character-detail-tab-${id}`;
+    tab.setAttribute("role", "tab");
+    tab.setAttribute(
+      "aria-selected",
+      state.detailTab === id ? "true" : "false",
+    );
+    tab.setAttribute("aria-controls", `character-detail-panel-${id}`);
+    tab.tabIndex = state.detailTab === id ? 0 : -1;
+    tab.addEventListener("keydown", (event) =>
+      handleDetailTabKeydown(state, id, event),
+    );
+    tabList.append(tab);
+  }
+  panel.append(tabList);
+
+  const tabPanel = element("div", "character-detail-panel");
+  tabPanel.id = `character-detail-panel-${state.detailTab}`;
+  tabPanel.setAttribute("role", "tabpanel");
+  tabPanel.setAttribute(
+    "aria-labelledby",
+    `character-detail-tab-${state.detailTab}`,
+  );
+  if (state.detailTab === "spells") renderSpellsTab(tabPanel, member);
+  else if (state.detailTab === "special") renderSpecialTab(tabPanel, member);
+  else renderSummaryTab(tabPanel, model);
+  panel.append(tabPanel);
+  return panel;
+}
+
+function renderSummaryTab(panel, model) {
+  const member = model.member;
 
   const bars = element("div", "character-resource-bars");
   for (const resource of [
@@ -491,18 +557,55 @@ function renderCharacterSummary(model) {
     element("strong", "", member.status || "Normal"),
   );
   panel.append(conditions);
+}
 
-  const spells = (member.spells || []).slice(0, 6);
-  if (spells.length) {
-    const spellBlock = element("div", "character-spells");
-    spellBlock.append(element("h3", "section-title", "Spells"));
-    const spellList = element("div", "spell-chip-list");
-    for (const spell of spells)
-      spellList.append(element("span", "spell-chip", spell.name));
-    spellBlock.append(spellList);
-    panel.append(spellBlock);
+function renderSpellsTab(panel, member) {
+  const spells = member.spells || [];
+  if (!spells.length) {
+    panel.append(
+      element("p", "character-detail-empty", "No spells learned yet."),
+    );
+    return;
   }
-  return panel;
+  const list = element("div", "character-ability-list");
+  for (const spell of spells) {
+    const row = element("article", "character-ability-card");
+    row.append(
+      element("strong", "", spell.name),
+      element(
+        "span",
+        "character-ability-cost",
+        `${Number(spell.mp_cost) || 0} MP`,
+      ),
+      element(
+        "span",
+        "character-ability-effect",
+        spell.effect || titleCase(spell.target || "Spell"),
+      ),
+    );
+    list.append(row);
+  }
+  panel.append(list);
+}
+
+function renderSpecialTab(panel, member) {
+  const abilities = member.abilities || [];
+  if (!abilities.length) {
+    panel.append(
+      element("p", "character-detail-empty", "No special techniques yet."),
+    );
+    return;
+  }
+  const list = element("div", "character-ability-list");
+  for (const ability of abilities) {
+    const row = element("article", "character-ability-card");
+    row.append(
+      element("strong", "", titleCase(String(ability).replaceAll("_", " "))),
+      element("span", "character-ability-effect", "Class technique"),
+    );
+    list.append(row);
+  }
+  panel.append(list);
 }
 
 function renderSlot(state, slot) {
@@ -526,9 +629,8 @@ function renderSlot(state, slot) {
     "span",
     `equipment-slot-frame rarity-${rarityClass(item?.rarity)}`,
   );
-  const icon = element(
-    "span",
-    "equipment-placeholder-icon",
+  const icon = renderItemIcon(
+    item,
     SLOT_GLYPHS[slot.id] || slot.name?.slice(0, 1) || "?",
   );
   const sockets = element("span", "equipment-sockets", socketPips(item));
@@ -654,11 +756,7 @@ function renderCandidate(state, slot, candidate, selected) {
   row.classList.toggle("is-selected", selected);
   row.classList.toggle("is-disabled", !candidate.compatible);
   row.setAttribute("aria-pressed", selected ? "true" : "false");
-  const icon = element(
-    "span",
-    "equipment-placeholder-icon small",
-    categoryGlyph(itemCategory(item)),
-  );
+  const icon = renderItemIcon(item, categoryGlyph(itemCategory(item)), true);
   const copy = element("span", "equipment-item-copy");
   const name = element(
     "span",
@@ -1055,6 +1153,7 @@ function openSocketWorkshop(state, slot, item) {
   const returnOptions = {
     selectedSlotID: slot.id,
     goal: state.goal,
+    detailTab: state.detailTab,
     onClose: state.onClose,
   };
   closeEquipmentScreen(scene, { callOnClose: false });
@@ -1066,19 +1165,41 @@ function openSocketWorkshop(state, slot, item) {
 
 function cycleParty(state, delta) {
   const slots = activePartySlots(state.scene.gameState?.party);
+  if (slots.length < 2) return;
   const position = Math.max(0, slots.indexOf(state.partyIndex));
   state.partyIndex = slots[(position + delta + slots.length) % slots.length];
+  state.selectedSlotID = "";
   state.selectedCandidateKey = "";
   state.recommendation = null;
-  const nextModel = buildEquipmentScreenModel(
-    state.scene.gameState,
-    state.partyIndex,
-  );
-  if (!nextModel.slots.some((slot) => slot.id === state.selectedSlotID)) {
-    state.selectedSlotID = "";
-  }
   renderEquipmentScreen(state);
-  focusSelectedSlot(state);
+  const direction = delta < 0 ? "previous" : "next";
+  requestAnimationFrame(() =>
+    state.root.querySelector(`[data-direction="${direction}"]`)?.focus(),
+  );
+}
+
+function handleDetailTabKeydown(state, currentID, event) {
+  if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const current = Math.max(
+    0,
+    DETAIL_TABS.findIndex(([id]) => id === currentID),
+  );
+  const next =
+    event.key === "Home"
+      ? 0
+      : event.key === "End"
+        ? DETAIL_TABS.length - 1
+        : (current +
+            (event.key === "ArrowLeft" ? -1 : 1) +
+            DETAIL_TABS.length) %
+          DETAIL_TABS.length;
+  state.detailTab = DETAIL_TABS[next][0];
+  renderEquipmentScreen(state);
+  requestAnimationFrame(() =>
+    state.root.querySelector(`[data-detail-tab="${state.detailTab}"]`)?.focus(),
+  );
 }
 
 function handleOverlayKeydown(state, event) {
@@ -1279,6 +1400,27 @@ function categoryGlyph(category) {
       focus: "✧",
     }[category] || "?"
   );
+}
+
+function renderItemIcon(item, fallback, small = false) {
+  const wrapper = element(
+    "span",
+    `equipment-placeholder-icon${small ? " small" : ""}`,
+  );
+  if (!item?.icon_key) {
+    wrapper.textContent = fallback;
+    return wrapper;
+  }
+  const image = document.createElement("img");
+  image.className = "equipment-item-art";
+  image.src = `/sprites/items/${item.icon_key}.png`;
+  image.alt = "";
+  image.setAttribute("aria-hidden", "true");
+  image.addEventListener("error", () => {
+    wrapper.textContent = fallback;
+  });
+  wrapper.append(image);
+  return wrapper;
 }
 
 function statLabel(stat) {

@@ -89,7 +89,9 @@ function destroyGroup(group) {
 export function groupShopItems(items = []) {
   return {
     weapons: items.filter((item) => item.type === "weapon"),
-    armor: items.filter((item) => item.type === "armor"),
+    armor: items.filter(
+      (item) => item.type === "armor" || item.type === "equipment",
+    ),
     consumables: items.filter(
       (item) => item.type === "consumable" || item.type === "key_item",
     ),
@@ -530,7 +532,10 @@ export async function openShop(scene, spawn) {
     if (!affordable) {
       buyBtn.setEnabled(false);
       buyForBtn.setEnabled(false);
-    } else if (!canPartyMemberEquip(item, member)) {
+    } else if (
+      item.type === "equipment" ||
+      !canPartyMemberEquip(item, member)
+    ) {
       buyForBtn.setEnabled(false);
     }
     detailGroup.push(buyBtn, buyForBtn);

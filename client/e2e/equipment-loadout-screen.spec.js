@@ -65,6 +65,31 @@ test("manages the full loadout, previews recommendations, and returns from socke
   await startEquipmentGame(page);
   await openFromCharacterScreen(page);
 
+  await expect(page.locator(".equipment-character")).toHaveText("Ayla");
+  await page.getByRole("button", { name: "Next character" }).click();
+  await expect(page.locator(".equipment-character")).toHaveText("Mira");
+  await expect(page.locator(".equipment-slot")).toHaveCount(12);
+  await page.getByRole("tab", { name: "Spells" }).click();
+  await expect(page.locator(".character-detail-panel")).toContainText("Cure");
+  await page.screenshot({
+    path: path.join(PROOF_DIR, "equipment-spells-800x600.png"),
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Next character" }).click();
+  await expect(page.locator(".equipment-character")).toHaveText("Ayla");
+  await expect(page.getByRole("tab", { name: "Spells" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await page.getByRole("button", { name: "Previous character" }).click();
+  await expect(page.locator(".equipment-character")).toHaveText("Mira");
+  await page.getByRole("tab", { name: "Summary" }).click();
+  await expect(
+    page.locator('[data-slot-id="main_hand"] .equipment-item-art'),
+  ).toHaveAttribute("src", /starter\/dawnkeeper-crook\.png$/);
+  await page.getByRole("button", { name: "Previous character" }).click();
+  await expect(page.locator(".equipment-character")).toHaveText("Ayla");
+
   const slots = page.locator(".equipment-slot");
   await expect(slots).toHaveCount(12);
   await expect(page.locator('[data-slot-id="ring_1"]')).toBeVisible();
@@ -78,7 +103,7 @@ test("manages the full loadout, previews recommendations, and returns from socke
   await weaponSlot.hover();
   const weaponTooltip = weaponSlot.locator(".equipment-tooltip");
   await expect(weaponTooltip).toBeVisible();
-  await expect(weaponTooltip).toContainText("Short Sword");
+  await expect(weaponTooltip).toContainText("Hearthguard Blade");
   await expect(weaponTooltip).toContainText("Power");
   await page.screenshot({
     path: path.join(PROOF_DIR, "equipment-slot-hover-800x600.png"),

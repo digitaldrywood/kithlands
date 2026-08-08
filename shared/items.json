@@ -1,29 +1,339 @@
 {
   "equipment_slots": [
-    {"id": "main_hand", "name": "Weapon", "group": "arms", "order": 10, "accepts": ["weapon"]},
-    {"id": "off_hand", "name": "Off Hand", "group": "arms", "order": 20, "accepts": ["shield", "weapon", "focus"]},
-    {"id": "head", "name": "Head", "group": "armor", "order": 30, "accepts": ["helmet"]},
-    {"id": "shoulders", "name": "Shoulders", "group": "armor", "order": 40, "accepts": ["shoulders"]},
-    {"id": "body", "name": "Body", "group": "armor", "order": 50, "accepts": ["armor"]},
-    {"id": "hands", "name": "Hands", "group": "armor", "order": 60, "accepts": ["gloves"]},
-    {"id": "waist", "name": "Waist", "group": "armor", "order": 70, "accepts": ["belt"]},
-    {"id": "legs", "name": "Legs", "group": "armor", "order": 80, "accepts": ["pants"]},
-    {"id": "feet", "name": "Feet", "group": "armor", "order": 90, "accepts": ["boots"]},
-    {"id": "amulet", "name": "Amulet", "group": "jewelry", "order": 100, "accepts": ["amulet"]},
-    {"id": "ring_1", "name": "Ring I", "group": "jewelry", "order": 110, "accepts": ["ring"]},
-    {"id": "ring_2", "name": "Ring II", "group": "jewelry", "order": 120, "accepts": ["ring"]}
+    {
+      "id": "main_hand",
+      "name": "Weapon",
+      "group": "arms",
+      "order": 10,
+      "accepts": ["weapon"]
+    },
+    {
+      "id": "off_hand",
+      "name": "Off Hand",
+      "group": "arms",
+      "order": 20,
+      "accepts": ["shield", "weapon", "focus"]
+    },
+    {
+      "id": "head",
+      "name": "Head",
+      "group": "armor",
+      "order": 30,
+      "accepts": ["helmet"]
+    },
+    {
+      "id": "shoulders",
+      "name": "Shoulders",
+      "group": "armor",
+      "order": 40,
+      "accepts": ["shoulders"]
+    },
+    {
+      "id": "body",
+      "name": "Body",
+      "group": "armor",
+      "order": 50,
+      "accepts": ["armor"]
+    },
+    {
+      "id": "hands",
+      "name": "Hands",
+      "group": "armor",
+      "order": 60,
+      "accepts": ["gloves"]
+    },
+    {
+      "id": "waist",
+      "name": "Waist",
+      "group": "armor",
+      "order": 70,
+      "accepts": ["belt"]
+    },
+    {
+      "id": "legs",
+      "name": "Legs",
+      "group": "armor",
+      "order": 80,
+      "accepts": ["pants"]
+    },
+    {
+      "id": "feet",
+      "name": "Feet",
+      "group": "armor",
+      "order": 90,
+      "accepts": ["boots"]
+    },
+    {
+      "id": "amulet",
+      "name": "Amulet",
+      "group": "jewelry",
+      "order": 100,
+      "accepts": ["amulet"]
+    },
+    {
+      "id": "ring_1",
+      "name": "Ring I",
+      "group": "jewelry",
+      "order": 110,
+      "accepts": ["ring"]
+    },
+    {
+      "id": "ring_2",
+      "name": "Ring II",
+      "group": "jewelry",
+      "order": 120,
+      "accepts": ["ring"]
+    }
   ],
   "gear": [
-    {"id": "patched_mantle", "name": "Patched Mantle", "kind": "armor", "category": "shoulders", "tier": 1, "required_level": 1, "classes": ["warrior", "brawler", "rogue", "mender", "cinder", "wayfarer"], "stats": {"absorb": 1}, "buy_price": 10, "sell_price": 5},
-    {"id": "leather_gloves", "name": "Leather Gloves", "kind": "armor", "category": "gloves", "tier": 1, "required_level": 1, "classes": ["warrior", "brawler", "rogue", "mender", "cinder", "wayfarer"], "stats": {"absorb": 1, "hit_pct": 1}, "buy_price": 12, "sell_price": 6},
-    {"id": "traveler_belt", "name": "Traveler's Belt", "kind": "armor", "category": "belt", "tier": 1, "required_level": 1, "classes": ["warrior", "brawler", "rogue", "mender", "cinder", "wayfarer"], "stats": {"vit": 1}, "buy_price": 12, "sell_price": 6},
-    {"id": "trail_pants", "name": "Trail Pants", "kind": "armor", "category": "pants", "tier": 1, "required_level": 1, "classes": ["warrior", "brawler", "rogue", "mender", "cinder", "wayfarer"], "stats": {"absorb": 1}, "buy_price": 14, "sell_price": 7},
-    {"id": "trail_boots", "name": "Trail Boots", "kind": "armor", "category": "boots", "tier": 1, "required_level": 1, "classes": ["warrior", "brawler", "rogue", "mender", "cinder", "wayfarer"], "stats": {"agi": 1}, "buy_price": 14, "sell_price": 7},
-    {"id": "copper_amulet", "name": "Copper Amulet", "kind": "accessory", "category": "amulet", "tier": 1, "required_level": 1, "classes": ["warrior", "brawler", "rogue", "mender", "cinder", "wayfarer"], "stats": {"int": 1}, "buy_price": 18, "sell_price": 9},
-    {"id": "copper_ring", "name": "Copper Ring", "kind": "accessory", "category": "ring", "tier": 1, "required_level": 1, "classes": ["warrior", "brawler", "rogue", "mender", "cinder", "wayfarer"], "stats": {"lck": 1}, "buy_price": 18, "sell_price": 9},
-    {"id": "warrior_signet", "name": "Warrior's Signet", "kind": "accessory", "category": "ring", "tier": 2, "required_level": 3, "classes": ["warrior"], "stats": {"str": 2, "vit": 1}, "buy_price": 90, "sell_price": 45}
+    {
+      "id": "training_wraps",
+      "name": "Hearthbound Wraps",
+      "icon_key": "starter/hearthbound-wraps",
+      "kind": "armor",
+      "category": "gloves",
+      "tier": 1,
+      "required_level": 1,
+      "classes": ["brawler"],
+      "stats": { "power": 2, "hit_pct": 2 },
+      "buy_price": 18,
+      "sell_price": 9
+    },
+    {
+      "id": "discipline_sash",
+      "name": "Stillwater Sash",
+      "icon_key": "starter/stillwater-sash",
+      "kind": "armor",
+      "category": "belt",
+      "tier": 1,
+      "required_level": 1,
+      "classes": ["brawler"],
+      "stats": { "agi": 1, "vit": 1 },
+      "buy_price": 18,
+      "sell_price": 9
+    },
+    {
+      "id": "patched_mantle",
+      "name": "Patched Mantle",
+      "kind": "armor",
+      "category": "shoulders",
+      "tier": 1,
+      "required_level": 1,
+      "classes": [
+        "warrior",
+        "brawler",
+        "rogue",
+        "mender",
+        "cinder",
+        "wayfarer"
+      ],
+      "stats": { "absorb": 1 },
+      "buy_price": 10,
+      "sell_price": 5
+    },
+    {
+      "id": "leather_gloves",
+      "name": "Leather Gloves",
+      "kind": "armor",
+      "category": "gloves",
+      "tier": 1,
+      "required_level": 1,
+      "classes": [
+        "warrior",
+        "brawler",
+        "rogue",
+        "mender",
+        "cinder",
+        "wayfarer"
+      ],
+      "stats": { "absorb": 1, "hit_pct": 1 },
+      "buy_price": 12,
+      "sell_price": 6
+    },
+    {
+      "id": "traveler_belt",
+      "name": "Traveler's Belt",
+      "kind": "armor",
+      "category": "belt",
+      "tier": 1,
+      "required_level": 1,
+      "classes": [
+        "warrior",
+        "brawler",
+        "rogue",
+        "mender",
+        "cinder",
+        "wayfarer"
+      ],
+      "stats": { "vit": 1 },
+      "buy_price": 12,
+      "sell_price": 6
+    },
+    {
+      "id": "trail_pants",
+      "name": "Trail Pants",
+      "kind": "armor",
+      "category": "pants",
+      "tier": 1,
+      "required_level": 1,
+      "classes": [
+        "warrior",
+        "brawler",
+        "rogue",
+        "mender",
+        "cinder",
+        "wayfarer"
+      ],
+      "stats": { "absorb": 1 },
+      "buy_price": 14,
+      "sell_price": 7
+    },
+    {
+      "id": "trail_boots",
+      "name": "Trail Boots",
+      "kind": "armor",
+      "category": "boots",
+      "tier": 1,
+      "required_level": 1,
+      "classes": [
+        "warrior",
+        "brawler",
+        "rogue",
+        "mender",
+        "cinder",
+        "wayfarer"
+      ],
+      "stats": { "agi": 1 },
+      "buy_price": 14,
+      "sell_price": 7
+    },
+    {
+      "id": "copper_amulet",
+      "name": "Copper Amulet",
+      "kind": "accessory",
+      "category": "amulet",
+      "tier": 1,
+      "required_level": 1,
+      "classes": [
+        "warrior",
+        "brawler",
+        "rogue",
+        "mender",
+        "cinder",
+        "wayfarer"
+      ],
+      "stats": { "int": 1 },
+      "buy_price": 18,
+      "sell_price": 9
+    },
+    {
+      "id": "copper_ring",
+      "name": "Copper Ring",
+      "kind": "accessory",
+      "category": "ring",
+      "tier": 1,
+      "required_level": 1,
+      "classes": [
+        "warrior",
+        "brawler",
+        "rogue",
+        "mender",
+        "cinder",
+        "wayfarer"
+      ],
+      "stats": { "lck": 1 },
+      "buy_price": 18,
+      "sell_price": 9
+    },
+    {
+      "id": "warrior_signet",
+      "name": "Warrior's Signet",
+      "kind": "accessory",
+      "category": "ring",
+      "tier": 2,
+      "required_level": 3,
+      "classes": ["warrior"],
+      "stats": { "str": 2, "vit": 1 },
+      "buy_price": 90,
+      "sell_price": 45
+    }
   ],
   "weapons": [
+    {
+      "id": "militia_sword",
+      "name": "Hearthguard Blade",
+      "icon_key": "starter/hearthguard-blade",
+      "type": "sword",
+      "tier": 1,
+      "power": 6,
+      "hit_pct": 1,
+      "crit_pct": 0,
+      "element": "none",
+      "classes": ["warrior"],
+      "special": "",
+      "buy_price": 24,
+      "sell_price": 12
+    },
+    {
+      "id": "scout_knife",
+      "name": "Briarpoint Knife",
+      "icon_key": "starter/briarpoint-knife",
+      "type": "dagger",
+      "tier": 1,
+      "power": 4,
+      "hit_pct": 6,
+      "crit_pct": 3,
+      "element": "none",
+      "classes": ["rogue"],
+      "special": "",
+      "buy_price": 22,
+      "sell_price": 11
+    },
+    {
+      "id": "pilgrim_crook",
+      "name": "Dawnkeeper Crook",
+      "icon_key": "starter/dawnkeeper-crook",
+      "type": "staff",
+      "tier": 1,
+      "power": 3,
+      "hit_pct": 3,
+      "crit_pct": 0,
+      "element": "none",
+      "classes": ["mender"],
+      "special": "",
+      "buy_price": 22,
+      "sell_price": 11
+    },
+    {
+      "id": "ember_rod",
+      "name": "Cinderbranch Rod",
+      "icon_key": "starter/cinderbranch-rod",
+      "type": "staff",
+      "tier": 1,
+      "power": 3,
+      "hit_pct": 1,
+      "crit_pct": 4,
+      "element": "fire",
+      "classes": ["cinder"],
+      "special": "",
+      "buy_price": 22,
+      "sell_price": 11
+    },
+    {
+      "id": "trail_blade",
+      "name": "Crossroads Sabre",
+      "icon_key": "starter/crossroads-sabre",
+      "type": "sword",
+      "tier": 1,
+      "power": 5,
+      "hit_pct": 3,
+      "crit_pct": 1,
+      "element": "none",
+      "classes": ["wayfarer"],
+      "special": "",
+      "buy_price": 24,
+      "sell_price": 12
+    },
     {
       "id": "wooden_club",
       "name": "Wooden Club",
@@ -590,6 +900,76 @@
     }
   ],
   "armor": [
+    {
+      "id": "militia_mail",
+      "name": "Hearthguard Mail",
+      "icon_key": "starter/hearthguard-mail",
+      "type": "chain",
+      "tier": 1,
+      "absorb": 4,
+      "evade_penalty": 1,
+      "magic_defense": 0,
+      "classes": ["warrior"],
+      "element_resist": "none",
+      "buy_price": 30,
+      "sell_price": 15
+    },
+    {
+      "id": "scout_leathers",
+      "name": "Briarpath Leathers",
+      "icon_key": "starter/briarpath-leathers",
+      "type": "leather",
+      "tier": 1,
+      "absorb": 3,
+      "evade_penalty": 0,
+      "magic_defense": 1,
+      "classes": ["rogue"],
+      "element_resist": "none",
+      "buy_price": 28,
+      "sell_price": 14
+    },
+    {
+      "id": "mender_vestments",
+      "name": "Dawnkeeper Vestments",
+      "icon_key": "starter/dawnkeeper-vestments",
+      "type": "robe",
+      "tier": 1,
+      "absorb": 2,
+      "evade_penalty": 0,
+      "magic_defense": 3,
+      "classes": ["mender"],
+      "element_resist": "none",
+      "buy_price": 28,
+      "sell_price": 14
+    },
+    {
+      "id": "cinder_robes",
+      "name": "Ashweave Robes",
+      "icon_key": "starter/ashweave-robes",
+      "type": "robe",
+      "tier": 1,
+      "absorb": 1,
+      "evade_penalty": 0,
+      "magic_defense": 4,
+      "classes": ["cinder"],
+      "element_resist": "fire",
+      "buy_price": 28,
+      "sell_price": 14
+    },
+    {
+      "id": "wayfarer_coat",
+      "name": "Crossroads Coat",
+      "icon_key": "starter/crossroads-coat",
+      "type": "leather",
+      "tier": 1,
+      "absorb": 3,
+      "evade_penalty": 0,
+      "magic_defense": 1,
+      "classes": ["wayfarer"],
+      "element_resist": "none",
+      "buy_price": 28,
+      "sell_price": 14
+    },
     {
       "id": "cloth_robe",
       "name": "Cloth Robe",

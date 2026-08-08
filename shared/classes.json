@@ -40,6 +40,10 @@
       "promoted_max_spell_level": 3
     },
     "abilities": [],
+    "starting_loadout": {
+      "main_hand": "militia_sword",
+      "body": "militia_mail"
+    },
     "description": "High HP, heavy armor, best weapons, no magic."
   },
   {
@@ -83,6 +87,10 @@
       "promoted_max_spell_level": 0
     },
     "abilities": ["focus", "counter"],
+    "starting_loadout": {
+      "hands": "training_wraps",
+      "waist": "discipline_sash"
+    },
     "bare_hand": {
       "base_damage": 5,
       "level_scaling_formula": "str_div_2_per_level"
@@ -130,6 +138,10 @@
       "promoted_max_spell_level": 2
     },
     "abilities": ["steal", "backstab"],
+    "starting_loadout": {
+      "main_hand": "scout_knife",
+      "body": "scout_leathers"
+    },
     "special": {
       "lockpicking": true,
       "trap_detection": true,
@@ -179,6 +191,10 @@
       "promoted_max_spell_level": 8
     },
     "abilities": [],
+    "starting_loadout": {
+      "main_hand": "pilgrim_crook",
+      "body": "mender_vestments"
+    },
     "description": "White magic. Keeps the party alive."
   },
   {
@@ -222,6 +238,7 @@
       "promoted_max_spell_level": 8
     },
     "abilities": [],
+    "starting_loadout": { "main_hand": "ember_rod", "body": "cinder_robes" },
     "description": "Black magic. AoE damage and elemental nukes."
   },
   {
@@ -265,6 +282,7 @@
       "promoted_max_spell_level": 5
     },
     "abilities": ["inspire"],
+    "starting_loadout": { "main_hand": "trail_blade", "body": "wayfarer_coat" },
     "description": "A little fighting, a little magic, never the best at anything."
   }
 ]
