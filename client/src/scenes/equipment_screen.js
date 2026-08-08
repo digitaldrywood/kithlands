@@ -298,13 +298,13 @@ function renderHeader(state, model) {
   const previous = button(
     "‹",
     "equipment-nav",
-    () => cycleParty(state, -1),
+    (event) => cycleParty(state, -1, event),
     "Previous character",
   );
   const next = button(
     "›",
     "equipment-nav",
-    () => cycleParty(state, 1),
+    (event) => cycleParty(state, 1, event),
     "Next character",
   );
   previous.dataset.direction = "previous";
@@ -314,13 +314,25 @@ function renderHeader(state, model) {
   const identity = element("div", "equipment-identity");
   const title = element("h1", "", "Character");
   title.id = "equipment-screen-title";
+  const characterName = element("p", "equipment-character", model.member.name);
+  characterName.setAttribute("aria-live", "polite");
+  const partyPosition = element(
+    "span",
+    "equipment-party-position",
+    `${position + 1}/${party.length}`,
+  );
+  partyPosition.setAttribute(
+    "aria-label",
+    `Character ${position + 1} of ${party.length}`,
+  );
   identity.append(
     title,
-    element("p", "equipment-character", model.member.name),
+    characterName,
+    partyPosition,
     element(
       "p",
       "equipment-character-meta",
-      `${model.member.class_name} · Level ${model.member.level} · ${position + 1}/${party.length}`,
+      `${model.member.class_name} · Level ${model.member.level}`,
     ),
   );
 
@@ -1163,9 +1175,12 @@ function openSocketWorkshop(state, slot, item) {
   });
 }
 
-function cycleParty(state, delta) {
+function cycleParty(state, delta, event) {
   const slots = activePartySlots(state.scene.gameState?.party);
   if (slots.length < 2) return;
+  // A double-click on a two-person party otherwise advances twice and lands
+  // back on the same member, which makes a successful navigation look inert.
+  if (Number(event?.detail) > 1) return;
   const position = Math.max(0, slots.indexOf(state.partyIndex));
   state.partyIndex = slots[(position + delta + slots.length) % slots.length];
   state.selectedSlotID = "";
@@ -1213,6 +1228,16 @@ function handleOverlayKeydown(state, event) {
     } else {
       closeEquipmentScreen(state.scene);
     }
+    return;
+  }
+  if (
+    ["ArrowLeft", "ArrowRight"].includes(event.key) &&
+    !event.target.closest?.('[role="tablist"]') &&
+    event.target.tagName !== "SELECT"
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+    cycleParty(state, event.key === "ArrowLeft" ? -1 : 1);
     return;
   }
   if (event.key !== "Tab") return;

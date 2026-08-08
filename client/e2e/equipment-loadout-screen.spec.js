@@ -68,6 +68,17 @@ test("manages the full loadout, previews recommendations, and returns from socke
   await expect(page.locator(".equipment-character")).toHaveText("Ayla");
   await page.getByRole("button", { name: "Next character" }).click();
   await expect(page.locator(".equipment-character")).toHaveText("Mira");
+  await expect(page.locator(".equipment-party-position")).toHaveText("2/2");
+  // A rapid second activation must not wrap a two-person party back to the
+  // starting member and make the navigation appear to have done nothing.
+  await page
+    .getByRole("button", { name: "Next character" })
+    .dispatchEvent("click", { detail: 2 });
+  await expect(page.locator(".equipment-character")).toHaveText("Mira");
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.locator(".equipment-character")).toHaveText("Ayla");
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator(".equipment-character")).toHaveText("Mira");
   await expect(page.locator(".equipment-slot")).toHaveCount(12);
   await page.getByRole("tab", { name: "Spells" }).click();
   await expect(page.locator(".character-detail-panel")).toContainText("Cure");
