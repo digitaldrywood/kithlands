@@ -11,6 +11,7 @@ const apiMocks = vi.hoisted(() => ({
   newGame: vi.fn(),
   saveGame: vi.fn(),
   autosaveGame: vi.fn(),
+  debugCreateShowcase: vi.fn(),
   equipItem: vi.fn(),
   promoteParty: vi.fn(),
   setToken: vi.fn(),
@@ -26,6 +27,7 @@ vi.mock("../api.js", () => ({
   newGame: apiMocks.newGame,
   saveGame: apiMocks.saveGame,
   autosaveGame: apiMocks.autosaveGame,
+  debugCreateShowcase: apiMocks.debugCreateShowcase,
   equipItem: apiMocks.equipItem,
   promoteParty: apiMocks.promoteParty,
   setToken: apiMocks.setToken,
@@ -312,6 +314,31 @@ describe("save-load persistence", () => {
     expect(apiMocks.loadSave).toHaveBeenCalledWith("save-42");
     expect(scene.scene.start).toHaveBeenCalledWith("World", {
       gameState: loadedGame,
+    });
+  });
+
+  it("starts the disposable authoritative systems showcase", async () => {
+    const showcase = {
+      id: "showcase-1",
+      phase: "combat",
+      showcase_mode: true,
+      party: makeParty(),
+      enemies: [{ id: 8, name: "Iron Golem", hp: 220, max_hp: 220 }],
+    };
+    apiMocks.login.mockResolvedValue({ token: "showcase-token" });
+    apiMocks.debugCreateShowcase.mockResolvedValue(showcase);
+
+    const scene = new TitleScene();
+    scene.statusText = {
+      setText: vi.fn().mockReturnThis(),
+      setColor: vi.fn().mockReturnThis(),
+    };
+    await scene.startShowcase();
+
+    expect(apiMocks.setToken).toHaveBeenCalledWith("showcase-token");
+    expect(apiMocks.debugCreateShowcase).toHaveBeenCalledOnce();
+    expect(scene.scene.start).toHaveBeenCalledWith("World", {
+      gameState: showcase,
     });
   });
 });

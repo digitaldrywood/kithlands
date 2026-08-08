@@ -2,8 +2,6 @@ import { MONSTER_SPRITE_LOAD } from "../data/monsterSprites.js";
 import {
   RUNTIME_WALK_SHEET_CLASS_IDS,
   WALK_SHEET_CLASS_IDS,
-  attackSheetFrameSize,
-  attackSheetKey,
   walkSheetFrameSize,
 } from "./walkFrame.js";
 import { registerGeneratedTerrainTextures } from "./terrainAutotile.js";
@@ -65,18 +63,6 @@ export class BootScene extends Phaser.Scene {
         frameWidth: frameSize,
         frameHeight: frameSize,
       });
-    }
-
-    for (const key of CLASS_SPRITE_KEYS) {
-      const frameSize = attackSheetFrameSize(key);
-      this.load.spritesheet(
-        attackSheetKey(key),
-        `/sprites/attack/${key}_attack.png`,
-        {
-          frameWidth: frameSize,
-          frameHeight: frameSize,
-        },
-      );
     }
 
     // Status effect icons

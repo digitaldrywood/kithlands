@@ -73,14 +73,18 @@ func (g *Game) DebugForceEncounter(monsterIDs []string, level int) error {
 	defer g.mu.Unlock()
 	g.snapshotVictoryXPProgress()
 	g.enemies = g.enemies[:0]
-	for _, id := range monsterIDs {
+	for encounterIndex, id := range monsterIDs {
 		found := false
 		for i := range g.gd.Monsters {
 			m := &g.gd.Monsters[i]
 			if m.ID != id {
 				continue
 			}
-			c := balance.ScaleMonster(m, level, 1, g.diff)
+			// Combatant IDs must be unique within an encounter. The old call
+			// accidentally used the requested level as every monster's ID and
+			// hard-coded encounter scaling to level 1, which made later sprites
+			// overwrite earlier targets in the client map.
+			c := balance.ScaleMonster(m, 100+encounterIndex, level, g.diff)
 			c.MonsterID = m.ID
 			c.Size = m.Size
 			g.enemies = append(g.enemies, c)

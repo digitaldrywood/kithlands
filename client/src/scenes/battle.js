@@ -30,7 +30,6 @@ import {
   planSmartRound,
   resolveAction,
 } from "../systems/auto_battle.js";
-import { attackFrameIndex, attackSheetKey } from "./walkFrame.js";
 import { drawButton, drawFF6BottomStrip, drawPanel } from "../ui/panel.js";
 import { TILE_COLORS, TILE_IDS } from "./tileConstants.js";
 import { pickBackgroundKey } from "./battleBackgrounds.js";
@@ -259,7 +258,6 @@ export class BattleScene extends Phaser.Scene {
     this.animating = false;
     this.enemySprites = {};
     this.partySprites = {};
-    this.partyArrows = [];
     this.pendingAction = null;
     this.pendingSpellId = null;
     this.pendingSpellEffect = null;
@@ -312,10 +310,15 @@ export class BattleScene extends Phaser.Scene {
     this.promptText = this.messageWindow;
     this.actorCursor = new TargetCursor(this, {
       depth: 12,
-      scale: 2,
       tag: "actor-cursor",
+      variant: "actor",
+      label: "ACTING",
     });
-    this.targetCursor = new TargetCursor(this, { depth: 15, scale: 2 });
+    this.targetCursor = new TargetCursor(this, {
+      depth: 15,
+      variant: "target",
+      label: "TARGET",
+    });
     this.events.once("shutdown", () => {
       this.floatingText?.destroy();
       this.messageWindow?.destroy();
@@ -344,6 +347,7 @@ export class BattleScene extends Phaser.Scene {
     playMusic(isBoss ? "music_boss" : "music_battle");
 
     this.drawBattleBackdrop();
+    this.drawShowcaseBanner(gs);
     this.drawBottomStrip_();
 
     this.drawEnemies(gs);
@@ -731,11 +735,6 @@ export class BattleScene extends Phaser.Scene {
     const slot = this.livingMembers[this.currentMemberIdx];
     const member = gs.party[slot];
 
-    // Move arrow to current member
-    for (let i = 0; i < this.partyArrows.length; i++) {
-      this.partyArrows[i].setVisible(i === slot);
-    }
-
     this.promptText
       .setText(`${member.name}'s turn -- choose an action`)
       .setColor("#ffff44");
@@ -784,6 +783,38 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     this.drawProceduralBackdrop_(theme);
+  }
+
+  drawShowcaseBanner(gs) {
+    if (!gs?.showcase_mode) return;
+
+    const title = gs.showcase_title || "SYSTEMS SHOWCASE";
+    const tips = (gs.showcase_tips || []).slice(0, 3);
+    if (tips.length === 0) tips.push("Dev-only disposable battle");
+    const panel = this.add.graphics().setDepth(11).setScrollFactor(0);
+    panel._combatFxTag = "showcase-banner";
+    panel.fillStyle(0x160b1d, 0.9);
+    panel.fillRoundedRect(12, 10, 420, 66, 7);
+    panel.lineStyle(2, 0xff66cc, 0.9);
+    panel.strokeRoundedRect(12, 10, 420, 66, 7);
+    this.add
+      .text(24, 17, title, {
+        fontSize: "12px",
+        color: "#ff88dd",
+        fontFamily: "monospace",
+        fontStyle: "bold",
+      })
+      .setDepth(12)
+      .setScrollFactor(0);
+    this.add
+      .text(24, 34, tips.join("\n"), {
+        fontSize: "8px",
+        color: "#e8d6ea",
+        fontFamily: "monospace",
+        lineSpacing: 2,
+      })
+      .setDepth(12)
+      .setScrollFactor(0);
   }
 
   // Opaque FF6-style strip that occludes the bottom third of the (pre-rendered
@@ -1046,22 +1077,6 @@ export class BattleScene extends Phaser.Scene {
       const y = placement.y;
       const alive = p.hp > 0;
 
-      const arrow = this.add
-        .triangle(
-          placement.arrowX,
-          placement.arrowY,
-          0,
-          -8,
-          0,
-          8,
-          10,
-          0,
-          0xffff44,
-        )
-        .setDepth(2)
-        .setVisible(false);
-      this.partyArrows[i] = arrow;
-
       const fallbackKey = CLASS_SPRITES[p.sprite_id || p.class_id];
       const classId = p.sprite_id || p.class_id || fallbackKey;
       const composition = p.composition || {
@@ -1088,7 +1103,6 @@ export class BattleScene extends Phaser.Scene {
       sprite.setDepth(4);
       this.partySprites[p.name] = {
         sprite,
-        arrow,
         x: placement.spriteX,
         y: placement.spriteY,
         name: p.name,
@@ -1481,8 +1495,7 @@ export class BattleScene extends Phaser.Scene {
     if (!visual || !this.actorCursor) return;
     this.actorCursor.showFor(visual, {
       tint: CURSOR_TINTS.actor,
-      side: "right",
-      offsetX: 14,
+      label: "ACTING",
     });
   }
 
@@ -1492,8 +1505,7 @@ export class BattleScene extends Phaser.Scene {
     const isPartyTarget = mode === "party";
     this.targetCursor.showFor(visual, {
       tint: isPartyTarget ? CURSOR_TINTS.ally : CURSOR_TINTS.enemy,
-      side: isPartyTarget ? "right" : "left",
-      offsetX: 12,
+      label: isPartyTarget ? "ALLY TARGET" : "TARGET",
     });
   }
 
@@ -1615,7 +1627,6 @@ export class BattleScene extends Phaser.Scene {
       duration: reducedMotion ? 40 : ACTION_BEAT_MS.physicalAnticipation,
       ease: "Quad.Out",
     });
-    const attackPlayback = this.playPartyAttackSheet(actorEntry, "down");
     if (reducedMotion) {
       await this.tweenP(actor.sprite, {
         x: path.strike.x,
@@ -1623,7 +1634,6 @@ export class BattleScene extends Phaser.Scene {
         duration: 70,
         ease: "Quad.Out",
       });
-      await attackPlayback;
       return;
     }
     await this.tweenP(actorEntry.sprite, {
@@ -1638,7 +1648,6 @@ export class BattleScene extends Phaser.Scene {
       duration: ACTION_BEAT_MS.physicalLaunch * 0.38,
       ease: "Quad.In",
     });
-    await attackPlayback;
   }
 
   reducedBattleMotion() {
@@ -1993,54 +2002,6 @@ export class BattleScene extends Phaser.Scene {
       duration: ACTION_BEAT_MS.recovery,
       ease: "Power1",
     });
-    this.restorePartySpriteTexture(actorEntry);
-  }
-
-  playPartyAttackSheet(actorEntry, dir = "right") {
-    const classId = actorEntry?.classId;
-    const sprite = actorEntry?.sprite;
-    const key = attackSheetKey(classId);
-    if (!sprite || !classId || !this.textures.exists(key)) {
-      return Promise.resolve(false);
-    }
-
-    const original = {
-      textureKey: sprite.texture?.key,
-      frameName: sprite.frame?.name,
-      scaleX: sprite.scaleX,
-      scaleY: sprite.scaleY,
-    };
-    actorEntry.restoreAttackTexture = original;
-    sprite.setTexture(key, attackFrameIndex(dir, 0));
-    sprite.setScale(100 / 64);
-
-    const frames = [0, 1, 2, 3, 4, 5, 6, 7];
-    const frameMs = this.scaledMs(35);
-    return new Promise((resolve) => {
-      frames.forEach((frame, index) => {
-        this.time.delayedCall(index * frameMs, () => {
-          if (sprite.active && sprite.texture?.key === key) {
-            sprite.setFrame(attackFrameIndex(dir, frame));
-          }
-        });
-      });
-      this.time.delayedCall(frames.length * frameMs, () => resolve(true));
-    });
-  }
-
-  restorePartySpriteTexture(actorEntry) {
-    const sprite = actorEntry?.sprite;
-    const restore = actorEntry?.restoreAttackTexture;
-    if (
-      !sprite ||
-      !restore?.textureKey ||
-      !this.textures.exists(restore.textureKey)
-    ) {
-      return;
-    }
-    sprite.setTexture(restore.textureKey, restore.frameName);
-    sprite.setScale(restore.scaleX, restore.scaleY);
-    actorEntry.restoreAttackTexture = null;
   }
 
   drawActions(gs, slot) {
@@ -2905,16 +2866,12 @@ export class BattleScene extends Phaser.Scene {
             tracerColor: ACTION_TRACER_COLORS.partyToEnemy,
             targetColor: ACTION_RETICLE_COLORS.enemyTarget,
           });
-          for (const a of this.partyArrows) a.setVisible(false);
-          pe.arrow.setVisible(true);
           this.revealLine(`${attacker} attacks ${ee.name}!`, "#ff8844");
           await this.showActionTitle(pe, attackTitle, "#ffcc66");
           await this.playMajorCinematicPrelude(action, pe, "none");
           await this.lungePartySprite(pe, ee);
           await this.wait(ACTION_BEAT_MS.preImpact);
         } else if (pe) {
-          for (const a of this.partyArrows) a.setVisible(false);
-          pe.arrow.setVisible(true);
           this.revealLine(`${attacker} attacks!`, "#ff8844");
           await this.showActionTitle(pe, attackTitle, "#ffcc66");
           await this.playMajorCinematicPrelude(action, pe, "none");
@@ -3049,10 +3006,6 @@ export class BattleScene extends Phaser.Scene {
 
         const pe = this.partySprites[caster];
         const enemyCaster = this.findEnemySpriteForAction(action, caster);
-        if (pe) {
-          for (const a of this.partyArrows) a.setVisible(false);
-          pe.arrow.setVisible(true);
-        }
         // Check for multi-target: group consecutive entries with same caster + spell
         const targets = [
           {

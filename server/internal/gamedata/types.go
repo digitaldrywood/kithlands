@@ -107,6 +107,38 @@ type CombatConfig struct {
 	EnemyTargetWeights []float64 `json:"enemy_targeting_weights"`
 }
 
+// ShowcaseData defines the disposable developer battle entered from the title
+// screen. Keeping the roster and loadout in shared/ prevents the debug client
+// or Go mechanics from becoming a second source of game content.
+type ShowcaseData struct {
+	Title       string                `json:"title"`
+	Description string                `json:"description"`
+	TownName    string                `json:"town_name"`
+	Places      []string              `json:"places"`
+	BigBuilding string                `json:"big_building"`
+	Level       int                   `json:"level"`
+	RNGSeed     int64                 `json:"rng_seed"`
+	Gold        int                   `json:"gold"`
+	Party       []ShowcasePartyMember `json:"party"`
+	Consumables map[string]int        `json:"consumables"`
+	Encounter   ShowcaseEncounter     `json:"encounter"`
+	Tips        []string              `json:"tips"`
+}
+
+type ShowcasePartyMember struct {
+	Name     string   `json:"name"`
+	ClassID  string   `json:"class_id"`
+	Row      string   `json:"row,omitempty"`
+	WeaponID string   `json:"weapon_id"`
+	ArmorID  string   `json:"armor_id"`
+	Spells   []string `json:"spells,omitempty"`
+}
+
+type ShowcaseEncounter struct {
+	MonsterIDs []string `json:"monster_ids"`
+	Level      int      `json:"level"`
+}
+
 // Items
 
 type ItemsData struct {

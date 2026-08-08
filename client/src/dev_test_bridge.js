@@ -1,6 +1,7 @@
 import {
   buyItem,
   claimChest,
+  debugCreateShowcase,
   debugForceEncounter,
   debugForceVictory,
   debugGiveItem,
@@ -919,6 +920,7 @@ function visibleBattleFxSnapshot(scene) {
       y: entry?.y ?? null,
       spriteX: entry?.sprite?.x ?? null,
       spriteY: entry?.sprite?.y ?? null,
+      textureKey: entry?.sprite?.texture?.key ?? null,
       spriteBounds: objectBounds(entry?.sprite),
       hpBarBounds: objectBounds(entry?.hpBar?.bg),
     }));
@@ -1050,9 +1052,13 @@ function visibleBattleFxSnapshot(scene) {
         {}),
     })),
     targetCursorVisible: taggedCount("target-cursor") > 0,
+    actorIndicatorLabel: scene?.actorCursor?.label?.text ?? null,
+    targetIndicatorLabel: scene?.targetCursor?.label?.text ?? null,
+    targetIndicatorX: scene?.targetCursor?.graphics?.x ?? null,
     messageWindowTextBounds: messageLayout.textBounds || null,
     encounterTileType: scene?.encounterTileType ?? null,
     backdropCount: taggedCount("battle-backdrop"),
+    showcaseBannerCount: taggedCount("showcase-banner"),
     groundPlaneCount: taggedCount("ground-plane"),
     shadowCount: taggedCount("combat-shadow"),
     actionPanelCount: taggedCount("action-panel"),
@@ -1316,6 +1322,29 @@ export function installDevTestBridge(game) {
       await title.startGame({ value: email }, true);
       await this.waitForSceneReady("World");
       return this.gameState("World");
+    },
+
+    async startShowcase() {
+      const title = getScene(game, "Title");
+      if (!title || typeof title.startShowcase !== "function") {
+        throw new Error("Title scene is not ready");
+      }
+      await waitFor(() => !!title.statusText);
+      await title.startShowcase();
+      await waitFor(() => game.scene.isActive("Battle"));
+      await nextFrame();
+      await nextFrame();
+      return this.gameState("Battle");
+    },
+
+    async createShowcaseDirect() {
+      const result = await debugCreateShowcase();
+      if (result?.error) throw new Error(result.error);
+      game.scene.start("World", { gameState: result });
+      await waitFor(() => game.scene.isActive("Battle"));
+      await nextFrame();
+      await nextFrame();
+      return this.gameState("Battle");
     },
 
     async startWizardFromTitle(

@@ -147,6 +147,9 @@ type GameState struct {
 	CollectedHiddenItems map[string]bool          `json:"collected_hidden_items,omitempty"`
 	TriggeredFlags       map[string]bool          `json:"triggered_flags,omitempty"`
 	PendingChestClaim    *PendingChestClaimState  `json:"pending_chest_claim,omitempty"`
+	ShowcaseMode         bool                     `json:"showcase_mode,omitempty"`
+	ShowcaseTitle        string                   `json:"showcase_title,omitempty"`
+	ShowcaseTips         []string                 `json:"showcase_tips,omitempty"`
 }
 
 // TransportInfo is the transport tier state sent to the client.
@@ -433,9 +436,12 @@ type Game struct {
 	// game_combat.go uses this to drop the proof item, advance promo_stage,
 	// and return directly to the world phase instead of showing a
 	// quest-complete screen for a fight that didn't complete a quest.
-	scriptedBoss bool
-	trans        *transport.State // current transport tier & unlocks
-	mu           sync.Mutex
+	scriptedBoss  bool
+	showcaseMode  bool
+	showcaseTitle string
+	showcaseTips  []string
+	trans         *transport.State // current transport tier & unlocks
+	mu            sync.Mutex
 }
 
 func (g *Game) State() GameState {
@@ -455,6 +461,9 @@ func (g *Game) State() GameState {
 		CombatLog:        g.combatLog,
 		CombatActions:    g.combatActions,
 		LastRoundActions: cloneMemberActionReqs(g.lastRoundActions),
+		ShowcaseMode:     g.showcaseMode,
+		ShowcaseTitle:    g.showcaseTitle,
+		ShowcaseTips:     append([]string(nil), g.showcaseTips...),
 	}
 
 	if g.loc != nil {

@@ -1,4 +1,11 @@
-import { login, setToken, newGame, listSaves, loadSave } from "../api.js";
+import {
+  debugCreateShowcase,
+  login,
+  setToken,
+  newGame,
+  listSaves,
+  loadSave,
+} from "../api.js";
 import { initAudio, playMusic, playSFX } from "../systems/audio.js";
 import {
   getEmail,
@@ -75,10 +82,18 @@ export class TitleScene extends Phaser.Scene {
     this.makeButton(cx, 390, "[ LOAD GAME ]", "#4488ff", () =>
       this.doLogin(inputEl, () => this.showLoadScreen()),
     );
-    this.makeButton(cx, 440, "[ PLAY NOW - skip login ]", "#888888", () => {
-      inputEl.value = `test_${Date.now()}@kithlands.dev`;
-      this.startGame(inputEl, true);
-    });
+    if (import.meta.env?.DEV) {
+      this.makeButton(cx, 440, "[ SYSTEMS SHOWCASE ]", "#ff66cc", () =>
+        this.startShowcase(),
+      );
+      this.add
+        .text(cx, 466, "Dev-only • full combat loadout • disposable", {
+          fontSize: "10px",
+          color: "#aa88aa",
+          fontFamily: "monospace",
+        })
+        .setOrigin(0.5);
+    }
 
     this.statusText = this.add
       .text(cx, 500, "", {
@@ -364,6 +379,35 @@ export class TitleScene extends Phaser.Scene {
       console.error("[Title] error:", e);
       this.statusText
         .setText("Server unreachable. Run: make play")
+        .setColor("#ff4444");
+    }
+  }
+
+  async startShowcase() {
+    this.statusText
+      .setText("Preparing disposable systems showcase...")
+      .setColor("#ff99dd");
+    try {
+      const auth = await login(`showcase_${Date.now()}@kithlands.dev`);
+      if (!auth.token) {
+        this.statusText
+          .setText(auth.error || "Showcase login failed.")
+          .setColor("#ff4444");
+        return;
+      }
+      setToken(auth.token);
+      const result = await debugCreateShowcase();
+      if (result.error) {
+        this.statusText.setText(result.error).setColor("#ff4444");
+        return;
+      }
+      this.scene.start("World", { gameState: result });
+    } catch (error) {
+      console.error("[Title] showcase error:", error);
+      this.statusText
+        .setText(
+          "Showcase unavailable. Start the server with KITHLANDS_DEBUG=1.",
+        )
         .setColor("#ff4444");
     }
   }

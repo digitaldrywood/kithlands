@@ -52,6 +52,7 @@ type GameData struct {
 	Transport  TransportData
 	Palettes   Palettes
 	Dialogue   DialoguePool
+	Showcase   ShowcaseData
 
 	classByID     map[string]*Class
 	weaponByID    map[string]*Weapon
@@ -82,6 +83,7 @@ func Load(sharedDir string) *GameData {
 	gd.Transport = loadJSON[TransportData](sharedDir, "transport.json")
 	gd.Palettes = loadJSON[Palettes](sharedDir, "palettes.json")
 	gd.Dialogue = loadJSON[DialoguePool](sharedDir, "dialogue.json")
+	gd.Showcase = loadJSON[ShowcaseData](sharedDir, "showcase.json")
 
 	gd.buildIndexes()
 	gd.validate()
@@ -388,6 +390,81 @@ func (gd *GameData) validate() {
 			panic(fmt.Sprintf("gamedata: transport tier %q has empty unlock condition", t.ID))
 		}
 	}
+
+	gd.validateShowcase(classIDs)
+}
+
+func (gd *GameData) validateShowcase(classIDs map[string]bool) {
+	cfg := gd.Showcase
+	if strings.TrimSpace(cfg.Title) == "" {
+		panic("gamedata: showcase.json has empty title")
+	}
+	if cfg.Level < 1 || cfg.Level > gd.Stats.XPCurve.MaxLevel {
+		panic(fmt.Sprintf("gamedata: showcase.json has invalid level %d", cfg.Level))
+	}
+	if len(cfg.Party) == 0 || len(cfg.Party) > 4 {
+		panic(fmt.Sprintf("gamedata: showcase.json party must have 1-4 members, got %d", len(cfg.Party)))
+	}
+	seenNames := make(map[string]bool, len(cfg.Party))
+	for i, member := range cfg.Party {
+		if strings.TrimSpace(member.Name) == "" {
+			panic(fmt.Sprintf("gamedata: showcase.json party member %d has empty name", i))
+		}
+		if seenNames[member.Name] {
+			panic(fmt.Sprintf("gamedata: showcase.json repeats party member name %q", member.Name))
+		}
+		seenNames[member.Name] = true
+		if !classIDs[member.ClassID] {
+			panic(fmt.Sprintf("gamedata: showcase.json member %q references unknown class %q", member.Name, member.ClassID))
+		}
+		if characterRow := member.Row; characterRow != "" && characterRow != "front" && characterRow != "back" {
+			panic(fmt.Sprintf("gamedata: showcase.json member %q has invalid row %q", member.Name, characterRow))
+		}
+		weapon := gd.WeaponByID(member.WeaponID)
+		if weapon == nil || !containsString(weapon.Classes, member.ClassID) {
+			panic(fmt.Sprintf("gamedata: showcase.json member %q cannot equip weapon %q", member.Name, member.WeaponID))
+		}
+		armor := gd.ArmorByID(member.ArmorID)
+		if armor == nil || !containsString(armor.Classes, member.ClassID) {
+			panic(fmt.Sprintf("gamedata: showcase.json member %q cannot equip armor %q", member.Name, member.ArmorID))
+		}
+		class := gd.ClassByID(member.ClassID)
+		for _, spellID := range member.Spells {
+			spell := gd.SpellByID(spellID)
+			if spell == nil {
+				panic(fmt.Sprintf("gamedata: showcase.json member %q references unknown spell %q", member.Name, spellID))
+			}
+			if !containsString(class.Magic.Schools, spell.School) || spell.SpellLevel > class.Magic.MaxSpellLevel {
+				panic(fmt.Sprintf("gamedata: showcase.json member %q cannot learn spell %q", member.Name, spellID))
+			}
+		}
+	}
+	knownConsumables := make(map[string]bool, len(gd.Items.Consumables))
+	for _, item := range gd.Items.Consumables {
+		knownConsumables[item.ID] = true
+	}
+	for itemID, qty := range cfg.Consumables {
+		if !knownConsumables[itemID] || qty < 0 {
+			panic(fmt.Sprintf("gamedata: showcase.json has invalid consumable %q quantity %d", itemID, qty))
+		}
+	}
+	if cfg.Encounter.Level < 1 || len(cfg.Encounter.MonsterIDs) == 0 {
+		panic("gamedata: showcase.json encounter requires a positive level and monsters")
+	}
+	for _, monsterID := range cfg.Encounter.MonsterIDs {
+		if gd.MonsterByID(monsterID) == nil {
+			panic(fmt.Sprintf("gamedata: showcase.json references unknown monster %q", monsterID))
+		}
+	}
+}
+
+func containsString(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
 }
 
 func validateClassRefs(kind, id string, refs []string, classIDs map[string]bool) {

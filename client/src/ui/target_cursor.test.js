@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { TargetCursor } from "./target_cursor.js";
 
-function makeSprite() {
+function makeDisplayObject() {
   return {
     visible: false,
     x: 0,
@@ -24,21 +24,45 @@ function makeSprite() {
       this.visible = visible;
       return this;
     },
+    setAlpha(alpha) {
+      this.alpha = alpha;
+      return this;
+    },
     setPosition(x, y) {
       this.x = x;
       this.y = y;
       return this;
     },
-    setTint(tint) {
-      this.tint = tint;
+    setColor(color) {
+      this.color = color;
       return this;
     },
-    clearTint() {
-      this.tint = null;
+    setText(text) {
+      this.text = text;
       return this;
     },
-    setFlipX(flipX) {
-      this.flipX = flipX;
+    clear() {
+      this.commands = [];
+      return this;
+    },
+    lineStyle(...args) {
+      this.commands.push(["lineStyle", ...args]);
+      return this;
+    },
+    strokeEllipse(...args) {
+      this.commands.push(["strokeEllipse", ...args]);
+      return this;
+    },
+    fillStyle(...args) {
+      this.commands.push(["fillStyle", ...args]);
+      return this;
+    },
+    fillTriangle(...args) {
+      this.commands.push(["fillTriangle", ...args]);
+      return this;
+    },
+    lineBetween(...args) {
+      this.commands.push(["lineBetween", ...args]);
       return this;
     },
     destroy() {
@@ -52,8 +76,11 @@ function makeScene() {
   return {
     tweenCalls,
     add: {
-      image() {
-        return makeSprite();
+      graphics() {
+        return makeDisplayObject();
+      },
+      text(_x, _y, text) {
+        return { ...makeDisplayObject(), text };
       },
     },
     tweens: {
@@ -69,26 +96,46 @@ function makeScene() {
 }
 
 describe("TargetCursor", () => {
-  it("positions a bobbing cursor beside the target and hides cleanly", () => {
+  it("draws a labeled target reticle and hides cleanly", () => {
     const scene = makeScene();
     const cursor = new TargetCursor(scene);
 
     cursor.showFor(
-      { x: 100, y: 140, width: 60 },
-      { tint: 0xff6666, side: "left" },
+      { x: 100, y: 140, width: 60, height: 70 },
+      { tint: 0xff6666 },
     );
 
-    expect(cursor.sprite.visible).toBe(true);
-    expect(cursor.sprite.tint).toBe(0xff6666);
-    expect(cursor.sprite.x).toBeLessThan(100);
+    expect(cursor.graphics.visible).toBe(true);
+    expect(cursor.label.visible).toBe(true);
+    expect(cursor.label.text).toBe("TARGET");
+    expect(cursor.label.color).toBe("#ff6666");
+    expect(
+      cursor.graphics.commands.some(([name]) => name === "lineBetween"),
+    ).toBe(true);
     expect(scene.tweenCalls[0]).toMatchObject({
-      targets: cursor.sprite,
-      duration: 500,
+      targets: [cursor.graphics, cursor.label],
+      duration: 430,
       yoyo: true,
       repeat: -1,
     });
 
     cursor.hide();
-    expect(cursor.sprite.visible).toBe(false);
+    expect(cursor.graphics.visible).toBe(false);
+    expect(cursor.label.visible).toBe(false);
+  });
+
+  it("uses a ground ring and ACTING label for the actor role", () => {
+    const scene = makeScene();
+    const cursor = new TargetCursor(scene, {
+      variant: "actor",
+      label: "ACTING",
+    });
+
+    cursor.showFor({ x: 200, y: 220, width: 64, height: 80 });
+
+    expect(cursor.label.text).toBe("ACTING");
+    expect(
+      cursor.graphics.commands.some(([name]) => name === "strokeEllipse"),
+    ).toBe(true);
   });
 });
