@@ -1705,7 +1705,10 @@ export class BattleScene extends Phaser.Scene {
     const path = buildAttackMotionPath(actor, target, reducedMotion);
     this.tweens.killTweensOf(actor.sprite);
     this.setSpritePosition(actor.sprite, path.origin.x, path.origin.y);
-    void actor.sprite.playBattleAttack?.({ reducedMotion });
+    void actor.sprite.playBattleAttack?.({
+      reducedMotion,
+      speedMultiplier: battleSpeedMul(),
+    });
 
     await this.tweenP(actor.sprite, {
       x: path.anticipation.x,
@@ -3475,6 +3478,23 @@ export class BattleScene extends Phaser.Scene {
           "#ff88ff",
         );
         await this.playMajorCinematicPrelude(action, actorEntry, "dark");
+        if (isGroupTargetMode(action.target_mode) && !(action.damage > 0)) {
+          const targets = (this.gameState.party || [])
+            .filter((member) => member.hp > 0)
+            .map((member) => this.partySprites[member.name])
+            .filter(Boolean);
+          await this.playCastAnticipation(actorEntry, "holy");
+          this.showActorCursor(actorEntry);
+          this.targetCursor?.hide();
+          this.showGroupTargetCursor(targets, "party");
+          await Promise.all(
+            targets.map((target) =>
+              this.launchSpellProjectile(actorEntry, target, "holy"),
+            ),
+          );
+          await this.resetPartySprite(actorEntry);
+          this.hideGroupTargetCursor();
+        }
         // Backstab with damage gets hit effect
         if (action.damage > 0) {
           playSFX("sfx_slash");

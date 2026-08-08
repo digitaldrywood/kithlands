@@ -42,6 +42,30 @@ test.describe("Warrior layered battle gold slice", () => {
         fullPage: true,
       });
     }
+
+    await page.goto("/");
+    await page.waitForFunction(
+      () => window.__kithlandsTest?.activeSceneKey() === "Title",
+      null,
+      { timeout: 90_000 },
+    );
+    await page.evaluate(() => window.__kithlandsTest.startQuickGame());
+    await page.waitForFunction(
+      () => window.__kithlandsTest?.activeSceneKey() === "World",
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.forceEncounter(["slime", "goblin"], 2),
+    );
+    await page.waitForFunction(
+      () =>
+        window.__kithlandsTest.activeSceneKey() === "Battle" &&
+        window.__kithlandsTest.battleVisibilitySnapshot().partyMembers[0]
+          ?.textureKey === "battle_warrior_sword_attack_body",
+    );
+    await page.screenshot({
+      path: testInfo.outputPath(`warrior-starting-loadout-${RUN_ID}.png`),
+      fullPage: true,
+    });
   });
 
   test("uses authored spell scope without a redundant one-or-all menu", async ({
@@ -143,6 +167,60 @@ test.describe("Warrior layered battle gold slice", () => {
     expect(snapshot.spellProjectiles).toBeGreaterThanOrEqual(2);
     await page.screenshot({
       path: testInfo.outputPath(`all-enemies-simultaneous-${RUN_ID}.png`),
+      fullPage: true,
+    });
+  });
+
+  test("presents Inspire across all allies as one simultaneous beat", async ({
+    page,
+  }, testInfo) => {
+    await page.goto("/");
+    await page.waitForFunction(
+      () => window.__kithlandsTest?.activeSceneKey() === "Title",
+      null,
+      { timeout: 90_000 },
+    );
+    await page.evaluate(() => window.__kithlandsTest.startQuickGame());
+    await page.waitForFunction(
+      () => window.__kithlandsTest.activeSceneKey() === "World",
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.startCustomGame({
+        town_name: "Cadott, WI",
+        people: [{ name: "Coach Bell", relation: "friendly" }],
+        places: ["School", "Library", "Fire Hall"],
+        big_building: "Town Hall",
+        party: [
+          { name: "Jack", class_id: "wayfarer" },
+          { name: "Tank", class_id: "warrior" },
+        ],
+        difficulty: "normal",
+      }),
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.forceEncounter(["goblin", "slime"], 2),
+    );
+    const actions = await page.evaluate(() =>
+      window.__kithlandsTest.startAuthoritativeBattleRound("inspire"),
+    );
+    expect(actions).toContainEqual(
+      expect.objectContaining({
+        type: "ability",
+        ability_id: "inspire",
+        target_id: -1,
+      }),
+    );
+    await page.waitForFunction(() => {
+      const snapshot = window.__kithlandsTest.battleVisibilitySnapshot();
+      return snapshot.groupCursors === 1 && snapshot.spellProjectiles >= 2;
+    });
+    const snapshot = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+    expect(snapshot.groupTargetIndicatorLabel).toBe("ALL ALLIES");
+    expect(snapshot.spellProjectiles).toBeGreaterThanOrEqual(2);
+    await page.screenshot({
+      path: testInfo.outputPath(`all-allies-simultaneous-${RUN_ID}.png`),
       fullPage: true,
     });
   });

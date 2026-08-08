@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   WARRIOR_BATTLE_BODY_KEY,
   WARRIOR_SWORD_ATTACK_FRAMES,
+  battleFrameDelay,
   canUseWarriorBattleSprite,
   weaponTextureKey,
 } from "./battleCharacterSprite.js";
@@ -36,7 +37,7 @@ describe("Warrior battle runtime contract", () => {
     ).toBe(true);
   });
 
-  it("falls back for unsupported equipment or a defeated Warrior", () => {
+  it("falls back for unsupported equipment but preserves defeated Warrior identity", () => {
     const scene = sceneWith([WARRIOR_BATTLE_BODY_KEY]);
     expect(
       canUseWarriorBattleSprite(scene, {
@@ -54,6 +55,14 @@ describe("Warrior battle runtime contract", () => {
         },
         { alive: false },
       ),
-    ).toBe(false);
+    ).toBe(true);
+  });
+
+  it("scales body-frame pacing with the battle-speed preference", () => {
+    const pose = WARRIOR_SWORD_ATTACK_FRAMES[0];
+    expect(battleFrameDelay(pose, false, 0.33)).toBeCloseTo(29.7);
+    expect(battleFrameDelay(pose, false, 3)).toBe(270);
+    expect(battleFrameDelay(pose, true, 0.66)).toBeCloseTo(29.7);
+    expect(battleFrameDelay(pose, false, 0)).toBe(90);
   });
 });

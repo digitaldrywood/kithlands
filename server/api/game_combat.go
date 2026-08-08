@@ -93,6 +93,7 @@ func (g *Game) abilityCombatAction(abilityID string, action CombatActionEntry) C
 	action.ActionID = ability.ID
 	action.ActionName = ability.Name
 	action.CinematicTier = ability.CinematicTier
+	action.TargetMode = ability.Target
 	return action
 }
 
@@ -878,7 +879,8 @@ func (g *Game) resolveScheduledSpell(combatants []*combat.Combatant, ma MemberAc
 			}
 			g.logCombat(
 				fmt.Sprintf("%s casts %s on %s - cured!", caster.Name, spell.Name, g.party[targetIdx].Name),
-				spellCombatAction(spell, CombatActionEntry{Kind: "heal", ActorID: pc.ID, ActorName: caster.Name, SpellName: spell.Name}))
+				spellCombatAction(spell, CombatActionEntry{Kind: "heal", ActorID: pc.ID, ActorName: caster.Name,
+					TargetID: targetIdx, TargetName: g.party[targetIdx].Name, SpellName: spell.Name}))
 		}
 	}
 }

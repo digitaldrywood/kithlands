@@ -141,7 +141,7 @@ func TestWayfarerInspireLogsAnAbilityLine(t *testing.T) {
 		}
 	}
 	for _, action := range state.CombatActions {
-		if action.ActionID == "inspire" && action.ActionName == "Inspire" && action.CinematicTier == "major" {
+		if action.ActionID == "inspire" && action.ActionName == "Inspire" && action.CinematicTier == "major" && action.TargetMode == "all_allies" {
 			sawMajorMetadata = true
 			break
 		}

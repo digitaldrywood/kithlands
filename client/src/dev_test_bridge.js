@@ -1579,9 +1579,23 @@ export function installDevTestBridge(game) {
       if (!enemyId) throw new Error("Battle scene has no living enemy");
 
       let spellAssigned = false;
+      let inspireAssigned = false;
       const actions = (scene.gameState?.party || [])
         .map((member, slot) => {
           if ((member.hp ?? 0) <= 0) return null;
+          if (
+            mode === "inspire" &&
+            !inspireAssigned &&
+            (member.abilities || []).includes("inspire")
+          ) {
+            inspireAssigned = true;
+            return {
+              slot,
+              type: "ability",
+              ability_id: "inspire",
+              target_id: -1,
+            };
+          }
           const spell = (member.spells || []).find(
             (entry) =>
               entry?.id &&
@@ -1609,6 +1623,9 @@ export function installDevTestBridge(game) {
         .filter(Boolean);
       if ((mode === "spell" || mode === "all_spell") && !spellAssigned) {
         throw new Error("Battle party has no castable spell");
+      }
+      if (mode === "inspire" && !inspireAssigned) {
+        throw new Error("Battle party has no Inspire ability");
       }
 
       scene.memberActions = actions;

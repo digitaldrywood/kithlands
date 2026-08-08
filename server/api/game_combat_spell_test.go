@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/digitaldrywood/kithlands/api"
+	"github.com/digitaldrywood/kithlands/internal/character"
 )
 
 // menderParty returns a two-member party with a Mender (white mage, has Cure
@@ -190,6 +191,41 @@ func TestSpellCureTargetsSpecificSlotNotMostDamaged(t *testing.T) {
 	if hasLogLine(state, "casts Cure on Tank") {
 		t.Errorf("cure incorrectly targeted Tank (most-damaged fallback); log=%v", state.CombatLog)
 	}
+}
+
+func TestCureStatusCombatActionCarriesTargetedAlly(t *testing.T) {
+	game := newGameWithParty(t, menderParty())
+	api.TeachSpellForTest(game, 0, "cure_poison", 2)
+	enterCombat(t, game)
+	api.ApplyStatusToPartyForTest(game, 1, character.StatusPoison)
+
+	result, err := game.ProcessAction(api.GameActionRequest{
+		Type: "attack",
+		Actions: []api.MemberActionReq{
+			{Slot: 0, Type: "spell", SpellID: "cure_poison", TargetID: 1},
+			{Slot: 1, Type: "defend"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("cast cure poison: %v", err)
+	}
+	if got := api.PartyStatusForTest(game, 1); got != character.StatusNone {
+		t.Fatalf("Tank status = %q, want none", got)
+	}
+
+	for _, action := range result.CombatActions {
+		if action.ActionID != "cure_poison" {
+			continue
+		}
+		if action.TargetID != 1 || action.TargetName != "Tank" {
+			t.Fatalf("cure poison presentation target = (%d, %q), want (1, Tank)", action.TargetID, action.TargetName)
+		}
+		if action.TargetMode != "single_ally" {
+			t.Fatalf("cure poison target mode = %q, want single_ally", action.TargetMode)
+		}
+		return
+	}
+	t.Fatalf("cure poison combat action missing; actions=%+v", result.CombatActions)
 }
 
 // TestSpellCureTargetModeCanHealAllAllies verifies a mixed-target heal can be

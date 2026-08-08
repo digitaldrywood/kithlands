@@ -129,7 +129,7 @@ export function showOptions(scene) {
     .text(
       PANEL_CX,
       PANEL_TOP + 76,
-      "SHORT = auto-skip    ONCE = each major move once    FULL = always",
+      "SHORT = auto-skip    ONCE = once per battle    FULL = always",
       {
         fontSize: "10px",
         color: "#9fb6d9",

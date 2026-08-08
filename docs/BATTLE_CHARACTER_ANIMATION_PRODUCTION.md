@@ -15,7 +15,8 @@ attacks, and equipment that can change without regenerating the character.
 - Frame cell: 192x192 RGBA PNG
 - Body atlas: 1152x192, six 192x192 cells
 - Origin: bottom center
-- Feet anchor: `(96, 184)` in every frame
+- Container registration: bottom center at `(96, 184)` in every frame; posed
+  feet may lift above that baseline during a strike
 - Runtime height: approximately 112 CSS/game pixels
 - Background: transparent
 - Shadow: rendered separately by Phaser
@@ -58,9 +59,13 @@ client/tmp/warrior-battle-gold/
   proof/           # contact sheets, traces, and in-game captures
 
 client/public/sprites/battle/warrior/
-  sword_attack_body.png
-  weapons/<weapon-visual-id>.png
-  sword_attack.json
+  sword-attack-body.png
+
+client/public/sprites/battle/weapons/
+  <weapon-visual-id>.png
+
+client/src/sprites/battleCharacterSprite.js
+  # current runtime hand sockets, frame timing, and layer depth
 ```
 
 Candidates stay under `client/tmp/` until identity, geometry, and motion gates
@@ -73,7 +78,8 @@ pass. Runtime assets are installed only from an accepted candidate.
 - The entire head, cape, hands, and both feet remain visible.
 - The body contains no sword, axe, staff, bow, shield, ground shadow, effect,
   text, or detached debris.
-- Feet remain fixed to the common anchor and body scale does not pulse.
+- Every frame uses the common container anchor and body scale does not pulse;
+  an individual foot may lift naturally during a committed strike.
 - The weapon grip stays attached to the authored hand socket.
 - The weapon can pass behind and in front of the body without clipping.
 - Attack motion reads at runtime speed and returns to the exact guard frame.

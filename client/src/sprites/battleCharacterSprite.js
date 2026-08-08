@@ -20,7 +20,6 @@ export function weaponTextureKey(visualID) {
 }
 
 export function canUseWarriorBattleSprite(scene, composition, opts = {}) {
-  if (opts.alive === false) return false;
   if (composition?.base_sprite !== "warrior") return false;
   if (composition?.weapon_animation_set !== "sword") return false;
   const weaponKey = weaponTextureKey(composition?.weapon_visual_id);
@@ -29,6 +28,18 @@ export function canUseWarriorBattleSprite(scene, composition, opts = {}) {
     scene.textures.exists(WARRIOR_BATTLE_BODY_KEY) &&
     scene.textures.exists(weaponKey)
   );
+}
+
+export function battleFrameDelay(
+  pose,
+  reducedMotion = false,
+  speedMultiplier = 1,
+) {
+  const multiplier =
+    Number.isFinite(speedMultiplier) && speedMultiplier > 0
+      ? speedMultiplier
+      : 1;
+  return (reducedMotion ? 45 : pose.duration) * multiplier;
 }
 
 function applyFrame(container, index) {
@@ -87,13 +98,19 @@ export function createBattleCharacterSprite(
     applyFrame(container, 0);
     return container;
   };
-  container.playBattleAttack = async ({ reducedMotion = false } = {}) => {
+  container.playBattleAttack = async ({
+    reducedMotion = false,
+    speedMultiplier = 1,
+  } = {}) => {
     const token = ++container._battleAnimationToken;
     const indices = reducedMotion ? [1, 3, 5] : [0, 1, 2, 3, 4, 5];
     for (const index of indices) {
       if (token !== container._battleAnimationToken) return;
       const pose = applyFrame(container, index);
-      await waitForScene(scene, reducedMotion ? 45 : pose.duration);
+      await waitForScene(
+        scene,
+        battleFrameDelay(pose, reducedMotion, speedMultiplier),
+      );
     }
     if (token === container._battleAnimationToken) applyFrame(container, 0);
   };
@@ -112,5 +129,6 @@ export function createBattleCharacterSprite(
   };
 
   applyFrame(container, 0);
+  if (opts.alive === false) container.setTint(0x444444);
   return container;
 }

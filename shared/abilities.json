@@ -20,6 +20,7 @@
   {
     "id": "inspire",
     "name": "Inspire",
+    "target": "all_allies",
     "cinematic_tier": "major"
   }
 ]

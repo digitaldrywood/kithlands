@@ -216,6 +216,9 @@ describe("showOptions overlay", () => {
     expect(labels).toContain("MESSAGE SPEED");
     expect(labels).toContain("WALK SPEED");
     expect(labels).toContain("LONG CINEMATICS");
+    expect(labels).toContain(
+      "SHORT = auto-skip    ONCE = once per battle    FULL = always",
+    );
     expect(labels).toContain("FULL");
     expect(labels).toContain("3/6"); // battle + message
     expect(labels).toContain("2/3"); // walk

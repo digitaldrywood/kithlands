@@ -209,6 +209,7 @@ type Weapon struct {
 type Ability struct {
 	ID            string `json:"id"`
 	Name          string `json:"name"`
+	Target        string `json:"target,omitempty"`
 	IgnoresRow    bool   `json:"ignores_row,omitempty"`
 	CinematicTier string `json:"cinematic_tier,omitempty"`
 }
