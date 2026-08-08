@@ -62,6 +62,9 @@ func TestSpellStateExposesTargetAndEffect(t *testing.T) {
 	if cure.Target != "single_ally" {
 		t.Errorf("cure.Target = %q, want single_ally", cure.Target)
 	}
+	if !containsString(cure.TargetModes, "single_ally") || !containsString(cure.TargetModes, "all_allies") {
+		t.Errorf("cure.TargetModes = %+v, want single_ally and all_allies", cure.TargetModes)
+	}
 	if cure.Effect != "heal" {
 		t.Errorf("cure.Effect = %q, want heal", cure.Effect)
 	}
@@ -74,6 +77,15 @@ func TestSpellStateExposesTargetAndEffect(t *testing.T) {
 	if resurrect.Castable {
 		t.Errorf("resurrect.Castable = true, want false (utility effect has no combat handler)")
 	}
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
 
 // TestSpellCureHealsTargetedAllySlot verifies Cure uses target_id as a party
@@ -145,6 +157,34 @@ func TestSpellCureTargetsSpecificSlotNotMostDamaged(t *testing.T) {
 	}
 }
 
+// TestSpellCureTargetModeCanHealAllAllies verifies a mixed-target heal can be
+// explicitly cast as an all-party spell without requiring a separate spell ID.
+func TestSpellCureTargetModeCanHealAllAllies(t *testing.T) {
+	game := newGameWithParty(t, menderParty())
+	enterCombat(t, game)
+
+	api.DamagePartyForTest(game, 0, 5)
+	api.DamagePartyForTest(game, 1, 20)
+
+	result, err := game.ProcessAction(api.GameActionRequest{
+		Type: "attack",
+		Actions: []api.MemberActionReq{
+			{Slot: 0, Type: "spell", SpellID: "cure", TargetID: -1, TargetMode: "all_allies"},
+			{Slot: 1, Type: "defend"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("cast cure all: %v", err)
+	}
+
+	if !hasLogLine(result, "casts Cure on Mira") {
+		t.Errorf("expected all-target Cure log for Mira; got %v", result.CombatLog)
+	}
+	if !hasLogLine(result, "casts Cure on Tank") {
+		t.Errorf("expected all-target Cure log for Tank; got %v", result.CombatLog)
+	}
+}
+
 // TestSpellCureOnUndeadDealsDamage verifies Cure cast against an undead
 // enemy (skeleton) deals damage instead of healing.
 func TestSpellCureOnUndeadDealsDamage(t *testing.T) {
@@ -190,14 +230,51 @@ func TestSpellCureOnUndeadDealsDamage(t *testing.T) {
 	}
 }
 
+// TestSpellDamageTargetModeCanHitAllEnemies verifies a mixed-target damage
+// spell can be explicitly cast as an all-enemy spell without a duplicate AoE
+// spell definition.
+func TestSpellDamageTargetModeCanHitAllEnemies(t *testing.T) {
+	game := newGameWithParty(t, []api.PartyMemberReq{
+		{Name: "Ember", ClassID: "cinder"},
+		{Name: "Tank", ClassID: "warrior"},
+	})
+	api.TeachSpellForTest(game, 0, "frost", 1)
+	enterCombat(t, game)
+	api.ReplaceEnemiesScaledForTest(game, []string{"goblin", "wolf"}, 1)
+
+	state := game.State()
+	if len(state.Enemies) != 2 {
+		t.Fatalf("expected two enemies; got %+v", state.Enemies)
+	}
+	firstID := state.Enemies[0].ID
+
+	result, err := game.ProcessAction(api.GameActionRequest{
+		Type: "attack",
+		Actions: []api.MemberActionReq{
+			{Slot: 0, Type: "spell", SpellID: "frost", TargetID: firstID, TargetMode: "all_enemies"},
+			{Slot: 1, Type: "defend"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("cast frost all: %v", err)
+	}
+
+	if !hasLogLine(result, "casts Frost on Goblin") {
+		t.Errorf("expected all-target Frost log for Goblin; got %v", result.CombatLog)
+	}
+	if !hasLogLine(result, "casts Frost on Wolf") {
+		t.Errorf("expected all-target Frost log for Wolf; got %v", result.CombatLog)
+	}
+}
+
 // TestSpellBlessAppliesHitPctBuff verifies Bless (a "buff" effect spell with
 // buff_stat=hit_pct) installs a combat-duration buff on the chosen ally.
 func TestSpellBlessAppliesHitPctBuff(t *testing.T) {
 	game := newGameWithParty(t, menderParty())
 	enterCombat(t, game)
 
-	if got := findSpellTarget(t, ptrState(game), 0, "bless"); got != "single_ally" {
-		t.Fatalf("bless target = %q, want single_ally", got)
+	if got := findSpellTarget(t, ptrState(game), 0, "bless"); got != "all_allies" {
+		t.Fatalf("bless target = %q, want all_allies", got)
 	}
 
 	_, err := game.ProcessAction(api.GameActionRequest{
@@ -214,6 +291,10 @@ func TestSpellBlessAppliesHitPctBuff(t *testing.T) {
 	buffs := api.SpellBuffsForTest(game, 1)
 	if len(buffs) == 0 {
 		t.Fatalf("expected bless to install a buff on slot 1; got none")
+	}
+	casterBuffs := api.SpellBuffsForTest(game, 0)
+	if len(casterBuffs) == 0 {
+		t.Fatalf("expected party-wide bless to install a buff on slot 0; got none")
 	}
 	totalHitBonus := 0
 	for _, b := range buffs {

@@ -209,7 +209,8 @@ export function drawButton(scene, x, y, w, h, label, onClick, opts = {}) {
     })
     .setOrigin(0.5)
     .setScrollFactor(0)
-    .setDepth(style.depth + 1);
+    .setDepth(style.depth + 1)
+    .setInteractive({ useHandCursor: true });
 
   const state = { enabled: true, active: false, pressed: false };
 
@@ -234,26 +235,35 @@ export function drawButton(scene, x, y, w, h, label, onClick, opts = {}) {
     text.setColor(style.textColor);
   };
 
-  bg.on("pointerover", () => {
+  const onPointerOver = () => {
     if (!state.enabled) return;
     if (!state.pressed) bg.setFillStyle(style.fillHover, 1);
-  });
-  bg.on("pointerout", () => {
+  };
+  const onPointerOut = () => {
     state.pressed = false;
     repaint();
-  });
-  bg.on("pointerdown", () => {
+  };
+  const onPointerDown = () => {
     if (!state.enabled) return;
     state.pressed = true;
     bg.setFillStyle(style.fillPress, 1);
-  });
-  bg.on("pointerup", () => {
+  };
+  const onPointerUp = () => {
     if (!state.enabled) return;
     const wasPressed = state.pressed;
     state.pressed = false;
     repaint();
     if (wasPressed && typeof onClick === "function") onClick();
-  });
+  };
+
+  bg.on("pointerover", onPointerOver);
+  bg.on("pointerout", onPointerOut);
+  bg.on("pointerdown", onPointerDown);
+  bg.on("pointerup", onPointerUp);
+  text.on("pointerover", onPointerOver);
+  text.on("pointerout", onPointerOut);
+  text.on("pointerdown", onPointerDown);
+  text.on("pointerup", onPointerUp);
 
   return {
     bg,
@@ -265,8 +275,10 @@ export function drawButton(scene, x, y, w, h, label, onClick, opts = {}) {
       state.enabled = !!enabled;
       if (enabled) {
         bg.setInteractive({ useHandCursor: true });
+        text.setInteractive({ useHandCursor: true });
       } else {
         bg.disableInteractive();
+        text.disableInteractive();
         state.pressed = false;
       }
       repaint();

@@ -275,7 +275,7 @@ def build_sheet_for_class(class_id: str) -> Image.Image:
         for direction in ["down", "up", "left", "right"]
     }
     sheet = Image.new("RGBA", (SHEET, SHEET), (0, 0, 0, 0))
-    for row_idx, direction in enumerate(["down", "up", "right", "left"]):
+    for row_idx, direction in enumerate(["down", "up", "left", "right"]):
         base = masters[direction]
         for col_idx in range(4):
             frame = pose_frame(base, direction, col_idx)

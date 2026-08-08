@@ -208,7 +208,8 @@ img {
 }
 
 .asset-grid,
-.walk-grid {
+.walk-grid,
+.candidate-grid {
   display: grid;
   gap: 16px;
 }
@@ -219,7 +220,11 @@ img {
 }
 
 .walk-grid {
-  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(860px, 1fr));
+}
+
+.candidate-grid {
+  grid-template-columns: 1fr;
 }
 
 .card-header {
@@ -328,7 +333,7 @@ img {
   align-items: start;
   display: grid;
   gap: 16px;
-  grid-template-columns: minmax(168px, 210px) minmax(0, 1fr);
+  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
 }
 
 .sheet-preview-wrap {
@@ -340,7 +345,7 @@ img {
 }
 
 .sheet-preview {
-  aspect-ratio: 1;
+  aspect-ratio: 2 / 1;
   display: grid;
   overflow: hidden;
   place-items: center;
@@ -372,15 +377,16 @@ img {
 }
 
 .sheet-boundary-label {
-  background: rgba(4, 7, 13, 0.84);
-  border: 1px solid rgba(105, 216, 255, 0.45);
-  border-radius: 999px;
-  color: var(--ink);
-  font-size: 10px;
-  left: 4px;
-  padding: 1px 5px;
-  position: absolute;
-  top: 4px;
+  background: rgba(4, 7, 13, 0.82);
+  color: var(--cyan);
+  display: inline-block;
+  font-size: 9px;
+  line-height: 1;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 2px 3px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sheet-axis {
@@ -406,8 +412,9 @@ img {
   align-self: start;
   display: grid;
   gap: 8px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(8, 76px);
   min-width: 0;
+  overflow-x: auto;
   position: relative;
   z-index: 1;
 }
@@ -445,6 +452,200 @@ img {
   color: var(--muted);
 }
 
+.cell-critique {
+  color: var(--cyan);
+  font-size: 9px;
+  min-height: 11px;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.motion-proof {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: grid;
+  gap: 16px;
+  padding-top: 14px;
+}
+
+.pose-sequence-panel {
+  background: rgba(105, 216, 255, 0.06);
+  border: 1px solid rgba(105, 216, 255, 0.14);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.pose-sequence-panel h4 {
+  color: var(--gold);
+  font-size: 13px;
+  margin: 0 0 10px;
+  text-transform: uppercase;
+}
+
+.pose-sequence-list {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pose-sequence-list li {
+  background: rgba(4, 7, 13, 0.34);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+}
+
+.pose-sequence-list strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.pose-sequence-list span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.motion-direction-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.motion-travel-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.motion-loop {
+  display: grid;
+  gap: 8px;
+}
+
+.motion-loop-title {
+  color: var(--gold);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.motion-loop .preview-wrap {
+  min-height: 148px;
+}
+
+.motion-loop canvas {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  width: 120px;
+}
+
+.candidate-card .preview-wrap {
+  justify-content: flex-start;
+  min-height: 0;
+  overflow-x: auto;
+}
+
+.candidate-card img {
+  display: block;
+  height: auto;
+  max-width: none;
+}
+
+.candidate-source img {
+  width: 1086px;
+}
+
+.candidate-row-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.candidate-row img {
+  width: 512px;
+}
+
+.candidate-proof img {
+  width: 100%;
+}
+
+.candidate-live-motion {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: grid;
+  gap: 12px;
+  padding-top: 14px;
+}
+
+.candidate-motion-audit {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: grid;
+  gap: 12px;
+  padding-top: 14px;
+}
+
+.motion-audit-table {
+  border-collapse: collapse;
+  color: var(--muted);
+  font-size: 12px;
+  width: 100%;
+}
+
+.motion-audit-table th,
+.motion-audit-table td {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 8px;
+  text-align: left;
+}
+
+.motion-audit-table th {
+  color: var(--ink);
+}
+
+.motion-warnings {
+  background: rgba(245, 202, 95, 0.06);
+  border-color: rgba(245, 202, 95, 0.2);
+}
+
+.candidate-motion-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.candidate-notes {
+  background: rgba(255, 157, 157, 0.06);
+  border: 1px solid rgba(255, 157, 157, 0.14);
+  border-radius: 12px;
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 12px 14px;
+}
+
+.candidate-notes li {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.travel-preview {
+  display: grid;
+  gap: 8px;
+}
+
+.travel-preview canvas {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  height: auto;
+  image-rendering: pixelated;
+  width: 100%;
+}
+
 .cell .preview-wrap {
   min-height: 0;
   padding: 8px;
@@ -453,7 +654,7 @@ img {
 .cell canvas {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
-  width: 100%;
+  width: 64px;
 }
 
 .sheet-inspector {
@@ -493,6 +694,10 @@ img {
   }
 
   .walk-sheet-layout,
+  .motion-direction-grid,
+  .motion-travel-grid,
+  .candidate-row-grid,
+  .pose-sequence-list,
   .sheet-inspector {
     grid-template-columns: 1fr;
   }

@@ -141,7 +141,7 @@ export function buildItemStatBlock(item) {
   }
   stats.push({ label: "Element", value: item?.element || "none" });
   stats.push({
-    label: "Classes",
+    label: "Wielders",
     value: allowedClassIds(item).join(", ") || "-",
   });
   return stats;
@@ -182,5 +182,5 @@ export function buildFocusedMemberCompare(item, member, equipped = {}) {
 }
 
 export function buyForMemberLabel(member) {
-  return `BUY FOR ${member?.name || "MEMBER"}`;
+  return `Buy for ${member?.name || "member"}`;
 }

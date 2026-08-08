@@ -174,8 +174,9 @@ export function messageCharMs() {
   return MESSAGE_CHAR_MS[getMessageSpeed()] ?? 30;
 }
 
-// Walk tween duration per tile-step. 2 = 100ms (current).
-const WALK_STEP_MS = [null, 200, 100, 50];
+// Walk tween duration per tile-step. Four-frame walk cycles need enough time
+// to read as animation instead of tile snapping.
+const WALK_STEP_MS = [null, 240, 160, 120];
 export function walkStepMs() {
   return WALK_STEP_MS[getWalkSpeed()] ?? 100;
 }

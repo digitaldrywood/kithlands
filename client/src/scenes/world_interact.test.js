@@ -31,13 +31,15 @@ describe("showInteractPrompt", () => {
   it("shows Rest for house tags", () => {
     const scene = makeScene();
     showInteractPrompt(scene, { name: "Home", tags: ["house"] });
-    expect(scene.interactPrompt.text).toContain("Rest at Home");
+    expect(scene.interactPrompt.text).toContain("Rest");
+    expect(scene.interactPrompt.text).not.toContain("Home");
   });
 
   it("shows Rest for safehouse tags", () => {
     const scene = makeScene();
     showInteractPrompt(scene, { name: "Hideout", tags: ["safehouse"] });
-    expect(scene.interactPrompt.text).toContain("Rest at Hideout");
+    expect(scene.interactPrompt.text).toContain("Rest");
+    expect(scene.interactPrompt.text).not.toContain("Hideout");
   });
 
   it("prefers Rest over Shop for inn-style commerce tags", () => {
@@ -46,6 +48,7 @@ describe("showInteractPrompt", () => {
       name: "The Wayward Inn",
       tags: ["commerce", "rest"],
     });
-    expect(scene.interactPrompt.text).toContain("Rest at The Wayward Inn");
+    expect(scene.interactPrompt.text).toContain("Rest");
+    expect(scene.interactPrompt.text).not.toContain("The Wayward Inn");
   });
 });

@@ -13,7 +13,7 @@ test("sprites debugger renders walk-sheet bounds and inspectable cells", async (
   await expect(overlay).toBeVisible();
   await expect(
     warriorCard.locator('[data-testid^="sheet-boundary-warrior-"]'),
-  ).toHaveCount(16);
+  ).toHaveCount(32);
 
   const firstCell = page.getByTestId("sheet-cell-warrior-r0-c0");
   await expect(firstCell).toBeVisible();
@@ -22,7 +22,13 @@ test("sprites debugger renders walk-sheet bounds and inspectable cells", async (
   await expect(
     page.getByTestId("sheet-selected-warrior").locator("canvas"),
   ).toBeVisible();
-  await expect(warriorCard).toContainText("512x512 sheet");
+  await expect(warriorCard).toContainText("1024x512 sheet");
+  await expect(page.getByTestId("motion-loop-warrior-down")).toBeVisible();
+  await expect(page.getByTestId("motion-loop-warrior-up")).toBeVisible();
+  await expect(page.getByTestId("motion-loop-warrior-left")).toBeVisible();
+  await expect(page.getByTestId("motion-loop-warrior-right")).toBeVisible();
+  await expect(page.getByTestId("travel-preview-warrior-left")).toBeVisible();
+  await expect(page.getByTestId("travel-preview-warrior-right")).toBeVisible();
   await expect(warriorCard).toContainText("Selected:");
   await expect(warriorCard).toContainText("r0-c0");
 

@@ -4,6 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kithlands Sprite Debugger</title>
+    <script>
+      if (window.location.protocol === "file:") {
+        const servedUrl = "http://127.0.0.1:3706/sprites.html";
+        document.addEventListener("DOMContentLoaded", () => {
+          document.body.innerHTML =
+            '<main style="font: 18px system-ui, sans-serif; color: #e8f2ff; background: #071525; min-height: 100vh; padding: 32px;">' +
+            "<h1>Sprite debugger must run through Vite</h1>" +
+            "<p>This page uses runtime JavaScript modules, so opening the file directly cannot load the debugger.</p>" +
+            `<p>Opening <a style="color:#75d9ff" href="${servedUrl}">${servedUrl}</a>...</p>` +
+            "</main>";
+          window.location.replace(servedUrl);
+        });
+      }
+    </script>
   </head>
   <body>
     <div class="page">
@@ -87,18 +101,40 @@
 
       <section class="section">
         <div class="section-head">
+          <h2>Candidate Walk Rows</h2>
+          <p>
+            Generated row attempts appear here before they replace runtime
+            sprites. Use this area to judge the new art and animation directly.
+          </p>
+        </div>
+        <div class="notice warn">
+          These candidates are not installed in the game. They are isolated so
+          rejected art can be reviewed without corrupting the playable runtime
+          sheet.
+        </div>
+        <div class="candidate-grid" id="candidate-grid"></div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
           <h2>Generated Class Walk Sheets</h2>
           <p>
             Each card overlays visible cell bounds on the full atlas and exposes
-            all 16 crops as separate inspectable cells.
+            every runtime crop as a separate inspectable cell, plus live walk
+            loop previews for motion QA. A sheet is not accepted unless it
+            contains the required contact/down/passing/high stride poses for its
+            declared format.
           </p>
         </div>
         <div class="legend">
-          <span>`r0-c0` means row 0, column 0 within the 4x4 sheet.</span>
+          <span>`r0-c0` means row 0, column 0 within that sheet.</span>
           <span>Click a cell to zoom it and verify the crop coordinates.</span>
           <span
-            >Row directions follow the runtime order: down, up, left,
-            right.</span
+            >Watch the movement loops and reject extreme-only foot cycles.</span
+          >
+          <span
+            >Row directions come from the same runtime geometry used by
+            BootScene.</span
           >
         </div>
         <div class="notice warn">
@@ -106,6 +142,22 @@
           is missing, the page should make that failure obvious immediately.
         </div>
         <div class="walk-grid" id="walk-grid"></div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>Generated Class Attack Sheets</h2>
+          <p>
+            Runtime attack sheets use the same native 64px grid as movement,
+            with one row per facing direction and eight frames per strike.
+          </p>
+        </div>
+        <div class="notice warn">
+          Battle animations read from this directory. Missing attack sheets
+          should show here before they silently degrade to the old lunge-only
+          fallback.
+        </div>
+        <div class="walk-grid" id="attack-grid"></div>
       </section>
 
       <section class="section">

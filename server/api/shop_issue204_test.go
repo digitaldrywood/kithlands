@@ -139,6 +139,11 @@ func TestGetShopItemsIncludesEquipmentCompareStats(t *testing.T) {
 	if len(weapon.ClassIDs) == 0 || weapon.ClassIDs[0] != "warrior" {
 		t.Fatalf("weapon class_ids = %v, want warrior-first list", weapon.ClassIDs)
 	}
+	for _, classID := range weapon.ClassIDs {
+		if classID == "mender" {
+			t.Fatalf("hand_axe should not be equippable by mender: %v", weapon.ClassIDs)
+		}
+	}
 
 	if armor == nil {
 		t.Fatal("shop missing cloth_robe")

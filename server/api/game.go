@@ -88,23 +88,25 @@ type PartyMemberReq struct {
 }
 
 type GameActionRequest struct {
-	Type     string            `json:"type"` // attack, spell, item, flee, encounter, quest_advance
-	TargetID int               `json:"target_id,omitempty"`
-	SpellID  string            `json:"spell_id,omitempty"`
-	ItemID   string            `json:"item_id,omitempty"`
-	SlotIdx  int               `json:"slot_idx,omitempty"`
-	NodeID   string            `json:"node_id,omitempty"` // node ID for quest_advance / sequence-break checks
-	TileType *int              `json:"tile_type,omitempty"`
-	Actions  []MemberActionReq `json:"actions,omitempty"` // per-member actions for combat
+	Type       string            `json:"type"` // attack, spell, item, flee, encounter, quest_advance
+	TargetID   int               `json:"target_id,omitempty"`
+	SpellID    string            `json:"spell_id,omitempty"`
+	TargetMode string            `json:"target_mode,omitempty"`
+	ItemID     string            `json:"item_id,omitempty"`
+	SlotIdx    int               `json:"slot_idx,omitempty"`
+	NodeID     string            `json:"node_id,omitempty"` // node ID for quest_advance / sequence-break checks
+	TileType   *int              `json:"tile_type,omitempty"`
+	Actions    []MemberActionReq `json:"actions,omitempty"` // per-member actions for combat
 }
 
 type MemberActionReq struct {
-	Slot      int    `json:"slot"` // party slot 0-3
-	Type      string `json:"type"` // attack, spell, item, defend, ability
-	TargetID  int    `json:"target_id"`
-	SpellID   string `json:"spell_id,omitempty"`
-	AbilityID string `json:"ability_id,omitempty"`
-	ItemID    string `json:"item_id,omitempty"` // consumable id for type=item (potion, ether, ...)
+	Slot       int    `json:"slot"` // party slot 0-3
+	Type       string `json:"type"` // attack, spell, item, defend, ability
+	TargetID   int    `json:"target_id"`
+	TargetMode string `json:"target_mode,omitempty"` // optional spell target override, e.g. single_ally/all_allies
+	SpellID    string `json:"spell_id,omitempty"`
+	AbilityID  string `json:"ability_id,omitempty"`
+	ItemID     string `json:"item_id,omitempty"` // consumable id for type=item (potion, ether, ...)
 }
 
 // GameState is the full state sent to the client.
@@ -241,17 +243,19 @@ type PartyMemberState struct {
 }
 
 type SpellState struct {
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	Target       string `json:"target"`
-	Effect       string `json:"effect"`
-	MPCost       int    `json:"mp_cost"`
-	Power        int    `json:"power,omitempty"`
-	Element      string `json:"element,omitempty"`
-	StatusEffect string `json:"status_effect,omitempty"`
-	CuresStatus  string `json:"cures_status,omitempty"`
-	BuffStat     string `json:"buff_stat,omitempty"`
-	Castable     bool   `json:"castable_in_combat"`
+	ID           string   `json:"id"`
+	Name         string   `json:"name"`
+	Target       string   `json:"target"`
+	TargetModes  []string `json:"target_modes,omitempty"`
+	Effect       string   `json:"effect"`
+	MPCost       int      `json:"mp_cost"`
+	Power        int      `json:"power,omitempty"`
+	Element      string   `json:"element,omitempty"`
+	StatusEffect string   `json:"status_effect,omitempty"`
+	CuresStatus  string   `json:"cures_status,omitempty"`
+	BuffStat     string   `json:"buff_stat,omitempty"`
+	AIPolicy     string   `json:"ai_policy,omitempty"`
+	Castable     bool     `json:"castable_in_combat"`
 }
 
 type EnemyState struct {
@@ -332,6 +336,7 @@ type CombatHitEntry struct {
 
 type QuestState struct {
 	ID           string `json:"id"`
+	TemplateID   string `json:"template_id,omitempty"`
 	Name         string `json:"name"`
 	Description  string `json:"description"`
 	Completion   string `json:"completion,omitempty"`
@@ -504,6 +509,7 @@ func cloneMemberActionReqs(in []MemberActionReq) []MemberActionReq {
 func questToState(q *generator.Quest) QuestState {
 	return QuestState{
 		ID:            q.ID,
+		TemplateID:    q.TemplateID,
 		Name:          q.Name,
 		Description:   q.Description,
 		Completion:    q.Completion,
@@ -647,6 +653,7 @@ func (g *Game) buildPartyMemberState(c *character.Character, slot int) PartyMemb
 						ID:           sid,
 						Name:         sp.Name,
 						Target:       sp.Target,
+						TargetModes:  append([]string(nil), sp.TargetModes...),
 						Effect:       sp.Effect,
 						MPCost:       sp.MPCost,
 						Power:        sp.Power,
@@ -654,6 +661,7 @@ func (g *Game) buildPartyMemberState(c *character.Character, slot int) PartyMemb
 						StatusEffect: sp.StatusEffect,
 						CuresStatus:  sp.CuresStatus,
 						BuffStat:     sp.BuffStat,
+						AIPolicy:     sp.AIPolicy,
 						Castable:     isCombatCastableEffect(sp.Effect),
 					})
 				}

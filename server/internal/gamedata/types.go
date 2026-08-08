@@ -240,20 +240,22 @@ type ChargeTable struct {
 }
 
 type Spell struct {
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	School       string `json:"school"`
-	SpellLevel   int    `json:"spell_level"`
-	MPCost       int    `json:"mp_cost"`
-	Target       string `json:"target"`
-	Effect       string `json:"effect"`
-	Element      string `json:"element"`
-	Power        int    `json:"power"`
-	StatusEffect string `json:"status_effect,omitempty"`
-	HitChance    int    `json:"hit_chance,omitempty"`
-	CuresStatus  string `json:"cures_status,omitempty"`
-	BuffStat     string `json:"buff_stat,omitempty"`
-	Description  string `json:"description"`
+	ID           string   `json:"id"`
+	Name         string   `json:"name"`
+	School       string   `json:"school"`
+	SpellLevel   int      `json:"spell_level"`
+	MPCost       int      `json:"mp_cost"`
+	Target       string   `json:"target"`
+	TargetModes  []string `json:"target_modes,omitempty"`
+	Effect       string   `json:"effect"`
+	Element      string   `json:"element"`
+	Power        int      `json:"power"`
+	StatusEffect string   `json:"status_effect,omitempty"`
+	HitChance    int      `json:"hit_chance,omitempty"`
+	CuresStatus  string   `json:"cures_status,omitempty"`
+	BuffStat     string   `json:"buff_stat,omitempty"`
+	AIPolicy     string   `json:"ai_policy,omitempty"`
+	Description  string   `json:"description"`
 }
 
 // Monsters

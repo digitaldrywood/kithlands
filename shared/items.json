@@ -9,7 +9,7 @@
       "hit_pct": 0,
       "crit_pct": 0,
       "element": "none",
-      "classes": ["warrior", "mender"],
+      "classes": ["warrior"],
       "special": "",
       "buy_price": 10,
       "sell_price": 5
@@ -165,7 +165,7 @@
       "hit_pct": -5,
       "crit_pct": 5,
       "element": "none",
-      "classes": ["warrior", "mender"],
+      "classes": ["warrior"],
       "special": "",
       "buy_price": 85,
       "sell_price": 42
@@ -292,7 +292,7 @@
       "hit_pct": -6,
       "crit_pct": 6,
       "element": "none",
-      "classes": ["warrior", "mender"],
+      "classes": ["warrior"],
       "special": "",
       "buy_price": 1300,
       "sell_price": 650
@@ -377,7 +377,7 @@
       "hit_pct": -8,
       "crit_pct": 8,
       "element": "lightning",
-      "classes": ["warrior", "mender"],
+      "classes": ["warrior"],
       "special": "",
       "buy_price": 3800,
       "sell_price": 1900
@@ -462,7 +462,7 @@
       "hit_pct": -10,
       "crit_pct": 10,
       "element": "none",
-      "classes": ["warrior", "mender"],
+      "classes": ["warrior"],
       "special": "",
       "buy_price": 11000,
       "sell_price": 5500
@@ -547,7 +547,7 @@
       "hit_pct": -12,
       "crit_pct": 12,
       "element": "none",
-      "classes": ["warrior", "mender"],
+      "classes": ["warrior"],
       "special": "",
       "buy_price": 32000,
       "sell_price": 16000

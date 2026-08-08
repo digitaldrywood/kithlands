@@ -23,16 +23,23 @@ import {
 import { shouldStartBattle } from "./encounterFlow.js";
 import { initTouchControls } from "../systems/input.js";
 import {
-  nextWalkFrame,
   walkSheetKey,
   walkFrameIndex,
+  walkFrameForProgress,
+  walkFrameSequence,
   nextLeaderIndex,
+  walkSpritePosition,
+  walkSpriteScale,
+  fallbackWalkSpriteScale,
+  classPortraitFallbackScale,
+  WALK_IDLE_FRAME,
 } from "./walkFrame.js";
 import { isWorldInputLocked } from "../systems/modalLock.js";
 import { encounterChanceForStep } from "./worldEncounter.js";
 import {
   FLY_TILES,
   TILE_COLORS,
+  TILE_IDS,
   TILE_WALKABLE,
   WATER_TILES,
 } from "./tileConstants.js";
@@ -40,6 +47,7 @@ import {
   buildTerrainRenderPlan,
   ensureTerrainRenderTexture,
 } from "./terrainAutotile.js";
+import { questObjectiveText, questKindLabel } from "./quest_text.js";
 
 const ENEMY_SPRITES = {
   Slime: "monster_slime",
@@ -62,6 +70,259 @@ const TILE_SIZE = 16;
 const SCALE = 2;
 const RENDERED_TILE = TILE_SIZE * SCALE;
 
+function randomEncountersDisabledForDebug() {
+  if (!import.meta.env?.DEV) return false;
+  if (globalThis.__kithlandsNoEncounters === true) return true;
+  try {
+    const params = new URLSearchParams(globalThis.location?.search || "");
+    return (
+      params.has("noEncounters") ||
+      params.has("no-encounters") ||
+      params.get("encounters") === "0"
+    );
+  } catch {
+    return false;
+  }
+}
+
+function setPlayerWalkFrame(scene, frame) {
+  if (!scene.player) return;
+  const selectedFrame =
+    frame === WALK_IDLE_FRAME && scene.leaderClass === "warrior" ? 3 : frame;
+  scene.walkFrameAudit?.push({
+    dir: scene.playerDir,
+    frame: selectedFrame,
+    frameIndex: scene.hasWalkSheet
+      ? walkFrameIndex(scene.playerDir, selectedFrame, scene.leaderClass)
+      : null,
+    time: scene.time?.now ?? 0,
+  });
+  if (scene.hasWalkSheet) {
+    scene.walkFrame = selectedFrame;
+    scene.player.setTexture(
+      walkSheetKey(scene.leaderClass),
+      walkFrameIndex(scene.playerDir, selectedFrame, scene.leaderClass),
+    );
+  } else {
+    scene.player.setTexture(scene.playerFallbackTexture || `player_${scene.playerDir}`);
+  }
+}
+
+function clearWalkFrameTimers(scene) {
+  scene.walkFrameTimers?.forEach((timer) => timer?.remove?.(false));
+  scene.walkFrameTimers = [];
+}
+
+function playStepAnimation(scene, stepMs, onComplete) {
+  clearWalkFrameTimers(scene);
+  if (scene.hasWalkSheet) {
+    const sequence = walkFrameSequence(scene.leaderClass);
+    sequence.forEach((frame, index) => {
+      scene.walkFrameTimers.push(
+        scene.time.delayedCall(
+          Math.round((stepMs * index) / sequence.length),
+          () => setPlayerWalkFrame(scene, frame),
+        ),
+      );
+    });
+  } else {
+    setPlayerWalkFrame(scene, WALK_IDLE_FRAME);
+  }
+  return () => {
+    clearWalkFrameTimers(scene);
+    if (scene.hasWalkSheet) {
+      setPlayerWalkFrame(scene, walkFrameSequence(scene.leaderClass).at(-1));
+    }
+    setPlayerWalkFrame(scene, WALK_IDLE_FRAME);
+    onComplete?.();
+  };
+}
+
+function isStructureTile(tile) {
+  return tile === TILE_IDS.building || tile === TILE_IDS.door;
+}
+
+function hashCode(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) {
+    h = (h * 33 + str.charCodeAt(i)) | 0;
+  }
+  return h >>> 0;
+}
+
+function isSettlementSpawn(spawn) {
+  const kind = (spawn?.kind || "").toLowerCase();
+  const type = (spawn?.building_type || "").toLowerCase();
+  return (
+    kind === "place" ||
+    kind === "business" ||
+    kind === "landmark" ||
+    type === "inn" ||
+    type === "shop" ||
+    type === "temple"
+  );
+}
+
+function drawIconHouse(graphics, x, y, size, roofColor, tall = false) {
+  const w = size;
+  const h = tall ? Math.round(size * 1.08) : Math.round(size * 0.78);
+  const roofH = Math.round(size * 0.36);
+  const bodyY = y + roofH;
+
+  graphics.fillStyle(0x10200f, 1);
+  graphics.fillTriangle(
+    x - 2,
+    bodyY + 2,
+    x + w / 2,
+    y - 2,
+    x + w + 2,
+    bodyY + 2,
+  );
+  graphics.fillRect(x - 1, bodyY, w + 2, h + 2);
+  graphics.fillStyle(roofColor, 1);
+  graphics.fillTriangle(x, bodyY, x + w / 2, y, x + w, bodyY);
+  graphics.fillRect(x + 2, bodyY - 2, w - 4, 4);
+  graphics.fillStyle(0xf1f1e7, 1);
+  graphics.fillRect(x + 2, bodyY + 2, w - 4, h - 2);
+  graphics.fillStyle(0xb9b9ad, 1);
+  graphics.fillRect(x + 3, bodyY + h - 5, w - 6, 3);
+  graphics.fillStyle(0x252018, 1);
+  graphics.fillRect(x + Math.floor(w / 2) - 2, bodyY + h - 9, 4, 9);
+  graphics.fillRect(x + 4, bodyY + 5, 3, 4);
+  if (w > 18) graphics.fillRect(x + w - 7, bodyY + 5, 3, 4);
+}
+
+function drawIconKeep(graphics, x, y, w, h) {
+  graphics.fillStyle(0x10200f, 1);
+  graphics.fillRect(x - 2, y + 8, w + 4, h + 2);
+  graphics.fillStyle(0xf0f0e8, 1);
+  graphics.fillRect(x, y + 8, w, h);
+  graphics.fillStyle(0xb9b9ad, 1);
+  graphics.fillRect(x + 3, y + h, w - 6, 5);
+  graphics.fillStyle(0x10200f, 1);
+  graphics.fillRect(x + Math.floor(w / 2) - 3, y + h - 8, 6, 13);
+  graphics.fillStyle(0xf0f0e8, 1);
+  graphics.fillRect(x, y + 4, 5, 6);
+  graphics.fillRect(x + w / 2 - 3, y, 6, 10);
+  graphics.fillRect(x + w - 5, y + 4, 5, 6);
+}
+
+function drawOverworldCastleIcon(graphics, cx, cy, seed) {
+  const baseW = 72 + (seed % 2) * 8;
+  const baseH = 54;
+  const left = cx - baseW / 2;
+  const top = cy - baseH / 2 - 6;
+
+  graphics.fillStyle(0x0d570d, 1);
+  graphics.fillRect(left - 7, top + 18, baseW + 14, baseH - 10);
+  graphics.fillStyle(0x101510, 1);
+  graphics.fillRect(left + 10, top + 38, baseW - 20, 5);
+  drawIconHouse(graphics, left + 2, top + 32, 19, 0xc9c9c0);
+  drawIconHouse(graphics, left + baseW - 21, top + 32, 19, 0xc9c9c0);
+  drawIconKeep(graphics, cx - 16, top + 4, 32, 42);
+  if (seed % 3 === 0) {
+    drawIconKeep(graphics, left + 16, top + 18, 18, 30);
+    drawIconKeep(graphics, left + baseW - 34, top + 18, 18, 30);
+  }
+}
+
+function drawOverworldTownIcon(graphics, cx, cy, seed) {
+  const variant = seed % 4;
+  const roofA = variant === 1 ? 0xd6d6cd : 0xf0f0e6;
+  const roofB = variant === 2 ? 0xbdbdb4 : 0xe4e4da;
+  const left = cx - 39;
+  const top = cy - 35;
+
+  graphics.fillStyle(0x0d610e, 1);
+  if (variant === 0) graphics.fillRect(left + 8, top + 11, 62, 50);
+  else if (variant === 1) graphics.fillRect(left + 2, top + 24, 74, 31);
+  else graphics.fillEllipse(cx, cy - 1, 76, 48);
+
+  const positions =
+    variant === 1
+      ? [
+          [left + 7, top + 23, 19, roofB, false],
+          [left + 29, top + 14, 22, roofA, true],
+          [left + 53, top + 23, 19, roofB, false],
+        ]
+      : [
+          [left + 30, top + 5, 22, roofA, true],
+          [left + 8, top + 28, 19, roofB, false],
+          [left + 52, top + 28, 19, roofB, false],
+          [left + 28, top + 43, 18, roofA, false],
+        ];
+
+  for (const [x, y, size, roof, tall] of positions) {
+    drawIconHouse(graphics, x, y, size, roof, tall);
+  }
+}
+
+function drawOverworldTempleIcon(graphics, cx, cy, seed) {
+  const left = cx - 34;
+  const top = cy - 40;
+  graphics.fillStyle(0x0d560d, 1);
+  graphics.fillEllipse(cx, cy, 80, 54);
+  graphics.fillStyle(0x111611, 1);
+  graphics.fillTriangle(cx - 25, top + 32, cx, top + 2, cx + 25, top + 32);
+  graphics.fillRect(cx - 24, top + 31, 48, 31);
+  graphics.fillStyle(seed % 2 === 0 ? 0xe9e9dd : 0xd2d2c8, 1);
+  graphics.fillTriangle(cx - 22, top + 31, cx, top + 5, cx + 22, top + 31);
+  graphics.fillStyle(0xf3f3eb, 1);
+  graphics.fillRect(cx - 20, top + 31, 40, 28);
+  graphics.fillStyle(0xb8b8ae, 1);
+  graphics.fillRect(cx - 24, top + 58, 48, 5);
+  graphics.fillStyle(0x202018, 1);
+  graphics.fillRect(cx - 4, top + 44, 8, 19);
+  if (seed % 3 === 0) {
+    drawIconHouse(graphics, left + 2, top + 38, 16, 0xe4e4d8);
+    drawIconHouse(graphics, left + 50, top + 38, 16, 0xe4e4d8);
+  }
+}
+
+function drawOverworldPointIcon(graphics, cx, cy, seed) {
+  const isCave = seed % 3 === 0;
+  graphics.fillStyle(0x0b4c0d, 1);
+  graphics.fillEllipse(cx, cy + 6, 54, 36);
+  if (isCave) {
+    graphics.fillStyle(0x8f8f85, 1);
+    graphics.fillTriangle(cx - 24, cy + 15, cx, cy - 25, cx + 24, cy + 15);
+    graphics.fillStyle(0x222018, 1);
+    graphics.fillEllipse(cx, cy + 7, 20, 21);
+    return;
+  }
+  drawIconHouse(graphics, cx - 15, cy - 25, 30, 0xe8e8df, true);
+}
+
+function drawWorldLocationMarker(graphics, spawn) {
+  if (!spawn || spawn.kind === "natural") return;
+  const seed = hashCode(
+    `${spawn.node_id || spawn.name || ""}:${spawn.x}:${spawn.y}`,
+  );
+  const cx = (spawn.x ?? 0) * RENDERED_TILE + RENDERED_TILE / 2;
+  const cy = (spawn.y ?? 0) * RENDERED_TILE + RENDERED_TILE / 2;
+  const type = (spawn.building_type || "").toLowerCase();
+  const kind = (spawn.kind || "").toLowerCase();
+
+  graphics.fillStyle(0x071007, 0.32);
+  graphics.fillEllipse(cx, cy + 17, 76, 20);
+
+  if (kind === "landmark" || type === "castle") {
+    drawOverworldCastleIcon(graphics, cx, cy, seed);
+  } else if (type === "temple") {
+    drawOverworldTempleIcon(graphics, cx, cy, seed);
+  } else if (isSettlementSpawn(spawn)) {
+    drawOverworldTownIcon(graphics, cx, cy, seed);
+  } else {
+    drawOverworldPointIcon(graphics, cx, cy, seed);
+  }
+}
+
+function drawWorldLocationMarkers(graphics, spawns = []) {
+  for (const spawn of spawns) {
+    drawWorldLocationMarker(graphics, spawn);
+  }
+}
+
 // Cache tilemap and player position across scene restarts
 let cachedTileMap = null;
 let cachedPlayerX = null;
@@ -74,6 +335,42 @@ export function getLeaderIndex() {
 }
 export function setLeaderIndex(i) {
   cachedLeaderIndex = i;
+}
+
+function cycleWorldLeader(scene) {
+  const now = scene.time?.now ?? Date.now();
+  if (now - (scene.lastLeaderCycleAt ?? -Infinity) < 120) return false;
+  if (scene.animating || scene.menuOpen || scene.gameOver) return false;
+  const party = scene.gameState?.party;
+  if (!party || party.length <= 1) return false;
+  const next = nextLeaderIndex(party, cachedLeaderIndex);
+  if (next === cachedLeaderIndex) return false;
+  scene.lastLeaderCycleAt = now;
+  cachedLeaderIndex = next;
+  const member = party[cachedLeaderIndex];
+  scene.leaderClass = member.sprite_id || member.class_id || "warrior";
+  scene.hasWalkSheet = scene.textures.exists(walkSheetKey(scene.leaderClass));
+  scene.playerFallbackTexture = scene.textures.exists(scene.leaderClass)
+    ? scene.leaderClass
+    : `player_${scene.playerDir}`;
+  if (scene.hasWalkSheet) {
+    scene.walkFrame = 0;
+    scene.player.setTexture(
+      walkSheetKey(scene.leaderClass),
+      walkFrameIndex(scene.playerDir, 0, scene.leaderClass),
+    );
+    scene.player.setScale(walkSpriteScale(RENDERED_TILE, scene.leaderClass));
+  } else {
+    scene.player.setTexture(scene.playerFallbackTexture);
+    scene.player.setScale(
+      scene.playerFallbackTexture === scene.leaderClass
+        ? classPortraitFallbackScale(RENDERED_TILE)
+        : fallbackWalkSpriteScale(RENDERED_TILE),
+    );
+  }
+  playSFX("sfx_cursor");
+  scene.updateHUD();
+  return true;
 }
 
 export class WorldScene extends Phaser.Scene {
@@ -159,13 +456,9 @@ export class WorldScene extends Phaser.Scene {
     this.tileGraphics = this.add.graphics();
     this.drawMap();
 
-    // Location labels
-    this.drawLabels();
-
-    // Player sprite (directional, restore cached direction). When the party
-    // leader's class has a walk sprite sheet loaded (#127) we use it for the
-    // per-step 4-frame cycle, otherwise fall back to the static player_{dir}
-    // image.
+    // Player sprite (directional, restore cached direction). Accepted walk
+    // sheets animate; quarantined classes use their class portrait as a
+    // temporary idle fallback instead of the old generic player art.
     this.playerDir = cachedPlayerDir;
     this.walkFrame = 0;
     // Validate cached leader index: clamp to party size and skip dead members
@@ -179,31 +472,35 @@ export class WorldScene extends Phaser.Scene {
     const leader = gs?.party?.[cachedLeaderIndex] || gs?.party?.[0];
     this.leaderClass = leader?.sprite_id || leader?.class_id || "warrior";
     this.hasWalkSheet = this.textures.exists(walkSheetKey(this.leaderClass));
+    this.playerFallbackTexture = this.textures.exists(this.leaderClass)
+      ? this.leaderClass
+      : `player_${this.playerDir}`;
 
-    const playerCx = this.playerX * RENDERED_TILE + RENDERED_TILE / 2;
-    const playerCy = this.playerY * RENDERED_TILE + RENDERED_TILE / 2;
+    const playerPos = walkSpritePosition(
+      this.playerX,
+      this.playerY,
+      RENDERED_TILE,
+    );
     if (this.hasWalkSheet) {
       this.player = this.add
         .sprite(
-          playerCx,
-          playerCy,
+          playerPos.x,
+          playerPos.y,
           walkSheetKey(this.leaderClass),
-          walkFrameIndex(this.playerDir, 0),
+          walkFrameIndex(this.playerDir, 0, this.leaderClass),
         )
+        .setOrigin(0.5, 1)
         .setDepth(10)
-        .setScale((RENDERED_TILE / 128) * SCALE);
+        .setScale(walkSpriteScale(RENDERED_TILE, this.leaderClass));
     } else {
       this.player = this.add
-        .image(playerCx, playerCy, `player_${this.playerDir}`)
+        .image(playerPos.x, playerPos.y, this.playerFallbackTexture)
+        .setOrigin(0.5, 1)
         .setDepth(10)
         .setScale(
-          (RENDERED_TILE /
-            Math.max(
-              this.textures.get(`player_${this.playerDir}`).getSourceImage()
-                .width,
-              1,
-            )) *
-            SCALE,
+          this.playerFallbackTexture === this.leaderClass
+            ? classPortraitFallbackScale(RENDERED_TILE)
+            : fallbackWalkSpriteScale(RENDERED_TILE),
         );
     }
 
@@ -241,35 +538,24 @@ export class WorldScene extends Phaser.Scene {
     this.codexOpen = false;
     this.codexGroup = null;
 
-    // Enter to interact with doors, Space to interact OR cycle leader
+    // Enter interacts with nearby locations. Space cycles the party leader.
     this.currentDoorSpawn = null;
     this.interactPrompt = null;
-    this.input.keyboard.on("keydown-ENTER", () => interactWithDoor(this));
-    this.input.keyboard.on("keydown-SPACE", () => {
-      if (this.currentDoorSpawn) {
-        interactWithDoor(this);
+    this.input.keyboard.addCapture(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.handleWindowSpaceCycle = (event) => {
+      if (event.code !== "Space" && event.key !== " " && event.key !== "Spacebar") {
         return;
       }
-      if (this.animating || this.menuOpen || this.gameOver) return;
-      const party = this.gameState?.party;
-      if (!party || party.length <= 1) return;
-      const next = nextLeaderIndex(party, cachedLeaderIndex);
-      if (next === cachedLeaderIndex) return;
-      cachedLeaderIndex = next;
-      const member = party[cachedLeaderIndex];
-      this.leaderClass = member.sprite_id || member.class_id || "warrior";
-      this.hasWalkSheet = this.textures.exists(walkSheetKey(this.leaderClass));
-      if (this.hasWalkSheet) {
-        this.walkFrame = 0;
-        this.player.setTexture(
-          walkSheetKey(this.leaderClass),
-          walkFrameIndex(this.playerDir, 0),
-        );
-      } else {
-        this.player.setTexture(`player_${this.playerDir}`);
-      }
-      playSFX("sfx_cursor");
-      this.updateHUD();
+      event.preventDefault();
+      cycleWorldLeader(this);
+    };
+    window.addEventListener("keydown", this.handleWindowSpaceCycle);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      window.removeEventListener("keydown", this.handleWindowSpaceCycle);
+    });
+    this.input.keyboard.on("keydown-ENTER", () => interactWithDoor(this));
+    this.input.keyboard.on("keydown-SPACE", () => {
+      cycleWorldLeader(this);
     });
 
     // TAB for world map
@@ -287,6 +573,10 @@ export class WorldScene extends Phaser.Scene {
       .rectangle(400, 580, 800, 40, 0x000000, 0.8)
       .setScrollFactor(0)
       .setDepth(20);
+    this.add
+      .rectangle(400, 559, 800, 2, 0xd7b45c, 0.65)
+      .setScrollFactor(0)
+      .setDepth(21);
     this.hudText = this.add
       .text(10, 564, "", {
         fontSize: "12px",
@@ -305,17 +595,19 @@ export class WorldScene extends Phaser.Scene {
       .setDepth(21);
     this.updateHUD();
 
-    // Quest indicator
+    // Objective card. The old two-line debug label exposed quest template
+    // names more than player intent; this keeps the next action readable.
+    this.questCard = this.add.graphics().setScrollFactor(0).setDepth(21);
     this.questText = this.add
-      .text(10, 5, "", {
+      .text(18, 14, "", {
         fontSize: "11px",
-        color: "#ffff44",
+        color: "#f5efe0",
         fontFamily: "monospace",
-        backgroundColor: "#00000099",
-        padding: { x: 4, y: 2 },
+        lineSpacing: 3,
+        wordWrap: { width: 250 },
       })
       .setScrollFactor(0)
-      .setDepth(21);
+      .setDepth(22);
     this.updateQuestDisplay();
 
     // Message overlay
@@ -357,9 +649,9 @@ export class WorldScene extends Phaser.Scene {
 
     // HUD buttons
     const muteBtn = this.add
-      .text(620, 575, isMuted() ? "[unmute]" : "[mute]", {
-        fontSize: "12px",
-        color: "#666666",
+      .text(606, 575, isMuted() ? "Unmute" : "Mute", {
+        fontSize: "11px",
+        color: "#9aa4b5",
         fontFamily: "monospace",
       })
       .setScrollFactor(0)
@@ -367,13 +659,13 @@ export class WorldScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     muteBtn.on("pointerdown", () => {
       const m = toggleMute();
-      muteBtn.setText(m ? "[unmute]" : "[mute]");
+      muteBtn.setText(m ? "Unmute" : "Mute");
     });
 
     const codexBtn = this.add
-      .text(690, 575, "[H]elp", {
-        fontSize: "12px",
-        color: "#8888ff",
+      .text(680, 575, "Help  H", {
+        fontSize: "11px",
+        color: "#d8e6ff",
         fontFamily: "monospace",
       })
       .setScrollFactor(0)
@@ -382,9 +674,9 @@ export class WorldScene extends Phaser.Scene {
     codexBtn.on("pointerdown", () => toggleCodex(this));
 
     const menuBtn = this.add
-      .text(760, 575, "[M]enu", {
-        fontSize: "12px",
-        color: "#ffcc44",
+      .text(752, 575, "Menu  M", {
+        fontSize: "11px",
+        color: "#f0d77a",
         fontFamily: "monospace",
       })
       .setScrollFactor(0)
@@ -459,6 +751,7 @@ export class WorldScene extends Phaser.Scene {
   update(time) {
     if (isWorldInputLocked(this)) return;
     if (!this.hudText || !this.player) return; // scene destroyed
+    if (this.animating) return;
     if (time - this.lastMoveTime < this.moveCooldown) return;
 
     let dx = 0,
@@ -492,39 +785,41 @@ export class WorldScene extends Phaser.Scene {
     else if (dx > 0) dir = "right";
     else if (dy < 0) dir = "up";
     else if (dy > 0) dir = "down";
-    const dirChanged = dir !== this.playerDir;
     this.playerDir = dir;
 
-    if (this.hasWalkSheet) {
-      this.walkFrame = dirChanged ? 0 : nextWalkFrame(this.walkFrame);
-      this.player.setTexture(
-        walkSheetKey(this.leaderClass),
-        walkFrameIndex(this.playerDir, this.walkFrame),
-      );
-    } else {
-      this.player.setTexture(`player_${this.playerDir}`);
-    }
+    setPlayerWalkFrame(this, WALK_IDLE_FRAME);
 
     // Cache position for scene transitions
     cachedPlayerX = this.playerX;
     cachedPlayerY = this.playerY;
     cachedPlayerDir = this.playerDir;
 
-    const destX = nx * RENDERED_TILE + RENDERED_TILE / 2;
-    const destY = ny * RENDERED_TILE + RENDERED_TILE / 2;
+    const dest = walkSpritePosition(nx, ny, RENDERED_TILE);
     const stepMs = walkStepMs();
+    this.animating = true;
+    this.walkFrameAudit = [];
+    const finishStepAnimation = playStepAnimation(this, stepMs, () => {
+      this.animating = false;
+    });
     this.tweens.add({
       targets: this.player,
-      x: destX,
-      y: destY,
+      x: dest.x,
+      y: dest.y,
       duration: stepMs,
       ease: "Linear",
+      onUpdate: (tween) => {
+        setPlayerWalkFrame(
+          this,
+          walkFrameForProgress(tween.progress, this.leaderClass),
+        );
+      },
+      onComplete: finishStepAnimation,
     });
     if (this.vehicleIndicator) {
       this.tweens.add({
         targets: this.vehicleIndicator,
-        x: destX,
-        y: destY,
+        x: nx * RENDERED_TILE + RENDERED_TILE / 2,
+        y: ny * RENDERED_TILE + RENDERED_TILE / 2,
         duration: stepMs,
         ease: "Linear",
       });
@@ -532,30 +827,34 @@ export class WorldScene extends Phaser.Scene {
 
     this.stepCount++;
 
-    // Door tile -- show prompt to enter
-    if (tile === 5) {
-      const spawn = this.spawns.find(
-        (s) => Math.abs(s.x - nx) <= 1 && Math.abs(s.y - ny) <= 2,
-      );
-      if (spawn) {
-        this.currentDoorSpawn = spawn;
-        showInteractPrompt(this, spawn);
+    const nearbySpawn = this.spawns.find(
+      (s) =>
+        s.kind !== "natural" &&
+        Math.abs(s.x - nx) <= 1 &&
+        Math.abs(s.y - ny) <= 2,
+    );
+    if (tile === 5 || nearbySpawn) {
+      if (nearbySpawn) {
+        this.currentDoorSpawn = nearbySpawn;
+        showInteractPrompt(this, nearbySpawn);
       }
     } else if (this.currentDoorSpawn) {
       this.currentDoorSpawn = null;
       hideInteractPrompt(this);
     }
 
-    // Random encounter chance varies by terrain tile and transport tier.
-    const encounterMult = this.gameState.transport?.encounter_rate_mult ?? 1.0;
-    const chance = encounterChanceForStep({
-      tile,
-      stepCount: this.stepCount,
-      transportMult: encounterMult,
-    });
-    if (chance > 0 && Phaser.Math.Between(1, 100) <= chance) {
-      this.stepCount = 0;
-      this.triggerRandomEncounter(tile);
+    if (!randomEncountersDisabledForDebug()) {
+      // Random encounter chance varies by terrain tile and transport tier.
+      const encounterMult = this.gameState.transport?.encounter_rate_mult ?? 1.0;
+      const chance = encounterChanceForStep({
+        tile,
+        stepCount: this.stepCount,
+        transportMult: encounterMult,
+      });
+      if (chance > 0 && Phaser.Math.Between(1, 100) <= chance) {
+        this.stepCount = 0;
+        this.triggerRandomEncounter(tile);
+      }
     }
 
     this.updateHUD();
@@ -649,8 +948,13 @@ export class WorldScene extends Phaser.Scene {
     if (this.tileSprites) {
       this.tileSprites.destroy(true);
     }
+    if (this.locationGraphics) {
+      this.locationGraphics.destroy();
+    }
     this.tileSprites = this.add.container(0, 0);
     this.tileSprites.setDepth(0);
+    this.locationGraphics = this.add.graphics();
+    this.locationGraphics.setDepth(2);
 
     for (let y = 0; y < this.mapH; y++) {
       for (let x = 0; x < this.mapW; x++) {
@@ -668,14 +972,28 @@ export class WorldScene extends Phaser.Scene {
             .setOrigin(0, 0)
             .setDisplaySize(RENDERED_TILE, RENDERED_TILE);
           this.tileSprites.add(img);
+        } else if (isStructureTile(tile)) {
+          if (this.textures.exists("tile_grass")) {
+            const img = this.add
+              .image(px, py, "tile_grass")
+              .setOrigin(0, 0)
+              .setDisplaySize(RENDERED_TILE, RENDERED_TILE);
+            this.tileSprites.add(img);
+          } else {
+            this.tileGraphics.fillStyle(TILE_COLORS[TILE_IDS.grass], 1);
+            this.tileGraphics.fillRect(px, py, RENDERED_TILE, RENDERED_TILE);
+          }
         } else {
-          // building (4), door (5), floor (6) — keep the existing color fallback
+          // floor (6) and any future non-terrain IDs keep the color fallback.
           const color = TILE_COLORS[tile] || 0x000000;
           this.tileGraphics.fillStyle(color, 1);
           this.tileGraphics.fillRect(px, py, RENDERED_TILE, RENDERED_TILE);
         }
       }
     }
+    // On the overland map, settlements and points of interest are destination
+    // markers. The full cluster of custom buildings belongs inside Town.
+    drawWorldLocationMarkers(this.locationGraphics, this.spawns);
   }
 
   drawMinimap() {
@@ -746,26 +1064,6 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  drawLabels() {
-    for (const spawn of this.spawns) {
-      this.add
-        .text(
-          spawn.x * RENDERED_TILE + RENDERED_TILE / 2,
-          spawn.y * RENDERED_TILE - 10,
-          spawn.name,
-          {
-            fontSize: "9px",
-            color: "#ffffff",
-            fontFamily: "monospace",
-            backgroundColor: "#00000099",
-            padding: { x: 3, y: 1 },
-          },
-        )
-        .setOrigin(0.5, 1)
-        .setDepth(5);
-    }
-  }
-
   updateHUD() {
     if (!this.hudText) return;
     const gs = this.gameState;
@@ -824,15 +1122,28 @@ export class WorldScene extends Phaser.Scene {
 
   updateQuestDisplay() {
     const gs = this.gameState;
+    const drawCard = (title, detail, accent = 0xd7b45c) => {
+      const lines = [title, detail].filter(Boolean);
+      this.questText.setText(lines.join("\n"));
+      const bounds = this.questText.getBounds();
+      const width = Math.max(230, Math.min(290, bounds.width + 28));
+      const height = Math.max(48, bounds.height + 22);
+      this.questCard.clear();
+      this.questCard.fillStyle(0x06100c, 0.78);
+      this.questCard.fillRoundedRect(8, 8, width, height, 6);
+      this.questCard.lineStyle(2, 0x14281d, 0.95);
+      this.questCard.strokeRoundedRect(8, 8, width, height, 6);
+      this.questCard.fillStyle(accent, 1);
+      this.questCard.fillRect(12, 14, 4, height - 12);
+    };
+
     if (gs.current_quest < gs.quests.length) {
       const q = gs.quests[gs.current_quest];
-      const lines = [`Quest: ${q.name}`];
-      if (q.target_name) {
-        lines.push(`Go to: ${q.target_name}`);
-      }
-      this.questText.setText(lines.join("\n"));
+      const title = `${questKindLabel(q)}: ${q.name}`;
+      const detail = questObjectiveText(q);
+      drawCard(title, detail);
     } else {
-      this.questText.setText("All quests complete!");
+      drawCard("Campaign Complete", "All quests complete.", 0x88d47a);
     }
   }
 
@@ -893,7 +1204,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     const acceptBtn = this.add
-      .text(280, 460, "[ CLAIM PROMOTION ]", {
+      .text(280, 460, "Claim Promotion", {
         fontSize: "16px",
         color: "#88ff88",
         fontFamily: "monospace",
@@ -903,7 +1214,7 @@ export class WorldScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
     const skipBtn = this.add
-      .text(520, 460, "[ SKIP ]", {
+      .text(520, 460, "Skip", {
         fontSize: "16px",
         color: "#ffaaaa",
         fontFamily: "monospace",

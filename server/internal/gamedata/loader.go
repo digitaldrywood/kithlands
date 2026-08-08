@@ -162,10 +162,15 @@ func (gd *GameData) validate() {
 		panic("gamedata: classes.json is empty")
 	}
 
+	classIDs := make(map[string]bool, len(gd.Classes))
 	for _, c := range gd.Classes {
 		if c.ID == "" {
 			panic("gamedata: class with empty id")
 		}
+		if classIDs[c.ID] {
+			panic(fmt.Sprintf("gamedata: duplicate class id %q", c.ID))
+		}
+		classIDs[c.ID] = true
 		if c.Name == "" {
 			panic(fmt.Sprintf("gamedata: class %q has empty name", c.ID))
 		}
@@ -213,6 +218,28 @@ func (gd *GameData) validate() {
 		if w.Power < 0 {
 			panic(fmt.Sprintf("gamedata: weapon %q has negative power", w.ID))
 		}
+		validateClassRefs("weapon", w.ID, w.Classes, classIDs)
+	}
+
+	for _, a := range gd.Items.Armor {
+		if a.ID == "" {
+			panic("gamedata: armor with empty id")
+		}
+		validateClassRefs("armor", a.ID, a.Classes, classIDs)
+	}
+
+	for _, s := range gd.Items.Shields {
+		if s.ID == "" {
+			panic("gamedata: shield with empty id")
+		}
+		validateClassRefs("shield", s.ID, s.Classes, classIDs)
+	}
+
+	for _, h := range gd.Items.Helmets {
+		if h.ID == "" {
+			panic("gamedata: helmet with empty id")
+		}
+		validateClassRefs("helmet", h.ID, h.Classes, classIDs)
 	}
 
 	for _, a := range gd.Abilities {
@@ -230,6 +257,23 @@ func (gd *GameData) validate() {
 		}
 		if s.SpellLevel < 1 || s.SpellLevel > 8 {
 			panic(fmt.Sprintf("gamedata: spell %q has invalid spell_level: %d", s.ID, s.SpellLevel))
+		}
+		if s.Target == "" {
+			panic(fmt.Sprintf("gamedata: spell %q has empty target", s.ID))
+		}
+		if len(s.TargetModes) > 0 {
+			foundDefault := false
+			for _, mode := range s.TargetModes {
+				if mode == "" {
+					panic(fmt.Sprintf("gamedata: spell %q has empty target_modes entry", s.ID))
+				}
+				if mode == s.Target {
+					foundDefault = true
+				}
+			}
+			if !foundDefault {
+				panic(fmt.Sprintf("gamedata: spell %q target_modes must include default target %q", s.ID, s.Target))
+			}
 		}
 	}
 
@@ -341,6 +385,25 @@ func (gd *GameData) validate() {
 		if t.Unlock == "" {
 			panic(fmt.Sprintf("gamedata: transport tier %q has empty unlock condition", t.ID))
 		}
+	}
+}
+
+func validateClassRefs(kind, id string, refs []string, classIDs map[string]bool) {
+	if len(refs) == 0 {
+		panic(fmt.Sprintf("gamedata: %s %q has no class restrictions", kind, id))
+	}
+	seen := map[string]bool{}
+	for _, ref := range refs {
+		if ref == "" {
+			panic(fmt.Sprintf("gamedata: %s %q has empty class reference", kind, id))
+		}
+		if !classIDs[ref] {
+			panic(fmt.Sprintf("gamedata: %s %q references unknown class %q", kind, id, ref))
+		}
+		if seen[ref] {
+			panic(fmt.Sprintf("gamedata: %s %q repeats class %q", kind, id, ref))
+		}
+		seen[ref] = true
 	}
 }
 

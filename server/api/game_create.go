@@ -132,7 +132,7 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 			_, _ = inv.EquipWeapon(i, "wooden_staff", pm.ClassID, gm.gd)
 			_, _ = inv.EquipArmor(i, "cloth_robe", pm.ClassID, gm.gd)
 		case "mender":
-			_, _ = inv.EquipWeapon(i, "wooden_club", pm.ClassID, gm.gd)
+			_, _ = inv.EquipWeapon(i, "wooden_staff", pm.ClassID, gm.gd)
 			_, _ = inv.EquipArmor(i, "cloth_robe", pm.ClassID, gm.gd)
 		case "rogue":
 			_, _ = inv.EquipWeapon(i, "rusty_dagger", pm.ClassID, gm.gd)

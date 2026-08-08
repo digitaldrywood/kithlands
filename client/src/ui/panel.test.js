@@ -72,11 +72,14 @@ function makeRectangle() {
 }
 
 function makeText(initial) {
+  const handlers = {};
   const t = {
     __kind: "text",
     text: initial,
     color: null,
+    interactive: false,
     destroyed: false,
+    handlers,
     setOrigin() {
       return t;
     },
@@ -92,6 +95,18 @@ function makeText(initial) {
     },
     setColor(c) {
       t.color = c;
+      return t;
+    },
+    setInteractive() {
+      t.interactive = true;
+      return t;
+    },
+    disableInteractive() {
+      t.interactive = false;
+      return t;
+    },
+    on(event, fn) {
+      handlers[event] = fn;
       return t;
     },
     destroy() {
@@ -164,6 +179,15 @@ describe("drawButton", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
+  it("fires onClick when the visible label is clicked", () => {
+    const scene = freshScene();
+    const onClick = vi.fn();
+    const btn = drawButton(scene, 100, 100, 120, 30, ">", onClick);
+    btn.label.handlers.pointerdown();
+    btn.label.handlers.pointerup();
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
   it("does not fire onClick on pointerup without a preceding pointerdown", () => {
     const scene = freshScene();
     const onClick = vi.fn();
@@ -179,12 +203,14 @@ describe("drawButton", () => {
     btn.setEnabled(false);
     expect(btn.isEnabled()).toBe(false);
     expect(btn.bg.interactive).toBe(false);
+    expect(btn.label.interactive).toBe(false);
     btn.bg.handlers.pointerdown();
     btn.bg.handlers.pointerup();
     expect(onClick).not.toHaveBeenCalled();
 
     btn.setEnabled(true);
     expect(btn.bg.interactive).toBe(true);
+    expect(btn.label.interactive).toBe(true);
     btn.bg.handlers.pointerdown();
     btn.bg.handlers.pointerup();
     expect(onClick).toHaveBeenCalledTimes(1);

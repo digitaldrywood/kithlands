@@ -170,6 +170,30 @@ describe("heal spell on ally", () => {
     });
   });
 
+  it("preserves all-allies target mode for repeatable mixed-target healing", () => {
+    const gs = makeState();
+    gs.party[0] = makeMember(0, 80, 100, 20, 50, [
+      {
+        id: "cure",
+        name: "Cure",
+        target: "single_ally",
+        target_modes: ["single_ally", "all_allies"],
+        effect: "heal",
+        mp_cost: 8,
+      },
+    ]);
+    const actor = gs.party[0];
+    const action = {
+      slot: 0,
+      type: "spell",
+      target_id: -1,
+      spell_id: "cure",
+      target_mode: "all_allies",
+    };
+    const result = resolveAction(action, actor, gs);
+    expect(result).toEqual(action);
+  });
+
   it("falls back to attack if not enough MP", () => {
     const gs = makeState();
     // Set MP to 0
@@ -218,6 +242,36 @@ describe("damage spell on enemy", () => {
       type: "spell",
       target_id: 1,
       spell_id: "fire",
+    });
+  });
+
+  it("preserves all-enemies target mode for repeatable mixed-target damage", () => {
+    const gs = makeState();
+    gs.party[0] = makeMember(0, 80, 100, 20, 50, [
+      {
+        id: "frost",
+        name: "Frost",
+        target: "single_enemy",
+        target_modes: ["single_enemy", "all_enemies"],
+        effect: "damage",
+        mp_cost: 5,
+      },
+    ]);
+    const actor = gs.party[0];
+    const action = {
+      slot: 0,
+      type: "spell",
+      target_id: 2,
+      spell_id: "frost",
+      target_mode: "all_enemies",
+    };
+    const result = resolveAction(action, actor, gs);
+    expect(result).toEqual({
+      slot: 0,
+      type: "spell",
+      target_id: 1,
+      spell_id: "frost",
+      target_mode: "all_enemies",
     });
   });
 
@@ -568,6 +622,116 @@ describe("smart attack planner", () => {
     });
   });
 
+  it("healer does not spend Cure on trivial chip damage", () => {
+    const gs = makeState({
+      party: [
+        makeMember(
+          0,
+          96,
+          100,
+          20,
+          30,
+          [
+            {
+              id: "cure",
+              name: "Cure",
+              target: "single_ally",
+              effect: "heal",
+              mp_cost: 4,
+              power: 16,
+              castable_in_combat: true,
+            },
+          ],
+          { class_id: "mender", int_stat: 19, str: 5 },
+        ),
+        makeMember(1, 94, 100, 0, 0, [], { class_id: "warrior", str: 20 }),
+      ],
+    });
+
+    const plan = planSmartRound(gs, [0]);
+    expect(plan.actions[0]).toMatchObject({ type: "attack" });
+  });
+
+  it("healer uses all-allies mode when mixed-target Cure can cover a wounded party", () => {
+    const gs = makeState({
+      party: [
+        makeMember(
+          0,
+          58,
+          100,
+          20,
+          30,
+          [
+            {
+              id: "cure",
+              name: "Cure",
+              target: "single_ally",
+              target_modes: ["single_ally", "all_allies"],
+              effect: "heal",
+              mp_cost: 4,
+              power: 16,
+              castable_in_combat: true,
+            },
+          ],
+          { class_id: "mender", int_stat: 19, str: 5 },
+        ),
+        makeMember(1, 55, 100, 0, 0, [], { class_id: "warrior", str: 20 }),
+        makeMember(2, 98, 100),
+      ],
+    });
+
+    const plan = planSmartRound(gs, [0]);
+    expect(plan.actions[0]).toEqual({
+      slot: 0,
+      type: "spell",
+      target_id: -1,
+      spell_id: "cure",
+      target_mode: "all_allies",
+    });
+  });
+
+  it("healer saves Bless for boss or elite encounters", () => {
+    const spell = {
+      id: "bless",
+      name: "Bless",
+      target: "all_allies",
+      effect: "buff",
+      mp_cost: 2,
+      power: 10,
+      buff_stat: "hit_pct",
+      ai_policy: "boss_or_elite",
+      castable_in_combat: true,
+    };
+    const party = [
+      makeMember(0, 100, 100, 20, 30, [spell], {
+        class_id: "mender",
+        int_stat: 19,
+        str: 5,
+      }),
+      makeMember(1, 100, 100, 0, 0, [], { class_id: "warrior", str: 20 }),
+    ];
+
+    const trashPlan = planSmartRound(
+      makeState({ party, enemies: [makeEnemy(1, 50, 50)] }),
+      [0],
+    );
+    expect(trashPlan.actions[0]).toMatchObject({ type: "attack" });
+
+    const bossPlan = planSmartRound(
+      makeState({
+        party,
+        enemies: [makeEnemy(10, 300, 300, { name: "Boss", size: "boss" })],
+      }),
+      [0],
+    );
+    expect(bossPlan.actions[0]).toEqual({
+      slot: 0,
+      type: "spell",
+      target_id: -1,
+      spell_id: "bless",
+    });
+  });
+
   it("offensive caster exploits elemental weakness deterministically", () => {
     const gs = makeState({
       enemies: [
@@ -678,6 +842,48 @@ describe("smart attack planner", () => {
       slot: 0,
       type: "spell",
       spell_id: "ember",
+    });
+  });
+
+  it("uses all-enemies mode when mixed-target Frost can sweep a group", () => {
+    const gs = makeState({
+      enemies: [
+        makeEnemy(1, 80, 80, { name: "Goblin" }),
+        makeEnemy(2, 80, 80, { name: "Goblin B" }),
+        makeEnemy(3, 80, 80, { name: "Goblin C" }),
+      ],
+      party: [
+        makeMember(
+          0,
+          60,
+          80,
+          30,
+          30,
+          [
+            {
+              id: "frost",
+              name: "Frost",
+              target: "single_enemy",
+              target_modes: ["single_enemy", "all_enemies"],
+              effect: "damage",
+              mp_cost: 4,
+              power: 10,
+              element: "ice",
+              castable_in_combat: true,
+            },
+          ],
+          { class_id: "cinder", str: 4, int_stat: 22 },
+        ),
+      ],
+    });
+
+    const plan = planSmartRound(gs, [0]);
+    expect(plan.actions[0]).toEqual({
+      slot: 0,
+      type: "spell",
+      target_id: 1,
+      spell_id: "frost",
+      target_mode: "all_enemies",
     });
   });
 

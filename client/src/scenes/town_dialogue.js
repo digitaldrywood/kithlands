@@ -42,6 +42,17 @@ function fallbackForTags(tags) {
   return FALLBACK_DIALOGUE.default;
 }
 
+function isConfirmKey(event) {
+  return (
+    event?.key === "Enter" ||
+    event?.code === "Enter" ||
+    event?.key === " " ||
+    event?.key === "Space" ||
+    event?.key === "Spacebar" ||
+    event?.code === "Space"
+  );
+}
+
 export async function openDialogue(scene, spawn, providedDialogue = null) {
   pauseWorldFor(scene, "dialogue");
   scene.animating = true;
@@ -65,14 +76,17 @@ export async function openDialogue(scene, spawn, providedDialogue = null) {
 
   const overlay = [];
 
-  // Dialogue box background (bottom of screen, RPG style)
-  const boxY = 460;
-  const boxH = 130;
+  // Dialogue box background (bottom of screen, RPG style). Keep this above
+  // the room and interaction prompts, but above the footer instead of behind
+  // it.
+  const depth = 1700;
+  const boxY = 430;
+  const boxH = 118;
   const bg = scene.add
-    .rectangle(400, boxY + boxH / 2, 760, boxH, 0x0a0a22, 0.95)
-    .setStrokeStyle(2, 0x4488ff)
+    .rectangle(400, boxY + boxH / 2, 760, boxH, 0x0a0a22, 1)
+    .setStrokeStyle(2, 0x7fb7ff)
     .setScrollFactor(0)
-    .setDepth(60)
+    .setDepth(depth)
     .setInteractive();
   overlay.push(bg);
 
@@ -84,7 +98,7 @@ export async function openDialogue(scene, spawn, providedDialogue = null) {
       fontFamily: "monospace",
     })
     .setScrollFactor(0)
-    .setDepth(61);
+    .setDepth(depth + 1);
   overlay.push(nameText);
 
   // Dialogue text
@@ -97,19 +111,19 @@ export async function openDialogue(scene, spawn, providedDialogue = null) {
       lineSpacing: 4,
     })
     .setScrollFactor(0)
-    .setDepth(61);
+    .setDepth(depth + 1);
   overlay.push(dialogueText);
 
   // Advance prompt
   const promptText = scene.add
-    .text(720, boxY + boxH - 20, "[ENTER]", {
+    .text(704, boxY + boxH - 18, "Enter", {
       fontSize: "10px",
-      color: "#888888",
+      color: "#b9c7dd",
       fontFamily: "monospace",
     })
     .setOrigin(0.5)
     .setScrollFactor(0)
-    .setDepth(61);
+    .setDepth(depth + 1);
   overlay.push(promptText);
 
   // Blink the prompt
@@ -126,8 +140,7 @@ export async function openDialogue(scene, spawn, providedDialogue = null) {
       overlay.forEach((o) => o.destroy());
       scene.animating = false;
       resumeWorldFor(scene, "dialogue");
-      scene.input.keyboard.off("keydown-ENTER", advanceHandler);
-      scene.input.keyboard.off("keydown-SPACE", advanceHandler);
+      scene.input.keyboard.off("keydown", keyHandler);
       scene.input.keyboard.off("keydown-ESC", escHandler);
       resolve();
     };
@@ -139,7 +152,7 @@ export async function openDialogue(scene, spawn, providedDialogue = null) {
       } else {
         dialogueText.setText(lines[lineIndex]);
         if (lineIndex === lines.length - 1) {
-          promptText.setText("[CLOSE]");
+          promptText.setText("Close");
         }
       }
     };
@@ -147,9 +160,14 @@ export async function openDialogue(scene, spawn, providedDialogue = null) {
     const escHandler = () => {
       closeDialogue();
     };
+    const keyHandler = (event) => {
+      if (!isConfirmKey(event)) return;
+      event?.preventDefault?.();
+      if (event?.repeat) return;
+      advanceHandler();
+    };
 
-    scene.input.keyboard.on("keydown-ENTER", advanceHandler);
-    scene.input.keyboard.on("keydown-SPACE", advanceHandler);
+    scene.input.keyboard.on("keydown", keyHandler);
     scene.input.keyboard.on("keydown-ESC", escHandler);
 
     // Also allow clicking the box to advance

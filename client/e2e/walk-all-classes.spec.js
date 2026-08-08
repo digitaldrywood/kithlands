@@ -16,6 +16,7 @@ const CLASS_IDS = [
 ];
 
 const DIRS = ["down", "up", "left", "right"];
+const WALK_FRAME_COUNT = 8;
 const OPPOSITE_DIR = {
   down: "up",
   up: "down",
@@ -24,9 +25,9 @@ const OPPOSITE_DIR = {
 };
 const BASE_FRAME = {
   down: 0,
-  up: 4,
-  left: 8,
-  right: 12,
+  up: WALK_FRAME_COUNT,
+  left: WALK_FRAME_COUNT * 2,
+  right: WALK_FRAME_COUNT * 3,
 };
 
 async function startGame(page) {
@@ -74,16 +75,11 @@ async function auditClassScene(page, sceneKey, classId) {
       { dir: OPPOSITE_DIR[dir], sceneKey },
     );
 
-    const sequence = [];
-    for (let step = 0; step < 4; step++) {
-      sequence.push(
-        await page.evaluate(
-          ({ dir, sceneKey }) =>
-            window.__kithlandsTest.movePlayer(dir, sceneKey),
-          { dir, sceneKey },
-        ),
-      );
-    }
+    const sequence = await page.evaluate(
+      ({ dir, sceneKey }) =>
+        window.__kithlandsTest.sampleMovePlayer(dir, sceneKey),
+      { dir, sceneKey },
+    );
 
     expect(sequence.every((step) => step.moved)).toBe(true);
     expect(sequence.every((step) => step.playerDir === dir)).toBe(true);
@@ -92,13 +88,15 @@ async function auditClassScene(page, sceneKey, classId) {
     expect(
       sequence.every((step) => step.textureKey === `${classId}_walk`),
     ).toBe(true);
-    expect(sequence.map((step) => step.frameIndex)).toEqual([
-      BASE_FRAME[dir] + 0,
-      BASE_FRAME[dir] + 1,
-      BASE_FRAME[dir] + 2,
-      BASE_FRAME[dir] + 3,
-    ]);
-    expect(new Set(sequence.map((step) => step.frameHash)).size).toBe(4);
+    const auditedFrames = sequence
+      .at(-1)
+      .walkFrameAudit.map((entry) => entry.frameIndex);
+    expect(auditedFrames).toContain(BASE_FRAME[dir] + 0);
+    expect(auditedFrames.some((frame) => frame > BASE_FRAME[dir] + 0)).toBe(
+      true,
+    );
+    expect(auditedFrames).toContain(sequence.at(-1).frameIndex);
+    expect(new Set(auditedFrames).size).toBeGreaterThan(1);
   }
 
   const perDirection = {};

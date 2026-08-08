@@ -4,6 +4,20 @@ import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 import { isRestBuilding } from "./building_type.js";
 import { TILE_COLORS } from "./tileConstants.js";
 
+function opensExteriorSettlement(spawn) {
+  const kind = (spawn?.kind || "").toLowerCase();
+  const type = (spawn?.building_type || "").toLowerCase();
+  return (
+    kind === "place" ||
+    kind === "business" ||
+    kind === "landmark" ||
+    type === "inn" ||
+    type === "shop" ||
+    type === "temple" ||
+    type === "castle"
+  );
+}
+
 export async function interactWithDoor(scene) {
   if (scene.animating || scene.menuOpen || scene.gameOver) return;
   const spawn = scene.currentDoorSpawn;
@@ -25,6 +39,10 @@ export async function interactWithDoor(scene) {
   playSFX("sfx_door");
   scene.cameras.main.fadeOut(300, 0, 0, 0);
   scene.cameras.main.once("camerafadeoutcomplete", () => {
+    if (opensExteriorSettlement(spawn)) {
+      scene.scene.start("Settlement", { gameState: scene.gameState, spawn });
+      return;
+    }
     scene.scene.start("Town", { gameState: scene.gameState, spawn });
   });
 }
@@ -175,7 +193,7 @@ export function showInteractPrompt(scene, spawn) {
     .text(
       scene.player.x,
       scene.player.y - 30,
-      `${isTouchDevice() ? "[ TAP A ]" : "[ ENTER / SPACE ]"} ${action} at ${spawn.name}`,
+      `${isTouchDevice() ? "[ TAP A ]" : "[ ENTER / SPACE ]"} ${action}`,
       {
         fontSize: "10px",
         color: "#ffff44",

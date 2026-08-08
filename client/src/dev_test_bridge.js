@@ -24,10 +24,15 @@ import { showEquipPicker } from "./scenes/world_menu.js";
 import {
   walkSheetKey,
   walkFrameIndex,
+  walkSpritePosition,
+  walkSpriteScale,
+  fallbackWalkSpriteScale,
+  classPortraitFallbackScale,
   WALK_SHEET_CLASS_IDS,
 } from "./scenes/walkFrame.js";
 import { setLeaderIndex } from "./scenes/world.js";
 import { encounterChanceForStep } from "./scenes/worldEncounter.js";
+import { walkStepMs } from "./systems/prefs.js";
 
 const DIR_DELTAS = {
   up: [0, -1],
@@ -612,10 +617,7 @@ function canWalk(scene, x, y) {
 function playerPixelPosition(scene, x, y) {
   const offsetX = scene?.offsetX || 0;
   const offsetY = scene?.offsetY || 0;
-  return {
-    x: offsetX + x * 32 + 16,
-    y: offsetY + y * 32 + 16,
-  };
+  return walkSpritePosition(x, y, 32, offsetX, offsetY);
 }
 
 function sceneObjectsReady(scene, sceneKey, leaderClass = null) {
@@ -656,14 +658,28 @@ function rebuildPlayerSprite(scene) {
         x,
         y,
         walkSheetKey(scene.leaderClass),
-        walkFrameIndex(scene.playerDir, scene.walkFrame || 0),
+        walkFrameIndex(
+          scene.playerDir,
+          scene.walkFrame || 0,
+          scene.leaderClass,
+        ),
       )
+      .setOrigin(0.5, 1)
       .setDepth(10)
-      .setScale(0.5);
+      .setScale(walkSpriteScale(32, scene.leaderClass));
   } else {
+    scene.playerFallbackTexture = scene.textures.exists(scene.leaderClass)
+      ? scene.leaderClass
+      : `player_${scene.playerDir}`;
     scene.player = scene.add
-      .image(x, y, `player_${scene.playerDir}`)
+      .image(x, y, scene.playerFallbackTexture)
+      .setOrigin(0.5, 1)
       .setDepth(10);
+    scene.player.setScale(
+      scene.playerFallbackTexture === scene.leaderClass
+        ? classPortraitFallbackScale(32)
+        : fallbackWalkSpriteScale(32),
+    );
   }
   if (scene?.scene?.key === "World") {
     scene.cameras?.main?.startFollow?.(scene.player, true, 0.1, 0.1);
@@ -680,10 +696,18 @@ function setPlayerSprite(scene) {
   if (scene.hasWalkSheet) {
     scene.player.setTexture(
       walkSheetKey(scene.leaderClass),
-      walkFrameIndex(scene.playerDir, scene.walkFrame || 0),
+      walkFrameIndex(scene.playerDir, scene.walkFrame || 0, scene.leaderClass),
     );
   } else {
-    scene.player.setTexture(`player_${scene.playerDir}`);
+    scene.playerFallbackTexture = scene.textures.exists(scene.leaderClass)
+      ? scene.leaderClass
+      : `player_${scene.playerDir}`;
+    scene.player.setTexture(scene.playerFallbackTexture);
+    scene.player.setScale(
+      scene.playerFallbackTexture === scene.leaderClass
+        ? classPortraitFallbackScale(32)
+        : fallbackWalkSpriteScale(32),
+    );
   }
 }
 
@@ -794,6 +818,7 @@ function playerSnapshot(scene, moved) {
     walkFrame: scene?.walkFrame ?? null,
     hasWalkSheet: !!scene?.hasWalkSheet,
     leaderClass: scene?.leaderClass || null,
+    walkFrameAudit: clone(scene?.walkFrameAudit || []),
     frameHash: frameHash(scene),
     x: scene?.playerX ?? null,
     y: scene?.playerY ?? null,
@@ -1072,6 +1097,15 @@ export function installDevTestBridge(game) {
 
     sceneIsActive(sceneKey) {
       return game.scene.isActive(sceneKey);
+    },
+
+    textureExists(key) {
+      return game.textures.exists(key);
+    },
+
+    setNoEncounters(enabled = true) {
+      globalThis.__kithlandsNoEncounters = !!enabled;
+      return { noEncounters: globalThis.__kithlandsNoEncounters };
     },
 
     sceneFlags(sceneKey) {
@@ -1685,11 +1719,43 @@ export function installDevTestBridge(game) {
       const beforeX = scene.playerX;
       const beforeY = scene.playerY;
       const [dx, dy] = DIR_DELTAS[dir] || [0, 0];
+      if (scene.scene?.key === "World") scene.stepCount = 0;
       scene.tryMove(dx, dy);
       return playerSnapshot(
         scene,
         beforeX !== scene.playerX || beforeY !== scene.playerY,
       );
+    },
+
+    async sampleMovePlayer(dir, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      if (!scene?.player || typeof scene.tryMove !== "function") {
+        throw new Error("Scene cannot move player");
+      }
+      const beforeX = scene.playerX;
+      const beforeY = scene.playerY;
+      const [dx, dy] = DIR_DELTAS[dir] || [0, 0];
+      if (scene.scene?.key === "World") scene.stepCount = 0;
+      scene.tryMove(dx, dy);
+      const moved = beforeX !== scene.playerX || beforeY !== scene.playerY;
+      const stepMs = walkStepMs();
+      const delays = [0, 0.3, 0.55, 0.8, 1.2].map((ratio) =>
+        Math.round(stepMs * ratio),
+      );
+      const samples = await Promise.all(
+        delays.map(
+          (delay) =>
+            new Promise((resolve) => {
+              window.setTimeout(
+                () => resolve(playerSnapshot(scene, moved)),
+                delay,
+              );
+            }),
+        ),
+      );
+      await waitFor(() => !scene.animating, 1000);
+      samples.push(playerSnapshot(scene, moved));
+      return samples;
     },
 
     exportPlayerFrame(sceneKey = "World") {
@@ -1841,7 +1907,13 @@ export function installDevTestBridge(game) {
       let settled = false;
       const interval = setInterval(() => {
         if (settled) return;
-        scene.input.keyboard.emit("keydown-ENTER");
+        const event = {
+          key: "Enter",
+          code: "Enter",
+          preventDefault() {},
+        };
+        scene.input.keyboard.emit("keydown", event);
+        scene.input.keyboard.emit("keydown-ENTER", event);
       }, 200);
       try {
         await pending;

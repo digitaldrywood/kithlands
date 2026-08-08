@@ -160,7 +160,13 @@ export function toggleCodex(scene) {
           {
             title: "Weapons",
             items: [
-              { name: "Wooden Club", pow: 5, tier: 1, who: "Warrior, Mender" },
+              { name: "Wooden Club", pow: 5, tier: 1, who: "Warrior" },
+              {
+                name: "Wooden Staff",
+                pow: 4,
+                tier: 1,
+                who: "Mender, Cinder, Wayfarer",
+              },
               {
                 name: "Short Sword",
                 pow: 6,

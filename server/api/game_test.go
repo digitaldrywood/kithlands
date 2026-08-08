@@ -581,7 +581,7 @@ func TestSpellInCombat(t *testing.T) {
 	gs := post(t, ts.URL+"/api/game/new", api.NewGameRequest{
 		TownName: "Test", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
 		Places: []string{"X"}, BigBuilding: "Hall",
-		Party:      []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}, {Name: "Mage", ClassID: "cinder"}},
+		Party:      []api.PartyMemberReq{{Name: "Mage", ClassID: "cinder"}},
 		Difficulty: "normal",
 	})
 	gameID := gs["id"].(string)
@@ -591,12 +591,11 @@ func TestSpellInCombat(t *testing.T) {
 	enemies := gs["enemies"].([]any)
 	enemyID := int(enemies[0].(map[string]any)["id"].(float64))
 
-	// Hero attacks, Mage casts Spark
+	// Mage casts Spark.
 	gs = post(t, ts.URL+"/api/game/"+gameID+"/action", api.GameActionRequest{
 		Type: "combat_round",
 		Actions: []api.MemberActionReq{
-			{Slot: 0, Type: "attack", TargetID: enemyID},
-			{Slot: 1, Type: "spell", TargetID: enemyID, SpellID: "spark"},
+			{Slot: 0, Type: "spell", TargetID: enemyID, SpellID: "spark"},
 		},
 	})
 
