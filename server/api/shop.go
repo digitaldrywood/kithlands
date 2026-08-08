@@ -281,40 +281,60 @@ func (g *Game) EquipItem(slot int, itemID, itemType string) error {
 	}
 
 	classID := g.party[slot].ClassID
+	if instance := g.inv.Instance(itemID); instance != nil {
+		if instance.Kind != itemType {
+			return fmt.Errorf("equipment %q is not %s", itemID, itemType)
+		}
+		previous, err := g.inv.EquipInstance(slot, itemID, classID, g.party[slot].Level, g.gd)
+		if err != nil {
+			return err
+		}
+		if itemType == "weapon" && previous.WeaponID != "" && previous.WeaponInstanceID == "" {
+			g.inv.Consumables["wpn_"+previous.WeaponID]++
+		}
+		if itemType == "armor" && previous.ArmorID != "" && previous.ArmorInstanceID == "" {
+			g.inv.Consumables["arm_"+previous.ArmorID]++
+		}
+		return nil
+	}
 
 	switch itemType {
 	case "weapon":
+		key := "wpn_" + itemID
+		if g.inv.Consumables[key] <= 0 {
+			return fmt.Errorf("weapon %q not owned", itemID)
+		}
+		previous := g.inv.Equipment[slot]
 		prev, err := g.inv.EquipWeapon(slot, itemID, classID, g.gd)
 		if err != nil {
 			return err
 		}
 		// Put previous weapon back in inventory
-		if prev != "" {
+		if prev != "" && previous.WeaponInstanceID == "" {
 			g.inv.Consumables["wpn_"+prev]++
 		}
 		// Remove new weapon from inventory
-		key := "wpn_" + itemID
-		if g.inv.Consumables[key] > 0 {
-			g.inv.Consumables[key]--
-			if g.inv.Consumables[key] == 0 {
-				delete(g.inv.Consumables, key)
-			}
+		g.inv.Consumables[key]--
+		if g.inv.Consumables[key] == 0 {
+			delete(g.inv.Consumables, key)
 		}
 		return nil
 	case "armor":
+		key := "arm_" + itemID
+		if g.inv.Consumables[key] <= 0 {
+			return fmt.Errorf("armor %q not owned", itemID)
+		}
+		previous := g.inv.Equipment[slot]
 		prev, err := g.inv.EquipArmor(slot, itemID, classID, g.gd)
 		if err != nil {
 			return err
 		}
-		if prev != "" {
+		if prev != "" && previous.ArmorInstanceID == "" {
 			g.inv.Consumables["arm_"+prev]++
 		}
-		key := "arm_" + itemID
-		if g.inv.Consumables[key] > 0 {
-			g.inv.Consumables[key]--
-			if g.inv.Consumables[key] == 0 {
-				delete(g.inv.Consumables, key)
-			}
+		g.inv.Consumables[key]--
+		if g.inv.Consumables[key] == 0 {
+			delete(g.inv.Consumables, key)
 		}
 		return nil
 	}
