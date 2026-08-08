@@ -348,6 +348,11 @@ func (gd *GameData) validate() {
 		if !validSizes[m.Size] {
 			panic(fmt.Sprintf("gamedata: monster %q has invalid size: %q", m.ID, m.Size))
 		}
+		for _, drop := range m.Drops {
+			if drop.ChancePct < 1 || drop.ChancePct > 100 || !gd.validChestItemID(drop.ItemID) {
+				panic(fmt.Sprintf("gamedata: monster %q has invalid drop %q", m.ID, drop.ItemID))
+			}
+		}
 	}
 
 	for _, ki := range gd.Items.KeyItems {
@@ -718,7 +723,7 @@ func validateChestReward(gd *GameData, label, kind, itemID string, amount int, f
 }
 
 func (gd *GameData) validChestItemID(id string) bool {
-	if gd.WeaponByID(id) != nil || gd.ArmorByID(id) != nil {
+	if gd.WeaponByID(id) != nil || gd.ArmorByID(id) != nil || gd.GemByID(id) != nil {
 		return true
 	}
 	for i := range gd.Items.Consumables {
