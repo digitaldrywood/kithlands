@@ -236,3 +236,86 @@ function renderRecipeColumn(scene, group, gs, onCraft) {
     );
   });
 }
+
+export function showGemWorkshop(scene, { onClose } = {}) {
+  pauseWorldFor(scene, "gem_workshop");
+  const overlay = [];
+  const content = [];
+  let selectedID = socketableGear(scene.gameState)[0]?.instance_id || "";
+  let busy = false;
+
+  const close = () => {
+    clearGroup(content);
+    clearGroup(overlay);
+    resumeWorldFor(scene, "gem_workshop");
+    if (onClose) onClose();
+  };
+  drawWorkshopFrame(scene, overlay, close);
+
+  const notify = (message) => {
+    scene.showMessage(message);
+    scene.time.delayedCall(1800, () => scene.hideMessage());
+  };
+
+  const runAction = async (action, successMessage) => {
+    if (busy) return;
+    busy = true;
+    const result = await action();
+    busy = false;
+    if (result.error) {
+      notify(result.error);
+      return;
+    }
+    scene.gameState = result;
+    playSFX("sfx_equip");
+    notify(successMessage);
+    const gear = socketableGear(result);
+    if (!gear.some((item) => item.instance_id === selectedID)) {
+      selectedID = gear[0]?.instance_id || "";
+    }
+    render();
+  };
+
+  const selectGear = (instanceID) => {
+    selectedID = instanceID;
+    render();
+  };
+  const socketSelected = async (gemID) => {
+    const item = socketableGear(scene.gameState).find(
+      (candidate) => candidate.instance_id === selectedID,
+    );
+    const socket = firstOpenSocket(item);
+    if (!item || socket < 0) return;
+    const gem = ownedGems(scene.gameState).find(
+      (candidate) => candidate.id === gemID,
+    );
+    await runAction(
+      () => socketGem(scene.gameState.id, selectedID, socket, gemID),
+      `${gem?.name || "Gem"} socketed into ${item.name}.`,
+    );
+  };
+  const craftSelected = async (recipeID) => {
+    const recipe = knownRecipes(scene.gameState).find(
+      (candidate) => candidate.id === recipeID,
+    );
+    await runAction(
+      () => craftGem(scene.gameState.id, recipeID),
+      `${recipe?.name || "Recipe"} complete.`,
+    );
+  };
+
+  function render() {
+    clearGroup(content);
+    renderGearColumn(scene, content, scene.gameState, selectedID, selectGear);
+    renderGemColumn(
+      scene,
+      content,
+      scene.gameState,
+      selectedID,
+      socketSelected,
+    );
+    renderRecipeColumn(scene, content, scene.gameState, craftSelected);
+  }
+
+  render();
+}
