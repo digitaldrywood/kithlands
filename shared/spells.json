@@ -172,6 +172,7 @@
       "effect": "damage",
       "element": "fire",
       "power": 20,
+      "cinematic_tier": "major",
       "description": "Medium fire damage to one enemy"
     },
     {
@@ -184,6 +185,7 @@
       "effect": "damage",
       "element": "ice",
       "power": 20,
+      "cinematic_tier": "major",
       "description": "Medium ice damage to one enemy"
     },
     {
@@ -197,6 +199,7 @@
       "power": 0,
       "status_effect": "slow",
       "hit_chance": 65,
+      "cinematic_tier": "major",
       "description": "Halves AGI of one enemy"
     },
     {
@@ -209,6 +212,7 @@
       "effect": "damage",
       "element": "fire",
       "power": 24,
+      "cinematic_tier": "major",
       "description": "Medium fire damage to all enemies"
     },
     {
@@ -221,6 +225,7 @@
       "effect": "damage",
       "element": "ice",
       "power": 24,
+      "cinematic_tier": "major",
       "description": "Medium ice damage to all enemies"
     },
     {
@@ -233,6 +238,7 @@
       "effect": "damage",
       "element": "lightning",
       "power": 24,
+      "cinematic_tier": "major",
       "description": "Medium lightning damage to all enemies"
     },
     {
@@ -245,6 +251,7 @@
       "effect": "heal",
       "element": "none",
       "power": 32,
+      "cinematic_tier": "major",
       "description": "Restore ~32 HP to one ally"
     },
     {
@@ -257,6 +264,7 @@
       "element": "none",
       "power": 100,
       "buff_stat": "armor_absorb",
+      "cinematic_tier": "major",
       "description": "Doubles armor of one ally for combat"
     },
     {
@@ -269,6 +277,7 @@
       "element": "none",
       "power": 0,
       "cures_status": "all",
+      "cinematic_tier": "major",
       "description": "Removes all status effects from all allies"
     },
     {
@@ -281,6 +290,7 @@
       "effect": "heal",
       "element": "none",
       "power": 32,
+      "cinematic_tier": "major",
       "description": "Restore ~32 HP to all allies"
     },
     {
@@ -293,6 +303,7 @@
       "effect": "damage",
       "element": "holy",
       "power": 40,
+      "cinematic_tier": "major",
       "description": "Massive holy damage to one undead enemy"
     },
     {
@@ -304,6 +315,7 @@
       "effect": "utility",
       "element": "none",
       "power": 0,
+      "cinematic_tier": "major",
       "description": "Revive one fallen ally with 1 HP"
     }
   ]

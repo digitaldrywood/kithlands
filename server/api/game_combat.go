@@ -71,6 +71,32 @@ func allMissed(hits []combat.Hit) bool {
 	return len(hits) > 0
 }
 
+func spellCombatAction(spell *gamedata.Spell, action CombatActionEntry) CombatActionEntry {
+	if spell == nil {
+		return action
+	}
+	action.ActionID = spell.ID
+	action.ActionName = spell.Name
+	action.CinematicTier = spell.CinematicTier
+	action.TargetMode = spell.Target
+	if action.SpellName == "" {
+		action.SpellName = spell.Name
+	}
+	return action
+}
+
+func (g *Game) abilityCombatAction(abilityID string, action CombatActionEntry) CombatActionEntry {
+	ability := g.gd.AbilityByID(abilityID)
+	if ability == nil {
+		return action
+	}
+	action.ActionID = ability.ID
+	action.ActionName = ability.Name
+	action.CinematicTier = ability.CinematicTier
+	action.TargetMode = ability.Target
+	return action
+}
+
 type scheduledRoundActionKind string
 
 const (
@@ -659,15 +685,15 @@ func (g *Game) logResolvedCombatAction(
 		case "focus":
 			g.logCombat(
 				fmt.Sprintf("%s focuses - next attacks hit harder!", r.ActorName),
-				CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, Initiative: r.Initiative})
+				g.abilityCombatAction(abilityID, CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, Initiative: r.Initiative}))
 		case "counter":
 			g.logCombat(
 				fmt.Sprintf("%s braces to counter!", r.ActorName),
-				CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, Initiative: r.Initiative})
+				g.abilityCombatAction(abilityID, CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, Initiative: r.Initiative}))
 		case "inspire":
 			g.logCombat(
 				fmt.Sprintf("%s inspires the party!", r.ActorName),
-				CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, Initiative: r.Initiative})
+				g.abilityCombatAction(abilityID, CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, Initiative: r.Initiative}))
 		case "backstab":
 			status := ""
 			if r.Killed {
@@ -676,25 +702,25 @@ func (g *Game) logResolvedCombatAction(
 			g.logCombat(
 				fmt.Sprintf("%s backstabs %s for %d damage%s",
 					r.ActorName, targetName, r.TotalDmg, status),
-				CombatActionEntry{Kind: "ability", DamageType: "physical",
+				g.abilityCombatAction(abilityID, CombatActionEntry{Kind: "ability", DamageType: "physical",
 					ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, TargetName: targetName,
 					Damage: r.TotalDmg, Killed: r.Killed, Crit: anyCrit(r.Hits), Hits: toHitEntries(r.Hits),
-					Initiative: r.Initiative})
+					Initiative: r.Initiative}))
 		case "steal":
 			if itemID, itemName, ok := g.tryStealFrom(r.TargetID); ok {
 				g.inv.Consumables[itemID]++
 				g.logCombat(
 					fmt.Sprintf("%s steals %s from %s!", r.ActorName, itemName, targetName),
-					CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Initiative: r.Initiative})
+					g.abilityCombatAction(abilityID, CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Initiative: r.Initiative}))
 			} else {
 				g.logCombat(
 					fmt.Sprintf("%s tries to steal from %s but finds nothing.", r.ActorName, targetName),
-					CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Initiative: r.Initiative})
+					g.abilityCombatAction(abilityID, CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Initiative: r.Initiative}))
 			}
 		default:
 			g.logCombat(
 				fmt.Sprintf("%s uses an ability.", r.ActorName),
-				CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, Initiative: r.Initiative})
+				g.abilityCombatAction(abilityID, CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, Initiative: r.Initiative}))
 		}
 	default:
 		if r.TotalDmg > 0 {
@@ -781,13 +807,13 @@ func (g *Game) resolveScheduledSpell(combatants []*combat.Combatant, ma MemberAc
 				e.CurrentHP = 0
 				g.logCombat(
 					fmt.Sprintf("%s casts %s on %s[%d] for %d damage - DEFEATED!", caster.Name, spell.Name, e.Name, e.ID, dmg),
-					CombatActionEntry{Kind: "spell", Element: spell.Element, DamageType: "magical",
-						ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, TargetName: e.Name, Damage: dmg, Killed: true, SpellName: spell.Name})
+					spellCombatAction(spell, CombatActionEntry{Kind: "spell", Element: spell.Element, DamageType: "magical",
+						ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, TargetName: e.Name, Damage: dmg, Killed: true, SpellName: spell.Name}))
 			} else {
 				g.logCombat(
 					fmt.Sprintf("%s casts %s on %s[%d] for %d damage", caster.Name, spell.Name, e.Name, e.ID, dmg),
-					CombatActionEntry{Kind: "spell", Element: spell.Element, DamageType: "magical",
-						ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, TargetName: e.Name, Damage: dmg, SpellName: spell.Name})
+					spellCombatAction(spell, CombatActionEntry{Kind: "spell", Element: spell.Element, DamageType: "magical",
+						ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, TargetName: e.Name, Damage: dmg, SpellName: spell.Name}))
 			}
 			if spell.Target == "single_enemy" {
 				break
@@ -810,11 +836,11 @@ func (g *Game) resolveScheduledSpell(combatants []*combat.Combatant, ma MemberAc
 				combat.ApplyStatus(e, character.Status(spell.StatusEffect))
 				g.logCombat(
 					fmt.Sprintf("%s casts %s on %s[%d] - %s!", caster.Name, spell.Name, e.Name, e.ID, spell.StatusEffect),
-					CombatActionEntry{Kind: "status_effect", ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, SpellName: spell.Name})
+					spellCombatAction(spell, CombatActionEntry{Kind: "status_effect", ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, SpellName: spell.Name}))
 			} else {
 				g.logCombat(
 					fmt.Sprintf("%s casts %s on %s[%d] - resisted!", caster.Name, spell.Name, e.Name, e.ID),
-					CombatActionEntry{Kind: "status_effect", ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, SpellName: spell.Name})
+					spellCombatAction(spell, CombatActionEntry{Kind: "status_effect", ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, SpellName: spell.Name}))
 			}
 			if spell.Target == "single_enemy" {
 				break
@@ -842,7 +868,7 @@ func (g *Game) resolveScheduledSpell(combatants []*combat.Combatant, ma MemberAc
 			}
 			g.logCombat(
 				fmt.Sprintf("%s casts %s - statuses cured!", caster.Name, spell.Name),
-				CombatActionEntry{Kind: "heal", ActorID: pc.ID, ActorName: caster.Name, SpellName: spell.Name})
+				spellCombatAction(spell, CombatActionEntry{Kind: "heal", ActorID: pc.ID, ActorName: caster.Name, SpellName: spell.Name}))
 			return
 		}
 		targetIdx := ma.TargetID
@@ -853,7 +879,8 @@ func (g *Game) resolveScheduledSpell(combatants []*combat.Combatant, ma MemberAc
 			}
 			g.logCombat(
 				fmt.Sprintf("%s casts %s on %s - cured!", caster.Name, spell.Name, g.party[targetIdx].Name),
-				CombatActionEntry{Kind: "heal", ActorID: pc.ID, ActorName: caster.Name, SpellName: spell.Name})
+				spellCombatAction(spell, CombatActionEntry{Kind: "heal", ActorID: pc.ID, ActorName: caster.Name,
+					TargetID: targetIdx, TargetName: g.party[targetIdx].Name, SpellName: spell.Name}))
 		}
 	}
 }
@@ -917,13 +944,13 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 					e.CurrentHP = 0
 					g.logCombat(
 						fmt.Sprintf("%s casts %s on %s for %d - DEFEATED!", caster.Name, spell.Name, e.Name, dmg),
-						CombatActionEntry{Kind: "spell", Element: spell.Element, DamageType: "magical",
-							ActorName: caster.Name, TargetID: e.ID, Damage: dmg, Killed: true, SpellName: spell.Name})
+						spellCombatAction(spell, CombatActionEntry{Kind: "spell", Element: spell.Element, DamageType: "magical",
+							ActorName: caster.Name, TargetID: e.ID, Damage: dmg, Killed: true, SpellName: spell.Name}))
 				} else {
 					g.logCombat(
 						fmt.Sprintf("%s casts %s on %s for %d (HP:%d)", caster.Name, spell.Name, e.Name, dmg, e.CurrentHP),
-						CombatActionEntry{Kind: "spell", Element: spell.Element, DamageType: "magical",
-							ActorName: caster.Name, TargetID: e.ID, Damage: dmg, SpellName: spell.Name})
+						spellCombatAction(spell, CombatActionEntry{Kind: "spell", Element: spell.Element, DamageType: "magical",
+							ActorName: caster.Name, TargetID: e.ID, Damage: dmg, SpellName: spell.Name}))
 				}
 				if spell.Target == "single_enemy" {
 					break
@@ -943,7 +970,7 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 			target.Heal(amt)
 			g.logCombat(
 				fmt.Sprintf("%s casts %s on %s for %d HP", caster.Name, spell.Name, target.Name, amt),
-				CombatActionEntry{Kind: "heal", ActorName: caster.Name, Damage: amt, SpellName: spell.Name})
+				spellCombatAction(spell, CombatActionEntry{Kind: "heal", ActorName: caster.Name, Damage: amt, SpellName: spell.Name}))
 		}
 	}
 
@@ -1315,9 +1342,9 @@ func (g *Game) resolveHealSpell(
 			msg += " - DEFEATED!"
 		}
 		g.logCombat(msg,
-			CombatActionEntry{Kind: "spell", Element: "holy", DamageType: "magical",
+			spellCombatAction(spell, CombatActionEntry{Kind: "spell", Element: "holy", DamageType: "magical",
 				ActorID: pc.ID, ActorName: caster.Name, TargetID: target.ID, TargetName: target.Name,
-				Damage: amt, Killed: killed, SpellName: spell.Name})
+				Damage: amt, Killed: killed, SpellName: spell.Name}))
 		return
 	}
 
@@ -1329,8 +1356,8 @@ func (g *Game) resolveHealSpell(
 		}
 		g.logCombat(
 			fmt.Sprintf("%s casts %s on %s - healed %d HP", caster.Name, spell.Name, g.party[slot].Name, amt),
-			CombatActionEntry{Kind: "heal", ActorID: pc.ID, ActorName: caster.Name,
-				TargetID: slot, TargetName: g.party[slot].Name, Damage: amt, SpellName: spell.Name})
+			spellCombatAction(spell, CombatActionEntry{Kind: "heal", ActorID: pc.ID, ActorName: caster.Name,
+				TargetID: slot, TargetName: g.party[slot].Name, Damage: amt, SpellName: spell.Name}))
 	}
 
 	if spell.Target == "all_allies" {
@@ -1418,8 +1445,8 @@ func (g *Game) resolveBuffSpell(
 		combatants[slot].Buffs = live
 		g.logCombat(
 			fmt.Sprintf("%s casts %s on %s", caster.Name, spell.Name, g.party[slot].Name),
-			CombatActionEntry{Kind: "spell", ActorID: pc.ID, ActorName: caster.Name,
-				TargetID: slot, TargetName: g.party[slot].Name, SpellName: spell.Name})
+			spellCombatAction(spell, CombatActionEntry{Kind: "spell", ActorID: pc.ID, ActorName: caster.Name,
+				TargetID: slot, TargetName: g.party[slot].Name, SpellName: spell.Name}))
 	}
 
 	if spell.Target == "all_allies" {

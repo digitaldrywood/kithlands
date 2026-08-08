@@ -107,6 +107,38 @@ type CombatConfig struct {
 	EnemyTargetWeights []float64 `json:"enemy_targeting_weights"`
 }
 
+// ShowcaseData defines the disposable developer battle entered from the title
+// screen. Keeping the roster and loadout in shared/ prevents the debug client
+// or Go mechanics from becoming a second source of game content.
+type ShowcaseData struct {
+	Title       string                `json:"title"`
+	Description string                `json:"description"`
+	TownName    string                `json:"town_name"`
+	Places      []string              `json:"places"`
+	BigBuilding string                `json:"big_building"`
+	Level       int                   `json:"level"`
+	RNGSeed     int64                 `json:"rng_seed"`
+	Gold        int                   `json:"gold"`
+	Party       []ShowcasePartyMember `json:"party"`
+	Consumables map[string]int        `json:"consumables"`
+	Encounter   ShowcaseEncounter     `json:"encounter"`
+	Tips        []string              `json:"tips"`
+}
+
+type ShowcasePartyMember struct {
+	Name     string   `json:"name"`
+	ClassID  string   `json:"class_id"`
+	Row      string   `json:"row,omitempty"`
+	WeaponID string   `json:"weapon_id"`
+	ArmorID  string   `json:"armor_id"`
+	Spells   []string `json:"spells,omitempty"`
+}
+
+type ShowcaseEncounter struct {
+	MonsterIDs []string `json:"monster_ids"`
+	Level      int      `json:"level"`
+}
+
 // Items
 
 type ItemsData struct {
@@ -157,25 +189,29 @@ type KeyItem struct {
 }
 
 type Weapon struct {
-	ID        string   `json:"id"`
-	Name      string   `json:"name"`
-	Type      string   `json:"type"`
-	Tier      int      `json:"tier"`
-	Power     int      `json:"power"`
-	HitPct    int      `json:"hit_pct"`
-	CritPct   int      `json:"crit_pct"`
-	Element   string   `json:"element"`
-	Classes   []string `json:"classes"`
-	LongRange bool     `json:"long_range,omitempty"`
-	Special   string   `json:"special"`
-	BuyPrice  int      `json:"buy_price"`
-	SellPrice int      `json:"sell_price"`
+	ID           string   `json:"id"`
+	Name         string   `json:"name"`
+	Type         string   `json:"type"`
+	Tier         int      `json:"tier"`
+	Power        int      `json:"power"`
+	HitPct       int      `json:"hit_pct"`
+	CritPct      int      `json:"crit_pct"`
+	Element      string   `json:"element"`
+	Classes      []string `json:"classes"`
+	LongRange    bool     `json:"long_range,omitempty"`
+	VisualID     string   `json:"visual_id,omitempty"`
+	AnimationSet string   `json:"animation_set,omitempty"`
+	Special      string   `json:"special"`
+	BuyPrice     int      `json:"buy_price"`
+	SellPrice    int      `json:"sell_price"`
 }
 
 type Ability struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	IgnoresRow bool   `json:"ignores_row,omitempty"`
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	Target        string `json:"target,omitempty"`
+	IgnoresRow    bool   `json:"ignores_row,omitempty"`
+	CinematicTier string `json:"cinematic_tier,omitempty"`
 }
 
 type Armor struct {
@@ -240,22 +276,23 @@ type ChargeTable struct {
 }
 
 type Spell struct {
-	ID           string   `json:"id"`
-	Name         string   `json:"name"`
-	School       string   `json:"school"`
-	SpellLevel   int      `json:"spell_level"`
-	MPCost       int      `json:"mp_cost"`
-	Target       string   `json:"target"`
-	TargetModes  []string `json:"target_modes,omitempty"`
-	Effect       string   `json:"effect"`
-	Element      string   `json:"element"`
-	Power        int      `json:"power"`
-	StatusEffect string   `json:"status_effect,omitempty"`
-	HitChance    int      `json:"hit_chance,omitempty"`
-	CuresStatus  string   `json:"cures_status,omitempty"`
-	BuffStat     string   `json:"buff_stat,omitempty"`
-	AIPolicy     string   `json:"ai_policy,omitempty"`
-	Description  string   `json:"description"`
+	ID            string   `json:"id"`
+	Name          string   `json:"name"`
+	School        string   `json:"school"`
+	SpellLevel    int      `json:"spell_level"`
+	MPCost        int      `json:"mp_cost"`
+	Target        string   `json:"target"`
+	TargetModes   []string `json:"target_modes,omitempty"`
+	Effect        string   `json:"effect"`
+	Element       string   `json:"element"`
+	Power         int      `json:"power"`
+	StatusEffect  string   `json:"status_effect,omitempty"`
+	HitChance     int      `json:"hit_chance,omitempty"`
+	CuresStatus   string   `json:"cures_status,omitempty"`
+	BuffStat      string   `json:"buff_stat,omitempty"`
+	AIPolicy      string   `json:"ai_policy,omitempty"`
+	CinematicTier string   `json:"cinematic_tier,omitempty"`
+	Description   string   `json:"description"`
 }
 
 // Monsters

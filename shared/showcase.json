@@ -1,0 +1,80 @@
+{
+  "title": "SYSTEMS SHOWCASE",
+  "description": "Developer-only disposable battle setup for checking brisk actions, major cinematics, magic, abilities, equipment, and items.",
+  "town_name": "Cadott Combat Lab",
+  "places": ["Showcase Arena", "Equipment Gallery", "Spell Workshop"],
+  "big_building": "Systems Hall",
+  "level": 12,
+  "rng_seed": 2742026,
+  "gold": 9999,
+  "party": [
+    {
+      "name": "Hero",
+      "class_id": "warrior",
+      "row": "front",
+      "weapon_id": "mythril_sword",
+      "armor_id": "war_plate"
+    },
+    {
+      "name": "Sparks",
+      "class_id": "cinder",
+      "row": "back",
+      "weapon_id": "war_staff",
+      "armor_id": "arcane_robe",
+      "spells": [
+        "spark",
+        "frost",
+        "ember",
+        "shock",
+        "fireball",
+        "iceshard",
+        "blaze",
+        "thunder"
+      ]
+    },
+    {
+      "name": "Mercy",
+      "class_id": "mender",
+      "row": "back",
+      "weapon_id": "war_staff",
+      "armor_id": "arcane_robe",
+      "spells": [
+        "cure",
+        "bless",
+        "heal",
+        "mute",
+        "cura",
+        "aegis",
+        "heala",
+        "banish"
+      ]
+    },
+    {
+      "name": "Shade",
+      "class_id": "rogue",
+      "row": "front",
+      "weapon_id": "shadow_blade",
+      "armor_id": "shadow_leather"
+    }
+  ],
+  "consumables": {
+    "potion": 12,
+    "hi_potion": 8,
+    "ether": 8,
+    "hi_ether": 6,
+    "x_ether": 3,
+    "phoenix_down": 5,
+    "antidote": 5,
+    "echo_herb": 5,
+    "soft": 5
+  },
+  "encounter": {
+    "monster_ids": ["iron_golem", "gargoyle"],
+    "level": 10
+  },
+  "tips": [
+    "Brisk: Attack • Spark • Cure",
+    "Major: Backstab • Fireball • Blaze • Cura • Aegis",
+    "SPACE or Skip bypasses a major cinematic"
+  ]
+}

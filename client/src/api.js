@@ -47,6 +47,10 @@ export async function getItems() {
 // the server). The client debug panel uses these to reproduce specific
 // game states deterministically; they should never be called from a
 // production build.
+export async function debugCreateShowcase() {
+  return apiCall("POST", "/debug/showcase", {});
+}
+
 export async function debugForceEncounterStart(gameId, start) {
   return apiCall("POST", `/debug/game/${gameId}/force-encounter-start`, {
     start,

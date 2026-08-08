@@ -1,6 +1,7 @@
 import {
   buyItem,
   claimChest,
+  debugCreateShowcase,
   debugForceEncounter,
   debugForceVictory,
   debugGiveItem,
@@ -16,6 +17,7 @@ import {
   updatePartyFormation as updatePartyFormationApi,
 } from "./api.js";
 import { getCurrentMusicKey, getPlayingSoundKeys } from "./systems/audio.js";
+import { getLongCinematicMode, setLongCinematicMode } from "./systems/prefs.js";
 import {
   openCharacterDetail,
   closeCharacterDetail,
@@ -916,6 +918,12 @@ function visibleBattleFxSnapshot(scene) {
       row: entry?.row || null,
       x: entry?.x ?? null,
       y: entry?.y ?? null,
+      spriteX: entry?.sprite?.x ?? null,
+      spriteY: entry?.sprite?.y ?? null,
+      textureKey:
+        entry?.sprite?.battleTextureKey ?? entry?.sprite?.texture?.key ?? null,
+      weaponTextureKey: entry?.sprite?.weaponTextureKey ?? null,
+      battleFrameIndex: entry?.sprite?.battleFrameIndex ?? null,
       spriteBounds: objectBounds(entry?.sprite),
       hpBarBounds: objectBounds(entry?.hpBar?.bg),
     }));
@@ -926,6 +934,8 @@ function visibleBattleFxSnapshot(scene) {
       name: entry?.name || null,
       x: entry?.x ?? null,
       y: entry?.y ?? null,
+      spriteX: entry?.sprite?.x ?? null,
+      spriteY: entry?.sprite?.y ?? null,
       spriteBounds: objectBounds(entry?.sprite),
       hpBarBounds: objectBounds(entry?.hpBar?.bg),
     }));
@@ -982,7 +992,34 @@ function visibleBattleFxSnapshot(scene) {
     tracers: taggedCount("tracer"),
     bursts: taggedCount("burst"),
     cursors: taggedCount("target-cursor"),
+    groupCursors: taggedCount("group-target-cursor"),
     titleCards: taggedCount("title-card"),
+    castAuras: taggedCount("cast-aura"),
+    spellProjectiles: taggedCount("spell-projectile"),
+    spellTrails: taggedCount("spell-trail"),
+    spellImpacts: taggedCount("spell-impact"),
+    majorCinematics: taggedCount("major-cinematic"),
+    majorAuras: taggedCount("major-aura"),
+    cinematicSkipButtons: taggedCount("cinematic-skip"),
+    activeMajorCinematic: !!scene?.activeMajorCinematic,
+    titleActors: children
+      .filter(
+        (child) =>
+          child?._combatFxTag === "title-actor" &&
+          child.active !== false &&
+          child.visible !== false &&
+          (child.alpha ?? 1) > 0.01,
+      )
+      .map((child) => child.text),
+    titleActions: children
+      .filter(
+        (child) =>
+          child?._combatFxTag === "title-action" &&
+          child.active !== false &&
+          child.visible !== false &&
+          (child.alpha ?? 1) > 0.01,
+      )
+      .map((child) => child.text),
     vignetteAlpha: scene?.lowHpVignette?.alpha ?? 0,
     messageWindow: {
       visible: scene?.messageWindow?.container?.visible !== false,
@@ -1019,9 +1056,14 @@ function visibleBattleFxSnapshot(scene) {
         {}),
     })),
     targetCursorVisible: taggedCount("target-cursor") > 0,
+    actorIndicatorLabel: scene?.actorCursor?.label?.text ?? null,
+    targetIndicatorLabel: scene?.targetCursor?.label?.text ?? null,
+    groupTargetIndicatorLabel: scene?.groupTargetCursor?.label?.text ?? null,
+    targetIndicatorX: scene?.targetCursor?.graphics?.x ?? null,
     messageWindowTextBounds: messageLayout.textBounds || null,
     encounterTileType: scene?.encounterTileType ?? null,
     backdropCount: taggedCount("battle-backdrop"),
+    showcaseBannerCount: taggedCount("showcase-banner"),
     groundPlaneCount: taggedCount("ground-plane"),
     shadowCount: taggedCount("combat-shadow"),
     actionPanelCount: taggedCount("action-panel"),
@@ -1287,6 +1329,29 @@ export function installDevTestBridge(game) {
       return this.gameState("World");
     },
 
+    async startShowcase() {
+      const title = getScene(game, "Title");
+      if (!title || typeof title.startShowcase !== "function") {
+        throw new Error("Title scene is not ready");
+      }
+      await waitFor(() => !!title.statusText);
+      await title.startShowcase();
+      await waitFor(() => game.scene.isActive("Battle"));
+      await nextFrame();
+      await nextFrame();
+      return this.gameState("Battle");
+    },
+
+    async createShowcaseDirect() {
+      const result = await debugCreateShowcase();
+      if (result?.error) throw new Error(result.error);
+      game.scene.start("World", { gameState: result });
+      await waitFor(() => game.scene.isActive("Battle"));
+      await nextFrame();
+      await nextFrame();
+      return this.gameState("Battle");
+    },
+
     async startWizardFromTitle(
       email = `playwright_${Date.now()}@kithlands.dev`,
     ) {
@@ -1503,6 +1568,148 @@ export function installDevTestBridge(game) {
       return visibleBattleFxSnapshot(scene);
     },
 
+    startAuthoritativeBattleRound(mode = "attack", sceneKey = "Battle") {
+      const scene = getScene(game, sceneKey);
+      if (!scene || scene.scene?.key !== "Battle") {
+        throw new Error("Battle scene is not active");
+      }
+      const enemyId = (scene.gameState?.enemies || []).find(
+        (enemy) => (enemy.current_hp ?? enemy.hp ?? 0) > 0,
+      )?.id;
+      if (!enemyId) throw new Error("Battle scene has no living enemy");
+
+      let spellAssigned = false;
+      let inspireAssigned = false;
+      const actions = (scene.gameState?.party || [])
+        .map((member, slot) => {
+          if ((member.hp ?? 0) <= 0) return null;
+          if (
+            mode === "inspire" &&
+            !inspireAssigned &&
+            (member.abilities || []).includes("inspire")
+          ) {
+            inspireAssigned = true;
+            return {
+              slot,
+              type: "ability",
+              ability_id: "inspire",
+              target_id: -1,
+            };
+          }
+          const spell = (member.spells || []).find(
+            (entry) =>
+              entry?.id &&
+              entry?.castable_in_combat !== false &&
+              (member.mp ?? 0) >= (entry.mp_cost ?? 0) &&
+              (mode !== "all_spell" ||
+                entry.target_modes?.includes("all_enemies")),
+          );
+          if (
+            (mode === "spell" || mode === "all_spell") &&
+            !spellAssigned &&
+            spell
+          ) {
+            spellAssigned = true;
+            return {
+              slot,
+              type: "spell",
+              target_id: mode === "all_spell" ? -1 : enemyId,
+              spell_id: spell.id,
+              ...(mode === "all_spell" ? { target_mode: "all_enemies" } : {}),
+            };
+          }
+          return { slot, type: "attack", target_id: enemyId };
+        })
+        .filter(Boolean);
+      if ((mode === "spell" || mode === "all_spell") && !spellAssigned) {
+        throw new Error("Battle party has no castable spell");
+      }
+      if (mode === "inspire" && !inspireAssigned) {
+        throw new Error("Battle party has no Inspire ability");
+      }
+
+      scene.memberActions = actions;
+      void scene.submitAllActions();
+      return clone(actions);
+    },
+
+    previewBattleCharacterFrame(
+      actorName = "Hero",
+      frameIndex = 0,
+      sceneKey = "Battle",
+    ) {
+      const scene = getScene(game, sceneKey);
+      const entry = scene?.partySprites?.[actorName];
+      if (!entry?.sprite?.applyBattleFrame) {
+        throw new Error(`${actorName} has no layered battle candidate`);
+      }
+      entry.sprite.applyBattleFrame(frameIndex);
+      return {
+        actorName,
+        frameIndex: entry.sprite.battleFrameIndex,
+        textureKey: entry.sprite.battleTextureKey,
+        weaponTextureKey: entry.sprite.weaponTextureKey,
+      };
+    },
+
+    previewBattleSpellFlow(spellID, select = true, sceneKey = "Battle") {
+      const scene = getScene(game, sceneKey);
+      if (!scene || scene.scene?.key !== "Battle") {
+        throw new Error("Battle scene is not active");
+      }
+      const slot = (scene.gameState?.party || []).findIndex((member) =>
+        (member.spells || []).some((spell) => spell.id === spellID),
+      );
+      if (slot < 0) throw new Error(`Spell not available: ${spellID}`);
+      const member = scene.gameState.party[slot];
+      const turnIndex = scene.livingMembers.indexOf(slot);
+      if (turnIndex < 0)
+        throw new Error(`Caster is not active: ${member.name}`);
+      if (scene.targetingMode) scene.exitTargetingMode();
+      scene.currentMemberIdx = turnIndex;
+      scene.memberActions = [];
+      scene.pendingAction = null;
+      scene.pendingSpellId = null;
+      scene.pendingSpellEffect = null;
+      scene.pendingSpellTargetMode = null;
+      scene.closePicker();
+      scene.showSpellPicker(slot);
+      const eligible = member.spells.filter(
+        (entry) => (member.mp ?? 0) >= (entry.mp_cost ?? 0),
+      );
+      const spellIndex = eligible.findIndex((entry) => entry.id === spellID);
+      const pickerLabels = (scene.pickerOverlay || [])
+        .filter((entry) => typeof entry?.text === "string")
+        .map((entry) => entry.text);
+      if (select) scene.pickerItems[spellIndex]?.action();
+      return {
+        snapshot: visibleBattleFxSnapshot(scene),
+        actions: clone(scene.memberActions),
+        targetingMode: scene.targetingMode || false,
+        pickerOpen: Boolean(scene.pickerOverlay),
+        pickerLabels,
+      };
+    },
+
+    commitBattleTarget(side = "enemy", index = 0, sceneKey = "Battle") {
+      const scene = getScene(game, sceneKey);
+      if (!scene || scene.scene?.key !== "Battle") {
+        throw new Error("Battle scene is not active");
+      }
+      const entries =
+        side === "party"
+          ? Object.values(scene.partySprites || {}).sort(
+              (a, b) => (a.slot ?? 0) - (b.slot ?? 0),
+            )
+          : Object.values(scene.enemySprites || {}).filter(
+              (entry) => entry && !entry.dead && !entry.dying,
+            );
+      const entry = entries[index];
+      if (!entry?.sprite) throw new Error(`No ${side} target at ${index}`);
+      clickGameObject(entry.sprite);
+      return clone(scene.memberActions);
+    },
+
     async playBattleVisibilityDemo(kind = "tracer", sceneKey = "Battle") {
       const scene = getScene(game, sceneKey);
       if (!scene || scene.scene?.key !== "Battle") {
@@ -1572,6 +1779,23 @@ export function installDevTestBridge(game) {
         scene.enterTargetingMode();
       } else if (kind === "cinematic_frame") {
         await scene.runCinematicProofFrame();
+      } else if (kind === "enemy_attack_frame") {
+        await scene.runEnemyAttackProofFrame();
+      } else if (kind === "reduced_attack_frame") {
+        scene._forceReducedMotion = true;
+        await scene.runCinematicProofFrame();
+      } else if (kind === "spell_charge_frame") {
+        await scene.runSpellProofFrame("charge");
+      } else if (kind === "spell_flight_frame") {
+        await scene.runSpellProofFrame("flight");
+      } else if (kind === "major_spell_frame") {
+        return await scene.runMajorCinematicProofFrame();
+      } else if (kind === "major_spell_wait") {
+        return clone(await scene.majorProofPromise);
+      } else if (kind === "major_spell_skip") {
+        return scene.requestCinematicSkip();
+      } else if (kind === "major_spell_policy") {
+        return clone(await scene.runMajorCinematicPolicyProof());
       } else if (kind === "cinematic") {
         return await scene.runCinematicProofDemo();
       } else {
@@ -1581,6 +1805,28 @@ export function installDevTestBridge(game) {
       await nextFrame();
       await nextFrame();
       return visibleBattleFxSnapshot(scene);
+    },
+
+    battleCinematicMode(mode) {
+      if (mode) setLongCinematicMode(mode);
+      return getLongCinematicMode();
+    },
+
+    optionsSummary(sceneKey = "World") {
+      const scene = getScene(game, sceneKey);
+      const labels = (scene?.children?.list || [])
+        .filter(
+          (child) =>
+            typeof child?.text === "string" &&
+            child.active !== false &&
+            child.visible !== false,
+        )
+        .map((child) => child.text);
+      return {
+        open: !!scene?.optionsKeyHandlers,
+        mode: getLongCinematicMode(),
+        labels,
+      };
     },
 
     async showPartyDamageNumber(damage, sceneKey = "Battle") {

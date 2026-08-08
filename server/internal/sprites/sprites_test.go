@@ -33,12 +33,12 @@ func testPalettes() *gamedata.Palettes {
 
 func testLookup() sprites.ItemLookup {
 	weapons := map[string]int{
-		"wooden_club":      1,
-		"short_sword":      1,
-		"steel_sword":      3,
-		"mithril_blade":    5,
-		"orichalcum_fang":  6,
-		"dragonslayer":     7,
+		"wooden_club":     1,
+		"short_sword":     1,
+		"steel_sword":     3,
+		"mithril_blade":   5,
+		"orichalcum_fang": 6,
+		"dragonslayer":    7,
 	}
 	armors := map[string]int{
 		"leather_armor": 1,
@@ -219,5 +219,29 @@ func TestComposeMissingTierInPaletteLeavesAccentEmpty(t *testing.T) {
 	}
 	if got.WeaponAccent != "" {
 		t.Errorf("WeaponAccent = %q, want empty (tier 3 not in palette)", got.WeaponAccent)
+	}
+}
+
+func TestComposeIncludesWeaponVisualMetadata(t *testing.T) {
+	lookup := testLookup()
+	lookup.WeaponVisual = func(id string) (string, string, bool) {
+		if id == "mithril_blade" {
+			return "mythril_sword", "sword", true
+		}
+		return "", "", false
+	}
+
+	got := sprites.Compose(sprites.Input{
+		ClassID:  "warrior",
+		Equip:    inventory.EquipmentSlots{WeaponID: "mithril_blade"},
+		Palettes: testPalettes(),
+		Lookup:   lookup,
+	})
+
+	if got.WeaponVisualID != "mythril_sword" {
+		t.Errorf("WeaponVisualID = %q, want mythril_sword", got.WeaponVisualID)
+	}
+	if got.WeaponAnimationSet != "sword" {
+		t.Errorf("WeaponAnimationSet = %q, want sword", got.WeaponAnimationSet)
 	}
 }

@@ -19,6 +19,7 @@ func DebugEnabled() bool {
 }
 
 func (s *Server) registerDebugRoutes(mux *http.ServeMux) {
+	mux.Handle("POST /api/debug/showcase", s.auth.Middleware(http.HandlerFunc(s.handleDebugCreateShowcase)))
 	mux.Handle("POST /api/debug/game/{id}/force-encounter-start", s.auth.Middleware(http.HandlerFunc(s.handleDebugForceEncounterStart)))
 	mux.Handle("POST /api/debug/game/{id}/force-encounter", s.auth.Middleware(http.HandlerFunc(s.handleDebugForceEncounter)))
 	mux.Handle("POST /api/debug/game/{id}/force-victory", s.auth.Middleware(http.HandlerFunc(s.handleDebugForceVictory)))
@@ -28,6 +29,15 @@ func (s *Server) registerDebugRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/debug/game/{id}/set-party-levels", s.auth.Middleware(http.HandlerFunc(s.handleDebugSetPartyLevels)))
 	mux.Handle("POST /api/debug/game/{id}/set-party-vitals", s.auth.Middleware(http.HandlerFunc(s.handleDebugSetPartyVitals)))
 	mux.Handle("POST /api/debug/game/{id}/warp-quest", s.auth.Middleware(http.HandlerFunc(s.handleDebugWarpQuest)))
+}
+
+func (s *Server) handleDebugCreateShowcase(w http.ResponseWriter, _ *http.Request) {
+	game, err := s.games.DebugCreateShowcase()
+	if err != nil {
+		httpError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	jsonResp(w, game.State())
 }
 
 func (s *Server) handleDebugForceEncounterStart(w http.ResponseWriter, r *http.Request) {

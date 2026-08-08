@@ -146,6 +146,23 @@ export function setBattleSpeed(n) {
   setPref("battleSpeed", clampInt(n, 1, 6, DEFAULT_BATTLE_SPEED));
 }
 
+export const LONG_CINEMATIC_MODES = Object.freeze(["short", "once", "full"]);
+export const DEFAULT_LONG_CINEMATIC_MODE = "full";
+
+export function getLongCinematicMode() {
+  const mode = getPref("longCinematicMode", DEFAULT_LONG_CINEMATIC_MODE);
+  return LONG_CINEMATIC_MODES.includes(mode)
+    ? mode
+    : DEFAULT_LONG_CINEMATIC_MODE;
+}
+
+export function setLongCinematicMode(mode) {
+  const next = LONG_CINEMATIC_MODES.includes(mode)
+    ? mode
+    : DEFAULT_LONG_CINEMATIC_MODE;
+  setPref("longCinematicMode", next);
+}
+
 export function getMessageSpeed() {
   return clampInt(getPref("messageSpeed", 3), 1, 6, 3);
 }

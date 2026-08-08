@@ -2,13 +2,17 @@ import { expect, test } from "@playwright/test";
 
 const RUN_ID = Date.now();
 
-async function waitForBridge(page) {
-  await page.waitForFunction(() => !!window.__kithlandsTest);
+async function waitForTitle(page) {
+  await page.waitForFunction(
+    () => window.__kithlandsTest?.activeSceneKey() === "Title",
+    null,
+    { timeout: 90_000 },
+  );
 }
 
 async function startCombat(page) {
   await page.goto("/");
-  await waitForBridge(page);
+  await waitForTitle(page);
   await page.evaluate(() => window.__kithlandsTest.startQuickGame());
   await page.waitForFunction(
     () => window.__kithlandsTest.activeSceneKey() === "World",
@@ -16,11 +20,12 @@ async function startCombat(page) {
   await page.evaluate(() =>
     window.__kithlandsTest.forceEncounter(["slime", "goblin"], 2),
   );
-  await page.waitForFunction(
-    () =>
-      window.__kithlandsTest.activeSceneKey() === "Battle" &&
-      !!window.__kithlandsTest.gameState("Battle")?.enemies?.length,
-  );
+  await page.waitForFunction(() => {
+    const bridge = window.__kithlandsTest;
+    if (bridge?.activeSceneKey() !== "Battle") return false;
+    const snapshot = bridge.battleVisibilitySnapshot();
+    return snapshot.partyMembers.length > 0 && snapshot.enemyMembers.length > 0;
+  });
 }
 
 async function setProofLabel(page, label) {
@@ -47,6 +52,8 @@ async function setProofLabel(page, label) {
 }
 
 test.describe("battle cinematic proof — issue #211", () => {
+  test.describe.configure({ timeout: 120_000 });
+
   test("shows the message window, cursor, and cinematic pacing", async ({
     page,
   }, testInfo) => {
@@ -113,9 +120,303 @@ test.describe("battle cinematic proof — issue #211", () => {
         elapsed: performance.now() - startedAt,
       };
     });
-    expect(timings.preImpact).toBeGreaterThanOrEqual(260);
+    expect(timings.preImpact).toBeGreaterThanOrEqual(100);
+    expect(timings.preImpact).toBeLessThan(240);
     expect(timings.postDamage).toBeGreaterThanOrEqual(430);
-    expect(timings.total).toBeGreaterThanOrEqual(1100);
-    expect(timings.elapsed).toBeGreaterThanOrEqual(1100);
+    expect(timings.postDamage).toBeLessThan(650);
+    expect(timings.total).toBeGreaterThanOrEqual(800);
+    expect(timings.total).toBeLessThan(1500);
+    expect(timings.elapsed).toBeLessThan(1600);
+  });
+
+  test("makes hero and monster attackers enter the action", async ({
+    page,
+  }, testInfo) => {
+    await startCombat(page);
+    const heroBefore = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("cinematic_frame"),
+    );
+    const heroStrike = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+
+    expect(heroStrike.titleActors).toContain(
+      heroBefore.partyMembers[0].name.toUpperCase(),
+    );
+    expect(heroStrike.titleActions).toContain("SLASH");
+    expect(heroStrike.partyMembers[0].spriteX).toBeLessThan(
+      heroBefore.partyMembers[0].spriteX - 120,
+    );
+    await setProofLabel(page, "Hero strike: actor leap + named action");
+    await page.screenshot({
+      path: testInfo.outputPath(`battle-hero-strike-${RUN_ID}.png`),
+      fullPage: true,
+    });
+
+    await startCombat(page);
+    const enemyBefore = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("enemy_attack_frame"),
+    );
+    const enemyStrike = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+
+    expect(enemyStrike.titleActors).toContain(
+      enemyBefore.enemyMembers[0].name.toUpperCase(),
+    );
+    expect(enemyStrike.titleActions).toContain("ATTACK");
+    expect(enemyStrike.enemyMembers[0].spriteX).toBeGreaterThan(
+      enemyBefore.enemyMembers[0].spriteX + 120,
+    );
+    await setProofLabel(page, "Monster strike: actor leap + named action");
+    await page.screenshot({
+      path: testInfo.outputPath(`battle-monster-strike-${RUN_ID}.png`),
+      fullPage: true,
+    });
+
+    await startCombat(page);
+    const reducedBefore = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("reduced_attack_frame"),
+    );
+    const reducedStrike = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+    expect(
+      Math.abs(
+        reducedStrike.partyMembers[0].spriteX -
+          reducedBefore.partyMembers[0].spriteX,
+      ),
+    ).toBeLessThanOrEqual(14);
+    expect(reducedStrike.titleActors).toContain("HERO");
+  });
+
+  test("shows the caster, spell charge, and travel path", async ({
+    page,
+  }, testInfo) => {
+    await startCombat(page);
+    await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("spell_charge_frame"),
+    );
+    const charge = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+    expect(charge.castAuras).toBeGreaterThan(0);
+    expect(charge.titleActors).toContain("SPARKS");
+    expect(charge.titleActions).toContain("SPARK");
+    await setProofLabel(page, "Spell charge: named caster + local aura");
+    await page.screenshot({
+      path: testInfo.outputPath(`battle-spell-charge-${RUN_ID}.png`),
+      fullPage: true,
+    });
+
+    await startCombat(page);
+    await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("spell_flight_frame"),
+    );
+    const flight = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+    expect(flight.spellProjectiles).toBeGreaterThan(0);
+    expect(flight.spellTrails).toBeGreaterThan(0);
+    expect(flight.titleActors).toContain("SPARKS");
+    await setProofLabel(page, "Spell flight: caster-to-target projectile");
+    await page.screenshot({
+      path: testInfo.outputPath(`battle-spell-flight-${RUN_ID}.png`),
+      fullPage: true,
+    });
+  });
+
+  test("plays the choreography from an authoritative combat round", async ({
+    page,
+  }, testInfo) => {
+    await startCombat(page);
+    const actions = await page.evaluate(() =>
+      window.__kithlandsTest.startAuthoritativeBattleRound("spell"),
+    );
+    expect(actions.some((action) => action.type === "spell")).toBe(true);
+    await page.waitForFunction(
+      () => {
+        const snapshot = window.__kithlandsTest.battleVisibilitySnapshot();
+        return (
+          snapshot.spellProjectiles > 0 &&
+          snapshot.titleActors.length > 0 &&
+          snapshot.messageWindow.text.includes("casts")
+        );
+      },
+      null,
+      { timeout: 30_000 },
+    );
+    const liveRound = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+    expect(liveRound.titleActions).toContain("SPARK");
+    await setProofLabel(
+      page,
+      "Authoritative round: server result -> spell motion",
+    );
+    await page.screenshot({
+      path: testInfo.outputPath(`battle-authoritative-spell-${RUN_ID}.png`),
+      fullPage: true,
+    });
+  });
+
+  test("keeps the spell action readable in a mobile viewport", async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await startCombat(page);
+    await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("spell_flight_frame"),
+    );
+    const flight = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+    expect(flight.spellProjectiles).toBeGreaterThan(0);
+    expect(flight.titleActors).toContain("SPARKS");
+    expect(flight.titleActions).toContain("SPARK");
+    await setProofLabel(page, "Mobile spell flight: named caster + target");
+    await page.screenshot({
+      path: testInfo.outputPath(`battle-spell-mobile-${RUN_ID}.png`),
+      fullPage: true,
+    });
+  });
+
+  test("makes major cinematics skippable and suppresses repeats by preference", async ({
+    page,
+  }, testInfo) => {
+    await startCombat(page);
+    await page.evaluate(() =>
+      window.__kithlandsTest.battleCinematicMode("full"),
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("major_spell_frame"),
+    );
+    const active = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+    expect(active.majorCinematics).toBeGreaterThan(0);
+    expect(active.majorAuras).toBeGreaterThan(0);
+    expect(active.cinematicSkipButtons).toBe(1);
+    await setProofLabel(
+      page,
+      "Major spell: longer charge + visible SPACE skip",
+    );
+    await page.screenshot({
+      path: testInfo.outputPath(`battle-major-skip-${RUN_ID}.png`),
+      fullPage: true,
+    });
+
+    await page.keyboard.press("Space");
+    const skipped = await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("major_spell_wait"),
+    );
+    expect(skipped).toMatchObject({ played: true, skipped: true });
+    await page.waitForFunction(
+      () =>
+        !window.__kithlandsTest.battleVisibilitySnapshot().activeMajorCinematic,
+    );
+
+    await page.evaluate(() =>
+      window.__kithlandsTest.battleCinematicMode("once"),
+    );
+    const once = await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("major_spell_policy"),
+    );
+    expect(once.first).toMatchObject({ played: true, skipped: false });
+    expect(once.second).toMatchObject({ played: false, skipped: false });
+
+    await page.evaluate(() =>
+      window.__kithlandsTest.battleCinematicMode("short"),
+    );
+    const short = await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("major_spell_policy"),
+    );
+    expect(short.first).toMatchObject({ played: false, skipped: false });
+    expect(short.second).toMatchObject({ played: false, skipped: false });
+  });
+
+  test("keeps the major-cinematic skip control reachable on mobile", async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await startCombat(page);
+    await page.evaluate(() =>
+      window.__kithlandsTest.battleCinematicMode("full"),
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("major_spell_frame"),
+    );
+    const active = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+    expect(active.cinematicSkipButtons).toBe(1);
+    await setProofLabel(page, "Mobile major spell: touch-sized skip control");
+    await page.screenshot({
+      path: testInfo.outputPath(`battle-major-skip-mobile-${RUN_ID}.png`),
+      fullPage: true,
+    });
+
+    const canvas = await page.locator("canvas").boundingBox();
+    expect(canvas).not.toBeNull();
+    await page.mouse.click(
+      canvas.x + (690 / 800) * canvas.width,
+      canvas.y + (38 / 600) * canvas.height,
+    );
+    const skipped = await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("major_spell_wait"),
+    );
+    expect(skipped).toMatchObject({ played: true, skipped: true });
+  });
+
+  test("exposes Full, Once, and Short in the options menu", async ({
+    page,
+  }, testInfo) => {
+    await page.goto("/");
+    await waitForTitle(page);
+    await page.evaluate(() => window.__kithlandsTest.startQuickGame());
+    await page.waitForFunction(
+      () => window.__kithlandsTest.activeSceneKey() === "World",
+    );
+    await page.keyboard.press("m");
+    await page.waitForFunction(
+      () => window.__kithlandsTest.sceneFlags("World").menuOpen,
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.clickMenuButton("OPTIONS", "World"),
+    );
+    await page.waitForFunction(
+      () => window.__kithlandsTest.optionsSummary("World").open,
+    );
+    const options = await page.evaluate(() =>
+      window.__kithlandsTest.optionsSummary("World"),
+    );
+    expect(options.labels).toContain("LONG CINEMATICS");
+    expect(options.labels).toContain("FULL");
+    expect(options.labels).toContain(
+      "SHORT = auto-skip    ONCE = each major move once    FULL = always",
+    );
+    await setProofLabel(page, "Options: Full / Once / Short major cinematics");
+    await page.waitForTimeout(120);
+    await page.screenshot({
+      path: testInfo.outputPath(`battle-cinematic-options-${RUN_ID}.png`),
+      fullPage: true,
+    });
+
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowLeft");
+    await page.waitForFunction(
+      () => window.__kithlandsTest.battleCinematicMode() === "once",
+    );
   });
 });

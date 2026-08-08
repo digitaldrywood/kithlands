@@ -14,10 +14,13 @@
   {
     "id": "backstab",
     "name": "Backstab",
-    "ignores_row": true
+    "ignores_row": true,
+    "cinematic_tier": "major"
   },
   {
     "id": "inspire",
-    "name": "Inspire"
+    "name": "Inspire",
+    "target": "all_allies",
+    "cinematic_tier": "major"
   }
 ]

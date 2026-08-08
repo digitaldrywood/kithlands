@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/digitaldrywood/kithlands/api"
+	"github.com/digitaldrywood/kithlands/internal/character"
 )
 
 // menderParty returns a two-member party with a Mender (white mage, has Cure
@@ -88,6 +89,41 @@ func containsString(values []string, want string) bool {
 	return false
 }
 
+func TestMajorSpellCombatActionCarriesPresentationMetadata(t *testing.T) {
+	game := newGameWithParty(t, []api.PartyMemberReq{
+		{Name: "Sparks", ClassID: "cinder"},
+		{Name: "Tank", ClassID: "warrior"},
+	})
+	api.TeachSpellForTest(game, 0, "fireball", 3)
+	state := enterCombat(t, game)
+	enemyID := state.Enemies[0].ID
+
+	result, err := game.ProcessAction(api.GameActionRequest{
+		Type: "attack",
+		Actions: []api.MemberActionReq{
+			{Slot: 0, Type: "spell", SpellID: "fireball", TargetID: enemyID},
+			{Slot: 1, Type: "defend"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("cast fireball: %v", err)
+	}
+
+	for _, action := range result.CombatActions {
+		if action.ActionID != "fireball" {
+			continue
+		}
+		if action.ActionName != "Fireball" {
+			t.Fatalf("action_name = %q, want Fireball", action.ActionName)
+		}
+		if action.CinematicTier != "major" {
+			t.Fatalf("cinematic_tier = %q, want major", action.CinematicTier)
+		}
+		return
+	}
+	t.Fatalf("fireball combat action missing; actions=%+v", result.CombatActions)
+}
+
 // TestSpellCureHealsTargetedAllySlot verifies Cure uses target_id as a party
 // slot index and heals that specific ally, not the most-damaged fallback.
 func TestSpellCureHealsTargetedAllySlot(t *testing.T) {
@@ -157,6 +193,41 @@ func TestSpellCureTargetsSpecificSlotNotMostDamaged(t *testing.T) {
 	}
 }
 
+func TestCureStatusCombatActionCarriesTargetedAlly(t *testing.T) {
+	game := newGameWithParty(t, menderParty())
+	api.TeachSpellForTest(game, 0, "cure_poison", 2)
+	enterCombat(t, game)
+	api.ApplyStatusToPartyForTest(game, 1, character.StatusPoison)
+
+	result, err := game.ProcessAction(api.GameActionRequest{
+		Type: "attack",
+		Actions: []api.MemberActionReq{
+			{Slot: 0, Type: "spell", SpellID: "cure_poison", TargetID: 1},
+			{Slot: 1, Type: "defend"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("cast cure poison: %v", err)
+	}
+	if got := api.PartyStatusForTest(game, 1); got != character.StatusNone {
+		t.Fatalf("Tank status = %q, want none", got)
+	}
+
+	for _, action := range result.CombatActions {
+		if action.ActionID != "cure_poison" {
+			continue
+		}
+		if action.TargetID != 1 || action.TargetName != "Tank" {
+			t.Fatalf("cure poison presentation target = (%d, %q), want (1, Tank)", action.TargetID, action.TargetName)
+		}
+		if action.TargetMode != "single_ally" {
+			t.Fatalf("cure poison target mode = %q, want single_ally", action.TargetMode)
+		}
+		return
+	}
+	t.Fatalf("cure poison combat action missing; actions=%+v", result.CombatActions)
+}
+
 // TestSpellCureTargetModeCanHealAllAllies verifies a mixed-target heal can be
 // explicitly cast as an all-party spell without requiring a separate spell ID.
 func TestSpellCureTargetModeCanHealAllAllies(t *testing.T) {
@@ -182,6 +253,18 @@ func TestSpellCureTargetModeCanHealAllAllies(t *testing.T) {
 	}
 	if !hasLogLine(result, "casts Cure on Tank") {
 		t.Errorf("expected all-target Cure log for Tank; got %v", result.CombatLog)
+	}
+	allTargetHeals := 0
+	for _, action := range result.CombatActions {
+		if action.Kind == "heal" && action.ActionID == "cure" {
+			allTargetHeals++
+			if action.TargetMode != "all_allies" {
+				t.Errorf("Cure action target mode = %q, want all_allies", action.TargetMode)
+			}
+		}
+	}
+	if allTargetHeals != 2 {
+		t.Errorf("all-target Cure emitted %d heal actions, want 2", allTargetHeals)
 	}
 }
 
@@ -264,6 +347,18 @@ func TestSpellDamageTargetModeCanHitAllEnemies(t *testing.T) {
 	}
 	if !hasLogLine(result, "casts Frost on Wolf") {
 		t.Errorf("expected all-target Frost log for Wolf; got %v", result.CombatLog)
+	}
+	allTargetHits := 0
+	for _, action := range result.CombatActions {
+		if action.Kind == "spell" && action.ActionID == "frost" {
+			allTargetHits++
+			if action.TargetMode != "all_enemies" {
+				t.Errorf("Frost action target mode = %q, want all_enemies", action.TargetMode)
+			}
+		}
+	}
+	if allTargetHits != 2 {
+		t.Errorf("all-target Frost emitted %d spell actions, want 2", allTargetHits)
 	}
 }
 

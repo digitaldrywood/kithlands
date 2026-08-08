@@ -1,0 +1,68 @@
+import { describe, expect, it } from "vitest";
+import {
+  WARRIOR_BATTLE_BODY_KEY,
+  WARRIOR_SWORD_ATTACK_FRAMES,
+  battleFrameDelay,
+  canUseWarriorBattleSprite,
+  weaponTextureKey,
+} from "./battleCharacterSprite.js";
+
+function sceneWith(keys) {
+  const loaded = new Set(keys);
+  return { textures: { exists: (key) => loaded.has(key) } };
+}
+
+describe("Warrior battle runtime contract", () => {
+  it("keeps one readable six-pose sword action", () => {
+    expect(WARRIOR_SWORD_ATTACK_FRAMES.map((pose) => pose.frame)).toEqual([
+      0, 1, 2, 3, 4, 5,
+    ]);
+    expect(WARRIOR_SWORD_ATTACK_FRAMES.some((pose) => !pose.front)).toBe(true);
+  });
+
+  it("uses the equipped weapon visual instead of a baked sword", () => {
+    expect(weaponTextureKey("mythril_sword")).toBe(
+      "battle_weapon_mythril_sword",
+    );
+    const scene = sceneWith([
+      WARRIOR_BATTLE_BODY_KEY,
+      "battle_weapon_mythril_sword",
+    ]);
+    expect(
+      canUseWarriorBattleSprite(scene, {
+        base_sprite: "warrior",
+        weapon_visual_id: "mythril_sword",
+        weapon_animation_set: "sword",
+      }),
+    ).toBe(true);
+  });
+
+  it("falls back for unsupported equipment but preserves defeated Warrior identity", () => {
+    const scene = sceneWith([WARRIOR_BATTLE_BODY_KEY]);
+    expect(
+      canUseWarriorBattleSprite(scene, {
+        base_sprite: "warrior",
+        weapon_animation_set: "sword",
+      }),
+    ).toBe(false);
+    expect(
+      canUseWarriorBattleSprite(
+        sceneWith([WARRIOR_BATTLE_BODY_KEY, "battle_weapon_iron_sword"]),
+        {
+          base_sprite: "warrior",
+          weapon_visual_id: "iron_sword",
+          weapon_animation_set: "sword",
+        },
+        { alive: false },
+      ),
+    ).toBe(true);
+  });
+
+  it("scales body-frame pacing with the battle-speed preference", () => {
+    const pose = WARRIOR_SWORD_ATTACK_FRAMES[0];
+    expect(battleFrameDelay(pose, false, 0.33)).toBeCloseTo(29.7);
+    expect(battleFrameDelay(pose, false, 3)).toBe(270);
+    expect(battleFrameDelay(pose, true, 0.66)).toBeCloseTo(29.7);
+    expect(battleFrameDelay(pose, false, 0)).toBe(90);
+  });
+});

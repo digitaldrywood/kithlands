@@ -2,8 +2,6 @@ import { MONSTER_SPRITE_LOAD } from "../data/monsterSprites.js";
 import {
   RUNTIME_WALK_SHEET_CLASS_IDS,
   WALK_SHEET_CLASS_IDS,
-  attackSheetFrameSize,
-  attackSheetKey,
   walkSheetFrameSize,
 } from "./walkFrame.js";
 import { registerGeneratedTerrainTextures } from "./terrainAutotile.js";
@@ -67,17 +65,21 @@ export class BootScene extends Phaser.Scene {
       });
     }
 
-    for (const key of CLASS_SPRITE_KEYS) {
-      const frameSize = attackSheetFrameSize(key);
-      this.load.spritesheet(
-        attackSheetKey(key),
-        `/sprites/attack/${key}_attack.png`,
-        {
-          frameWidth: frameSize,
-          frameHeight: frameSize,
-        },
-      );
-    }
+    // Warrior battle-animation gold slice. The body atlas contains no weapon;
+    // equipped sword visuals are separate overlays selected by server content.
+    this.load.spritesheet(
+      "battle_warrior_sword_attack_body",
+      "/sprites/battle/warrior/sword-attack-body.png",
+      { frameWidth: 192, frameHeight: 192 },
+    );
+    this.load.image(
+      "battle_weapon_iron_sword",
+      "/sprites/battle/weapons/iron-sword.png",
+    );
+    this.load.image(
+      "battle_weapon_mythril_sword",
+      "/sprites/battle/weapons/mythril-sword.png",
+    );
 
     // Status effect icons
     this.load.image("icon_poison", "/sprites/ui/icon_poison.png");

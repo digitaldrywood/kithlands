@@ -147,6 +147,9 @@ type GameState struct {
 	CollectedHiddenItems map[string]bool          `json:"collected_hidden_items,omitempty"`
 	TriggeredFlags       map[string]bool          `json:"triggered_flags,omitempty"`
 	PendingChestClaim    *PendingChestClaimState  `json:"pending_chest_claim,omitempty"`
+	ShowcaseMode         bool                     `json:"showcase_mode,omitempty"`
+	ShowcaseTitle        string                   `json:"showcase_title,omitempty"`
+	ShowcaseTips         []string                 `json:"showcase_tips,omitempty"`
 }
 
 // TransportInfo is the transport tier state sent to the client.
@@ -311,20 +314,24 @@ func (g *Game) buildEnemyState(e *combat.Combatant) EnemyState {
 // CombatActionEntry carries structured metadata for a single combat log line.
 // Sent alongside combat_log so the client can drive animations without parsing text.
 type CombatActionEntry struct {
-	Kind       string           `json:"kind"`                  // attack, spell, ability, heal, item, counter, info
-	Element    string           `json:"element,omitempty"`     // fire, ice, lightning, holy, dark, none
-	DamageType string           `json:"damage_type,omitempty"` // physical, magical
-	ActorID    int              `json:"actor_id,omitempty"`
-	ActorName  string           `json:"actor_name,omitempty"`
-	TargetID   int              `json:"target_id,omitempty"`
-	TargetName string           `json:"target_name,omitempty"`
-	Damage     int              `json:"damage,omitempty"`
-	Killed     bool             `json:"killed,omitempty"`
-	Crit       bool             `json:"crit,omitempty"`
-	Missed     bool             `json:"missed,omitempty"`
-	Hits       []CombatHitEntry `json:"hits,omitempty"`
-	SpellName  string           `json:"spell_name,omitempty"`
-	Initiative int              `json:"initiative,omitempty"` // weighted turn-order roll for this actor
+	Kind          string           `json:"kind"`                  // attack, spell, ability, heal, item, counter, info
+	Element       string           `json:"element,omitempty"`     // fire, ice, lightning, holy, dark, none
+	DamageType    string           `json:"damage_type,omitempty"` // physical, magical
+	ActorID       int              `json:"actor_id,omitempty"`
+	ActorName     string           `json:"actor_name,omitempty"`
+	TargetID      int              `json:"target_id,omitempty"`
+	TargetName    string           `json:"target_name,omitempty"`
+	Damage        int              `json:"damage,omitempty"`
+	Killed        bool             `json:"killed,omitempty"`
+	Crit          bool             `json:"crit,omitempty"`
+	Missed        bool             `json:"missed,omitempty"`
+	Hits          []CombatHitEntry `json:"hits,omitempty"`
+	ActionID      string           `json:"action_id,omitempty"`
+	ActionName    string           `json:"action_name,omitempty"`
+	CinematicTier string           `json:"cinematic_tier,omitempty"`
+	SpellName     string           `json:"spell_name,omitempty"`
+	TargetMode    string           `json:"target_mode,omitempty"`
+	Initiative    int              `json:"initiative,omitempty"` // weighted turn-order roll for this actor
 }
 
 // CombatHitEntry represents a single hit within a multi-hit attack.
@@ -430,9 +437,12 @@ type Game struct {
 	// game_combat.go uses this to drop the proof item, advance promo_stage,
 	// and return directly to the world phase instead of showing a
 	// quest-complete screen for a fight that didn't complete a quest.
-	scriptedBoss bool
-	trans        *transport.State // current transport tier & unlocks
-	mu           sync.Mutex
+	scriptedBoss  bool
+	showcaseMode  bool
+	showcaseTitle string
+	showcaseTips  []string
+	trans         *transport.State // current transport tier & unlocks
+	mu            sync.Mutex
 }
 
 func (g *Game) State() GameState {
@@ -452,6 +462,9 @@ func (g *Game) State() GameState {
 		CombatLog:        g.combatLog,
 		CombatActions:    g.combatActions,
 		LastRoundActions: cloneMemberActionReqs(g.lastRoundActions),
+		ShowcaseMode:     g.showcaseMode,
+		ShowcaseTitle:    g.showcaseTitle,
+		ShowcaseTips:     append([]string(nil), g.showcaseTips...),
 	}
 
 	if g.loc != nil {

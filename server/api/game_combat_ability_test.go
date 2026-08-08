@@ -133,14 +133,24 @@ func TestWayfarerInspireLogsAnAbilityLine(t *testing.T) {
 	}
 
 	sawInspire := false
+	sawMajorMetadata := false
 	for _, line := range state.CombatLog {
 		if contains(line, "inspires the party") {
 			sawInspire = true
 			break
 		}
 	}
+	for _, action := range state.CombatActions {
+		if action.ActionID == "inspire" && action.ActionName == "Inspire" && action.CinematicTier == "major" && action.TargetMode == "all_allies" {
+			sawMajorMetadata = true
+			break
+		}
+	}
 	if !sawInspire {
 		t.Errorf("combat log missing inspire entry; got %v", state.CombatLog)
+	}
+	if !sawMajorMetadata {
+		t.Errorf("inspire action missing major cinematic metadata; got %+v", state.CombatActions)
 	}
 }
 
