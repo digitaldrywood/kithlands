@@ -191,6 +191,9 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 		triggeredFlags:       make(map[string]bool),
 		trans:                transport.NewState(),
 	}
+	if err := game.grantStarterLoot(); err != nil {
+		return nil, fmt.Errorf("granting starter loot: %w", err)
+	}
 
 	gm.mu.Lock()
 	gm.games[game.id] = game
