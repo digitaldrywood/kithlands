@@ -135,6 +135,8 @@ type GameState struct {
 	HiEthers             int                      `json:"hi_ethers"`
 	XEthers              int                      `json:"x_ethers"`
 	Items                []ItemState              `json:"items"`
+	Gems                 []GemState               `json:"gems,omitempty"`
+	GemRecipes           []GemRecipeState         `json:"gem_recipes,omitempty"`
 	Equipment            [4]EquipState            `json:"equipment"`
 	Location             string                   `json:"location"`
 	Message              string                   `json:"message,omitempty"`
@@ -192,9 +194,15 @@ type TransportInfo struct {
 }
 
 type ItemState struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Count int    `json:"count"`
+	ID            string            `json:"id"`
+	InstanceID    string            `json:"instance_id,omitempty"`
+	Name          string            `json:"name"`
+	Count         int               `json:"count"`
+	Rarity        string            `json:"rarity,omitempty"`
+	ItemLevel     int               `json:"item_level,omitempty"`
+	RequiredLevel int               `json:"required_level,omitempty"`
+	Affixes       []ItemAffixState  `json:"affixes,omitempty"`
+	Sockets       []ItemSocketState `json:"sockets,omitempty"`
 	// Power is set on weapon items (id starts with "wpn_") so the client
 	// can show equip-delta previews without shipping the weapon catalog.
 	Power int `json:"power,omitempty"`
@@ -210,14 +218,48 @@ type ItemState struct {
 	WorldUsable  bool   `json:"world_usable,omitempty"`
 }
 
+type ItemAffixState struct {
+	Name  string `json:"name"`
+	Stat  string `json:"stat"`
+	Value int    `json:"value"`
+}
+
+type ItemSocketState struct {
+	Index   int    `json:"index"`
+	GemID   string `json:"gem_id,omitempty"`
+	GemName string `json:"gem_name,omitempty"`
+	Stat    string `json:"stat,omitempty"`
+	Value   int    `json:"value,omitempty"`
+}
+
+type GemState struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	Count         int    `json:"count"`
+	Tier          int    `json:"tier"`
+	RequiredLevel int    `json:"required_level"`
+	Description   string `json:"description"`
+}
+
+type GemRecipeState struct {
+	ID            string               `json:"id"`
+	Name          string               `json:"name"`
+	RequiredLevel int                  `json:"required_level"`
+	Inputs        []gamedata.GemAmount `json:"inputs"`
+	Output        gamedata.GemAmount   `json:"output"`
+	Craftable     bool                 `json:"craftable"`
+}
+
 type EquipState struct {
 	WeaponID          string `json:"weapon_id"`
+	WeaponInstanceID  string `json:"weapon_instance_id,omitempty"`
 	WeaponName        string `json:"weapon_name"`
 	WeaponPower       int    `json:"weapon_power,omitempty"`
 	WeaponHitPct      int    `json:"weapon_hit_pct,omitempty"`
 	WeaponCritPct     int    `json:"weapon_crit_pct,omitempty"`
 	WeaponElement     string `json:"weapon_element,omitempty"`
 	ArmorID           string `json:"armor_id"`
+	ArmorInstanceID   string `json:"armor_instance_id,omitempty"`
 	ArmorName         string `json:"armor_name"`
 	ArmorAbsorb       int    `json:"armor_absorb,omitempty"`
 	ArmorMagicDefense int    `json:"armor_magic_defense,omitempty"`
