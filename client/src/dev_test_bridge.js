@@ -16,6 +16,7 @@ import {
   updatePartyFormation as updatePartyFormationApi,
 } from "./api.js";
 import { getCurrentMusicKey, getPlayingSoundKeys } from "./systems/audio.js";
+import { getLongCinematicMode, setLongCinematicMode } from "./systems/prefs.js";
 import {
   openCharacterDetail,
   closeCharacterDetail,
@@ -991,6 +992,10 @@ function visibleBattleFxSnapshot(scene) {
     spellProjectiles: taggedCount("spell-projectile"),
     spellTrails: taggedCount("spell-trail"),
     spellImpacts: taggedCount("spell-impact"),
+    majorCinematics: taggedCount("major-cinematic"),
+    majorAuras: taggedCount("major-aura"),
+    cinematicSkipButtons: taggedCount("cinematic-skip"),
+    activeMajorCinematic: !!scene?.activeMajorCinematic,
     titleActors: children
       .filter(
         (child) =>
@@ -1648,6 +1653,14 @@ export function installDevTestBridge(game) {
         await scene.runSpellProofFrame("charge");
       } else if (kind === "spell_flight_frame") {
         await scene.runSpellProofFrame("flight");
+      } else if (kind === "major_spell_frame") {
+        return await scene.runMajorCinematicProofFrame();
+      } else if (kind === "major_spell_wait") {
+        return clone(await scene.majorProofPromise);
+      } else if (kind === "major_spell_skip") {
+        return scene.requestCinematicSkip();
+      } else if (kind === "major_spell_policy") {
+        return clone(await scene.runMajorCinematicPolicyProof());
       } else if (kind === "cinematic") {
         return await scene.runCinematicProofDemo();
       } else {
@@ -1657,6 +1670,28 @@ export function installDevTestBridge(game) {
       await nextFrame();
       await nextFrame();
       return visibleBattleFxSnapshot(scene);
+    },
+
+    battleCinematicMode(mode) {
+      if (mode) setLongCinematicMode(mode);
+      return getLongCinematicMode();
+    },
+
+    optionsSummary(sceneKey = "World") {
+      const scene = getScene(game, sceneKey);
+      const labels = (scene?.children?.list || [])
+        .filter(
+          (child) =>
+            typeof child?.text === "string" &&
+            child.active !== false &&
+            child.visible !== false,
+        )
+        .map((child) => child.text);
+      return {
+        open: !!scene?.optionsKeyHandlers,
+        mode: getLongCinematicMode(),
+        labels,
+      };
     },
 
     async showPartyDamageNumber(damage, sceneKey = "Battle") {

@@ -249,6 +249,7 @@ func (gd *GameData) validate() {
 		if a.Name == "" {
 			panic(fmt.Sprintf("gamedata: ability %q has empty name", a.ID))
 		}
+		validateCinematicTier("ability", a.ID, a.CinematicTier)
 	}
 
 	for _, s := range gd.Spells.Spells {
@@ -275,6 +276,7 @@ func (gd *GameData) validate() {
 				panic(fmt.Sprintf("gamedata: spell %q target_modes must include default target %q", s.ID, s.Target))
 			}
 		}
+		validateCinematicTier("spell", s.ID, s.CinematicTier)
 	}
 
 	validSizes := map[string]bool{"small": true, "medium": true, "large": true, "boss": true}
@@ -405,6 +407,13 @@ func validateClassRefs(kind, id string, refs []string, classIDs map[string]bool)
 		}
 		seen[ref] = true
 	}
+}
+
+func validateCinematicTier(kind, id, tier string) {
+	if tier == "" || tier == "brisk" || tier == "major" {
+		return
+	}
+	panic(fmt.Sprintf("gamedata: %s %q has invalid cinematic_tier: %q", kind, id, tier))
 }
 
 func validateGrowth(classID, stat string, value int) {

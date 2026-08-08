@@ -211,6 +211,7 @@ describe("BattleScene repeat memory", () => {
       gameState: result,
       lastRoundActions: [{ slot: 0, type: "attack", target_id: 9 }],
       autoMode: undefined,
+      seenMajorCinematics: [],
     });
   });
 });

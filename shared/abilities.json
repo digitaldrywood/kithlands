@@ -14,10 +14,12 @@
   {
     "id": "backstab",
     "name": "Backstab",
-    "ignores_row": true
+    "ignores_row": true,
+    "cinematic_tier": "major"
   },
   {
     "id": "inspire",
-    "name": "Inspire"
+    "name": "Inspire",
+    "cinematic_tier": "major"
   }
 ]

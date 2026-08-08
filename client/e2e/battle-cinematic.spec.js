@@ -50,6 +50,8 @@ async function setProofLabel(page, label) {
 }
 
 test.describe("battle cinematic proof — issue #211", () => {
+  test.describe.configure({ timeout: 60_000 });
+
   test("shows the message window, cursor, and cinematic pacing", async ({
     page,
   }, testInfo) => {
@@ -116,10 +118,13 @@ test.describe("battle cinematic proof — issue #211", () => {
         elapsed: performance.now() - startedAt,
       };
     });
-    expect(timings.preImpact).toBeGreaterThanOrEqual(260);
+    expect(timings.preImpact).toBeGreaterThanOrEqual(100);
+    expect(timings.preImpact).toBeLessThan(240);
     expect(timings.postDamage).toBeGreaterThanOrEqual(430);
-    expect(timings.total).toBeGreaterThanOrEqual(1100);
-    expect(timings.elapsed).toBeGreaterThanOrEqual(1100);
+    expect(timings.postDamage).toBeLessThan(650);
+    expect(timings.total).toBeGreaterThanOrEqual(800);
+    expect(timings.total).toBeLessThan(1500);
+    expect(timings.elapsed).toBeLessThan(1600);
   });
 
   test("makes hero and monster attackers enter the action", async ({
@@ -281,5 +286,138 @@ test.describe("battle cinematic proof — issue #211", () => {
       path: testInfo.outputPath(`battle-spell-mobile-${RUN_ID}.png`),
       fullPage: true,
     });
+  });
+
+  test("makes major cinematics skippable and suppresses repeats by preference", async ({
+    page,
+  }, testInfo) => {
+    await startCombat(page);
+    await page.evaluate(() =>
+      window.__kithlandsTest.battleCinematicMode("full"),
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("major_spell_frame"),
+    );
+    const active = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+    expect(active.majorCinematics).toBeGreaterThan(0);
+    expect(active.majorAuras).toBeGreaterThan(0);
+    expect(active.cinematicSkipButtons).toBe(1);
+    await setProofLabel(
+      page,
+      "Major spell: longer charge + visible SPACE skip",
+    );
+    await page.screenshot({
+      path: testInfo.outputPath(`battle-major-skip-${RUN_ID}.png`),
+      fullPage: true,
+    });
+
+    await page.keyboard.press("Space");
+    const skipped = await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("major_spell_wait"),
+    );
+    expect(skipped).toMatchObject({ played: true, skipped: true });
+    await page.waitForFunction(
+      () =>
+        !window.__kithlandsTest.battleVisibilitySnapshot().activeMajorCinematic,
+    );
+
+    await page.evaluate(() =>
+      window.__kithlandsTest.battleCinematicMode("once"),
+    );
+    const once = await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("major_spell_policy"),
+    );
+    expect(once.first).toMatchObject({ played: true, skipped: false });
+    expect(once.second).toMatchObject({ played: false, skipped: false });
+
+    await page.evaluate(() =>
+      window.__kithlandsTest.battleCinematicMode("short"),
+    );
+    const short = await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("major_spell_policy"),
+    );
+    expect(short.first).toMatchObject({ played: false, skipped: false });
+    expect(short.second).toMatchObject({ played: false, skipped: false });
+  });
+
+  test("keeps the major-cinematic skip control reachable on mobile", async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await startCombat(page);
+    await page.evaluate(() =>
+      window.__kithlandsTest.battleCinematicMode("full"),
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("major_spell_frame"),
+    );
+    const active = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+    expect(active.cinematicSkipButtons).toBe(1);
+    await setProofLabel(page, "Mobile major spell: touch-sized skip control");
+    await page.screenshot({
+      path: testInfo.outputPath(`battle-major-skip-mobile-${RUN_ID}.png`),
+      fullPage: true,
+    });
+
+    const canvas = await page.locator("canvas").boundingBox();
+    expect(canvas).not.toBeNull();
+    await page.mouse.click(
+      canvas.x + (690 / 800) * canvas.width,
+      canvas.y + (38 / 600) * canvas.height,
+    );
+    const skipped = await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("major_spell_wait"),
+    );
+    expect(skipped).toMatchObject({ played: true, skipped: true });
+  });
+
+  test("exposes Full, Once, and Short in the options menu", async ({
+    page,
+  }, testInfo) => {
+    await page.goto("/");
+    await waitForBridge(page);
+    await page.waitForFunction(
+      () => window.__kithlandsTest.activeSceneKey() === "Title",
+    );
+    await page.evaluate(() => window.__kithlandsTest.startQuickGame());
+    await page.waitForFunction(
+      () => window.__kithlandsTest.activeSceneKey() === "World",
+    );
+    await page.keyboard.press("m");
+    await page.waitForFunction(
+      () => window.__kithlandsTest.sceneFlags("World").menuOpen,
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.clickMenuButton("OPTIONS", "World"),
+    );
+    await page.waitForFunction(
+      () => window.__kithlandsTest.optionsSummary("World").open,
+    );
+    const options = await page.evaluate(() =>
+      window.__kithlandsTest.optionsSummary("World"),
+    );
+    expect(options.labels).toContain("LONG CINEMATICS");
+    expect(options.labels).toContain("FULL");
+    expect(options.labels).toContain(
+      "SHORT = auto-skip    ONCE = each major move once    FULL = always",
+    );
+    await setProofLabel(page, "Options: Full / Once / Short major cinematics");
+    await page.waitForTimeout(120);
+    await page.screenshot({
+      path: testInfo.outputPath(`battle-cinematic-options-${RUN_ID}.png`),
+      fullPage: true,
+    });
+
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowLeft");
+    await page.waitForFunction(
+      () => window.__kithlandsTest.battleCinematicMode() === "once",
+    );
   });
 });

@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { addPartyToHistory, clearPrefs, getPartyHistory } from "./prefs.js";
+import {
+  addPartyToHistory,
+  clearPrefs,
+  getLongCinematicMode,
+  getPartyHistory,
+  setLongCinematicMode,
+} from "./prefs.js";
 
 function stubLocalStorage() {
   const store = new Map();
@@ -41,5 +47,24 @@ describe("party preference history", () => {
     expect(history).toHaveLength(5);
     expect(history[0][0].name).toBe("Hero 5");
     expect(history[4][0].name).toBe("Hero 1");
+  });
+});
+
+describe("battle cinematic preference", () => {
+  beforeEach(() => {
+    stubLocalStorage();
+    clearPrefs();
+  });
+
+  it("defaults to full major cinematics", () => {
+    expect(getLongCinematicMode()).toBe("full");
+  });
+
+  it("persists valid modes and rejects unknown values", () => {
+    setLongCinematicMode("once");
+    expect(getLongCinematicMode()).toBe("once");
+
+    setLongCinematicMode("warp-speed");
+    expect(getLongCinematicMode()).toBe("full");
   });
 });

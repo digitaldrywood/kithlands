@@ -15,7 +15,11 @@ import { FloatingTextPool } from "../ui/floating_text.js";
 import { MessageWindow } from "../ui/message_window.js";
 import { TargetCursor } from "../ui/target_cursor.js";
 import { ENEMY_SPRITES } from "../data/monsterSprites.js";
-import { battleSpeedMul, messageCharMs } from "../systems/prefs.js";
+import {
+  battleSpeedMul,
+  getLongCinematicMode,
+  messageCharMs,
+} from "../systems/prefs.js";
 import { toggleDebugPanel, closeDebugPanel } from "./debug_panel.js";
 import {
   buildPartyBattleLayout,
@@ -33,7 +37,9 @@ import { pickBackgroundKey } from "./battleBackgrounds.js";
 import {
   battleElementStyle,
   buildAttackMotionPath,
+  cinematicActionKey,
   prefersReducedBattleMotion,
+  shouldPlayMajorCinematic,
   spellTravelDuration,
 } from "./battle_cinematics.js";
 
@@ -80,19 +86,20 @@ const CURSOR_TINTS = {
   ally: 0x66ff99,
 };
 const ACTION_BEAT_MS = {
-  titleDisplay: 900,
-  titleLead: 140,
-  physicalAnticipation: 110,
-  physicalLaunch: 210,
-  spellCharge: 280,
-  preImpact: 300,
-  postDamage: 500,
-  interAction: 600,
-  multiTargetGap: 240,
-  briefStatus: 420,
-  infoPause: 460,
-  recovery: 120,
+  titleDisplay: 680,
+  titleLead: 100,
+  physicalAnticipation: 80,
+  physicalLaunch: 160,
+  spellCharge: 190,
+  preImpact: 120,
+  postDamage: 220,
+  interAction: 160,
+  multiTargetGap: 140,
+  briefStatus: 300,
+  infoPause: 350,
+  recovery: 100,
   critShake: 80,
+  majorPrelude: 1250,
 };
 const CLASS_SPRITES = {
   warrior: "warrior",
@@ -232,6 +239,7 @@ export class BattleScene extends Phaser.Scene {
       data.lastRoundActions ?? data.gameState?.last_round_actions,
     );
     this._autoMode = data.autoMode || false;
+    this._seenMajorCinematics = new Set(data.seenMajorCinematics || []);
     this.returnScene = data.returnScene || null;
     this.encounterTileType =
       data.encounterTileType ??
@@ -259,6 +267,8 @@ export class BattleScene extends Phaser.Scene {
     this.actionHudObjects = [];
     this.combatShadows = [];
     this.backdropObjects = [];
+    this.activeMajorCinematic = null;
+    this.lastMajorCinematicResult = null;
 
     // Per-member action collection
     this.memberActions = []; // array of {slot, type, target_id, spell_id}
@@ -311,6 +321,7 @@ export class BattleScene extends Phaser.Scene {
       this.messageWindow?.destroy();
       this.actorCursor?.destroy();
       this.targetCursor?.destroy();
+      this.finishMajorCinematic?.(true);
     });
 
     const gs = this.gameState;
@@ -493,6 +504,7 @@ export class BattleScene extends Phaser.Scene {
             gameState: this.gameState,
             returnScene: this.returnScene,
             encounterTileType: this.encounterTileType,
+            seenMajorCinematics: this.majorCinematicsSeen(),
           });
         }
       });
@@ -553,6 +565,12 @@ export class BattleScene extends Phaser.Scene {
       if (this.currentMemberIdx >= this.livingMembers.length) return;
       this.autoMode = false;
       this.doFlee();
+    });
+
+    // Major cinematics remain skippable after they begin. SPACE is a no-op
+    // during normal battle input so it cannot accidentally select an action.
+    this.input.keyboard.on("keydown-SPACE", () => {
+      this.requestCinematicSkip();
     });
 
     // REPEAT last round's actions (issue #99)
@@ -1485,6 +1503,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   actionTitleFor(action, line) {
+    if (action?.action_name) return action.action_name;
     if (action?.spell_name) return action.spell_name;
     if (action?.kind === "attack" || action?.kind === "counter") {
       return "ATTACK";
@@ -1624,6 +1643,174 @@ export class BattleScene extends Phaser.Scene {
 
   reducedBattleMotion() {
     return this._forceReducedMotion ?? prefersReducedBattleMotion();
+  }
+
+  majorCinematicsSeen() {
+    return [...(this._seenMajorCinematics || [])];
+  }
+
+  shouldPlayMajorAction(action) {
+    const key = cinematicActionKey(action);
+    return shouldPlayMajorCinematic({
+      tier: action?.cinematic_tier,
+      mode: getLongCinematicMode(),
+      alreadySeen: this._seenMajorCinematics?.has(key) || false,
+      reducedMotion: this.reducedBattleMotion(),
+    });
+  }
+
+  requestCinematicSkip() {
+    const session = this.activeMajorCinematic;
+    if (!session || session.finished || session.skipped) return false;
+    session.skipped = true;
+    for (const settle of [...session.skipWaiters]) settle(true);
+    return true;
+  }
+
+  waitForMajorCinematic(ms, session) {
+    if (!session || session.skipped) return Promise.resolve(true);
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (skipped) => {
+        if (settled) return;
+        settled = true;
+        session.skipWaiters.delete(finish);
+        timer?.remove?.(false);
+        resolve(skipped);
+      };
+      const timer = this.scaledDelay(ms, () => finish(false));
+      session.skipWaiters.add(finish);
+    });
+  }
+
+  finishMajorCinematic(force = false) {
+    const session = this.activeMajorCinematic;
+    if (!session || session.finished) return;
+    if (force && !session.skipped) {
+      session.skipped = true;
+      for (const settle of [...session.skipWaiters]) settle(true);
+    }
+    session.finished = true;
+    for (const target of session.fx) {
+      this.tweens.killTweensOf(target);
+      target?.destroy?.();
+    }
+    session.skipButton?.destroy?.();
+    session.actorSprite?.clearTint?.();
+    this.activeMajorCinematic = null;
+  }
+
+  async playMajorCinematicPrelude(action, actorEntry, element = "none") {
+    const key = cinematicActionKey(action);
+    if (!this.shouldPlayMajorAction(action)) {
+      const result = { key, played: false, skipped: false };
+      this.lastMajorCinematicResult = result;
+      return result;
+    }
+
+    this._seenMajorCinematics.add(key);
+    const actor = this.resolveVisualEntry(actorEntry) || {
+      x: 400,
+      y: 260,
+      width: 60,
+      height: 60,
+      sprite: null,
+    };
+    const style = battleElementStyle(element);
+    const dimmer = this.add
+      .rectangle(400, 300, 800, 600, 0x02030a, 0.5)
+      .setDepth(12)
+      .setAlpha(0);
+    dimmer._combatFxTag = "major-cinematic";
+    const aura = this.add.graphics().setDepth(15).setAlpha(0).setScale(0.45);
+    aura._combatFxTag = "major-aura";
+    aura.setPosition(actor.x, actor.y);
+    aura.lineStyle(5, style.core, 0.95);
+    aura.strokeCircle(0, 0, Math.max(38, actor.width * 0.62));
+    aura.lineStyle(2, style.accent, 0.9);
+    aura.strokeCircle(0, 0, Math.max(54, actor.width * 0.86));
+    for (let i = 0; i < 12; i++) {
+      const angle = (Math.PI * 2 * i) / 12;
+      aura.lineBetween(
+        Math.cos(angle) * 44,
+        Math.sin(angle) * 44,
+        Math.cos(angle) * 72,
+        Math.sin(angle) * 72,
+      );
+    }
+    const majorLabel = this.add
+      .text(400, 72, "MAJOR TECHNIQUE", {
+        fontSize: "13px",
+        color: `#${style.accent.toString(16).padStart(6, "0")}`,
+        fontFamily: "monospace",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5)
+      .setDepth(26)
+      .setAlpha(0);
+    majorLabel._combatFxTag = "major-label";
+
+    const session = {
+      key,
+      skipped: false,
+      finished: false,
+      skipWaiters: new Set(),
+      fx: [dimmer, aura, majorLabel],
+      actorSprite: actor.sprite,
+      skipButton: null,
+    };
+    this.activeMajorCinematic = session;
+    const compactViewport =
+      Number.isFinite(globalThis.innerWidth) && globalThis.innerWidth <= 480;
+    const skipButton = drawButton(
+      this,
+      compactViewport ? 650 : 690,
+      compactViewport ? 54 : 38,
+      compactViewport ? 260 : 188,
+      compactViewport ? 80 : 36,
+      compactViewport ? "SKIP CINEMATIC" : "SKIP  [SPACE]",
+      () => this.requestCinematicSkip(),
+      {
+        depth: 80,
+        fontSize: compactViewport ? "16px" : "12px",
+        fill: 0x111827,
+        stroke: 0xf8d477,
+        textColor: "#fff2bd",
+      },
+    );
+    skipButton.bg._combatFxTag = "cinematic-skip";
+    skipButton.label._combatFxTag = "cinematic-skip-label";
+    session.skipButton = skipButton;
+
+    actor.sprite?.setTint?.(style.core);
+    this.tweens.add({
+      targets: dimmer,
+      alpha: 0.5,
+      duration: this.scaledMs(180),
+    });
+    this.tweens.add({
+      targets: [aura, majorLabel],
+      alpha: 1,
+      duration: this.scaledMs(220),
+      ease: "Quad.Out",
+    });
+    this.tweens.add({
+      targets: aura,
+      scaleX: 1.25,
+      scaleY: 1.25,
+      angle: 135,
+      duration: this.scaledMs(ACTION_BEAT_MS.majorPrelude),
+      ease: "Sine.InOut",
+    });
+
+    const skipped = await this.waitForMajorCinematic(
+      ACTION_BEAT_MS.majorPrelude,
+      session,
+    );
+    const result = { key, played: true, skipped: !!skipped };
+    this.lastMajorCinematicResult = result;
+    this.finishMajorCinematic();
+    return result;
   }
 
   spawnCastAura(actorEntry, element = "none") {
@@ -2521,6 +2708,7 @@ export class BattleScene extends Phaser.Scene {
           gameState: result,
           returnScene: this.returnScene,
           encounterTileType: this.encounterTileType,
+          seenMajorCinematics: this.majorCinematicsSeen(),
         });
       }
     });
@@ -2583,6 +2771,7 @@ export class BattleScene extends Phaser.Scene {
             autoMode: this.autoMode,
             returnScene: this.returnScene,
             encounterTileType: this.encounterTileType,
+            seenMajorCinematics: this.majorCinematicsSeen(),
           });
         }
       });
@@ -2612,6 +2801,7 @@ export class BattleScene extends Phaser.Scene {
               gameState: fresh,
               returnScene: this.returnScene,
               encounterTileType: this.encounterTileType,
+              seenMajorCinematics: this.majorCinematicsSeen(),
             });
           } else {
             this.returnFromBattle(fresh);
@@ -2719,6 +2909,7 @@ export class BattleScene extends Phaser.Scene {
           pe.arrow.setVisible(true);
           this.revealLine(`${attacker} attacks ${ee.name}!`, "#ff8844");
           await this.showActionTitle(pe, attackTitle, "#ffcc66");
+          await this.playMajorCinematicPrelude(action, pe, "none");
           await this.lungePartySprite(pe, ee);
           await this.wait(ACTION_BEAT_MS.preImpact);
         } else if (pe) {
@@ -2726,6 +2917,7 @@ export class BattleScene extends Phaser.Scene {
           pe.arrow.setVisible(true);
           this.revealLine(`${attacker} attacks!`, "#ff8844");
           await this.showActionTitle(pe, attackTitle, "#ffcc66");
+          await this.playMajorCinematicPrelude(action, pe, "none");
           await this.wait(ACTION_BEAT_MS.preImpact);
         } else if (attackerEnemy && pt) {
           this.showActionFocus(attackerEnemy, pt, {
@@ -2734,6 +2926,7 @@ export class BattleScene extends Phaser.Scene {
           });
           this.revealLine(`${attacker} attacks ${pt.name}!`, "#ff9966");
           await this.showActionTitle(attackerEnemy, attackTitle, "#ff9966");
+          await this.playMajorCinematicPrelude(action, attackerEnemy, "none");
           await this.lungePartySprite(attackerEnemy, pt);
           await this.wait(ACTION_BEAT_MS.preImpact);
         }
@@ -2817,6 +3010,7 @@ export class BattleScene extends Phaser.Scene {
             this.actionTitleFor(action, line),
             "#ffcc66",
           );
+          await this.playMajorCinematicPrelude(action, pe, "none");
           await this.lungePartySprite(pe, ee);
           await this.wait(ACTION_BEAT_MS.preImpact);
           const targetKey = `enemy_${targetId}`;
@@ -2897,6 +3091,7 @@ export class BattleScene extends Phaser.Scene {
           spellName,
           `#${style.core.toString(16).padStart(6, "0")}`,
         );
+        await this.playMajorCinematicPrelude(action, actorEntry, element);
         await this.playCastAnticipation(actorEntry, element);
         playSFX(ELEMENT_SFX[element] || "sfx_spell");
 
@@ -2972,6 +3167,7 @@ export class BattleScene extends Phaser.Scene {
           action.spell_name || "HEAL",
           "#fff4bd",
         );
+        await this.playMajorCinematicPrelude(action, casterEntry, "holy");
         await this.playCastAnticipation(casterEntry, "holy");
         this.showActionFocus(casterEntry, healTarget, {
           targetColor: CURSOR_TINTS.ally,
@@ -3125,6 +3321,7 @@ export class BattleScene extends Phaser.Scene {
           action.spell_name || "STATUS",
           "#c27aff",
         );
+        await this.playMajorCinematicPrelude(action, casterEntry, "dark");
         await this.playCastAnticipation(casterEntry, "dark");
         this.showActionFocus(casterEntry, targetEntry, {
           targetColor: ACTION_RETICLE_COLORS.magicalTarget,
@@ -3145,6 +3342,7 @@ export class BattleScene extends Phaser.Scene {
           this.actionTitleFor(action, line),
           "#ff88ff",
         );
+        await this.playMajorCinematicPrelude(action, actorEntry, "dark");
         // Backstab with damage gets hit effect
         if (action.damage > 0) {
           playSFX("sfx_slash");
@@ -3355,6 +3553,60 @@ export class BattleScene extends Phaser.Scene {
       actorX: actorEntry.sprite?.x ?? actorEntry.x,
       targetX: targetEntry.x,
     };
+  }
+
+  async runMajorCinematicProofFrame() {
+    const partyEntries = Object.values(this.partySprites || {}).sort(
+      (a, b) => (a.slot ?? 0) - (b.slot ?? 0),
+    );
+    const actorEntry = partyEntries[1] || partyEntries[0];
+    if (!actorEntry) return null;
+
+    const action = {
+      kind: "spell",
+      action_id: "fireball",
+      action_name: "Fireball",
+      spell_name: "Fireball",
+      cinematic_tier: "major",
+    };
+    this._seenMajorCinematics.delete(cinematicActionKey(action));
+    this.revealLine(`${actorEntry.name} casts Fireball!`, "#88aaff");
+    void this.showActionTitle(actorEntry, "FIREBALL", "#ff7a45");
+    this.majorProofPromise = this.playMajorCinematicPrelude(
+      action,
+      actorEntry,
+      "fire",
+    );
+    await this.wait(220);
+    return {
+      active: !!this.activeMajorCinematic,
+      key: cinematicActionKey(action),
+    };
+  }
+
+  async runMajorCinematicPolicyProof() {
+    this._seenMajorCinematics.clear();
+    const partyEntries = Object.values(this.partySprites || {}).sort(
+      (a, b) => (a.slot ?? 0) - (b.slot ?? 0),
+    );
+    const actorEntry = partyEntries[1] || partyEntries[0];
+    const action = {
+      kind: "spell",
+      action_id: "fireball",
+      action_name: "Fireball",
+      cinematic_tier: "major",
+    };
+    const first = await this.playMajorCinematicPrelude(
+      action,
+      actorEntry,
+      "fire",
+    );
+    const second = await this.playMajorCinematicPrelude(
+      action,
+      actorEntry,
+      "fire",
+    );
+    return { first, second };
   }
 
   hitFx(x, y, dmg, isParty, defeated, damageType, opts = {}) {

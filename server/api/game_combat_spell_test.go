@@ -88,6 +88,41 @@ func containsString(values []string, want string) bool {
 	return false
 }
 
+func TestMajorSpellCombatActionCarriesPresentationMetadata(t *testing.T) {
+	game := newGameWithParty(t, []api.PartyMemberReq{
+		{Name: "Sparks", ClassID: "cinder"},
+		{Name: "Tank", ClassID: "warrior"},
+	})
+	api.TeachSpellForTest(game, 0, "fireball", 3)
+	state := enterCombat(t, game)
+	enemyID := state.Enemies[0].ID
+
+	result, err := game.ProcessAction(api.GameActionRequest{
+		Type: "attack",
+		Actions: []api.MemberActionReq{
+			{Slot: 0, Type: "spell", SpellID: "fireball", TargetID: enemyID},
+			{Slot: 1, Type: "defend"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("cast fireball: %v", err)
+	}
+
+	for _, action := range result.CombatActions {
+		if action.ActionID != "fireball" {
+			continue
+		}
+		if action.ActionName != "Fireball" {
+			t.Fatalf("action_name = %q, want Fireball", action.ActionName)
+		}
+		if action.CinematicTier != "major" {
+			t.Fatalf("cinematic_tier = %q, want major", action.CinematicTier)
+		}
+		return
+	}
+	t.Fatalf("fireball combat action missing; actions=%+v", result.CombatActions)
+}
+
 // TestSpellCureHealsTargetedAllySlot verifies Cure uses target_id as a party
 // slot index and heals that specific ally, not the most-damaged fallback.
 func TestSpellCureHealsTargetedAllySlot(t *testing.T) {

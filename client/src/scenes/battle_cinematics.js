@@ -44,6 +44,27 @@ export function prefersReducedBattleMotion() {
   );
 }
 
+export function cinematicActionKey(action = {}) {
+  const kind = String(action.kind || "action").trim();
+  const id = String(
+    action.action_id || action.action_name || action.spell_name || kind,
+  )
+    .trim()
+    .toLowerCase();
+  return `${kind}:${id}`;
+}
+
+export function shouldPlayMajorCinematic({
+  tier,
+  mode = "full",
+  alreadySeen = false,
+  reducedMotion = false,
+} = {}) {
+  if (tier !== "major" || reducedMotion || mode === "short") return false;
+  if (mode === "once") return !alreadySeen;
+  return true;
+}
+
 export function buildAttackMotionPath(
   actorEntry,
   targetEntry,

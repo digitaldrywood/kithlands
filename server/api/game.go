@@ -311,20 +311,23 @@ func (g *Game) buildEnemyState(e *combat.Combatant) EnemyState {
 // CombatActionEntry carries structured metadata for a single combat log line.
 // Sent alongside combat_log so the client can drive animations without parsing text.
 type CombatActionEntry struct {
-	Kind       string           `json:"kind"`                  // attack, spell, ability, heal, item, counter, info
-	Element    string           `json:"element,omitempty"`     // fire, ice, lightning, holy, dark, none
-	DamageType string           `json:"damage_type,omitempty"` // physical, magical
-	ActorID    int              `json:"actor_id,omitempty"`
-	ActorName  string           `json:"actor_name,omitempty"`
-	TargetID   int              `json:"target_id,omitempty"`
-	TargetName string           `json:"target_name,omitempty"`
-	Damage     int              `json:"damage,omitempty"`
-	Killed     bool             `json:"killed,omitempty"`
-	Crit       bool             `json:"crit,omitempty"`
-	Missed     bool             `json:"missed,omitempty"`
-	Hits       []CombatHitEntry `json:"hits,omitempty"`
-	SpellName  string           `json:"spell_name,omitempty"`
-	Initiative int              `json:"initiative,omitempty"` // weighted turn-order roll for this actor
+	Kind          string           `json:"kind"`                  // attack, spell, ability, heal, item, counter, info
+	Element       string           `json:"element,omitempty"`     // fire, ice, lightning, holy, dark, none
+	DamageType    string           `json:"damage_type,omitempty"` // physical, magical
+	ActorID       int              `json:"actor_id,omitempty"`
+	ActorName     string           `json:"actor_name,omitempty"`
+	TargetID      int              `json:"target_id,omitempty"`
+	TargetName    string           `json:"target_name,omitempty"`
+	Damage        int              `json:"damage,omitempty"`
+	Killed        bool             `json:"killed,omitempty"`
+	Crit          bool             `json:"crit,omitempty"`
+	Missed        bool             `json:"missed,omitempty"`
+	Hits          []CombatHitEntry `json:"hits,omitempty"`
+	ActionID      string           `json:"action_id,omitempty"`
+	ActionName    string           `json:"action_name,omitempty"`
+	CinematicTier string           `json:"cinematic_tier,omitempty"`
+	SpellName     string           `json:"spell_name,omitempty"`
+	Initiative    int              `json:"initiative,omitempty"` // weighted turn-order roll for this actor
 }
 
 // CombatHitEntry represents a single hit within a multi-hit attack.

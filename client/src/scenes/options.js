@@ -2,6 +2,8 @@ import { drawPanel, drawButton, drawProgressBar } from "../ui/panel.js";
 import {
   getBattleSpeed,
   setBattleSpeed,
+  getLongCinematicMode,
+  setLongCinematicMode,
   getMessageSpeed,
   setMessageSpeed,
   getWalkSpeed,
@@ -22,7 +24,7 @@ import { toggleMenu } from "./world_menu.js";
 const PANEL_CX = 400;
 const PANEL_CY = 300;
 const PANEL_W = 560;
-const PANEL_H = 360;
+const PANEL_H = 420;
 const PANEL_LEFT = PANEL_CX - PANEL_W / 2;
 const PANEL_TOP = PANEL_CY - PANEL_H / 2;
 const DEPTH_BG = 50;
@@ -39,6 +41,15 @@ const INC_BTN_X = BAR_X + BAR_W + 26;
 const VALUE_LABEL_X = INC_BTN_X + 28;
 const BTN_W = 36;
 const BTN_H = 32;
+const CINEMATIC_MODES = ["short", "once", "full"];
+
+function getCinematicModeLevel() {
+  return Math.max(1, CINEMATIC_MODES.indexOf(getLongCinematicMode()) + 1);
+}
+
+function setCinematicModeLevel(level) {
+  setLongCinematicMode(CINEMATIC_MODES[level - 1] || "full");
+}
 
 const ROWS = [
   {
@@ -64,6 +75,15 @@ const ROWS = [
     max: 3,
     get: getWalkSpeed,
     set: setWalkSpeed,
+  },
+  {
+    key: "cinematics",
+    label: "LONG CINEMATICS",
+    min: 1,
+    max: 3,
+    get: getCinematicModeLevel,
+    set: setCinematicModeLevel,
+    format: (value) => CINEMATIC_MODES[value - 1]?.toUpperCase() || "FULL",
   },
 ];
 
@@ -105,7 +125,23 @@ export function showOptions(scene) {
     .setDepth(DEPTH_CONTENT);
   overlay.push(hint);
 
-  const rowY0 = PANEL_TOP + 110;
+  const cinematicHint = scene.add
+    .text(
+      PANEL_CX,
+      PANEL_TOP + 76,
+      "SHORT = auto-skip    ONCE = each major move once    FULL = always",
+      {
+        fontSize: "10px",
+        color: "#9fb6d9",
+        fontFamily: "monospace",
+      },
+    )
+    .setOrigin(0.5)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT);
+  overlay.push(cinematicHint);
+
+  const rowY0 = PANEL_TOP + 108;
   const rowGap = 52;
 
   for (let i = 0; i < ROWS.length; i++) {
@@ -184,6 +220,7 @@ export function showOptions(scene) {
     handle.refresh = () => {
       const cur = row.get();
       bar.setValue(cur);
+      if (row.format) bar.label.setText(row.format(cur));
       decBtn.setEnabled(cur > row.min);
       incBtn.setEnabled(cur < row.max);
     };
@@ -248,6 +285,7 @@ export function showOptions(scene) {
     34,
     "CLOSE (ESC)",
     close,
+    { depth: DEPTH_CONTENT },
   );
   overlay.push(closeBtn);
 

@@ -11,9 +11,11 @@ import { showOptions } from "./options.js";
 import { toggleMenu } from "./world_menu.js";
 import {
   setBattleSpeed,
+  setLongCinematicMode,
   setMessageSpeed,
   setWalkSpeed,
   getBattleSpeed,
+  getLongCinematicMode,
   getMessageSpeed,
   getWalkSpeed,
 } from "../systems/prefs.js";
@@ -52,7 +54,8 @@ function makeRectangle() {
     setScrollFactor() {
       return rect;
     },
-    setDepth() {
+    setDepth(depth) {
+      rect.depth = depth;
       return rect;
     },
     setInteractive() {
@@ -103,7 +106,8 @@ function makeText(initial) {
     setScrollFactor() {
       return t;
     },
-    setDepth() {
+    setDepth(depth) {
+      t.depth = depth;
       return t;
     },
     setInteractive() {
@@ -196,22 +200,41 @@ beforeEach(() => {
   setBattleSpeed(3);
   setMessageSpeed(3);
   setWalkSpeed(2);
+  setLongCinematicMode("full");
   toggleMenu.mockClear();
 });
 
 describe("showOptions overlay", () => {
-  it("renders three rows with label text, progress bar, and cur/max", () => {
+  it("renders four rows including the named long-cinematic mode", () => {
     const scene = makeScene();
     const handle = showOptions(scene);
 
-    expect(handle.rowHandles).toHaveLength(3);
+    expect(handle.rowHandles).toHaveLength(4);
 
     const labels = scene.created.texts.map((t) => t.text);
     expect(labels).toContain("BATTLE SPEED");
     expect(labels).toContain("MESSAGE SPEED");
     expect(labels).toContain("WALK SPEED");
+    expect(labels).toContain("LONG CINEMATICS");
+    expect(labels).toContain("FULL");
     expect(labels).toContain("3/6"); // battle + message
     expect(labels).toContain("2/3"); // walk
+  });
+
+  it("cycles long cinematics through SHORT, ONCE, and FULL", () => {
+    const scene = makeScene();
+    const handle = showOptions(scene);
+    const cinematics = handle.rowHandles[3];
+
+    cinematics.decBtn.bg.handlers.pointerdown();
+    cinematics.decBtn.bg.handlers.pointerup();
+    expect(getLongCinematicMode()).toBe("once");
+    expect(cinematics.bar.label.text).toBe("ONCE");
+
+    cinematics.decBtn.bg.handlers.pointerdown();
+    cinematics.decBtn.bg.handlers.pointerup();
+    expect(getLongCinematicMode()).toBe("short");
+    expect(cinematics.bar.label.text).toBe("SHORT");
   });
 
   it("plus button increments value, persists, and updates the bar + label", () => {
@@ -336,6 +359,16 @@ describe("showOptions overlay", () => {
 
     // Party menu reopens — regression guard for issue #129 flow.
     expect(toggleMenu).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders the close button above the modal panel", () => {
+    const scene = makeScene();
+    showOptions(scene);
+    const closeLabel = scene.created.texts.find(
+      (text) => text.text === "CLOSE (ESC)",
+    );
+    const modalPanel = scene.created.rects[0];
+    expect(closeLabel.depth).toBeGreaterThan(modalPanel.depth);
   });
 
   it("ESC handler unlocks world input via resumeWorldFor", () => {

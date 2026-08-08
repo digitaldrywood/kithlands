@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import {
   battleElementStyle,
   buildAttackMotionPath,
+  cinematicActionKey,
   prefersReducedBattleMotion,
+  shouldPlayMajorCinematic,
   spellTravelDuration,
 } from "./battle_cinematics.js";
 
@@ -46,5 +48,44 @@ describe("battle cinematic motion", () => {
     globalThis.matchMedia = vi.fn(() => ({ matches: true }));
     expect(prefersReducedBattleMotion()).toBe(true);
     globalThis.matchMedia = original;
+  });
+
+  it("plays only major cinematics allowed by the player's repeat setting", () => {
+    expect(shouldPlayMajorCinematic({ tier: "brisk", mode: "full" })).toBe(
+      false,
+    );
+    expect(shouldPlayMajorCinematic({ tier: "major", mode: "full" })).toBe(
+      true,
+    );
+    expect(shouldPlayMajorCinematic({ tier: "major", mode: "short" })).toBe(
+      false,
+    );
+    expect(
+      shouldPlayMajorCinematic({
+        tier: "major",
+        mode: "once",
+        alreadySeen: true,
+      }),
+    ).toBe(false);
+    expect(
+      shouldPlayMajorCinematic({
+        tier: "major",
+        mode: "full",
+        reducedMotion: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("uses authoritative action ids for per-battle repeat suppression", () => {
+    expect(
+      cinematicActionKey({
+        kind: "spell",
+        action_id: "fireball",
+        action_name: "Fireball",
+      }),
+    ).toBe("spell:fireball");
+    expect(
+      cinematicActionKey({ kind: "ability", action_name: "Backstab" }),
+    ).toBe("ability:backstab");
   });
 });
