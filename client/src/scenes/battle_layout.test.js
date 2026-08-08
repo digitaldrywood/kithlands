@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildEnemyBattleLayout,
   buildPartyBattleLayout,
   floatingTextAnchorForEntry,
   inferPartyRow,
@@ -56,10 +57,34 @@ describe("buildPartyBattleLayout", () => {
 
     expect(layout[0].x).toBeLessThan(layout[1].x);
     expect(layout[3].x).toBeLessThan(layout[2].x);
-    expect(Math.abs(layout[0].y - layout[1].y)).toBeGreaterThanOrEqual(30);
-    expect(Math.abs(layout[2].y - layout[3].y)).toBeGreaterThanOrEqual(30);
+    expect(Math.abs(layout[0].y - layout[1].y)).toBe(88);
+    expect(Math.abs(layout[2].y - layout[3].y)).toBe(88);
     expect(layout[2].y).toBeGreaterThan(layout[1].y);
     expect(layout[3].y).toBeGreaterThan(layout[0].y);
+  });
+
+  it("reserves a non-overlapping lane for every party member", () => {
+    const layout = buildPartyBattleLayout([{}, {}, {}, {}]);
+    for (let i = 1; i < layout.length; i++) {
+      expect(layout[i].lane.y).toBeGreaterThanOrEqual(
+        layout[i - 1].lane.y + layout[i - 1].lane.height,
+      );
+    }
+  });
+});
+
+describe("buildEnemyBattleLayout", () => {
+  it("allocates a bounded 3x3 grid for the maximum encounter", () => {
+    const layout = buildEnemyBattleLayout(
+      Array.from({ length: 9 }, () => ({})),
+    );
+    expect(layout).toHaveLength(9);
+    expect(new Set(layout.map((entry) => entry.x))).toHaveLength(3);
+    expect(new Set(layout.map((entry) => entry.y))).toHaveLength(3);
+    for (const entry of layout) {
+      expect(entry.lane.x + entry.lane.width).toBeLessThanOrEqual(454);
+      expect(entry.lane.y + entry.lane.height).toBeLessThanOrEqual(405);
+    }
   });
 });
 
