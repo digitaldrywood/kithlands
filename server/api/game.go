@@ -452,6 +452,7 @@ type Game struct {
 	visitedNodes         map[string]bool // node IDs the player has entered (sequence-break tracking)
 	formation            string          // current encounter layout type
 	worldEncounterCount  int             // successful overworld encounters started on this save
+	lootRollSeq          uint64          // persisted sequence for isolated deterministic loot rolls
 	lastRoundActions     []MemberActionReq
 	pendingChestClaim    *PendingChestClaim
 	// encounterStart records preemptive/ambush state for the current fight so
