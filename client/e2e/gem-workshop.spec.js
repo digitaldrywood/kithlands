@@ -90,7 +90,8 @@ test("previews and sockets equipped gear from the character screen", async ({
       "1  CHOOSE EQUIPMENT",
       "2  CHOOSE A GEM",
       "3  REVIEW & CONFIRM",
-      "CONFIRM SOCKET",
+      "PREVIEW — NOT APPLIED",
+      "CONFIRM & SOCKET",
     ]),
   );
   expect(texts.some((text) => text.includes("Power:"))).toBe(true);
@@ -131,10 +132,10 @@ test("previews and sockets equipped gear from the character screen", async ({
   await page.waitForFunction(() =>
     window.__kithlandsTest
       .visibleTexts("World")
-      .some((entry) => entry.text === "CONFIRM SOCKET"),
+      .some((entry) => entry.text === "CONFIRM & SOCKET"),
   );
   await page.evaluate(() =>
-    window.__kithlandsTest.clickInteractiveText("CONFIRM SOCKET", "World"),
+    window.__kithlandsTest.clickInteractiveText("CONFIRM & SOCKET", "World"),
   );
   await page.waitForFunction((instanceID) => {
     const state = window.__kithlandsTest.gameState("World");
@@ -152,6 +153,15 @@ test("previews and sockets equipped gear from the character screen", async ({
       (socket) => socket.gem_id === "ember_shard",
     ),
   ).toBe(true);
+  const appliedTexts = await page.evaluate(() =>
+    window.__kithlandsTest.visibleTexts("World").map((entry) => entry.text),
+  );
+  expect(appliedTexts).toContain("✓ SOCKET APPLIED");
+  expect(appliedTexts).toContain("◆ Ember Shard   +1 Power");
+  expect(appliedTexts).toContain("SOCKET FILLED");
+  expect(appliedTexts.some((text) => text.includes("is now socketed"))).toBe(
+    true,
+  );
 
   await page.screenshot({
     path: `tmp/gem-workshop-socketed-${RUN_ID}.png`,
@@ -190,7 +200,7 @@ test("keeps the comparison readable at desktop and mobile viewports", async ({
   await page.waitForFunction(() =>
     window.__kithlandsTest
       .visibleTexts("World")
-      .some((entry) => entry.text === "CONFIRM SOCKET"),
+      .some((entry) => entry.text === "CONFIRM & SOCKET"),
   );
 
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -253,9 +263,6 @@ test("advertises a ready recipe and recommends its stronger output", async ({
     );
   });
 
-  await page.evaluate(() =>
-    window.__kithlandsTest.clickInteractiveText("SOCKET GEMS", "World"),
-  );
   await page.waitForFunction(() =>
     window.__kithlandsTest
       .visibleTexts("World")
@@ -267,6 +274,8 @@ test("advertises a ready recipe and recommends its stronger output", async ({
   expect(texts.some((text) => text.includes("Ember Gem"))).toBe(true);
   expect(texts.some((text) => text.includes("(+3)"))).toBe(true);
   expect(texts).toContain("★ BEST OWNED GEM FOR THIS ITEM");
+  expect(texts).toContain("PREVIEW — NOT APPLIED");
+  expect(texts.some((text) => text.includes("not socketed yet"))).toBe(true);
 
   await page.screenshot({
     path: `tmp/gem-workshop-refined-recommendation-${RUN_ID}.png`,

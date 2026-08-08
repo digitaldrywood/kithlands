@@ -338,11 +338,13 @@ function addTabs(scene, group, mode, gs, setMode) {
 function renderSocketMode(scene, group, state) {
   const { gs, selectedGearID, selectedGemID, selectGear, selectGem, confirm } =
     state;
-  const gear = socketableGear(gs);
+  const gear = workshopGear(gs);
   const gems = ownedGems(gs);
   const selectedItem = gear.find((item) => item.instance_id === selectedGearID);
   const selectedGem = gems.find((gem) => gem.id === selectedGemID);
-  const recommendations = recommendedGems(gs, selectedItem);
+  const selectedSocket = firstOpenSocket(selectedItem);
+  const recommendations =
+    selectedSocket >= 0 ? recommendedGems(gs, selectedItem) : [];
   const bestGemID = recommendations[0]?.gem?.id || "";
 
   addText(scene, group, 48, 148, "1  CHOOSE EQUIPMENT", {
@@ -360,6 +362,7 @@ function renderSocketMode(scene, group, state) {
   gear.slice(0, 7).forEach((item, index) => {
     const open = item.sockets.filter((socket) => !socket.gem_id).length;
     const owner = item.equipped_by ? ` • ${item.equipped_by}` : " • Inventory";
+    const socketStatus = open > 0 ? `${open} OPEN` : "SOCKETED";
     drawChoiceRow(
       scene,
       group,
@@ -367,7 +370,7 @@ function renderSocketMode(scene, group, state) {
       180 + index * 42,
       224,
       36,
-      `${item.name}\n${open} open${owner}`,
+      `${item.name}\n${socketStatus}${owner}`,
       {
         selected: item.instance_id === selectedGearID,
         onClick: () => selectGear(item.instance_id),
@@ -390,12 +393,15 @@ function renderSocketMode(scene, group, state) {
   gems.slice(0, 7).forEach((gem, index) => {
     const preview = socketPreview(selectedItem, gem, gs);
     const levelLocked = (gem.required_level || 1) > maxPartyLevel(gs);
+    const socketFilled = selectedItem && selectedSocket < 0;
     const best = gem.id === bestGemID;
     const delta = !selectedItem
       ? "Choose equipment"
-      : preview
-        ? `+${preview.delta} ${preview.stat}`
-        : "Not compatible";
+      : socketFilled
+        ? "Socket already filled"
+        : preview
+          ? `+${preview.delta} ${preview.stat}`
+          : "Not compatible";
     drawChoiceRow(
       scene,
       group,
@@ -406,8 +412,11 @@ function renderSocketMode(scene, group, state) {
       `${best ? "★ " : ""}${gem.name}  x${gem.count}\n${levelLocked ? `Lv.${gem.required_level} required` : delta}`,
       {
         selected: gem.id === selectedGemID,
-        muted: !selectedItem || !preview || levelLocked,
-        onClick: preview && !levelLocked ? () => selectGem(gem.id) : null,
+        muted: !selectedItem || socketFilled || !preview || levelLocked,
+        onClick:
+          !socketFilled && preview && !levelLocked
+            ? () => selectGem(gem.id)
+            : null,
         meta: { role: "gem", id: gem.id },
       },
     );
@@ -420,14 +429,19 @@ function renderSocketMode(scene, group, state) {
   });
   addPanel(scene, group, 504, 168, 248, 330);
   renderSocketPreview(scene, group, gs, selectedItem, selectedGem, bestGemID);
-  const preview = socketPreview(selectedItem, selectedGem, gs);
+  const preview =
+    selectedSocket >= 0 ? socketPreview(selectedItem, selectedGem, gs) : null;
   const confirmButton = drawButton(
     scene,
     628,
-    468,
+    476,
     214,
     38,
-    state.busy ? "WORKING..." : "CONFIRM SOCKET",
+    state.busy
+      ? "WORKING..."
+      : selectedItem && selectedSocket < 0
+        ? "SOCKET FILLED"
+        : "CONFIRM & SOCKET",
     confirm,
     {
       depth: DEPTH,
@@ -470,9 +484,37 @@ function renderSocketPreview(scene, group, gs, item, gem, bestGemID) {
     group,
     520,
     240,
-    `Sockets: ${item.sockets.map((socket) => (socket.gem_id ? "◆" : "◇")).join("  ")}`,
+    `Current: ${item.sockets.map((socket) => (socket.gem_id ? "◆" : "◇")).join("  ")}  ${firstOpenSocket(item) >= 0 ? "OPEN" : "SOCKETED"}`,
     { fontSize: "14px", color: COLORS.gold },
   );
+  if (firstOpenSocket(item) < 0) {
+    const filled = item.sockets.filter((socket) => socket.gem_id);
+    addText(scene, group, 520, 282, "✓ SOCKET APPLIED", {
+      fontSize: "11px",
+      fontStyle: "bold",
+      color: COLORS.good,
+    });
+    filled.forEach((socket, index) => {
+      const stat = socket.stat === "absorb" ? "Absorb" : "Power";
+      addText(
+        scene,
+        group,
+        520,
+        310 + index * 25,
+        `◆ ${socket.gem_name}   +${socket.value} ${stat}`,
+        { fontSize: "12px", fontStyle: "bold", color: COLORS.good },
+      );
+    });
+    addText(
+      scene,
+      group,
+      520,
+      372,
+      "This equipment has no open sockets remaining.",
+      { fontSize: "10px", color: COLORS.muted, wordWrap: { width: 215 } },
+    );
+    return;
+  }
   if (!gem) {
     addText(
       scene,
@@ -489,13 +531,18 @@ function renderSocketPreview(scene, group, gs, item, gem, bestGemID) {
   }
   const preview = socketPreview(item, gem, gs);
   if (!preview) return;
-  addText(scene, group, 520, 276, gem.name, {
+  addText(scene, group, 520, 266, "PREVIEW — NOT APPLIED", {
+    fontSize: "9px",
+    fontStyle: "bold",
+    color: COLORS.warning,
+  });
+  addText(scene, group, 520, 288, gem.name, {
     fontSize: "13px",
     fontStyle: "bold",
     color: gem.id === bestGemID ? COLORS.good : COLORS.text,
   });
   if (gem.id === bestGemID) {
-    addText(scene, group, 520, 298, "★ BEST OWNED GEM FOR THIS ITEM", {
+    addText(scene, group, 520, 308, "★ BEST OWNED GEM FOR THIS ITEM", {
       fontSize: "9px",
       color: COLORS.good,
     });
@@ -504,7 +551,7 @@ function renderSocketPreview(scene, group, gs, item, gem, bestGemID) {
     scene,
     group,
     520,
-    322,
+    332,
     `${preview.stat}:  ${preview.current}  →  ${preview.after}   (+${preview.delta})`,
     { fontSize: "14px", fontStyle: "bold", color: COLORS.good },
   );
@@ -513,21 +560,21 @@ function renderSocketPreview(scene, group, gs, item, gem, bestGemID) {
       scene,
       group,
       520,
-      348,
+      356,
       `${preview.characterLabel}:  ${preview.characterCurrent}  →  ${preview.characterAfter}`,
       { color: COLORS.active },
     );
   }
-  addText(scene, group, 520, 376, gem.description || "", {
+  addText(scene, group, 520, 380, gem.description || "", {
     fontSize: "10px",
     color: COLORS.muted,
     wordWrap: { width: 215 },
   });
-  addText(scene, group, 520, 418, "No stat decreases", {
+  addText(scene, group, 520, 404, `After confirm: ◆ ${gem.name}`, {
     fontSize: "10px",
     color: COLORS.good,
   });
-  addText(scene, group, 520, 438, "⚠ Socketing is permanent for now.", {
+  addText(scene, group, 520, 426, "⚠ Socketing is permanent for now.", {
     fontSize: "10px",
     color: COLORS.warning,
   });
@@ -577,7 +624,7 @@ function renderRefineMode(scene, group, state) {
   const craftButton = drawButton(
     scene,
     566,
-    468,
+    476,
     260,
     38,
     state.busy ? "WORKING..." : "REFINE GEM",
@@ -661,7 +708,7 @@ function renderRecipePreview(scene, group, recipe, gs, recommendedID) {
     color: COLORS.muted,
     wordWrap: { width: 340 },
   });
-  addText(scene, group, 396, 414, recipeReadiness(recipe, gs), {
+  addText(scene, group, 396, 398, recipeReadiness(recipe, gs), {
     fontSize: "11px",
     fontStyle: "bold",
     color: recipe.craftable ? COLORS.good : COLORS.warning,
@@ -670,7 +717,7 @@ function renderRecipePreview(scene, group, recipe, gs, recommendedID) {
     scene,
     group,
     396,
-    438,
+    420,
     "Refining creates the gem; it does not socket it automatically.",
     { fontSize: "9px", color: COLORS.muted },
   );
@@ -688,6 +735,8 @@ export function showGemWorkshop(
   let selectedGearID = preselectedInstanceID;
   let selectedGemID = "";
   let selectedRecipeID = "";
+  let notice = "";
+  let noticeIsError = false;
 
   const close = () => {
     clearGroup(content);
@@ -705,14 +754,10 @@ export function showGemWorkshop(
   scene.input.keyboard.once("keydown-ESC", escHandler);
   scene.gemWorkshopEscHandler = escHandler;
 
-  const notify = (message) => {
-    scene.showMessage(message);
-    scene.time.delayedCall(1800, () => scene.hideMessage());
-  };
-
-  const runAction = async (action, successMessage) => {
+  const runAction = async (action, successMessage, onSuccess) => {
     if (busy) return;
     busy = true;
+    notice = "";
     render();
     let result;
     try {
@@ -722,14 +767,17 @@ export function showGemWorkshop(
     }
     busy = false;
     if (!result || result.error) {
-      notify(result?.error || "Action failed");
+      notice = result?.error || "Action failed";
+      noticeIsError = true;
       render();
       return;
     }
     scene.gameState = result;
+    notice = successMessage;
+    noticeIsError = false;
+    if (onSuccess) onSuccess(result);
     if (typeof scene.updateHUD === "function") scene.updateHUD();
     playSFX("sfx_equip");
-    notify(successMessage);
     render();
   };
 
@@ -738,15 +786,16 @@ export function showGemWorkshop(
     selectedGemID =
       recommendedGems(
         scene.gameState,
-        socketableGear(scene.gameState).find(
+        workshopGear(scene.gameState).find(
           (item) => item.instance_id === instanceID,
         ),
       )[0]?.gem?.id || "";
+    notice = "";
     render();
   };
 
   const confirmSocket = async () => {
-    const item = socketableGear(scene.gameState).find(
+    const item = workshopGear(scene.gameState).find(
       (candidate) => candidate.instance_id === selectedGearID,
     );
     const gem = ownedGems(scene.gameState).find(
@@ -756,7 +805,7 @@ export function showGemWorkshop(
     if (!item || !gem || socket < 0) return;
     await runAction(
       () => socketGem(scene.gameState.id, selectedGearID, socket, gem.id),
-      `${gem.name} socketed into ${item.name}.`,
+      `✓ ${gem.name} socketed. ${item.name} is now socketed.`,
     );
   };
 
@@ -767,14 +816,18 @@ export function showGemWorkshop(
     if (!recipe?.craftable) return;
     await runAction(
       () => craftGem(scene.gameState.id, recipe.id),
-      `${recipe.name} complete. The new gem is ready to socket.`,
+      `✓ ${recipe.output.gem_name} refined — not socketed yet. Review and confirm above.`,
+      () => {
+        mode = "socket";
+        selectedGemID = recipe.output.gem_id;
+      },
     );
   };
 
   function render() {
     clearGroup(content);
     const gs = scene.gameState;
-    const gear = socketableGear(gs);
+    const gear = workshopGear(gs);
     if (!gear.some((item) => item.instance_id === selectedGearID)) {
       selectedGearID = gear[0]?.instance_id || "";
     }
@@ -817,6 +870,14 @@ export function showGemWorkshop(
           render();
         },
         confirm: confirmSocket,
+      });
+    }
+    if (notice) {
+      addText(scene, content, 50, 510, notice, {
+        fontSize: "10px",
+        fontStyle: "bold",
+        color: noticeIsError ? COLORS.bad : COLORS.good,
+        wordWrap: { width: 545 },
       });
     }
   }
