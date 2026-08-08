@@ -71,6 +71,14 @@ describe("buildPartyBattleLayout", () => {
       );
     }
   });
+
+  it("uses full-height portrait lanes without crowding combatants", () => {
+    const layout = buildPartyBattleLayout([{}, {}, {}, {}], { compact: true });
+    expect(layout.map((entry) => entry.y)).toEqual([88, 228, 368, 508]);
+    expect(
+      layout.at(-1).lane.y + layout.at(-1).lane.height,
+    ).toBeLessThanOrEqual(584);
+  });
 });
 
 describe("buildEnemyBattleLayout", () => {

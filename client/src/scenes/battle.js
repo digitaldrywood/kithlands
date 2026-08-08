@@ -19,6 +19,7 @@ import { buildVictoryXPSegments } from "../systems/victoryXp.js";
 import { FloatingTextPool } from "../ui/floating_text.js";
 import { MessageWindow } from "../ui/message_window.js";
 import { TargetCursor } from "../ui/target_cursor.js";
+import { drawBattlePartyStatus } from "../ui/battle_party_status.js";
 import { ENEMY_SPRITES } from "../data/monsterSprites.js";
 import {
   battleSpeedMul,
@@ -27,9 +28,11 @@ import {
 } from "../systems/prefs.js";
 import { toggleDebugPanel, closeDebugPanel } from "./debug_panel.js";
 import {
+  buildEnemyBattleLayout,
   buildPartyBattleLayout,
   floatingTextAnchorForEntry,
 } from "./battle_layout.js";
+import { battleHudLayout } from "./battle_hud_layout.js";
 import {
   buildBattleActionButtons,
   planSmartRound,
@@ -122,24 +125,6 @@ const CLASS_SPRITES = {
 };
 
 const DEFAULT_BATTLE_TILE = TILE_IDS.grass;
-const ACTION_HUD = {
-  centerX: 188,
-  centerY: 526,
-  width: 344,
-  height: 124,
-  portraitX: 70,
-  portraitY: 510,
-  portraitSize: 60,
-  portraitFrame: 68,
-  buttonStartX: 166,
-  buttonStartY: 494,
-  buttonWidth: 92,
-  buttonHeight: 24,
-  buttonGapX: 12,
-  buttonGapY: 8,
-  buttonColumns: 2,
-};
-
 function mixColor(colorA, colorB, ratio = 0.5) {
   const mix = clamp(ratio, 0, 1);
   const a = Phaser.Display.Color.IntegerToColor(colorA);
@@ -297,20 +282,30 @@ export class BattleScene extends Phaser.Scene {
     this.pickerItems = [];
     this.actorCursor = null;
     this.targetCursor = null;
+    this.hudLayout = battleHudLayout({
+      viewportWidth: globalThis.window?.innerWidth ?? 800,
+      viewportHeight: globalThis.window?.innerHeight ?? 600,
+    });
+    if (this.scale.gameSize.height !== this.hudLayout.gameHeight) {
+      this.scale.setGameSize(
+        this.hudLayout.gameWidth,
+        this.hudLayout.gameHeight,
+      );
+    }
 
     // Floating text pool for damage/heal numbers
     if (this.floatingText) this.floatingText.destroy();
     this.floatingText = new FloatingTextPool(this);
     if (this.messageWindow) this.messageWindow.destroy();
+    const messageBounds = this.hudLayout.message;
     this.messageWindow = new MessageWindow(this, {
-      x: 372,
-      y: 468,
-      width: 416,
-      height: 118,
-      minHeight: 92,
-      maxHeight: 124,
+      ...messageBounds,
+      minHeight: this.hudLayout.mode === "mobile" ? 360 : 92,
+      maxHeight: messageBounds.height,
+      anchorBottom: false,
       depth: 20,
-      fontSize: "16px",
+      fontSize: this.hudLayout.mode === "mobile" ? "32px" : "15px",
+      lineSpacing: this.hudLayout.mode === "mobile" ? 6 : 2,
     });
     this.promptText = this.messageWindow;
     this.actorCursor = new TargetCursor(this, {
@@ -329,8 +324,12 @@ export class BattleScene extends Phaser.Scene {
       this.messageWindow?.destroy();
       this.actorCursor?.destroy();
       this.targetCursor?.destroy();
+      this.partyStatus?.destroy();
       this.destroyGroupTargetCursor();
       this.finishMajorCinematic?.(true);
+      if (this.scale.gameSize.height !== 600) {
+        this.scale.setGameSize(800, 600);
+      }
     });
 
     const gs = this.gameState;
@@ -358,6 +357,7 @@ export class BattleScene extends Phaser.Scene {
 
     this.drawEnemies(gs);
     this.drawParty(gs);
+    this.drawPartyStatus(gs);
     this.createLowHpVignette();
 
     this.setupKeyboard();
@@ -750,6 +750,7 @@ export class BattleScene extends Phaser.Scene {
     this.pendingSpellEffect = null;
     this.targetCursor?.hide();
     this.showActorCursor(this.partySprites[member.name]);
+    this.partyStatus?.setActive(slot);
 
     // Draw action buttons for this member
     this.drawActions(gs, slot);
@@ -839,11 +840,14 @@ export class BattleScene extends Phaser.Scene {
     // HUD/MessageWindow panels (depth 16+) so combatants and UI render in
     // front. y=470 aligns the top edge with the MessageWindow at y=478 so
     // the message panel reads as a cell within the strip.
-    const strip = drawFF6BottomStrip(this, {
+    const stripBounds = this.hudLayout?.strip || {
       x: 0,
-      y: 470,
+      y: 432,
       width: 800,
-      height: 130,
+      height: 168,
+    };
+    const strip = drawFF6BottomStrip(this, {
+      ...stripBounds,
       depth: 2,
     });
     strip._combatFxTag = "bottom-strip";
@@ -945,15 +949,20 @@ export class BattleScene extends Phaser.Scene {
 
   drawEnemies(gs) {
     const enemies = gs.enemies;
-    const spacing = Math.min(130, 450 / Math.max(enemies.length, 1));
-    const sx = 80 + (450 - enemies.length * spacing) / 2;
+    const enemyLayout = buildEnemyBattleLayout(enemies, {
+      height: this.hudLayout.mode === "mobile" ? 500 : 320,
+    });
     this.enemyNumbers = [];
 
     for (let i = 0; i < enemies.length; i++) {
       const e = enemies[i];
-      const x = sx + i * spacing,
-        y = 236;
-      const sz = e.name === "Dark Knight" ? 80 : 50;
+      const placement = enemyLayout[i];
+      const x = placement.x;
+      const y = placement.y;
+      const sz =
+        e.name === "Dark Knight"
+          ? Math.max(80, placement.spriteSize)
+          : placement.spriteSize;
       this.addCombatShadow(x, y + sz / 2 + 22, sz + 30, 18, 0.28);
 
       const key = ENEMY_SPRITES[e.name];
@@ -999,67 +1008,43 @@ export class BattleScene extends Phaser.Scene {
       sprite.on("pointerout", () => {
         if (!this.enemySprites[e.id]?.dying) sprite.setAlpha(1);
       });
-      this.enemySprites[e.id] = { sprite, x, y, name: e.name, id: e.id };
+      this.enemySprites[e.id] = {
+        sprite,
+        x,
+        y,
+        name: e.name,
+        id: e.id,
+        // Keep presentation-time HP authoritative without drawing another
+        // meter over the battlefield. Combat animation code consumes this
+        // state while the dedicated party panel owns all visible meters.
+        hpBar: {
+          currentHP: Math.max(0, e.hp | 0),
+          maxHP: Math.max(0, e.max_hp | 0),
+        },
+      };
 
       const nameText = this.add
-        .text(x, y - sz / 2 - 18, e.name, {
-          fontSize: "10px",
+        .text(x, placement.nameY, e.name, {
+          fontSize: "11px",
           color: "#ffffff",
-          fontFamily: "monospace",
+          fontFamily: "Arial, sans-serif",
+          fontStyle: "bold",
         })
         .setOrigin(0.5);
       this.enemySprites[e.id].nameText = nameText;
 
       // Number indicator for keyboard targeting
       const numText = this.add
-        .text(x, y + sz / 2 + 1, `${i + 1}`, {
+        .text(x, placement.numberY, `${i + 1}`, {
           fontSize: "10px",
           color: "#ffff44",
-          fontFamily: "monospace",
+          fontFamily: "Arial, sans-serif",
           fontStyle: "bold",
         })
         .setOrigin(0.5)
         .setDepth(10)
         .setAlpha(0.3);
       this.enemyNumbers.push({ text: numText, enemyId: e.id });
-
-      const bw = 65;
-      const pct = hpBarColorPct(e.hp, e.max_hp);
-      const fillW = hpBarFillWidth(e.hp, e.max_hp, bw);
-      const barX = x - bw / 2,
-        barY = y + sz / 2 + 10;
-      const bc = pct > 0.5 ? 0x44ff44 : pct > 0.25 ? 0xff8800 : 0xff0000;
-      const bg = this.add
-        .rectangle(barX, barY, bw, 7, 0x333333)
-        .setOrigin(0, 0.5)
-        .setDepth(8);
-      const ghost = this.add
-        .rectangle(barX, barY, fillW, 7, 0xff6644)
-        .setOrigin(0, 0.5)
-        .setDepth(9);
-      const fill = this.add
-        .rectangle(barX, barY, fillW, 7, pct > 0 ? bc : 0x333333)
-        .setOrigin(0, 0.5)
-        .setDepth(10);
-      const hpLabel = this.add
-        .text(x, y + sz / 2 + 22, formatHPLabel(e.hp, e.max_hp), {
-          fontSize: "8px",
-          color: "#aaaaaa",
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5);
-      this.enemySprites[e.id].hpBar = {
-        bg,
-        ghost,
-        fill,
-        label: hpLabel,
-        width: bw,
-        // currentHP is the authoritative integer HP. animateHPBar reads
-        // this (never `maxHP * currentPct`) so drifted float percentages
-        // cannot resurface a dead enemy with a 1-pixel sliver. Issue #69.
-        currentHP: Math.max(0, e.hp | 0),
-        maxHP: e.max_hp,
-      };
 
       // Status effect icon
       if (e.status && STATUS_ICONS[e.status]) {
@@ -1076,12 +1061,11 @@ export class BattleScene extends Phaser.Scene {
   }
 
   drawParty(gs) {
-    const layout = buildPartyBattleLayout(gs.party);
+    const compact = this.hudLayout.mode === "mobile";
+    const layout = buildPartyBattleLayout(gs.party, { compact });
     for (let i = 0; i < gs.party.length; i++) {
       const p = gs.party[i];
       const placement = layout[i];
-      const x = placement.x;
-      const y = placement.y;
       const alive = p.hp > 0;
 
       const fallbackKey = CLASS_SPRITES[p.sprite_id || p.class_id];
@@ -1096,14 +1080,14 @@ export class BattleScene extends Phaser.Scene {
         composition,
         {
           alive,
-          targetSize: 100,
+          targetSize: 108,
           fallbackKey,
         },
       );
       this.addCombatShadow(
         placement.spriteX + 4,
-        placement.spriteY + 34,
-        58,
+        placement.spriteY + 37,
+        62,
         16,
         placement.row === "front" ? 0.32 : 0.24,
       );
@@ -1128,84 +1112,25 @@ export class BattleScene extends Phaser.Scene {
           }
         });
       }
-
-      this.add.text(x + 45, y - 18, p.name, {
-        fontSize: "11px",
-        color: alive ? "#ffffff" : "#666666",
-        fontFamily: "monospace",
-      });
-      this.add.text(x + 45, y - 3, `${p.class_name} Lv${p.level}`, {
-        fontSize: "9px",
-        color: "#aaaaaa",
-        fontFamily: "monospace",
-      });
-
-      const bw = 85;
-      const hpPct = hpBarColorPct(p.hp, p.max_hp);
-      const fillW = hpBarFillWidth(p.hp, p.max_hp, bw);
-      const barX = x + 90,
-        barY = y + 13;
-      const bc = hpPct > 0.5 ? 0x44ff44 : hpPct > 0.25 ? 0xff8800 : 0xff0000;
-      const bg = this.add
-        .rectangle(barX, barY, bw, 6, 0x333333)
-        .setOrigin(0, 0.5)
-        .setDepth(8);
-      const ghost = this.add
-        .rectangle(barX, barY, fillW, 6, 0xff6644)
-        .setOrigin(0, 0.5)
-        .setDepth(9);
-      const fill = this.add
-        .rectangle(barX, barY, fillW, 6, hpPct > 0 ? bc : 0x333333)
-        .setOrigin(0, 0.5)
-        .setDepth(10);
-      const hpLabel = this.add.text(
-        x + 90 + bw + 5,
-        y + 8,
-        formatHPLabel(p.hp, p.max_hp),
-        {
-          fontSize: "8px",
-          color: "#cccccc",
-          fontFamily: "monospace",
-        },
-      );
-      this.partySprites[p.name].hpBar = {
-        bg,
-        ghost,
-        fill,
-        label: hpLabel,
-        width: bw,
-        currentHP: Math.max(0, p.hp | 0),
-        maxHP: p.max_hp,
-      };
-
-      if (p.max_mp > 0) {
-        const mpBarY = barY + 8;
-        const mpFillW = hpBarFillWidth(p.mp, p.max_mp, bw);
-        this.add
-          .rectangle(barX, mpBarY, bw, 4, 0x112244)
-          .setOrigin(0, 0.5)
-          .setDepth(8);
-        this.add
-          .rectangle(barX, mpBarY, mpFillW, 4, alive ? 0x4488ff : 0x222244)
-          .setOrigin(0, 0.5)
-          .setDepth(10);
-        this.add.text(x + 90 + bw + 5, y + 18, `${p.mp}/${p.max_mp}`, {
-          fontSize: "8px",
-          color: alive ? "#88aaff" : "#444466",
-          fontFamily: "monospace",
-        });
-      }
-
-      // Status effect icon
-      if (p.status && STATUS_ICONS[p.status]) {
-        const iconKey = STATUS_ICONS[p.status];
-        if (this.textures.exists(iconKey)) {
-          const icon = this.add.image(x + 35, y - 20, iconKey).setDepth(10);
-          icon.setScale(16 / Math.max(icon.width, icon.height));
-          this.partySprites[p.name].statusIcon = icon;
-        }
-      }
     }
+  }
+
+  drawPartyStatus(gs) {
+    this.partyStatus?.destroy();
+    this.partyStatus = drawBattlePartyStatus(
+      this,
+      this.hudLayout.party,
+      gs.party,
+      { compact: this.hudLayout.mode === "mobile" },
+    );
+    this.partyStatus.rows.forEach((row, slot) => {
+      const member = gs.party[slot];
+      const entry = this.partySprites[member.name];
+      if (!entry) return;
+      entry.hpBar = row.hpBar;
+      entry.mpBar = row.mpBar;
+      entry.statusRowBounds = row.bounds;
+    });
   }
 
   drawLog(gs) {
@@ -1863,14 +1788,14 @@ export class BattleScene extends Phaser.Scene {
     const skipButton = drawButton(
       this,
       compactViewport ? 650 : 690,
-      compactViewport ? 54 : 38,
+      compactViewport ? 64 : 38,
       compactViewport ? 260 : 188,
-      compactViewport ? 80 : 36,
+      compactViewport ? 96 : 36,
       compactViewport ? "SKIP CINEMATIC" : "SKIP  [SPACE]",
       () => this.requestCinematicSkip(),
       {
         depth: 80,
-        fontSize: compactViewport ? "16px" : "12px",
+        fontSize: compactViewport ? "20px" : "12px",
         fill: 0x111827,
         stroke: 0xf8d477,
         textColor: "#fff2bd",
@@ -2107,12 +2032,26 @@ export class BattleScene extends Phaser.Scene {
       hasLastRound: !!this.lastRoundActions,
       autoMode: this.autoMode,
     });
+    const bounds = this.hudLayout.command;
+    const compact = this.hudLayout.mode === "mobile";
+    const portraitX = bounds.x + (compact ? 64 : 36);
+    const portraitY = bounds.y + (compact ? 90 : 52);
+    const portraitFrameSize = compact ? 100 : 54;
+    const portraitSize = portraitFrameSize - 8;
+    const buttonColumns = 2;
+    const buttonGapX = compact ? 16 : 6;
+    const buttonGapY = compact ? 12 : 6;
+    const buttonAreaX = bounds.x + (compact ? 130 : 76);
+    const buttonAreaWidth = bounds.width - (compact ? 146 : 84);
+    const buttonWidth = (buttonAreaWidth - buttonGapX) / buttonColumns;
+    const buttonHeight = compact ? 64 : 25;
+    const buttonStartY = bounds.y + (compact ? 70 : 39);
     const frame = drawPanel(
       this,
-      ACTION_HUD.centerX,
-      ACTION_HUD.centerY,
-      ACTION_HUD.width,
-      ACTION_HUD.height,
+      bounds.x + bounds.width / 2,
+      bounds.y + bounds.height / 2,
+      bounds.width,
+      bounds.height,
       {
         variant: "ff6",
         radius: 8,
@@ -2130,66 +2069,64 @@ export class BattleScene extends Phaser.Scene {
 
     const portraitFrame = this.add
       .rectangle(
-        ACTION_HUD.portraitX,
-        ACTION_HUD.portraitY,
-        ACTION_HUD.portraitFrame,
-        ACTION_HUD.portraitFrame,
+        portraitX,
+        portraitY,
+        portraitFrameSize,
+        portraitFrameSize,
         0x13243d,
         1,
       )
       .setStrokeStyle(2, 0x88ccff)
       .setDepth(17);
+    portraitFrame._combatFxTag = "active-portrait-frame";
     this.actionBtns.push(portraitFrame);
 
     const portraitKey = resolvePortraitTextureKey(this, member);
     if (portraitKey) {
       const portrait = this.add
-        .image(ACTION_HUD.portraitX, ACTION_HUD.portraitY, portraitKey)
+        .image(portraitX, portraitY, portraitKey)
         .setDepth(18);
+      portrait._combatFxTag = "active-portrait";
       const srcSize = Math.max(portrait.width || 64, portrait.height || 64);
-      portrait.setScale(ACTION_HUD.portraitSize / srcSize);
+      portrait.setScale(portraitSize / srcSize);
       this.actionBtns.push(portrait);
     } else {
       const fallback = this.add
-        .text(
-          ACTION_HUD.portraitX,
-          ACTION_HUD.portraitY,
-          member.name[0] || "?",
-          {
-            fontSize: "28px",
-            color: "#88ccff",
-            fontFamily: "monospace",
-            fontStyle: "bold",
-          },
-        )
+        .text(portraitX, portraitY, member.name[0] || "?", {
+          fontSize: "28px",
+          color: "#88ccff",
+          fontFamily: "monospace",
+          fontStyle: "bold",
+        })
         .setOrigin(0.5)
         .setDepth(18);
+      fallback._combatFxTag = "active-portrait";
       this.actionBtns.push(fallback);
     }
 
     this.actionBtns.push(
       this.add
-        .text(ACTION_HUD.portraitX, 554, member.name, {
-          fontSize: "11px",
+        .text(portraitX, bounds.y + (compact ? 155 : 85), member.name, {
+          fontSize: compact ? "24px" : "10px",
           color: "#ffffff",
-          fontFamily: "monospace",
+          fontFamily: "Arial, sans-serif",
           fontStyle: "bold",
         })
         .setOrigin(0.5)
         .setDepth(18),
       this.add
-        .text(ACTION_HUD.portraitX, 568, member.class_name, {
-          fontSize: "9px",
+        .text(portraitX, bounds.y + (compact ? 190 : 99), member.class_name, {
+          fontSize: compact ? "20px" : "8px",
           color: "#ffcc66",
-          fontFamily: "monospace",
+          fontFamily: "Arial, sans-serif",
         })
         .setOrigin(0.5)
         .setDepth(18),
       this.add
-        .text(150, 470, "COMMAND", {
-          fontSize: "11px",
+        .text(bounds.x + 12, bounds.y + 8, "COMMAND", {
+          fontSize: compact ? "28px" : "11px",
           color: "#cfe6ff",
-          fontFamily: "monospace",
+          fontFamily: "Arial, sans-serif",
           fontStyle: "bold",
         })
         .setDepth(18),
@@ -2197,25 +2134,23 @@ export class BattleScene extends Phaser.Scene {
 
     for (let i = 0; i < btns.length; i++) {
       const button = btns[i];
-      const row = Math.floor(i / ACTION_HUD.buttonColumns);
-      const col = i % ACTION_HUD.buttonColumns;
+      const row = Math.floor(i / buttonColumns);
+      const col = i % buttonColumns;
       const x =
-        ACTION_HUD.buttonStartX +
-        col * (ACTION_HUD.buttonWidth + ACTION_HUD.buttonGapX);
-      const y =
-        ACTION_HUD.buttonStartY +
-        row * (ACTION_HUD.buttonHeight + ACTION_HUD.buttonGapY);
+        buttonAreaX + buttonWidth / 2 + col * (buttonWidth + buttonGapX);
+      const y = buttonStartY + row * (buttonHeight + buttonGapY);
       const handle = drawButton(
         this,
         x,
         y,
-        ACTION_HUD.buttonWidth,
-        ACTION_HUD.buttonHeight,
+        buttonWidth,
+        buttonHeight,
         button.label,
         () => this.handleActionButton(button, member, gs, slot),
         {
           depth: 17,
-          fontSize: "9px",
+          fontSize: compact ? "22px" : "9px",
+          fontFamily: "Arial, sans-serif",
           textColor: button.color,
           textColorDisabled: "#6e7d91",
           fill: 0x173054,
@@ -3699,7 +3634,9 @@ export class BattleScene extends Phaser.Scene {
     void this.launchSpellProjectile(actorEntry, targetEntry, "fire", {
       duration: 900,
     });
-    await this.wait(320);
+    // Keep the audit hook inside the flight window even when a tall mobile
+    // canvas causes Phaser to refresh its Scale Manager during scene entry.
+    await this.wait(120);
     return {
       phase,
       actorX: actorEntry.sprite?.x ?? actorEntry.x,
@@ -3856,14 +3793,14 @@ export class BattleScene extends Phaser.Scene {
     if (ee.nameText) ee.nameText.setVisible(false);
     if (ee.statusIcon) ee.statusIcon.setVisible(false);
     if (ee.hpBar) {
-      ee.hpBar.bg.setVisible(false);
-      ee.hpBar.ghost.setVisible(false);
-      ee.hpBar.fill.setVisible(false);
-      ee.hpBar.label.setVisible(false);
-      ee.hpBar.fill.width = 0;
-      ee.hpBar.ghost.width = 0;
+      ee.hpBar.bg?.setVisible(false);
+      ee.hpBar.ghost?.setVisible(false);
+      ee.hpBar.fill?.setVisible(false);
+      ee.hpBar.label?.setVisible(false);
+      if (ee.hpBar.fill) ee.hpBar.fill.width = 0;
+      if (ee.hpBar.ghost) ee.hpBar.ghost.width = 0;
       ee.hpBar.currentHP = 0;
-      ee.hpBar.label.setText(formatHPLabel(0, ee.hpBar.maxHP));
+      ee.hpBar.label?.setText(formatHPLabel(0, ee.hpBar.maxHP));
     }
     // Hide number indicator
     const numEntry = this.enemyNumbers?.find((n) => n.enemyId === ee.id);
@@ -4005,31 +3942,38 @@ export class BattleScene extends Phaser.Scene {
     const clampedHP = Math.max(0, newHP | 0);
     if (clampedHP === hpBarData.currentHP) return;
 
-    const bw = hpBarData.width;
+    const bw = hpBarData.width || 1;
     const fillW = hpBarFillWidth(clampedHP, maxHP, bw);
     const pct = hpBarColorPct(clampedHP, maxHP);
     const bc = pct > 0.5 ? 0x44ff44 : pct > 0.25 ? 0xff8800 : 0xff0000;
 
     // Immediately update fill bar — integer pixels, no sub-pixel sliver.
-    hpBarData.fill.width = fillW;
-    hpBarData.fill.setFillStyle(clampedHP > 0 ? bc : 0x333333);
+    if (hpBarData.fill) {
+      hpBarData.fill.width = fillW;
+      hpBarData.fill.setFillStyle(clampedHP > 0 ? bc : 0x333333);
+    }
 
     // Update HP label — integer-only via formatHPLabel.
-    hpBarData.label.setText(formatHPLabel(clampedHP, maxHP));
+    hpBarData.label?.setText(formatHPLabel(clampedHP, maxHP));
 
     // Ghost bar drains after a short delay
-    this.tweens.add({
-      targets: hpBarData.ghost,
-      width: fillW,
-      duration: 250,
-      delay: 100,
-      ease: "Quad.Out",
-    });
+    if (hpBarData.ghost) {
+      this.tweens.add({
+        targets: hpBarData.ghost,
+        width: fillW,
+        duration: 250,
+        delay: 100,
+        ease: "Quad.Out",
+      });
+    }
 
     hpBarData.currentHP = clampedHP;
   }
 
   showVictoryResults(gs) {
+    if (this.scale.gameSize.height !== 600) {
+      this.scale.setGameSize(800, 600);
+    }
     this.children.removeAll(true);
     this.add.rectangle(400, 300, 800, 600, 0x0a0a1e);
     drawPanel(this, 400, 305, 720, 520, {
@@ -4411,6 +4355,9 @@ export class BattleScene extends Phaser.Scene {
           fontSize: "10px",
           color: "#aaaaaa",
           fontFamily: "monospace",
+          align: "center",
+          wordWrap: { width: 620, useAdvancedWrap: true },
+          lineSpacing: 3,
         })
         .setOrigin(0.5);
     }

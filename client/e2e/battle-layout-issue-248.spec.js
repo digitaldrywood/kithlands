@@ -10,6 +10,9 @@ async function startCombat(page) {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto("/");
   await waitForBridge(page);
+  await page.waitForFunction(
+    () => window.__kithlandsTest.activeSceneKey() === "Title",
+  );
   await page.evaluate(() => window.__kithlandsTest.startQuickGame());
   await page.waitForFunction(
     () => window.__kithlandsTest.activeSceneKey() === "World",
@@ -87,12 +90,14 @@ test.describe("battle layout proof — issue #248", () => {
     );
 
     expect(snapshot.encounterTileType).not.toBeNull();
-    expect(snapshot.backdropCount).toBeGreaterThanOrEqual(4);
-    expect(snapshot.groundPlaneCount).toBeGreaterThanOrEqual(1);
+    expect(snapshot.backdropCount).toBeGreaterThanOrEqual(1);
+    if (snapshot.backdropType === "procedural") {
+      expect(snapshot.groundPlaneCount).toBeGreaterThanOrEqual(1);
+    }
     expect(snapshot.shadowCount).toBeGreaterThanOrEqual(4);
     expect(snapshot.actionPanelCount).toBeGreaterThanOrEqual(1);
     expect(snapshot.messageWindow.bounds.width).toBeLessThan(500);
-    expect(snapshot.messageWindow.bounds.height).toBeLessThanOrEqual(108);
+    expect(snapshot.messageWindow.bounds.height).toBeLessThanOrEqual(154);
     expect(snapshot.messageWindow.bounds.height).toBeGreaterThanOrEqual(68);
 
     await setProofLabel(page, snapshot);

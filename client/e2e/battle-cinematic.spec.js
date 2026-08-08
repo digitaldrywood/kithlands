@@ -367,9 +367,13 @@ test.describe("battle cinematic proof — issue #211", () => {
 
     const canvas = await page.locator("canvas").boundingBox();
     expect(canvas).not.toBeNull();
+    const canvasSize = await page.locator("canvas").evaluate((element) => ({
+      width: element.width,
+      height: element.height,
+    }));
     await page.mouse.click(
-      canvas.x + (690 / 800) * canvas.width,
-      canvas.y + (38 / 600) * canvas.height,
+      canvas.x + (650 / canvasSize.width) * canvas.width,
+      canvas.y + (64 / canvasSize.height) * canvas.height,
     );
     const skipped = await page.evaluate(() =>
       window.__kithlandsTest.playBattleVisibilityDemo("major_spell_wait"),

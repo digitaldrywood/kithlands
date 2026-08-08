@@ -950,7 +950,19 @@ function visibleBattleFxSnapshot(scene) {
         child.visible !== false &&
         (child.alpha ?? 1) > 0.01,
     ) || null;
+  const layoutBounds = (rect) =>
+    rect
+      ? {
+          left: rect.x,
+          top: rect.y,
+          right: rect.x + rect.width,
+          bottom: rect.y + rect.height,
+          width: rect.width,
+          height: rect.height,
+        }
+      : null;
   const actionPanel = taggedObject("action-panel");
+  const partyStatusPanel = taggedObject("party-status-panel");
   const bottomStrip = taggedObject("bottom-strip");
   const messageLayout = scene?.messageWindow?.getLayoutMetrics?.() ?? {};
   const messageWindowBounds = messageLayout.bounds
@@ -963,28 +975,7 @@ function visibleBattleFxSnapshot(scene) {
         height: messageLayout.bounds.height,
       }
     : null;
-  // ACTION_HUD renders the portrait as a 60px image on top of a 68px frame.
-  // Phaser Graphics objects don't always expose getBounds for the frame, so
-  // derive bounds from the ACTION_HUD constants used to place it.
-  const portrait = children.find(
-    (child) =>
-      child?.type === "Image" &&
-      typeof child.texture?.key === "string" &&
-      (child.texture.key.endsWith("warrior") ||
-        child.texture.key.endsWith("brawler") ||
-        child.texture.key.endsWith("rogue") ||
-        child.texture.key.endsWith("mender") ||
-        child.texture.key.endsWith("cinder") ||
-        child.texture.key.endsWith("wayfarer") ||
-        child.texture.key.endsWith("knight") ||
-        child.texture.key.endsWith("champion") ||
-        child.texture.key.endsWith("shadow") ||
-        child.texture.key.endsWith("sage") ||
-        child.texture.key.endsWith("pyromancer") ||
-        child.texture.key.endsWith("wanderer")) &&
-      (child._combatFxTag == null || child._combatFxTag === "action-panel") &&
-      (child.y ?? 0) > 480,
-  );
+  const portrait = taggedObject("active-portrait");
 
   return {
     actorCursors: taggedCount("actor-cursor"),
@@ -1027,7 +1018,12 @@ function visibleBattleFxSnapshot(scene) {
       ...messageLayout,
     },
     // Flat bounds for design-validation runner.
-    actionPanelBounds: objectBounds(actionPanel),
+    actionPanelBounds:
+      objectBounds(actionPanel) || layoutBounds(scene?.hudLayout?.command),
+    partyStatusPanelBounds:
+      objectBounds(partyStatusPanel) || layoutBounds(scene?.hudLayout?.party),
+    partyStatusRowCount: taggedCount("party-status-row"),
+    hudLayoutMode: scene?.hudLayout?.mode || null,
     bottomStripBounds: objectBounds(bottomStrip),
     messageWindowBounds,
     portraitBounds: objectBounds(portrait),

@@ -1,6 +1,6 @@
 const PARTY_LAYOUT = {
   desktop: { frontX: 548, backX: 630, slotStartY: 110, slotGapY: 88 },
-  mobile: { frontX: 552, backX: 628, slotStartY: 66, slotGapY: 70 },
+  mobile: { frontX: 552, backX: 628, slotStartY: 88, slotGapY: 140 },
   arrowOffsetX: -42,
   floatingTextLift: 12,
 };
