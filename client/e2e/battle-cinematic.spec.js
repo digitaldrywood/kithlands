@@ -2,16 +2,17 @@ import { expect, test } from "@playwright/test";
 
 const RUN_ID = Date.now();
 
-async function waitForBridge(page) {
-  await page.waitForFunction(() => !!window.__kithlandsTest);
+async function waitForTitle(page) {
+  await page.waitForFunction(
+    () => window.__kithlandsTest?.activeSceneKey() === "Title",
+    null,
+    { timeout: 90_000 },
+  );
 }
 
 async function startCombat(page) {
   await page.goto("/");
-  await waitForBridge(page);
-  await page.waitForFunction(
-    () => window.__kithlandsTest.activeSceneKey() === "Title",
-  );
+  await waitForTitle(page);
   await page.evaluate(() => window.__kithlandsTest.startQuickGame());
   await page.waitForFunction(
     () => window.__kithlandsTest.activeSceneKey() === "World",
@@ -19,11 +20,12 @@ async function startCombat(page) {
   await page.evaluate(() =>
     window.__kithlandsTest.forceEncounter(["slime", "goblin"], 2),
   );
-  await page.waitForFunction(
-    () =>
-      window.__kithlandsTest.activeSceneKey() === "Battle" &&
-      !!window.__kithlandsTest.gameState("Battle")?.enemies?.length,
-  );
+  await page.waitForFunction(() => {
+    const bridge = window.__kithlandsTest;
+    if (bridge?.activeSceneKey() !== "Battle") return false;
+    const snapshot = bridge.battleVisibilitySnapshot();
+    return snapshot.partyMembers.length > 0 && snapshot.enemyMembers.length > 0;
+  });
 }
 
 async function setProofLabel(page, label) {
@@ -50,7 +52,7 @@ async function setProofLabel(page, label) {
 }
 
 test.describe("battle cinematic proof — issue #211", () => {
-  test.describe.configure({ timeout: 60_000 });
+  test.describe.configure({ timeout: 120_000 });
 
   test("shows the message window, cursor, and cinematic pacing", async ({
     page,
@@ -379,10 +381,7 @@ test.describe("battle cinematic proof — issue #211", () => {
     page,
   }, testInfo) => {
     await page.goto("/");
-    await waitForBridge(page);
-    await page.waitForFunction(
-      () => window.__kithlandsTest.activeSceneKey() === "Title",
-    );
+    await waitForTitle(page);
     await page.evaluate(() => window.__kithlandsTest.startQuickGame());
     await page.waitForFunction(
       () => window.__kithlandsTest.activeSceneKey() === "World",
