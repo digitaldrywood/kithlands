@@ -6,6 +6,7 @@ import {
   getLastWizard,
   setLastWizard,
 } from "../systems/prefs.js";
+import { buildWalkAuditParty, walkAuditRequested } from "./walkAuditMode.js";
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -87,6 +88,16 @@ export class TitleScene extends Phaser.Scene {
         wordWrap: { width: 600 },
       })
       .setOrigin(0.5);
+
+    if (
+      import.meta.env?.DEV &&
+      walkAuditRequested() &&
+      !this.walkAuditStarted
+    ) {
+      this.walkAuditStarted = true;
+      inputEl.value = `walk_audit_${Date.now()}@kithlands.dev`;
+      this.time.delayedCall(0, () => this.startGame(inputEl, true));
+    }
   }
 
   makeButton(x, y, label, color, callback) {
@@ -338,6 +349,11 @@ export class TitleScene extends Phaser.Scene {
         if (gameResult.error) {
           this.statusText.setText(gameResult.error).setColor("#ff4444");
           return;
+        }
+
+        if (import.meta.env?.DEV && walkAuditRequested()) {
+          gameResult.party = buildWalkAuditParty(gameResult.party);
+          gameResult.walk_audit = true;
         }
 
         this.scene.start("World", { gameState: gameResult });

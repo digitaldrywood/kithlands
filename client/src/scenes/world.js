@@ -48,6 +48,7 @@ import {
   ensureTerrainRenderTexture,
 } from "./terrainAutotile.js";
 import { questObjectiveText, questKindLabel } from "./quest_text.js";
+import { walkAuditHUDText } from "./walkAuditMode.js";
 
 const ENEMY_SPRITES = {
   Slime: "monster_slime",
@@ -1059,6 +1060,15 @@ export class WorldScene extends Phaser.Scene {
   updateHUD() {
     if (!this.hudText) return;
     const gs = this.gameState;
+    if (import.meta.env?.DEV && gs.walk_audit) {
+      this.hudText.setText(walkAuditHUDText(gs.party, cachedLeaderIndex));
+      if (this.hudFooter) {
+        this.hudFooter.setText(
+          "Arrows/WASD: walk   Space: next class   Encounters: off",
+        );
+      }
+      return;
+    }
     const parts = gs.party.map((p) => {
       const base = `${p.name} Lv${p.level} ${p.hp}/${p.max_hp}`;
       return p.max_mp > 0 ? `${base} MP:${p.mp}/${p.max_mp}` : base;
