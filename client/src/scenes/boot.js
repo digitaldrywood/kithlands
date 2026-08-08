@@ -81,6 +81,18 @@ export class BootScene extends Phaser.Scene {
       "/sprites/battle/weapons/mythril-sword.png",
     );
 
+    // Mender casting gold slice. The body atlas remains equipment-free; the
+    // shared item metadata chooses the staff attachment at runtime.
+    this.load.spritesheet(
+      "battle_mender_staff_cast_body",
+      "/sprites/battle/mender/staff-cast-body.png",
+      { frameWidth: 192, frameHeight: 192 },
+    );
+    this.load.image(
+      "battle_weapon_war_staff",
+      "/sprites/battle/weapons/war-staff.png",
+    );
+
     // Status effect icons
     this.load.image("icon_poison", "/sprites/ui/icon_poison.png");
     this.load.image("icon_sleep", "/sprites/ui/icon_sleep.png");

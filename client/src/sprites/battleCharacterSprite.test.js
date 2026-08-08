@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  MENDER_BATTLE_BODY_KEY,
+  MENDER_STAFF_CAST_FRAMES,
   WARRIOR_BATTLE_BODY_KEY,
   WARRIOR_SWORD_ATTACK_FRAMES,
   battleFrameDelay,
+  canUseMenderBattleSprite,
   canUseWarriorBattleSprite,
   weaponTextureKey,
 } from "./battleCharacterSprite.js";
@@ -64,5 +67,49 @@ describe("Warrior battle runtime contract", () => {
     expect(battleFrameDelay(pose, false, 3)).toBe(270);
     expect(battleFrameDelay(pose, true, 0.66)).toBeCloseTo(29.7);
     expect(battleFrameDelay(pose, false, 0)).toBe(90);
+  });
+});
+
+describe("Mender battle runtime contract", () => {
+  it("keeps one readable six-pose staff-cast action", () => {
+    expect(MENDER_STAFF_CAST_FRAMES.map((pose) => pose.frame)).toEqual([
+      0, 1, 2, 3, 4, 5,
+    ]);
+    expect(MENDER_STAFF_CAST_FRAMES.every((pose) => !pose.front)).toBe(true);
+  });
+
+  it("uses the equipped staff visual instead of a baked staff", () => {
+    const scene = sceneWith([
+      MENDER_BATTLE_BODY_KEY,
+      "battle_weapon_war_staff",
+    ]);
+    expect(
+      canUseMenderBattleSprite(scene, {
+        base_sprite: "mender",
+        weapon_visual_id: "war_staff",
+        weapon_animation_set: "staff",
+      }),
+    ).toBe(true);
+  });
+
+  it("falls back rather than applying Mender's body to another staff user", () => {
+    const scene = sceneWith([
+      MENDER_BATTLE_BODY_KEY,
+      "battle_weapon_war_staff",
+    ]);
+    expect(
+      canUseMenderBattleSprite(scene, {
+        base_sprite: "cinder",
+        weapon_visual_id: "war_staff",
+        weapon_animation_set: "staff",
+      }),
+    ).toBe(false);
+    expect(
+      canUseMenderBattleSprite(scene, {
+        base_sprite: "mender",
+        weapon_visual_id: "war_staff",
+        weapon_animation_set: "sword",
+      }),
+    ).toBe(false);
   });
 });

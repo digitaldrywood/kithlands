@@ -1565,6 +1565,16 @@ export function installDevTestBridge(game) {
       return visibleBattleFxSnapshot(scene);
     },
 
+    captureBattleCanvas(sceneKey = "Battle") {
+      const scene = getScene(game, sceneKey);
+      if (!scene || scene.scene?.key !== "Battle") {
+        throw new Error("Battle scene is not active");
+      }
+      return new Promise((resolve) => {
+        game.renderer.snapshot((image) => resolve(image.src));
+      });
+    },
+
     startAuthoritativeBattleRound(mode = "attack", sceneKey = "Battle") {
       const scene = getScene(game, sceneKey);
       if (!scene || scene.scene?.key !== "Battle") {
@@ -1599,26 +1609,40 @@ export function installDevTestBridge(game) {
               entry?.castable_in_combat !== false &&
               (member.mp ?? 0) >= (entry.mp_cost ?? 0) &&
               (mode !== "all_spell" ||
-                entry.target_modes?.includes("all_enemies")),
+                entry.target_modes?.includes("all_enemies")) &&
+              (mode !== "all_heal" ||
+                (entry.id === "heala" &&
+                  entry.effect === "heal" &&
+                  entry.target === "all_allies" &&
+                  entry.target_modes?.includes("all_allies"))),
           );
           if (
-            (mode === "spell" || mode === "all_spell") &&
+            (mode === "spell" || mode === "all_spell" || mode === "all_heal") &&
             !spellAssigned &&
             spell
           ) {
             spellAssigned = true;
+            const groupMode =
+              mode === "all_spell"
+                ? "all_enemies"
+                : mode === "all_heal"
+                  ? "all_allies"
+                  : null;
             return {
               slot,
               type: "spell",
-              target_id: mode === "all_spell" ? -1 : enemyId,
+              target_id: groupMode ? -1 : enemyId,
               spell_id: spell.id,
-              ...(mode === "all_spell" ? { target_mode: "all_enemies" } : {}),
+              ...(groupMode ? { target_mode: groupMode } : {}),
             };
           }
           return { slot, type: "attack", target_id: enemyId };
         })
         .filter(Boolean);
-      if ((mode === "spell" || mode === "all_spell") && !spellAssigned) {
+      if (
+        (mode === "spell" || mode === "all_spell" || mode === "all_heal") &&
+        !spellAssigned
+      ) {
         throw new Error("Battle party has no castable spell");
       }
       if (mode === "inspire" && !inspireAssigned) {

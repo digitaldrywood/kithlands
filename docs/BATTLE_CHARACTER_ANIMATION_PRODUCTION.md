@@ -89,3 +89,27 @@ pass. Runtime assets are installed only from an accepted candidate.
 Required proof is a source contact sheet, an animation trace or GIF, and the
 complete attack-and-return sequence in the real Systems Showcase battle. The
 Warrior sword set passed this gate on 2026-08-08.
+
+## Mender Staff-Cast Review Candidate
+
+The second gold slice is intentionally limited to Mender's staff-cast action.
+It is installed for real-browser review but remains `visual_approval_pending`;
+do not use it as the basis for Cinder or another class until that review is
+recorded.
+
+- Facing: three-quarter left
+- Action: restorative staff cast
+- Body poses: `idle_guard`, `invoke`, `gather`, `release`, `sustain`, `recover`
+- Body atlas: `client/public/sprites/battle/mender/staff-cast-body.png`
+- Equipment: `war_staff` selected through shared item `visual_id` and
+  `animation_set` metadata
+- Staff layer: `client/public/sprites/battle/weapons/war-staff.png`
+- Grip: one consistent authored hand; the staff stays behind the body so the
+  visible glove reads as the grip
+- Runtime entry points: Mender's real spell anticipation and the debug-only
+  `cast_class_ability` audit state
+
+This candidate must pass an inspected six-frame trace, an attack-and-return
+GIF, the real Systems Showcase cast, a real simultaneous all-party healing
+effect, and explicit visual approval before its metadata becomes
+`approved_runtime`.

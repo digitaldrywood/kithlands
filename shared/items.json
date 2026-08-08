@@ -266,6 +266,8 @@
       "id": "war_staff",
       "name": "War Staff",
       "type": "staff",
+      "visual_id": "war_staff",
+      "animation_set": "staff",
       "tier": 4,
       "power": 28,
       "hit_pct": 5,

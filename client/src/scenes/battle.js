@@ -903,11 +903,11 @@ export class BattleScene extends Phaser.Scene {
       this.showActorCursor(entry);
     }
 
-    const layerLabel = equipment.layer_available
+    const layerLabel = entry.sprite?.isBattleCharacter
       ? "LAYERED"
       : equipment.type === "unarmed"
         ? "BODY"
-        : "LAYER PENDING";
+        : "GOLD SLICE PENDING";
     const shieldLabel = identity.supports_shield ? " · SHIELD SLOT" : "";
     this.battleAuditReadout?.setText(
       [
@@ -962,6 +962,10 @@ export class BattleScene extends Phaser.Scene {
         });
       }
     } else if (state === "cast_class_ability") {
+      void actor.sprite.playBattleCast?.({
+        reducedMotion: this.reducedBattleMotion(),
+        speedMultiplier: battleSpeedMul(),
+      });
       this.spawnCastAura(actor, "holy");
       void this.showActionTitle(actor, "CLASS ABILITY", "#fff2bd");
     } else if (state === "defend") {
@@ -1030,7 +1034,7 @@ export class BattleScene extends Phaser.Scene {
       identityIndex: this.battleAuditSelection.identityIndex,
       identityID: current.identity.id,
       equipmentType: current.equipment?.type || null,
-      layerAvailable: current.equipment?.layer_available || false,
+      layerAvailable: entry?.sprite?.isBattleCharacter || false,
       supportsShield: current.identity.supports_shield || false,
       animationState: current.animationState,
       effectMode: current.effectMode,
@@ -2106,6 +2110,10 @@ export class BattleScene extends Phaser.Scene {
     if (!actor) return;
     const style = battleElementStyle(element);
     const reducedMotion = this.reducedBattleMotion();
+    void actor.sprite.playBattleCast?.({
+      reducedMotion,
+      speedMultiplier: battleSpeedMul(),
+    });
     this.spawnCastAura(actorEntry, element);
     this.tweens.killTweensOf(actor.sprite);
     this.setSpritePosition(actor.sprite, actor.x, actor.y);
