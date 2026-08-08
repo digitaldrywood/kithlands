@@ -19,7 +19,11 @@ const state = {
   ],
   gems: [{ id: "ruby", name: "Ruby", count: 2 }],
   gem_recipes: [
-    { id: "cut_ruby", inputs: [{ gem_id: "ruby", count: 2 }], craftable: true },
+    {
+      id: "cut_ruby",
+      inputs: [{ gem_id: "ruby", gem_name: "Ruby", count: 2 }],
+      craftable: true,
+    },
   ],
 };
 
@@ -35,6 +39,16 @@ describe("Gem Workshop selectors", () => {
   it("exposes known recipes and readable costs", () => {
     expect(knownRecipes(state)).toHaveLength(1);
     expect(recipeCostLabel(state.gem_recipes[0], state.gems)).toBe("2x Ruby");
+    expect(
+      recipeCostLabel(
+        {
+          inputs: [
+            { gem_id: "flawless_ruby", gem_name: "Flawless Ruby", count: 3 },
+          ],
+        },
+        [],
+      ),
+    ).toBe("3x Flawless Ruby");
   });
 
   it("enables the workshop for either gems or recipes", () => {

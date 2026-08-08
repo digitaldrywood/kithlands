@@ -242,12 +242,18 @@ type GemState struct {
 }
 
 type GemRecipeState struct {
-	ID            string               `json:"id"`
-	Name          string               `json:"name"`
-	RequiredLevel int                  `json:"required_level"`
-	Inputs        []gamedata.GemAmount `json:"inputs"`
-	Output        gamedata.GemAmount   `json:"output"`
-	Craftable     bool                 `json:"craftable"`
+	ID            string           `json:"id"`
+	Name          string           `json:"name"`
+	RequiredLevel int              `json:"required_level"`
+	Inputs        []GemAmountState `json:"inputs"`
+	Output        GemAmountState   `json:"output"`
+	Craftable     bool             `json:"craftable"`
+}
+
+type GemAmountState struct {
+	GemID   string `json:"gem_id"`
+	GemName string `json:"gem_name"`
+	Count   int    `json:"count"`
 }
 
 type EquipState struct {

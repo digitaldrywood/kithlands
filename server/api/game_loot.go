@@ -117,14 +117,24 @@ func (g *Game) fillGemState(state *GameState) {
 	level := g.maxPartyLevel()
 	for _, recipe := range g.gd.Loot.Recipes {
 		craftable := level >= recipe.RequiredLevel
+		inputs := make([]GemAmountState, 0, len(recipe.Inputs))
 		for _, input := range recipe.Inputs {
 			craftable = craftable && g.inv.Gems[input.GemID] >= input.Count
+			inputs = append(inputs, g.gemAmountState(input.GemID, input.Count))
 		}
 		state.GemRecipes = append(state.GemRecipes, GemRecipeState{
 			ID: recipe.ID, Name: recipe.Name, RequiredLevel: recipe.RequiredLevel,
-			Inputs: recipe.Inputs, Output: recipe.Output, Craftable: craftable,
+			Inputs: inputs, Output: g.gemAmountState(recipe.Output.GemID, recipe.Output.Count), Craftable: craftable,
 		})
 	}
 	sort.Slice(state.Gems, func(i, j int) bool { return state.Gems[i].ID < state.Gems[j].ID })
 	sort.Slice(state.GemRecipes, func(i, j int) bool { return state.GemRecipes[i].ID < state.GemRecipes[j].ID })
+}
+
+func (g *Game) gemAmountState(gemID string, count int) GemAmountState {
+	state := GemAmountState{GemID: gemID, Count: count}
+	if gem := g.gd.GemByID(gemID); gem != nil {
+		state.GemName = gem.Name
+	}
+	return state
 }

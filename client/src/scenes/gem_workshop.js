@@ -50,7 +50,8 @@ export function recipeCostLabel(recipe, gems = []) {
   const inputs = Array.isArray(recipe?.inputs) ? recipe.inputs : [];
   return inputs
     .map(
-      (input) => `${input.count}x ${names.get(input.gem_id) || input.gem_id}`,
+      (input) =>
+        `${input.count}x ${input.gem_name || names.get(input.gem_id) || input.gem_id}`,
     )
     .join(" + ");
 }
