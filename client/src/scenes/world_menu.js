@@ -8,6 +8,7 @@ import { showOptions } from "./options.js";
 import { showItemMenu } from "./item_menu.js";
 import { hasCastableFieldSpell, showFieldMagicMenu } from "./field_magic.js";
 import { showFormationMenu } from "./formation_menu.js";
+import { gemWorkshopEnabled, showGemWorkshop } from "./gem_workshop.js";
 import { inferPartyRow } from "./battle_layout.js";
 import { drawPanel, drawButton, drawLabeledStatBar } from "../ui/panel.js";
 import { hpBarColorPct } from "../systems/hpBar.js";
@@ -163,6 +164,7 @@ export function toggleMenu(scene) {
   const magicEnabled = Array.isArray(gs.party)
     ? gs.party.some((member) => hasCastableFieldSpell(member, gs.party))
     : false;
+  const gemsEnabled = gemWorkshopEnabled(gs);
   layoutButtonRow(scene, scene.menuGroup, PANEL_CX, FOOTER_TOP + 16, [
     {
       label: "CHARACTER",
@@ -176,7 +178,7 @@ export function toggleMenu(scene) {
       label: "ITEMS",
       hotkey: "I",
       primary: true,
-      w: 128,
+      w: 118,
       iconKey: "icon_potion",
       iconFallback: "I",
       enabled: itemsEnabled,
@@ -192,7 +194,7 @@ export function toggleMenu(scene) {
       label: "MAGIC",
       hotkey: "M",
       primary: true,
-      w: 128,
+      w: 118,
       iconKey: "icon_spell",
       iconFallback: "M",
       enabled: magicEnabled,
@@ -201,6 +203,18 @@ export function toggleMenu(scene) {
         showFieldMagicMenu(scene, {
           onClose: () => toggleMenu(scene),
         });
+      },
+    },
+    {
+      label: "GEMS",
+      hotkey: "G",
+      primary: true,
+      w: 118,
+      iconFallback: "G",
+      enabled: gemsEnabled,
+      onClick: () => {
+        closeMenu(scene);
+        showGemWorkshop(scene, { onClose: () => toggleMenu(scene) });
       },
     },
     {
