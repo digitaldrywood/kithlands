@@ -113,3 +113,47 @@ function drawWorkshopFrame(scene, overlay, onClose) {
   });
   overlay.push(close);
 }
+
+function drawChoiceRow(
+  scene,
+  group,
+  x,
+  y,
+  width,
+  label,
+  { enabled = true, selected = false, onClick } = {},
+) {
+  const fill = selected ? 0x2d5a93 : enabled ? 0x172f55 : 0x11182b;
+  const stroke = selected ? 0xf4d881 : enabled ? 0x6b9bd5 : 0x33435d;
+  const bg = scene.add
+    .rectangle(x + width / 2, y + 14, width, 28, fill, 0.98)
+    .setStrokeStyle(1, stroke)
+    .setScrollFactor(0)
+    .setDepth(DEPTH);
+  const text = addText(scene, group, x + 10, y + 14, label, {
+    fontSize: "10px",
+    color: enabled ? COLORS.text : COLORS.muted,
+  }).setOrigin(0, 0.5);
+  group.push(bg);
+  if (enabled && onClick) {
+    bg.setInteractive({ useHandCursor: true });
+    bg.on("pointerover", () => bg.setFillStyle(0x21406e, 0.98));
+    bg.on("pointerout", () =>
+      bg.setFillStyle(selected ? 0x2d5a93 : 0x172f55, 0.98),
+    );
+    bg.on("pointerdown", onClick);
+  }
+}
+
+function clearGroup(group) {
+  for (const object of group.splice(0)) object.destroy();
+}
+
+function showEmpty(scene, group, x, text) {
+  addText(scene, group, x, 164, text, {
+    fontSize: "10px",
+    color: COLORS.muted,
+    fontStyle: "italic",
+    wordWrap: { width: 190 },
+  });
+}
