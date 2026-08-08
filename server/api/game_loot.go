@@ -96,6 +96,16 @@ func (g *Game) rolledItemState(id string, item *inventory.EquipmentInstance) (It
 	if rarity := g.gd.LootRarityByID(item.RarityID); rarity != nil {
 		state.Rarity = rarity.Name
 	}
+	switch item.Kind {
+	case "weapon":
+		if base := g.gd.WeaponByID(item.BaseID); base != nil {
+			state.AllowedClasses = append([]string(nil), base.Classes...)
+		}
+	case "armor":
+		if base := g.gd.ArmorByID(item.BaseID); base != nil {
+			state.AllowedClasses = append([]string(nil), base.Classes...)
+		}
+	}
 	for _, affix := range resolved.Affixes {
 		state.Affixes = append(state.Affixes, ItemAffixState{
 			Name: affix.Name, Stat: affix.Stat, Value: affix.Value,

@@ -197,12 +197,24 @@ type ShowcaseEncounter struct {
 // Items
 
 type ItemsData struct {
-	Weapons     []Weapon     `json:"weapons"`
-	Armor       []Armor      `json:"armor"`
-	Shields     []Shield     `json:"shields"`
-	Helmets     []Helmet     `json:"helmets"`
-	Consumables []Consumable `json:"consumables"`
-	KeyItems    []KeyItem    `json:"key_items"`
+	EquipmentSlots []EquipmentSlotDefinition `json:"equipment_slots"`
+	Weapons        []Weapon                  `json:"weapons"`
+	Armor          []Armor                   `json:"armor"`
+	Shields        []Shield                  `json:"shields"`
+	Helmets        []Helmet                  `json:"helmets"`
+	Consumables    []Consumable              `json:"consumables"`
+	KeyItems       []KeyItem                 `json:"key_items"`
+}
+
+// EquipmentSlotDefinition describes one position in a character loadout.
+// Content owns the display order and accepted item categories so adding a
+// future slot does not require another Go or save-schema redesign.
+type EquipmentSlotDefinition struct {
+	ID      string   `json:"id"`
+	Name    string   `json:"name"`
+	Group   string   `json:"group"`
+	Order   int      `json:"order"`
+	Accepts []string `json:"accepts"`
 }
 
 // Chests

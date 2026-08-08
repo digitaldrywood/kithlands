@@ -21,20 +21,67 @@ type Inventory struct {
 
 // EquipmentSlots tracks what a single character has equipped.
 type EquipmentSlots struct {
-	WeaponID         string `json:"weapon_id,omitempty"`
-	WeaponInstanceID string `json:"weapon_instance_id,omitempty"`
-	ArmorID          string `json:"armor_id,omitempty"`
-	ArmorInstanceID  string `json:"armor_instance_id,omitempty"`
-	ShieldID         string `json:"shield_id,omitempty"`
-	HelmetID         string `json:"helmet_id,omitempty"`
+	WeaponID         string                     `json:"weapon_id,omitempty"`
+	WeaponInstanceID string                     `json:"weapon_instance_id,omitempty"`
+	ArmorID          string                     `json:"armor_id,omitempty"`
+	ArmorInstanceID  string                     `json:"armor_instance_id,omitempty"`
+	ShieldID         string                     `json:"shield_id,omitempty"`
+	HelmetID         string                     `json:"helmet_id,omitempty"`
+	Loadout          map[string]EquippedItemRef `json:"loadout,omitempty"`
 }
+
+// EquippedItemRef is the stable persisted reference stored in a canonical
+// loadout slot. ItemID points at shared content; InstanceID distinguishes a
+// particular randomized roll when present.
+type EquippedItemRef struct {
+	ItemID     string `json:"item_id,omitempty"`
+	InstanceID string `json:"instance_id,omitempty"`
+}
+
+const (
+	MainHandSlot = "main_hand"
+	BodySlot     = "body"
+)
 
 func New() *Inventory {
 	return &Inventory{
-		SchemaVersion: 1,
+		SchemaVersion: currentSchemaVersion,
 		Consumables:   make(map[string]int),
 		Gems:          make(map[string]int),
 		Instances:     make(map[string]*EquipmentInstance),
+	}
+}
+
+// Equipped returns the canonical reference for a slot, with compatibility
+// fallbacks for legacy saves that only contain weapon_id and armor_id.
+func (slots EquipmentSlots) Equipped(slotID string) EquippedItemRef {
+	if ref, ok := slots.Loadout[slotID]; ok {
+		return ref
+	}
+	switch slotID {
+	case MainHandSlot:
+		return EquippedItemRef{ItemID: slots.WeaponID, InstanceID: slots.WeaponInstanceID}
+	case BodySlot:
+		return EquippedItemRef{ItemID: slots.ArmorID, InstanceID: slots.ArmorInstanceID}
+	default:
+		return EquippedItemRef{}
+	}
+}
+
+func (slots *EquipmentSlots) setEquipped(slotID string, ref EquippedItemRef) {
+	if slots.Loadout == nil {
+		slots.Loadout = make(map[string]EquippedItemRef)
+	}
+	if ref.ItemID == "" && ref.InstanceID == "" {
+		delete(slots.Loadout, slotID)
+	} else {
+		slots.Loadout[slotID] = ref
+	}
+	switch slotID {
+	case MainHandSlot:
+		slots.WeaponID, slots.WeaponInstanceID = ref.ItemID, ref.InstanceID
+	case BodySlot:
+		slots.ArmorID, slots.ArmorInstanceID = ref.ItemID, ref.InstanceID
 	}
 }
 
@@ -85,9 +132,8 @@ func (inv *Inventory) EquipWeapon(slot int, weaponID string, classID string, gd 
 		return "", fmt.Errorf("class %q cannot equip weapon %q", classID, weaponID)
 	}
 
-	prev := inv.Equipment[slot].WeaponID
-	inv.Equipment[slot].WeaponID = weaponID
-	inv.Equipment[slot].WeaponInstanceID = ""
+	prev := inv.Equipment[slot].Equipped(MainHandSlot).ItemID
+	inv.Equipment[slot].setEquipped(MainHandSlot, EquippedItemRef{ItemID: weaponID})
 	return prev, nil
 }
 
@@ -101,9 +147,8 @@ func (inv *Inventory) EquipArmor(slot int, armorID string, classID string, gd *g
 		return "", fmt.Errorf("class %q cannot equip armor %q", classID, armorID)
 	}
 
-	prev := inv.Equipment[slot].ArmorID
-	inv.Equipment[slot].ArmorID = armorID
-	inv.Equipment[slot].ArmorInstanceID = ""
+	prev := inv.Equipment[slot].Equipped(BodySlot).ItemID
+	inv.Equipment[slot].setEquipped(BodySlot, EquippedItemRef{ItemID: armorID})
 	return prev, nil
 }
 

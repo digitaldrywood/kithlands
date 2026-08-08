@@ -21,6 +21,29 @@ func TestStarterLootCanBeSocketedAndEquippedAtLevelOne(t *testing.T) {
 	}
 
 	state := game.State()
+	if got := len(state.Equipment[0].Loadout); got != 12 {
+		t.Fatalf("loadout slot count = %d, want 12", got)
+	}
+	var mainHand, firstRing, secondRing api.EquipSlotState
+	for _, slot := range state.Equipment[0].Loadout {
+		switch slot.ID {
+		case "main_hand":
+			mainHand = slot
+		case "ring_1":
+			firstRing = slot
+		case "ring_2":
+			secondRing = slot
+		}
+	}
+	if mainHand.Item == nil || mainHand.InstanceID == "" || mainHand.Item.Kind != "weapon" {
+		t.Fatalf("main-hand projection = %+v", mainHand)
+	}
+	if firstRing.Name != "Ring I" || secondRing.Name != "Ring II" || firstRing.ID == secondRing.ID {
+		t.Fatalf("repeated ring projections = %+v / %+v", firstRing, secondRing)
+	}
+	if !classIDsContain(mainHand.Item.AllowedClasses, "warrior") || classIDsContain(mainHand.Item.AllowedClasses, "cinder") {
+		t.Fatalf("starter weapon class eligibility = %v", mainHand.Item.AllowedClasses)
+	}
 	item := state.Equipment[0].WeaponItem
 	starter := ItemStateView{}
 	if item != nil {
@@ -68,6 +91,15 @@ func TestStarterLootCanBeSocketedAndEquippedAtLevelOne(t *testing.T) {
 	if afterSocket.Equipment[0].WeaponInstanceID != starter.ID || afterSocket.Equipment[0].WeaponPower != socketedPower {
 		t.Fatalf("equipped state = %+v, want instance %s power %d", afterSocket.Equipment[0], starter.ID, socketedPower)
 	}
+}
+
+func classIDsContain(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
 
 type ItemStateView struct {

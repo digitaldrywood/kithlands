@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -71,6 +72,7 @@ type GameData struct {
 	lootAffixByID       map[string]*LootAffix
 	gemByID             map[string]*Gem
 	gemRecipeByID       map[string]*GemRecipe
+	equipSlotByID       map[string]*EquipmentSlotDefinition
 }
 
 // Load reads and validates all game data from the shared directory.
@@ -116,6 +118,9 @@ func (gd *GameData) LootRarityByID(id string) *LootRarity {
 func (gd *GameData) LootAffixByID(id string) *LootAffix { return gd.lootAffixByID[id] }
 func (gd *GameData) GemByID(id string) *Gem             { return gd.gemByID[id] }
 func (gd *GameData) GemRecipeByID(id string) *GemRecipe { return gd.gemRecipeByID[id] }
+func (gd *GameData) EquipmentSlotByID(id string) *EquipmentSlotDefinition {
+	return gd.equipSlotByID[id]
+}
 func (gd *GameData) ChestByID(id string) *ChestDefinition {
 	return gd.chestByID[id]
 }
@@ -175,6 +180,11 @@ func (gd *GameData) buildIndexes() {
 	gd.keyItemByID = make(map[string]*KeyItem, len(gd.Items.KeyItems))
 	for i := range gd.Items.KeyItems {
 		gd.keyItemByID[gd.Items.KeyItems[i].ID] = &gd.Items.KeyItems[i]
+	}
+
+	gd.equipSlotByID = make(map[string]*EquipmentSlotDefinition, len(gd.Items.EquipmentSlots))
+	for i := range gd.Items.EquipmentSlots {
+		gd.equipSlotByID[gd.Items.EquipmentSlots[i].ID] = &gd.Items.EquipmentSlots[i]
 	}
 
 	gd.chestByID = make(map[string]*ChestDefinition, len(gd.Chests))
@@ -262,6 +272,8 @@ func (gd *GameData) validate() {
 	if gd.Stats.Combat.MinDamagePerHit <= 0 {
 		panic("gamedata: stats.json combat.min_damage_per_hit must be > 0")
 	}
+
+	validateEquipmentSlots(gd.Items.EquipmentSlots)
 
 	for _, w := range gd.Items.Weapons {
 		if w.ID == "" {
@@ -650,6 +662,55 @@ func containsString(values []string, target string) bool {
 		}
 	}
 	return false
+}
+
+func validateEquipmentSlots(slots []EquipmentSlotDefinition) {
+	if len(slots) == 0 {
+		panic("gamedata: items.json must define equipment_slots")
+	}
+	ids := make(map[string]bool, len(slots))
+	orders := make(map[int]bool, len(slots))
+	for _, slot := range slots {
+		if slot.ID == "" || slot.Name == "" || slot.Group == "" {
+			panic("gamedata: equipment slot id, name, and group must be non-empty")
+		}
+		if ids[slot.ID] {
+			panic(fmt.Sprintf("gamedata: duplicate equipment slot id %q", slot.ID))
+		}
+		if slot.Order <= 0 || orders[slot.Order] {
+			panic(fmt.Sprintf("gamedata: equipment slot %q has invalid or duplicate order %d", slot.ID, slot.Order))
+		}
+		if len(slot.Accepts) == 0 {
+			panic(fmt.Sprintf("gamedata: equipment slot %q accepts no item categories", slot.ID))
+		}
+		accepted := make(map[string]bool, len(slot.Accepts))
+		for _, category := range slot.Accepts {
+			if category == "" || accepted[category] {
+				panic(fmt.Sprintf("gamedata: equipment slot %q has empty or duplicate accepted category %q", slot.ID, category))
+			}
+			accepted[category] = true
+		}
+		ids[slot.ID] = true
+		orders[slot.Order] = true
+	}
+	for _, required := range []struct {
+		slotID   string
+		category string
+	}{
+		{slotID: "main_hand", category: "weapon"},
+		{slotID: "body", category: "armor"},
+	} {
+		found := false
+		for _, slot := range slots {
+			if slot.ID == required.slotID && slices.Contains(slot.Accepts, required.category) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			panic(fmt.Sprintf("gamedata: equipment slot %q must accept %q", required.slotID, required.category))
+		}
+	}
 }
 
 func validateClassRefs(kind, id string, refs []string, classIDs map[string]bool) {

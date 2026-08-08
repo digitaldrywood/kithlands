@@ -6,7 +6,7 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
 )
 
-const currentSchemaVersion = 1
+const currentSchemaVersion = 2
 
 // EquipmentInstance is one persisted roll of a shared base weapon or armor.
 type EquipmentInstance struct {
@@ -43,6 +43,40 @@ func (inv *Inventory) Normalize() {
 	if inv.Instances == nil {
 		inv.Instances = make(map[string]*EquipmentInstance)
 	}
+	for i := range inv.Equipment {
+		inv.Equipment[i].normalizeLoadout()
+	}
+}
+
+func (slots *EquipmentSlots) normalizeLoadout() {
+	if slots.Loadout == nil {
+		slots.Loadout = make(map[string]EquippedItemRef)
+	}
+	if slots.WeaponID != "" {
+		slots.Loadout[MainHandSlot] = EquippedItemRef{
+			ItemID: slots.WeaponID, InstanceID: slots.WeaponInstanceID,
+		}
+	} else if ref := slots.Loadout[MainHandSlot]; ref.ItemID != "" {
+		slots.WeaponID, slots.WeaponInstanceID = ref.ItemID, ref.InstanceID
+	}
+	if slots.ArmorID != "" {
+		slots.Loadout[BodySlot] = EquippedItemRef{
+			ItemID: slots.ArmorID, InstanceID: slots.ArmorInstanceID,
+		}
+	} else if ref := slots.Loadout[BodySlot]; ref.ItemID != "" {
+		slots.ArmorID, slots.ArmorInstanceID = ref.ItemID, ref.InstanceID
+	}
+}
+
+func (slots EquipmentSlots) clone() EquipmentSlots {
+	copy := slots
+	if slots.Loadout != nil {
+		copy.Loadout = make(map[string]EquippedItemRef, len(slots.Loadout))
+		for id, ref := range slots.Loadout {
+			copy.Loadout[id] = ref
+		}
+	}
+	return copy
 }
 
 // AddInstance assigns a stable save-local ID and stores a rolled item.
@@ -75,6 +109,11 @@ func (inv *Inventory) InstanceEquipped(id string) bool {
 		if slots.WeaponInstanceID == id || slots.ArmorInstanceID == id {
 			return true
 		}
+		for _, ref := range slots.Loadout {
+			if ref.InstanceID == id {
+				return true
+			}
+		}
 	}
 	return false
 }
@@ -94,22 +133,20 @@ func (inv *Inventory) EquipInstance(slot int, id, classID string, level int, gd 
 	if level < item.RequiredLevel {
 		return EquipmentSlots{}, fmt.Errorf("level %d required to equip this item", item.RequiredLevel)
 	}
-	previous := inv.Equipment[slot]
+	previous := inv.Equipment[slot].clone()
 	switch item.Kind {
 	case "weapon":
 		base := gd.WeaponByID(item.BaseID)
 		if base == nil || !CanEquipWeapon(classID, base) {
 			return EquipmentSlots{}, fmt.Errorf("class %q cannot equip weapon %q", classID, item.BaseID)
 		}
-		inv.Equipment[slot].WeaponID = item.BaseID
-		inv.Equipment[slot].WeaponInstanceID = id
+		inv.Equipment[slot].setEquipped(MainHandSlot, EquippedItemRef{ItemID: item.BaseID, InstanceID: id})
 	case "armor":
 		base := gd.ArmorByID(item.BaseID)
 		if base == nil || !CanEquipArmor(classID, base) {
 			return EquipmentSlots{}, fmt.Errorf("class %q cannot equip armor %q", classID, item.BaseID)
 		}
-		inv.Equipment[slot].ArmorID = item.BaseID
-		inv.Equipment[slot].ArmorInstanceID = id
+		inv.Equipment[slot].setEquipped(BodySlot, EquippedItemRef{ItemID: item.BaseID, InstanceID: id})
 	default:
 		return EquipmentSlots{}, fmt.Errorf("invalid equipment kind %q", item.Kind)
 	}

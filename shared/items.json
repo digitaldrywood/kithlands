@@ -1,4 +1,18 @@
 {
+  "equipment_slots": [
+    {"id": "main_hand", "name": "Weapon", "group": "arms", "order": 10, "accepts": ["weapon"]},
+    {"id": "off_hand", "name": "Off Hand", "group": "arms", "order": 20, "accepts": ["shield", "weapon", "focus"]},
+    {"id": "head", "name": "Head", "group": "armor", "order": 30, "accepts": ["helmet"]},
+    {"id": "shoulders", "name": "Shoulders", "group": "armor", "order": 40, "accepts": ["shoulders"]},
+    {"id": "body", "name": "Body", "group": "armor", "order": 50, "accepts": ["armor"]},
+    {"id": "hands", "name": "Hands", "group": "armor", "order": 60, "accepts": ["gloves"]},
+    {"id": "waist", "name": "Waist", "group": "armor", "order": 70, "accepts": ["belt"]},
+    {"id": "legs", "name": "Legs", "group": "armor", "order": 80, "accepts": ["pants"]},
+    {"id": "feet", "name": "Feet", "group": "armor", "order": 90, "accepts": ["boots"]},
+    {"id": "amulet", "name": "Amulet", "group": "jewelry", "order": 100, "accepts": ["amulet"]},
+    {"id": "ring_1", "name": "Ring I", "group": "jewelry", "order": 110, "accepts": ["ring"]},
+    {"id": "ring_2", "name": "Ring II", "group": "jewelry", "order": 120, "accepts": ["ring"]}
+  ],
   "weapons": [
     {
       "id": "wooden_club",

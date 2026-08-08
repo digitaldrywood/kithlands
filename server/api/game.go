@@ -194,16 +194,17 @@ type TransportInfo struct {
 }
 
 type ItemState struct {
-	ID            string            `json:"id"`
-	InstanceID    string            `json:"instance_id,omitempty"`
-	Kind          string            `json:"kind,omitempty"`
-	Name          string            `json:"name"`
-	Count         int               `json:"count"`
-	Rarity        string            `json:"rarity,omitempty"`
-	ItemLevel     int               `json:"item_level,omitempty"`
-	RequiredLevel int               `json:"required_level,omitempty"`
-	Affixes       []ItemAffixState  `json:"affixes,omitempty"`
-	Sockets       []ItemSocketState `json:"sockets,omitempty"`
+	ID             string            `json:"id"`
+	InstanceID     string            `json:"instance_id,omitempty"`
+	Kind           string            `json:"kind,omitempty"`
+	Name           string            `json:"name"`
+	Count          int               `json:"count"`
+	Rarity         string            `json:"rarity,omitempty"`
+	ItemLevel      int               `json:"item_level,omitempty"`
+	RequiredLevel  int               `json:"required_level,omitempty"`
+	Affixes        []ItemAffixState  `json:"affixes,omitempty"`
+	Sockets        []ItemSocketState `json:"sockets,omitempty"`
+	AllowedClasses []string          `json:"allowed_classes,omitempty"`
 	// Power is set on weapon items (id starts with "wpn_") so the client
 	// can show equip-delta previews without shipping the weapon catalog.
 	Power int `json:"power,omitempty"`
@@ -270,22 +271,35 @@ type GemAmountState struct {
 }
 
 type EquipState struct {
-	WeaponID          string     `json:"weapon_id"`
-	WeaponInstanceID  string     `json:"weapon_instance_id,omitempty"`
-	WeaponName        string     `json:"weapon_name"`
-	WeaponPower       int        `json:"weapon_power,omitempty"`
-	WeaponHitPct      int        `json:"weapon_hit_pct,omitempty"`
-	WeaponCritPct     int        `json:"weapon_crit_pct,omitempty"`
-	WeaponElement     string     `json:"weapon_element,omitempty"`
-	WeaponItem        *ItemState `json:"weapon_item,omitempty"`
-	ArmorID           string     `json:"armor_id"`
-	ArmorInstanceID   string     `json:"armor_instance_id,omitempty"`
-	ArmorName         string     `json:"armor_name"`
-	ArmorAbsorb       int        `json:"armor_absorb,omitempty"`
-	ArmorMagicDefense int        `json:"armor_magic_defense,omitempty"`
-	ArmorEvadePenalty int        `json:"armor_evade_penalty,omitempty"`
-	ArmorElement      string     `json:"armor_element,omitempty"`
-	ArmorItem         *ItemState `json:"armor_item,omitempty"`
+	WeaponID          string           `json:"weapon_id"`
+	WeaponInstanceID  string           `json:"weapon_instance_id,omitempty"`
+	WeaponName        string           `json:"weapon_name"`
+	WeaponPower       int              `json:"weapon_power,omitempty"`
+	WeaponHitPct      int              `json:"weapon_hit_pct,omitempty"`
+	WeaponCritPct     int              `json:"weapon_crit_pct,omitempty"`
+	WeaponElement     string           `json:"weapon_element,omitempty"`
+	WeaponItem        *ItemState       `json:"weapon_item,omitempty"`
+	ArmorID           string           `json:"armor_id"`
+	ArmorInstanceID   string           `json:"armor_instance_id,omitempty"`
+	ArmorName         string           `json:"armor_name"`
+	ArmorAbsorb       int              `json:"armor_absorb,omitempty"`
+	ArmorMagicDefense int              `json:"armor_magic_defense,omitempty"`
+	ArmorEvadePenalty int              `json:"armor_evade_penalty,omitempty"`
+	ArmorElement      string           `json:"armor_element,omitempty"`
+	ArmorItem         *ItemState       `json:"armor_item,omitempty"`
+	Loadout           []EquipSlotState `json:"loadout"`
+}
+
+// EquipSlotState is the client projection of one authored loadout position.
+// Empty slots remain present so the UI can grow without inferring slot rules.
+type EquipSlotState struct {
+	ID         string     `json:"id"`
+	Name       string     `json:"name"`
+	Group      string     `json:"group"`
+	Accepts    []string   `json:"accepts"`
+	ItemID     string     `json:"item_id,omitempty"`
+	InstanceID string     `json:"instance_id,omitempty"`
+	Item       *ItemState `json:"item,omitempty"`
 }
 
 type ShopItemState struct {
@@ -838,12 +852,14 @@ func (g *Game) fillInventoryState(state *GameState) {
 			if w := g.gd.WeaponByID(strings.TrimPrefix(id, "wpn_")); w != nil {
 				item.Name = w.Name
 				item.Power = w.Power
+				item.AllowedClasses = append([]string(nil), w.Classes...)
 			}
 		}
 		if strings.HasPrefix(id, "arm_") {
 			if a := g.gd.ArmorByID(strings.TrimPrefix(id, "arm_")); a != nil {
 				item.Name = a.Name
 				item.Absorb = a.Absorb
+				item.AllowedClasses = append([]string(nil), a.Classes...)
 			}
 		}
 		state.Items = append(state.Items, item)
@@ -898,6 +914,39 @@ func (g *Game) fillInventoryState(state *GameState) {
 			if item, err := g.rolledItemState(eq.ArmorInstanceID, g.inv.Instance(eq.ArmorInstanceID)); err == nil {
 				es.ArmorItem = &item
 			}
+		}
+		slotDefs := append([]gamedata.EquipmentSlotDefinition(nil), g.gd.Items.EquipmentSlots...)
+		sort.SliceStable(slotDefs, func(i, j int) bool { return slotDefs[i].Order < slotDefs[j].Order })
+		for _, def := range slotDefs {
+			ref := eq.Equipped(def.ID)
+			slot := EquipSlotState{
+				ID: def.ID, Name: def.Name, Group: def.Group,
+				Accepts: append([]string(nil), def.Accepts...),
+				ItemID:  ref.ItemID, InstanceID: ref.InstanceID,
+			}
+			switch def.ID {
+			case inventory.MainHandSlot:
+				if es.WeaponItem != nil {
+					slot.Item = es.WeaponItem
+				} else if w := g.gd.WeaponByID(ref.ItemID); w != nil {
+					item := ItemState{
+						ID: "wpn_" + w.ID, Kind: "weapon", Name: w.Name, Count: 1,
+						Power: w.Power, AllowedClasses: append([]string(nil), w.Classes...),
+					}
+					slot.Item = &item
+				}
+			case inventory.BodySlot:
+				if es.ArmorItem != nil {
+					slot.Item = es.ArmorItem
+				} else if a := g.gd.ArmorByID(ref.ItemID); a != nil {
+					item := ItemState{
+						ID: "arm_" + a.ID, Kind: "armor", Name: a.Name, Count: 1,
+						Absorb: a.Absorb, AllowedClasses: append([]string(nil), a.Classes...),
+					}
+					slot.Item = &item
+				}
+			}
+			es.Loadout = append(es.Loadout, slot)
 		}
 		state.Equipment[i] = es
 	}
