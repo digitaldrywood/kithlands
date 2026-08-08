@@ -35,7 +35,10 @@ def remove_key(image: Image.Image, key: tuple[int, int, int], threshold: int) ->
         for x in range(image.width):
             r, g, b, a = pixels[x, y]
             if a > 0 and color_distance_sq((r, g, b), key) <= limit:
-                pixels[x, y] = (r, g, b, 0)
+                # Zero the hidden RGB channels as well as alpha. Resampling
+                # transparent key-colored pixels otherwise bleeds the chroma
+                # color back into the fitted sprite edge.
+                pixels[x, y] = (0, 0, 0, 0)
     return image
 
 

@@ -23,6 +23,11 @@ const OPPOSITE_DIR = {
   right: "left",
 };
 async function startGame(page) {
+  // The audit must display every biomechanical pose even when headless
+  // Chromium is under load; the normal-speed smoke test runs separately.
+  await page.addInitScript(() => {
+    localStorage.setItem("kithlands_prefs", JSON.stringify({ walkSpeed: 1 }));
+  });
   await page.goto("/");
   await page.waitForFunction(() => !!window.__kithlandsTest);
   await page.waitForFunction(() =>

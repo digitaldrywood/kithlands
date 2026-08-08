@@ -2,7 +2,7 @@
 """Generate one reference-grounded 64px character animation row.
 
 This is the supported production path for character sprites. It generates one
-direction/action row, extracts exactly eight 64x64 frames, and leaves the row in
+direction/action row, extracts exactly six 64x64 frames, and leaves the row in
 tmp for review. It does not install assets into the game by itself.
 """
 
@@ -40,11 +40,14 @@ DIRECTION_COPY = {
     "south-west": "three-quarter front facing down-left",
 }
 
+WALK_FRAMES = 6
 POSE_COPY = (
-    "Columns left-to-right are the eight walk-cycle poses: contact A, down A, "
-    "passing A, high A, contact B, down B, passing B, high B. Frames 2 and 6 "
-    "must be clear passing poses with the free foot under the body; do not use "
-    "only two extreme stride poses."
+    "Columns left-to-right are the six walk-cycle poses: contact A, down A, "
+    "passing, high, contact B, down B. Frame 2 must be a clear passing pose "
+    "with the free foot under the body. Frames 0 and 4 must use opposite lead "
+    "feet. Do not use only two extreme stride poses or duplicate neighboring "
+    "poses. Keep the head and torso anchored while the hips, legs, arms, cape, "
+    "and equipment follow the gait with restrained secondary motion."
 )
 
 CLASS_FALLBACKS = {
@@ -73,7 +76,7 @@ def prompt_for(class_id: str, direction: str, action: str) -> str:
         raise ValueError("only walk rows are supported by this script right now")
     return (
         "Create ONE sprite animation row only, not a full atlas.\n"
-        "Output exactly 8 separated full-body pixel-art frames in one horizontal row.\n"
+        f"Output exactly {WALK_FRAMES} separated full-body pixel-art frames in one horizontal row.\n"
         f"Character: preserve the provided reference image exactly; fallback identity is {identity}.\n"
         f"Direction: {direction} ({DIRECTION_COPY[direction]}). Every frame must face this same direction.\n"
         f"{POSE_COPY}\n"
@@ -110,6 +113,8 @@ def normalize_row(source: Path, row: Path, clean: Path, qa_dir: Path) -> None:
             str(row),
             "--metadata",
             str(qa_dir / f"{row.stem}.components.json"),
+            "--frames",
+            str(WALK_FRAMES),
         ],
     )
     run(
@@ -139,7 +144,7 @@ def normalize_row(source: Path, row: Path, clean: Path, qa_dir: Path) -> None:
             "--rows",
             "1",
             "--columns",
-            "8",
+            str(WALK_FRAMES),
             "--json-out",
             str(qa_dir / f"{clean.stem}.validation.json"),
             "--contact-sheet",

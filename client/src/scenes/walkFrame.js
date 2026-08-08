@@ -171,17 +171,17 @@ export const WALK_SHEET_FORMATS = {
 
 export const WALK_SHEET_FORMAT_BY_CLASS = {
   warrior: "gameCharacter64",
-  brawler: "gameCharacter64Eight",
-  rogue: "gameCharacter64Eight",
-  mender: "gameCharacter64Eight",
+  brawler: "gameCharacter64",
+  rogue: "gameCharacter64",
+  mender: "gameCharacter64",
   cinder: "gameCharacter64",
-  wayfarer: "gameCharacter64Eight",
-  knight: "gameCharacter64Eight",
-  champion: "gameCharacter64Eight",
-  shadow: "gameCharacter64Eight",
-  sage: "gameCharacter64Eight",
-  pyromancer: "gameCharacter64Eight",
-  wanderer: "gameCharacter64Eight",
+  wayfarer: "gameCharacter64",
+  knight: "gameCharacter64",
+  champion: "gameCharacter64",
+  shadow: "gameCharacter64",
+  sage: "gameCharacter64",
+  pyromancer: "gameCharacter64",
+  wanderer: "gameCharacter64",
 };
 
 export function nextWalkFrame(prevFrame) {

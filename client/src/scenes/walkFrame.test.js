@@ -12,7 +12,6 @@ import {
   nextLeaderIndex,
   WALK_FRAME_COUNT,
   WALK_DIRS,
-  WALK_SHEET_FORMATS,
   WALK_FRAME_POSES,
   WALK_SHEET_CLASS_IDS,
   walkFrameCount,
@@ -61,11 +60,11 @@ describe("walkFrameIndex", () => {
     expect(walkFrameIndex("left", 0, "warrior")).toBe(36);
   });
 
-  it("maps regenerated classes to the skill-native 8-direction rows", () => {
+  it("maps regenerated classes to the skill-native six-frame rows", () => {
     expect(walkFrameIndex("down", 0, "brawler")).toBe(0);
-    expect(walkFrameIndex("right", 0, "brawler")).toBe(16);
-    expect(walkFrameIndex("up", 0, "brawler")).toBe(32);
-    expect(walkFrameIndex("left", 0, "brawler")).toBe(48);
+    expect(walkFrameIndex("right", 0, "brawler")).toBe(12);
+    expect(walkFrameIndex("up", 0, "brawler")).toBe(24);
+    expect(walkFrameIndex("left", 0, "brawler")).toBe(36);
   });
 
   it.each(WALK_DIRS)("covers every warrior frame for %s", (dir) => {
@@ -99,9 +98,9 @@ describe("walkFrameForProgress", () => {
     expect(walkFrameForProgress(0.875, "warrior")).toBe(5);
   });
 
-  it("preserves eight-frame progress for regenerated native sheets", () => {
-    expect(walkFrameForProgress(0.5, "brawler")).toBe(4);
-    expect(walkFrameForProgress(0.875, "brawler")).toBe(7);
+  it("uses the six-frame progress contract for every native sheet", () => {
+    expect(walkFrameForProgress(0.5, "brawler")).toBe(3);
+    expect(walkFrameForProgress(0.875, "brawler")).toBe(5);
   });
 
   it("clamps bad progress values", () => {
@@ -141,30 +140,20 @@ describe("walk sheet geometry", () => {
     expect(walkFrameSequence("warrior")).toEqual([0, 1, 2, 3, 4, 5]);
   });
 
-  it("loads regenerated Cinder as native six-frame geometry", () => {
-    expect(walkSheetGeometryForClass("cinder")).toMatchObject({
-      formatId: "gameCharacter64",
-      cellSize: 64,
-      columns: 6,
-      rows: 8,
-    });
-    expect(walkFrameCount("cinder")).toBe(6);
-    expect(walkFrameSequence("cinder")).toEqual([0, 1, 2, 3, 4, 5]);
-  });
-
-  it("loads brawler as native 8-step Game Character 64 geometry", () => {
-    expect(walkSheetGeometryForClass("brawler")).toMatchObject({
-      formatId: "gameCharacter64Eight",
-      cellSize: 64,
-      columns: 8,
-      rows: 8,
-    });
-    expect(walkSheetFrameSize("brawler")).toBe(64);
-    expect(walkFrameCount("brawler")).toBe(8);
-    expect(walkFrameSequence("brawler")).toEqual(
-      WALK_SHEET_FORMATS.gameCharacter64Eight.stepFrameSequence,
-    );
-  });
+  it.each(WALK_SHEET_CLASS_IDS)(
+    "loads %s as native six-frame geometry",
+    (classId) => {
+      expect(walkSheetGeometryForClass(classId)).toMatchObject({
+        formatId: "gameCharacter64",
+        cellSize: 64,
+        columns: 6,
+        rows: 8,
+      });
+      expect(walkSheetFrameSize(classId)).toBe(64);
+      expect(walkFrameCount(classId)).toBe(6);
+      expect(walkFrameSequence(classId)).toEqual([0, 1, 2, 3, 4, 5]);
+    },
+  );
 });
 
 describe("walk sprite placement", () => {
