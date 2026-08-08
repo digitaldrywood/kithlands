@@ -319,6 +319,81 @@ type Consumable struct {
 	WorldUsable  bool   `json:"world_usable,omitempty"`
 }
 
+// LootData defines randomized equipment, socket gems, and known recipes.
+// Base equipment continues to live in ItemsData.
+type LootData struct {
+	Rarities []LootRarity `json:"rarities"`
+	Affixes  []LootAffix  `json:"affixes"`
+	Gems     []Gem        `json:"gems"`
+	Recipes  []GemRecipe  `json:"recipes"`
+	Starter  StarterLoot  `json:"starter"`
+}
+
+type IntRange struct {
+	Min int `json:"min"`
+	Max int `json:"max"`
+}
+
+type LootRarity struct {
+	ID           string   `json:"id"`
+	Name         string   `json:"name"`
+	MinItemLevel int      `json:"min_item_level"`
+	Weight       int      `json:"weight"`
+	Affixes      IntRange `json:"affixes"`
+	Sockets      IntRange `json:"sockets"`
+}
+
+type LootAffix struct {
+	ID            string       `json:"id"`
+	Name          string       `json:"name"`
+	Position      string       `json:"position"`
+	Kinds         []string     `json:"kinds"`
+	MinItemLevel  int          `json:"min_item_level"`
+	RequiredLevel int          `json:"required_level"`
+	Weight        int          `json:"weight"`
+	Modifier      LootModifier `json:"modifier"`
+}
+
+type LootModifier struct {
+	Stat string `json:"stat"`
+	Min  int    `json:"min"`
+	Max  int    `json:"max"`
+}
+
+type Gem struct {
+	ID            string      `json:"id"`
+	Name          string      `json:"name"`
+	Tier          int         `json:"tier"`
+	RequiredLevel int         `json:"required_level"`
+	Description   string      `json:"description"`
+	Effects       []GemEffect `json:"effects"`
+}
+
+type GemEffect struct {
+	Kind  string `json:"kind"`
+	Stat  string `json:"stat"`
+	Value int    `json:"value"`
+}
+
+type GemRecipe struct {
+	ID            string      `json:"id"`
+	Name          string      `json:"name"`
+	RequiredLevel int         `json:"required_level"`
+	Inputs        []GemAmount `json:"inputs"`
+	Output        GemAmount   `json:"output"`
+}
+
+type GemAmount struct {
+	GemID string `json:"gem_id"`
+	Count int    `json:"count"`
+}
+
+type StarterLoot struct {
+	GemID      string `json:"gem_id"`
+	GemCount   int    `json:"gem_count"`
+	MinSockets int    `json:"min_sockets"`
+}
+
 // Spells
 
 type SpellsData struct {
