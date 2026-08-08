@@ -67,14 +67,15 @@ Primary and official sources:
 
 ## Twelve-Class Authored Battle Coverage
 
-`A` = authored class animation, `F` = generic runtime fallback, `-` = absent.
+`A` = approved authored class animation, `R` = installed review candidate,
+`F` = generic runtime fallback, `-` = absent.
 
 | Class | Idle/guard | Physical | Cast/ability | Defend | Hit | Item | Victory | KO | Equipment |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Warrior | A | A sword | - | F | F | F | - | F | A sword |
 | Brawler | F | F | F | F | F | F | - | F | - unarmed |
 | Rogue | F | F | F | F | F | F | - | F | - dagger/bow |
-| Mender | F | F | F | F | F | F | - | F | - staff |
+| Mender | R | F | R staff cast | F | F | F | - | F | R staff |
 | Cinder | F | F | F | F | F | F | - | F | - dagger/staff |
 | Wayfarer | F | F | F | F | F | F | - | F | - mixed |
 | Knight | F | F | F | F | F | F | - | F | - weapon/shield |
