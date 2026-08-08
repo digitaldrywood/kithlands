@@ -19,8 +19,8 @@ export function weaponTextureKey(visualID) {
   return visualID ? `battle_weapon_${visualID}` : "";
 }
 
-export function canUseWarriorBattleCandidate(scene, composition, opts = {}) {
-  if (!opts.enableBattleCandidate || opts.alive === false) return false;
+export function canUseWarriorBattleSprite(scene, composition, opts = {}) {
+  if (opts.alive === false) return false;
   if (composition?.base_sprite !== "warrior") return false;
   if (composition?.weapon_animation_set !== "sword") return false;
   const weaponKey = weaponTextureKey(composition?.weapon_visual_id);
@@ -60,7 +60,7 @@ export function createBattleCharacterSprite(
   composition,
   opts = {},
 ) {
-  if (!canUseWarriorBattleCandidate(scene, composition, opts)) {
+  if (!canUseWarriorBattleSprite(scene, composition, opts)) {
     return createComposedSprite(scene, x, y, composition, opts);
   }
 

@@ -1635,7 +1635,7 @@ export function installDevTestBridge(game) {
       };
     },
 
-    previewBattleSpellScope(spellID, mode, sceneKey = "Battle") {
+    previewBattleSpellFlow(spellID, select = true, sceneKey = "Battle") {
       const scene = getScene(game, sceneKey);
       if (!scene || scene.scene?.key !== "Battle") {
         throw new Error("Battle scene is not active");
@@ -1645,32 +1645,51 @@ export function installDevTestBridge(game) {
       );
       if (slot < 0) throw new Error(`Spell not available: ${spellID}`);
       const member = scene.gameState.party[slot];
-      const spell = member.spells.find((entry) => entry.id === spellID);
       const turnIndex = scene.livingMembers.indexOf(slot);
       if (turnIndex < 0)
         throw new Error(`Caster is not active: ${member.name}`);
+      if (scene.targetingMode) scene.exitTargetingMode();
       scene.currentMemberIdx = turnIndex;
+      scene.memberActions = [];
+      scene.pendingAction = null;
+      scene.pendingSpellId = null;
+      scene.pendingSpellEffect = null;
+      scene.pendingSpellTargetMode = null;
       scene.closePicker();
       scene.showSpellPicker(slot);
       const eligible = member.spells.filter(
         (entry) => (member.mp ?? 0) >= (entry.mp_cost ?? 0),
       );
       const spellIndex = eligible.findIndex((entry) => entry.id === spellID);
-      scene.pickerItems[spellIndex]?.action();
-      if (Array.isArray(spell.target_modes) && spell.target_modes.length > 1) {
-        const modeIndex = spell.target_modes.indexOf(mode);
-        if (modeIndex < 0) throw new Error(`Unsupported target mode: ${mode}`);
-        scene.pickerItems[modeIndex]?.action();
-      }
-      return visibleBattleFxSnapshot(scene);
+      const pickerLabels = (scene.pickerOverlay || [])
+        .filter((entry) => typeof entry?.text === "string")
+        .map((entry) => entry.text);
+      if (select) scene.pickerItems[spellIndex]?.action();
+      return {
+        snapshot: visibleBattleFxSnapshot(scene),
+        actions: clone(scene.memberActions),
+        targetingMode: scene.targetingMode || false,
+        pickerOpen: Boolean(scene.pickerOverlay),
+        pickerLabels,
+      };
     },
 
-    confirmBattleSpellScope(sceneKey = "Battle") {
+    commitBattleTarget(side = "enemy", index = 0, sceneKey = "Battle") {
       const scene = getScene(game, sceneKey);
-      if (!scene?.pickerItems?.[0]) {
-        throw new Error("No group spell confirmation is active");
+      if (!scene || scene.scene?.key !== "Battle") {
+        throw new Error("Battle scene is not active");
       }
-      scene.pickerItems[0].action();
+      const entries =
+        side === "party"
+          ? Object.values(scene.partySprites || {}).sort(
+              (a, b) => (a.slot ?? 0) - (b.slot ?? 0),
+            )
+          : Object.values(scene.enemySprites || {}).filter(
+              (entry) => entry && !entry.dead && !entry.dying,
+            );
+      const entry = entries[index];
+      if (!entry?.sprite) throw new Error(`No ${side} target at ${index}`);
+      clickGameObject(entry.sprite);
       return clone(scene.memberActions);
     },
 

@@ -1,5 +1,5 @@
 {
-  "status": "candidate_runtime_preview",
+  "status": "approved_runtime",
   "generated_on": "2026-08-08",
   "generator": "OpenAI built-in imagegen",
   "identity_reference": "client/public/sprites/warrior.png",
@@ -19,5 +19,5 @@
     "Recover: return toward the original guarded silhouette."
   ],
   "weapon_prompt_template": "STYLIZED-CONCEPT asset. One isolated vertical pixel-art sword matching the Warrior sprite's scale and palette on flat #00ff00. Tip up, grip down, centered, no hand, character, shadow, text, UI or scenery; crisp hard pixel clusters, 1:1.",
-  "notes": "Raw 1254px generations and chroma-removal intermediates remain under ignored client/tmp/warrior-battle-gold. Only normalized review candidates are tracked until visual approval."
+  "notes": "Approved in the real Systems Showcase battle on 2026-08-08. Raw 1254px generations and chroma-removal intermediates remain under ignored client/tmp/warrior-battle-gold; normalized runtime assets are tracked."
 }

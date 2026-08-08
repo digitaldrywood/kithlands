@@ -5,7 +5,7 @@ const RUN_ID = Date.now();
 test.describe("Warrior layered battle gold slice", () => {
   test.describe.configure({ timeout: 90_000 });
 
-  test("keeps Warrior identity, swaps equipment layers, and scopes group casts", async ({
+  test("keeps Warrior identity and swaps equipment layers", async ({
     page,
   }, testInfo) => {
     await page.goto("/");
@@ -42,23 +42,77 @@ test.describe("Warrior layered battle gold slice", () => {
         fullPage: true,
       });
     }
+  });
 
-    const scope = await page.evaluate(() =>
-      window.__kithlandsTest.previewBattleSpellScope("blaze", "all_enemies"),
+  test("uses authored spell scope without a redundant one-or-all menu", async ({
+    page,
+  }, testInfo) => {
+    await page.goto("/");
+    await page.waitForFunction(
+      () => window.__kithlandsTest?.activeSceneKey() === "Title",
+      null,
+      { timeout: 90_000 },
     );
-    expect(scope.groupCursors).toBe(1);
-    expect(scope.groupTargetIndicatorLabel).toBe("ALL ENEMIES");
+    await page.evaluate(() => window.__kithlandsTest.startShowcase());
+
+    const menu = await page.evaluate(() =>
+      window.__kithlandsTest.previewBattleSpellFlow("spark", false),
+    );
+    expect(menu.pickerOpen).toBe(true);
+    expect(menu.pickerLabels.some((label) => label.includes("ALL"))).toBe(
+      false,
+    );
     await page.screenshot({
-      path: testInfo.outputPath(`all-enemies-confirm-${RUN_ID}.png`),
+      path: testInfo.outputPath(`compact-spell-menu-desktop-${RUN_ID}.png`),
       fullPage: true,
     });
-    const selectedActions = await page.evaluate(() =>
-      window.__kithlandsTest.confirmBattleSpellScope(),
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({
+      path: testInfo.outputPath(`compact-spell-menu-mobile-${RUN_ID}.png`),
+      fullPage: true,
+    });
+    await page.setViewportSize({ width: 1280, height: 720 });
+
+    const single = await page.evaluate(() =>
+      window.__kithlandsTest.previewBattleSpellFlow("spark"),
     );
-    expect(selectedActions[0]).toMatchObject({
+    expect(single.pickerOpen).toBe(false);
+    expect(single.targetingMode).toBe("enemy");
+    expect(single.actions).toEqual([]);
+    await page.screenshot({
+      path: testInfo.outputPath(`single-spell-direct-target-${RUN_ID}.png`),
+      fullPage: true,
+    });
+    const singleActions = await page.evaluate(() =>
+      window.__kithlandsTest.commitBattleTarget("enemy", 0),
+    );
+    expect(singleActions[0]).toMatchObject({
+      spell_id: "spark",
+      target_mode: "single_enemy",
+    });
+    expect(singleActions[0].target_id).toBeGreaterThanOrEqual(0);
+
+    await page.goto("/");
+    await page.waitForFunction(
+      () => window.__kithlandsTest?.activeSceneKey() === "Title",
+      null,
+      { timeout: 90_000 },
+    );
+    await page.evaluate(() => window.__kithlandsTest.startShowcase());
+    const group = await page.evaluate(() =>
+      window.__kithlandsTest.previewBattleSpellFlow("blaze"),
+    );
+    expect(group.pickerOpen).toBe(false);
+    expect(group.targetingMode).toBe(false);
+    expect(group.actions[0]).toMatchObject({
       spell_id: "blaze",
       target_id: -1,
       target_mode: "all_enemies",
+    });
+    await page.screenshot({
+      path: testInfo.outputPath(`group-spell-auto-target-${RUN_ID}.png`),
+      fullPage: true,
     });
   });
 

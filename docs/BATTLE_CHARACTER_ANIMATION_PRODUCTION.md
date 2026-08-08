@@ -1,7 +1,7 @@
 # Battle Character Animation Production Contract
 
-Status: Warrior gold-slice candidate. Do not scale to other classes until the
-Warrior has been accepted in the actual battle scene.
+Status: Warrior sword gold slice approved in the actual battle scene. Use this
+contract for the remaining classes and equipment animation sets.
 
 Battle characters use a separate contract from the approved 64x64 eight-way
 walk sheets. The battle contract prioritizes a readable full body, expressive
@@ -81,4 +81,5 @@ pass. Runtime assets are installed only from an accepted candidate.
   identity or animation timing.
 
 Required proof is a source contact sheet, an animation trace or GIF, and the
-complete attack-and-return sequence in the real Systems Showcase battle.
+complete attack-and-return sequence in the real Systems Showcase battle. The
+Warrior sword set passed this gate on 2026-08-08.

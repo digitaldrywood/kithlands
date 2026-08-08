@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   WARRIOR_BATTLE_BODY_KEY,
   WARRIOR_SWORD_ATTACK_FRAMES,
-  canUseWarriorBattleCandidate,
+  canUseWarriorBattleSprite,
   weaponTextureKey,
 } from "./battleCharacterSprite.js";
 
@@ -11,7 +11,7 @@ function sceneWith(keys) {
   return { textures: { exists: (key) => loaded.has(key) } };
 }
 
-describe("Warrior battle candidate contract", () => {
+describe("Warrior battle runtime contract", () => {
   it("keeps one readable six-pose sword action", () => {
     expect(WARRIOR_SWORD_ATTACK_FRAMES.map((pose) => pose.frame)).toEqual([
       0, 1, 2, 3, 4, 5,
@@ -28,25 +28,31 @@ describe("Warrior battle candidate contract", () => {
       "battle_weapon_mythril_sword",
     ]);
     expect(
-      canUseWarriorBattleCandidate(
-        scene,
-        {
-          base_sprite: "warrior",
-          weapon_visual_id: "mythril_sword",
-          weapon_animation_set: "sword",
-        },
-        { enableBattleCandidate: true },
-      ),
+      canUseWarriorBattleSprite(scene, {
+        base_sprite: "warrior",
+        weapon_visual_id: "mythril_sword",
+        weapon_animation_set: "sword",
+      }),
     ).toBe(true);
   });
 
-  it("falls back outside the preview and for unsupported equipment", () => {
+  it("falls back for unsupported equipment or a defeated Warrior", () => {
     const scene = sceneWith([WARRIOR_BATTLE_BODY_KEY]);
     expect(
-      canUseWarriorBattleCandidate(
-        scene,
-        { base_sprite: "warrior", weapon_animation_set: "sword" },
-        { enableBattleCandidate: false },
+      canUseWarriorBattleSprite(scene, {
+        base_sprite: "warrior",
+        weapon_animation_set: "sword",
+      }),
+    ).toBe(false);
+    expect(
+      canUseWarriorBattleSprite(
+        sceneWith([WARRIOR_BATTLE_BODY_KEY, "battle_weapon_iron_sword"]),
+        {
+          base_sprite: "warrior",
+          weapon_visual_id: "iron_sword",
+          weapon_animation_set: "sword",
+        },
+        { alive: false },
       ),
     ).toBe(false);
   });

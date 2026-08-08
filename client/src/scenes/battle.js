@@ -3,10 +3,8 @@ import { createBattleCharacterSprite } from "../sprites/battleCharacterSprite.js
 import { initAudio, playMusic, playSFX, stopMusic } from "../systems/audio.js";
 import { shouldAcceptEnemySpriteClick } from "../systems/battleTargeting.js";
 import {
+  defaultSpellTargetMode,
   isGroupTargetMode,
-  spellTargetBadge,
-  spellTargetModes,
-  targetModeLabel,
   targetModeSide,
 } from "../systems/battleSpellTargeting.js";
 import { showItemMenu } from "./item_menu.js";
@@ -682,16 +680,7 @@ export class BattleScene extends Phaser.Scene {
 
     // Enter to confirm target
     this.input.keyboard.on("keydown-ENTER", () => {
-      if (
-        (this.targetingMode === "enemy_group" ||
-          this.targetingMode === "party_group") &&
-        this.pickerItems?.[0]
-      ) {
-        this.pickerItems[0].action();
-      } else if (
-        this.targetingMode === "enemy" &&
-        this.livingEnemies.length > 0
-      ) {
+      if (this.targetingMode === "enemy" && this.livingEnemies.length > 0) {
         const enemy = this.livingEnemies[this.selectedTargetIdx];
         this.exitTargetingMode();
         this.onEnemyClick(enemy.id);
@@ -1109,7 +1098,6 @@ export class BattleScene extends Phaser.Scene {
           alive,
           targetSize: 100,
           fallbackKey,
-          enableBattleCandidate: gs.showcase_mode === true,
         },
       );
       this.addCombatShadow(
@@ -2493,32 +2481,25 @@ export class BattleScene extends Phaser.Scene {
     this.promptText.setColor("#66ff99");
   }
 
-  enterGroupTargetingMode(mode) {
-    const side = targetModeSide(mode);
-    this.targetingMode = side === "party" ? "party_group" : "enemy_group";
-    const entries =
-      side === "party"
-        ? this.gameState.party
-            .filter((member) => member.hp > 0)
-            .map((member) => this.partySprites[member.name])
-        : this.gameState.enemies
-            .filter((enemy) => enemy.hp > 0)
-            .map((enemy) => this.enemySprites[enemy.id]);
-    this.targetCursor?.hide();
-    this.showGroupTargetCursor(entries, side);
-    this.promptText
-      .setText(`${targetModeLabel(mode)} selected — confirm the cast`)
-      .setColor(side === "party" ? "#66ff99" : "#bb88ff");
-  }
-
-  beginSpellTargeting(slot, member, spell, mode) {
+  beginSpellTargeting(slot, member, spell) {
+    const mode = defaultSpellTargetMode(spell);
     this.pendingAction = "spell";
     this.pendingSpellId = spell.id;
     this.pendingSpellEffect = spell.effect;
     this.pendingSpellTargetMode = mode;
 
     if (isGroupTargetMode(mode)) {
-      this.showGroupSpellConfirmation(slot, member, spell, mode);
+      this.pendingAction = null;
+      this.pendingSpellId = null;
+      this.pendingSpellEffect = null;
+      this.pendingSpellTargetMode = null;
+      this.recordAction(slot, {
+        slot,
+        type: "spell",
+        target_id: -1,
+        spell_id: spell.id,
+        target_mode: mode,
+      });
       return;
     }
     if (targetModeSide(mode) === "party") {
@@ -2532,108 +2513,6 @@ export class BattleScene extends Phaser.Scene {
     this.promptText
       .setText(`${member.name}: Cast ${spell.name} on one enemy`)
       .setColor("#8888ff");
-  }
-
-  showSpellTargetModePicker(slot, member, spell, modes) {
-    const ol = [];
-    const bg = this.add
-      .rectangle(400, 395, 330, 126, 0x111144, 0.97)
-      .setStrokeStyle(2, 0x7777cc)
-      .setDepth(50)
-      .setInteractive();
-    ol.push(bg);
-    ol.push(
-      this.add
-        .text(400, 355, `${spell.name}: choose target scope`, {
-          fontSize: "12px",
-          color: "#ffffff",
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5)
-        .setDepth(52),
-    );
-    this.pickerItems = [];
-    modes.forEach((mode, index) => {
-      const x = modes.length === 1 ? 400 : 320 + index * 160;
-      const row = this.add
-        .rectangle(x, 397, 145, 34, 0x252565)
-        .setStrokeStyle(1, mode === spell.target ? 0xffd36b : 0x555599)
-        .setDepth(51)
-        .setInteractive({ useHandCursor: true });
-      const text = this.add
-        .text(x, 397, `${index + 1}. ${targetModeLabel(mode)}`, {
-          fontSize: "10px",
-          color: "#cacaFF",
-          fontFamily: "monospace",
-          fontStyle: "bold",
-        })
-        .setOrigin(0.5)
-        .setDepth(52);
-      const select = () => {
-        this.closePicker();
-        this.beginSpellTargeting(slot, member, spell, mode);
-      };
-      row.on("pointerdown", select);
-      this.pickerItems.push({ action: select });
-      ol.push(row, text);
-    });
-    const cancel = this.add
-      .text(400, 438, "[ CANCEL / ESC ]", {
-        fontSize: "10px",
-        color: "#888888",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5)
-      .setDepth(52)
-      .setInteractive({ useHandCursor: true });
-    cancel.on("pointerdown", () => this.closePicker());
-    ol.push(cancel);
-    this.pickerOverlay = ol;
-  }
-
-  showGroupSpellConfirmation(slot, member, spell, mode) {
-    this.enterGroupTargetingMode(mode);
-    const ol = [];
-    const bg = this.add
-      .rectangle(400, 432, 350, 76, 0x101629, 0.97)
-      .setStrokeStyle(2, 0xbb88ff)
-      .setDepth(50)
-      .setInteractive();
-    const confirm = this.add
-      .text(350, 432, `[ OK: ${targetModeLabel(mode)} ]`, {
-        fontSize: "11px",
-        color: "#ffffff",
-        fontFamily: "monospace",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5)
-      .setDepth(52)
-      .setInteractive({ useHandCursor: true });
-    const cancel = this.add
-      .text(500, 432, "[ CANCEL ]", {
-        fontSize: "10px",
-        color: "#999999",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5)
-      .setDepth(52)
-      .setInteractive({ useHandCursor: true });
-    const commit = () => {
-      const action = {
-        slot,
-        type: "spell",
-        target_id: -1,
-        spell_id: spell.id,
-        target_mode: mode,
-      };
-      this.closePicker();
-      this.recordAction(slot, action);
-    };
-    this.pickerItems = [{ action: commit }];
-    confirm.on("pointerdown", commit);
-    cancel.on("pointerdown", () => this.closePicker());
-    ol.push(bg, confirm, cancel);
-    this.pickerOverlay = ol;
   }
 
   showSpellPicker(slot) {
@@ -2674,16 +2553,11 @@ export class BattleScene extends Phaser.Scene {
         .setInteractive({ useHandCursor: true })
         .setDepth(51);
       const txt = this.add
-        .text(
-          400,
-          y,
-          `${i + 1}. ${sp.name} (${sp.mp_cost} MP) • ${spellTargetBadge(sp)}`,
-          {
-            fontSize: "11px",
-            color: "#aaaaff",
-            fontFamily: "monospace",
-          },
-        )
+        .text(400, y, `${i + 1}. ${sp.name} (${sp.mp_cost} MP)`, {
+          fontSize: "11px",
+          color: "#aaaaff",
+          fontFamily: "monospace",
+        })
         .setOrigin(0.5)
         .setDepth(52);
       ol.push(row, txt);
@@ -2703,12 +2577,7 @@ export class BattleScene extends Phaser.Scene {
             .setColor("#ff8888");
           return;
         }
-        const modes = spellTargetModes(sp);
-        if (modes.length > 1) {
-          this.showSpellTargetModePicker(slot, member, sp, modes);
-          return;
-        }
-        this.beginSpellTargeting(slot, member, sp, modes[0] || sp.target);
+        this.beginSpellTargeting(slot, member, sp);
       };
 
       this.pickerItems.push({ action: selectSpell });
@@ -2882,21 +2751,11 @@ export class BattleScene extends Phaser.Scene {
   }
 
   closePicker() {
-    const closesGroupTargeting =
-      this.targetingMode === "enemy_group" ||
-      this.targetingMode === "party_group";
     if (this.pickerOverlay) {
       this.pickerOverlay.forEach((o) => o.destroy());
       this.pickerOverlay = null;
     }
     this.pickerItems = [];
-    if (closesGroupTargeting) {
-      this.exitTargetingMode();
-      this.pendingAction = null;
-      this.pendingSpellId = null;
-      this.pendingSpellEffect = null;
-      this.pendingSpellTargetMode = null;
-    }
   }
 
   async doFlee() {
