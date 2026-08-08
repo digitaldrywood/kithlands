@@ -87,6 +87,7 @@ func (inv *Inventory) EquipWeapon(slot int, weaponID string, classID string, gd 
 
 	prev := inv.Equipment[slot].WeaponID
 	inv.Equipment[slot].WeaponID = weaponID
+	inv.Equipment[slot].WeaponInstanceID = ""
 	return prev, nil
 }
 
@@ -102,11 +103,17 @@ func (inv *Inventory) EquipArmor(slot int, armorID string, classID string, gd *g
 
 	prev := inv.Equipment[slot].ArmorID
 	inv.Equipment[slot].ArmorID = armorID
+	inv.Equipment[slot].ArmorInstanceID = ""
 	return prev, nil
 }
 
 // TotalAbsorb returns the combined armor absorb for a party slot.
 func (inv *Inventory) TotalAbsorb(slot int, gd *gamedata.GameData) int {
+	if id := inv.Equipment[slot].ArmorInstanceID; id != "" {
+		if resolved, err := ResolveInstance(inv.Instance(id), gd); err == nil {
+			return resolved.Absorb
+		}
+	}
 	total := 0
 	if id := inv.Equipment[slot].ArmorID; id != "" {
 		if a := gd.ArmorByID(id); a != nil {
@@ -134,6 +141,11 @@ func (inv *Inventory) TotalAbsorb(slot int, gd *gamedata.GameData) int {
 
 // WeaponPower returns the equipped weapon's power for a party slot.
 func (inv *Inventory) WeaponPower(slot int, gd *gamedata.GameData) int {
+	if id := inv.Equipment[slot].WeaponInstanceID; id != "" {
+		if resolved, err := ResolveInstance(inv.Instance(id), gd); err == nil {
+			return resolved.Power
+		}
+	}
 	if id := inv.Equipment[slot].WeaponID; id != "" {
 		if w := gd.WeaponByID(id); w != nil {
 			return w.Power

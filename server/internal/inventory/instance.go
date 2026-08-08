@@ -1,6 +1,10 @@
 package inventory
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/digitaldrywood/kithlands/internal/gamedata"
+)
 
 const currentSchemaVersion = 1
 
@@ -73,4 +77,41 @@ func (inv *Inventory) instanceEquipped(id string) bool {
 		}
 	}
 	return false
+}
+
+// EquipInstance equips an owned roll and returns the previous slot state.
+func (inv *Inventory) EquipInstance(slot int, id, classID string, level int, gd *gamedata.GameData) (EquipmentSlots, error) {
+	if slot < 0 || slot >= len(inv.Equipment) {
+		return EquipmentSlots{}, fmt.Errorf("invalid equipment slot %d", slot)
+	}
+	item := inv.Instance(id)
+	if item == nil {
+		return EquipmentSlots{}, fmt.Errorf("equipment instance %q not owned", id)
+	}
+	if inv.instanceEquipped(id) {
+		return EquipmentSlots{}, fmt.Errorf("equipment instance %q is already equipped", id)
+	}
+	if level < item.RequiredLevel {
+		return EquipmentSlots{}, fmt.Errorf("level %d required to equip this item", item.RequiredLevel)
+	}
+	previous := inv.Equipment[slot]
+	switch item.Kind {
+	case "weapon":
+		base := gd.WeaponByID(item.BaseID)
+		if base == nil || !CanEquipWeapon(classID, base) {
+			return EquipmentSlots{}, fmt.Errorf("class %q cannot equip weapon %q", classID, item.BaseID)
+		}
+		inv.Equipment[slot].WeaponID = item.BaseID
+		inv.Equipment[slot].WeaponInstanceID = id
+	case "armor":
+		base := gd.ArmorByID(item.BaseID)
+		if base == nil || !CanEquipArmor(classID, base) {
+			return EquipmentSlots{}, fmt.Errorf("class %q cannot equip armor %q", classID, item.BaseID)
+		}
+		inv.Equipment[slot].ArmorID = item.BaseID
+		inv.Equipment[slot].ArmorInstanceID = id
+	default:
+		return EquipmentSlots{}, fmt.Errorf("invalid equipment kind %q", item.Kind)
+	}
+	return previous, nil
 }
