@@ -1964,6 +1964,48 @@ export function installDevTestBridge(game) {
       clickGameObject(target);
     },
 
+    hoverCharacterDetailEquipment(slot, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      const target = (scene?.characterDetailGroup || []).find(
+        (entry) =>
+          entry?.characterDetailMeta?.role === "equipment_card" &&
+          entry.characterDetailMeta.slot === slot,
+      );
+      if (!target) {
+        throw new Error(`Character detail equipment not found: ${slot}`);
+      }
+      target.emit("pointerover");
+      return clone(scene.characterEquipmentInspector?.state || null);
+    },
+
+    leaveCharacterDetailEquipment(slot, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      const target = (scene?.characterDetailGroup || []).find(
+        (entry) =>
+          entry?.characterDetailMeta?.role === "equipment_card" &&
+          entry.characterDetailMeta.slot === slot,
+      );
+      if (!target) {
+        throw new Error(`Character detail equipment not found: ${slot}`);
+      }
+      target.emit("pointerout");
+      return clone(scene.characterEquipmentInspector?.state || null);
+    },
+
+    pinCharacterDetailEquipment(slot, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      const target = (scene?.characterDetailGroup || []).find(
+        (entry) =>
+          entry?.bg?.characterDetailMeta?.role === "equipment_details" &&
+          entry.bg.characterDetailMeta.slot === slot,
+      );
+      if (!target?.bg) {
+        throw new Error(`Character detail DETAILS button not found: ${slot}`);
+      }
+      clickGameObject(target.bg);
+      return clone(scene.characterEquipmentInspector?.state || null);
+    },
+
     openEquipPickerFromCharacterDetail(index, type, sceneKey) {
       const scene = getScene(game, sceneKey);
       closeCharacterDetail(scene);

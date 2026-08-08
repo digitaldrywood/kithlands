@@ -8,6 +8,7 @@ vi.mock("./gem_workshop.js", () => ({
 }));
 
 import {
+  buildEquipmentBreakdown,
   openCharacterDetail,
   closeCharacterDetail,
 } from "./character_detail.js";
@@ -258,6 +259,47 @@ beforeEach(() => {
   showGemWorkshop.mockClear();
 });
 
+describe("equipment stat breakdown", () => {
+  it("separates the base item, affix, and socket values from the resolved total", () => {
+    const breakdown = buildEquipmentBreakdown(
+      {
+        power: 11,
+        affixes: [{ name: "Keen", stat: "power", value: 2 }],
+        sockets: [
+          {
+            gem_id: "ember_gem",
+            gem_name: "Ember Gem",
+            stat: "power",
+            value: 3,
+          },
+        ],
+      },
+      "weapon",
+    );
+
+    expect(breakdown).toEqual({
+      kind: "weapon",
+      stat: "power",
+      statLabel: "POWER",
+      total: 11,
+      base: 6,
+      additions: [
+        { source: "Keen", value: 2, type: "affix" },
+        { source: "Ember Gem", value: 3, type: "gem" },
+      ],
+    });
+  });
+
+  it("uses the resolved equipment total for catalog gear without a rolled instance", () => {
+    expect(buildEquipmentBreakdown(null, "armor", 5)).toMatchObject({
+      stat: "absorb",
+      total: 5,
+      base: 5,
+      additions: [],
+    });
+  });
+});
+
 describe("character detail navigation", () => {
   it("renders on-screen arrows and a position indicator", () => {
     const scene = makeScene(4);
@@ -350,6 +392,84 @@ describe("character detail navigation", () => {
 
     expect(currentTextValues(scene)).toContain("ATK: 11");
     expect(currentTextValues(scene)).toContain("STR: 6");
+  });
+
+  it("shows the equipped weapon breakdown immediately and armor on hover", () => {
+    const scene = makeScene(1);
+    scene.gameState.equipment[0].weapon_item = {
+      ...scene.gameState.equipment[0].weapon_item,
+      rarity: "Magic",
+      item_level: 1,
+      required_level: 1,
+      power: 10,
+      affixes: [{ name: "Keen", stat: "power", value: 2 }],
+      sockets: [
+        {
+          index: 0,
+          gem_id: "ember_gem",
+          gem_name: "Ember Gem",
+          stat: "power",
+          value: 3,
+        },
+      ],
+    };
+    scene.gameState.equipment[0].weapon_power = 10;
+
+    openCharacterDetail(scene, 0);
+
+    expect(currentTextValues(scene)).toEqual(
+      expect.arrayContaining([
+        "EQUIPMENT DETAILS",
+        "MAGIC • ITEM LV.1 • REQ LV.1",
+        "POWER BREAKDOWN",
+        "Base item  5",
+        "Keen  +2",
+        "Ember Gem  +3",
+        "TOTAL POWER  10",
+        "ATK 16 = STR 6 + WEAPON 10",
+        "STR 6 = HERO 6 + GEAR 0",
+        "AGI 5 = HERO 5 + GEAR 0",
+      ]),
+    );
+
+    const [, armorCard] = currentEquipCards(scene);
+    armorCard.handlers.pointerover();
+    expect(currentTextValues(scene)).toEqual(
+      expect.arrayContaining([
+        "Armor 1",
+        "ABSORB BREAKDOWN",
+        "Base item  2",
+        "TOTAL ABSORB  2",
+        "DAMAGE ABSORB 2 = ARMOR 2",
+      ]),
+    );
+
+    armorCard.handlers.pointerout();
+    expect(currentTextValues(scene)).toContain("POWER BREAKDOWN");
+  });
+
+  it("pins an armor inspection for touch and ignores later weapon hover", () => {
+    const scene = makeScene(1);
+    openCharacterDetail(scene, 0);
+    const detailsButtons = scene.characterDetailGroup.filter(
+      (entry) => entry?.label?.text === "DETAILS",
+    );
+    expect(detailsButtons).toHaveLength(2);
+
+    detailsButtons[1].bg.handlers.pointerdown();
+    detailsButtons[1].bg.handlers.pointerup();
+    expect(scene.characterEquipmentInspector.state.pinnedSlot).toBe("armor");
+    expect(currentTextValues(scene)).toContain("PINNED • TAP TO RELEASE");
+    expect(currentTextValues(scene)).toContain("ABSORB BREAKDOWN");
+
+    const [weaponCard] = currentEquipCards(scene);
+    weaponCard.handlers.pointerover();
+    expect(currentTextValues(scene)).toContain("ABSORB BREAKDOWN");
+
+    detailsButtons[1].bg.handlers.pointerdown();
+    detailsButtons[1].bg.handlers.pointerup();
+    expect(scene.characterEquipmentInspector.state.pinnedSlot).toBeNull();
+    expect(currentTextValues(scene)).toContain("HOVER • TAP DETAILS");
   });
 
   it("opens socketing directly from the equipped weapon and returns to the character", () => {

@@ -25,6 +25,7 @@ const NAV_BTN_H = 34;
 const NAV_BTN_Y = PANEL_TOP + 42;
 const NAV_LEFT_X = PANEL_LEFT + 28;
 const NAV_RIGHT_X = PANEL_RIGHT - 28;
+const EQUIP_X = PANEL_RIGHT - 140;
 
 // Opens the detail overlay for a single party member. Idempotent: calling
 // twice closes the previous instance before opening the new one, so the
@@ -117,16 +118,28 @@ export function openCharacterDetail(scene, partyIndex) {
   // Three-column body.
   drawPortrait(scene, group, member, PANEL_LEFT + 120, PANEL_TOP + 230);
   drawStatBlock(scene, group, member, equip, PANEL_LEFT + 230, PANEL_TOP + 110);
+  const equipmentInspector = drawEquipmentInspector(
+    scene,
+    group,
+    member,
+    equip,
+    equip.weapon_name ? "weapon" : "armor",
+  );
+  scene.characterEquipmentInspector = equipmentInspector;
+
   drawEquipSlot(
     scene,
     group,
-    PANEL_RIGHT - 140,
+    EQUIP_X,
     PANEL_TOP + 135,
     "WEAPON",
     equip.weapon_name,
     () => handOffToEquipPicker(scene, partyIndex, "weapon"),
     {
+      kind: "weapon",
       item: equip.weapon_item,
+      total: equip.weapon_power,
+      inspector: equipmentInspector,
       onSocket: () =>
         handOffToGemWorkshop(scene, partyIndex, equip.weapon_item?.instance_id),
     },
@@ -134,13 +147,16 @@ export function openCharacterDetail(scene, partyIndex) {
   drawEquipSlot(
     scene,
     group,
-    PANEL_RIGHT - 140,
+    EQUIP_X,
     PANEL_TOP + 245,
     "ARMOR",
     equip.armor_name,
     () => handOffToEquipPicker(scene, partyIndex, "armor"),
     {
+      kind: "armor",
       item: equip.armor_item,
+      total: equip.armor_absorb,
+      inspector: equipmentInspector,
       onSocket: () =>
         handOffToGemWorkshop(scene, partyIndex, equip.armor_item?.instance_id),
     },
@@ -187,6 +203,7 @@ export function closeCharacterDetail(scene) {
   scene.characterDetailGroup.forEach((c) => c.destroy());
   scene.characterDetailGroup = null;
   scene.characterDetailIndex = null;
+  scene.characterEquipmentInspector = null;
   if (scene.characterDetailEscHandler) {
     scene.input.keyboard.off("keydown-ESC", scene.characterDetailEscHandler);
     scene.characterDetailEscHandler = null;
@@ -400,7 +417,7 @@ function drawEquipSlot(
   slotLabel,
   itemName,
   onClick,
-  { item, onSocket } = {},
+  { kind, item, total, inspector, onSocket } = {},
 ) {
   const card = scene.add
     .rectangle(cx, cy, 220, 90, 0x1a2a4a, 0.95)
@@ -408,14 +425,21 @@ function drawEquipSlot(
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT)
     .setInteractive({ useHandCursor: true });
-  card.on("pointerover", () => card.setStrokeStyle(2, 0xffcc44));
-  card.on("pointerout", () => card.setStrokeStyle(2, 0x4488ff));
+  card.characterDetailMeta = { role: "equipment_card", slot: kind };
+  card.on("pointerover", () => {
+    card.setStrokeStyle(2, 0xffcc44);
+    inspector?.hover(kind);
+  });
+  card.on("pointerout", () => {
+    card.setStrokeStyle(2, 0x4488ff);
+    inspector?.leave(kind);
+  });
   card.on("pointerup", onClick);
   group.push(card);
 
   group.push(
     scene.add
-      .text(cx, cy - 30, slotLabel, {
+      .text(cx - 55, cy - 30, slotLabel, {
         fontSize: "11px",
         color: "#ffcc44",
         fontFamily: "monospace",
@@ -424,11 +448,44 @@ function drawEquipSlot(
       .setScrollFactor(0)
       .setDepth(DEPTH_LABEL),
   );
+  const detailsButton = drawButton(
+    scene,
+    cx + 68,
+    cy - 30,
+    72,
+    19,
+    "DETAILS",
+    () => inspector?.togglePin(kind),
+    {
+      depth: DEPTH_LABEL,
+      fontSize: "8px",
+      fill: 0x14233f,
+      fillHover: 0x21406e,
+      stroke: 0x6f9fd8,
+      strokeWidth: 1,
+    },
+  );
+  detailsButton.bg.characterDetailMeta = {
+    role: "equipment_details",
+    slot: kind,
+  };
+  group.push(detailsButton);
   group.push(
     scene.add
-      .text(cx, cy, itemName || "(empty)", {
-        fontSize: "13px",
+      .text(cx, cy - 9, itemName || "(empty)", {
+        fontSize: "12px",
         color: itemName ? "#ffffff" : "#888888",
+        fontFamily: "monospace",
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(DEPTH_LABEL),
+  );
+  group.push(
+    scene.add
+      .text(cx, cy + 8, compactEquipmentStat(kind, item, total), {
+        fontSize: "9px",
+        color: "#a8cfff",
         fontFamily: "monospace",
       })
       .setOrigin(0.5)
@@ -489,6 +546,236 @@ function drawEquipSlot(
         .setDepth(DEPTH_LABEL),
     );
   }
+}
+
+export function buildEquipmentBreakdown(item, kind, fallbackTotal = 0) {
+  const stat = kind === "armor" ? "absorb" : "power";
+  const statLabel = kind === "armor" ? "ABSORB" : "POWER";
+  const itemTotal = Number(item?.[stat]);
+  const fallback = Number(fallbackTotal);
+  const total = Number.isFinite(itemTotal)
+    ? itemTotal
+    : Number.isFinite(fallback)
+      ? fallback
+      : 0;
+  const additions = [];
+
+  for (const affix of item?.affixes || []) {
+    if (affix?.stat !== stat || !Number.isFinite(Number(affix?.value))) {
+      continue;
+    }
+    additions.push({
+      source: affix.name || "Affix",
+      value: Number(affix.value),
+      type: "affix",
+    });
+  }
+  for (const socket of item?.sockets || []) {
+    if (
+      !socket?.gem_id ||
+      socket?.stat !== stat ||
+      !Number.isFinite(Number(socket?.value))
+    ) {
+      continue;
+    }
+    additions.push({
+      source: socket.gem_name || "Socketed gem",
+      value: Number(socket.value),
+      type: "gem",
+    });
+  }
+
+  return {
+    kind,
+    stat,
+    statLabel,
+    total,
+    base: total - additions.reduce((sum, entry) => sum + entry.value, 0),
+    additions,
+  };
+}
+
+function compactEquipmentStat(kind, item, fallbackTotal) {
+  const breakdown = buildEquipmentBreakdown(item, kind, fallbackTotal);
+  return `${titleCase(breakdown.stat)} ${breakdown.total}`;
+}
+
+function drawEquipmentInspector(scene, group, member, equip, defaultSlot) {
+  const slots = {
+    weapon: {
+      kind: "weapon",
+      name: equip.weapon_name || "(empty)",
+      item: equip.weapon_item,
+      total: equip.weapon_power,
+    },
+    armor: {
+      kind: "armor",
+      name: equip.armor_name || "(empty)",
+      item: equip.armor_item,
+      total: equip.armor_absorb,
+    },
+  };
+  const state = { activeSlot: defaultSlot, pinnedSlot: null };
+  const left = EQUIP_X - 110;
+  const top = PANEL_TOP + 296;
+
+  const panel = scene.add
+    .rectangle(EQUIP_X, top + 105, 240, 210, 0x10213c, 0.98)
+    .setStrokeStyle(1, 0x4488ff)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT);
+  panel.characterDetailMeta = { role: "equipment_inspector" };
+  group.push(panel);
+
+  const heading = detailText(
+    scene,
+    left,
+    top + 8,
+    "EQUIPMENT DETAILS",
+    "#ffcc44",
+    "10px",
+  );
+  const interaction = detailText(
+    scene,
+    left + 225,
+    top + 8,
+    "HOVER • TAP DETAILS",
+    "#88ccff",
+    "7px",
+  ).setOrigin(1, 0);
+  const name = detailText(scene, left, top + 25, "", "#ffffff", "12px");
+  const meta = detailText(scene, left, top + 42, "", "#8fb8e8", "8px");
+  const secondary = detailText(scene, left, top + 55, "", "#a8cfff", "8px");
+  const divider = scene.add
+    .rectangle(EQUIP_X, top + 70, 220, 1, 0x4488ff, 0.45)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT);
+  const breakdownLabel = detailText(
+    scene,
+    left,
+    top + 77,
+    "",
+    "#ffcc44",
+    "9px",
+  );
+  const breakdownLines = Array.from({ length: 6 }, (_, index) =>
+    detailText(scene, left, top + 91 + index * 12, "", "#d7e6f7", "8px"),
+  );
+  const impact = detailText(scene, left, top + 169, "", "#8ff0a4", "9px");
+  const strength = detailText(scene, left, top + 182, "", "#b9c8dc", "8px");
+  const agility = detailText(scene, left, top + 194, "", "#b9c8dc", "8px");
+  group.push(
+    heading,
+    interaction,
+    name,
+    meta,
+    secondary,
+    divider,
+    breakdownLabel,
+    ...breakdownLines,
+    impact,
+    strength,
+    agility,
+  );
+
+  function render(slot) {
+    const selected = slots[slot] || slots[defaultSlot];
+    if (!selected) return;
+    state.activeSlot = selected.kind;
+    const breakdown = buildEquipmentBreakdown(
+      selected.item,
+      selected.kind,
+      selected.total,
+    );
+    name.setText(selected.name);
+    meta.setText(itemMeta(selected.item));
+    secondary.setText(equipmentSecondaryStats(selected.kind, equip));
+    breakdownLabel.setText(`${breakdown.statLabel} BREAKDOWN`);
+
+    const lines = [
+      `Base item  ${breakdown.base}`,
+      ...breakdown.additions.map(
+        (entry) => `${entry.source}  ${formatSigned(entry.value)}`,
+      ),
+      `TOTAL ${breakdown.statLabel}  ${breakdown.total}`,
+    ];
+    breakdownLines.forEach((line, index) => {
+      line.setText(lines[index] || "");
+      line.setColor(index === lines.length - 1 ? "#8ff0a4" : "#d7e6f7");
+    });
+
+    const impactY = top + 91 + Math.min(lines.length, 6) * 12 + 8;
+    impact.y = impactY;
+    strength.y = impactY + 13;
+    agility.y = impactY + 25;
+
+    const str = Number(member?.str) || 0;
+    const agi = Number(member?.agi) || 0;
+    impact.setText(
+      selected.kind === "weapon"
+        ? `ATK ${str + breakdown.total} = STR ${str} + WEAPON ${breakdown.total}`
+        : `DAMAGE ABSORB ${breakdown.total} = ARMOR ${breakdown.total}`,
+    );
+    strength.setText(`STR ${str} = HERO ${str} + GEAR 0`);
+    agility.setText(`AGI ${agi} = HERO ${agi} + GEAR 0`);
+    interaction.setText(
+      state.pinnedSlot ? "PINNED • TAP TO RELEASE" : "HOVER • TAP DETAILS",
+    );
+  }
+
+  const controller = {
+    state,
+    hover(slot) {
+      if (!state.pinnedSlot) render(slot);
+    },
+    leave() {
+      if (!state.pinnedSlot) render(defaultSlot);
+    },
+    togglePin(slot) {
+      state.pinnedSlot = state.pinnedSlot === slot ? null : slot;
+      render(state.pinnedSlot || slot);
+    },
+    show(slot) {
+      render(slot);
+    },
+  };
+  render(defaultSlot);
+  return controller;
+}
+
+function itemMeta(item) {
+  if (!item?.instance_id) return "CATALOG EQUIPMENT";
+  const rarity = String(item.rarity || "ROLLED").toUpperCase();
+  const itemLevel = Number(item.item_level) || 1;
+  const required = Number(item.required_level) || 1;
+  return `${rarity} • ITEM LV.${itemLevel} • REQ LV.${required}`;
+}
+
+function equipmentSecondaryStats(kind, equip) {
+  if (kind === "armor") {
+    return `M.DEF ${Number(equip?.armor_magic_defense) || 0} • EVADE ${formatPercent(Number(equip?.armor_evade_penalty) || 0)}`;
+  }
+  return `HIT ${formatPercent(Number(equip?.weapon_hit_pct) || 0)} • CRIT ${formatPercent(Number(equip?.weapon_crit_pct) || 0)}`;
+}
+
+function detailText(scene, x, y, value, color, fontSize) {
+  return scene.add
+    .text(x, y, value, { color, fontSize, fontFamily: "monospace" })
+    .setOrigin(0, 0)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_LABEL);
+}
+
+function formatSigned(value) {
+  return `${value >= 0 ? "+" : ""}${value}`;
+}
+
+function formatPercent(value) {
+  return `${value >= 0 ? "+" : ""}${value}%`;
+}
+
+function titleCase(value) {
+  return value ? value[0].toUpperCase() + value.slice(1) : "";
 }
 
 function drawSpells(scene, group, member, partyIndex, x, y) {

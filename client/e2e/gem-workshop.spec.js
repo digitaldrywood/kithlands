@@ -203,8 +203,90 @@ test("previews and sockets equipped gear from the character screen", async ({
   );
   expect(returnedTexts).toContain("◆ EMBER GEM");
   expect(returnedTexts).not.toContain("SOCKET");
+  const equippedWeapon = socketed.equipment[0].weapon_item;
+  const weaponBase =
+    equippedWeapon.power -
+    (equippedWeapon.affixes || [])
+      .filter((affix) => affix.stat === "power")
+      .reduce((sum, affix) => sum + affix.value, 0) -
+    (equippedWeapon.sockets || [])
+      .filter((socket) => socket.gem_id && socket.stat === "power")
+      .reduce((sum, socket) => sum + socket.value, 0);
+  expect(returnedTexts).toEqual(
+    expect.arrayContaining([
+      `Power ${equippedWeapon.power}`,
+      "EQUIPMENT DETAILS",
+      "POWER BREAKDOWN",
+      `Base item  ${weaponBase}`,
+      "Ember Gem  +3",
+      `TOTAL POWER  ${equippedWeapon.power}`,
+      `ATK ${socketed.party[0].str + equippedWeapon.power} = STR ${socketed.party[0].str} + WEAPON ${equippedWeapon.power}`,
+      `STR ${socketed.party[0].str} = HERO ${socketed.party[0].str} + GEAR 0`,
+      `AGI ${socketed.party[0].agi} = HERO ${socketed.party[0].agi} + GEAR 0`,
+    ]),
+  );
   await page.screenshot({
-    path: `tmp/character-socket-filled-${RUN_ID}.png`,
+    path: `tmp/character-weapon-details-${RUN_ID}.png`,
+    fullPage: true,
+  });
+
+  const hoverState = await page.evaluate(() =>
+    window.__kithlandsTest.hoverCharacterDetailEquipment("armor", "World"),
+  );
+  expect(hoverState.activeSlot).toBe("armor");
+  const armorTexts = await page.evaluate(() =>
+    window.__kithlandsTest.visibleTexts("World").map((entry) => entry.text),
+  );
+  expect(armorTexts).toEqual(
+    expect.arrayContaining([
+      `Absorb ${socketed.equipment[0].armor_absorb}`,
+      "ABSORB BREAKDOWN",
+      `Base item  ${socketed.equipment[0].armor_absorb}`,
+      `TOTAL ABSORB  ${socketed.equipment[0].armor_absorb}`,
+      `DAMAGE ABSORB ${socketed.equipment[0].armor_absorb} = ARMOR ${socketed.equipment[0].armor_absorb}`,
+    ]),
+  );
+  await page.screenshot({
+    path: `tmp/character-armor-hover-details-${RUN_ID}.png`,
+    fullPage: true,
+  });
+
+  const pinnedState = await page.evaluate(() =>
+    window.__kithlandsTest.pinCharacterDetailEquipment("armor", "World"),
+  );
+  expect(pinnedState).toMatchObject({
+    activeSlot: "armor",
+    pinnedSlot: "armor",
+  });
+  await page.waitForFunction(() =>
+    window.__kithlandsTest
+      .visibleTexts("World")
+      .some((entry) => entry.text === "PINNED • TAP TO RELEASE"),
+  );
+
+  await page.evaluate(() => {
+    window.__kithlandsTest.pinCharacterDetailEquipment("armor", "World");
+    window.__kithlandsTest.leaveCharacterDetailEquipment("armor", "World");
+    window.__kithlandsTest.hoverCharacterDetailEquipment("weapon", "World");
+  });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.waitForTimeout(150);
+  await page.screenshot({
+    path: `tmp/character-details-desktop-1440x900-${RUN_ID}.png`,
+    fullPage: true,
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(150);
+  const mobileViewport = await page.evaluate(() => ({
+    innerWidth: window.innerWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+  }));
+  expect(mobileViewport.scrollWidth).toBeLessThanOrEqual(
+    mobileViewport.innerWidth,
+  );
+  await page.screenshot({
+    path: `tmp/character-details-mobile-390x844-${RUN_ID}.png`,
     fullPage: true,
   });
 });
