@@ -330,6 +330,7 @@ type CombatActionEntry struct {
 	ActionName    string           `json:"action_name,omitempty"`
 	CinematicTier string           `json:"cinematic_tier,omitempty"`
 	SpellName     string           `json:"spell_name,omitempty"`
+	TargetMode    string           `json:"target_mode,omitempty"`
 	Initiative    int              `json:"initiative,omitempty"` // weighted turn-order roll for this actor
 }
 

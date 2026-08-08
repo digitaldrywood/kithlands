@@ -14,19 +14,22 @@ import (
 // client. Zero-value fields indicate "no accent" and the client renders
 // the base sprite unchanged.
 type Composition struct {
-	BaseSprite   string `json:"base_sprite"`
-	WeaponTier   int    `json:"weapon_tier,omitempty"`
-	ArmorTier    int    `json:"armor_tier,omitempty"`
-	WeaponAccent string `json:"weapon_accent,omitempty"`
-	ArmorAccent  string `json:"armor_accent,omitempty"`
+	BaseSprite         string `json:"base_sprite"`
+	WeaponTier         int    `json:"weapon_tier,omitempty"`
+	ArmorTier          int    `json:"armor_tier,omitempty"`
+	WeaponAccent       string `json:"weapon_accent,omitempty"`
+	ArmorAccent        string `json:"armor_accent,omitempty"`
+	WeaponVisualID     string `json:"weapon_visual_id,omitempty"`
+	WeaponAnimationSet string `json:"weapon_animation_set,omitempty"`
 }
 
 // ItemLookup bridges the sprites package to gamedata without creating a
 // hard dependency on a concrete GameData shape. Callers pass closures that
 // return the tier for a given item id, or (0, false) when the id is unknown.
 type ItemLookup struct {
-	WeaponTier func(id string) (int, bool)
-	ArmorTier  func(id string) (int, bool)
+	WeaponTier   func(id string) (int, bool)
+	WeaponVisual func(id string) (visualID, animationSet string, ok bool)
+	ArmorTier    func(id string) (int, bool)
 }
 
 // Input is the full set of facts needed to compute a Composition.
@@ -48,6 +51,12 @@ func Compose(in Input) Composition {
 		if tier, ok := in.Lookup.WeaponTier(in.Equip.WeaponID); ok {
 			comp.WeaponTier = tier
 			comp.WeaponAccent = lookupColor(in.Palettes, tier, true)
+		}
+	}
+	if in.Equip.WeaponID != "" && in.Lookup.WeaponVisual != nil {
+		if visualID, animationSet, ok := in.Lookup.WeaponVisual(in.Equip.WeaponID); ok {
+			comp.WeaponVisualID = visualID
+			comp.WeaponAnimationSet = animationSet
 		}
 	}
 	if in.Equip.ArmorID != "" && in.Lookup.ArmorTier != nil {
@@ -86,6 +95,12 @@ func LookupFromGameData(gd *gamedata.GameData) ItemLookup {
 				return w.Tier, true
 			}
 			return 0, false
+		},
+		WeaponVisual: func(id string) (string, string, bool) {
+			if w := gd.WeaponByID(id); w != nil {
+				return w.VisualID, w.AnimationSet, w.VisualID != "" && w.AnimationSet != ""
+			}
+			return "", "", false
 		},
 		ArmorTier: func(id string) (int, bool) {
 			if a := gd.ArmorByID(id); a != nil {

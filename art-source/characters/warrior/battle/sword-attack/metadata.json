@@ -1,0 +1,23 @@
+{
+  "status": "candidate_runtime_preview",
+  "generated_on": "2026-08-08",
+  "generator": "OpenAI built-in imagegen",
+  "identity_reference": "client/public/sprites/warrior.png",
+  "frame_contract": {
+    "frame_size": [192, 192],
+    "order": ["guard", "anticipate", "raise", "impact", "follow_through", "recover"],
+    "anchor": "bottom_center",
+    "weapon_baked_in": false
+  },
+  "prompt_template": "IDENTITY-PRESERVE sprite frame. Image 1 is the locked Warrior identity; Image 2 is the exact pose guide. Produce one full-body 2D pixel-art RPG battle sprite on flat #00ff00. Preserve the enclosed silver plate helmet and black visor, gold trim, blue plume/scarf/cape, armor proportions and palette. Match the guide's silhouette, limb positions and planted feet. BODY ONLY: no weapon, shield, magic, text, UI, shadow or scenery. Crisp hard pixel clusters, no antialiasing, centered with generous clear margin, 1:1.",
+  "frame_prompts": [
+    "Guard: grounded ready stance facing screen-left; left weapon hand extended and empty.",
+    "Anticipate: weight shifts back; empty weapon hand draws behind the body.",
+    "Raise: both gauntlets overhead around an invisible sword grip.",
+    "Impact: decisive screen-left lunge; empty weapon hand reaches the contact point.",
+    "Follow-through: low screen-left sweep recovery with readable balance.",
+    "Recover: return toward the original guarded silhouette."
+  ],
+  "weapon_prompt_template": "STYLIZED-CONCEPT asset. One isolated vertical pixel-art sword matching the Warrior sprite's scale and palette on flat #00ff00. Tip up, grip down, centered, no hand, character, shadow, text, UI or scenery; crisp hard pixel clusters, 1:1.",
+  "notes": "Raw 1254px generations and chroma-removal intermediates remain under ignored client/tmp/warrior-battle-gold. Only normalized review candidates are tracked until visual approval."
+}

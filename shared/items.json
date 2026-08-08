@@ -95,6 +95,8 @@
       "crit_pct": 0,
       "element": "none",
       "classes": ["warrior", "wayfarer"],
+      "visual_id": "iron_sword",
+      "animation_set": "sword",
       "special": "",
       "buy_price": 80,
       "sell_price": 40
@@ -222,6 +224,8 @@
       "crit_pct": 4,
       "element": "none",
       "classes": ["warrior", "wayfarer"],
+      "visual_id": "mythril_sword",
+      "animation_set": "sword",
       "special": "",
       "buy_price": 1200,
       "sell_price": 600

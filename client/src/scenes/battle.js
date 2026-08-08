@@ -1,7 +1,14 @@
 import { claimChest, gameAction, getGame } from "../api.js";
-import { createComposedSprite } from "../sprites/composedSprite.js";
+import { createBattleCharacterSprite } from "../sprites/battleCharacterSprite.js";
 import { initAudio, playMusic, playSFX, stopMusic } from "../systems/audio.js";
 import { shouldAcceptEnemySpriteClick } from "../systems/battleTargeting.js";
+import {
+  isGroupTargetMode,
+  spellTargetBadge,
+  spellTargetModes,
+  targetModeLabel,
+  targetModeSide,
+} from "../systems/battleSpellTargeting.js";
 import { showItemMenu } from "./item_menu.js";
 import {
   applyDamage,
@@ -324,6 +331,7 @@ export class BattleScene extends Phaser.Scene {
       this.messageWindow?.destroy();
       this.actorCursor?.destroy();
       this.targetCursor?.destroy();
+      this.destroyGroupTargetCursor();
       this.finishMajorCinematic?.(true);
     });
 
@@ -674,7 +682,16 @@ export class BattleScene extends Phaser.Scene {
 
     // Enter to confirm target
     this.input.keyboard.on("keydown-ENTER", () => {
-      if (this.targetingMode === "enemy" && this.livingEnemies.length > 0) {
+      if (
+        (this.targetingMode === "enemy_group" ||
+          this.targetingMode === "party_group") &&
+        this.pickerItems?.[0]
+      ) {
+        this.pickerItems[0].action();
+      } else if (
+        this.targetingMode === "enemy" &&
+        this.livingEnemies.length > 0
+      ) {
         const enemy = this.livingEnemies[this.selectedTargetIdx];
         this.exitTargetingMode();
         this.onEnemyClick(enemy.id);
@@ -703,6 +720,7 @@ export class BattleScene extends Phaser.Scene {
         this.pendingAction = null;
         this.pendingSpellId = null;
         this.pendingSpellEffect = null;
+        this.pendingSpellTargetMode = null;
         const slot = this.livingMembers[this.currentMemberIdx];
         const member = this.gameState.party[slot];
         this.promptText
@@ -1082,7 +1100,7 @@ export class BattleScene extends Phaser.Scene {
       const composition = p.composition || {
         base_sprite: fallbackKey || "",
       };
-      const sprite = createComposedSprite(
+      const sprite = createBattleCharacterSprite(
         this,
         placement.spriteX,
         placement.spriteY,
@@ -1091,6 +1109,7 @@ export class BattleScene extends Phaser.Scene {
           alive,
           targetSize: 100,
           fallbackKey,
+          enableBattleCandidate: gs.showcase_mode === true,
         },
       );
       this.addCombatShadow(
@@ -1509,9 +1528,87 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
+  showGroupTargetCursor(entries, mode = "enemy") {
+    const visuals = (entries || [])
+      .map((entry) => this.resolveVisualEntry(entry))
+      .filter(Boolean);
+    if (visuals.length === 0) return;
+
+    if (!this.groupTargetCursor) {
+      const graphics = this.add.graphics().setDepth(15);
+      graphics._combatFxTag = "group-target-cursor";
+      const label = this.add
+        .text(0, 0, "", {
+          fontSize: "10px",
+          fontFamily: "monospace",
+          fontStyle: "bold",
+          color: "#ffffff",
+          backgroundColor: "#111111",
+          padding: { x: 5, y: 3 },
+        })
+        .setOrigin(0.5, 1)
+        .setDepth(16);
+      label._combatFxTag = "group-target-cursor-label";
+      this.groupTargetCursor = { graphics, label };
+    }
+
+    const left = Math.min(...visuals.map((v) => v.x - v.width / 2)) - 12;
+    const right = Math.max(...visuals.map((v) => v.x + v.width / 2)) + 12;
+    const top = Math.min(...visuals.map((v) => v.y - v.height / 2)) - 14;
+    const bottom = Math.max(...visuals.map((v) => v.y + v.height / 2)) + 12;
+    const color = mode === "party" ? CURSOR_TINTS.ally : CURSOR_TINTS.enemy;
+    const labelText = mode === "party" ? "ALL ALLIES" : "ALL ENEMIES";
+    const { graphics, label } = this.groupTargetCursor;
+    this.tweens.killTweensOf([graphics, label]);
+    graphics.clear().setVisible(true).setAlpha(1);
+    graphics.lineStyle(3, color, 1);
+    graphics.strokeRoundedRect(left, top, right - left, bottom - top, 12);
+    graphics.lineStyle(1, 0xffffff, 0.5);
+    graphics.strokeRoundedRect(
+      left + 5,
+      top + 5,
+      right - left - 10,
+      bottom - top - 10,
+      9,
+    );
+    label
+      .setText(labelText)
+      .setColor(`#${color.toString(16).padStart(6, "0")}`)
+      .setPosition((left + right) / 2, top - 4)
+      .setVisible(true)
+      .setAlpha(1);
+    this.tweens.add({
+      targets: [graphics, label],
+      alpha: { from: 1, to: 0.68 },
+      duration: 470,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+  }
+
+  hideGroupTargetCursor() {
+    if (!this.groupTargetCursor) return;
+    this.tweens.killTweensOf([
+      this.groupTargetCursor.graphics,
+      this.groupTargetCursor.label,
+    ]);
+    this.groupTargetCursor.graphics.setVisible(false);
+    this.groupTargetCursor.label.setVisible(false);
+  }
+
+  destroyGroupTargetCursor() {
+    if (!this.groupTargetCursor) return;
+    this.hideGroupTargetCursor();
+    this.groupTargetCursor.graphics.destroy();
+    this.groupTargetCursor.label.destroy();
+    this.groupTargetCursor = null;
+  }
+
   hideAllCursors() {
     this.actorCursor?.hide();
     this.targetCursor?.hide();
+    this.hideGroupTargetCursor();
   }
 
   actionTitleFor(action, line) {
@@ -1620,6 +1717,7 @@ export class BattleScene extends Phaser.Scene {
     const path = buildAttackMotionPath(actor, target, reducedMotion);
     this.tweens.killTweensOf(actor.sprite);
     this.setSpritePosition(actor.sprite, path.origin.x, path.origin.y);
+    void actor.sprite.playBattleAttack?.({ reducedMotion });
 
     await this.tweenP(actor.sprite, {
       x: path.anticipation.x,
@@ -2002,6 +2100,7 @@ export class BattleScene extends Phaser.Scene {
       duration: ACTION_BEAT_MS.recovery,
       ease: "Power1",
     });
+    actorEntry.sprite.resetBattlePose?.();
   }
 
   drawActions(gs, slot) {
@@ -2195,11 +2294,14 @@ export class BattleScene extends Phaser.Scene {
       this.recordAction(slot, { slot, type: "attack", target_id: enemyId });
     } else if (this.pendingAction === "spell") {
       this.pendingAction = null;
+      const targetMode = this.pendingSpellTargetMode;
+      this.pendingSpellTargetMode = null;
       this.recordAction(slot, {
         slot,
         type: "spell",
         target_id: enemyId,
         spell_id: this.pendingSpellId,
+        target_mode: targetMode,
       });
     } else if (this.pendingAction === "ability") {
       this.pendingAction = null;
@@ -2219,11 +2321,14 @@ export class BattleScene extends Phaser.Scene {
 
     if (this.pendingAction === "spell") {
       this.pendingAction = null;
+      const targetMode = this.pendingSpellTargetMode;
+      this.pendingSpellTargetMode = null;
       this.recordAction(slot, {
         slot,
         type: "spell",
         target_id: targetSlot,
         spell_id: this.pendingSpellId,
+        target_mode: targetMode,
       });
     }
   }
@@ -2355,6 +2460,7 @@ export class BattleScene extends Phaser.Scene {
     }
 
     this.targetCursor?.hide();
+    this.hideGroupTargetCursor();
   }
 
   updateTargetHighlight() {
@@ -2385,6 +2491,149 @@ export class BattleScene extends Phaser.Scene {
 
     this.promptText.setText(`Target: ${target.name} [${target.slot + 1}]`);
     this.promptText.setColor("#66ff99");
+  }
+
+  enterGroupTargetingMode(mode) {
+    const side = targetModeSide(mode);
+    this.targetingMode = side === "party" ? "party_group" : "enemy_group";
+    const entries =
+      side === "party"
+        ? this.gameState.party
+            .filter((member) => member.hp > 0)
+            .map((member) => this.partySprites[member.name])
+        : this.gameState.enemies
+            .filter((enemy) => enemy.hp > 0)
+            .map((enemy) => this.enemySprites[enemy.id]);
+    this.targetCursor?.hide();
+    this.showGroupTargetCursor(entries, side);
+    this.promptText
+      .setText(`${targetModeLabel(mode)} selected — confirm the cast`)
+      .setColor(side === "party" ? "#66ff99" : "#bb88ff");
+  }
+
+  beginSpellTargeting(slot, member, spell, mode) {
+    this.pendingAction = "spell";
+    this.pendingSpellId = spell.id;
+    this.pendingSpellEffect = spell.effect;
+    this.pendingSpellTargetMode = mode;
+
+    if (isGroupTargetMode(mode)) {
+      this.showGroupSpellConfirmation(slot, member, spell, mode);
+      return;
+    }
+    if (targetModeSide(mode) === "party") {
+      this.enterPartyTargetingMode();
+      this.promptText
+        .setText(`${member.name}: Cast ${spell.name} on one ally`)
+        .setColor("#88ff88");
+      return;
+    }
+    this.enterTargetingMode();
+    this.promptText
+      .setText(`${member.name}: Cast ${spell.name} on one enemy`)
+      .setColor("#8888ff");
+  }
+
+  showSpellTargetModePicker(slot, member, spell, modes) {
+    const ol = [];
+    const bg = this.add
+      .rectangle(400, 395, 330, 126, 0x111144, 0.97)
+      .setStrokeStyle(2, 0x7777cc)
+      .setDepth(50)
+      .setInteractive();
+    ol.push(bg);
+    ol.push(
+      this.add
+        .text(400, 355, `${spell.name}: choose target scope`, {
+          fontSize: "12px",
+          color: "#ffffff",
+          fontFamily: "monospace",
+        })
+        .setOrigin(0.5)
+        .setDepth(52),
+    );
+    this.pickerItems = [];
+    modes.forEach((mode, index) => {
+      const x = modes.length === 1 ? 400 : 320 + index * 160;
+      const row = this.add
+        .rectangle(x, 397, 145, 34, 0x252565)
+        .setStrokeStyle(1, mode === spell.target ? 0xffd36b : 0x555599)
+        .setDepth(51)
+        .setInteractive({ useHandCursor: true });
+      const text = this.add
+        .text(x, 397, `${index + 1}. ${targetModeLabel(mode)}`, {
+          fontSize: "10px",
+          color: "#cacaFF",
+          fontFamily: "monospace",
+          fontStyle: "bold",
+        })
+        .setOrigin(0.5)
+        .setDepth(52);
+      const select = () => {
+        this.closePicker();
+        this.beginSpellTargeting(slot, member, spell, mode);
+      };
+      row.on("pointerdown", select);
+      this.pickerItems.push({ action: select });
+      ol.push(row, text);
+    });
+    const cancel = this.add
+      .text(400, 438, "[ CANCEL / ESC ]", {
+        fontSize: "10px",
+        color: "#888888",
+        fontFamily: "monospace",
+      })
+      .setOrigin(0.5)
+      .setDepth(52)
+      .setInteractive({ useHandCursor: true });
+    cancel.on("pointerdown", () => this.closePicker());
+    ol.push(cancel);
+    this.pickerOverlay = ol;
+  }
+
+  showGroupSpellConfirmation(slot, member, spell, mode) {
+    this.enterGroupTargetingMode(mode);
+    const ol = [];
+    const bg = this.add
+      .rectangle(400, 432, 350, 76, 0x101629, 0.97)
+      .setStrokeStyle(2, 0xbb88ff)
+      .setDepth(50)
+      .setInteractive();
+    const confirm = this.add
+      .text(350, 432, `[ OK: ${targetModeLabel(mode)} ]`, {
+        fontSize: "11px",
+        color: "#ffffff",
+        fontFamily: "monospace",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5)
+      .setDepth(52)
+      .setInteractive({ useHandCursor: true });
+    const cancel = this.add
+      .text(500, 432, "[ CANCEL ]", {
+        fontSize: "10px",
+        color: "#999999",
+        fontFamily: "monospace",
+      })
+      .setOrigin(0.5)
+      .setDepth(52)
+      .setInteractive({ useHandCursor: true });
+    const commit = () => {
+      const action = {
+        slot,
+        type: "spell",
+        target_id: -1,
+        spell_id: spell.id,
+        target_mode: mode,
+      };
+      this.closePicker();
+      this.recordAction(slot, action);
+    };
+    this.pickerItems = [{ action: commit }];
+    confirm.on("pointerdown", commit);
+    cancel.on("pointerdown", () => this.closePicker());
+    ol.push(bg, confirm, cancel);
+    this.pickerOverlay = ol;
   }
 
   showSpellPicker(slot) {
@@ -2425,11 +2674,16 @@ export class BattleScene extends Phaser.Scene {
         .setInteractive({ useHandCursor: true })
         .setDepth(51);
       const txt = this.add
-        .text(400, y, `${i + 1}. ${sp.name} (${sp.mp_cost} MP)`, {
-          fontSize: "11px",
-          color: "#aaaaff",
-          fontFamily: "monospace",
-        })
+        .text(
+          400,
+          y,
+          `${i + 1}. ${sp.name} (${sp.mp_cost} MP) • ${spellTargetBadge(sp)}`,
+          {
+            fontSize: "11px",
+            color: "#aaaaff",
+            fontFamily: "monospace",
+          },
+        )
         .setOrigin(0.5)
         .setDepth(52);
       ol.push(row, txt);
@@ -2449,31 +2703,12 @@ export class BattleScene extends Phaser.Scene {
             .setColor("#ff8888");
           return;
         }
-        this.pendingAction = "spell";
-        this.pendingSpellId = sp.id;
-        this.pendingSpellEffect = sp.effect;
-        const t = sp.target;
-        if (t === "single_ally") {
-          this.enterPartyTargetingMode();
-          this.promptText
-            .setText(`${member.name}: Cast ${sp.name} on an ally`)
-            .setColor("#88ff88");
-        } else if (t === "all_allies" || t === "party") {
-          // No target picker needed -- resolve immediately.
-          this.pendingAction = null;
-          this.recordAction(slot, {
-            slot,
-            type: "spell",
-            target_id: -1,
-            spell_id: sp.id,
-          });
-        } else {
-          // single_enemy, all_enemies (or missing target field): enemy picker.
-          this.enterTargetingMode();
-          this.promptText
-            .setText(`${member.name}: Cast ${sp.name} -- select a target!`)
-            .setColor("#8888ff");
+        const modes = spellTargetModes(sp);
+        if (modes.length > 1) {
+          this.showSpellTargetModePicker(slot, member, sp, modes);
+          return;
         }
+        this.beginSpellTargeting(slot, member, sp, modes[0] || sp.target);
       };
 
       this.pickerItems.push({ action: selectSpell });
@@ -2647,11 +2882,21 @@ export class BattleScene extends Phaser.Scene {
   }
 
   closePicker() {
+    const closesGroupTargeting =
+      this.targetingMode === "enemy_group" ||
+      this.targetingMode === "party_group";
     if (this.pickerOverlay) {
       this.pickerOverlay.forEach((o) => o.destroy());
       this.pickerOverlay = null;
     }
     this.pickerItems = [];
+    if (closesGroupTargeting) {
+      this.exitTargetingMode();
+      this.pendingAction = null;
+      this.pendingSpellId = null;
+      this.pendingSpellEffect = null;
+      this.pendingSpellTargetMode = null;
+    }
   }
 
   async doFlee() {
@@ -3000,7 +3245,7 @@ export class BattleScene extends Phaser.Scene {
         const spellName = action.spell_name || (spellMatch && spellMatch[2]);
         const targetId =
           action.target_id || (spellMatch && parseInt(spellMatch[4]));
-        const dmg = action.damage || (spellMatch && parseInt(spellMatch[5]));
+        const dmg = action.damage ?? (spellMatch ? parseInt(spellMatch[5]) : 0);
         const element = action.element || "none";
         const dmgType = action.damage_type || "magical";
 
@@ -3021,13 +3266,14 @@ export class BattleScene extends Phaser.Scene {
           if (
             nextAction.kind === "spell" &&
             nextAction.actor_name === caster &&
-            nextAction.spell_name === spellName
+            nextAction.spell_name === spellName &&
+            nextAction.action_id === action.action_id
           ) {
             i++;
             targets.push({
               targetId: nextAction.target_id,
               targetName: nextAction.target_name,
-              dmg: nextAction.damage,
+              dmg: nextAction.damage ?? 0,
               missed: nextAction.missed,
               defeated: log[i].includes("DEFEATED"),
             });
@@ -3048,73 +3294,126 @@ export class BattleScene extends Phaser.Scene {
         await this.playCastAnticipation(actorEntry, element);
         playSFX(ELEMENT_SFX[element] || "sfx_spell");
 
-        // Animate each target with a visible cast-to-impact travel cue.
-        for (let t = 0; t < targets.length; t++) {
-          const tgt = targets[t];
+        const presentations = targets.map((tgt) => {
           const ee = this.enemySprites[tgt.targetId];
           const pt = this.findPartySpriteForTarget(
             tgt.targetName,
             tgt.targetId,
             spellMatch?.[3],
           );
-          const targetEntry = ee || pt;
-          this.showActionFocus(actorEntry, targetEntry, {
+          return { tgt, ee, pt, targetEntry: ee || pt };
+        });
+        const isGroupCast =
+          isGroupTargetMode(action.target_mode) && presentations.length > 1;
+        if (isGroupCast) {
+          this.showActorCursor(actorEntry);
+          this.targetCursor?.hide();
+          this.showGroupTargetCursor(
+            presentations.map((entry) => entry.targetEntry),
+            targetModeSide(action.target_mode),
+          );
+        } else {
+          this.showActionFocus(actorEntry, presentations[0]?.targetEntry, {
             targetColor: ACTION_RETICLE_COLORS.magicalTarget,
           });
-          await this.launchSpellProjectile(actorEntry, targetEntry, element);
-          if (ee) {
-            const targetKey = `enemy_${tgt.targetId}`;
-            await this.hitFx(
-              ee.x,
-              ee.y,
-              tgt.dmg,
-              false,
-              tgt.defeated,
-              dmgType,
-              { targetKey, element, missed: tgt.missed, entry: ee },
-            );
-            if (!tgt.missed && ee.hpBar) {
-              const newHP = applyDamage(ee.hpBar.currentHP, tgt.dmg);
-              this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
-              if (!tgt.defeated) {
-                this.playEnemyHitReaction(ee, {
+        }
+
+        // One cast beat fans out to every target at once. Damage remains one
+        // authoritative server entry per target, but presentation is atomic.
+        await Promise.all(
+          presentations.map(({ targetEntry }) =>
+            this.launchSpellProjectile(actorEntry, targetEntry, element),
+          ),
+        );
+        await Promise.all(
+          presentations.map(async ({ tgt, ee, pt }) => {
+            if (ee) {
+              const targetKey = `enemy_${tgt.targetId}`;
+              await this.hitFx(
+                ee.x,
+                ee.y,
+                tgt.dmg,
+                false,
+                tgt.defeated,
+                dmgType,
+                { targetKey, element, missed: tgt.missed, entry: ee },
+              );
+              if (!tgt.missed && ee.hpBar) {
+                const newHP = applyDamage(ee.hpBar.currentHP, tgt.dmg);
+                this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
+                if (!tgt.defeated) {
+                  this.playEnemyHitReaction(ee, {
+                    newHP,
+                    maxHP: ee.hpBar.maxHP,
+                  });
+                }
+              }
+              if (tgt.defeated) await this.enemyDeathFx(ee);
+            } else if (pt) {
+              if (!(tgt.dmg > 0)) return;
+              const targetKey = `party_${tgt.targetName || spellMatch?.[3]}`;
+              await this.hitFx(pt.x, pt.y, tgt.dmg, true, false, dmgType, {
+                targetKey,
+                element,
+                missed: tgt.missed,
+                entry: pt,
+              });
+              if (!tgt.missed && pt.hpBar) {
+                const newHP = applyDamage(pt.hpBar.currentHP, tgt.dmg);
+                this.animateHPBar(pt.hpBar, newHP, pt.hpBar.maxHP);
+                this.playPartyHitReaction(pt, {
                   newHP,
-                  maxHP: ee.hpBar.maxHP,
+                  maxHP: pt.hpBar.maxHP,
                 });
               }
             }
-            if (tgt.defeated) await this.enemyDeathFx(ee);
-          } else if (pt) {
-            const targetKey = `party_${tgt.targetName || spellMatch?.[3]}`;
-            await this.hitFx(pt.x, pt.y, tgt.dmg, true, false, dmgType, {
-              targetKey,
-              element,
-              missed: tgt.missed,
-              entry: pt,
-            });
-            if (!tgt.missed && pt.hpBar) {
-              const newHP = applyDamage(pt.hpBar.currentHP, tgt.dmg);
-              this.animateHPBar(pt.hpBar, newHP, pt.hpBar.maxHP);
-              this.playPartyHitReaction(pt, {
-                newHP,
-                maxHP: pt.hpBar.maxHP,
-              });
-            }
-          }
-          if (t < targets.length - 1)
-            await this.wait(ACTION_BEAT_MS.multiTargetGap);
-        }
+          }),
+        );
         await this.resetPartySprite(actorEntry);
+        this.hideGroupTargetCursor();
         await this.wait(ACTION_BEAT_MS.postDamage);
         await this.wait(ACTION_BEAT_MS.interAction);
       } else if (action.kind === "heal" || line.includes("healed")) {
-        this.revealLine(line, "#44ff44");
+        const healActions = [{ action, line }];
+        while (i + 1 < log.length) {
+          const nextAction = actions[i + 1] || {};
+          if (
+            nextAction.kind === "heal" &&
+            nextAction.actor_name === action.actor_name &&
+            nextAction.action_id === action.action_id
+          ) {
+            i++;
+            healActions.push({ action: nextAction, line: log[i] });
+          } else {
+            break;
+          }
+        }
+        this.revealLine(
+          `${action.actor_name} casts ${action.spell_name || "Heal"}!`,
+          "#44ff44",
+        );
         const casterEntry =
           this.partySprites[action.actor_name] ||
           this.findEnemySpriteForAction(action, action.actor_name);
-        const healTarget =
-          this.partySprites[action.target_name] ||
-          this.partySprites[action.actor_name];
+        let healPresentations = healActions.map((entry) => ({
+          ...entry,
+          target:
+            this.partySprites[entry.action.target_name] ||
+            this.partySprites[action.actor_name],
+        }));
+        if (
+          isGroupTargetMode(action.target_mode) &&
+          healPresentations.length === 1 &&
+          !action.target_name
+        ) {
+          healPresentations = this.gameState.party
+            .filter((member) => member.hp > 0)
+            .map((member) => ({
+              action: { ...action, target_name: member.name, damage: 0 },
+              line,
+              target: this.partySprites[member.name],
+            }));
+        }
         await this.showActionTitle(
           casterEntry,
           action.spell_name || "HEAL",
@@ -3122,38 +3421,59 @@ export class BattleScene extends Phaser.Scene {
         );
         await this.playMajorCinematicPrelude(action, casterEntry, "holy");
         await this.playCastAnticipation(casterEntry, "holy");
-        this.showActionFocus(casterEntry, healTarget, {
-          targetColor: CURSOR_TINTS.ally,
-        });
-        await this.launchSpellProjectile(casterEntry, healTarget, "holy");
-        playSFX("sfx_heal");
-        const healMatch = line.match(/healed (\d+)/);
-        if (healMatch) {
-          const anchor = floatingTextAnchorForEntry(healTarget, {
-            x: healTarget ? healTarget.x : 600,
-            y: healTarget ? healTarget.y : 220,
+        if (
+          isGroupTargetMode(action.target_mode) &&
+          healPresentations.length > 1
+        ) {
+          this.showActorCursor(casterEntry);
+          this.targetCursor?.hide();
+          this.showGroupTargetCursor(
+            healPresentations.map((entry) => entry.target),
+            "party",
+          );
+        } else {
+          this.showActionFocus(casterEntry, healPresentations[0]?.target, {
+            targetColor: CURSOR_TINTS.ally,
           });
-          const targetKey = healTarget
-            ? `party_${action.target_name || action.actor_name}`
-            : "party_heal";
+        }
+        await Promise.all(
+          healPresentations.map((entry) =>
+            this.launchSpellProjectile(casterEntry, entry.target, "holy"),
+          ),
+        );
+        playSFX("sfx_heal");
+        for (const presentation of healPresentations) {
+          const amount =
+            presentation.action.damage ||
+            Number(presentation.line.match(/healed (\d+)/)?.[1] || 0);
+          if (amount <= 0) continue;
+          const anchor = floatingTextAnchorForEntry(presentation.target, {
+            x: presentation.target?.x ?? 600,
+            y: presentation.target?.y ?? 220,
+          });
+          const targetKey = `party_${presentation.action.target_name || action.actor_name}`;
           this.floatingText.spawn(
             anchor.x,
             anchor.y,
-            healMatch[1],
+            amount,
             "heal",
             targetKey,
           );
-          // Animate HP bar up — integer math only
-          if (healTarget?.hpBar) {
+          if (presentation.target?.hpBar) {
             const newHP = applyHeal(
-              healTarget.hpBar.currentHP,
-              healMatch[1],
-              healTarget.hpBar.maxHP,
+              presentation.target.hpBar.currentHP,
+              amount,
+              presentation.target.hpBar.maxHP,
             );
-            this.animateHPBar(healTarget.hpBar, newHP, healTarget.hpBar.maxHP);
+            this.animateHPBar(
+              presentation.target.hpBar,
+              newHP,
+              presentation.target.hpBar.maxHP,
+            );
           }
         }
         await this.resetPartySprite(casterEntry);
+        this.hideGroupTargetCursor();
         await this.wait(ACTION_BEAT_MS.briefStatus);
       } else if (line.includes("Found:")) {
         this.revealLine(line, "#44ff44");

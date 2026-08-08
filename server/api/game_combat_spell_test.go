@@ -218,6 +218,18 @@ func TestSpellCureTargetModeCanHealAllAllies(t *testing.T) {
 	if !hasLogLine(result, "casts Cure on Tank") {
 		t.Errorf("expected all-target Cure log for Tank; got %v", result.CombatLog)
 	}
+	allTargetHeals := 0
+	for _, action := range result.CombatActions {
+		if action.Kind == "heal" && action.ActionID == "cure" {
+			allTargetHeals++
+			if action.TargetMode != "all_allies" {
+				t.Errorf("Cure action target mode = %q, want all_allies", action.TargetMode)
+			}
+		}
+	}
+	if allTargetHeals != 2 {
+		t.Errorf("all-target Cure emitted %d heal actions, want 2", allTargetHeals)
+	}
 }
 
 // TestSpellCureOnUndeadDealsDamage verifies Cure cast against an undead
@@ -299,6 +311,18 @@ func TestSpellDamageTargetModeCanHitAllEnemies(t *testing.T) {
 	}
 	if !hasLogLine(result, "casts Frost on Wolf") {
 		t.Errorf("expected all-target Frost log for Wolf; got %v", result.CombatLog)
+	}
+	allTargetHits := 0
+	for _, action := range result.CombatActions {
+		if action.Kind == "spell" && action.ActionID == "frost" {
+			allTargetHits++
+			if action.TargetMode != "all_enemies" {
+				t.Errorf("Frost action target mode = %q, want all_enemies", action.TargetMode)
+			}
+		}
+	}
+	if allTargetHits != 2 {
+		t.Errorf("all-target Frost emitted %d spell actions, want 2", allTargetHits)
 	}
 }
 

@@ -65,6 +65,22 @@ export class BootScene extends Phaser.Scene {
       });
     }
 
+    // Warrior battle-animation gold slice. The body atlas contains no weapon;
+    // equipped sword visuals are separate overlays selected by server content.
+    this.load.spritesheet(
+      "battle_warrior_sword_attack_body",
+      "/sprites/battle/warrior/sword-attack-body.png",
+      { frameWidth: 192, frameHeight: 192 },
+    );
+    this.load.image(
+      "battle_weapon_iron_sword",
+      "/sprites/battle/weapons/iron-sword.png",
+    );
+    this.load.image(
+      "battle_weapon_mythril_sword",
+      "/sprites/battle/weapons/mythril-sword.png",
+    );
+
     // Status effect icons
     this.load.image("icon_poison", "/sprites/ui/icon_poison.png");
     this.load.image("icon_sleep", "/sprites/ui/icon_sleep.png");

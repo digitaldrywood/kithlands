@@ -21,6 +21,17 @@ func TestLoadValidData(t *testing.T) {
 	}
 }
 
+func TestLayeredWeaponVisualMetadataLoads(t *testing.T) {
+	gd := gamedata.Load("../../../shared")
+	weapon := gd.WeaponByID("mythril_sword")
+	if weapon == nil {
+		t.Fatal("mythril_sword not loaded")
+	}
+	if weapon.VisualID != "mythril_sword" || weapon.AnimationSet != "sword" {
+		t.Fatalf("mythril_sword visual metadata = (%q, %q), want (mythril_sword, sword)", weapon.VisualID, weapon.AnimationSet)
+	}
+}
+
 func TestClassByID(t *testing.T) {
 	gd := gamedata.Load("../../../shared")
 

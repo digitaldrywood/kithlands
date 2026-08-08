@@ -920,7 +920,10 @@ function visibleBattleFxSnapshot(scene) {
       y: entry?.y ?? null,
       spriteX: entry?.sprite?.x ?? null,
       spriteY: entry?.sprite?.y ?? null,
-      textureKey: entry?.sprite?.texture?.key ?? null,
+      textureKey:
+        entry?.sprite?.battleTextureKey ?? entry?.sprite?.texture?.key ?? null,
+      weaponTextureKey: entry?.sprite?.weaponTextureKey ?? null,
+      battleFrameIndex: entry?.sprite?.battleFrameIndex ?? null,
       spriteBounds: objectBounds(entry?.sprite),
       hpBarBounds: objectBounds(entry?.hpBar?.bg),
     }));
@@ -989,6 +992,7 @@ function visibleBattleFxSnapshot(scene) {
     tracers: taggedCount("tracer"),
     bursts: taggedCount("burst"),
     cursors: taggedCount("target-cursor"),
+    groupCursors: taggedCount("group-target-cursor"),
     titleCards: taggedCount("title-card"),
     castAuras: taggedCount("cast-aura"),
     spellProjectiles: taggedCount("spell-projectile"),
@@ -1054,6 +1058,7 @@ function visibleBattleFxSnapshot(scene) {
     targetCursorVisible: taggedCount("target-cursor") > 0,
     actorIndicatorLabel: scene?.actorCursor?.label?.text ?? null,
     targetIndicatorLabel: scene?.targetCursor?.label?.text ?? null,
+    groupTargetIndicatorLabel: scene?.groupTargetCursor?.label?.text ?? null,
     targetIndicatorX: scene?.targetCursor?.graphics?.x ?? null,
     messageWindowTextBounds: messageLayout.textBounds || null,
     encounterTileType: scene?.encounterTileType ?? null,
@@ -1581,27 +1586,92 @@ export function installDevTestBridge(game) {
             (entry) =>
               entry?.id &&
               entry?.castable_in_combat !== false &&
-              (member.mp ?? 0) >= (entry.mp_cost ?? 0),
+              (member.mp ?? 0) >= (entry.mp_cost ?? 0) &&
+              (mode !== "all_spell" ||
+                entry.target_modes?.includes("all_enemies")),
           );
-          if (mode === "spell" && !spellAssigned && spell) {
+          if (
+            (mode === "spell" || mode === "all_spell") &&
+            !spellAssigned &&
+            spell
+          ) {
             spellAssigned = true;
             return {
               slot,
               type: "spell",
-              target_id: enemyId,
+              target_id: mode === "all_spell" ? -1 : enemyId,
               spell_id: spell.id,
+              ...(mode === "all_spell" ? { target_mode: "all_enemies" } : {}),
             };
           }
           return { slot, type: "attack", target_id: enemyId };
         })
         .filter(Boolean);
-      if (mode === "spell" && !spellAssigned) {
+      if ((mode === "spell" || mode === "all_spell") && !spellAssigned) {
         throw new Error("Battle party has no castable spell");
       }
 
       scene.memberActions = actions;
       void scene.submitAllActions();
       return clone(actions);
+    },
+
+    previewBattleCharacterFrame(
+      actorName = "Hero",
+      frameIndex = 0,
+      sceneKey = "Battle",
+    ) {
+      const scene = getScene(game, sceneKey);
+      const entry = scene?.partySprites?.[actorName];
+      if (!entry?.sprite?.applyBattleFrame) {
+        throw new Error(`${actorName} has no layered battle candidate`);
+      }
+      entry.sprite.applyBattleFrame(frameIndex);
+      return {
+        actorName,
+        frameIndex: entry.sprite.battleFrameIndex,
+        textureKey: entry.sprite.battleTextureKey,
+        weaponTextureKey: entry.sprite.weaponTextureKey,
+      };
+    },
+
+    previewBattleSpellScope(spellID, mode, sceneKey = "Battle") {
+      const scene = getScene(game, sceneKey);
+      if (!scene || scene.scene?.key !== "Battle") {
+        throw new Error("Battle scene is not active");
+      }
+      const slot = (scene.gameState?.party || []).findIndex((member) =>
+        (member.spells || []).some((spell) => spell.id === spellID),
+      );
+      if (slot < 0) throw new Error(`Spell not available: ${spellID}`);
+      const member = scene.gameState.party[slot];
+      const spell = member.spells.find((entry) => entry.id === spellID);
+      const turnIndex = scene.livingMembers.indexOf(slot);
+      if (turnIndex < 0)
+        throw new Error(`Caster is not active: ${member.name}`);
+      scene.currentMemberIdx = turnIndex;
+      scene.closePicker();
+      scene.showSpellPicker(slot);
+      const eligible = member.spells.filter(
+        (entry) => (member.mp ?? 0) >= (entry.mp_cost ?? 0),
+      );
+      const spellIndex = eligible.findIndex((entry) => entry.id === spellID);
+      scene.pickerItems[spellIndex]?.action();
+      if (Array.isArray(spell.target_modes) && spell.target_modes.length > 1) {
+        const modeIndex = spell.target_modes.indexOf(mode);
+        if (modeIndex < 0) throw new Error(`Unsupported target mode: ${mode}`);
+        scene.pickerItems[modeIndex]?.action();
+      }
+      return visibleBattleFxSnapshot(scene);
+    },
+
+    confirmBattleSpellScope(sceneKey = "Battle") {
+      const scene = getScene(game, sceneKey);
+      if (!scene?.pickerItems?.[0]) {
+        throw new Error("No group spell confirmation is active");
+      }
+      scene.pickerItems[0].action();
+      return clone(scene.memberActions);
     },
 
     async playBattleVisibilityDemo(kind = "tracer", sceneKey = "Battle") {

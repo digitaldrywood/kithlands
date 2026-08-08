@@ -93,7 +93,8 @@ test.describe("developer systems showcase", () => {
     const hero = attackSnapshot.partyMembers.find(
       (member) => member.name === "Hero",
     );
-    expect(hero.textureKey).toBe("warrior");
+    expect(hero.textureKey).toBe("battle_warrior_sword_attack_body");
+    expect(hero.weaponTextureKey).toBe("battle_weapon_mythril_sword");
     await page.screenshot({
       path: testInfo.outputPath(`systems-showcase-identity-${RUN_ID}.png`),
       fullPage: true,

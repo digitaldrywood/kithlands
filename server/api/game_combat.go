@@ -78,6 +78,7 @@ func spellCombatAction(spell *gamedata.Spell, action CombatActionEntry) CombatAc
 	action.ActionID = spell.ID
 	action.ActionName = spell.Name
 	action.CinematicTier = spell.CinematicTier
+	action.TargetMode = spell.Target
 	if action.SpellName == "" {
 		action.SpellName = spell.Name
 	}

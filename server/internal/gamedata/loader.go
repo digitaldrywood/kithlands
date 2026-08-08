@@ -220,6 +220,9 @@ func (gd *GameData) validate() {
 		if w.Power < 0 {
 			panic(fmt.Sprintf("gamedata: weapon %q has negative power", w.ID))
 		}
+		if (w.VisualID == "") != (w.AnimationSet == "") {
+			panic(fmt.Sprintf("gamedata: weapon %q must define visual_id and animation_set together", w.ID))
+		}
 		validateClassRefs("weapon", w.ID, w.Classes, classIDs)
 	}
 
