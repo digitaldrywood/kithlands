@@ -139,6 +139,20 @@ export async function equipItem(gameId, slot, itemId, type) {
   });
 }
 
+export async function socketGem(gameId, instanceId, socket, gemId) {
+  return apiCall("POST", `/game/${gameId}/socket`, {
+    instance_id: instanceId,
+    socket,
+    gem_id: gemId,
+  });
+}
+
+export async function craftGem(gameId, recipeId) {
+  return apiCall("POST", `/game/${gameId}/craft`, {
+    recipe_id: recipeId,
+  });
+}
+
 export async function updatePartyFormation(gameId, updates, reorder = null) {
   const body = { updates };
   if (Array.isArray(reorder) && reorder.length > 0) {
