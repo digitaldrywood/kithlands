@@ -70,7 +70,7 @@ func (inv *Inventory) Instance(id string) *EquipmentInstance {
 	return inv.Instances[id]
 }
 
-func (inv *Inventory) instanceEquipped(id string) bool {
+func (inv *Inventory) InstanceEquipped(id string) bool {
 	for _, slots := range inv.Equipment {
 		if slots.WeaponInstanceID == id || slots.ArmorInstanceID == id {
 			return true
@@ -88,7 +88,7 @@ func (inv *Inventory) EquipInstance(slot int, id, classID string, level int, gd 
 	if item == nil {
 		return EquipmentSlots{}, fmt.Errorf("equipment instance %q not owned", id)
 	}
-	if inv.instanceEquipped(id) {
+	if inv.InstanceEquipped(id) {
 		return EquipmentSlots{}, fmt.Errorf("equipment instance %q is already equipped", id)
 	}
 	if level < item.RequiredLevel {

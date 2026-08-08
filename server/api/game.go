@@ -827,11 +827,25 @@ func (g *Game) fillInventoryState(state *GameState) {
 		}
 		state.Items = append(state.Items, item)
 	}
+	for id, instance := range g.inv.Instances {
+		if g.inv.InstanceEquipped(id) {
+			continue
+		}
+		item, err := g.rolledItemState(id, instance)
+		if err == nil {
+			state.Items = append(state.Items, item)
+		}
+	}
+	sort.Slice(state.Items, func(i, j int) bool { return state.Items[i].ID < state.Items[j].ID })
+	g.fillGemState(state)
 
 	// Equipment per party slot
 	for i := 0; i < len(g.party) && i < 4; i++ {
 		eq := g.inv.Equipment[i]
-		es := EquipState{WeaponID: eq.WeaponID, ArmorID: eq.ArmorID}
+		es := EquipState{
+			WeaponID: eq.WeaponID, WeaponInstanceID: eq.WeaponInstanceID,
+			ArmorID: eq.ArmorID, ArmorInstanceID: eq.ArmorInstanceID,
+		}
 		if w := g.gd.WeaponByID(eq.WeaponID); w != nil {
 			es.WeaponName = w.Name
 			es.WeaponPower = w.Power
@@ -845,6 +859,18 @@ func (g *Game) fillInventoryState(state *GameState) {
 			es.ArmorMagicDefense = a.MagicDefense
 			es.ArmorEvadePenalty = a.EvadePenalty
 			es.ArmorElement = a.ElementResist
+		}
+		if eq.WeaponInstanceID != "" {
+			if resolved, err := inventory.ResolveInstance(g.inv.Instance(eq.WeaponInstanceID), g.gd); err == nil {
+				es.WeaponName = resolved.Name
+				es.WeaponPower = resolved.Power
+			}
+		}
+		if eq.ArmorInstanceID != "" {
+			if resolved, err := inventory.ResolveInstance(g.inv.Instance(eq.ArmorInstanceID), g.gd); err == nil {
+				es.ArmorName = resolved.Name
+				es.ArmorAbsorb = resolved.Absorb
+			}
 		}
 		state.Equipment[i] = es
 	}
