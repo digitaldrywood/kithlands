@@ -24,6 +24,10 @@ import {
 } from "./scenes/character_detail.js";
 import { showEquipPicker } from "./scenes/world_menu.js";
 import {
+  showEquipmentScreen,
+  closeEquipmentScreen as closeEquipmentScreenOverlay,
+} from "./scenes/equipment_screen.js";
+import {
   walkSheetKey,
   walkSheetGeometryForClass,
   walkFrameIndex,
@@ -1232,6 +1236,7 @@ export function installDevTestBridge(game) {
       return {
         menuOpen: !!scene?.menuOpen,
         characterDetailOpen: !!scene?.characterDetailGroup,
+        equipmentScreenOpen: !!scene?.equipmentScreenState,
         debugPanelOpen: !!scene?.debugPanelOpen,
         fieldMagicOpen: !!scene?.fieldMagicMenuState,
       };
@@ -2017,6 +2022,20 @@ export function installDevTestBridge(game) {
     openCharacterDetail(index = 0, sceneKey) {
       const scene = getScene(game, sceneKey);
       openCharacterDetail(scene, index);
+      return this.sceneFlags(sceneKey);
+    },
+
+    openEquipmentScreen(index = 0, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      if (!scene?.gameState) throw new Error("Scene has no game state");
+      if (scene.characterDetailGroup) closeCharacterDetail(scene);
+      showEquipmentScreen(scene, index);
+      return this.sceneFlags(sceneKey);
+    },
+
+    closeEquipmentScreen(sceneKey) {
+      const scene = getScene(game, sceneKey);
+      closeEquipmentScreenOverlay(scene);
       return this.sceneFlags(sceneKey);
     },
 

@@ -852,17 +852,17 @@ func (g *Game) fillInventoryState(state *GameState) {
 		// Weapon/armor in inventory -- enrich with Power/Absorb so the
 		// client can compute equip-delta previews (issue #96).
 		if strings.HasPrefix(id, "wpn_") {
-			if w := g.gd.WeaponByID(strings.TrimPrefix(id, "wpn_")); w != nil {
-				item.Name = w.Name
-				item.Power = w.Power
-				item.AllowedClasses = append([]string(nil), w.Classes...)
+			if base := g.gd.EquipmentBaseByID(strings.TrimPrefix(id, "wpn_")); base != nil {
+				baseState := baseItemState(base)
+				baseState.ID, baseState.Count = id, count
+				item = baseState
 			}
 		}
 		if strings.HasPrefix(id, "arm_") {
-			if a := g.gd.ArmorByID(strings.TrimPrefix(id, "arm_")); a != nil {
-				item.Name = a.Name
-				item.Absorb = a.Absorb
-				item.AllowedClasses = append([]string(nil), a.Classes...)
+			if base := g.gd.EquipmentBaseByID(strings.TrimPrefix(id, "arm_")); base != nil {
+				baseState := baseItemState(base)
+				baseState.ID, baseState.Count = id, count
+				item = baseState
 			}
 		}
 		state.Items = append(state.Items, item)

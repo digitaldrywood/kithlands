@@ -6,6 +6,9 @@ vi.mock("./world_menu.js", () => ({
 vi.mock("./gem_workshop.js", () => ({
   showGemWorkshop: vi.fn(),
 }));
+vi.mock("./equipment_screen.js", () => ({
+  showEquipmentScreen: vi.fn(),
+}));
 
 import {
   buildEquipmentBreakdown,
@@ -14,6 +17,7 @@ import {
 } from "./character_detail.js";
 import { showEquipPicker } from "./world_menu.js";
 import { showGemWorkshop } from "./gem_workshop.js";
+import { showEquipmentScreen } from "./equipment_screen.js";
 import { isWorldInputLocked } from "../systems/modalLock.js";
 
 function makeRectangle() {
@@ -257,6 +261,7 @@ function isDestroyed(entry) {
 beforeEach(() => {
   showEquipPicker.mockClear();
   showGemWorkshop.mockClear();
+  showEquipmentScreen.mockClear();
 });
 
 describe("equipment stat breakdown", () => {
@@ -383,6 +388,24 @@ describe("character detail navigation", () => {
     expect(showEquipPicker).toHaveBeenCalledWith(scene, 1, "weapon", {
       returnTo: { type: "character", index: 1 },
     });
+  });
+
+  it("opens the complete loadout manager and returns to the character", () => {
+    const scene = makeScene(2);
+    openCharacterDetail(scene, 1);
+    const loadoutButton = scene.characterDetailGroup.find(
+      (entry) => entry?.label?.text === "FULL LOADOUT",
+    );
+
+    loadoutButton.bg.handlers.pointerdown();
+    loadoutButton.bg.handlers.pointerup();
+
+    expect(showEquipmentScreen).toHaveBeenCalledTimes(1);
+    expect(showEquipmentScreen.mock.calls[0][0]).toBe(scene);
+    expect(showEquipmentScreen.mock.calls[0][1]).toBe(1);
+    showEquipmentScreen.mock.calls[0][2].onClose();
+    expect(scene.characterDetailIndex).toBe(1);
+    expect(currentTextValues(scene)).toContain("Hero 2");
   });
 
   it("shows derived attack using the equipped weapon power", () => {

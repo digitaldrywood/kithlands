@@ -81,6 +81,43 @@ func (slots EquipmentSlots) clone() EquipmentSlots {
 	return copy
 }
 
+// Clone returns an independent inventory snapshot suitable for validating and
+// applying an atomic multi-item loadout transaction. Equipment instances and
+// every mutable map/slice are copied so a failed proposal cannot leak partial
+// changes back into the live save.
+func (inv *Inventory) Clone() *Inventory {
+	if inv == nil {
+		return nil
+	}
+	copy := *inv
+	copy.Consumables = cloneCounts(inv.Consumables)
+	copy.Gems = cloneCounts(inv.Gems)
+	copy.KeyItems = append([]string(nil), inv.KeyItems...)
+	copy.Instances = make(map[string]*EquipmentInstance, len(inv.Instances))
+	for id, item := range inv.Instances {
+		if item == nil {
+			copy.Instances[id] = nil
+			continue
+		}
+		itemCopy := *item
+		itemCopy.Affixes = append([]AffixRoll(nil), item.Affixes...)
+		itemCopy.Sockets = append([]ItemSocket(nil), item.Sockets...)
+		copy.Instances[id] = &itemCopy
+	}
+	for i, slots := range inv.Equipment {
+		copy.Equipment[i] = slots.clone()
+	}
+	return &copy
+}
+
+func cloneCounts(source map[string]int) map[string]int {
+	copy := make(map[string]int, len(source))
+	for id, count := range source {
+		copy[id] = count
+	}
+	return copy
+}
+
 // AddInstance assigns a stable save-local ID and stores a rolled item.
 func (inv *Inventory) AddInstance(item EquipmentInstance) (string, error) {
 	inv.Normalize()

@@ -2,6 +2,7 @@ import { drawPanel, drawButton, drawLabeledStatBar } from "../ui/panel.js";
 import { hpBarColorPct } from "../systems/hpBar.js";
 import { showEquipPicker } from "./world_menu.js";
 import { showGemWorkshop } from "./gem_workshop.js";
+import { showEquipmentScreen } from "./equipment_screen.js";
 import { buildFieldSpellList, showFieldMagicMenu } from "./field_magic.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 
@@ -83,6 +84,26 @@ export function openCharacterDetail(scene, partyIndex) {
       .setScrollFactor(0)
       .setDepth(DEPTH_LABEL),
   );
+
+  const loadoutBtn = drawButton(
+    scene,
+    PANEL_LEFT + 96,
+    PANEL_TOP + 58,
+    128,
+    25,
+    "FULL LOADOUT",
+    () => handOffToEquipmentScreen(scene, partyIndex),
+    {
+      depth: DEPTH_LABEL,
+      fontSize: "9px",
+      fill: 0x1f5d48,
+      fillHover: 0x2b7d62,
+      stroke: 0xa5f0c8,
+      strokeWidth: 1,
+    },
+  );
+  loadoutBtn.bg.characterDetailMeta = { role: "full_loadout" };
+  group.push(loadoutBtn);
   group.push(
     scene.add
       .text(PANEL_RIGHT - 84, PANEL_TOP + 32, positionLabel, {
@@ -237,6 +258,13 @@ function handOffToGemWorkshop(scene, partyIndex, instanceID) {
   closeCharacterDetail(scene);
   showGemWorkshop(scene, {
     preselectedInstanceID: instanceID,
+    onClose: () => openCharacterDetail(scene, partyIndex),
+  });
+}
+
+function handOffToEquipmentScreen(scene, partyIndex) {
+  closeCharacterDetail(scene);
+  showEquipmentScreen(scene, partyIndex, {
     onClose: () => openCharacterDetail(scene, partyIndex),
   });
 }

@@ -58,6 +58,8 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/game/{id}/buy", s.auth.Middleware(http.HandlerFunc(s.handleBuy)))
 	mux.Handle("POST /api/game/{id}/equip", s.auth.Middleware(http.HandlerFunc(s.handleEquip)))
 	mux.Handle("POST /api/game/{id}/unequip", s.auth.Middleware(http.HandlerFunc(s.handleUnequip)))
+	mux.Handle("POST /api/game/{id}/equipment/recommend", s.auth.Middleware(http.HandlerFunc(s.handleRecommendEquipment)))
+	mux.Handle("POST /api/game/{id}/equipment/recommend/apply", s.auth.Middleware(http.HandlerFunc(s.handleApplyRecommendedEquipment)))
 	mux.Handle("POST /api/game/{id}/socket", s.auth.Middleware(http.HandlerFunc(s.handleSocketGem)))
 	mux.Handle("POST /api/game/{id}/craft", s.auth.Middleware(http.HandlerFunc(s.handleCraftGem)))
 	mux.Handle("POST /api/game/{id}/formation", s.auth.Middleware(http.HandlerFunc(s.handleUpdateFormation)))
