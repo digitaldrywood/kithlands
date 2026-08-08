@@ -44,6 +44,7 @@ type GameData struct {
 	Classes          []Class
 	Stats            StatsConfig
 	Items            ItemsData
+	Loot             LootData
 	Abilities        []Ability
 	Chests           ChestCatalog
 	Spells           SpellsData
@@ -66,6 +67,10 @@ type GameData struct {
 	keyItemByID         map[string]*KeyItem
 	chestByID           map[string]*ChestDefinition
 	battleCharacterByID map[string]*BattleCharacterProfile
+	lootRarityByID      map[string]*LootRarity
+	lootAffixByID       map[string]*LootAffix
+	gemByID             map[string]*Gem
+	gemRecipeByID       map[string]*GemRecipe
 }
 
 // Load reads and validates all game data from the shared directory.
@@ -78,6 +83,7 @@ func Load(sharedDir string) *GameData {
 	gd.Classes = loadJSON[[]Class](sharedDir, "classes.json")
 	gd.Stats = loadJSON[StatsConfig](sharedDir, "stats.json")
 	gd.Items = loadJSON[ItemsData](sharedDir, "items.json")
+	gd.Loot = loadJSON[LootData](sharedDir, "loot.json")
 	gd.Abilities = loadJSON[[]Ability](sharedDir, "abilities.json")
 	gd.Chests = loadJSON[ChestCatalog](sharedDir, "chests.json")
 	gd.Spells = loadJSON[SpellsData](sharedDir, "spells.json")
@@ -104,6 +110,12 @@ func (gd *GameData) SpellByID(id string) *Spell         { return gd.spellByID[id
 func (gd *GameData) MonsterByID(id string) *Monster     { return gd.monsterByID[id] }
 func (gd *GameData) FormationByID(id string) *Formation { return gd.formationByID[id] }
 func (gd *GameData) KeyItemByID(id string) *KeyItem     { return gd.keyItemByID[id] }
+func (gd *GameData) LootRarityByID(id string) *LootRarity {
+	return gd.lootRarityByID[id]
+}
+func (gd *GameData) LootAffixByID(id string) *LootAffix { return gd.lootAffixByID[id] }
+func (gd *GameData) GemByID(id string) *Gem             { return gd.gemByID[id] }
+func (gd *GameData) GemRecipeByID(id string) *GemRecipe { return gd.gemRecipeByID[id] }
 func (gd *GameData) ChestByID(id string) *ChestDefinition {
 	return gd.chestByID[id]
 }
@@ -175,6 +187,23 @@ func (gd *GameData) buildIndexes() {
 	for i := range gd.BattleCharacters.Classes {
 		profile := &gd.BattleCharacters.Classes[i]
 		gd.battleCharacterByID[profile.ID] = profile
+	}
+
+	gd.lootRarityByID = make(map[string]*LootRarity, len(gd.Loot.Rarities))
+	for i := range gd.Loot.Rarities {
+		gd.lootRarityByID[gd.Loot.Rarities[i].ID] = &gd.Loot.Rarities[i]
+	}
+	gd.lootAffixByID = make(map[string]*LootAffix, len(gd.Loot.Affixes))
+	for i := range gd.Loot.Affixes {
+		gd.lootAffixByID[gd.Loot.Affixes[i].ID] = &gd.Loot.Affixes[i]
+	}
+	gd.gemByID = make(map[string]*Gem, len(gd.Loot.Gems))
+	for i := range gd.Loot.Gems {
+		gd.gemByID[gd.Loot.Gems[i].ID] = &gd.Loot.Gems[i]
+	}
+	gd.gemRecipeByID = make(map[string]*GemRecipe, len(gd.Loot.Recipes))
+	for i := range gd.Loot.Recipes {
+		gd.gemRecipeByID[gd.Loot.Recipes[i].ID] = &gd.Loot.Recipes[i]
 	}
 }
 
