@@ -157,3 +157,82 @@ function showEmpty(scene, group, x, text) {
     wordWrap: { width: 190 },
   });
 }
+
+function renderGearColumn(scene, group, gs, selectedID, onSelect) {
+  const gear = socketableGear(gs);
+  if (gear.length === 0) {
+    showEmpty(scene, group, 58, "Find equipment with an open socket.");
+    return;
+  }
+  gear.slice(0, 10).forEach((item, index) => {
+    const open = item.sockets.filter((socket) => !socket.gem_id).length;
+    drawChoiceRow(
+      scene,
+      group,
+      58,
+      150 + index * 34,
+      230,
+      `${item.name}  [${open} open]`,
+      {
+        selected: item.instance_id === selectedID,
+        onClick: () => onSelect(item.instance_id),
+      },
+    );
+  });
+}
+
+function renderGemColumn(scene, group, gs, selectedID, onSocket) {
+  const gems = ownedGems(gs);
+  if (gems.length === 0) {
+    showEmpty(
+      scene,
+      group,
+      314,
+      "Defeat monsters or refine shards to find gems.",
+    );
+    return;
+  }
+  gems.slice(0, 10).forEach((gem, index) => {
+    drawChoiceRow(
+      scene,
+      group,
+      314,
+      150 + index * 34,
+      190,
+      `${gem.name}  x${gem.count}`,
+      {
+        enabled: !!selectedID,
+        onClick: () => onSocket(gem.id),
+      },
+    );
+  });
+  if (!selectedID) {
+    addText(scene, group, 314, 500, "Select gear before choosing a gem.", {
+      fontSize: "9px",
+      color: COLORS.muted,
+    });
+  }
+}
+
+function renderRecipeColumn(scene, group, gs, onCraft) {
+  const recipes = knownRecipes(gs);
+  if (recipes.length === 0) {
+    showEmpty(scene, group, 532, "No recipes discovered.");
+    return;
+  }
+  recipes.slice(0, 10).forEach((recipe, index) => {
+    const cost = recipeCostLabel(recipe, gs.gems);
+    drawChoiceRow(
+      scene,
+      group,
+      532,
+      150 + index * 34,
+      210,
+      `${recipe.name} (${cost})`,
+      {
+        enabled: recipe.craftable,
+        onClick: () => onCraft(recipe.id),
+      },
+    );
+  });
+}
