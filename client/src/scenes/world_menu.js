@@ -4,6 +4,7 @@ import { getAutosaveEnabled, setAutosaveEnabled } from "../systems/prefs.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 import { showWorldMap } from "./world_interact.js";
 import { openCharacterDetail } from "./character_detail.js";
+import { showEquipmentScreen } from "./equipment_screen.js";
 import { showOptions } from "./options.js";
 import { showItemMenu } from "./item_menu.js";
 import { hasCastableFieldSpell, showFieldMagicMenu } from "./field_magic.js";
@@ -344,7 +345,7 @@ function closeMenu(scene) {
 
 function openSelectedCharacter(scene) {
   const slot = scene.partyMenuState?.selectedSlot ?? 0;
-  openCharacterDetail(scene, slot);
+  showEquipmentScreen(scene, slot);
 }
 
 function applyTextGlow(text, shadowColor, blur = 1) {
@@ -744,7 +745,7 @@ function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
   rowBg.on("pointerdown", () => selectPartySlot(scene, slot));
   rowBg.on("pointerup", () => {
     selectPartySlot(scene, slot);
-    openCharacterDetail(scene, slot);
+    showEquipmentScreen(scene, slot);
   });
 }
 

@@ -99,7 +99,10 @@ export function showEquipmentScreen(scene, partyIndex = 0, options = {}) {
     handleOverlayKeydown(state, event),
   );
   renderEquipmentScreen(state);
-  requestAnimationFrame(() => focusSelectedSlot(state));
+  requestAnimationFrame(() => {
+    if (state.selectedSlotID) focusSelectedSlot(state);
+    else root.focus();
+  });
 }
 
 export function closeEquipmentScreen(scene, { callOnClose = true } = {}) {
@@ -224,10 +227,11 @@ function renderEquipmentScreen(state) {
     closeEquipmentScreen(scene);
     return;
   }
-  if (!model.slots.some((slot) => slot.id === state.selectedSlotID)) {
-    state.selectedSlotID =
-      model.slots.find((slot) => slot.item)?.id || model.slots[0]?.id || "";
-  }
+  if (
+    state.selectedSlotID &&
+    !model.slots.some((slot) => slot.id === state.selectedSlotID)
+  )
+    state.selectedSlotID = "";
   const selectedSlot = model.slots.find(
     (slot) => slot.id === state.selectedSlotID,
   );
@@ -256,8 +260,14 @@ function renderEquipmentScreen(state) {
   root.replaceChildren();
   root.append(
     renderHeader(state, model),
-    renderMain(state, model, selectedSlot, candidates, selectedCandidate),
-    renderComparison(state, model, selectedSlot, selectedCandidate, comparison),
+    renderMain(
+      state,
+      model,
+      selectedSlot,
+      candidates,
+      selectedCandidate,
+      comparison,
+    ),
     renderStatus(state),
   );
   if (state.recommendation) root.append(renderRecommendation(state));
@@ -280,7 +290,7 @@ function renderHeader(state, model) {
     "Next character",
   );
   const identity = element("div", "equipment-identity");
-  const title = element("h1", "", "Equipment");
+  const title = element("h1", "", "Character");
   title.id = "equipment-screen-title";
   identity.append(
     title,
@@ -325,8 +335,18 @@ function renderHeader(state, model) {
   return header;
 }
 
-function renderMain(state, model, selectedSlot, candidates, selectedCandidate) {
-  const main = element("div", "equipment-main");
+function renderMain(
+  state,
+  model,
+  selectedSlot,
+  candidates,
+  selectedCandidate,
+  comparison,
+) {
+  const main = element(
+    "div",
+    `equipment-main${selectedSlot ? " has-selection" : ""}`,
+  );
   const loadout = element("section", "loadout-panel");
   loadout.setAttribute("aria-labelledby", "loadout-title");
   const loadoutTitle = element("h2", "section-title", "Loadout");
@@ -334,76 +354,155 @@ function renderMain(state, model, selectedSlot, candidates, selectedCandidate) {
   loadout.append(loadoutTitle);
 
   const stage = element("div", "paperdoll-stage");
-  const left = element("div", "slot-column slot-column-left");
-  const right = element("div", "slot-column slot-column-right");
-  const leftIDs = new Set([
-    "head",
-    "shoulders",
-    "body",
-    "hands",
-    "waist",
-    "legs",
-    "feet",
-  ]);
-  for (const slot of model.slots) {
-    const control = renderSlot(state, slot);
-    (leftIDs.has(slot.id) ? left : right).append(control);
-  }
-  const silhouette = element("div", "paperdoll-silhouette");
-  silhouette.setAttribute("aria-hidden", "true");
-  silhouette.append(
-    element("span", "paperdoll-head"),
-    element("span", "paperdoll-body"),
-    element("span", "paperdoll-arms"),
-    element("span", "paperdoll-legs"),
+  const portrait = document.createElement("img");
+  portrait.className = "paperdoll-character-art";
+  portrait.src = `/sprites/${model.member.sprite_id || model.member.class_id}.png`;
+  portrait.alt = "";
+  portrait.setAttribute("aria-hidden", "true");
+  portrait.addEventListener("error", () =>
+    portrait.classList.add("is-missing"),
+  );
+  stage.append(portrait);
+  for (const slot of model.slots) stage.append(renderSlot(state, slot));
+  loadout.append(
+    stage,
     element(
-      "strong",
-      "paperdoll-class",
-      String(model.member.class_name || "?").slice(0, 1),
+      "p",
+      "paperdoll-help",
+      "Hover or focus a slot to inspect it. Select a slot to change gear.",
     ),
   );
-  stage.append(left, silhouette, right);
-  loadout.append(stage);
 
-  const inventory = element("section", "equipment-inventory");
-  inventory.setAttribute("aria-labelledby", "inventory-title");
-  const inventoryHeading = element("div", "inventory-heading");
-  const inventoryTitle = element("h2", "section-title", "Owned Gear");
-  inventoryTitle.id = "inventory-title";
-  inventoryHeading.append(
-    inventoryTitle,
-    element(
-      "span",
-      "inventory-filter",
-      selectedSlot ? `Fits ${selectedSlot.name}` : "Choose a slot",
-    ),
-  );
-  inventory.append(inventoryHeading);
-  const list = element("div", "equipment-item-list");
-  if (candidates.length === 0) {
-    list.append(
-      element(
-        "p",
-        "equipment-empty",
-        selectedSlot
-          ? `No owned items fit ${selectedSlot.name}.`
-          : "Choose a slot to inspect your gear.",
-      ),
-    );
-  }
-  for (const candidate of candidates) {
-    list.append(
-      renderCandidate(
+  main.append(renderCharacterSummary(model), loadout);
+  if (selectedSlot) {
+    main.append(
+      renderEquipmentDrawer(
         state,
+        model,
         selectedSlot,
-        candidate,
-        selectedCandidate?.key === candidate.key,
+        candidates,
+        selectedCandidate,
+        comparison,
       ),
     );
   }
-  inventory.append(list);
-  main.append(loadout, inventory);
   return main;
+}
+
+function renderCharacterSummary(model) {
+  const member = model.member;
+  const panel = element("section", "character-summary-panel");
+  panel.setAttribute("aria-labelledby", "character-summary-title");
+  const title = element("h2", "section-title", "Status");
+  title.id = "character-summary-title";
+  panel.append(title);
+
+  const bars = element("div", "character-resource-bars");
+  for (const resource of [
+    ["HP", member.hp, member.max_hp, "hp"],
+    ["MP", member.mp, member.max_mp, "mp"],
+    ["XP", member.xp, member.xp_next, "xp"],
+  ]) {
+    const [label, currentValue, maxValue, tone] = resource;
+    const current = Number(currentValue) || 0;
+    const maximum = Number(maxValue) || 0;
+    const row = element("div", "character-resource");
+    const labelRow = element("div", "character-resource-label");
+    labelRow.append(
+      element("strong", "", label),
+      element("span", "", maximum > 0 ? `${current}/${maximum}` : "—"),
+    );
+    const track = element("span", "character-resource-track");
+    const fill = element("span", `character-resource-fill ${tone}`);
+    fill.style.width = `${maximum > 0 ? Math.max(0, Math.min(100, (current / maximum) * 100)) : 0}%`;
+    track.append(fill);
+    row.append(labelRow, track);
+    bars.append(row);
+  }
+  panel.append(bars);
+
+  const hero = {
+    str: Number(member.str) || 0,
+    agi: Number(member.agi) || 0,
+    int: Number(member.int_stat) || 0,
+    vit: Number(member.vit) || 0,
+    lck: Number(member.lck) || 0,
+  };
+  const attack =
+    hero.str + (model.gearTotals.str || 0) + (model.gearTotals.power || 0);
+  const stats = element("dl", "character-stat-grid");
+  for (const [label, base, bonus, total] of [
+    [
+      "Attack",
+      hero.str,
+      (model.gearTotals.str || 0) + (model.gearTotals.power || 0),
+      attack,
+    ],
+    [
+      "Strength",
+      hero.str,
+      model.gearTotals.str || 0,
+      hero.str + (model.gearTotals.str || 0),
+    ],
+    [
+      "Agility",
+      hero.agi,
+      model.gearTotals.agi || 0,
+      hero.agi + (model.gearTotals.agi || 0),
+    ],
+    [
+      "Intellect",
+      hero.int,
+      model.gearTotals.int || 0,
+      hero.int + (model.gearTotals.int || 0),
+    ],
+    [
+      "Vitality",
+      hero.vit,
+      model.gearTotals.vit || 0,
+      hero.vit + (model.gearTotals.vit || 0),
+    ],
+    [
+      "Luck",
+      hero.lck,
+      model.gearTotals.lck || 0,
+      hero.lck + (model.gearTotals.lck || 0),
+    ],
+    ["Absorb", 0, model.gearTotals.absorb || 0, model.gearTotals.absorb || 0],
+  ]) {
+    const term = element("dt", "", label);
+    const value = element("dd");
+    value.append(element("strong", "", String(total)));
+    if (bonus)
+      value.append(
+        element(
+          "span",
+          "stat-breakdown",
+          `${base} base ${formatSigned(bonus)} gear`,
+        ),
+      );
+    stats.append(term, value);
+  }
+  panel.append(stats);
+
+  const conditions = element("div", "character-conditions");
+  conditions.append(
+    element("span", "condition-label", "Status"),
+    element("strong", "", member.status || "Normal"),
+  );
+  panel.append(conditions);
+
+  const spells = (member.spells || []).slice(0, 6);
+  if (spells.length) {
+    const spellBlock = element("div", "character-spells");
+    spellBlock.append(element("h3", "section-title", "Spells"));
+    const spellList = element("div", "spell-chip-list");
+    for (const spell of spells)
+      spellList.append(element("span", "spell-chip", spell.name));
+    spellBlock.append(spellList);
+    panel.append(spellBlock);
+  }
+  return panel;
 }
 
 function renderSlot(state, slot) {
@@ -423,27 +522,124 @@ function renderSlot(state, slot) {
     state.selectedSlotID === slot.id ? "true" : "false",
   );
   control.setAttribute("aria-label", `${slot.name}: ${item?.name || "Empty"}`);
+  const frame = element(
+    "span",
+    `equipment-slot-frame rarity-${rarityClass(item?.rarity)}`,
+  );
   const icon = element(
     "span",
     "equipment-placeholder-icon",
     SLOT_GLYPHS[slot.id] || slot.name?.slice(0, 1) || "?",
   );
-  const copy = element("span", "equipment-slot-copy");
-  copy.append(
-    element("span", "equipment-slot-label", slot.name),
-    element("span", "equipment-slot-item", item?.name || "Empty slot"),
-  );
   const sockets = element("span", "equipment-sockets", socketPips(item));
   sockets.setAttribute("aria-label", socketLabel(item));
-  control.append(icon, copy, sockets);
-  control.addEventListener("pointerenter", () => {
-    if (state.selectedSlotID === slot.id) return;
-    if (state.root.matches(":focus-within")) return;
-    state.selectedSlotID = slot.id;
-    state.selectedCandidateKey = "";
-    renderEquipmentScreen(state);
-  });
+  frame.append(icon, sockets);
+  const caption = element("span", "equipment-slot-label", slot.name);
+  const tooltip = renderItemTooltip(slot.name, item, "Select to change gear");
+  tooltip.id = `equipment-slot-tip-${state.partyIndex}-${slot.id}`;
+  control.setAttribute("aria-describedby", tooltip.id);
+  control.append(frame, caption, tooltip);
   return control;
+}
+
+function renderEquipmentDrawer(
+  state,
+  model,
+  slot,
+  candidates,
+  selectedCandidate,
+  comparison,
+) {
+  const drawer = element("aside", "equipment-drawer");
+  drawer.setAttribute("aria-labelledby", "inventory-title");
+  const heading = element("div", "equipment-drawer-heading");
+  const headingCopy = element("div");
+  const title = element("h2", "section-title", slot.name);
+  title.id = "inventory-title";
+  headingCopy.append(
+    title,
+    element(
+      "p",
+      "drawer-subtitle",
+      slot.item ? `Equipped: ${slot.item.name}` : "Nothing equipped",
+    ),
+  );
+  heading.append(
+    headingCopy,
+    button(
+      "×",
+      "drawer-close",
+      () => {
+        state.selectedSlotID = "";
+        state.selectedCandidateKey = "";
+        renderEquipmentScreen(state);
+      },
+      "Close gear drawer",
+    ),
+  );
+  drawer.append(heading);
+
+  const current = element("section", "drawer-current");
+  current.append(renderItemDetails("Equipped", slot.item));
+  const currentActions = element("div", "drawer-current-actions");
+  const openSocket =
+    slot.item?.instance_id &&
+    slot.item?.sockets?.some((socket) => !socket.gem_id);
+  if (openSocket) {
+    currentActions.append(
+      button("Socket", "equipment-action secondary", () =>
+        openSocketWorkshop(state, slot, slot.item),
+      ),
+    );
+  }
+  if (slot.item) {
+    const remove = button("Unequip", "equipment-action subtle", () =>
+      performUnequip(state, slot),
+    );
+    remove.disabled = state.busy;
+    currentActions.append(remove);
+  }
+  current.append(currentActions);
+  drawer.append(current);
+
+  const ownedHeading = element("div", "inventory-heading");
+  ownedHeading.append(
+    element("h3", "section-title", "Owned Gear"),
+    element("span", "inventory-filter", `Fits ${slot.name}`),
+  );
+  drawer.append(ownedHeading);
+
+  const list = element("div", "equipment-item-list");
+  if (candidates.length === 0) {
+    list.append(
+      element("p", "equipment-empty", `No owned items fit ${slot.name}.`),
+    );
+  }
+  for (const candidate of candidates) {
+    list.append(
+      renderCandidate(
+        state,
+        slot,
+        candidate,
+        selectedCandidate?.key === candidate.key,
+      ),
+    );
+  }
+  drawer.append(list);
+  if (selectedCandidate) {
+    drawer.append(
+      renderComparison(state, model, slot, selectedCandidate, comparison),
+    );
+  } else if (candidates.length > 0) {
+    drawer.append(
+      element(
+        "p",
+        "drawer-hint",
+        "Hover for a quick comparison. Select an item to review and equip it.",
+      ),
+    );
+  }
+  return drawer;
 }
 
 function renderCandidate(state, slot, candidate, selected) {
@@ -469,11 +665,7 @@ function renderCandidate(state, slot, candidate, selected) {
     `equipment-item-name rarity-${rarityClass(item.rarity)}`,
     item.name || "Unknown equipment",
   );
-  const meta = element(
-    "span",
-    "equipment-item-meta",
-    `${String(item.rarity || "Common")} · Lv.${Number(item.item_level) || 1} · ${formatTopStats(item)}`,
-  );
+  const meta = element("span", "equipment-item-meta", formatTopStats(item));
   copy.append(name, meta);
   if (candidate.source) {
     copy.append(
@@ -488,96 +680,133 @@ function renderCandidate(state, slot, candidate, selected) {
     copy.append(
       element("span", "equipment-lock-reason", candidate.disabledReason),
     );
-  row.append(icon, copy, element("span", "equipment-row-arrow", "›"));
-  row.addEventListener("pointerenter", () => {
-    if (state.selectedCandidateKey === candidate.key) return;
-    state.selectedCandidateKey = candidate.key;
-    renderEquipmentScreen(state);
-  });
+  const comparison = buildEquipmentComparison(
+    state.scene.gameState,
+    state.partyIndex,
+    slot.id,
+    item,
+  );
+  const tooltip = renderItemTooltip(
+    candidate.disabledReason ||
+      `Compare with ${slot.item?.name || "empty slot"}`,
+    item,
+  );
+  tooltip.classList.add("candidate-tooltip");
+  const deltas = element("div", "tooltip-deltas");
+  for (const [stat, value] of significantStatEntries(comparison.deltas)) {
+    deltas.append(
+      element(
+        "span",
+        `delta ${deltaTone(stat, value)}`,
+        `${statLabel(stat)} ${formatSigned(value)}`,
+      ),
+    );
+  }
+  if (deltas.childElementCount === 0)
+    deltas.append(element("span", "delta neutral", "No stat change"));
+  tooltip.append(deltas);
+  tooltip.id = `equipment-candidate-tip-${candidate.key.replace(/[^a-z0-9_-]/gi, "-")}`;
+  row.setAttribute("aria-describedby", tooltip.id);
+  row.append(icon, copy, element("span", "equipment-row-arrow", "›"), tooltip);
   return row;
 }
 
 function renderComparison(state, model, slot, selectedCandidate, comparison) {
-  const region = element("section", "equipment-comparison");
-  region.setAttribute("aria-live", "polite");
-  const current = renderItemDetails("Current", comparison.current);
-  const proposed = renderItemDetails(
-    "Candidate",
-    selectedCandidate?.item || null,
+  const region = element(
+    "section",
+    "equipment-choice-preview comparison-impact",
   );
-  const impact = element("div", "comparison-impact");
-  impact.append(element("h2", "section-title", "Character Impact"));
-
-  if (!selectedCandidate) {
-    impact.append(
+  region.setAttribute("aria-live", "polite");
+  region.append(
+    element("h3", "section-title", `Equip ${selectedCandidate.item.name}?`),
+  );
+  const deltas = significantStatEntries(comparison.deltas);
+  const deltaList = element("div", "comparison-deltas");
+  if (deltas.length === 0)
+    deltaList.append(element("span", "delta neutral", "No stat change"));
+  for (const [stat, value] of deltas) {
+    deltaList.append(
       element(
-        "p",
-        "comparison-prompt",
-        slot
-          ? `Choose owned gear to compare with ${slot.name}.`
-          : "Choose an equipment slot.",
+        "span",
+        `delta ${deltaTone(stat, value)}`,
+        `${statLabel(stat)} ${formatSigned(value)}`,
       ),
     );
-  } else {
-    const deltas = significantStatEntries(comparison.deltas);
-    const deltaList = element("div", "comparison-deltas");
-    if (deltas.length === 0)
-      deltaList.append(element("span", "delta neutral", "No stat change"));
-    for (const [stat, value] of deltas) {
-      deltaList.append(
-        element(
-          "span",
-          `delta ${deltaTone(stat, value)}`,
-          `${statLabel(stat)} ${formatSigned(value)}`,
-        ),
-      );
-    }
-    impact.append(deltaList);
-    for (const line of comparison.character) {
-      impact.append(element("p", "character-impact-line", line));
-    }
-    if (selectedCandidate.source) {
-      impact.append(
-        element(
-          "p",
-          "equipment-move-warning",
-          `Moves this item from ${selectedCandidate.source.characterName}'s ${selectedCandidate.source.slotName}.`,
-        ),
-      );
-    }
+  }
+  region.append(deltaList);
+  for (const line of comparison.character) {
+    region.append(element("p", "character-impact-line", line));
+  }
+  if (selectedCandidate.source) {
+    region.append(
+      element(
+        "p",
+        "equipment-move-warning",
+        `Moves from ${selectedCandidate.source.characterName}'s ${selectedCandidate.source.slotName}.`,
+      ),
+    );
   }
 
   const actions = element("div", "comparison-actions");
-  const currentItem = slot?.item;
-  const openSocket =
-    currentItem?.instance_id &&
-    currentItem?.sockets?.some((socket) => !socket.gem_id);
-  if (openSocket) {
-    actions.append(
-      button("Socket", "equipment-action secondary", () =>
-        openSocketWorkshop(state, slot, currentItem),
+  const equip = button(
+    `Equip in ${slot?.name || "slot"}`,
+    "equipment-action primary",
+    () => performEquip(state, slot, selectedCandidate),
+  );
+  equip.disabled = state.busy || !selectedCandidate.compatible;
+  actions.append(equip);
+  region.append(actions);
+  return region;
+}
+
+function renderItemTooltip(label, item, footer = "") {
+  const tooltip = element("span", "equipment-tooltip");
+  tooltip.setAttribute("role", "tooltip");
+  tooltip.append(element("span", "tooltip-eyebrow", label));
+  if (!item) {
+    tooltip.append(
+      element("strong", "tooltip-item-name", "Empty slot"),
+      element("span", "tooltip-copy", footer || "Select to browse gear"),
+    );
+    return tooltip;
+  }
+  tooltip.append(
+    element(
+      "strong",
+      `tooltip-item-name rarity-${rarityClass(item.rarity)}`,
+      item.name,
+    ),
+    element(
+      "span",
+      "tooltip-meta",
+      `${item.rarity || "Common"} · Item Lv.${Number(item.item_level) || 1} · Requires Lv.${Number(item.required_level) || 1}`,
+    ),
+  );
+  const stats = element("span", "tooltip-stats");
+  for (const [stat, total] of significantStatEntries(itemStats(item))) {
+    const additions = [
+      ...(item.affixes || []).filter((entry) => entry.stat === stat),
+      ...(item.sockets || []).filter(
+        (entry) => entry.gem_id && entry.stat === stat,
+      ),
+    ];
+    const added = additions.reduce(
+      (sum, entry) => sum + (Number(entry.value) || 0),
+      0,
+    );
+    stats.append(
+      element(
+        "span",
+        "tooltip-stat",
+        additions.length
+          ? `${statLabel(stat)} ${total} · base ${total - added} + ${added}`
+          : `${statLabel(stat)} ${total}`,
       ),
     );
   }
-  if (currentItem) {
-    const remove = button("Unequip", "equipment-action subtle", () =>
-      performUnequip(state, slot),
-    );
-    remove.disabled = state.busy;
-    actions.append(remove);
-  }
-  if (selectedCandidate) {
-    const equip = button(
-      `Equip in ${slot?.name || "slot"}`,
-      "equipment-action primary",
-      () => performEquip(state, slot, selectedCandidate),
-    );
-    equip.disabled = state.busy || !selectedCandidate.compatible;
-    actions.append(equip);
-  }
-  impact.append(actions);
-  region.append(current, proposed, impact);
-  return region;
+  tooltip.append(stats, element("span", "tooltip-sockets", socketLabel(item)));
+  if (footer) tooltip.append(element("span", "tooltip-copy", footer));
+  return tooltip;
 }
 
 function renderItemDetails(label, item) {
@@ -884,7 +1113,10 @@ function handleOverlayKeydown(state, event) {
 }
 
 function focusSelectedSlot(state) {
-  state.root.querySelector(`[data-slot-id="${state.selectedSlotID}"]`)?.focus();
+  const selected = state.selectedSlotID
+    ? state.root.querySelector(`[data-slot-id="${state.selectedSlotID}"]`)
+    : null;
+  (selected || state.root.querySelector(".equipment-slot"))?.focus();
 }
 
 function equipmentDisabledReason(item, member, slot) {
@@ -995,7 +1227,10 @@ function simpleItemScore(item) {
 function significantStatEntries(stats) {
   const keys = new Set([...STAT_ORDER, ...Object.keys(stats || {})]);
   return [...keys]
-    .filter((key) => Number(stats?.[key]) !== 0)
+    .filter((key) => {
+      const value = Number(stats?.[key]);
+      return Number.isFinite(value) && value !== 0;
+    })
     .map((key) => [key, Number(stats[key]) || 0]);
 }
 

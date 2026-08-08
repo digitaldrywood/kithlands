@@ -674,8 +674,9 @@ The player should be able to look at a weapon and understand *why* it's better t
 The expanded character loadout, comparison flow, socket/transmutation return
 flow, recommendation preview, DOM boundary, and future icon contract are
 defined in [docs/EQUIPMENT_SCREEN_CONTRACT.md](EQUIPMENT_SCREEN_CONTRACT.md).
-The full equipment manager is separate from the compact character summary, and
-battle presentation remains a later decision.
+The normal Character action presents status and the spatial loadout together;
+slot-specific inventory and comparison controls appear in context. Battle
+presentation remains a later decision.
 
 The staged weapon, armor, accessory, class-access, affix, and icon-production
 taxonomy is defined in

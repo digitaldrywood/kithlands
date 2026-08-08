@@ -53,19 +53,15 @@ async function openFromCharacterScreen(page) {
   await page.evaluate(() =>
     window.__kithlandsTest.clickMenuButton("CHARACTER", "World"),
   );
-  await page.waitForFunction(
-    () => window.__kithlandsTest.sceneFlags("World").characterDetailOpen,
-  );
-  await page.evaluate(() =>
-    window.__kithlandsTest.clickCharacterDetailButton("FULL LOADOUT", "World"),
-  );
-  await expect(page.getByRole("dialog", { name: "Equipment" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Character" })).toBeVisible();
 }
 
 test("manages the full loadout, previews recommendations, and returns from sockets", async ({
   page,
 }) => {
+  test.setTimeout(60_000);
   await mkdir(PROOF_DIR, { recursive: true });
+  await page.setViewportSize({ width: 800, height: 600 });
   await startEquipmentGame(page);
   await openFromCharacterScreen(page);
 
@@ -78,6 +74,19 @@ test("manages the full loadout, previews recommendations, and returns from socke
     fullPage: true,
   });
 
+  const weaponSlot = page.locator('[data-slot-id="main_hand"]');
+  await weaponSlot.hover();
+  const weaponTooltip = weaponSlot.locator(".equipment-tooltip");
+  await expect(weaponTooltip).toBeVisible();
+  await expect(weaponTooltip).toContainText("Short Sword");
+  await expect(weaponTooltip).toContainText("Power");
+  await page.screenshot({
+    path: path.join(PROOF_DIR, "equipment-slot-hover-800x600.png"),
+    fullPage: true,
+  });
+  await page.locator(".character-summary-panel").hover();
+  await expect(weaponTooltip).toBeHidden();
+
   await page.locator('[data-slot-id="ring_2"]').click();
   const ringCandidate = page
     .locator(".equipment-item-row:not(.is-disabled)")
@@ -88,7 +97,7 @@ test("manages the full loadout, previews recommendations, and returns from socke
     page.getByRole("button", { name: "Equip in Ring II" }),
   ).toBeEnabled();
   await expect(page.locator(".comparison-impact")).toContainText(
-    "Character Impact",
+    "Equip in Ring II",
   );
   await page.screenshot({
     path: path.join(PROOF_DIR, "equipment-ring-comparison.png"),
@@ -147,7 +156,7 @@ test("manages the full loadout, previews recommendations, and returns from socke
   await page.evaluate(() =>
     window.__kithlandsTest.clickInteractiveText("CLOSE", "World"),
   );
-  await expect(page.getByRole("dialog", { name: "Equipment" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Character" })).toBeVisible();
   await expect(page.locator('[data-slot-id="main_hand"]')).toBeFocused();
 
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -168,7 +177,12 @@ test("manages the full loadout, previews recommendations, and returns from socke
   });
 
   await page.getByRole("button", { name: "Close equipment" }).click();
-  await page.waitForFunction(
-    () => window.__kithlandsTest.sceneFlags("World").characterDetailOpen,
-  );
+  await expect(page.getByRole("dialog", { name: "Character" })).toBeHidden();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => window.__kithlandsTest.sceneFlags("World").equipmentScreenOpen,
+      ),
+    )
+    .toBe(false);
 });

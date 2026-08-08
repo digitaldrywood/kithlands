@@ -1,7 +1,7 @@
 # Equipment and Loadout Screen Contract
 
-Status: approved direction; implementation and final art are separate follow-up
-work.
+Status: approved direction; mechanics UI implemented with placeholder icons;
+final item art is separate follow-up work.
 
 This document defines the equipment-management surface before item icons and
 final presentation art are produced. It extends the instance-loot, gem, and
@@ -10,9 +10,10 @@ equipment presentation are intentionally out of scope.
 
 ## 1. Product intent
 
-The character detail screen remains a quick summary: identity, health, core
-stats, and a compact indication of important equipped items. A dedicated
-**Equipment** action opens the full loadout manager.
+The primary **Character** action opens one combined character sheet. It keeps
+identity, health, core stats, and the complete loadout visible together instead
+of sending the player through a summary screen and then a separate equipment
+page. Choosing a slot reveals its owned-item and comparison controls in context.
 
 The loadout manager must let a player answer these questions without guessing:
 
@@ -31,31 +32,29 @@ the server; it does not assume that twelve is a permanent maximum.
 
 ## 2. Screen structure
 
-The desktop composition uses a familiar paper-doll pattern without copying
-another game's art or exact layout:
+The desktop composition uses the familiar character-sheet and paper-doll
+pattern without copying another game's art or exact layout:
 
 ```text
 +--------------------------------------------------------------------+
-| < Hero 1/4 >        EQUIPMENT              Class - Level            |
-+-----------------------+----------------------+----------------------+
-| Head        Amulet    |                      | Inventory            |
-| Shoulders   Ring I    |   character art      | filtered for the     |
-| Body        Ring II   |   / silhouette       | selected slot        |
-| Hands                 |                      |                      |
-| Waist       Main Hand |                      | [item] [item] [item] |
-| Legs        Off Hand  |                      | [item] [item] [item] |
-| Feet                  |                      |                      |
-+-----------------------+----------------------+----------------------+
-| CURRENT ITEM              CANDIDATE ITEM              CHANGE        |
-| base + affix + gems        base + affix + gems          exact deltas |
-| [Socket / Transmute]                                  [Equip]        |
+| < Hero 1/4 >        CHARACTER              Class - Level            |
++----------------------+---------------------------------------------+
+| STATUS               |       Head                                  |
+| HP / MP / XP         | Shoulder       Amulet                        |
+|                      | Weapon   character art   Off Hand            |
+| Attack  base + gear  | Body                       Waist             |
+| Strength             | Hands                     Ring I            |
+| Agility              |        Legs     Ring II                     |
+| Intellect            |             Feet                            |
++----------------------+---------------------------------------------+
+| After choosing a slot: contextual owned gear + persistent compare  |
+| CURRENT ITEM       CANDIDATE ITEM       EXACT DELTAS      [Equip]   |
 +--------------------------------------------------------------------+
 ```
 
 This is a relationship contract, not a pixel-perfect wireframe. At narrow
-widths, the slot area becomes an ordered two-column list, the character image
-becomes decorative or collapses, and comparison opens as a pinned drawer.
-Nothing required to equip an item may depend on hover.
+widths, status stacks above the spatial paper doll and comparison opens as a
+pinned bottom drawer. Nothing required to equip an item may depend on hover.
 
 ### Slot button states
 
@@ -76,8 +75,8 @@ even though both accept the `ring` category.
 
 ### Equip or replace
 
-1. Opening the screen selects the first occupied slot, otherwise the first
-   authored slot by order.
+1. Opening the screen presents the whole character without an inventory drawer
+   obscuring the paper doll.
 2. Selecting a slot filters owned equipment to compatible categories.
 3. Hover, keyboard focus, or first tap previews an item without mutation.
 4. The comparison pane shows current, candidate, and exact character deltas.
@@ -162,10 +161,11 @@ by the LLM.
 
 ## 5. DOM and Phaser boundary
 
-The full loadout manager is a semantic HTML overlay mounted in a dedicated,
-fixed app UI layer above the Phaser canvas. Phaser continues to own the screen
-lifecycle and render the world, character art, and battle. Keeping the overlay
-out of Phaser's scaled DOM container lets text, touch targets, and responsive
+The combined character sheet and loadout manager is a semantic HTML overlay
+mounted in a dedicated, fixed app UI layer above the Phaser canvas. Phaser
+continues to own the screen lifecycle and render the world and battle. The
+overlay presents character art but does not change battle presentation. Keeping
+it out of Phaser's scaled DOM container lets text, touch targets, and responsive
 breakpoints use the real browser viewport. Opening the overlay locks world input
 through the existing menu pause mechanism; closing it restores the previous
 Phaser screen and focus.

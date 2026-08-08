@@ -1235,7 +1235,8 @@ export function installDevTestBridge(game) {
       const scene = getScene(game, sceneKey);
       return {
         menuOpen: !!scene?.menuOpen,
-        characterDetailOpen: !!scene?.characterDetailGroup,
+        characterDetailOpen:
+          !!scene?.characterDetailGroup || !!scene?.equipmentScreenState,
         equipmentScreenOpen: !!scene?.equipmentScreenState,
         debugPanelOpen: !!scene?.debugPanelOpen,
         fieldMagicOpen: !!scene?.fieldMagicMenuState,
