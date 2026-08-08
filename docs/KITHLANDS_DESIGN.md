@@ -677,6 +677,12 @@ defined in [docs/EQUIPMENT_SCREEN_CONTRACT.md](EQUIPMENT_SCREEN_CONTRACT.md).
 The full equipment manager is separate from the compact character summary, and
 battle presentation remains a later decision.
 
+The staged weapon, armor, accessory, class-access, affix, and icon-production
+taxonomy is defined in
+[docs/EQUIPMENT_CONTENT_TAXONOMY.md](EQUIPMENT_CONTENT_TAXONOMY.md). It is a
+content architecture, not authorization to generate the entire asset catalog
+before the mechanics and visual gold slice are approved.
+
 Each weapon has:
 - **Power** (added to STR for damage)
 - **Hit%** (added to character's hit%)

@@ -162,11 +162,13 @@ by the LLM.
 
 ## 5. DOM and Phaser boundary
 
-The full loadout manager is a semantic HTML overlay mounted inside the DOM
-container already enabled by Phaser. Phaser continues to render the world,
-character art, and battle. Opening the overlay locks world input through the
-existing menu pause mechanism; closing it restores the previous Phaser screen
-and focus.
+The full loadout manager is a semantic HTML overlay mounted in a dedicated,
+fixed app UI layer above the Phaser canvas. Phaser continues to own the screen
+lifecycle and render the world, character art, and battle. Keeping the overlay
+out of Phaser's scaled DOM container lets text, touch targets, and responsive
+breakpoints use the real browser viewport. Opening the overlay locks world input
+through the existing menu pause mechanism; closing it restores the previous
+Phaser screen and focus.
 
 Use native controls for interaction:
 

@@ -12,15 +12,16 @@ twelve or more interactive positions, inventory filtering, persistent
 comparison, socket and recipe previews, disabled reasons, party navigation,
 touch behavior, and keyboard focus.
 
-The existing Phaser configuration already creates a DOM container and uses it
-for native form controls. A full client framework or renderer rewrite is not
-required.
+The app can host a small native UI layer next to the Phaser canvas. A full
+client framework or renderer rewrite is not required.
 
 ## Decision
 
 Keep the world, battle, character art, and compact character summary in Phaser.
-Open a dedicated equipment-management surface as semantic HTML mounted inside
-Phaser's DOM container.
+Open a dedicated equipment-management surface as semantic HTML mounted in a
+fixed app UI layer above the Phaser canvas. Phaser owns the overlay lifecycle,
+but the overlay uses the real browser viewport rather than Phaser's scaled DOM
+coordinates.
 
 The equipment overlay renders the server-authored slot catalog and resolved
 item views. It sends stable IDs to authoritative server operations and does not
@@ -46,6 +47,6 @@ The screen and future icon system follow
 - Phaser remains the game renderer; this is a targeted hybrid boundary, not a
   migration of the game to DOM UI.
 - The client needs a small overlay lifecycle and styling system synchronized
-  with Phaser scale and menu pause behavior.
+  with Phaser scene and menu pause behavior.
 - Shared equipment and gem content needs stable icon keys before final asset
   production.
