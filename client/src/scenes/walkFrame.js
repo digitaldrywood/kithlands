@@ -5,9 +5,7 @@ export const WALK_FRAME_COUNT = SKILL_WALK_FRAME_COUNT;
 export const WALK_IDLE_FRAME = 0;
 export const LEGACY_WALK_STEP_FRAME_SEQUENCE = [0, 1, 2, 3, 4, 5, 6, 7];
 export const SKILL_WALK_STEP_FRAME_SEQUENCE = [0, 1, 2, 3, 4, 5];
-export const SKILL_WALK_EIGHT_STEP_FRAME_SEQUENCE = [
-  0, 1, 2, 3, 4, 5, 6, 7,
-];
+export const SKILL_WALK_EIGHT_STEP_FRAME_SEQUENCE = [0, 1, 2, 3, 4, 5, 6, 7];
 export const WALK_STEP_FRAME_SEQUENCE = SKILL_WALK_STEP_FRAME_SEQUENCE;
 export const WALK_FRAME_POSES = [
   {
@@ -207,8 +205,7 @@ export function attackFrameIndex(dir, frame) {
   const row =
     WALK_SKILL_DIRECTION_INDEX[sheetDir] ?? WALK_SKILL_DIRECTION_INDEX.east;
   return (
-    row * SKILL_WALK_EIGHT_FRAME_COUNT +
-    (frame % SKILL_WALK_EIGHT_FRAME_COUNT)
+    row * SKILL_WALK_EIGHT_FRAME_COUNT + (frame % SKILL_WALK_EIGHT_FRAME_COUNT)
   );
 }
 
@@ -266,7 +263,9 @@ export function walkSpriteScale(renderedTile, classId) {
 }
 
 export function fallbackWalkSpriteScale(renderedTile) {
-  return (renderedTile / LEGACY_WALK_SHEET_CELL_SIZE) * WALK_SPRITE_SCALE_MULTIPLIER;
+  return (
+    (renderedTile / LEGACY_WALK_SHEET_CELL_SIZE) * WALK_SPRITE_SCALE_MULTIPLIER
+  );
 }
 
 export function classPortraitFallbackScale(renderedTile) {

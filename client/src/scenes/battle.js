@@ -1598,7 +1598,11 @@ export class BattleScene extends Phaser.Scene {
   restorePartySpriteTexture(actorEntry) {
     const sprite = actorEntry?.sprite;
     const restore = actorEntry?.restoreAttackTexture;
-    if (!sprite || !restore?.textureKey || !this.textures.exists(restore.textureKey)) {
+    if (
+      !sprite ||
+      !restore?.textureKey ||
+      !this.textures.exists(restore.textureKey)
+    ) {
       return;
     }
     sprite.setTexture(restore.textureKey, restore.frameName);

@@ -446,7 +446,9 @@ function setPlayerWalkFrame(scene, frame) {
       walkFrameIndex(scene.playerDir, selectedFrame, scene.leaderClass),
     );
   } else {
-    scene.player.setTexture(scene.playerFallbackTexture || `player_${scene.playerDir}`);
+    scene.player.setTexture(
+      scene.playerFallbackTexture || `player_${scene.playerDir}`,
+    );
   }
 }
 

@@ -89,11 +89,14 @@ function makeRectangle() {
 }
 
 function makeText(initial) {
+  const handlers = {};
   const t = {
     __kind: "text",
     text: initial,
     color: null,
+    interactive: false,
     destroyed: false,
+    handlers,
     setOrigin() {
       return t;
     },
@@ -101,6 +104,18 @@ function makeText(initial) {
       return t;
     },
     setDepth() {
+      return t;
+    },
+    setInteractive() {
+      t.interactive = true;
+      return t;
+    },
+    disableInteractive() {
+      t.interactive = false;
+      return t;
+    },
+    on(event, fn) {
+      handlers[event] = fn;
       return t;
     },
     setText(next) {

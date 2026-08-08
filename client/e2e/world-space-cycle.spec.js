@@ -54,13 +54,13 @@ test("real Space key cycles world leader without falling back to generic player 
     );
     expect(moved.every((sample) => sample.moved)).toBe(true);
     expect(moved.every((sample) => sample.hasWalkSheet)).toBe(true);
-    expect(new Set(moved.map((sample) => sample.frameIndex)).size).toBeGreaterThan(
-      1,
-    );
+    expect(
+      new Set(moved.map((sample) => sample.frameIndex)).size,
+    ).toBeGreaterThan(1);
   }
-  expect(new Set(seen.map((snapshot) => snapshot.leaderClass)).size).toBeGreaterThan(
-    1,
-  );
+  expect(
+    new Set(seen.map((snapshot) => snapshot.leaderClass)).size,
+  ).toBeGreaterThan(1);
 
   const screenshotPath = testInfo.outputPath(
     `world-space-cycle-${Date.now()}.png`,

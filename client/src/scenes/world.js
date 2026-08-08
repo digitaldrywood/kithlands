@@ -104,7 +104,9 @@ function setPlayerWalkFrame(scene, frame) {
       walkFrameIndex(scene.playerDir, selectedFrame, scene.leaderClass),
     );
   } else {
-    scene.player.setTexture(scene.playerFallbackTexture || `player_${scene.playerDir}`);
+    scene.player.setTexture(
+      scene.playerFallbackTexture || `player_${scene.playerDir}`,
+    );
   }
 }
 
@@ -543,7 +545,11 @@ export class WorldScene extends Phaser.Scene {
     this.interactPrompt = null;
     this.input.keyboard.addCapture(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.handleWindowSpaceCycle = (event) => {
-      if (event.code !== "Space" && event.key !== " " && event.key !== "Spacebar") {
+      if (
+        event.code !== "Space" &&
+        event.key !== " " &&
+        event.key !== "Spacebar"
+      ) {
         return;
       }
       event.preventDefault();
@@ -845,7 +851,8 @@ export class WorldScene extends Phaser.Scene {
 
     if (!randomEncountersDisabledForDebug()) {
       // Random encounter chance varies by terrain tile and transport tier.
-      const encounterMult = this.gameState.transport?.encounter_rate_mult ?? 1.0;
+      const encounterMult =
+        this.gameState.transport?.encounter_rate_mult ?? 1.0;
       const chance = encounterChanceForStep({
         tile,
         stepCount: this.stepCount,

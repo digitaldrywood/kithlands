@@ -249,7 +249,9 @@ test.describe("shop compare flow", () => {
     );
     expect(extraBuy.error).toBeFalsy();
 
-    await page.evaluate(() => window.__kithlandsTest.openCharacterDetail(0, "Town"));
+    await page.evaluate(() =>
+      window.__kithlandsTest.openCharacterDetail(0, "Town"),
+    );
     await page.waitForFunction(
       () => window.__kithlandsTest.sceneFlags("Town").characterDetailOpen,
     );
