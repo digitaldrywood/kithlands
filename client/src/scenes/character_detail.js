@@ -1,6 +1,7 @@
 import { drawPanel, drawButton, drawLabeledStatBar } from "../ui/panel.js";
 import { hpBarColorPct } from "../systems/hpBar.js";
 import { showEquipPicker } from "./world_menu.js";
+import { showGemWorkshop } from "./gem_workshop.js";
 import { buildFieldSpellList, showFieldMagicMenu } from "./field_magic.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 
@@ -124,6 +125,11 @@ export function openCharacterDetail(scene, partyIndex) {
     "WEAPON",
     equip.weapon_name,
     () => handOffToEquipPicker(scene, partyIndex, "weapon"),
+    {
+      item: equip.weapon_item,
+      onSocket: () =>
+        handOffToGemWorkshop(scene, partyIndex, equip.weapon_item?.instance_id),
+    },
   );
   drawEquipSlot(
     scene,
@@ -133,6 +139,11 @@ export function openCharacterDetail(scene, partyIndex) {
     "ARMOR",
     equip.armor_name,
     () => handOffToEquipPicker(scene, partyIndex, "armor"),
+    {
+      item: equip.armor_item,
+      onSocket: () =>
+        handOffToGemWorkshop(scene, partyIndex, equip.armor_item?.instance_id),
+    },
   );
 
   // Bottom strip: spell list.
@@ -201,6 +212,15 @@ function handOffToEquipPicker(scene, partyIndex, type) {
   closeCharacterDetail(scene);
   showEquipPicker(scene, partyIndex, type, {
     returnTo: { type: "character", index: partyIndex },
+  });
+}
+
+function handOffToGemWorkshop(scene, partyIndex, instanceID) {
+  if (!instanceID) return;
+  closeCharacterDetail(scene);
+  showGemWorkshop(scene, {
+    preselectedInstanceID: instanceID,
+    onClose: () => openCharacterDetail(scene, partyIndex),
   });
 }
 
@@ -372,7 +392,16 @@ function colorHex(color) {
   return `#${color.toString(16).padStart(6, "0")}`;
 }
 
-function drawEquipSlot(scene, group, cx, cy, slotLabel, itemName, onClick) {
+function drawEquipSlot(
+  scene,
+  group,
+  cx,
+  cy,
+  slotLabel,
+  itemName,
+  onClick,
+  { item, onSocket } = {},
+) {
   const card = scene.add
     .rectangle(cx, cy, 220, 90, 0x1a2a4a, 0.95)
     .setStrokeStyle(2, 0x4488ff)
@@ -408,15 +437,54 @@ function drawEquipSlot(scene, group, cx, cy, slotLabel, itemName, onClick) {
   );
   group.push(
     scene.add
-      .text(cx, cy + 28, "click to equip", {
+      .text(cx - 48, cy + 29, "CHANGE", {
         fontSize: "9px",
-        color: "#88aacc",
+        color: "#88ccff",
         fontFamily: "monospace",
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(DEPTH_LABEL),
   );
+
+  const hasOpenSocket = item?.sockets?.some((socket) => !socket.gem_id);
+  if (item?.instance_id && hasOpenSocket) {
+    const socketButton = drawButton(
+      scene,
+      cx + 55,
+      cy + 29,
+      92,
+      22,
+      "SOCKET",
+      onSocket,
+      {
+        depth: DEPTH_LABEL,
+        fontSize: "9px",
+        fill: 0x1f5d48,
+        fillHover: 0x2b7d62,
+        stroke: 0xa5f0c8,
+        strokeWidth: 1,
+      },
+    );
+    group.push(socketButton);
+  } else {
+    group.push(
+      scene.add
+        .text(
+          cx + 55,
+          cy + 29,
+          item?.instance_id ? "SOCKETS FULL" : "NO SOCKETS",
+          {
+            fontSize: "8px",
+            color: "#6f819c",
+            fontFamily: "monospace",
+          },
+        )
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(DEPTH_LABEL),
+    );
+  }
 }
 
 function drawSpells(scene, group, member, partyIndex, x, y) {

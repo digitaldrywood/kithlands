@@ -12,17 +12,17 @@
   ],
   "gems": [
     {"id": "ember_shard", "name": "Ember Shard", "tier": 1, "required_level": 1, "description": "Adds a small equipment bonus.", "effects": [{"kind": "weapon", "stat": "power", "value": 1}, {"kind": "armor", "stat": "absorb", "value": 1}]},
-    {"id": "ember_gem", "name": "Ember Gem", "tier": 2, "required_level": 8, "description": "Adds a moderate equipment bonus.", "effects": [{"kind": "weapon", "stat": "power", "value": 3}, {"kind": "armor", "stat": "absorb", "value": 2}]},
+    {"id": "ember_gem", "name": "Ember Gem", "tier": 2, "required_level": 1, "description": "Adds a moderate equipment bonus.", "effects": [{"kind": "weapon", "stat": "power", "value": 3}, {"kind": "armor", "stat": "absorb", "value": 2}]},
     {"id": "ember_crystal", "name": "Ember Crystal", "tier": 4, "required_level": 20, "description": "Adds a powerful equipment bonus.", "effects": [{"kind": "weapon", "stat": "power", "value": 7}, {"kind": "armor", "stat": "absorb", "value": 5}]},
     {"id": "ward_shard", "name": "Ward Shard", "tier": 1, "required_level": 1, "description": "Favors armor when socketed.", "effects": [{"kind": "weapon", "stat": "power", "value": 1}, {"kind": "armor", "stat": "absorb", "value": 2}]},
-    {"id": "ward_gem", "name": "Ward Gem", "tier": 2, "required_level": 8, "description": "Strongly favors armor when socketed.", "effects": [{"kind": "weapon", "stat": "power", "value": 2}, {"kind": "armor", "stat": "absorb", "value": 4}]},
+    {"id": "ward_gem", "name": "Ward Gem", "tier": 2, "required_level": 1, "description": "Strongly favors armor when socketed.", "effects": [{"kind": "weapon", "stat": "power", "value": 2}, {"kind": "armor", "stat": "absorb", "value": 4}]},
     {"id": "ward_crystal", "name": "Ward Crystal", "tier": 4, "required_level": 20, "description": "Greatly strengthens socketed armor.", "effects": [{"kind": "weapon", "stat": "power", "value": 4}, {"kind": "armor", "stat": "absorb", "value": 8}]}
   ],
   "recipes": [
     {"id": "refine_ember_gem", "name": "Refine Ember Gem", "required_level": 1, "inputs": [{"gem_id": "ember_shard", "count": 3}], "output": {"gem_id": "ember_gem", "count": 1}},
-    {"id": "refine_ember_crystal", "name": "Refine Ember Crystal", "required_level": 16, "inputs": [{"gem_id": "ember_gem", "count": 3}], "output": {"gem_id": "ember_crystal", "count": 1}},
+    {"id": "refine_ember_crystal", "name": "Refine Ember Crystal", "required_level": 20, "inputs": [{"gem_id": "ember_gem", "count": 3}], "output": {"gem_id": "ember_crystal", "count": 1}},
     {"id": "refine_ward_gem", "name": "Refine Ward Gem", "required_level": 1, "inputs": [{"gem_id": "ward_shard", "count": 3}], "output": {"gem_id": "ward_gem", "count": 1}},
-    {"id": "refine_ward_crystal", "name": "Refine Ward Crystal", "required_level": 16, "inputs": [{"gem_id": "ward_gem", "count": 3}], "output": {"gem_id": "ward_crystal", "count": 1}}
+    {"id": "refine_ward_crystal", "name": "Refine Ward Crystal", "required_level": 20, "inputs": [{"gem_id": "ward_gem", "count": 3}], "output": {"gem_id": "ward_crystal", "count": 1}}
   ],
   "starter": {"gem_id": "ember_shard", "gem_count": 3, "min_sockets": 1}
 }

@@ -4,39 +4,45 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/digitaldrywood/kithlands/internal/gamedata"
 	"github.com/digitaldrywood/kithlands/internal/inventory"
 	"github.com/digitaldrywood/kithlands/internal/loot"
 )
 
+type lootGrant struct {
+	Name       string
+	InstanceID string
+}
+
 // grantLoot is the authoritative acquisition path for combat and starter loot.
-func (g *Game) grantLoot(itemID string, itemLevel, minSockets int) (string, error) {
+func (g *Game) grantLoot(itemID string, itemLevel, minSockets int) (lootGrant, error) {
 	if consumable := g.findConsumable(itemID); consumable != nil {
 		g.inv.Consumables[itemID]++
-		return consumable.Name, nil
+		return lootGrant{Name: consumable.Name}, nil
 	}
 	if gem := g.gd.GemByID(itemID); gem != nil {
 		g.inv.Normalize()
 		g.inv.Gems[itemID]++
-		return gem.Name, nil
+		return lootGrant{Name: gem.Name}, nil
 	}
 	if g.gd.WeaponByID(itemID) == nil && g.gd.ArmorByID(itemID) == nil {
-		return "", fmt.Errorf("loot item %q not found", itemID)
+		return lootGrant{}, fmt.Errorf("loot item %q not found", itemID)
 	}
 
 	g.lootRollSeq++
 	rolled, err := loot.RollEquipment(g.gd, itemID, itemLevel, minSockets, loot.RNGFor(g.rngSeed, g.lootRollSeq))
 	if err != nil {
-		return "", fmt.Errorf("rolling equipment %q: %w", itemID, err)
+		return lootGrant{}, fmt.Errorf("rolling equipment %q: %w", itemID, err)
 	}
 	id, err := g.inv.AddInstance(rolled)
 	if err != nil {
-		return "", fmt.Errorf("storing equipment %q: %w", itemID, err)
+		return lootGrant{}, fmt.Errorf("storing equipment %q: %w", itemID, err)
 	}
 	resolved, err := inventory.ResolveInstance(g.inv.Instance(id), g.gd)
 	if err != nil {
-		return "", fmt.Errorf("resolving equipment %q: %w", id, err)
+		return lootGrant{}, fmt.Errorf("resolving equipment %q: %w", id, err)
 	}
-	return resolved.Name, nil
+	return lootGrant{Name: resolved.Name, InstanceID: id}, nil
 }
 
 func (g *Game) grantStarterLoot() error {
@@ -55,7 +61,11 @@ func (g *Game) grantStarterLoot() error {
 	if baseID == "" {
 		return nil
 	}
-	_, err := g.grantLoot(baseID, 1, starter.MinSockets)
+	grant, err := g.grantLoot(baseID, 1, starter.MinSockets)
+	if err != nil || grant.InstanceID == "" {
+		return err
+	}
+	_, err = g.inv.EquipInstance(0, grant.InstanceID, g.party[0].ClassID, g.party[0].Level, g.gd)
 	return err
 }
 
@@ -79,7 +89,7 @@ func (g *Game) rolledItemState(id string, item *inventory.EquipmentInstance) (It
 		prefix = "arm_"
 	}
 	state := ItemState{
-		ID: prefix + id, InstanceID: id, Name: resolved.Name, Count: 1,
+		ID: prefix + id, InstanceID: id, Kind: item.Kind, Name: resolved.Name, Count: 1,
 		ItemLevel: item.ItemLevel, RequiredLevel: item.RequiredLevel,
 		Power: resolved.Power, Absorb: resolved.Absorb,
 	}
@@ -112,6 +122,7 @@ func (g *Game) fillGemState(state *GameState) {
 		state.Gems = append(state.Gems, GemState{
 			ID: id, Name: gem.Name, Count: count, Tier: gem.Tier,
 			RequiredLevel: gem.RequiredLevel, Description: gem.Description,
+			Effects: gemEffectStates(gem.Effects),
 		})
 	}
 	level := g.maxPartyLevel()
@@ -132,9 +143,23 @@ func (g *Game) fillGemState(state *GameState) {
 }
 
 func (g *Game) gemAmountState(gemID string, count int) GemAmountState {
-	state := GemAmountState{GemID: gemID, Count: count}
+	state := GemAmountState{GemID: gemID, Count: count, Owned: g.inv.Gems[gemID]}
 	if gem := g.gd.GemByID(gemID); gem != nil {
 		state.GemName = gem.Name
+		state.Tier = gem.Tier
+		state.RequiredLevel = gem.RequiredLevel
+		state.Description = gem.Description
+		state.Effects = gemEffectStates(gem.Effects)
 	}
 	return state
+}
+
+func gemEffectStates(effects []gamedata.GemEffect) []GemEffectState {
+	states := make([]GemEffectState, 0, len(effects))
+	for _, effect := range effects {
+		states = append(states, GemEffectState{
+			Kind: effect.Kind, Stat: effect.Stat, Value: effect.Value,
+		})
+	}
+	return states
 }

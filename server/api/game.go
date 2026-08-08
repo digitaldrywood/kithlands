@@ -196,6 +196,7 @@ type TransportInfo struct {
 type ItemState struct {
 	ID            string            `json:"id"`
 	InstanceID    string            `json:"instance_id,omitempty"`
+	Kind          string            `json:"kind,omitempty"`
 	Name          string            `json:"name"`
 	Count         int               `json:"count"`
 	Rarity        string            `json:"rarity,omitempty"`
@@ -233,12 +234,19 @@ type ItemSocketState struct {
 }
 
 type GemState struct {
-	ID            string `json:"id"`
-	Name          string `json:"name"`
-	Count         int    `json:"count"`
-	Tier          int    `json:"tier"`
-	RequiredLevel int    `json:"required_level"`
-	Description   string `json:"description"`
+	ID            string           `json:"id"`
+	Name          string           `json:"name"`
+	Count         int              `json:"count"`
+	Tier          int              `json:"tier"`
+	RequiredLevel int              `json:"required_level"`
+	Description   string           `json:"description"`
+	Effects       []GemEffectState `json:"effects"`
+}
+
+type GemEffectState struct {
+	Kind  string `json:"kind"`
+	Stat  string `json:"stat"`
+	Value int    `json:"value"`
 }
 
 type GemRecipeState struct {
@@ -251,26 +259,33 @@ type GemRecipeState struct {
 }
 
 type GemAmountState struct {
-	GemID   string `json:"gem_id"`
-	GemName string `json:"gem_name"`
-	Count   int    `json:"count"`
+	GemID         string           `json:"gem_id"`
+	GemName       string           `json:"gem_name"`
+	Count         int              `json:"count"`
+	Owned         int              `json:"owned"`
+	Tier          int              `json:"tier"`
+	RequiredLevel int              `json:"required_level"`
+	Description   string           `json:"description"`
+	Effects       []GemEffectState `json:"effects"`
 }
 
 type EquipState struct {
-	WeaponID          string `json:"weapon_id"`
-	WeaponInstanceID  string `json:"weapon_instance_id,omitempty"`
-	WeaponName        string `json:"weapon_name"`
-	WeaponPower       int    `json:"weapon_power,omitempty"`
-	WeaponHitPct      int    `json:"weapon_hit_pct,omitempty"`
-	WeaponCritPct     int    `json:"weapon_crit_pct,omitempty"`
-	WeaponElement     string `json:"weapon_element,omitempty"`
-	ArmorID           string `json:"armor_id"`
-	ArmorInstanceID   string `json:"armor_instance_id,omitempty"`
-	ArmorName         string `json:"armor_name"`
-	ArmorAbsorb       int    `json:"armor_absorb,omitempty"`
-	ArmorMagicDefense int    `json:"armor_magic_defense,omitempty"`
-	ArmorEvadePenalty int    `json:"armor_evade_penalty,omitempty"`
-	ArmorElement      string `json:"armor_element,omitempty"`
+	WeaponID          string     `json:"weapon_id"`
+	WeaponInstanceID  string     `json:"weapon_instance_id,omitempty"`
+	WeaponName        string     `json:"weapon_name"`
+	WeaponPower       int        `json:"weapon_power,omitempty"`
+	WeaponHitPct      int        `json:"weapon_hit_pct,omitempty"`
+	WeaponCritPct     int        `json:"weapon_crit_pct,omitempty"`
+	WeaponElement     string     `json:"weapon_element,omitempty"`
+	WeaponItem        *ItemState `json:"weapon_item,omitempty"`
+	ArmorID           string     `json:"armor_id"`
+	ArmorInstanceID   string     `json:"armor_instance_id,omitempty"`
+	ArmorName         string     `json:"armor_name"`
+	ArmorAbsorb       int        `json:"armor_absorb,omitempty"`
+	ArmorMagicDefense int        `json:"armor_magic_defense,omitempty"`
+	ArmorEvadePenalty int        `json:"armor_evade_penalty,omitempty"`
+	ArmorElement      string     `json:"armor_element,omitempty"`
+	ArmorItem         *ItemState `json:"armor_item,omitempty"`
 }
 
 type ShopItemState struct {
@@ -871,11 +886,17 @@ func (g *Game) fillInventoryState(state *GameState) {
 				es.WeaponName = resolved.Name
 				es.WeaponPower = resolved.Power
 			}
+			if item, err := g.rolledItemState(eq.WeaponInstanceID, g.inv.Instance(eq.WeaponInstanceID)); err == nil {
+				es.WeaponItem = &item
+			}
 		}
 		if eq.ArmorInstanceID != "" {
 			if resolved, err := inventory.ResolveInstance(g.inv.Instance(eq.ArmorInstanceID), g.gd); err == nil {
 				es.ArmorName = resolved.Name
 				es.ArmorAbsorb = resolved.Absorb
+			}
+			if item, err := g.rolledItemState(eq.ArmorInstanceID, g.inv.Instance(eq.ArmorInstanceID)); err == nil {
+				es.ArmorItem = &item
 			}
 		}
 		state.Equipment[i] = es

@@ -559,12 +559,12 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 		g.inv.Gold += totalGold
 		// Add dropped items to inventory
 		for _, drop := range drops {
-			itemName, err := g.grantLoot(drop.itemID, drop.itemLevel, 0)
+			grant, err := g.grantLoot(drop.itemID, drop.itemLevel, 0)
 			if err != nil {
 				g.logCombat(fmt.Sprintf("Loot error: %v", err), CombatActionEntry{Kind: "info"})
 				continue
 			}
-			g.logCombat(fmt.Sprintf("Found: %s!", itemName), CombatActionEntry{Kind: "info"})
+			g.logCombat(fmt.Sprintf("Found: %s!", grant.Name), CombatActionEntry{Kind: "info"})
 		}
 		// Snapshot who was dead at victory resolution BEFORE any XP is
 		// distributed and BEFORE restParty() heals them. The client uses this
@@ -1279,11 +1279,11 @@ func (g *Game) tryStealFrom(targetID int) (string, string, bool) {
 		return "", "", false
 	}
 	itemID := drops[g.rng.IntN(len(drops))]
-	itemName, err := g.grantLoot(itemID, monster.Tier, 0)
+	grant, err := g.grantLoot(itemID, monster.Tier, 0)
 	if err != nil {
 		return "", "", false
 	}
-	return itemID, itemName, true
+	return itemID, grant.Name, true
 }
 
 // resolveHealSpell applies a heal-effect spell to the appropriate target based

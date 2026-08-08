@@ -8,7 +8,11 @@ import { showOptions } from "./options.js";
 import { showItemMenu } from "./item_menu.js";
 import { hasCastableFieldSpell, showFieldMagicMenu } from "./field_magic.js";
 import { showFormationMenu } from "./formation_menu.js";
-import { gemWorkshopEnabled, showGemWorkshop } from "./gem_workshop.js";
+import {
+  craftableRecipeCount,
+  gemWorkshopEnabled,
+  showGemWorkshop,
+} from "./gem_workshop.js";
 import { inferPartyRow } from "./battle_layout.js";
 import { drawPanel, drawButton, drawLabeledStatBar } from "../ui/panel.js";
 import { hpBarColorPct } from "../systems/hpBar.js";
@@ -165,6 +169,7 @@ export function toggleMenu(scene) {
     ? gs.party.some((member) => hasCastableFieldSpell(member, gs.party))
     : false;
   const gemsEnabled = gemWorkshopEnabled(gs);
+  const readyGemRecipes = craftableRecipeCount(gs);
   layoutButtonRow(scene, scene.menuGroup, PANEL_CX, FOOTER_TOP + 16, [
     {
       label: "CHARACTER",
@@ -206,7 +211,7 @@ export function toggleMenu(scene) {
       },
     },
     {
-      label: "GEMS",
+      label: readyGemRecipes > 0 ? `GEMS (${readyGemRecipes})` : "GEMS",
       hotkey: "G",
       primary: true,
       w: 118,

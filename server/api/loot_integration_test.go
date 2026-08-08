@@ -21,22 +21,31 @@ func TestStarterLootCanBeSocketedAndEquippedAtLevelOne(t *testing.T) {
 	}
 
 	state := game.State()
-	var starter ItemStateView
-	for _, item := range state.Items {
-		if item.InstanceID != "" {
-			starter = ItemStateView{ID: item.InstanceID, Power: item.Power, Sockets: len(item.Sockets)}
-			break
-		}
+	item := state.Equipment[0].WeaponItem
+	starter := ItemStateView{}
+	if item != nil {
+		starter = ItemStateView{ID: item.InstanceID, Power: item.Power, Sockets: len(item.Sockets)}
 	}
 	if starter.ID == "" || starter.Sockets < 1 {
-		t.Fatalf("starter rolled item missing an open socket: %+v", state.Items)
+		t.Fatalf("starter rolled item not equipped with an open socket: %+v", state.Equipment[0])
+	}
+	if item.Kind != "weapon" {
+		t.Fatalf("starter kind = %q, want weapon", item.Kind)
 	}
 	if len(state.Gems) != 1 || state.Gems[0].ID != "ember_shard" || state.Gems[0].Count != 3 {
 		t.Fatalf("starter gems = %+v, want 3 ember shards", state.Gems)
 	}
+	if len(state.Gems[0].Effects) != 2 {
+		t.Fatalf("starter gem effects = %+v, want weapon and armor previews", state.Gems[0].Effects)
+	}
 	craftable := false
 	for _, recipe := range state.GemRecipes {
-		craftable = craftable || recipe.ID == "refine_ember_gem" && recipe.Craftable
+		if recipe.ID == "refine_ember_gem" {
+			craftable = recipe.Craftable
+			if len(recipe.Inputs) != 1 || recipe.Inputs[0].Owned != 3 || len(recipe.Output.Effects) != 2 {
+				t.Fatalf("starter recipe preview = %+v", recipe)
+			}
+		}
 	}
 	if !craftable {
 		t.Fatalf("starter recipes not exposed as craftable: %+v", state.GemRecipes)
@@ -48,24 +57,16 @@ func TestStarterLootCanBeSocketedAndEquippedAtLevelOne(t *testing.T) {
 		t.Fatalf("SocketGem: %v", err)
 	}
 	afterSocket := game.State()
-	socketedPower := 0
-	for _, item := range afterSocket.Items {
-		if item.InstanceID == starter.ID {
-			socketedPower = item.Power
-			if item.Sockets[0].GemID != "ember_shard" {
-				t.Fatalf("socket state = %+v", item.Sockets)
-			}
-		}
+	socketed := afterSocket.Equipment[0].WeaponItem
+	if socketed == nil || socketed.Sockets[0].GemID != "ember_shard" {
+		t.Fatalf("socket state = %+v", socketed)
 	}
+	socketedPower := socketed.Power
 	if socketedPower != starter.Power+1 {
 		t.Fatalf("socketed power = %d, want %d", socketedPower, starter.Power+1)
 	}
-	if err := game.EquipItem(0, starter.ID, "weapon"); err != nil {
-		t.Fatalf("EquipItem: %v", err)
-	}
-	afterEquip := game.State()
-	if afterEquip.Equipment[0].WeaponInstanceID != starter.ID || afterEquip.Equipment[0].WeaponPower != socketedPower {
-		t.Fatalf("equipped state = %+v, want instance %s power %d", afterEquip.Equipment[0], starter.ID, socketedPower)
+	if afterSocket.Equipment[0].WeaponInstanceID != starter.ID || afterSocket.Equipment[0].WeaponPower != socketedPower {
+		t.Fatalf("equipped state = %+v, want instance %s power %d", afterSocket.Equipment[0], starter.ID, socketedPower)
 	}
 }
 

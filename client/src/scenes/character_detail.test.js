@@ -3,12 +3,16 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("./world_menu.js", () => ({
   showEquipPicker: vi.fn(),
 }));
+vi.mock("./gem_workshop.js", () => ({
+  showGemWorkshop: vi.fn(),
+}));
 
 import {
   openCharacterDetail,
   closeCharacterDetail,
 } from "./character_detail.js";
 import { showEquipPicker } from "./world_menu.js";
+import { showGemWorkshop } from "./gem_workshop.js";
 import { isWorldInputLocked } from "../systems/modalLock.js";
 
 function makeRectangle() {
@@ -158,6 +162,14 @@ function makeScene(partySize = 4) {
       equipment: Array.from({ length: partySize }, (_, idx) => ({
         weapon_name: `Sword ${idx + 1}`,
         weapon_power: 5 + idx,
+        weapon_item: {
+          id: `wpn_gear_${idx + 1}`,
+          instance_id: `gear_${idx + 1}`,
+          kind: "weapon",
+          name: `Sword ${idx + 1}`,
+          power: 5 + idx,
+          sockets: [{ index: 0 }],
+        },
         armor_name: `Armor ${idx + 1}`,
         armor_absorb: 2 + idx,
       })),
@@ -243,6 +255,7 @@ function isDestroyed(entry) {
 
 beforeEach(() => {
   showEquipPicker.mockClear();
+  showGemWorkshop.mockClear();
 });
 
 describe("character detail navigation", () => {
@@ -337,6 +350,29 @@ describe("character detail navigation", () => {
 
     expect(currentTextValues(scene)).toContain("ATK: 11");
     expect(currentTextValues(scene)).toContain("STR: 6");
+  });
+
+  it("opens socketing directly from the equipped weapon and returns to the character", () => {
+    const scene = makeScene(1);
+
+    openCharacterDetail(scene, 0);
+    const socketButton = scene.characterDetailGroup.find(
+      (entry) => entry?.label?.text === "SOCKET",
+    );
+    expect(socketButton).toBeTruthy();
+
+    socketButton.bg.handlers.pointerdown();
+    socketButton.bg.handlers.pointerup();
+
+    expect(showGemWorkshop).toHaveBeenCalledTimes(1);
+    expect(showGemWorkshop.mock.calls[0][0]).toBe(scene);
+    expect(showGemWorkshop.mock.calls[0][1].preselectedInstanceID).toBe(
+      "gear_1",
+    );
+
+    showGemWorkshop.mock.calls[0][1].onClose();
+    expect(scene.characterDetailIndex).toBe(0);
+    expect(currentTextValues(scene)).toContain("Hero 1");
   });
 
   it("keeps field healing selectable and explains the next step", () => {

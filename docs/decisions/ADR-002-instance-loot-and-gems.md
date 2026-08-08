@@ -27,6 +27,9 @@ Reference behavior:
 - https://classic.battle.net/diablo2exp/items/socketeditems.shtml
 - https://classic.battle.net/diablo2exp/items/gems.shtml
 - https://classic.battle.net/diablo2exp/items/cube.shtml
+- https://manuals.plus/m/357542e56222a95c482aab01f67af3a3f5b303e5f9c9a775a9e3c8ba19db8da4.pdf
+- https://www.nngroup.com/articles/recognition-and-recall/
+- https://www.nngroup.com/articles/slips/
 
 ## Decision
 
@@ -42,10 +45,21 @@ The Go server owns rolling, item identity, ownership checks, socket mutation,
 recipe transactions, and resolved stats. The client receives resolved values
 and sends only instance IDs and requested actions.
 
+The client exposes socketing from both the party-level workshop and a
+character's equipped gear. Selecting a gem or recipe is non-mutating: the UI
+shows current and proposed equipment/character values, ingredient ownership,
+and the resulting socket bonuses before a separate confirmation action.
+Recommendations rank only compatible, level-eligible effects already supplied
+by the authoritative server; they do not create additional game rules.
+
 Normal monster drop tables control which base item and gem tiers can appear.
 Affix eligibility is additionally constrained by item level. Authored sequence
 break rewards may bypass normal acquisition gates; there is no universal base
 item equip lock.
+
+Shard-to-gem refinement and the resulting tier-2 gems are usable at level 1 so
+the starter recipe is a real choice rather than a trap. Crystal recipes and
+crystal socketing remain level-gated endgame progression.
 
 Existing static equipment and legacy saves remain valid. Additive JSON fields
 avoid a database migration. A persisted loot sequence prevents item identity
