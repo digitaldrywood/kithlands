@@ -249,7 +249,7 @@ function drawWorkshopFrame(scene, overlay, onClose) {
     fontFamily: "Georgia",
     color: COLORS.gold,
   });
-  addText(
+  const subtitle = addText(
     scene,
     overlay,
     50,
@@ -267,6 +267,7 @@ function drawWorkshopFrame(scene, overlay, onClose) {
     strokeWidth: 2,
   });
   overlay.push(close);
+  return { subtitle };
 }
 
 function drawChoiceRow(
@@ -346,6 +347,8 @@ function renderSocketMode(scene, group, state) {
   const recommendations =
     selectedSocket >= 0 ? recommendedGems(gs, selectedItem) : [];
   const bestGemID = recommendations[0]?.gem?.id || "";
+  const justCrafted =
+    !!selectedGem && selectedGem.id === state.justCraftedGemID;
 
   addText(scene, group, 48, 148, "1  CHOOSE EQUIPMENT", {
     fontSize: "12px",
@@ -428,7 +431,15 @@ function renderSocketMode(scene, group, state) {
     color: COLORS.gold,
   });
   addPanel(scene, group, 504, 168, 248, 330);
-  renderSocketPreview(scene, group, gs, selectedItem, selectedGem, bestGemID);
+  renderSocketPreview(
+    scene,
+    group,
+    gs,
+    selectedItem,
+    selectedGem,
+    bestGemID,
+    justCrafted,
+  );
   const preview =
     selectedSocket >= 0 ? socketPreview(selectedItem, selectedGem, gs) : null;
   const confirmButton = drawButton(
@@ -441,7 +452,9 @@ function renderSocketMode(scene, group, state) {
       ? "WORKING..."
       : selectedItem && selectedSocket < 0
         ? "SOCKET FILLED"
-        : "CONFIRM & SOCKET",
+        : justCrafted
+          ? `SOCKET ${selectedGem.name.toUpperCase()} NOW`
+          : "CONFIRM & SOCKET",
     confirm,
     {
       depth: DEPTH,
@@ -455,7 +468,15 @@ function renderSocketMode(scene, group, state) {
   group.push(confirmButton);
 }
 
-function renderSocketPreview(scene, group, gs, item, gem, bestGemID) {
+function renderSocketPreview(
+  scene,
+  group,
+  gs,
+  item,
+  gem,
+  bestGemID,
+  justCrafted,
+) {
   if (!item) {
     addText(scene, group, 520, 190, "Choose equipment to see its sockets.", {
       color: COLORS.muted,
@@ -531,11 +552,18 @@ function renderSocketPreview(scene, group, gs, item, gem, bestGemID) {
   }
   const preview = socketPreview(item, gem, gs);
   if (!preview) return;
-  addText(scene, group, 520, 266, "PREVIEW — NOT APPLIED", {
-    fontSize: "9px",
-    fontStyle: "bold",
-    color: COLORS.warning,
-  });
+  addText(
+    scene,
+    group,
+    520,
+    266,
+    justCrafted ? "STEP 2 OF 2 — WEAPON STILL OPEN" : "PREVIEW — NOT APPLIED",
+    {
+      fontSize: "9px",
+      fontStyle: "bold",
+      color: COLORS.warning,
+    },
+  );
   addText(scene, group, 520, 288, gem.name, {
     fontSize: "13px",
     fontStyle: "bold",
@@ -627,7 +655,7 @@ function renderRefineMode(scene, group, state) {
     476,
     260,
     38,
-    state.busy ? "WORKING..." : "REFINE GEM",
+    state.busy ? "WORKING..." : "CREATE GEM — THEN SOCKET",
     state.confirmRecipe,
     {
       depth: DEPTH,
@@ -718,7 +746,7 @@ function renderRecipePreview(scene, group, recipe, gs, recommendedID) {
     group,
     396,
     420,
-    "Refining creates the gem; it does not socket it automatically.",
+    "Step 1: Create the gem. Step 2: Socket it on the next screen.",
     { fontSize: "9px", color: COLORS.muted },
   );
 }
@@ -737,6 +765,7 @@ export function showGemWorkshop(
   let selectedRecipeID = "";
   let notice = "";
   let noticeIsError = false;
+  let justCraftedGemID = "";
 
   const close = () => {
     clearGroup(content);
@@ -748,7 +777,7 @@ export function showGemWorkshop(
     resumeWorldFor(scene, "gem_workshop");
     if (onClose) onClose();
   };
-  drawWorkshopFrame(scene, overlay, close);
+  const frame = drawWorkshopFrame(scene, overlay, close);
 
   const escHandler = () => close();
   scene.input.keyboard.once("keydown-ESC", escHandler);
@@ -806,6 +835,9 @@ export function showGemWorkshop(
     await runAction(
       () => socketGem(scene.gameState.id, selectedGearID, socket, gem.id),
       `✓ ${gem.name} socketed. ${item.name} is now socketed.`,
+      () => {
+        justCraftedGemID = "";
+      },
     );
   };
 
@@ -820,6 +852,7 @@ export function showGemWorkshop(
       () => {
         mode = "socket";
         selectedGemID = recipe.output.gem_id;
+        justCraftedGemID = recipe.output.gem_id;
       },
     );
   };
@@ -864,6 +897,7 @@ export function showGemWorkshop(
         busy,
         selectedGearID,
         selectedGemID,
+        justCraftedGemID,
         selectGear,
         selectGem: (gemID) => {
           selectedGemID = gemID;
@@ -872,6 +906,13 @@ export function showGemWorkshop(
         confirm: confirmSocket,
       });
     }
+    frame.subtitle.setText(
+      notice ||
+        "Choose first. Review the exact result. Confirm only when it looks right.",
+    );
+    frame.subtitle.setColor(
+      notice ? (noticeIsError ? COLORS.bad : COLORS.warning) : COLORS.muted,
+    );
     if (notice) {
       addText(scene, content, 50, 510, notice, {
         fontSize: "10px",

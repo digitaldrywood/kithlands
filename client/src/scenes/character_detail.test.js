@@ -375,6 +375,22 @@ describe("character detail navigation", () => {
     expect(currentTextValues(scene)).toContain("Hero 1");
   });
 
+  it("shows the applied gem by name instead of another socket action", () => {
+    const scene = makeScene(1);
+    scene.gameState.equipment[0].weapon_item.sockets = [
+      { index: 0, gem_id: "ember_gem", gem_name: "Ember Gem" },
+    ];
+
+    openCharacterDetail(scene, 0);
+
+    expect(currentTextValues(scene)).toContain("◆ EMBER GEM");
+    expect(
+      scene.characterDetailGroup.some(
+        (entry) => entry?.label?.text === "SOCKET",
+      ),
+    ).toBe(false);
+  });
+
   it("keeps field healing selectable and explains the next step", () => {
     const scene = makeScene(2);
     scene.gameState.party = [

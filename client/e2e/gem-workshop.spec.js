@@ -119,7 +119,10 @@ test("previews and sockets equipped gear from the character screen", async ({
   expect(recipeTexts.some((text) => text.includes("Weapon Power:"))).toBe(true);
   expect(recipeTexts.some((text) => text.includes("Armor Absorb:"))).toBe(true);
   expect(recipeTexts.some((text) => text.includes("owned 3"))).toBe(true);
-  expect(recipeTexts).toContain("REFINE GEM");
+  expect(recipeTexts).toContain("CREATE GEM — THEN SOCKET");
+  expect(
+    recipeTexts.some((text) => text.includes("Step 1: Create the gem")),
+  ).toBe(true);
 
   await page.screenshot({
     path: `tmp/gem-workshop-recipe-preview-${RUN_ID}.png`,
@@ -127,37 +130,55 @@ test("previews and sockets equipped gear from the character screen", async ({
   });
 
   await page.evaluate(() =>
-    window.__kithlandsTest.clickInteractiveText("SOCKET GEMS", "World"),
+    window.__kithlandsTest.clickInteractiveText(
+      "CREATE GEM — THEN SOCKET",
+      "World",
+    ),
   );
   await page.waitForFunction(() =>
     window.__kithlandsTest
       .visibleTexts("World")
-      .some((entry) => entry.text === "CONFIRM & SOCKET"),
+      .some((entry) => entry.text === "SOCKET EMBER GEM NOW"),
+  );
+  const craftedTexts = await page.evaluate(() =>
+    window.__kithlandsTest.visibleTexts("World").map((entry) => entry.text),
+  );
+  expect(craftedTexts).toContain("STEP 2 OF 2 — WEAPON STILL OPEN");
+  expect(craftedTexts.some((text) => text.includes("not socketed yet"))).toBe(
+    true,
   );
   await page.evaluate(() =>
-    window.__kithlandsTest.clickInteractiveText("CONFIRM & SOCKET", "World"),
+    window.__kithlandsTest.clickInteractiveText(
+      "SOCKET EMBER GEM NOW",
+      "World",
+    ),
   );
-  await page.waitForFunction((instanceID) => {
+  await page.waitForFunction(() => {
     const state = window.__kithlandsTest.gameState("World");
     return state.equipment[0].weapon_item?.sockets?.some(
-      (socket) => socket.gem_id === "ember_shard",
+      (socket) => socket.gem_id === "ember_gem",
     );
-  }, starterItem.instance_id);
+  });
 
   const socketed = await page.evaluate(() =>
     window.__kithlandsTest.gameState("World"),
   );
-  expect(socketed.gems.find((gem) => gem.id === "ember_shard")?.count).toBe(2);
+  expect((socketed.gems || []).some((gem) => gem.id === "ember_gem")).toBe(
+    false,
+  );
+  expect((socketed.gems || []).some((gem) => gem.id === "ember_shard")).toBe(
+    false,
+  );
   expect(
     socketed.equipment[0].weapon_item?.sockets?.some(
-      (socket) => socket.gem_id === "ember_shard",
+      (socket) => socket.gem_id === "ember_gem",
     ),
   ).toBe(true);
   const appliedTexts = await page.evaluate(() =>
     window.__kithlandsTest.visibleTexts("World").map((entry) => entry.text),
   );
   expect(appliedTexts).toContain("✓ SOCKET APPLIED");
-  expect(appliedTexts).toContain("◆ Ember Shard   +1 Power");
+  expect(appliedTexts).toContain("◆ Ember Gem   +3 Power");
   expect(appliedTexts).toContain("SOCKET FILLED");
   expect(appliedTexts.some((text) => text.includes("is now socketed"))).toBe(
     true,
@@ -177,7 +198,12 @@ test("previews and sockets equipped gear from the character screen", async ({
   const returnedTexts = await page.evaluate(() =>
     window.__kithlandsTest.visibleTexts("World").map((entry) => entry.text),
   );
-  expect(returnedTexts).toContain("SOCKETS FULL");
+  expect(returnedTexts).toContain("◆ EMBER GEM");
+  expect(returnedTexts).not.toContain("SOCKET");
+  await page.screenshot({
+    path: `tmp/character-socket-filled-${RUN_ID}.png`,
+    fullPage: true,
+  });
 });
 
 test("keeps the comparison readable at desktop and mobile viewports", async ({
@@ -250,10 +276,13 @@ test("advertises a ready recipe and recommends its stronger output", async ({
   await page.waitForFunction(() =>
     window.__kithlandsTest
       .visibleTexts("World")
-      .some((entry) => entry.text === "REFINE GEM"),
+      .some((entry) => entry.text === "CREATE GEM — THEN SOCKET"),
   );
   await page.evaluate(() =>
-    window.__kithlandsTest.clickInteractiveText("REFINE GEM", "World"),
+    window.__kithlandsTest.clickInteractiveText(
+      "CREATE GEM — THEN SOCKET",
+      "World",
+    ),
   );
   await page.waitForFunction(() => {
     const gems = window.__kithlandsTest.gameState("World").gems;
@@ -274,7 +303,8 @@ test("advertises a ready recipe and recommends its stronger output", async ({
   expect(texts.some((text) => text.includes("Ember Gem"))).toBe(true);
   expect(texts.some((text) => text.includes("(+3)"))).toBe(true);
   expect(texts).toContain("★ BEST OWNED GEM FOR THIS ITEM");
-  expect(texts).toContain("PREVIEW — NOT APPLIED");
+  expect(texts).toContain("STEP 2 OF 2 — WEAPON STILL OPEN");
+  expect(texts).toContain("SOCKET EMBER GEM NOW");
   expect(texts.some((text) => text.includes("not socketed yet"))).toBe(true);
 
   await page.screenshot({

@@ -468,18 +468,22 @@ function drawEquipSlot(
     );
     group.push(socketButton);
   } else {
+    const appliedGems = (item?.sockets || [])
+      .filter((socket) => socket.gem_id)
+      .map((socket) => socket.gem_name || "GEM");
+    const socketStatus =
+      appliedGems.length > 0
+        ? `◆ ${appliedGems.join(" + ").toUpperCase()}`
+        : item?.instance_id
+          ? "SOCKETS FULL"
+          : "NO SOCKETS";
     group.push(
       scene.add
-        .text(
-          cx + 55,
-          cy + 29,
-          item?.instance_id ? "SOCKETS FULL" : "NO SOCKETS",
-          {
-            fontSize: "8px",
-            color: "#6f819c",
-            fontFamily: "monospace",
-          },
-        )
+        .text(cx + 55, cy + 29, socketStatus, {
+          fontSize: "8px",
+          color: appliedGems.length > 0 ? "#8ff0a4" : "#6f819c",
+          fontFamily: "monospace",
+        })
         .setOrigin(0.5)
         .setScrollFactor(0)
         .setDepth(DEPTH_LABEL),
