@@ -18,13 +18,8 @@ func RollEquipment(gd *gamedata.GameData, baseID string, itemLevel, minSockets i
 	if itemLevel < 1 {
 		itemLevel = 1
 	}
-	kind := ""
-	switch {
-	case gd.WeaponByID(baseID) != nil:
-		kind = "weapon"
-	case gd.ArmorByID(baseID) != nil:
-		kind = "armor"
-	default:
+	base := gd.EquipmentBaseByID(baseID)
+	if base == nil {
 		return inventory.EquipmentInstance{}, fmt.Errorf("equipment base %q not found", baseID)
 	}
 
@@ -33,14 +28,15 @@ func RollEquipment(gd *gamedata.GameData, baseID string, itemLevel, minSockets i
 		return inventory.EquipmentInstance{}, fmt.Errorf("no rarity eligible at item level %d", itemLevel)
 	}
 	rarity := weightedRarity(rarities, rng)
-	affixPool := eligibleAffixes(gd, kind, itemLevel)
+	affixPool := eligibleAffixes(gd, base.Kind, itemLevel)
 	affixCount := min(rollRange(rarity.Affixes, rng), len(affixPool))
 
 	item := inventory.EquipmentInstance{
 		BaseID:        baseID,
-		Kind:          kind,
+		Kind:          base.Kind,
+		Category:      base.Category,
 		ItemLevel:     itemLevel,
-		RequiredLevel: 1,
+		RequiredLevel: base.RequiredLevel,
 		RarityID:      rarity.ID,
 	}
 	for range affixCount {

@@ -13,6 +13,16 @@
     {"id": "ring_1", "name": "Ring I", "group": "jewelry", "order": 110, "accepts": ["ring"]},
     {"id": "ring_2", "name": "Ring II", "group": "jewelry", "order": 120, "accepts": ["ring"]}
   ],
+  "gear": [
+    {"id": "patched_mantle", "name": "Patched Mantle", "kind": "armor", "category": "shoulders", "tier": 1, "required_level": 1, "classes": ["warrior", "brawler", "rogue", "mender", "cinder", "wayfarer"], "stats": {"absorb": 1}, "buy_price": 10, "sell_price": 5},
+    {"id": "leather_gloves", "name": "Leather Gloves", "kind": "armor", "category": "gloves", "tier": 1, "required_level": 1, "classes": ["warrior", "brawler", "rogue", "mender", "cinder", "wayfarer"], "stats": {"absorb": 1, "hit_pct": 1}, "buy_price": 12, "sell_price": 6},
+    {"id": "traveler_belt", "name": "Traveler's Belt", "kind": "armor", "category": "belt", "tier": 1, "required_level": 1, "classes": ["warrior", "brawler", "rogue", "mender", "cinder", "wayfarer"], "stats": {"vit": 1}, "buy_price": 12, "sell_price": 6},
+    {"id": "trail_pants", "name": "Trail Pants", "kind": "armor", "category": "pants", "tier": 1, "required_level": 1, "classes": ["warrior", "brawler", "rogue", "mender", "cinder", "wayfarer"], "stats": {"absorb": 1}, "buy_price": 14, "sell_price": 7},
+    {"id": "trail_boots", "name": "Trail Boots", "kind": "armor", "category": "boots", "tier": 1, "required_level": 1, "classes": ["warrior", "brawler", "rogue", "mender", "cinder", "wayfarer"], "stats": {"agi": 1}, "buy_price": 14, "sell_price": 7},
+    {"id": "copper_amulet", "name": "Copper Amulet", "kind": "accessory", "category": "amulet", "tier": 1, "required_level": 1, "classes": ["warrior", "brawler", "rogue", "mender", "cinder", "wayfarer"], "stats": {"int": 1}, "buy_price": 18, "sell_price": 9},
+    {"id": "copper_ring", "name": "Copper Ring", "kind": "accessory", "category": "ring", "tier": 1, "required_level": 1, "classes": ["warrior", "brawler", "rogue", "mender", "cinder", "wayfarer"], "stats": {"lck": 1}, "buy_price": 18, "sell_price": 9},
+    {"id": "warrior_signet", "name": "Warrior's Signet", "kind": "accessory", "category": "ring", "tier": 2, "required_level": 3, "classes": ["warrior"], "stats": {"str": 2, "vit": 1}, "buy_price": 90, "sell_price": 45}
+  ],
   "weapons": [
     {
       "id": "wooden_club",

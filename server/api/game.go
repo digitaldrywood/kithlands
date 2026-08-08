@@ -197,6 +197,7 @@ type ItemState struct {
 	ID             string            `json:"id"`
 	InstanceID     string            `json:"instance_id,omitempty"`
 	Kind           string            `json:"kind,omitempty"`
+	Category       string            `json:"category,omitempty"`
 	Name           string            `json:"name"`
 	Count          int               `json:"count"`
 	Rarity         string            `json:"rarity,omitempty"`
@@ -205,6 +206,7 @@ type ItemState struct {
 	Affixes        []ItemAffixState  `json:"affixes,omitempty"`
 	Sockets        []ItemSocketState `json:"sockets,omitempty"`
 	AllowedClasses []string          `json:"allowed_classes,omitempty"`
+	Stats          map[string]int    `json:"stats,omitempty"`
 	// Power is set on weapon items (id starts with "wpn_") so the client
 	// can show equip-delta previews without shipping the weapon catalog.
 	Power int `json:"power,omitempty"`
@@ -287,6 +289,7 @@ type EquipState struct {
 	ArmorEvadePenalty int              `json:"armor_evade_penalty,omitempty"`
 	ArmorElement      string           `json:"armor_element,omitempty"`
 	ArmorItem         *ItemState       `json:"armor_item,omitempty"`
+	Bonuses           map[string]int   `json:"bonuses,omitempty"`
 	Loadout           []EquipSlotState `json:"loadout"`
 }
 
@@ -882,6 +885,7 @@ func (g *Game) fillInventoryState(state *GameState) {
 		es := EquipState{
 			WeaponID: eq.WeaponID, WeaponInstanceID: eq.WeaponInstanceID,
 			ArmorID: eq.ArmorID, ArmorInstanceID: eq.ArmorInstanceID,
+			Bonuses: g.inv.LoadoutStats(i, g.gd),
 		}
 		if w := g.gd.WeaponByID(eq.WeaponID); w != nil {
 			es.WeaponName = w.Name
@@ -924,27 +928,13 @@ func (g *Game) fillInventoryState(state *GameState) {
 				Accepts: append([]string(nil), def.Accepts...),
 				ItemID:  ref.ItemID, InstanceID: ref.InstanceID,
 			}
-			switch def.ID {
-			case inventory.MainHandSlot:
-				if es.WeaponItem != nil {
-					slot.Item = es.WeaponItem
-				} else if w := g.gd.WeaponByID(ref.ItemID); w != nil {
-					item := ItemState{
-						ID: "wpn_" + w.ID, Kind: "weapon", Name: w.Name, Count: 1,
-						Power: w.Power, AllowedClasses: append([]string(nil), w.Classes...),
-					}
+			if ref.InstanceID != "" {
+				if item, err := g.rolledItemState(ref.InstanceID, g.inv.Instance(ref.InstanceID)); err == nil {
 					slot.Item = &item
 				}
-			case inventory.BodySlot:
-				if es.ArmorItem != nil {
-					slot.Item = es.ArmorItem
-				} else if a := g.gd.ArmorByID(ref.ItemID); a != nil {
-					item := ItemState{
-						ID: "arm_" + a.ID, Kind: "armor", Name: a.Name, Count: 1,
-						Absorb: a.Absorb, AllowedClasses: append([]string(nil), a.Classes...),
-					}
-					slot.Item = &item
-				}
+			} else if base := g.gd.EquipmentBaseByID(ref.ItemID); base != nil {
+				item := baseItemState(base)
+				slot.Item = &item
 			}
 			es.Loadout = append(es.Loadout, slot)
 		}

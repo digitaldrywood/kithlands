@@ -219,6 +219,45 @@ func (inv *Inventory) WeaponLongRange(slot int, gd *gamedata.GameData) bool {
 	return false
 }
 
+// LoadoutStats resolves the complete equipped stat contribution for inventory
+// comparisons. Combat continues using its legacy weapon/armor accessors until
+// the expanded stat model is deliberately integrated there.
+func (inv *Inventory) LoadoutStats(slot int, gd *gamedata.GameData) map[string]int {
+	totals := make(map[string]int)
+	if slot < 0 || slot >= len(inv.Equipment) {
+		return totals
+	}
+	refs := make(map[string]EquippedItemRef, len(inv.Equipment[slot].Loadout)+2)
+	for slotID, ref := range inv.Equipment[slot].Loadout {
+		refs[slotID] = ref
+	}
+	if _, ok := refs[MainHandSlot]; !ok {
+		refs[MainHandSlot] = inv.Equipment[slot].Equipped(MainHandSlot)
+	}
+	if _, ok := refs[BodySlot]; !ok {
+		refs[BodySlot] = inv.Equipment[slot].Equipped(BodySlot)
+	}
+	for _, ref := range refs {
+		if ref.ItemID == "" {
+			continue
+		}
+		if ref.InstanceID != "" {
+			if resolved, err := ResolveInstance(inv.Instance(ref.InstanceID), gd); err == nil {
+				for stat, value := range resolved.Stats {
+					totals[stat] += value
+				}
+			}
+			continue
+		}
+		if base := gd.EquipmentBaseByID(ref.ItemID); base != nil {
+			for stat, value := range base.Stats {
+				totals[stat] += value
+			}
+		}
+	}
+	return totals
+}
+
 // BuyItem purchases a consumable from a shop.
 func (inv *Inventory) BuyItem(item *gamedata.Consumable, qty int) error {
 	cost := item.BuyPrice * qty

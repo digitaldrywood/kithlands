@@ -10,6 +10,7 @@ import (
 
 	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
+	"github.com/digitaldrywood/kithlands/internal/inventory"
 	"github.com/digitaldrywood/kithlands/internal/magic"
 )
 
@@ -62,16 +63,17 @@ func (s *Server) handleEquip(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Slot   int    `json:"slot"`    // party slot 0-3
-		ItemID string `json:"item_id"` // weapon or armor ID
-		Type   string `json:"type"`    // weapon, armor
+		Slot          int    `json:"slot"`           // party slot 0-3
+		EquipmentSlot string `json:"equipment_slot"` // authored loadout slot; optional for legacy weapon/body calls
+		ItemID        string `json:"item_id"`        // static base ID or rolled instance ID
+		Type          string `json:"type"`           // weapon, armor, accessory
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		httpError(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 
-	err := game.EquipItem(req.Slot, req.ItemID, req.Type)
+	err := game.EquipItemAt(req.Slot, req.EquipmentSlot, req.ItemID, req.Type)
 	if err != nil {
 		httpError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -79,6 +81,27 @@ func (s *Server) handleEquip(w http.ResponseWriter, r *http.Request) {
 
 	state := game.State()
 	jsonResp(w, state)
+}
+
+func (s *Server) handleUnequip(w http.ResponseWriter, r *http.Request) {
+	game := s.games.GetGame(r.PathValue("id"))
+	if game == nil {
+		httpError(w, "game not found", http.StatusNotFound)
+		return
+	}
+	var req struct {
+		Slot          int    `json:"slot"`
+		EquipmentSlot string `json:"equipment_slot"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpError(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if err := game.UnequipItem(req.Slot, req.EquipmentSlot); err != nil {
+		httpError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	jsonResp(w, game.State())
 }
 
 func (s *Server) handleLearnSpell(w http.ResponseWriter, r *http.Request) {
@@ -273,6 +296,12 @@ func (g *Game) BuyItem(itemID, itemType string) error {
 }
 
 func (g *Game) EquipItem(slot int, itemID, itemType string) error {
+	return g.EquipItemAt(slot, "", itemID, itemType)
+}
+
+// EquipItemAt equips an item into an authored loadout slot. Legacy clients may
+// omit equipmentSlot for weapons and body armor.
+func (g *Game) EquipItemAt(slot int, equipmentSlot, itemID, itemType string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -285,7 +314,13 @@ func (g *Game) EquipItem(slot int, itemID, itemType string) error {
 		if instance.Kind != itemType {
 			return fmt.Errorf("equipment %q is not %s", itemID, itemType)
 		}
-		previous, err := g.inv.EquipInstance(slot, itemID, classID, g.party[slot].Level, g.gd)
+		var previous inventory.EquipmentSlots
+		var err error
+		if equipmentSlot == "" {
+			previous, err = g.inv.EquipInstance(slot, itemID, classID, g.party[slot].Level, g.gd)
+		} else {
+			previous, err = g.inv.EquipInstanceAt(slot, equipmentSlot, itemID, classID, g.party[slot].Level, g.gd)
+		}
 		if err != nil {
 			return err
 		}
@@ -300,6 +335,9 @@ func (g *Game) EquipItem(slot int, itemID, itemType string) error {
 
 	switch itemType {
 	case "weapon":
+		if equipmentSlot != "" && equipmentSlot != inventory.MainHandSlot {
+			return fmt.Errorf("static weapons can only be equipped in %s", inventory.MainHandSlot)
+		}
 		key := "wpn_" + itemID
 		if g.inv.Consumables[key] <= 0 {
 			return fmt.Errorf("weapon %q not owned", itemID)
@@ -320,6 +358,9 @@ func (g *Game) EquipItem(slot int, itemID, itemType string) error {
 		}
 		return nil
 	case "armor":
+		if equipmentSlot != "" && equipmentSlot != inventory.BodySlot {
+			return fmt.Errorf("static armor can only be equipped in %s", inventory.BodySlot)
+		}
 		key := "arm_" + itemID
 		if g.inv.Consumables[key] <= 0 {
 			return fmt.Errorf("armor %q not owned", itemID)
@@ -339,6 +380,35 @@ func (g *Game) EquipItem(slot int, itemID, itemType string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown equip type: %s", itemType)
+}
+
+// UnequipItem returns a slot's static item to the legacy inventory map or
+// simply clears a rolled instance reference; owned instances are never deleted.
+func (g *Game) UnequipItem(slot int, equipmentSlot string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if slot < 0 || slot >= len(g.party) {
+		return fmt.Errorf("invalid slot")
+	}
+	if equipmentSlot == "" {
+		return fmt.Errorf("equipment_slot is required")
+	}
+	ref, err := g.inv.UnequipAt(slot, equipmentSlot, g.gd)
+	if err != nil {
+		return err
+	}
+	if ref.InstanceID != "" {
+		return nil
+	}
+	if base := g.gd.EquipmentBaseByID(ref.ItemID); base != nil {
+		switch base.Category {
+		case "weapon":
+			g.inv.Consumables["wpn_"+base.ID]++
+		case "armor":
+			g.inv.Consumables["arm_"+base.ID]++
+		}
+	}
+	return nil
 }
 
 func (g *Game) LearnSpell(charName, spellID string) error {

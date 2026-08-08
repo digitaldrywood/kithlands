@@ -89,3 +89,22 @@ func TestRollEquipmentRejectsUnknownBase(t *testing.T) {
 		t.Fatal("expected unknown base error")
 	}
 }
+
+func TestRollEquipmentPreservesKindAndSlotCategory(t *testing.T) {
+	t.Parallel()
+	gd := gamedata.Load("../../../shared")
+	ring, err := loot.RollEquipment(gd, "copper_ring", 1, 1, &sequenceRNG{values: []int{60, 0, 1}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ring.Kind != "accessory" || ring.Category != "ring" || len(ring.Sockets) < 1 {
+		t.Fatalf("rolled ring = %+v", ring)
+	}
+	boots, err := loot.RollEquipment(gd, "trail_boots", 1, 0, &sequenceRNG{values: []int{0, 0}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if boots.Kind != "armor" || boots.Category != "boots" {
+		t.Fatalf("rolled boots = %+v", boots)
+	}
+}

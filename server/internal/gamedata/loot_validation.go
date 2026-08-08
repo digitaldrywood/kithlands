@@ -80,5 +80,16 @@ func validateLootRange(label string, value IntRange) {
 	}
 }
 
-func validLootKind(kind string) bool { return kind == "weapon" || kind == "armor" }
-func validLootStat(stat string) bool { return stat == "power" || stat == "absorb" }
+func validLootKind(kind string) bool {
+	return kind == "weapon" || kind == "armor" || kind == "accessory"
+}
+
+func validLootStat(stat string) bool {
+	switch stat {
+	case "power", "absorb", "hit_pct", "crit_pct", "magic_defense", "evade_penalty",
+		"str", "agi", "int", "vit", "lck":
+		return true
+	default:
+		return false
+	}
+}

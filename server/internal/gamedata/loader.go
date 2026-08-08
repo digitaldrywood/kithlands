@@ -73,6 +73,7 @@ type GameData struct {
 	gemByID             map[string]*Gem
 	gemRecipeByID       map[string]*GemRecipe
 	equipSlotByID       map[string]*EquipmentSlotDefinition
+	equipmentByID       map[string]*EquipmentBase
 }
 
 // Load reads and validates all game data from the shared directory.
@@ -121,6 +122,7 @@ func (gd *GameData) GemRecipeByID(id string) *GemRecipe { return gd.gemRecipeByI
 func (gd *GameData) EquipmentSlotByID(id string) *EquipmentSlotDefinition {
 	return gd.equipSlotByID[id]
 }
+func (gd *GameData) EquipmentBaseByID(id string) *EquipmentBase { return gd.equipmentByID[id] }
 func (gd *GameData) ChestByID(id string) *ChestDefinition {
 	return gd.chestByID[id]
 }
@@ -186,6 +188,7 @@ func (gd *GameData) buildIndexes() {
 	for i := range gd.Items.EquipmentSlots {
 		gd.equipSlotByID[gd.Items.EquipmentSlots[i].ID] = &gd.Items.EquipmentSlots[i]
 	}
+	gd.buildEquipmentIndex()
 
 	gd.chestByID = make(map[string]*ChestDefinition, len(gd.Chests))
 	for id, chest := range gd.Chests {
@@ -215,6 +218,61 @@ func (gd *GameData) buildIndexes() {
 	for i := range gd.Loot.Recipes {
 		gd.gemRecipeByID[gd.Loot.Recipes[i].ID] = &gd.Loot.Recipes[i]
 	}
+}
+
+func (gd *GameData) buildEquipmentIndex() {
+	gd.equipmentByID = make(map[string]*EquipmentBase)
+	add := func(base EquipmentBase) {
+		if prior := gd.equipmentByID[base.ID]; prior != nil {
+			panic(fmt.Sprintf("gamedata: duplicate equipment base id %q", base.ID))
+		}
+		base.Classes = append([]string(nil), base.Classes...)
+		base.Stats = cloneIntMap(base.Stats)
+		gd.equipmentByID[base.ID] = &base
+	}
+	for _, item := range gd.Items.Weapons {
+		add(EquipmentBase{
+			ID: item.ID, Name: item.Name, Kind: "weapon", Category: "weapon", Tier: item.Tier,
+			RequiredLevel: 1, Classes: item.Classes,
+			Stats: map[string]int{"power": item.Power, "hit_pct": item.HitPct, "crit_pct": item.CritPct},
+		})
+	}
+	for _, item := range gd.Items.Armor {
+		add(EquipmentBase{
+			ID: item.ID, Name: item.Name, Kind: "armor", Category: "armor", Tier: item.Tier,
+			RequiredLevel: 1, Classes: item.Classes,
+			Stats: map[string]int{
+				"absorb": item.Absorb, "magic_defense": item.MagicDefense, "evade_penalty": item.EvadePenalty,
+			},
+		})
+	}
+	for _, item := range gd.Items.Shields {
+		add(EquipmentBase{
+			ID: item.ID, Name: item.Name, Kind: "armor", Category: "shield", Tier: item.Tier,
+			RequiredLevel: 1, Classes: item.Classes,
+			Stats: map[string]int{"absorb": item.Absorb, "evade_penalty": item.EvadePenalty},
+		})
+	}
+	for _, item := range gd.Items.Helmets {
+		add(EquipmentBase{
+			ID: item.ID, Name: item.Name, Kind: "armor", Category: "helmet", Tier: item.Tier,
+			RequiredLevel: 1, Classes: item.Classes, Stats: map[string]int{"absorb": item.Absorb},
+		})
+	}
+	for _, item := range gd.Items.Gear {
+		add(EquipmentBase{
+			ID: item.ID, Name: item.Name, Kind: item.Kind, Category: item.Category, Tier: item.Tier,
+			RequiredLevel: item.RequiredLevel, Classes: item.Classes, Stats: item.Stats,
+		})
+	}
+}
+
+func cloneIntMap(source map[string]int) map[string]int {
+	copy := make(map[string]int, len(source))
+	for key, value := range source {
+		copy[key] = value
+	}
+	return copy
 }
 
 func (gd *GameData) validate() {
@@ -310,6 +368,34 @@ func (gd *GameData) validate() {
 			panic("gamedata: helmet with empty id")
 		}
 		validateClassRefs("helmet", h.ID, h.Classes, classIDs)
+	}
+
+	for _, gear := range gd.Items.Gear {
+		if gear.ID == "" || gear.Name == "" || gear.Category == "" {
+			panic("gamedata: gear id, name, and category must be non-empty")
+		}
+		if !validLootKind(gear.Kind) || gear.Kind == "weapon" {
+			panic(fmt.Sprintf("gamedata: gear %q has invalid kind %q", gear.ID, gear.Kind))
+		}
+		if gear.Tier < 1 || gear.RequiredLevel < 1 || gear.BuyPrice < 0 || gear.SellPrice < 0 {
+			panic(fmt.Sprintf("gamedata: gear %q has invalid tier, level, or price", gear.ID))
+		}
+		if len(gear.Stats) == 0 {
+			panic(fmt.Sprintf("gamedata: gear %q has no stats", gear.ID))
+		}
+		for stat := range gear.Stats {
+			if !validLootStat(stat) {
+				panic(fmt.Sprintf("gamedata: gear %q has invalid stat %q", gear.ID, stat))
+			}
+		}
+		accepted := false
+		for _, slot := range gd.Items.EquipmentSlots {
+			accepted = accepted || slices.Contains(slot.Accepts, gear.Category)
+		}
+		if !accepted {
+			panic(fmt.Sprintf("gamedata: gear %q category %q has no equipment slot", gear.ID, gear.Category))
+		}
+		validateClassRefs("gear", gear.ID, gear.Classes, classIDs)
 	}
 
 	for _, a := range gd.Abilities {
@@ -784,7 +870,7 @@ func validateChestReward(gd *GameData, label, kind, itemID string, amount int, f
 }
 
 func (gd *GameData) validChestItemID(id string) bool {
-	if gd.WeaponByID(id) != nil || gd.ArmorByID(id) != nil || gd.GemByID(id) != nil {
+	if gd.EquipmentBaseByID(id) != nil || gd.GemByID(id) != nil {
 		return true
 	}
 	for i := range gd.Items.Consumables {

@@ -50,6 +50,7 @@
     "drops": [
       { "item_id": "potion", "chance_pct": 10 },
       { "item_id": "rusty_dagger", "chance_pct": 5 },
+      { "item_id": "leather_gloves", "chance_pct": 8 },
       { "item_id": "ward_shard", "chance_pct": 12 }
     ],
     "encounter_weight": 25,
@@ -78,6 +79,7 @@
     "absorbs": [],
     "drops": [
       { "item_id": "antidote", "chance_pct": 20 },
+      { "item_id": "trail_boots", "chance_pct": 8 },
       { "item_id": "ember_shard", "chance_pct": 10 }
     ],
     "encounter_weight": 20,
@@ -108,6 +110,7 @@
     "drops": [
       { "item_id": "potion", "chance_pct": 15 },
       { "item_id": "iron_sword", "chance_pct": 3 },
+      { "item_id": "leather_cap", "chance_pct": 6 },
       { "item_id": "ward_shard", "chance_pct": 10 }
     ],
     "encounter_weight": 15,
@@ -164,7 +167,8 @@
     "resistances": [],
     "absorbs": [],
     "drops": [
-      { "item_id": "antidote", "chance_pct": 10 }
+      { "item_id": "antidote", "chance_pct": 10 },
+      { "item_id": "copper_ring", "chance_pct": 6 }
     ],
     "encounter_weight": 35,
     "min_group": 2,

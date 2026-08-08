@@ -127,9 +127,8 @@ func (g *Game) DebugForceVictory() error {
 	return err
 }
 
-// DebugGiveItem adds n copies of the named consumable to the inventory.
-// Unknown IDs are accepted silently (the inventory is a map) but the
-// handler validates against gamedata before calling this.
+// DebugGiveItem grants consumables, gems, or freshly rolled equipment through
+// the same authoritative acquisition path used by combat rewards.
 func (g *Game) DebugGiveItem(itemID string, qty int) error {
 	if itemID == "" {
 		return errors.New("item_id required")
@@ -137,20 +136,13 @@ func (g *Game) DebugGiveItem(itemID string, qty int) error {
 	if qty <= 0 {
 		qty = 1
 	}
-	// Verify the id is a known consumable; silent success would mask typos.
-	known := false
-	for _, c := range g.gd.Items.Consumables {
-		if c.ID == itemID {
-			known = true
-			break
-		}
-	}
-	if !known {
-		return fmt.Errorf("unknown consumable %q", itemID)
-	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	g.inv.Consumables[itemID] += qty
+	for range qty {
+		if _, err := g.grantLoot(itemID, g.maxPartyLevel(), 0); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

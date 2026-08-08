@@ -198,12 +198,42 @@ type ShowcaseEncounter struct {
 
 type ItemsData struct {
 	EquipmentSlots []EquipmentSlotDefinition `json:"equipment_slots"`
+	Gear           []Gear                    `json:"gear"`
 	Weapons        []Weapon                  `json:"weapons"`
 	Armor          []Armor                   `json:"armor"`
 	Shields        []Shield                  `json:"shields"`
 	Helmets        []Helmet                  `json:"helmets"`
 	Consumables    []Consumable              `json:"consumables"`
 	KeyItems       []KeyItem                 `json:"key_items"`
+}
+
+// Gear defines equipment categories that do not need a legacy combat-specific
+// catalog. Kind selects the affix and gem family; Category selects a loadout
+// position through EquipmentSlotDefinition.Accepts.
+type Gear struct {
+	ID            string         `json:"id"`
+	Name          string         `json:"name"`
+	Kind          string         `json:"kind"`
+	Category      string         `json:"category"`
+	Tier          int            `json:"tier"`
+	RequiredLevel int            `json:"required_level"`
+	Classes       []string       `json:"classes"`
+	Stats         map[string]int `json:"stats"`
+	BuyPrice      int            `json:"buy_price"`
+	SellPrice     int            `json:"sell_price"`
+}
+
+// EquipmentBase is the normalized server view of every rollable equipment
+// catalog, including legacy weapons, armor, shields, and helmets.
+type EquipmentBase struct {
+	ID            string
+	Name          string
+	Kind          string
+	Category      string
+	Tier          int
+	RequiredLevel int
+	Classes       []string
+	Stats         map[string]int
 }
 
 // EquipmentSlotDefinition describes one position in a character loadout.

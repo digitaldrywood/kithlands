@@ -86,3 +86,34 @@ func TestEquipInstanceEnforcesRequiredLevel(t *testing.T) {
 		t.Fatalf("EquipInstance: %v", err)
 	}
 }
+
+func TestSocketGemMutatesAccessoryInstance(t *testing.T) {
+	t.Parallel()
+	gd := gamedata.Load("../../../shared")
+	inv := inventory.New()
+	id, err := inv.AddInstance(inventory.EquipmentInstance{
+		BaseID: "copper_ring", Kind: "accessory", Category: "ring", ItemLevel: 1,
+		RequiredLevel: 1, RarityID: "magic", Sockets: []inventory.ItemSocket{{}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	inv.Gems["ember_shard"] = 1
+	if err := inv.SocketGem(id, 0, "ember_shard", 1, gd); err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := inventory.ResolveInstance(inv.Instance(id), gd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.Category != "ring" || resolved.Stats["lck"] != 1 || resolved.Stats["str"] != 1 {
+		t.Fatalf("resolved accessory = %+v", resolved)
+	}
+	if _, err := inv.EquipInstanceAt(0, "ring_1", id, "warrior", 1, gd); err != nil {
+		t.Fatal(err)
+	}
+	bonuses := inv.LoadoutStats(0, gd)
+	if bonuses["lck"] != 1 || bonuses["str"] != 1 {
+		t.Fatalf("socketed loadout bonuses = %+v", bonuses)
+	}
+}

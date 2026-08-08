@@ -8,15 +8,17 @@
     {"id": "keen", "name": "Keen", "position": "prefix", "kinds": ["weapon"], "min_item_level": 1, "required_level": 1, "weight": 100, "modifier": {"stat": "power", "min": 1, "max": 2}},
     {"id": "brutal", "name": "of Force", "position": "suffix", "kinds": ["weapon"], "min_item_level": 3, "required_level": 12, "weight": 50, "modifier": {"stat": "power", "min": 3, "max": 5}},
     {"id": "reinforced", "name": "Reinforced", "position": "prefix", "kinds": ["armor"], "min_item_level": 1, "required_level": 1, "weight": 100, "modifier": {"stat": "absorb", "min": 1, "max": 2}},
-    {"id": "sheltering", "name": "of Shelter", "position": "suffix", "kinds": ["armor"], "min_item_level": 3, "required_level": 12, "weight": 50, "modifier": {"stat": "absorb", "min": 2, "max": 4}}
+    {"id": "sheltering", "name": "of Shelter", "position": "suffix", "kinds": ["armor"], "min_item_level": 3, "required_level": 12, "weight": 50, "modifier": {"stat": "absorb", "min": 2, "max": 4}},
+    {"id": "vigorous", "name": "Vigorous", "position": "prefix", "kinds": ["accessory"], "min_item_level": 1, "required_level": 1, "weight": 100, "modifier": {"stat": "vit", "min": 1, "max": 2}},
+    {"id": "fortunate", "name": "of Fortune", "position": "suffix", "kinds": ["accessory"], "min_item_level": 3, "required_level": 12, "weight": 50, "modifier": {"stat": "lck", "min": 2, "max": 4}}
   ],
   "gems": [
-    {"id": "ember_shard", "name": "Ember Shard", "tier": 1, "required_level": 1, "description": "Adds a small equipment bonus.", "effects": [{"kind": "weapon", "stat": "power", "value": 1}, {"kind": "armor", "stat": "absorb", "value": 1}]},
-    {"id": "ember_gem", "name": "Ember Gem", "tier": 2, "required_level": 1, "description": "Adds a moderate equipment bonus.", "effects": [{"kind": "weapon", "stat": "power", "value": 3}, {"kind": "armor", "stat": "absorb", "value": 2}]},
-    {"id": "ember_crystal", "name": "Ember Crystal", "tier": 4, "required_level": 20, "description": "Adds a powerful equipment bonus.", "effects": [{"kind": "weapon", "stat": "power", "value": 7}, {"kind": "armor", "stat": "absorb", "value": 5}]},
-    {"id": "ward_shard", "name": "Ward Shard", "tier": 1, "required_level": 1, "description": "Favors armor when socketed.", "effects": [{"kind": "weapon", "stat": "power", "value": 1}, {"kind": "armor", "stat": "absorb", "value": 2}]},
-    {"id": "ward_gem", "name": "Ward Gem", "tier": 2, "required_level": 1, "description": "Strongly favors armor when socketed.", "effects": [{"kind": "weapon", "stat": "power", "value": 2}, {"kind": "armor", "stat": "absorb", "value": 4}]},
-    {"id": "ward_crystal", "name": "Ward Crystal", "tier": 4, "required_level": 20, "description": "Greatly strengthens socketed armor.", "effects": [{"kind": "weapon", "stat": "power", "value": 4}, {"kind": "armor", "stat": "absorb", "value": 8}]}
+    {"id": "ember_shard", "name": "Ember Shard", "tier": 1, "required_level": 1, "description": "Adds a small equipment bonus.", "effects": [{"kind": "weapon", "stat": "power", "value": 1}, {"kind": "armor", "stat": "absorb", "value": 1}, {"kind": "accessory", "stat": "str", "value": 1}]},
+    {"id": "ember_gem", "name": "Ember Gem", "tier": 2, "required_level": 1, "description": "Adds a moderate equipment bonus.", "effects": [{"kind": "weapon", "stat": "power", "value": 3}, {"kind": "armor", "stat": "absorb", "value": 2}, {"kind": "accessory", "stat": "str", "value": 3}]},
+    {"id": "ember_crystal", "name": "Ember Crystal", "tier": 4, "required_level": 20, "description": "Adds a powerful equipment bonus.", "effects": [{"kind": "weapon", "stat": "power", "value": 7}, {"kind": "armor", "stat": "absorb", "value": 5}, {"kind": "accessory", "stat": "str", "value": 7}]},
+    {"id": "ward_shard", "name": "Ward Shard", "tier": 1, "required_level": 1, "description": "Favors armor when socketed.", "effects": [{"kind": "weapon", "stat": "power", "value": 1}, {"kind": "armor", "stat": "absorb", "value": 2}, {"kind": "accessory", "stat": "vit", "value": 1}]},
+    {"id": "ward_gem", "name": "Ward Gem", "tier": 2, "required_level": 1, "description": "Strongly favors armor when socketed.", "effects": [{"kind": "weapon", "stat": "power", "value": 2}, {"kind": "armor", "stat": "absorb", "value": 4}, {"kind": "accessory", "stat": "vit", "value": 3}]},
+    {"id": "ward_crystal", "name": "Ward Crystal", "tier": 4, "required_level": 20, "description": "Greatly strengthens socketed armor.", "effects": [{"kind": "weapon", "stat": "power", "value": 4}, {"kind": "armor", "stat": "absorb", "value": 8}, {"kind": "accessory", "stat": "vit", "value": 7}]}
   ],
   "recipes": [
     {"id": "refine_ember_gem", "name": "Transmute Ember Gem", "required_level": 1, "inputs": [{"gem_id": "ember_shard", "count": 3}], "output": {"gem_id": "ember_gem", "count": 1}},

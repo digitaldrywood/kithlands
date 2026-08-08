@@ -271,6 +271,33 @@ func TestEquipmentSlotCatalogSupportsExpandedLoadouts(t *testing.T) {
 	}
 }
 
+func TestEquipmentBaseCatalogNormalizesExpandedGear(t *testing.T) {
+	t.Parallel()
+	gd := gamedata.Load("../../../shared")
+	tests := []struct {
+		id, kind, category string
+	}{
+		{id: "short_sword", kind: "weapon", category: "weapon"},
+		{id: "leather_armor", kind: "armor", category: "armor"},
+		{id: "wooden_shield", kind: "armor", category: "shield"},
+		{id: "leather_cap", kind: "armor", category: "helmet"},
+		{id: "trail_boots", kind: "armor", category: "boots"},
+		{id: "copper_ring", kind: "accessory", category: "ring"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.id, func(t *testing.T) {
+			t.Parallel()
+			base := gd.EquipmentBaseByID(tt.id)
+			if base == nil || base.Kind != tt.kind || base.Category != tt.category {
+				t.Fatalf("EquipmentBaseByID(%q) = %+v, want %s/%s", tt.id, base, tt.kind, tt.category)
+			}
+			if len(base.Classes) == 0 || len(base.Stats) == 0 {
+				t.Fatalf("EquipmentBaseByID(%q) missing classes or stats: %+v", tt.id, base)
+			}
+		})
+	}
+}
+
 func TestChestsLoaded(t *testing.T) {
 	gd := gamedata.Load("../../../shared")
 	if len(gd.Chests) < 8 {

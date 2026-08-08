@@ -25,7 +25,7 @@ func (g *Game) grantLoot(itemID string, itemLevel, minSockets int) (lootGrant, e
 		g.inv.Gems[itemID]++
 		return lootGrant{Name: gem.Name}, nil
 	}
-	if g.gd.WeaponByID(itemID) == nil && g.gd.ArmorByID(itemID) == nil {
+	if g.gd.EquipmentBaseByID(itemID) == nil {
 		return lootGrant{}, fmt.Errorf("loot item %q not found", itemID)
 	}
 
@@ -84,27 +84,19 @@ func (g *Game) rolledItemState(id string, item *inventory.EquipmentInstance) (It
 	if err != nil {
 		return ItemState{}, err
 	}
-	prefix := "wpn_"
-	if item.Kind == "armor" {
-		prefix = "arm_"
+	base := g.gd.EquipmentBaseByID(item.BaseID)
+	if base == nil {
+		return ItemState{}, fmt.Errorf("equipment base %q not found", item.BaseID)
 	}
 	state := ItemState{
-		ID: prefix + id, InstanceID: id, Kind: item.Kind, Name: resolved.Name, Count: 1,
+		ID: equipmentStateID(base.Category, id), InstanceID: id, Kind: item.Kind, Category: base.Category,
+		Name: resolved.Name, Count: 1,
 		ItemLevel: item.ItemLevel, RequiredLevel: item.RequiredLevel,
-		Power: resolved.Power, Absorb: resolved.Absorb,
+		Power: resolved.Power, Absorb: resolved.Absorb, Stats: cloneStats(resolved.Stats),
+		AllowedClasses: append([]string(nil), base.Classes...),
 	}
 	if rarity := g.gd.LootRarityByID(item.RarityID); rarity != nil {
 		state.Rarity = rarity.Name
-	}
-	switch item.Kind {
-	case "weapon":
-		if base := g.gd.WeaponByID(item.BaseID); base != nil {
-			state.AllowedClasses = append([]string(nil), base.Classes...)
-		}
-	case "armor":
-		if base := g.gd.ArmorByID(item.BaseID); base != nil {
-			state.AllowedClasses = append([]string(nil), base.Classes...)
-		}
 	}
 	for _, affix := range resolved.Affixes {
 		state.Affixes = append(state.Affixes, ItemAffixState{
@@ -118,6 +110,34 @@ func (g *Game) rolledItemState(id string, item *inventory.EquipmentInstance) (It
 		})
 	}
 	return state, nil
+}
+
+func baseItemState(base *gamedata.EquipmentBase) ItemState {
+	return ItemState{
+		ID: equipmentStateID(base.Category, base.ID), Kind: base.Kind, Category: base.Category,
+		Name: base.Name, Count: 1, RequiredLevel: base.RequiredLevel,
+		Power: base.Stats["power"], Absorb: base.Stats["absorb"], Stats: cloneStats(base.Stats),
+		AllowedClasses: append([]string(nil), base.Classes...),
+	}
+}
+
+func equipmentStateID(category, id string) string {
+	switch category {
+	case "weapon":
+		return "wpn_" + id
+	case "armor":
+		return "arm_" + id
+	default:
+		return "eqp_" + id
+	}
+}
+
+func cloneStats(source map[string]int) map[string]int {
+	copy := make(map[string]int, len(source))
+	for stat, value := range source {
+		copy[stat] = value
+	}
+	return copy
 }
 
 func (g *Game) fillGemState(state *GameState) {

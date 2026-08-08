@@ -8,11 +8,14 @@ import (
 )
 
 type ResolvedInstance struct {
-	Name    string
-	Power   int
-	Absorb  int
-	Affixes []ResolvedAffix
-	Sockets []ResolvedSocket
+	Name     string
+	Kind     string
+	Category string
+	Stats    map[string]int
+	Power    int
+	Absorb   int
+	Affixes  []ResolvedAffix
+	Sockets  []ResolvedSocket
 }
 
 type ResolvedAffix struct {
@@ -33,24 +36,18 @@ func ResolveInstance(item *EquipmentInstance, gd *gamedata.GameData) (ResolvedIn
 	if item == nil {
 		return ResolvedInstance{}, fmt.Errorf("equipment instance is nil")
 	}
-	resolved := ResolvedInstance{}
-	switch item.Kind {
-	case "weapon":
-		base := gd.WeaponByID(item.BaseID)
-		if base == nil {
-			return resolved, fmt.Errorf("weapon base %q not found", item.BaseID)
-		}
-		resolved.Name = base.Name
-		resolved.Power = base.Power
-	case "armor":
-		base := gd.ArmorByID(item.BaseID)
-		if base == nil {
-			return resolved, fmt.Errorf("armor base %q not found", item.BaseID)
-		}
-		resolved.Name = base.Name
-		resolved.Absorb = base.Absorb
-	default:
-		return resolved, fmt.Errorf("invalid equipment kind %q", item.Kind)
+	base := gd.EquipmentBaseByID(item.BaseID)
+	if base == nil {
+		return ResolvedInstance{}, fmt.Errorf("equipment base %q not found", item.BaseID)
+	}
+	if base.Kind != item.Kind {
+		return ResolvedInstance{}, fmt.Errorf("equipment base %q is %q, instance is %q", item.BaseID, base.Kind, item.Kind)
+	}
+	resolved := ResolvedInstance{
+		Name: base.Name, Kind: base.Kind, Category: base.Category, Stats: make(map[string]int),
+	}
+	for stat, value := range base.Stats {
+		resolved.add(stat, value)
 	}
 
 	var prefixes, suffixes []string
@@ -89,6 +86,10 @@ func ResolveInstance(item *EquipmentInstance, gd *gamedata.GameData) (ResolvedIn
 }
 
 func (r *ResolvedInstance) add(stat string, value int) {
+	if r.Stats == nil {
+		r.Stats = make(map[string]int)
+	}
+	r.Stats[stat] += value
 	switch stat {
 	case "power":
 		r.Power += value
