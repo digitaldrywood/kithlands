@@ -1027,6 +1027,7 @@ function visibleBattleFxSnapshot(scene) {
     bottomStripBounds: objectBounds(bottomStrip),
     messageWindowBounds,
     portraitBounds: objectBounds(portrait),
+    battleCharacterAudit: scene?.battleCharacterAuditSnapshot?.() ?? null,
     backdropType: children.some(
       (child) =>
         child?._combatFxTag === "battle-backdrop" &&
@@ -1646,6 +1647,24 @@ export function installDevTestBridge(game) {
         textureKey: entry.sprite.battleTextureKey,
         weaponTextureKey: entry.sprite.weaponTextureKey,
       };
+    },
+
+    cycleBattleCharacterAudit(kind, direction = 1, sceneKey = "Battle") {
+      const scene = getScene(game, sceneKey);
+      if (!scene || scene.scene?.key !== "Battle") {
+        throw new Error("Battle scene is not active");
+      }
+      scene.cycleBattleCharacterAudit(kind, direction);
+      return clone(scene.battleCharacterAuditSnapshot());
+    },
+
+    playBattleCharacterAudit(sceneKey = "Battle") {
+      const scene = getScene(game, sceneKey);
+      if (!scene || scene.scene?.key !== "Battle") {
+        throw new Error("Battle scene is not active");
+      }
+      scene.playBattleCharacterAudit();
+      return clone(scene.battleCharacterAuditSnapshot());
     },
 
     previewBattleSpellFlow(spellID, select = true, sceneKey = "Battle") {

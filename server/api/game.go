@@ -150,6 +150,35 @@ type GameState struct {
 	ShowcaseMode         bool                     `json:"showcase_mode,omitempty"`
 	ShowcaseTitle        string                   `json:"showcase_title,omitempty"`
 	ShowcaseTips         []string                 `json:"showcase_tips,omitempty"`
+	BattleCharacterAudit *BattleCharacterAudit    `json:"battle_character_audit,omitempty"`
+}
+
+// BattleCharacterAudit is a read-only renderer catalog attached only to the
+// disposable debug showcase. Every composition is derived from shared class
+// and item metadata by the authoritative server.
+type BattleCharacterAudit struct {
+	Identities      []BattleAuditIdentity `json:"identities"`
+	AnimationStates []string              `json:"animation_states"`
+	EffectModes     []string              `json:"effect_modes"`
+}
+
+// BattleAuditIdentity describes one base or promoted runtime visual identity.
+type BattleAuditIdentity struct {
+	ID             string                 `json:"id"`
+	Name           string                 `json:"name"`
+	BaseClassID    string                 `json:"base_class_id"`
+	Promoted       bool                   `json:"promoted"`
+	SupportsShield bool                   `json:"supports_shield"`
+	Equipment      []BattleAuditEquipment `json:"equipment"`
+}
+
+// BattleAuditEquipment is one server-composed equipment presentation option.
+type BattleAuditEquipment struct {
+	Type           string              `json:"type"`
+	ItemID         string              `json:"item_id,omitempty"`
+	ItemName       string              `json:"item_name"`
+	LayerAvailable bool                `json:"layer_available"`
+	Composition    sprites.Composition `json:"composition"`
 }
 
 // TransportInfo is the transport tier state sent to the client.
@@ -441,6 +470,7 @@ type Game struct {
 	showcaseMode  bool
 	showcaseTitle string
 	showcaseTips  []string
+	battleAudit   *BattleCharacterAudit
 	trans         *transport.State // current transport tier & unlocks
 	mu            sync.Mutex
 }
@@ -450,21 +480,22 @@ func (g *Game) State() GameState {
 	defer g.mu.Unlock()
 
 	state := GameState{
-		ID:               g.id,
-		Phase:            g.phase,
-		CurrentQ:         g.currentQ,
-		Gold:             g.inv.Gold,
-		Potions:          g.inv.Consumables["potion"],
-		Ethers:           g.inv.Consumables["ether"],
-		HiEthers:         g.inv.Consumables["hi_ether"],
-		XEthers:          g.inv.Consumables["x_ether"],
-		Message:          g.message,
-		CombatLog:        g.combatLog,
-		CombatActions:    g.combatActions,
-		LastRoundActions: cloneMemberActionReqs(g.lastRoundActions),
-		ShowcaseMode:     g.showcaseMode,
-		ShowcaseTitle:    g.showcaseTitle,
-		ShowcaseTips:     append([]string(nil), g.showcaseTips...),
+		ID:                   g.id,
+		Phase:                g.phase,
+		CurrentQ:             g.currentQ,
+		Gold:                 g.inv.Gold,
+		Potions:              g.inv.Consumables["potion"],
+		Ethers:               g.inv.Consumables["ether"],
+		HiEthers:             g.inv.Consumables["hi_ether"],
+		XEthers:              g.inv.Consumables["x_ether"],
+		Message:              g.message,
+		CombatLog:            g.combatLog,
+		CombatActions:        g.combatActions,
+		LastRoundActions:     cloneMemberActionReqs(g.lastRoundActions),
+		ShowcaseMode:         g.showcaseMode,
+		ShowcaseTitle:        g.showcaseTitle,
+		ShowcaseTips:         append([]string(nil), g.showcaseTips...),
+		BattleCharacterAudit: cloneBattleCharacterAudit(g.battleAudit),
 	}
 
 	if g.loc != nil {

@@ -34,6 +34,11 @@ import {
 } from "./battle_layout.js";
 import { battleHudLayout } from "./battle_hud_layout.js";
 import {
+  createBattleAuditSelection,
+  currentBattleAuditSelection,
+  cycleBattleAuditSelection,
+} from "./battle_character_audit.js";
+import {
   buildBattleActionButtons,
   planSmartRound,
   resolveAction,
@@ -358,6 +363,7 @@ export class BattleScene extends Phaser.Scene {
     this.drawEnemies(gs);
     this.drawParty(gs);
     this.drawPartyStatus(gs);
+    this.setupBattleCharacterAudit(gs);
     this.createLowHpVignette();
 
     this.setupKeyboard();
@@ -721,6 +727,26 @@ export class BattleScene extends Phaser.Scene {
 
     // Dev-only debug panel (#145). See world.js for the gating rationale.
     if (import.meta.env && import.meta.env.DEV) {
+      if (this.battleAuditSelection) {
+        this.input.keyboard.on("keydown-J", () =>
+          this.cycleBattleCharacterAudit("identity", -1),
+        );
+        this.input.keyboard.on("keydown-K", () =>
+          this.cycleBattleCharacterAudit("identity", 1),
+        );
+        this.input.keyboard.on("keydown-E", () =>
+          this.cycleBattleCharacterAudit("equipment", 1),
+        );
+        this.input.keyboard.on("keydown-N", () =>
+          this.cycleBattleCharacterAudit("animation", 1),
+        );
+        this.input.keyboard.on("keydown-V", () =>
+          this.cycleBattleCharacterAudit("effect", 1),
+        );
+        this.input.keyboard.on("keydown-P", () =>
+          this.playBattleCharacterAudit(),
+        );
+      }
       this.input.keyboard.on("keydown-BACKTICK", () => toggleDebugPanel(this));
     }
   }
@@ -797,6 +823,8 @@ export class BattleScene extends Phaser.Scene {
     if (!gs?.showcase_mode) return;
 
     const title = gs.showcase_title || "SYSTEMS SHOWCASE";
+    const hasBattleAudit =
+      import.meta.env?.DEV && !!gs.battle_character_audit?.identities?.length;
     const tips = (gs.showcase_tips || []).slice(0, 3);
     if (tips.length === 0) tips.push("Dev-only disposable battle");
     const panel = this.add.graphics().setDepth(11).setScrollFactor(0);
@@ -814,8 +842,11 @@ export class BattleScene extends Phaser.Scene {
       })
       .setDepth(12)
       .setScrollFactor(0);
-    this.add
-      .text(24, 34, tips.join("\n"), {
+    const detailText = hasBattleAudit
+      ? "Loading server-authorized battle audit..."
+      : tips.join("\n");
+    const detail = this.add
+      .text(24, 34, detailText, {
         fontSize: "8px",
         color: "#e8d6ea",
         fontFamily: "monospace",
@@ -823,6 +854,190 @@ export class BattleScene extends Phaser.Scene {
       })
       .setDepth(12)
       .setScrollFactor(0);
+    if (hasBattleAudit) {
+      detail._combatFxTag = "battle-character-audit-readout";
+      this.battleAuditReadout = detail;
+    }
+  }
+
+  setupBattleCharacterAudit(gs) {
+    if (!import.meta.env?.DEV || !gs?.battle_character_audit) return;
+    this.battleAuditSelection = createBattleAuditSelection(
+      gs.battle_character_audit,
+    );
+    this.refreshBattleCharacterAudit(true);
+  }
+
+  refreshBattleCharacterAudit(rebuildSprite = false) {
+    const selection = currentBattleAuditSelection(this.battleAuditSelection);
+    const identity = selection.identity;
+    const equipment = selection.equipment;
+    const lead = this.gameState?.party?.[0];
+    const entry = lead ? this.partySprites?.[lead.name] : null;
+    if (!identity || !equipment || !entry) return null;
+
+    if (rebuildSprite) {
+      entry.sprite?.removeInteractive?.();
+      entry.sprite?.destroy?.();
+      const sprite = createBattleCharacterSprite(
+        this,
+        entry.x,
+        entry.y,
+        equipment.composition,
+        {
+          alive: entry.alive,
+          targetSize: 108,
+          fallbackKey: CLASS_SPRITES[identity.id] || identity.id,
+        },
+      );
+      sprite.setDepth(4);
+      if (entry.alive) {
+        sprite.setInteractive({ useHandCursor: true });
+        sprite.on("pointerdown", () => {
+          if (this.targetingMode === "party") this.onPartyClick(entry.slot);
+        });
+      }
+      entry.sprite = sprite;
+      entry.classId = identity.id;
+      entry.baseTextureKey = CLASS_SPRITES[identity.id] || identity.id;
+      this.showActorCursor(entry);
+    }
+
+    const layerLabel = equipment.layer_available
+      ? "LAYERED"
+      : equipment.type === "unarmed"
+        ? "BODY"
+        : "LAYER PENDING";
+    const shieldLabel = identity.supports_shield ? " · SHIELD SLOT" : "";
+    this.battleAuditReadout?.setText(
+      [
+        `AUDIT ${this.battleAuditSelection.identityIndex + 1}/${this.battleAuditSelection.catalog.identities.length}  ${identity.name.toUpperCase()} · ${equipment.type.toUpperCase()} [${layerLabel}${shieldLabel}]`,
+        `STATE ${String(selection.animationState).toUpperCase()} · FX ${String(selection.effectMode).toUpperCase()}`,
+        "J/K class · E gear · N state · V effect · P play",
+      ].join("\n"),
+    );
+    return selection;
+  }
+
+  cycleBattleCharacterAudit(kind, direction = 1) {
+    if (!this.battleAuditSelection) return null;
+    cycleBattleAuditSelection(this.battleAuditSelection, kind, direction);
+    return this.refreshBattleCharacterAudit(
+      kind === "identity" || kind === "equipment",
+    );
+  }
+
+  resetBattleCharacterAuditSprite(entry) {
+    const sprite = entry?.sprite;
+    if (!sprite) return;
+    this.tweens.killTweensOf(sprite);
+    this.setSpritePosition(sprite, entry.x, entry.y);
+    sprite.resetBattlePose?.();
+    sprite.clearTint?.();
+    sprite.setAlpha?.(1);
+    sprite.setAngle?.(0);
+  }
+
+  playBattleCharacterAudit() {
+    const selection = this.refreshBattleCharacterAudit(false);
+    const lead = this.gameState?.party?.[0];
+    const actor = lead ? this.partySprites?.[lead.name] : null;
+    if (!selection || !actor?.sprite) return null;
+    this.resetBattleCharacterAuditSprite(actor);
+
+    const state = selection.animationState;
+    if (state === "physical_attack") {
+      if (actor.sprite.playBattleAttack) {
+        void actor.sprite.playBattleAttack({
+          reducedMotion: this.reducedBattleMotion(),
+          speedMultiplier: battleSpeedMul(),
+        });
+      } else {
+        this.tweens.add({
+          targets: actor.sprite,
+          x: actor.x - 34,
+          duration: this.scaledMs(160),
+          yoyo: true,
+          ease: "Quad.Out",
+        });
+      }
+    } else if (state === "cast_class_ability") {
+      this.spawnCastAura(actor, "holy");
+      void this.showActionTitle(actor, "CLASS ABILITY", "#fff2bd");
+    } else if (state === "defend") {
+      actor.sprite.setTint?.(0x88ccff);
+      this.spawnActionReticle(actor, 0x88ccff, 480);
+      this.scaledDelay(480, () => actor.sprite?.clearTint?.());
+    } else if (state === "hit_reaction") {
+      this.playCombatantHitReaction(actor, { isParty: true });
+    } else if (state === "item_use") {
+      this.spawnSpellImpact(actor, "holy");
+      void this.showActionTitle(actor, "ITEM", "#66ff99");
+    } else if (state === "victory") {
+      this.tweens.add({
+        targets: actor.sprite,
+        y: actor.y - 18,
+        duration: this.scaledMs(180),
+        yoyo: true,
+        repeat: 1,
+        ease: "Sine.Out",
+      });
+    } else if (state === "ko_defeated") {
+      actor.sprite.setTint?.(0x444444);
+      actor.sprite.setAngle?.(90);
+      actor.sprite.setAlpha?.(0.68);
+    }
+
+    const enemies = Object.values(this.enemySprites || {}).filter(
+      (entry) => entry && !entry.dead && !entry.dying,
+    );
+    const allies = Object.values(this.partySprites || {}).filter(
+      (entry) => entry && entry.alive,
+    );
+    this.targetCursor?.hide();
+    this.destroyGroupTargetCursor();
+    if (selection.effectMode === "single_target" && enemies[0]) {
+      this.showTargetCursor(enemies[0], "enemy");
+      this.spawnSpellImpact(enemies[0], "holy");
+    } else if (selection.effectMode === "all_enemies") {
+      this.showGroupTargetCursor(enemies, "enemy");
+      enemies.forEach((entry) => this.spawnSpellImpact(entry, "fire"));
+    } else if (selection.effectMode === "all_allies") {
+      this.showGroupTargetCursor(allies, "party");
+      allies.forEach((entry) => this.spawnSpellImpact(entry, "holy"));
+    }
+    return selection;
+  }
+
+  battleCharacterAuditSnapshot() {
+    const current = currentBattleAuditSelection(this.battleAuditSelection);
+    const catalog = this.battleAuditSelection?.catalog;
+    if (!catalog || !current.identity) return null;
+    const lead = this.gameState?.party?.[0];
+    const entry = lead ? this.partySprites?.[lead.name] : null;
+    return {
+      identityCount: catalog.identities.length,
+      identityIDs: catalog.identities.map((identity) => identity.id),
+      equipmentTypes: [
+        ...new Set(
+          catalog.identities.flatMap((identity) =>
+            identity.equipment.map((equipment) => equipment.type),
+          ),
+        ),
+      ],
+      animationStates: [...catalog.animation_states],
+      effectModes: [...catalog.effect_modes],
+      identityIndex: this.battleAuditSelection.identityIndex,
+      identityID: current.identity.id,
+      equipmentType: current.equipment?.type || null,
+      layerAvailable: current.equipment?.layer_available || false,
+      supportsShield: current.identity.supports_shield || false,
+      animationState: current.animationState,
+      effectMode: current.effectMode,
+      textureKey:
+        entry?.sprite?.battleTextureKey ?? entry?.sprite?.texture?.key ?? null,
+      weaponTextureKey: entry?.sprite?.weaponTextureKey ?? null,
+    };
   }
 
   // Opaque FF6-style strip that occludes the bottom third of the (pre-rendered
