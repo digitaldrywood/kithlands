@@ -916,6 +916,8 @@ function visibleBattleFxSnapshot(scene) {
       row: entry?.row || null,
       x: entry?.x ?? null,
       y: entry?.y ?? null,
+      spriteX: entry?.sprite?.x ?? null,
+      spriteY: entry?.sprite?.y ?? null,
       spriteBounds: objectBounds(entry?.sprite),
       hpBarBounds: objectBounds(entry?.hpBar?.bg),
     }));
@@ -926,6 +928,8 @@ function visibleBattleFxSnapshot(scene) {
       name: entry?.name || null,
       x: entry?.x ?? null,
       y: entry?.y ?? null,
+      spriteX: entry?.sprite?.x ?? null,
+      spriteY: entry?.sprite?.y ?? null,
       spriteBounds: objectBounds(entry?.sprite),
       hpBarBounds: objectBounds(entry?.hpBar?.bg),
     }));
@@ -983,6 +987,28 @@ function visibleBattleFxSnapshot(scene) {
     bursts: taggedCount("burst"),
     cursors: taggedCount("target-cursor"),
     titleCards: taggedCount("title-card"),
+    castAuras: taggedCount("cast-aura"),
+    spellProjectiles: taggedCount("spell-projectile"),
+    spellTrails: taggedCount("spell-trail"),
+    spellImpacts: taggedCount("spell-impact"),
+    titleActors: children
+      .filter(
+        (child) =>
+          child?._combatFxTag === "title-actor" &&
+          child.active !== false &&
+          child.visible !== false &&
+          (child.alpha ?? 1) > 0.01,
+      )
+      .map((child) => child.text),
+    titleActions: children
+      .filter(
+        (child) =>
+          child?._combatFxTag === "title-action" &&
+          child.active !== false &&
+          child.visible !== false &&
+          (child.alpha ?? 1) > 0.01,
+      )
+      .map((child) => child.text),
     vignetteAlpha: scene?.lowHpVignette?.alpha ?? 0,
     messageWindow: {
       visible: scene?.messageWindow?.container?.visible !== false,
@@ -1503,6 +1529,47 @@ export function installDevTestBridge(game) {
       return visibleBattleFxSnapshot(scene);
     },
 
+    startAuthoritativeBattleRound(mode = "attack", sceneKey = "Battle") {
+      const scene = getScene(game, sceneKey);
+      if (!scene || scene.scene?.key !== "Battle") {
+        throw new Error("Battle scene is not active");
+      }
+      const enemyId = (scene.gameState?.enemies || []).find(
+        (enemy) => (enemy.current_hp ?? enemy.hp ?? 0) > 0,
+      )?.id;
+      if (!enemyId) throw new Error("Battle scene has no living enemy");
+
+      let spellAssigned = false;
+      const actions = (scene.gameState?.party || [])
+        .map((member, slot) => {
+          if ((member.hp ?? 0) <= 0) return null;
+          const spell = (member.spells || []).find(
+            (entry) =>
+              entry?.id &&
+              entry?.castable_in_combat !== false &&
+              (member.mp ?? 0) >= (entry.mp_cost ?? 0),
+          );
+          if (mode === "spell" && !spellAssigned && spell) {
+            spellAssigned = true;
+            return {
+              slot,
+              type: "spell",
+              target_id: enemyId,
+              spell_id: spell.id,
+            };
+          }
+          return { slot, type: "attack", target_id: enemyId };
+        })
+        .filter(Boolean);
+      if (mode === "spell" && !spellAssigned) {
+        throw new Error("Battle party has no castable spell");
+      }
+
+      scene.memberActions = actions;
+      void scene.submitAllActions();
+      return clone(actions);
+    },
+
     async playBattleVisibilityDemo(kind = "tracer", sceneKey = "Battle") {
       const scene = getScene(game, sceneKey);
       if (!scene || scene.scene?.key !== "Battle") {
@@ -1572,6 +1639,15 @@ export function installDevTestBridge(game) {
         scene.enterTargetingMode();
       } else if (kind === "cinematic_frame") {
         await scene.runCinematicProofFrame();
+      } else if (kind === "enemy_attack_frame") {
+        await scene.runEnemyAttackProofFrame();
+      } else if (kind === "reduced_attack_frame") {
+        scene._forceReducedMotion = true;
+        await scene.runCinematicProofFrame();
+      } else if (kind === "spell_charge_frame") {
+        await scene.runSpellProofFrame("charge");
+      } else if (kind === "spell_flight_frame") {
+        await scene.runSpellProofFrame("flight");
       } else if (kind === "cinematic") {
         return await scene.runCinematicProofDemo();
       } else {

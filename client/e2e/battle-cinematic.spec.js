@@ -9,6 +9,9 @@ async function waitForBridge(page) {
 async function startCombat(page) {
   await page.goto("/");
   await waitForBridge(page);
+  await page.waitForFunction(
+    () => window.__kithlandsTest.activeSceneKey() === "Title",
+  );
   await page.evaluate(() => window.__kithlandsTest.startQuickGame());
   await page.waitForFunction(
     () => window.__kithlandsTest.activeSceneKey() === "World",
@@ -117,5 +120,166 @@ test.describe("battle cinematic proof — issue #211", () => {
     expect(timings.postDamage).toBeGreaterThanOrEqual(430);
     expect(timings.total).toBeGreaterThanOrEqual(1100);
     expect(timings.elapsed).toBeGreaterThanOrEqual(1100);
+  });
+
+  test("makes hero and monster attackers enter the action", async ({
+    page,
+  }, testInfo) => {
+    await startCombat(page);
+    const heroBefore = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("cinematic_frame"),
+    );
+    const heroStrike = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+
+    expect(heroStrike.titleActors).toContain(
+      heroBefore.partyMembers[0].name.toUpperCase(),
+    );
+    expect(heroStrike.titleActions).toContain("SLASH");
+    expect(heroStrike.partyMembers[0].spriteX).toBeLessThan(
+      heroBefore.partyMembers[0].spriteX - 120,
+    );
+    await setProofLabel(page, "Hero strike: actor leap + named action");
+    await page.screenshot({
+      path: testInfo.outputPath(`battle-hero-strike-${RUN_ID}.png`),
+      fullPage: true,
+    });
+
+    await startCombat(page);
+    const enemyBefore = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("enemy_attack_frame"),
+    );
+    const enemyStrike = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+
+    expect(enemyStrike.titleActors).toContain(
+      enemyBefore.enemyMembers[0].name.toUpperCase(),
+    );
+    expect(enemyStrike.titleActions).toContain("ATTACK");
+    expect(enemyStrike.enemyMembers[0].spriteX).toBeGreaterThan(
+      enemyBefore.enemyMembers[0].spriteX + 120,
+    );
+    await setProofLabel(page, "Monster strike: actor leap + named action");
+    await page.screenshot({
+      path: testInfo.outputPath(`battle-monster-strike-${RUN_ID}.png`),
+      fullPage: true,
+    });
+
+    await startCombat(page);
+    const reducedBefore = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("reduced_attack_frame"),
+    );
+    const reducedStrike = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+    expect(
+      Math.abs(
+        reducedStrike.partyMembers[0].spriteX -
+          reducedBefore.partyMembers[0].spriteX,
+      ),
+    ).toBeLessThanOrEqual(14);
+    expect(reducedStrike.titleActors).toContain("HERO");
+  });
+
+  test("shows the caster, spell charge, and travel path", async ({
+    page,
+  }, testInfo) => {
+    await startCombat(page);
+    await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("spell_charge_frame"),
+    );
+    const charge = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+    expect(charge.castAuras).toBeGreaterThan(0);
+    expect(charge.titleActors).toContain("SPARKS");
+    expect(charge.titleActions).toContain("SPARK");
+    await setProofLabel(page, "Spell charge: named caster + local aura");
+    await page.screenshot({
+      path: testInfo.outputPath(`battle-spell-charge-${RUN_ID}.png`),
+      fullPage: true,
+    });
+
+    await startCombat(page);
+    await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("spell_flight_frame"),
+    );
+    const flight = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+    expect(flight.spellProjectiles).toBeGreaterThan(0);
+    expect(flight.spellTrails).toBeGreaterThan(0);
+    expect(flight.titleActors).toContain("SPARKS");
+    await setProofLabel(page, "Spell flight: caster-to-target projectile");
+    await page.screenshot({
+      path: testInfo.outputPath(`battle-spell-flight-${RUN_ID}.png`),
+      fullPage: true,
+    });
+  });
+
+  test("plays the choreography from an authoritative combat round", async ({
+    page,
+  }, testInfo) => {
+    await startCombat(page);
+    const actions = await page.evaluate(() =>
+      window.__kithlandsTest.startAuthoritativeBattleRound("spell"),
+    );
+    expect(actions.some((action) => action.type === "spell")).toBe(true);
+    await page.waitForFunction(
+      () => {
+        const snapshot = window.__kithlandsTest.battleVisibilitySnapshot();
+        return (
+          snapshot.spellProjectiles > 0 &&
+          snapshot.titleActors.length > 0 &&
+          snapshot.messageWindow.text.includes("casts")
+        );
+      },
+      null,
+      { timeout: 30_000 },
+    );
+    const liveRound = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+    expect(liveRound.titleActions).toContain("SPARK");
+    await setProofLabel(
+      page,
+      "Authoritative round: server result -> spell motion",
+    );
+    await page.screenshot({
+      path: testInfo.outputPath(`battle-authoritative-spell-${RUN_ID}.png`),
+      fullPage: true,
+    });
+  });
+
+  test("keeps the spell action readable in a mobile viewport", async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await startCombat(page);
+    await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("spell_flight_frame"),
+    );
+    const flight = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+    expect(flight.spellProjectiles).toBeGreaterThan(0);
+    expect(flight.titleActors).toContain("SPARKS");
+    expect(flight.titleActions).toContain("SPARK");
+    await setProofLabel(page, "Mobile spell flight: named caster + target");
+    await page.screenshot({
+      path: testInfo.outputPath(`battle-spell-mobile-${RUN_ID}.png`),
+      fullPage: true,
+    });
   });
 });

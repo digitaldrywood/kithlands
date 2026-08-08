@@ -30,6 +30,12 @@ import { attackFrameIndex, attackSheetKey } from "./walkFrame.js";
 import { drawButton, drawFF6BottomStrip, drawPanel } from "../ui/panel.js";
 import { TILE_COLORS, TILE_IDS } from "./tileConstants.js";
 import { pickBackgroundKey } from "./battleBackgrounds.js";
+import {
+  battleElementStyle,
+  buildAttackMotionPath,
+  prefersReducedBattleMotion,
+  spellTravelDuration,
+} from "./battle_cinematics.js";
 
 const ENEMY_COLORS = {
   Slime: 0x42a5f5,
@@ -51,13 +57,6 @@ const ELEMENT_COLORS = {
   lightning: 0xffff44,
   holy: 0xffffff,
   dark: 0x8844aa,
-};
-const ELEMENT_FLASH = {
-  fire: 0xff2200,
-  ice: 0x2266ff,
-  lightning: 0xffee00,
-  holy: 0xffffcc,
-  dark: 0x442266,
 };
 const ELEMENT_SFX = {
   fire: "sfx_fire",
@@ -81,8 +80,11 @@ const CURSOR_TINTS = {
   ally: 0x66ff99,
 };
 const ACTION_BEAT_MS = {
-  titleDisplay: 500,
+  titleDisplay: 900,
   titleLead: 140,
+  physicalAnticipation: 110,
+  physicalLaunch: 210,
+  spellCharge: 280,
   preImpact: 300,
   postDamage: 500,
   interAction: 600,
@@ -1404,7 +1406,10 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
-  playPartyHitReaction(targetEntry, { newHP, maxHP } = {}) {
+  playCombatantHitReaction(
+    targetEntry,
+    { newHP, maxHP, isParty = false } = {},
+  ) {
     const visual = this.resolveVisualEntry(targetEntry);
     if (!visual) return;
 
@@ -1429,10 +1434,28 @@ export class BattleScene extends Phaser.Scene {
       onComplete: () => this.setSpritePosition(sprite, x, y),
     });
 
-    this.cameras.main.shake(this.scaledMs(150), 0.003);
-    if (isLowHpDanger(newHP, maxHP)) {
+    if (!this.reducedBattleMotion()) {
+      this.cameras.main.shake(this.scaledMs(150), 0.003);
+    }
+    if (isParty && isLowHpDanger(newHP, maxHP)) {
       this.pulseLowHpVignette();
     }
+  }
+
+  playPartyHitReaction(targetEntry, { newHP, maxHP } = {}) {
+    this.playCombatantHitReaction(targetEntry, {
+      newHP,
+      maxHP,
+      isParty: true,
+    });
+  }
+
+  playEnemyHitReaction(targetEntry, { newHP, maxHP } = {}) {
+    this.playCombatantHitReaction(targetEntry, {
+      newHP,
+      maxHP,
+      isParty: false,
+    });
   }
 
   showActorCursor(entry) {
@@ -1484,21 +1507,39 @@ export class BattleScene extends Phaser.Scene {
       y: 250,
       height: 56,
     };
-    const width = Math.max(94, title.length * 12 + 28);
-    const panelY = anchor.y - anchor.height / 2 - 38;
+    const actorName = String(anchorEntry?.name || "")
+      .trim()
+      .toUpperCase();
+    const width = Math.max(
+      112,
+      title.length * 11 + 30,
+      actorName.length * 8 + 30,
+    );
+    const panelY = Math.max(48, anchor.y - anchor.height / 2 - 42);
     const bg = this.add
-      .rectangle(anchor.x, panelY, width, 28, 0x05070e, 0.92)
+      .rectangle(anchor.x, panelY, width, 42, 0x05070e, 0.94)
       .setDepth(23)
       .setStrokeStyle(2, 0x2f3444)
       .setAlpha(0);
     bg._combatFxTag = "title-card";
     const accent = this.add
-      .rectangle(anchor.x - width / 2 + 10, panelY, 6, 20, 0xffffff, 1)
+      .rectangle(anchor.x - width / 2 + 10, panelY, 6, 32, 0xffffff, 1)
       .setDepth(24)
       .setAlpha(0);
-    const text = this.add
-      .text(anchor.x, panelY, title, {
-        fontSize: "16px",
+    const actorText = this.add
+      .text(anchor.x, panelY - 10, actorName, {
+        fontSize: "9px",
+        color: "#d6deef",
+        fontFamily: "monospace",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5)
+      .setDepth(24)
+      .setAlpha(0);
+    actorText._combatFxTag = "title-actor";
+    const actionText = this.add
+      .text(anchor.x, panelY + 8, title, {
+        fontSize: "15px",
         color,
         fontFamily: "monospace",
         fontStyle: "bold",
@@ -1506,30 +1547,32 @@ export class BattleScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(24)
       .setAlpha(0);
+    actionText._combatFxTag = "title-action";
 
     this.tweens.add({
-      targets: [bg, accent, text],
+      targets: [bg, accent, actorText, actionText],
       alpha: 1,
       duration: this.scaledMs(120),
       ease: "Back.easeOut",
     });
     this.tweens.add({
-      targets: [bg, accent, text],
-      y: panelY - 4,
+      targets: [bg, accent, actorText, actionText],
+      y: "-=4",
       duration: this.scaledMs(120),
       ease: "Back.easeOut",
     });
     this.scaledDelay(ACTION_BEAT_MS.titleDisplay, () => {
       this.tweens.add({
-        targets: [bg, accent, text],
+        targets: [bg, accent, actorText, actionText],
         alpha: 0,
-        y: panelY - 12,
+        y: "-=8",
         duration: this.scaledMs(180),
         ease: "Quad.In",
         onComplete: () => {
           bg.destroy();
           accent.destroy();
-          text.destroy();
+          actorText.destroy();
+          actionText.destroy();
         },
       });
     });
@@ -1538,18 +1581,221 @@ export class BattleScene extends Phaser.Scene {
 
   async lungePartySprite(actorEntry, targetEntry) {
     if (!actorEntry?.sprite || !targetEntry) return;
+    const actor = this.resolveVisualEntry(actorEntry);
+    const target = this.resolveVisualEntry(targetEntry);
+    if (!actor || !target) return;
+
+    const reducedMotion = this.reducedBattleMotion();
+    const path = buildAttackMotionPath(actor, target, reducedMotion);
+    this.tweens.killTweensOf(actor.sprite);
+    this.setSpritePosition(actor.sprite, path.origin.x, path.origin.y);
+
+    await this.tweenP(actor.sprite, {
+      x: path.anticipation.x,
+      y: path.anticipation.y,
+      duration: reducedMotion ? 40 : ACTION_BEAT_MS.physicalAnticipation,
+      ease: "Quad.Out",
+    });
     const attackPlayback = this.playPartyAttackSheet(actorEntry, "down");
-    const dx = targetEntry.x - actorEntry.x;
-    const dy = targetEntry.y - actorEntry.y;
-    const lungeX = actorEntry.x + dx * 0.38;
-    const lungeY = actorEntry.y + dy * 0.38;
+    if (reducedMotion) {
+      await this.tweenP(actor.sprite, {
+        x: path.strike.x,
+        y: path.strike.y,
+        duration: 70,
+        ease: "Quad.Out",
+      });
+      await attackPlayback;
+      return;
+    }
     await this.tweenP(actorEntry.sprite, {
-      x: lungeX,
-      y: lungeY,
-      duration: 150,
-      ease: "Power2",
+      x: path.apex.x,
+      y: path.apex.y,
+      duration: ACTION_BEAT_MS.physicalLaunch * 0.62,
+      ease: "Quad.Out",
+    });
+    await this.tweenP(actorEntry.sprite, {
+      x: path.strike.x,
+      y: path.strike.y,
+      duration: ACTION_BEAT_MS.physicalLaunch * 0.38,
+      ease: "Quad.In",
     });
     await attackPlayback;
+  }
+
+  reducedBattleMotion() {
+    return this._forceReducedMotion ?? prefersReducedBattleMotion();
+  }
+
+  spawnCastAura(actorEntry, element = "none") {
+    const actor = this.resolveVisualEntry(actorEntry);
+    if (!actor) return null;
+    const style = battleElementStyle(element);
+    const reducedMotion = this.reducedBattleMotion();
+    const aura = this.add
+      .graphics()
+      .setDepth(13)
+      .setAlpha(0)
+      .setScale(reducedMotion ? 1 : 0.65);
+    aura._combatFxTag = "cast-aura";
+    aura.setPosition(actor.x, actor.y + actor.height * 0.3);
+    aura.lineStyle(3, style.core, 0.95);
+    aura.strokeEllipse(0, 0, actor.width * 1.05, 24);
+    aura.lineStyle(2, style.accent, 0.75);
+    aura.strokeEllipse(0, 0, actor.width * 0.72, 15);
+    for (let i = 0; i < 8; i++) {
+      const angle = (Math.PI * 2 * i) / 8;
+      aura.lineBetween(
+        Math.cos(angle) * 25,
+        Math.sin(angle) * 8,
+        Math.cos(angle) * 34,
+        Math.sin(angle) * 12,
+      );
+    }
+
+    this.tweens.add({
+      targets: aura,
+      alpha: 0.95,
+      scaleX: 1,
+      scaleY: 1,
+      angle: reducedMotion ? 0 : 45,
+      duration: this.scaledMs(reducedMotion ? 90 : 160),
+      ease: "Back.Out",
+    });
+    this.scaledDelay(520, () => {
+      if (!aura.active) return;
+      this.tweens.add({
+        targets: aura,
+        alpha: 0,
+        scaleX: reducedMotion ? 1 : 1.25,
+        scaleY: reducedMotion ? 1 : 1.25,
+        angle: reducedMotion ? 0 : 120,
+        duration: this.scaledMs(reducedMotion ? 100 : 180),
+        onComplete: () => aura.destroy(),
+      });
+    });
+    return aura;
+  }
+
+  async playCastAnticipation(actorEntry, element = "none") {
+    const actor = this.resolveVisualEntry(actorEntry);
+    if (!actor) return;
+    const style = battleElementStyle(element);
+    const reducedMotion = this.reducedBattleMotion();
+    this.spawnCastAura(actorEntry, element);
+    this.tweens.killTweensOf(actor.sprite);
+    this.setSpritePosition(actor.sprite, actor.x, actor.y);
+    actor.sprite.setTint?.(style.core);
+    await this.tweenP(actor.sprite, {
+      y: actor.y - (reducedMotion ? 0 : 12),
+      duration: reducedMotion ? 80 : ACTION_BEAT_MS.spellCharge,
+      ease: "Sine.Out",
+    });
+    actor.sprite.clearTint?.();
+  }
+
+  spawnSpellImpact(targetEntry, element = "none") {
+    const target = this.resolveVisualEntry(targetEntry);
+    if (!target) return null;
+    const style = battleElementStyle(element);
+    const reducedMotion = this.reducedBattleMotion();
+    const impact = this.add
+      .graphics()
+      .setDepth(21)
+      .setScale(reducedMotion ? 1 : 0.35);
+    impact._combatFxTag = "spell-impact";
+    impact.setPosition(target.x, target.y);
+    impact.fillStyle(style.glow, 0.22);
+    impact.fillCircle(0, 0, Math.max(28, target.width * 0.5));
+    impact.lineStyle(4, style.core, 1);
+    impact.strokeCircle(0, 0, Math.max(20, target.width * 0.38));
+    impact.lineStyle(2, style.accent, 0.95);
+    for (let i = 0; i < 10; i++) {
+      const angle = (Math.PI * 2 * i) / 10;
+      impact.lineBetween(
+        Math.cos(angle) * 16,
+        Math.sin(angle) * 16,
+        Math.cos(angle) * 42,
+        Math.sin(angle) * 42,
+      );
+    }
+    this.tweens.add({
+      targets: impact,
+      alpha: 0,
+      scaleX: reducedMotion ? 1 : 1.45,
+      scaleY: reducedMotion ? 1 : 1.45,
+      angle: reducedMotion ? 0 : 35,
+      duration: this.scaledMs(reducedMotion ? 140 : 300),
+      ease: "Quad.Out",
+      onComplete: () => impact.destroy(),
+    });
+    return impact;
+  }
+
+  launchSpellProjectile(actorEntry, targetEntry, element = "none", opts = {}) {
+    const actor = this.resolveVisualEntry(actorEntry);
+    const target = this.resolveVisualEntry(targetEntry);
+    if (!actor || !target) return Promise.resolve();
+    const style = battleElementStyle(element);
+    const reducedMotion = this.reducedBattleMotion();
+    if (reducedMotion) {
+      const cue = this.add
+        .circle(target.x, target.y, 12, style.core, 0.9)
+        .setDepth(20);
+      cue._combatFxTag = "spell-projectile";
+      this.spawnSpellImpact(targetEntry, element);
+      return new Promise((resolve) => {
+        this.scaledDelay(90, () => {
+          cue.destroy();
+          resolve();
+        });
+      });
+    }
+    const projectile = this.add
+      .container(actor.x, actor.y)
+      .setDepth(20)
+      .setScale(0.8);
+    projectile._combatFxTag = "spell-projectile";
+    const halo = this.add.circle(0, 0, 14, style.glow, 0.42);
+    const core = this.add.circle(0, 0, 7, style.core, 1);
+    core.setStrokeStyle(2, style.accent, 0.95);
+    projectile.add([halo, core]);
+
+    const duration =
+      opts.duration ?? spellTravelDuration(actor, target, reducedMotion);
+    let trailTick = 0;
+    return new Promise((resolve) => {
+      this.tweens.add({
+        targets: projectile,
+        x: target.x,
+        y: target.y,
+        scaleX: 1.2,
+        scaleY: 1.2,
+        angle: 180,
+        duration: this.scaledMs(duration),
+        ease: reducedMotion ? "Linear" : "Sine.InOut",
+        onUpdate: () => {
+          trailTick++;
+          if (reducedMotion || trailTick % 3 !== 0) return;
+          const trail = this.add
+            .circle(projectile.x, projectile.y, 5, style.glow, 0.45)
+            .setDepth(19);
+          trail._combatFxTag = "spell-trail";
+          this.tweens.add({
+            targets: trail,
+            alpha: 0,
+            scaleX: 0.25,
+            scaleY: 0.25,
+            duration: this.scaledMs(150),
+            onComplete: () => trail.destroy(),
+          });
+        },
+        onComplete: () => {
+          this.spawnSpellImpact(targetEntry, element);
+          projectile.destroy();
+          resolve();
+        },
+      });
+    });
   }
 
   async resetPartySprite(actorEntry) {
@@ -2488,6 +2734,7 @@ export class BattleScene extends Phaser.Scene {
           });
           this.revealLine(`${attacker} attacks ${pt.name}!`, "#ff9966");
           await this.showActionTitle(attackerEnemy, attackTitle, "#ff9966");
+          await this.lungePartySprite(attackerEnemy, pt);
           await this.wait(ACTION_BEAT_MS.preImpact);
         }
 
@@ -2509,6 +2756,12 @@ export class BattleScene extends Phaser.Scene {
           if (!action.missed && ee.hpBar) {
             const newHP = applyDamage(ee.hpBar.currentHP, dmg);
             this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
+            if (!defeatMatch) {
+              this.playEnemyHitReaction(ee, {
+                newHP,
+                maxHP: ee.hpBar.maxHP,
+              });
+            }
           }
           await this.resetPartySprite(pe);
           if (defeatMatch) await this.enemyDeathFx(ee);
@@ -2535,6 +2788,7 @@ export class BattleScene extends Phaser.Scene {
               maxHP: pt.hpBar.maxHP,
             });
           }
+          await this.resetPartySprite(attackerEnemy);
         }
         await this.wait(ACTION_BEAT_MS.postDamage);
         await this.wait(ACTION_BEAT_MS.interAction);
@@ -2563,6 +2817,7 @@ export class BattleScene extends Phaser.Scene {
             this.actionTitleFor(action, line),
             "#ffcc66",
           );
+          await this.lungePartySprite(pe, ee);
           await this.wait(ACTION_BEAT_MS.preImpact);
           const targetKey = `enemy_${targetId}`;
           await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch, dmgType, {
@@ -2574,6 +2829,12 @@ export class BattleScene extends Phaser.Scene {
           if (ee.hpBar) {
             const newHP = applyDamage(ee.hpBar.currentHP, dmg);
             this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
+            if (!defeatMatch) {
+              this.playEnemyHitReaction(ee, {
+                newHP,
+                maxHP: ee.hpBar.maxHP,
+              });
+            }
           }
           await this.resetPartySprite(pe);
           if (defeatMatch) await this.enemyDeathFx(ee);
@@ -2598,22 +2859,6 @@ export class BattleScene extends Phaser.Scene {
           for (const a of this.partyArrows) a.setVisible(false);
           pe.arrow.setVisible(true);
         }
-        this.revealLine(`${caster} casts ${spellName}!`, "#88aaff");
-        await this.showActionTitle(
-          pe || enemyCaster,
-          spellName,
-          `#${(ELEMENT_COLORS[element] || 0x8888ff).toString(16).padStart(6, "0")}`,
-        );
-
-        // Element-specific SFX and flash
-        const sfx = ELEMENT_SFX[element] || "sfx_spell";
-        playSFX(sfx);
-        const flashColor = ELEMENT_FLASH[element] || 0x4444ff;
-        const flash = this.add
-          .rectangle(400, 300, 800, 600, flashColor, 0.2)
-          .setDepth(19);
-        this.scaledDelay(200, () => flash.destroy());
-
         // Check for multi-target: group consecutive entries with same caster + spell
         const targets = [
           {
@@ -2644,8 +2889,18 @@ export class BattleScene extends Phaser.Scene {
           }
         }
 
-        // Animate each target with stagger
-        const particleColor = ELEMENT_COLORS[element] || 0x8888ff;
+        const actorEntry = pe || enemyCaster;
+        const style = battleElementStyle(element);
+        this.revealLine(`${caster} casts ${spellName}!`, "#88aaff");
+        await this.showActionTitle(
+          actorEntry,
+          spellName,
+          `#${style.core.toString(16).padStart(6, "0")}`,
+        );
+        await this.playCastAnticipation(actorEntry, element);
+        playSFX(ELEMENT_SFX[element] || "sfx_spell");
+
+        // Animate each target with a visible cast-to-impact travel cue.
         for (let t = 0; t < targets.length; t++) {
           const tgt = targets[t];
           const ee = this.enemySprites[tgt.targetId];
@@ -2654,25 +2909,12 @@ export class BattleScene extends Phaser.Scene {
             tgt.targetId,
             spellMatch?.[3],
           );
-          const actorEntry = pe || enemyCaster;
           const targetEntry = ee || pt;
           this.showActionFocus(actorEntry, targetEntry, {
-            tracerColor: ACTION_TRACER_COLORS.magical,
             targetColor: ACTION_RETICLE_COLORS.magicalTarget,
           });
+          await this.launchSpellProjectile(actorEntry, targetEntry, element);
           if (ee) {
-            for (let j = 0; j < 6; j++) {
-              const px = ee.x + Phaser.Math.Between(-25, 25);
-              const py = ee.y + Phaser.Math.Between(-25, 25);
-              const p = this.add.circle(px, py, 4, particleColor).setDepth(20);
-              this.tweens.add({
-                targets: p,
-                y: py - 30,
-                alpha: 0,
-                duration: 400,
-                onComplete: () => p.destroy(),
-              });
-            }
             const targetKey = `enemy_${tgt.targetId}`;
             await this.hitFx(
               ee.x,
@@ -2686,6 +2928,12 @@ export class BattleScene extends Phaser.Scene {
             if (!tgt.missed && ee.hpBar) {
               const newHP = applyDamage(ee.hpBar.currentHP, tgt.dmg);
               this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
+              if (!tgt.defeated) {
+                this.playEnemyHitReaction(ee, {
+                  newHP,
+                  maxHP: ee.hpBar.maxHP,
+                });
+              }
             }
             if (tgt.defeated) await this.enemyDeathFx(ee);
           } else if (pt) {
@@ -2708,16 +2956,30 @@ export class BattleScene extends Phaser.Scene {
           if (t < targets.length - 1)
             await this.wait(ACTION_BEAT_MS.multiTargetGap);
         }
+        await this.resetPartySprite(actorEntry);
         await this.wait(ACTION_BEAT_MS.postDamage);
         await this.wait(ACTION_BEAT_MS.interAction);
       } else if (action.kind === "heal" || line.includes("healed")) {
         this.revealLine(line, "#44ff44");
+        const casterEntry =
+          this.partySprites[action.actor_name] ||
+          this.findEnemySpriteForAction(action, action.actor_name);
+        const healTarget =
+          this.partySprites[action.target_name] ||
+          this.partySprites[action.actor_name];
+        await this.showActionTitle(
+          casterEntry,
+          action.spell_name || "HEAL",
+          "#fff4bd",
+        );
+        await this.playCastAnticipation(casterEntry, "holy");
+        this.showActionFocus(casterEntry, healTarget, {
+          targetColor: CURSOR_TINTS.ally,
+        });
+        await this.launchSpellProjectile(casterEntry, healTarget, "holy");
+        playSFX("sfx_heal");
         const healMatch = line.match(/healed (\d+)/);
         if (healMatch) {
-          playSFX("sfx_heal");
-          const healTarget =
-            this.partySprites[action.target_name] ||
-            this.partySprites[action.actor_name];
           const anchor = floatingTextAnchorForEntry(healTarget, {
             x: healTarget ? healTarget.x : 600,
             y: healTarget ? healTarget.y : 220,
@@ -2742,6 +3004,7 @@ export class BattleScene extends Phaser.Scene {
             this.animateHPBar(healTarget.hpBar, newHP, healTarget.hpBar.maxHP);
           }
         }
+        await this.resetPartySprite(casterEntry);
         await this.wait(ACTION_BEAT_MS.briefStatus);
       } else if (line.includes("Found:")) {
         this.revealLine(line, "#44ff44");
@@ -2853,6 +3116,21 @@ export class BattleScene extends Phaser.Scene {
       } else if (action.kind === "status_effect") {
         // Status spell landed or resisted
         this.revealLine(line, "#cc88ff");
+        const casterEntry =
+          this.partySprites[action.actor_name] ||
+          this.findEnemySpriteForAction(action, action.actor_name);
+        const targetEntry = this.enemySprites[action.target_id];
+        await this.showActionTitle(
+          casterEntry,
+          action.spell_name || "STATUS",
+          "#c27aff",
+        );
+        await this.playCastAnticipation(casterEntry, "dark");
+        this.showActionFocus(casterEntry, targetEntry, {
+          targetColor: ACTION_RETICLE_COLORS.magicalTarget,
+        });
+        await this.launchSpellProjectile(casterEntry, targetEntry, "dark");
+        await this.resetPartySprite(casterEntry);
         await this.wait(ACTION_BEAT_MS.briefStatus);
       } else if (action.kind === "ability") {
         if (this.isDefeatedEnemyActor(action)) {
@@ -2882,6 +3160,7 @@ export class BattleScene extends Phaser.Scene {
                   ? ACTION_RETICLE_COLORS.magicalTarget
                   : ACTION_RETICLE_COLORS.enemyTarget,
             });
+            await this.lungePartySprite(actorEntry, ee);
             await this.wait(ACTION_BEAT_MS.preImpact);
             const targetKey = `enemy_${action.target_id}`;
             await this.hitFx(
@@ -2896,7 +3175,14 @@ export class BattleScene extends Phaser.Scene {
             if (ee.hpBar) {
               const newHP = applyDamage(ee.hpBar.currentHP, action.damage);
               this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
+              if (!defeatMatch) {
+                this.playEnemyHitReaction(ee, {
+                  newHP,
+                  maxHP: ee.hpBar.maxHP,
+                });
+              }
             }
+            await this.resetPartySprite(actorEntry);
             if (defeatMatch) await this.enemyDeathFx(ee);
           }
         }
@@ -3004,16 +3290,85 @@ export class BattleScene extends Phaser.Scene {
     };
   }
 
+  async runEnemyAttackProofFrame() {
+    const partyEntries = Object.values(this.partySprites || {}).sort(
+      (a, b) => (a.slot ?? 0) - (b.slot ?? 0),
+    );
+    const enemyEntries = Object.values(this.enemySprites || {}).filter(
+      (entry) => entry && !entry.dead && !entry.dying,
+    );
+    const actorEntry = enemyEntries[0];
+    const targetEntry = partyEntries[0];
+    if (!actorEntry || !targetEntry) return null;
+
+    this.showActorCursor(actorEntry);
+    this.showTargetCursor(targetEntry, "party");
+    this.showActionFocus(actorEntry, targetEntry, {
+      tracerColor: ACTION_TRACER_COLORS.enemyToParty,
+      targetColor: ACTION_RETICLE_COLORS.partyTarget,
+    });
+    this.revealLine(
+      `${actorEntry.name} attacks ${targetEntry.name}!`,
+      "#ff9966",
+    );
+    void this.showActionTitle(actorEntry, "ATTACK", "#ff9966");
+    await this.lungePartySprite(actorEntry, targetEntry);
+    await this.wait(120);
+    return {
+      actorX: actorEntry.sprite?.x ?? actorEntry.x,
+      targetX: targetEntry.x,
+    };
+  }
+
+  async runSpellProofFrame(phase = "flight") {
+    const partyEntries = Object.values(this.partySprites || {}).sort(
+      (a, b) => (a.slot ?? 0) - (b.slot ?? 0),
+    );
+    const enemyEntries = Object.values(this.enemySprites || {}).filter(
+      (entry) => entry && !entry.dead && !entry.dying,
+    );
+    const actorEntry = partyEntries[1] || partyEntries[0];
+    const targetEntry = enemyEntries[0];
+    if (!actorEntry || !targetEntry) return null;
+
+    this.showActorCursor(actorEntry);
+    this.showTargetCursor(targetEntry, "enemy");
+    this.showActionFocus(actorEntry, targetEntry, {
+      targetColor: ACTION_RETICLE_COLORS.magicalTarget,
+    });
+    this.revealLine(
+      `${actorEntry.name} casts Spark on ${targetEntry.name}!`,
+      "#88aaff",
+    );
+    void this.showActionTitle(actorEntry, "SPARK", "#ff7a45");
+    await this.playCastAnticipation(actorEntry, "fire");
+    if (phase === "charge") {
+      return { phase, actorX: actorEntry.sprite?.x ?? actorEntry.x };
+    }
+
+    void this.launchSpellProjectile(actorEntry, targetEntry, "fire", {
+      duration: 900,
+    });
+    await this.wait(320);
+    return {
+      phase,
+      actorX: actorEntry.sprite?.x ?? actorEntry.x,
+      targetX: targetEntry.x,
+    };
+  }
+
   hitFx(x, y, dmg, isParty, defeated, damageType, opts = {}) {
     return new Promise((resolve) => {
       if (opts.missed) {
         playSFX("sfx_miss");
       } else if (opts.crit) {
         playSFX("sfx_crit");
-        this.cameras.main.shake(
-          this.scaledMs(ACTION_BEAT_MS.critShake),
-          0.0045,
-        );
+        if (!this.reducedBattleMotion()) {
+          this.cameras.main.shake(
+            this.scaledMs(ACTION_BEAT_MS.critShake),
+            0.0045,
+          );
+        }
       }
       if (isParty && !opts.missed) {
         this.spawnPartyImpactBurst(x, y);
