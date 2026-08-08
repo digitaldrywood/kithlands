@@ -36,6 +36,21 @@ func TestEquipWeaponClassRestriction(t *testing.T) {
 	}
 }
 
+func TestMenderWeaponRestrictions(t *testing.T) {
+	gd := loadTestData(t)
+	inv := inventory.New()
+
+	if _, err := inv.EquipWeapon(0, "wooden_staff", "mender", gd); err != nil {
+		t.Fatalf("mender should equip wooden_staff: %v", err)
+	}
+
+	for _, weaponID := range []string{"hand_axe", "war_hammer", "earth_hammer"} {
+		if _, err := inv.EquipWeapon(0, weaponID, "mender", gd); err == nil {
+			t.Errorf("mender should not be able to equip %s", weaponID)
+		}
+	}
+}
+
 func TestEquipArmor(t *testing.T) {
 	gd := loadTestData(t)
 	inv := inventory.New()

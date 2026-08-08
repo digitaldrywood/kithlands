@@ -11,6 +11,10 @@ mkdirSync(PROOF_DIR, { recursive: true });
 
 async function waitForBridge(page) {
   await page.waitForFunction(() => !!window.__kithlandsTest);
+  await page.waitForFunction(() => {
+    const title = window.__kithlandsTest.sceneAuditInfo?.("Title");
+    return title?.key === "Title" && title?.active;
+  });
 }
 
 async function startShopGame(page) {
@@ -81,7 +85,7 @@ async function visitShop(page) {
   await page.waitForFunction(() =>
     window.__kithlandsTest
       .visibleTexts("Town")
-      .some((entry) => entry.text === "[ LEAVE SHOP (ESC) ]"),
+      .some((entry) => entry.text === "Leave Shop"),
   );
 }
 
@@ -112,7 +116,7 @@ async function addProofOverlay(page, label) {
           "Nia",
           "Abs +2",
           "MDef +3",
-          "[ LEAVE SHOP (ESC) ]",
+          "Leave Shop",
         ].includes(text),
       );
 
@@ -150,6 +154,43 @@ test.describe("shop compare flow", () => {
     await visitShop(page);
 
     await page.evaluate(() =>
+      window.__kithlandsTest.clickInteractiveText("Wooden Staff", "Town"),
+    );
+    await page.waitForFunction(() =>
+      window.__kithlandsTest
+        .visibleTexts("Town")
+        .some((entry) => entry.text === "Ill suited to this path"),
+    );
+    let texts = await visibleTexts(page);
+    expect(texts).toContain("Ayla · Warrior · Lv.5");
+    expect(texts).toContain("May not wield");
+    await page.screenshot({
+      path: path.join(
+        PROOF_DIR,
+        `issue-202-shop-cycle-locked-before-${RUN_ID}.png`,
+      ),
+      fullPage: true,
+    });
+
+    const nextArrow = await page.evaluate(() =>
+      window.__kithlandsTest.interactiveTextPosition(">", "Town"),
+    );
+    expect(nextArrow).toBeTruthy();
+    await page.mouse.click(nextArrow.x + 24, nextArrow.y);
+    await page.waitForFunction(() =>
+      window.__kithlandsTest
+        .visibleTexts("Town")
+        .some((entry) => entry.text === "Mira · Mender · Lv.5"),
+    );
+    texts = await visibleTexts(page);
+    expect(texts).toContain("May equip");
+    expect(texts).toContain("Buy for Mira");
+    await page.screenshot({
+      path: path.join(PROOF_DIR, `issue-202-shop-cycle-locked-${RUN_ID}.png`),
+      fullPage: true,
+    });
+
+    await page.evaluate(() =>
       window.__kithlandsTest.clickInteractiveText("Armor", "Town"),
     );
     await page.waitForFunction(() =>
@@ -161,26 +202,20 @@ test.describe("shop compare flow", () => {
       window.__kithlandsTest.clickInteractiveText("Silk Robe", "Town"),
     );
 
-    let texts = await visibleTexts(page);
+    texts = await visibleTexts(page);
     const indicatorCount = texts.filter((text) =>
       ["▲", "▼", "=", "-"].includes(text),
     ).length;
     expect(indicatorCount).toBeGreaterThanOrEqual(4);
     expect(texts).toContain("Silk Robe");
 
-    await page.keyboard.press("]");
-    await page.waitForFunction(() =>
-      window.__kithlandsTest
-        .visibleTexts("Town")
-        .some((entry) => entry.text === "Mira · Mender · Lv.5"),
-    );
-
     texts = await visibleTexts(page);
+    expect(texts).toContain("Mira · Mender · Lv.5");
     expect(texts).toContain("Current: Cloth Robe");
-    expect(texts).toContain("Shop:    Silk Robe");
-    expect(texts).toContain("Absorb: 2 -> 4");
+    expect(texts).toContain("Preview: Silk Robe");
+    expect(texts).toContain("Absorb: 2 to 4");
     expect(texts).toContain("Abs +2");
-    expect(texts).toContain("MagicDef: 2 -> 5");
+    expect(texts).toContain("MagicDef: 2 to 5");
     expect(texts).toContain("MDef +3");
 
     await addProofOverlay(page, "Compare panel focused on Mira");
@@ -190,7 +225,7 @@ test.describe("shop compare flow", () => {
     });
 
     await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("BUY FOR Mira", "Town"),
+      window.__kithlandsTest.clickInteractiveText("Buy for Mira", "Town"),
     );
     await page.waitForFunction(() => {
       const state = window.__kithlandsTest.gameState("Town");
@@ -214,12 +249,8 @@ test.describe("shop compare flow", () => {
     );
     expect(extraBuy.error).toBeFalsy();
 
-    await page.keyboard.press("m");
-    await page.waitForFunction(
-      () => window.__kithlandsTest.sceneFlags("Town").menuOpen,
-    );
     await page.evaluate(() =>
-      window.__kithlandsTest.clickMenuButton("CHARACTER →", "Town", 0),
+      window.__kithlandsTest.openCharacterDetail(0, "Town"),
     );
     await page.waitForFunction(
       () => window.__kithlandsTest.sceneFlags("Town").characterDetailOpen,
@@ -260,6 +291,6 @@ test.describe("shop compare flow", () => {
     );
     texts = await visibleTexts(page);
     expect(texts).toContain("General Store");
-    expect(texts).toContain("[ LEAVE SHOP (ESC) ]");
+    expect(texts).toContain("Leave Shop");
   });
 });

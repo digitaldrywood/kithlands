@@ -122,6 +122,39 @@ func TestPalettesLoaded(t *testing.T) {
 	}
 }
 
+func TestEquipmentClassReferencesResolve(t *testing.T) {
+	gd := gamedata.Load("../../../shared")
+	classIDs := map[string]bool{}
+	for _, class := range gd.Classes {
+		classIDs[class.ID] = true
+	}
+
+	checkRefs := func(kind, id string, refs []string) {
+		t.Helper()
+		if len(refs) == 0 {
+			t.Fatalf("%s %q has no class restrictions", kind, id)
+		}
+		for _, ref := range refs {
+			if !classIDs[ref] {
+				t.Fatalf("%s %q references unknown class %q", kind, id, ref)
+			}
+		}
+	}
+
+	for _, weapon := range gd.Items.Weapons {
+		checkRefs("weapon", weapon.ID, weapon.Classes)
+	}
+	for _, armor := range gd.Items.Armor {
+		checkRefs("armor", armor.ID, armor.Classes)
+	}
+	for _, shield := range gd.Items.Shields {
+		checkRefs("shield", shield.ID, shield.Classes)
+	}
+	for _, helmet := range gd.Items.Helmets {
+		checkRefs("helmet", helmet.ID, helmet.Classes)
+	}
+}
+
 func TestChestsLoaded(t *testing.T) {
 	gd := gamedata.Load("../../../shared")
 	if len(gd.Chests) < 8 {

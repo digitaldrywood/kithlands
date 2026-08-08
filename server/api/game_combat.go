@@ -24,6 +24,21 @@ func isCombatCastableEffect(effect string) bool {
 	return false
 }
 
+func resolveSpellTargetMode(spell *gamedata.Spell, requested string) string {
+	if spell == nil {
+		return ""
+	}
+	if requested == "" || requested == spell.Target {
+		return spell.Target
+	}
+	for _, mode := range spell.TargetModes {
+		if mode == requested {
+			return mode
+		}
+	}
+	return spell.Target
+}
+
 // toHitEntries converts internal combat.Hit slices to the API-facing CombatHitEntry type.
 func toHitEntries(hits []combat.Hit) []CombatHitEntry {
 	if len(hits) == 0 {
@@ -722,6 +737,9 @@ func (g *Game) resolveScheduledSpell(combatants []*combat.Combatant, ma MemberAc
 	if spell == nil {
 		return
 	}
+	spellForCast := *spell
+	spellForCast.Target = resolveSpellTargetMode(spell, ma.TargetMode)
+	spell = &spellForCast
 	if _, ok := g.spellBooks[caster.Name]; !ok {
 		g.logCombat(
 			fmt.Sprintf("%s has no spells!", caster.Name),

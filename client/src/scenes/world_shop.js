@@ -27,15 +27,59 @@ const MAIN_PANEL = {
   y: 300,
   w: 740,
   h: 520,
-  depth: 50,
+  depth: 1800,
 };
 
-const LIST_LEFT = 70;
+const LIST_LEFT = 90;
 const LIST_RIGHT = 495;
+const LIST_ROW_CENTER_X = 282;
+const LIST_ROW_WIDTH = 410;
+const LIST_ROW_HEIGHT = 30;
+const LIST_ROW_GAP = 35;
+const LIST_TEXT_Y_OFFSET = 3;
 const DETAIL_X = 615;
 const DETAIL_Y = 325;
 const DETAIL_W = 240;
 const DETAIL_H = 370;
+
+function drawCycleControl(scene, x, y, label, onClick, depth) {
+  const bg = scene.add
+    .rectangle(x, y, 64, 38, 0x1e3558, 1)
+    .setStrokeStyle(2, 0x66a7ff)
+    .setScrollFactor(0)
+    .setDepth(depth)
+    .setInteractive({ useHandCursor: true });
+  const text = scene.add
+    .text(x, y + 1, label, {
+      fontSize: "16px",
+      color: "#dceaff",
+      fontFamily: "monospace",
+      fontStyle: "bold",
+    })
+    .setOrigin(0.5)
+    .setScrollFactor(0)
+    .setDepth(depth + 1)
+    .setInteractive({ useHandCursor: true });
+  const press = () => {
+    if (typeof onClick === "function") onClick();
+  };
+  const over = () => bg.setFillStyle(0x2b5486, 1);
+  const out = () => bg.setFillStyle(0x1e3558, 1);
+  bg.on("pointerover", over);
+  bg.on("pointerout", out);
+  bg.on("pointerdown", press);
+  text.on("pointerover", over);
+  text.on("pointerout", out);
+  text.on("pointerdown", press);
+  return {
+    bg,
+    label: text,
+    destroy() {
+      bg.destroy();
+      text.destroy();
+    },
+  };
+}
 
 function destroyGroup(group) {
   group.forEach((entry) => entry?.destroy?.());
@@ -211,9 +255,10 @@ export async function openShop(scene, spawn) {
 
     const title = scene.add
       .text(DETAIL_X, DETAIL_Y - 165, item.name, {
-        fontSize: "15px",
-        color: "#ffff88",
-        fontFamily: "monospace",
+        fontSize: "16px",
+        color: "#fff5c2",
+        fontFamily: "Georgia",
+        fontStyle: "bold",
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
@@ -237,28 +282,25 @@ export async function openShop(scene, spawn) {
       renderDetail();
     };
 
-    const prevBtn = drawButton(
+    const prevBtn = drawCycleControl(
       scene,
-      DETAIL_X - 62,
+      DETAIL_X - 100,
       DETAIL_Y - 135,
-      78,
-      26,
-      "< [L]",
+      "<",
       cyclePrev,
-      { depth: MAIN_PANEL.depth + 3, fontSize: "10px" },
+      MAIN_PANEL.depth + 5,
     );
-    const nextBtn = drawButton(
+    const nextBtn = drawCycleControl(
       scene,
-      DETAIL_X + 62,
+      DETAIL_X + 100,
       DETAIL_Y - 135,
-      78,
-      26,
-      "R ] >",
+      ">",
       cycleNext,
-      { depth: MAIN_PANEL.depth + 3, fontSize: "10px" },
+      MAIN_PANEL.depth + 5,
     );
     detailGroup.push(prevBtn, nextBtn);
 
+    const focusedCanEquip = canPartyMemberEquip(item, member);
     const focusText = scene.add
       .text(
         DETAIL_X,
@@ -266,14 +308,27 @@ export async function openShop(scene, spawn) {
         `${member.name} · ${member.class_name} · Lv.${member.level}`,
         {
           fontSize: "11px",
-          color: "#aaccee",
-          fontFamily: "monospace",
+          color: focusedCanEquip ? "#d7e8ff" : "#dda866",
+          fontFamily: "Arial",
         },
       )
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(MAIN_PANEL.depth + 3);
     detailGroup.push(focusText);
+
+    if (!focusedCanEquip) {
+      const lockedBadge = scene.add
+        .text(DETAIL_X, DETAIL_Y - 120, "Ill suited to this path", {
+          fontSize: "9px",
+          color: "#dda866",
+          fontFamily: "Arial",
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(MAIN_PANEL.depth + 3);
+      detailGroup.push(lockedBadge);
+    }
 
     let indicatorX = DETAIL_X - 52;
     for (const indicator of indicators) {
@@ -294,15 +349,15 @@ export async function openShop(scene, spawn) {
       .text(DETAIL_X - 98, DETAIL_Y - 90, `Current: ${compare.currentName}`, {
         fontSize: "10px",
         color: "#ffffff",
-        fontFamily: "monospace",
+        fontFamily: "Arial",
       })
       .setScrollFactor(0)
       .setDepth(MAIN_PANEL.depth + 3);
     const nextLine = scene.add
-      .text(DETAIL_X - 98, DETAIL_Y - 76, `Shop:    ${compare.nextName}`, {
+      .text(DETAIL_X - 98, DETAIL_Y - 76, `Preview: ${compare.nextName}`, {
         fontSize: "10px",
         color: "#ffffaa",
-        fontFamily: "monospace",
+        fontFamily: "Arial",
       })
       .setScrollFactor(0)
       .setDepth(MAIN_PANEL.depth + 3);
@@ -312,11 +367,11 @@ export async function openShop(scene, spawn) {
       .text(
         DETAIL_X - 98,
         DETAIL_Y - 58,
-        compare.canEquip ? "Equip: OK" : "Equip: class locked",
+        compare.canEquip ? "May equip" : "May not wield",
         {
           fontSize: "10px",
           color: compare.canEquip ? "#44ff44" : "#ddaa66",
-          fontFamily: "monospace",
+          fontFamily: "Arial",
         },
       )
       .setScrollFactor(0)
@@ -328,7 +383,8 @@ export async function openShop(scene, spawn) {
       .text(DETAIL_X - 98, statY, "Item Stats", {
         fontSize: "11px",
         color: "#ffcc44",
-        fontFamily: "monospace",
+        fontFamily: "Georgia",
+        fontStyle: "bold",
       })
       .setScrollFactor(0)
       .setDepth(MAIN_PANEL.depth + 3);
@@ -339,7 +395,7 @@ export async function openShop(scene, spawn) {
         .text(DETAIL_X - 98, statY, `${stat.label}: ${stat.value}`, {
           fontSize: "10px",
           color: "#dddddd",
-          fontFamily: "monospace",
+          fontFamily: "Arial",
         })
         .setScrollFactor(0)
         .setDepth(MAIN_PANEL.depth + 3);
@@ -352,7 +408,8 @@ export async function openShop(scene, spawn) {
       .text(DETAIL_X - 98, statY, "Member Compare", {
         fontSize: "11px",
         color: "#ffcc44",
-        fontFamily: "monospace",
+        fontFamily: "Georgia",
+        fontStyle: "bold",
       })
       .setScrollFactor(0)
       .setDepth(MAIN_PANEL.depth + 3);
@@ -364,11 +421,11 @@ export async function openShop(scene, spawn) {
         .text(
           DETAIL_X - 98,
           statY,
-          `${line.label}: ${line.currentValue} -> ${line.nextValue}`,
+          `${line.label}: ${line.currentValue} to ${line.nextValue}`,
           {
             fontSize: "10px",
             color: "#dddddd",
-            fontFamily: "monospace",
+            fontFamily: "Arial",
           },
         )
         .setScrollFactor(0)
@@ -377,7 +434,7 @@ export async function openShop(scene, spawn) {
         .text(DETAIL_X + 18, statY, line.deltaText, {
           fontSize: "10px",
           color: line.color,
-          fontFamily: "monospace",
+          fontFamily: "Arial",
         })
         .setScrollFactor(0)
         .setDepth(MAIN_PANEL.depth + 3);
@@ -389,11 +446,11 @@ export async function openShop(scene, spawn) {
       .text(
         DETAIL_X - 98,
         statY,
-        `Element: ${compare.currentElement} -> ${compare.nextElement}`,
+        `Element: ${compare.currentElement} to ${compare.nextElement}`,
         {
           fontSize: "10px",
           color: "#dddddd",
-          fontFamily: "monospace",
+          fontFamily: "Arial",
         },
       )
       .setScrollFactor(0)
@@ -456,9 +513,9 @@ export async function openShop(scene, spawn) {
       DETAIL_Y + 153,
       86,
       30,
-      "BUY ONLY",
+      "Buy",
       buyStandard,
-      { depth: MAIN_PANEL.depth + 3, fontSize: "11px" },
+      { depth: MAIN_PANEL.depth + 3, fontSize: "11px", fill: 0x1d4938 },
     );
     const buyForBtn = drawButton(
       scene,
@@ -468,7 +525,7 @@ export async function openShop(scene, spawn) {
       30,
       buyForMemberLabel(member),
       buyForMember,
-      { depth: MAIN_PANEL.depth + 3, fontSize: "10px" },
+      { depth: MAIN_PANEL.depth + 3, fontSize: "10px", fill: 0x1d4938 },
     );
     if (!affordable) {
       buyBtn.setEnabled(false);
@@ -494,7 +551,14 @@ export async function openShop(scene, spawn) {
       const selectedRow = selected?.id === item.id;
 
       const rowBg = scene.add
-        .rectangle(282, y, 410, 26, selectedRow ? 0x23395d : 0x111a33, 0.95)
+        .rectangle(
+          LIST_ROW_CENTER_X,
+          y,
+          LIST_ROW_WIDTH,
+          LIST_ROW_HEIGHT,
+          selectedRow ? 0x23395d : 0x111a33,
+          0.95,
+        )
         .setStrokeStyle(1, selectedRow ? 0x88ccff : 0x334466)
         .setScrollFactor(0)
         .setDepth(MAIN_PANEL.depth + 1);
@@ -510,10 +574,10 @@ export async function openShop(scene, spawn) {
 
       const textColor = affordable || equippable ? "#ffffff" : "#777777";
       const label = scene.add
-        .text(LIST_LEFT, y, desc, {
+        .text(LIST_LEFT, y + LIST_TEXT_Y_OFFSET, desc, {
           fontSize: "11px",
           color: textColor,
-          fontFamily: "monospace",
+          fontFamily: "Arial",
         })
         .setOrigin(0, 0.5)
         .setScrollFactor(0)
@@ -521,10 +585,10 @@ export async function openShop(scene, spawn) {
       listGroup.push(label);
 
       const price = scene.add
-        .text(455, y, `${item.price}g`, {
+        .text(455, y + LIST_TEXT_Y_OFFSET, `${item.price}g`, {
           fontSize: "11px",
           color: affordable ? "#ffcc44" : "#777777",
-          fontFamily: "monospace",
+          fontFamily: "Arial",
         })
         .setOrigin(1, 0.5)
         .setScrollFactor(0)
@@ -590,7 +654,7 @@ export async function openShop(scene, spawn) {
         label.on("pointerdown", triggerPurchase);
       }
 
-      if (affordable) {
+      if (affordable && !equippable) {
         const triggerPurchase = async () => {
           if (item.type === "spell") {
             showSpellPicker(item);
@@ -611,23 +675,26 @@ export async function openShop(scene, spawn) {
           showToast(`Bought: ${item.name}!`);
           autosaveAfterPurchase(result);
         };
-        const buyBtn = scene.add
-          .text(522, y, "[BUY]", {
-            fontSize: "11px",
-            color: "#44ff44",
-            fontFamily: "monospace",
-          })
-          .setOrigin(0.5)
-          .setScrollFactor(0)
-          .setDepth(MAIN_PANEL.depth + 2)
-          .setInteractive({ useHandCursor: true });
-        buyBtn.on("pointerover", () => buyBtn.setColor("#88ff88"));
-        buyBtn.on("pointerout", () => buyBtn.setColor("#44ff44"));
-        buyBtn.on("pointerdown", triggerPurchase);
+        const buyBtn = drawButton(
+          scene,
+          522,
+          y,
+          58,
+          22,
+          "Buy",
+          triggerPurchase,
+          {
+            depth: MAIN_PANEL.depth + 2,
+            fontSize: "10px",
+            fill: 0x1d4938,
+            fillHover: 0x2f6a50,
+            stroke: 0x9cdfb4,
+          },
+        );
         listGroup.push(buyBtn);
       }
 
-      y += 30;
+      y += LIST_ROW_GAP;
     }
 
     if (displayItems.length === 0) {
@@ -715,25 +782,34 @@ export async function openShop(scene, spawn) {
       }
       pickerGroup.push(label);
 
-      const statusText = choice.canLearn
-        ? "[LEARN]"
-        : choice.reason || "blocked";
-      const statusColor = choice.canLearn ? "#44ff44" : "#ddaa66";
-      const status = scene.add
-        .text(515, y, statusText, {
-          fontSize: "11px",
-          color: statusColor,
-          fontFamily: "monospace",
-        })
-        .setScrollFactor(0)
-        .setDepth(MAIN_PANEL.depth + 11);
-      pickerGroup.push(status);
-
       if (choice.canLearn) {
-        status.setInteractive({ useHandCursor: true });
-        status.on("pointerover", () => status.setColor("#88ff88"));
-        status.on("pointerout", () => status.setColor("#44ff44"));
-        status.on("pointerdown", triggerLearn);
+        const status = drawButton(
+          scene,
+          530,
+          y + 6,
+          82,
+          22,
+          "Learn",
+          triggerLearn,
+          {
+            depth: MAIN_PANEL.depth + 11,
+            fontSize: "10px",
+            fill: 0x1d4938,
+            fillHover: 0x2f6a50,
+            stroke: 0x9cdfb4,
+          },
+        );
+        pickerGroup.push(status);
+      } else {
+        const status = scene.add
+          .text(492, y, choice.reason || "blocked", {
+            fontSize: "11px",
+            color: "#ddaa66",
+            fontFamily: "Arial",
+          })
+          .setScrollFactor(0)
+          .setDepth(MAIN_PANEL.depth + 11);
+        pickerGroup.push(status);
       }
 
       y += 24;
@@ -745,7 +821,7 @@ export async function openShop(scene, spawn) {
       392,
       120,
       28,
-      "[ CANCEL ]",
+      "Cancel",
       destroyPicker,
       { depth: MAIN_PANEL.depth + 11, fontSize: "11px" },
     );
@@ -758,15 +834,29 @@ export async function openShop(scene, spawn) {
     MAIN_PANEL.y,
     MAIN_PANEL.w,
     MAIN_PANEL.h,
-    { depth: MAIN_PANEL.depth, fill: 0x0a0a22, stroke: 0x444488 },
+    {
+      depth: MAIN_PANEL.depth,
+      variant: "ff6",
+      radius: 10,
+      innerTop: 0x223758,
+      innerBottom: 0x101927,
+      outerFill: 0x314d78,
+    },
   );
+  const scrim = scene.add
+    .rectangle(400, 300, 800, 600, 0x02050b, 0.94)
+    .setScrollFactor(0)
+    .setDepth(MAIN_PANEL.depth - 1)
+    .setInteractive();
+  overlay.push(scrim);
   overlay.push(mainPanel.bg);
 
   const title = scene.add
     .text(400, 64, `${spawn.name}`, {
-      fontSize: "18px",
-      color: "#ffff44",
-      fontFamily: "monospace",
+      fontSize: "20px",
+      color: "#f5efe0",
+      fontFamily: "Georgia",
+      fontStyle: "bold",
     })
     .setOrigin(0.5)
     .setScrollFactor(0)
@@ -776,23 +866,13 @@ export async function openShop(scene, spawn) {
   const goldText = scene.add
     .text(400, 90, `Gold: ${scene.gameState.gold}`, {
       fontSize: "13px",
-      color: "#ffcc44",
+      color: "#f0d77a",
       fontFamily: "monospace",
     })
     .setOrigin(0.5)
     .setScrollFactor(0)
     .setDepth(MAIN_PANEL.depth + 1);
   overlay.push(goldText);
-
-  const listHeader = scene.add
-    .text(70, 123, "Shop Stock", {
-      fontSize: "11px",
-      color: "#aaccee",
-      fontFamily: "monospace",
-    })
-    .setScrollFactor(0)
-    .setDepth(MAIN_PANEL.depth + 1);
-  overlay.push(listHeader);
 
   let tabX = 144;
   for (const tab of tabs) {
@@ -810,7 +890,13 @@ export async function openShop(scene, spawn) {
         renderList(itemsForTab(currentTab));
         renderDetail();
       },
-      { depth: MAIN_PANEL.depth + 1, fontSize: "11px" },
+      {
+        depth: MAIN_PANEL.depth + 1,
+        fontSize: "11px",
+        fill: 0x1e3558,
+        fillHover: 0x2b5486,
+        stroke: 0x9cc8ff,
+      },
     );
     overlay.push(tabBtn);
     tabButtons.push({ key: tab.key, button: tabBtn });
@@ -823,9 +909,15 @@ export async function openShop(scene, spawn) {
     536,
     190,
     32,
-    "[ LEAVE SHOP (ESC) ]",
+    "Leave Shop",
     closeShop,
-    { depth: MAIN_PANEL.depth + 1, fontSize: "12px" },
+    {
+      depth: MAIN_PANEL.depth + 1,
+      fontSize: "12px",
+      fill: 0x2d2535,
+      fillHover: 0x49385c,
+      stroke: 0xd7b45c,
+    },
   );
   overlay.push(leaveBtn);
 

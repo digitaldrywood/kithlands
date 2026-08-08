@@ -362,7 +362,7 @@ func equipStartingGear(slot int, classID string, inv *inventory.Inventory, gd *g
 		inv.EquipWeapon(slot, "wooden_staff", classID, gd)
 		inv.EquipArmor(slot, "cloth_robe", classID, gd)
 	case "mender":
-		inv.EquipWeapon(slot, "wooden_club", classID, gd)
+		inv.EquipWeapon(slot, "wooden_staff", classID, gd)
 		inv.EquipArmor(slot, "cloth_robe", classID, gd)
 	case "rogue":
 		inv.EquipWeapon(slot, "rusty_dagger", classID, gd)

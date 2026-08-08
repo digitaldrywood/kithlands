@@ -17,6 +17,8 @@ const SMART_CONFIG = {
   hurt_heal_ratio: 0.7,
   stable_party_ratio: 0.82,
   all_ally_heal_min_missing: 38,
+  single_heal_min_missing_ratio: 0.55,
+  boss_buff_min_threat: 72,
   weakness_mult: 1.7,
   resistance_mult: 0.55,
   revive_base_score: 140,
@@ -85,6 +87,33 @@ function isAllySpell(spell) {
     spell.effect === "buff" ||
     spell.effect === "cure_status"
   );
+}
+
+function spellTargetModes(spell) {
+  const modes = Array.isArray(spell?.target_modes) ? spell.target_modes : [];
+  return modes.length > 0 ? modes : [spell?.target].filter(Boolean);
+}
+
+function spellCanTarget(spell, target) {
+  return spellTargetModes(spell).includes(target);
+}
+
+function requestedTargetMode(spell, target) {
+  return spellCanTarget(spell, target) && target !== spell.target
+    ? target
+    : undefined;
+}
+
+function resolveSpellTargetMode(spell, requested) {
+  if (!requested || !spellCanTarget(spell, requested)) {
+    return spell?.target;
+  }
+  return requested;
+}
+
+function withTargetMode(action, spell, target) {
+  const targetMode = requestedTargetMode(spell, target);
+  return targetMode ? { ...action, target_mode: targetMode } : action;
 }
 
 function fallbackAttack(enemies) {
@@ -164,6 +193,19 @@ function enemyThreat(enemy) {
   const woundedScore = ((enemy.max_hp ?? 1) - enemy.hp) * 0.08;
   const statusPenalty = enemy.status === "sleep" ? 4 : 0;
   return sizeScore + hpScore + woundedScore - statusPenalty;
+}
+
+function encounterThreat(enemies = []) {
+  return livingEnemies(enemies).reduce(
+    (sum, enemy) => sum + enemyThreat(enemy),
+    0,
+  );
+}
+
+function isBossEncounter(enemies = []) {
+  return livingEnemies(enemies).some(
+    (enemy) => enemy.is_boss || enemy.size === "boss",
+  );
 }
 
 function revivePriority(member) {
@@ -329,6 +371,50 @@ function partyMissingHP(party) {
   );
 }
 
+function allyNeedsSingleHeal(member, spell) {
+  if (!member || member.hp <= 0) return false;
+  const missing = Math.max(0, member.max_hp - member.hp);
+  if (missing <= 0) return false;
+  const ratio = member.max_hp > 0 ? member.hp / member.max_hp : 1;
+  return (
+    ratio <= SMART_CONFIG.hurt_heal_ratio ||
+    missing >=
+      Math.max(
+        12,
+        (spell.power ?? 0) * SMART_CONFIG.single_heal_min_missing_ratio,
+      )
+  );
+}
+
+function partyNeedsAllHeal(party, spell) {
+  const living = livingParty(party);
+  if (!living.length) return false;
+  const totalMissing = partyMissingHP(party);
+  const hurtCount = living.filter(
+    (member) =>
+      member.max_hp > 0 &&
+      member.hp / member.max_hp <= SMART_CONFIG.hurt_heal_ratio,
+  ).length;
+  return (
+    totalMissing >= SMART_CONFIG.all_ally_heal_min_missing ||
+    hurtCount >= 2 ||
+    totalMissing >= Math.max(24, (spell.power ?? 0) * living.length * 0.55)
+  );
+}
+
+function shouldConsiderBuff(spell, gameState) {
+  if (spell.ai_policy === "boss_or_elite") {
+    return (
+      isBossEncounter(gameState.enemies) ||
+      encounterThreat(gameState.enemies) >= SMART_CONFIG.boss_buff_min_threat
+    );
+  }
+  if (spell.buff_stat === "hit_pct") {
+    return isBossEncounter(gameState.enemies);
+  }
+  return true;
+}
+
 function planReviveCandidate(actor, slot, gameState, role) {
   const downed = downedParty(gameState.party);
   if (!downed.length || !hasPhoenixDown(gameState)) return null;
@@ -368,10 +454,17 @@ function planSupportSpellCandidates(actor, slot, gameState, role) {
 
   for (const spell of spells) {
     if (spell.effect === "heal") {
-      if (spell.target === "all_allies" || spell.target === "party") {
+      if (
+        spellCanTarget(spell, "all_allies") ||
+        spellCanTarget(spell, "party")
+      ) {
         const totalMissing = partyMissingHP(gameState.party);
         const livingCount = livingParty(gameState.party).length;
         if (totalMissing <= 0 || livingCount === 0) continue;
+        if (!partyNeedsAllHeal(gameState.party, spell)) continue;
+        const targetMode = spellCanTarget(spell, "all_allies")
+          ? requestedTargetMode(spell, "all_allies")
+          : requestedTargetMode(spell, "party");
         addCandidate(candidates, {
           score:
             role.support_weight +
@@ -379,16 +472,23 @@ function planSupportSpellCandidates(actor, slot, gameState, role) {
             spell.power * livingCount -
             (spell.mp_cost ?? 0) * 3 -
             (totalMissing < SMART_CONFIG.all_ally_heal_min_missing ? 24 : 0),
-          action: { slot, type: "spell", target_id: -1, spell_id: spell.id },
+          action: {
+            slot,
+            type: "spell",
+            target_id: -1,
+            spell_id: spell.id,
+            ...(targetMode ? { target_mode: targetMode } : {}),
+          },
           preview: `${actor.name} -> ${spell.name}`,
         });
-        continue;
+        if (!spellCanTarget(spell, "single_ally")) continue;
       }
 
       for (const member of livingParty(gameState.party)) {
         const missing = Math.max(0, member.max_hp - member.hp);
-        if (missing <= 0) continue;
+        if (!allyNeedsSingleHeal(member, spell)) continue;
         const ratio = member.max_hp > 0 ? member.hp / member.max_hp : 1;
+        const targetMode = requestedTargetMode(spell, "single_ally");
         addCandidate(candidates, {
           score:
             role.support_weight +
@@ -405,6 +505,7 @@ function planSupportSpellCandidates(actor, slot, gameState, role) {
             type: "spell",
             target_id: member.slot,
             spell_id: spell.id,
+            ...(targetMode ? { target_mode: targetMode } : {}),
           },
           preview: `${actor.name} -> ${spell.name} ${member.name}`,
         });
@@ -413,21 +514,33 @@ function planSupportSpellCandidates(actor, slot, gameState, role) {
     }
 
     if (spell.effect === "cure_status") {
-      if (spell.target === "all_allies" || spell.target === "party") {
+      if (
+        spellCanTarget(spell, "all_allies") ||
+        spellCanTarget(spell, "party")
+      ) {
         const afflicted = livingParty(gameState.party).filter((member) =>
           statusMatchesCure(spell, member),
         );
         if (!afflicted.length) continue;
+        const targetMode = spellCanTarget(spell, "all_allies")
+          ? requestedTargetMode(spell, "all_allies")
+          : requestedTargetMode(spell, "party");
         addCandidate(candidates, {
           score:
             role.support_weight +
             SMART_CONFIG.status_cure_score +
             afflicted.length * 18 -
             (spell.mp_cost ?? 0) * 2,
-          action: { slot, type: "spell", target_id: -1, spell_id: spell.id },
+          action: {
+            slot,
+            type: "spell",
+            target_id: -1,
+            spell_id: spell.id,
+            ...(targetMode ? { target_mode: targetMode } : {}),
+          },
           preview: `${actor.name} -> ${spell.name}`,
         });
-        continue;
+        if (!spellCanTarget(spell, "single_ally")) continue;
       }
 
       for (const member of livingParty(gameState.party)) {
@@ -451,6 +564,9 @@ function planSupportSpellCandidates(actor, slot, gameState, role) {
     }
 
     if (spell.effect === "buff") {
+      if (!shouldConsiderBuff(spell, gameState)) {
+        continue;
+      }
       if (
         lowestLivingHpRatio(gameState.party) <= SMART_CONFIG.hurt_heal_ratio
       ) {
@@ -458,11 +574,44 @@ function planSupportSpellCandidates(actor, slot, gameState, role) {
       }
       const allies = livingParty(gameState.party);
       if (!allies.length) continue;
+      if (
+        spellCanTarget(spell, "all_allies") ||
+        spellCanTarget(spell, "party")
+      ) {
+        const targetMode = spellCanTarget(spell, "all_allies")
+          ? requestedTargetMode(spell, "all_allies")
+          : requestedTargetMode(spell, "party");
+        const bossBuffBonus =
+          spell.ai_policy === "boss_or_elite" &&
+          (isBossEncounter(gameState.enemies) ||
+            encounterThreat(gameState.enemies) >=
+              SMART_CONFIG.boss_buff_min_threat)
+            ? 54
+            : 0;
+        addCandidate(candidates, {
+          score:
+            role.support_weight * 0.8 +
+            SMART_CONFIG.buff_base_score +
+            bossBuffBonus +
+            encounterThreat(gameState.enemies) * 0.2 -
+            (spell.mp_cost ?? 0) * 1.5,
+          action: {
+            slot,
+            type: "spell",
+            target_id: -1,
+            spell_id: spell.id,
+            ...(targetMode ? { target_mode: targetMode } : {}),
+          },
+          preview: `${actor.name} -> ${spell.name}`,
+        });
+        if (!spellCanTarget(spell, "single_ally")) continue;
+      }
       const target = [...allies].sort((a, b) => {
         const diff = estimatePhysicalDamage(b) - estimatePhysicalDamage(a);
         if (diff !== 0) return diff;
         return a.slot - b.slot;
       })[0];
+      const targetMode = requestedTargetMode(spell, "single_ally");
       addCandidate(candidates, {
         score:
           role.support_weight * 0.8 +
@@ -474,6 +623,7 @@ function planSupportSpellCandidates(actor, slot, gameState, role) {
           type: "spell",
           target_id: target.slot,
           spell_id: spell.id,
+          ...(targetMode ? { target_mode: targetMode } : {}),
         },
         preview: `${actor.name} -> ${spell.name} ${target.name}`,
       });
@@ -496,12 +646,13 @@ function planDamageSpellCandidates(actor, slot, gameState, role) {
   for (const spell of spells) {
     if (!enemies.length) continue;
 
-    if (spell.target === "all_enemies") {
+    if (spellCanTarget(spell, "all_enemies")) {
       const bestEnemy = bestEnemyTarget(enemies, spell.power ?? 0);
       const totalValue = enemies.reduce((sum, enemy) => {
         const mult = elementalMultiplier(spell, enemy);
         return sum + (spell.power ?? 0) * mult + enemyThreat(enemy) * 0.25;
       }, 0);
+      const targetMode = requestedTargetMode(spell, "all_enemies");
       addCandidate(candidates, {
         score:
           role.magic_weight +
@@ -513,10 +664,11 @@ function planDamageSpellCandidates(actor, slot, gameState, role) {
           type: "spell",
           target_id: bestEnemy?.enemy.id ?? enemies[0].id,
           spell_id: spell.id,
+          ...(targetMode ? { target_mode: targetMode } : {}),
         },
         preview: `${actor.name} -> ${spell.name}`,
       });
-      continue;
+      if (!spellCanTarget(spell, "single_enemy")) continue;
     }
 
     for (const enemy of enemies) {
@@ -749,13 +901,19 @@ function resolveSpell(action, actor, gameState, slot) {
 }
 
 function resolveAllySpell(action, spell, party, enemies, slot) {
-  if (spell.target === "all_allies" || spell.target === "party") {
-    return {
-      slot,
-      type: "spell",
-      target_id: -1,
-      spell_id: action.spell_id,
-    };
+  const targetMode = resolveSpellTargetMode(spell, action.target_mode);
+
+  if (targetMode === "all_allies" || targetMode === "party") {
+    return withTargetMode(
+      {
+        slot,
+        type: "spell",
+        target_id: -1,
+        spell_id: action.spell_id,
+      },
+      spell,
+      targetMode,
+    );
   }
 
   const targetSlot = action.target_id;
@@ -764,22 +922,30 @@ function resolveAllySpell(action, spell, party, enemies, slot) {
     targetSlot < party.length &&
     party[targetSlot].hp > 0
   ) {
-    return {
-      slot,
-      type: "spell",
-      target_id: targetSlot,
-      spell_id: action.spell_id,
-    };
+    return withTargetMode(
+      {
+        slot,
+        type: "spell",
+        target_id: targetSlot,
+        spell_id: action.spell_id,
+      },
+      spell,
+      "single_ally",
+    );
   }
 
   const newTarget = mostDamagedLivingAlly(party);
   if (newTarget !== null) {
-    return {
-      slot,
-      type: "spell",
-      target_id: newTarget,
-      spell_id: action.spell_id,
-    };
+    return withTargetMode(
+      {
+        slot,
+        type: "spell",
+        target_id: newTarget,
+        spell_id: action.spell_id,
+      },
+      spell,
+      "single_ally",
+    );
   }
 
   const fb = fallbackAttack(enemies);
@@ -787,25 +953,35 @@ function resolveAllySpell(action, spell, party, enemies, slot) {
 }
 
 function resolveEnemySpell(action, spell, enemies, slot) {
-  if (spell.target === "all_enemies") {
+  const targetMode = resolveSpellTargetMode(spell, action.target_mode);
+
+  if (targetMode === "all_enemies") {
     const fallbackTarget = closestLivingEnemy(enemies);
     if (!fallbackTarget) return null;
-    return {
-      slot,
-      type: "spell",
-      target_id: fallbackTarget.id,
-      spell_id: action.spell_id,
-    };
+    return withTargetMode(
+      {
+        slot,
+        type: "spell",
+        target_id: fallbackTarget.id,
+        spell_id: action.spell_id,
+      },
+      spell,
+      targetMode,
+    );
   }
 
   const target = closestLivingEnemyById(enemies, action.target_id);
   if (!target) return null;
-  return {
-    slot,
-    type: "spell",
-    target_id: target.id,
-    spell_id: action.spell_id,
-  };
+  return withTargetMode(
+    {
+      slot,
+      type: "spell",
+      target_id: target.id,
+      spell_id: action.spell_id,
+    },
+    spell,
+    "single_enemy",
+  );
 }
 
 function resolveAbility(action, enemies, slot) {

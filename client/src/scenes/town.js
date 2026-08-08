@@ -10,7 +10,17 @@ import { openDialogue } from "./town_dialogue.js";
 import { toggleMenu } from "./world_menu.js";
 import { openShop } from "./world_shop.js";
 import { isTouchDevice, initTouchControls } from "../systems/input.js";
-import { nextWalkFrame, walkSheetKey, walkFrameIndex } from "./walkFrame.js";
+import {
+  walkSheetKey,
+  walkFrameIndex,
+  walkFrameForProgress,
+  walkFrameSequence,
+  walkSpritePosition,
+  walkSpriteScale,
+  fallbackWalkSpriteScale,
+  classPortraitFallbackScale,
+  WALK_IDLE_FRAME,
+} from "./walkFrame.js";
 import { getLeaderIndex } from "./world.js";
 import { buildingTypeFromTags, isRestBuilding } from "./building_type.js";
 import {
@@ -386,24 +396,24 @@ function buildingMusicForTags(tags) {
 
 const INTERIOR_APPEARANCES = {
   inn: [
-    { floor: 0xffffff, wall: 0xf0d2a8, wood: 0xe5b87d, accent: 0xffd180 },
-    { floor: 0xf8f4e3, wall: 0xd7c4a3, wood: 0xc89666, accent: 0xffe082 },
-    { floor: 0xf1efe6, wall: 0xe3c58e, wood: 0xd7a86e, accent: 0xffcc80 },
+    { floor: 0xd8b16a, wall: 0x8e5c33, wood: 0x5c3821, accent: 0xe3c45d },
+    { floor: 0xc99b58, wall: 0x744829, wood: 0x4b301f, accent: 0xf0d06b },
+    { floor: 0xb9854b, wall: 0x684024, wood: 0x3f291c, accent: 0xd9b45a },
   ],
   shop: [
-    { floor: 0xffffff, wall: 0xd9c19a, wood: 0xf0b36a, accent: 0xfff59d },
-    { floor: 0xf7f3ea, wall: 0xe4c78f, wood: 0xc98c5d, accent: 0xffd54f },
-    { floor: 0xf1ede1, wall: 0xd5b58a, wood: 0xe8a96b, accent: 0xffecb3 },
+    { floor: 0xb99a5d, wall: 0x6f4a2a, wood: 0x3f2818, accent: 0xe0c45c },
+    { floor: 0xa87948, wall: 0x5d3a24, wood: 0x332013, accent: 0xd6aa4c },
+    { floor: 0xc0a06a, wall: 0x7d5130, wood: 0x4b2c1b, accent: 0xf0d77a },
   ],
   temple: [
-    { floor: 0xffffff, wall: 0xd9dfe8, wood: 0xc0c7cf, accent: 0xfff59d },
-    { floor: 0xf5f7fa, wall: 0xcfd8dc, wood: 0xb0bec5, accent: 0xffecb3 },
-    { floor: 0xf8f9fb, wall: 0xd7dde5, wood: 0xc7ced6, accent: 0xfff176 },
+    { floor: 0xbfc8c1, wall: 0x657071, wood: 0x465154, accent: 0xe2d27a },
+    { floor: 0xc8c2af, wall: 0x6e6658, wood: 0x494238, accent: 0xead88d },
+    { floor: 0xb8c0c8, wall: 0x59646e, wood: 0x3f4850, accent: 0xded06d },
   ],
   house: [
-    { floor: 0xffffff, wall: 0xe0c2a2, wood: 0xc99263, accent: 0xffcc80 },
-    { floor: 0xf7f2e8, wall: 0xd5b28d, wood: 0xb97a56, accent: 0xffe0b2 },
-    { floor: 0xf4efe4, wall: 0xe4c98d, wood: 0xd39a6b, accent: 0xffd180 },
+    { floor: 0xc59a5a, wall: 0x80502e, wood: 0x4a2f1e, accent: 0xd9b85d },
+    { floor: 0xb98950, wall: 0x704629, wood: 0x3f291b, accent: 0xe0bf68 },
+    { floor: 0xd0a76a, wall: 0x8c5c35, wood: 0x5a3822, accent: 0xf0cc75 },
   ],
 };
 
@@ -416,6 +426,60 @@ const DEPTH_ACTOR = 12;
 const DEPTH_UI = 1400;
 const FRAME_SCALE = 0.25;
 const FRAME_TILE = 64 * FRAME_SCALE;
+
+function setPlayerWalkFrame(scene, frame) {
+  if (!scene.player) return;
+  const selectedFrame = frame;
+  scene.walkFrameAudit?.push({
+    dir: scene.playerDir,
+    frame: selectedFrame,
+    frameIndex: scene.hasWalkSheet
+      ? walkFrameIndex(scene.playerDir, selectedFrame, scene.leaderClass)
+      : null,
+    time: scene.time?.now ?? 0,
+  });
+  if (scene.hasWalkSheet) {
+    scene.walkFrame = selectedFrame;
+    scene.player.setTexture(
+      walkSheetKey(scene.leaderClass),
+      walkFrameIndex(scene.playerDir, selectedFrame, scene.leaderClass),
+    );
+  } else {
+    scene.player.setTexture(
+      scene.playerFallbackTexture || `player_${scene.playerDir}`,
+    );
+  }
+}
+
+function clearWalkFrameTimers(scene) {
+  scene.walkFrameTimers?.forEach((timer) => timer?.remove?.(false));
+  scene.walkFrameTimers = [];
+}
+
+function playStepAnimation(scene, stepMs, onComplete) {
+  clearWalkFrameTimers(scene);
+  if (scene.hasWalkSheet) {
+    const sequence = walkFrameSequence(scene.leaderClass);
+    sequence.forEach((frame, index) => {
+      scene.walkFrameTimers.push(
+        scene.time.delayedCall(
+          Math.round((stepMs * index) / sequence.length),
+          () => setPlayerWalkFrame(scene, frame),
+        ),
+      );
+    });
+  } else {
+    setPlayerWalkFrame(scene, WALK_IDLE_FRAME);
+  }
+  return () => {
+    clearWalkFrameTimers(scene);
+    if (scene.hasWalkSheet) {
+      setPlayerWalkFrame(scene, walkFrameSequence(scene.leaderClass).at(-1));
+    }
+    setPlayerWalkFrame(scene, WALK_IDLE_FRAME);
+    onComplete?.();
+  };
+}
 
 function authoredInteriorAppearance(buildingType, seed) {
   const palettes =
@@ -479,6 +543,17 @@ function canTogglePartyMenu(scene) {
   return !topLock || topLock === "shop" || topLock === "party_menu";
 }
 
+function isConfirmKey(event) {
+  return (
+    event?.key === "Enter" ||
+    event?.code === "Enter" ||
+    event?.key === " " ||
+    event?.key === "Space" ||
+    event?.key === "Spacebar" ||
+    event?.code === "Space"
+  );
+}
+
 function depthForRow(y, layer = DEPTH_BASE) {
   return y * DEPTH_ROW + layer;
 }
@@ -515,6 +590,7 @@ export class TownScene extends Phaser.Scene {
     this.floorIndex = data.floorIndex || 0;
     this.playerStart = data.playerStart || null;
     this.entryMessage = data.entryMessage || "";
+    this.returnScene = data.returnScene || null;
   }
 
   create() {
@@ -609,6 +685,7 @@ export class TownScene extends Phaser.Scene {
       ),
     }));
     this.syncChestTiles();
+    this.drawInteriorBackdrop();
     this.drawRoom();
     this.renderChests();
     this.drawLabelBar();
@@ -667,29 +744,37 @@ export class TownScene extends Phaser.Scene {
       this.gameState?.party?.[leaderIdx] || this.gameState?.party?.[0];
     this.leaderClass = leader?.sprite_id || leader?.class_id || "warrior";
     this.hasWalkSheet = this.textures.exists(walkSheetKey(this.leaderClass));
+    this.playerFallbackTexture = this.textures.exists(this.leaderClass)
+      ? this.leaderClass
+      : `player_${this.playerDir}`;
 
-    const playerCx =
-      this.offsetX + this.playerX * RENDERED_TILE + RENDERED_TILE / 2;
-    const playerCy =
-      this.offsetY + this.playerY * RENDERED_TILE + RENDERED_TILE / 2;
+    const playerPos = walkSpritePosition(
+      this.playerX,
+      this.playerY,
+      RENDERED_TILE,
+      this.offsetX,
+      this.offsetY,
+    );
     if (this.hasWalkSheet) {
       this.player = this.add
         .sprite(
-          playerCx,
-          playerCy,
+          playerPos.x,
+          playerPos.y,
           walkSheetKey(this.leaderClass),
-          walkFrameIndex(this.playerDir, 0),
+          walkFrameIndex(this.playerDir, 0, this.leaderClass),
         )
-        .setScale((RENDERED_TILE / 128) * SCALE)
+        .setOrigin(0.5, 1)
+        .setScale(walkSpriteScale(RENDERED_TILE, this.leaderClass))
         .setDepth(actorDepth(this.playerY));
     } else {
       this.player = this.add
-        .image(playerCx, playerCy, `player_${this.playerDir}`)
+        .image(playerPos.x, playerPos.y, this.playerFallbackTexture)
+        .setOrigin(0.5, 1)
         .setDepth(actorDepth(this.playerY));
       this.player.setScale(
-        interiorCharacterScale(
-          Math.max(this.player.width || 0, this.player.height || 0, 1),
-        ),
+        this.playerFallbackTexture === this.leaderClass
+          ? classPortraitFallbackScale(RENDERED_TILE)
+          : fallbackWalkSpriteScale(RENDERED_TILE),
       );
     }
 
@@ -723,8 +808,12 @@ export class TownScene extends Phaser.Scene {
     // Interact with NPC
     this.nearNpcIndex = -1;
     this.interactPrompt = null;
-    this.input.keyboard.on("keydown-ENTER", () => this.interact());
-    this.input.keyboard.on("keydown-SPACE", () => this.interact());
+    this.input.keyboard.on("keydown", (event) => {
+      if (!isConfirmKey(event)) return;
+      event?.preventDefault?.();
+      if (event?.repeat) return;
+      this.interact();
+    });
     this.input.keyboard.on("keydown-M", () => {
       if (!canTogglePartyMenu(this)) return;
       toggleMenu(this);
@@ -857,10 +946,56 @@ export class TownScene extends Phaser.Scene {
     this[listName] = [];
   }
 
+  drawInteriorBackdrop() {
+    this.backdropDrawables?.forEach((entry) => entry.destroy());
+    this.backdropDrawables = [];
+    const roomPixelW = this.roomW * RENDERED_TILE;
+    const roomPixelH = this.roomH * RENDERED_TILE;
+    const centerX = this.offsetX + roomPixelW / 2;
+    const centerY = this.offsetY + roomPixelH / 2;
+    const shadow = this.add
+      .rectangle(
+        centerX + 8,
+        centerY + 10,
+        roomPixelW + 34,
+        roomPixelH + 34,
+        0x020603,
+        0.72,
+      )
+      .setDepth(DEPTH_BASE - 3);
+    const mat = this.add
+      .rectangle(
+        centerX,
+        centerY,
+        roomPixelW + 24,
+        roomPixelH + 24,
+        0x172114,
+        1,
+      )
+      .setDepth(DEPTH_BASE - 2);
+    const trim = this.add
+      .rectangle(
+        centerX,
+        centerY,
+        roomPixelW + 12,
+        roomPixelH + 12,
+        0xc19a55,
+        1,
+      )
+      .setDepth(DEPTH_BASE - 1);
+    const inner = this.add
+      .rectangle(centerX, centerY, roomPixelW + 4, roomPixelH + 4, 0x24170f, 1)
+      .setDepth(DEPTH_BASE - 1);
+    this.backdropDrawables.push(shadow, mat, trim, inner);
+  }
+
   drawLabelBar() {
     this.labelBar?.forEach((entry) => entry.destroy());
     this.labelBar = [];
-    const width = 340;
+    const width = Math.min(
+      420,
+      Math.max(300, this.spawn.name.length * 12 + 90),
+    );
     const height = this.interiorTemplate?.floors?.length > 1 ? 56 : 40;
     const x = Math.floor((800 - width) / 2);
     const y = 12;
@@ -926,13 +1061,13 @@ export class TownScene extends Phaser.Scene {
         .setDepth(depth),
     );
     const accent = this.add
-      .rectangle(x + 14, y + height / 2, 6, height - 18, 0xf0c96b, 1)
+      .rectangle(x + 14, y + height / 2, 6, height - 18, 0xd7b45c, 1)
       .setOrigin(0, 0.5)
       .setDepth(depth + 1);
     const title = this.add
       .text(400, y + 17, this.spawn.name, {
-        fontSize: "16px",
-        color: "#ffffff",
+        fontSize: "15px",
+        color: "#f5efe0",
         fontFamily: "monospace",
         fontStyle: "bold",
       })
@@ -969,10 +1104,10 @@ export class TownScene extends Phaser.Scene {
       .text(
         400,
         584,
-        "MOVE  Arrow Keys / WASD   TALK  Enter / Space   MENU  M   EXIT  Esc",
+        "Move: Arrows/WASD     Talk: Enter/Space     Menu: M     Exit: Esc",
         {
           fontSize: "10px",
-          color: "#d7ddf4",
+          color: "#e8dcc4",
           fontFamily: "monospace",
         },
       )
@@ -983,6 +1118,7 @@ export class TownScene extends Phaser.Scene {
 
   update(time) {
     if (isWorldInputLocked(this)) return;
+    if (this.animating) return;
     if (time - this.lastMoveTime < this.moveCooldown) return;
 
     let dx = 0,
@@ -1026,26 +1162,37 @@ export class TownScene extends Phaser.Scene {
     else if (dx > 0) dir = "right";
     else if (dy < 0) dir = "up";
     else if (dy > 0) dir = "down";
-    const dirChanged = dir !== this.playerDir;
     this.playerDir = dir;
 
-    if (this.hasWalkSheet) {
-      this.walkFrame = dirChanged ? 0 : nextWalkFrame(this.walkFrame);
-      this.player.setTexture(
-        walkSheetKey(this.leaderClass),
-        walkFrameIndex(this.playerDir, this.walkFrame),
-      );
-    } else {
-      this.player.setTexture(`player_${this.playerDir}`);
-    }
+    setPlayerWalkFrame(this, WALK_IDLE_FRAME);
     this.player.setDepth(actorDepth(this.playerY));
 
+    const dest = walkSpritePosition(
+      nx,
+      ny,
+      RENDERED_TILE,
+      this.offsetX,
+      this.offsetY,
+    );
+    const stepMs = walkStepMs();
+    this.animating = true;
+    this.walkFrameAudit = [];
+    const finishStepAnimation = playStepAnimation(this, stepMs, () => {
+      this.animating = false;
+    });
     this.tweens.add({
       targets: this.player,
-      x: this.offsetX + nx * RENDERED_TILE + RENDERED_TILE / 2,
-      y: this.offsetY + ny * RENDERED_TILE + RENDERED_TILE / 2,
-      duration: walkStepMs(),
+      x: dest.x,
+      y: dest.y,
+      duration: stepMs,
       ease: "Linear",
+      onUpdate: (tween) => {
+        setPlayerWalkFrame(
+          this,
+          walkFrameForProgress(tween.progress, this.leaderClass),
+        );
+      },
+      onComplete: finishStepAnimation,
     });
 
     const stair = this.stairsByPosition?.get(`${nx},${ny}`);
@@ -1259,6 +1406,14 @@ export class TownScene extends Phaser.Scene {
     this.cameras.main.fadeOut(300, 0, 0, 0);
     this.cameras.main.once("camerafadeoutcomplete", () => {
       playMusic("music_overworld");
+      if (this.returnScene?.sceneKey === "Settlement") {
+        this.scene.start("Settlement", {
+          gameState: this.gameState,
+          settlementSpawn: this.returnScene.settlementSpawn,
+          playerStart: this.returnScene.playerStart,
+        });
+        return;
+      }
       this.scene.start("World", { gameState: this.gameState });
     });
   }
@@ -1281,6 +1436,7 @@ export class TownScene extends Phaser.Scene {
         spawn: this.spawn,
         floorIndex: stair.to_floor,
         playerStart: { x: stair.to_x, y: stair.to_y },
+        returnScene: this.returnScene,
       });
     });
   }
@@ -1468,6 +1624,116 @@ export class TownScene extends Phaser.Scene {
             RENDERED_TILE - 4,
             0x58351c,
             0.35,
+          )
+          .setDepth(depth),
+      );
+    }
+  }
+
+  drawInteriorObjectDetails(x, y, tile) {
+    const tileX = this.offsetX + x * RENDERED_TILE;
+    const tileY = this.offsetY + y * RENDERED_TILE;
+    const depth = depthForRow(y, DEPTH_PROP + 3);
+    const wood = this.interiorAppearance?.wood || 0x4a2f1e;
+    const accent = this.interiorAppearance?.accent || 0xd9b85d;
+    const dark = 0x1a120d;
+
+    if (tile === T_COUNTER || tile === T_DESK) {
+      this.addOverlayDrawable(
+        this.add
+          .rectangle(
+            tileX + RENDERED_TILE / 2,
+            tileY + RENDERED_TILE / 2 + 3,
+            RENDERED_TILE - 3,
+            RENDERED_TILE - 9,
+            wood,
+            0.95,
+          )
+          .setDepth(depth),
+      );
+      this.addOverlayDrawable(
+        this.add
+          .rectangle(
+            tileX + RENDERED_TILE / 2,
+            tileY + 9,
+            RENDERED_TILE - 5,
+            3,
+            accent,
+            0.75,
+          )
+          .setDepth(depth + 1),
+      );
+      return;
+    }
+
+    if (tile === T_SHELF || tile === T_BOOKSHELF) {
+      this.addOverlayDrawable(
+        this.add
+          .rectangle(
+            tileX + RENDERED_TILE / 2,
+            tileY + RENDERED_TILE / 2,
+            RENDERED_TILE - 6,
+            RENDERED_TILE - 5,
+            dark,
+            0.9,
+          )
+          .setDepth(depth),
+      );
+      for (let row = 0; row < 3; row++) {
+        this.addOverlayDrawable(
+          this.add
+            .rectangle(
+              tileX + RENDERED_TILE / 2,
+              tileY + 8 + row * 7,
+              RENDERED_TILE - 8,
+              2,
+              accent,
+              0.8,
+            )
+            .setDepth(depth + 1),
+        );
+      }
+      return;
+    }
+
+    if (tile === T_CRATE) {
+      this.addOverlayDrawable(
+        this.add
+          .rectangle(
+            tileX + RENDERED_TILE / 2,
+            tileY + RENDERED_TILE / 2 + 2,
+            RENDERED_TILE - 10,
+            RENDERED_TILE - 10,
+            0x8f642d,
+            0.92,
+          )
+          .setDepth(depth),
+      );
+      this.addOverlayDrawable(
+        this.add
+          .rectangle(
+            tileX + RENDERED_TILE / 2,
+            tileY + RENDERED_TILE / 2 + 2,
+            RENDERED_TILE - 12,
+            2,
+            0xd3a45b,
+            0.8,
+          )
+          .setDepth(depth + 1),
+      );
+      return;
+    }
+
+    if (tile === T_TABLE) {
+      this.addOverlayDrawable(
+        this.add
+          .ellipse(
+            tileX + RENDERED_TILE / 2,
+            tileY + RENDERED_TILE / 2 + 2,
+            RENDERED_TILE - 8,
+            RENDERED_TILE - 12,
+            wood,
+            0.92,
           )
           .setDepth(depth),
       );
@@ -1699,6 +1965,7 @@ export class TownScene extends Phaser.Scene {
               .setDepth(depthForRow(y, DEPTH_PROP + 1)),
           );
         }
+        this.drawInteriorObjectDetails(x, y, tile);
       }
     }
     this.drawWindowDecor();

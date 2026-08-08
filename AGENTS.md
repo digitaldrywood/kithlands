@@ -16,6 +16,9 @@ Before making claims, plans, or code changes:
 4. Check the current repo state with `git status --short`.
 5. Verify the task against the actual code and behavior. Do not trust prior
    chat summaries, issue titles, or merged PR titles.
+6. For sprite, animation, map, environment, battle presentation, menu styling,
+   or other visible work, read
+   [skills/kithlands-visual-production/SKILL.md](skills/kithlands-visual-production/SKILL.md).
 
 ## 2. Product Rules
 
@@ -179,6 +182,27 @@ Tests are not enough for visible work.
 - For generated sprite sheets, inspect the actual frames.
 - Prefer running the game over reasoning from code when the change is visible.
 
+### Character Walk Animation
+
+The accepted walk contract and production workflow are defined in
+[docs/CHARACTER_ANIMATION_PRODUCTION.md](docs/CHARACTER_ANIMATION_PRODUCTION.md).
+It is authoritative over older audit notes and prompt experiments. Runtime walk
+sheets are native 384x512 RGBA atlases with 64x64 cells, six animation columns,
+and eight direction rows. Do not reintroduce the rejected legacy 128px,
+eight-column, four-row, or full-sheet conversion paths.
+
+Before reporting a walk change as fixed, agents must:
+
+- enforce the six-column/eight-row contract across all twelve classes;
+- run `walk-all-classes.spec.js`, `world-space-cycle.spec.js`, and
+  `world-walk-audit-party.spec.js`;
+- inspect `/sprites.html` and the real `/?walkAudit=1&noEncounters=1` game flow;
+- use Space to cycle every class and visually inspect walking, stopping, scale,
+  anchors, cropping, orientation, and continuity.
+
+Passing automation alone is not visual acceptance. Attack sheets have their
+own unfinished contract and are not covered by walk-sheet approval.
+
 The local Playwright wrapper already uses worktree-local ports and browser
 state:
 
@@ -215,6 +239,14 @@ Use these after reading `AGENTS.md`:
   Slack-controlled one-issue-at-a-time workflow, stop conditions, and state.
 - [docs/KITHLANDS_DESIGN.md](docs/KITHLANDS_DESIGN.md)
   Product and architecture source of truth.
+- [skills/kithlands-visual-production/SKILL.md](skills/kithlands-visual-production/SKILL.md)
+  Repo-owned art production, no-subscription tooling, asset contracts, and
+  visual acceptance gates.
+- [docs/VISUAL_PRODUCTION_ROADMAP_2026-08-08.md](docs/VISUAL_PRODUCTION_ROADMAP_2026-08-08.md)
+  Current visual recovery sequence, exit gates, and platform direction.
+- [docs/CHARACTER_ANIMATION_PRODUCTION.md](docs/CHARACTER_ANIMATION_PRODUCTION.md)
+  Accepted native walk-sheet contract, production workflow, and mandatory
+  all-class visual gate.
 - [CLAUDE.md](CLAUDE.md)
   Claude-specific guidance for direct implementation versus orchestrating
   Codex/OpenClaw.

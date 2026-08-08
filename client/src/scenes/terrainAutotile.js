@@ -307,6 +307,14 @@ function addCanvasTexture(scene, key, canvas) {
   return key;
 }
 
+function replaceCanvasTexture(scene, key, canvas) {
+  if (scene.textures.exists(key)) {
+    scene.textures.remove(key);
+  }
+  scene.textures.addCanvas(key, canvas);
+  return key;
+}
+
 function buildCanvas(draw) {
   const canvas = document.createElement("canvas");
   canvas.width = TILE_SIZE;
@@ -314,6 +322,22 @@ function buildCanvas(draw) {
   const ctx = canvas.getContext("2d");
   draw(ctx);
   return canvas;
+}
+
+function colorRect(ctx, x, y, w, h, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, w, h);
+}
+
+function makePixelTerrainTexture(scene, key, baseColor, marks = []) {
+  const canvas = buildCanvas((ctx) => {
+    colorRect(ctx, 0, 0, TILE_SIZE, TILE_SIZE, baseColor);
+    for (const mark of marks) {
+      const [x, y, w, h, color] = mark;
+      colorRect(ctx, x, y, w, h, color);
+    }
+  });
+  replaceCanvasTexture(scene, key, canvas);
 }
 
 export function ensureTerrainRenderTexture(scene, plan) {
@@ -374,6 +398,73 @@ function makeBasePattern(scene, sourceKey, key, embellish) {
 }
 
 export function registerGeneratedTerrainTextures(scene) {
+  makePixelTerrainTexture(scene, "tile_grass", "#19a522", [
+    [2, 3, 2, 1, "#0d7a18"],
+    [8, 2, 1, 2, "#43cb3e"],
+    [13, 5, 2, 1, "#0b7f16"],
+    [4, 10, 3, 1, "#0b7f16"],
+    [11, 12, 1, 2, "#46cc42"],
+  ]);
+
+  makePixelTerrainTexture(scene, "tile_dark_grass", "#0d6d1c", [
+    [2, 2, 3, 2, "#064612"],
+    [9, 4, 2, 2, "#0a4e16"],
+    [5, 10, 4, 2, "#064612"],
+    [12, 12, 2, 2, "#168329"],
+  ]);
+
+  makePixelTerrainTexture(scene, "tile_forest", "#062e10", [
+    [1, 3, 5, 6, "#0f5a22"],
+    [5, 1, 6, 7, "#14712a"],
+    [10, 5, 5, 7, "#0c4f1e"],
+    [3, 10, 5, 5, "#0b461b"],
+    [8, 11, 6, 4, "#116026"],
+  ]);
+
+  makePixelTerrainTexture(scene, "tile_tree", "#0a3b17", [
+    [4, 1, 8, 5, "#14752a"],
+    [2, 5, 12, 7, "#0e5c22"],
+    [6, 11, 4, 5, "#4b2e18"],
+  ]);
+
+  makePixelTerrainTexture(scene, "tile_path", "#caa05e", [
+    [0, 1, 16, 1, "#e2bf79"],
+    [2, 6, 4, 1, "#8e6535"],
+    [9, 10, 5, 1, "#8e6535"],
+    [1, 14, 10, 1, "#e0bb74"],
+  ]);
+
+  makePixelTerrainTexture(scene, "tile_water", "#2f8ed8", [
+    [1, 3, 6, 2, "#85d8ff"],
+    [9, 7, 6, 2, "#75cdf8"],
+    [2, 12, 5, 2, "#1768b7"],
+    [10, 13, 4, 1, "#8adfff"],
+  ]);
+
+  makePixelTerrainTexture(scene, "tile_hill", "#8a7748", [
+    [2, 9, 12, 2, "#6f5e38"],
+    [4, 5, 8, 2, "#aa965d"],
+    [7, 2, 4, 2, "#c1ad72"],
+  ]);
+
+  makePixelTerrainTexture(scene, "tile_sand", "#e5c85f", [
+    [3, 3, 4, 1, "#f3dc83"],
+    [9, 7, 5, 1, "#b8973c"],
+    [2, 12, 3, 1, "#b8973c"],
+  ]);
+
+  makePixelTerrainTexture(scene, "tile_rock", "#8a8a83", [
+    [2, 9, 12, 4, "#5d625f"],
+    [5, 4, 6, 5, "#b7b7ac"],
+    [9, 2, 3, 3, "#d7d7cf"],
+  ]);
+
+  makePixelTerrainTexture(scene, "tile_bush", "#168a2a", [
+    [2, 6, 5, 5, "#0d5d1e"],
+    [6, 3, 6, 7, "#20aa38"],
+    [10, 7, 4, 5, "#0d6f22"],
+  ]);
+
   makeBasePattern(scene, "tile_water", "tile_lake", (ctx) => {
     ctx.fillStyle = "rgba(12, 57, 108, 0.35)";
     ctx.fillRect(0, 0, TILE_SIZE, 2);

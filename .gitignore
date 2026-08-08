@@ -14,6 +14,12 @@ server/dashboard
 # Node
 client/node_modules/
 client/dist/
+client/test-results/
+.vite/
+
+# Generated language caches
+__pycache__/
+*.pyc
 
 # IDE
 .idea/

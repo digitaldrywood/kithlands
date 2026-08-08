@@ -23,11 +23,18 @@ import {
 import { showEquipPicker } from "./scenes/world_menu.js";
 import {
   walkSheetKey,
+  walkSheetGeometryForClass,
   walkFrameIndex,
+  walkFrameSequence,
+  walkSpritePosition,
+  walkSpriteScale,
+  fallbackWalkSpriteScale,
+  classPortraitFallbackScale,
   WALK_SHEET_CLASS_IDS,
 } from "./scenes/walkFrame.js";
 import { setLeaderIndex } from "./scenes/world.js";
 import { encounterChanceForStep } from "./scenes/worldEncounter.js";
+import { walkStepMs } from "./systems/prefs.js";
 
 const DIR_DELTAS = {
   up: [0, -1],
@@ -612,10 +619,7 @@ function canWalk(scene, x, y) {
 function playerPixelPosition(scene, x, y) {
   const offsetX = scene?.offsetX || 0;
   const offsetY = scene?.offsetY || 0;
-  return {
-    x: offsetX + x * 32 + 16,
-    y: offsetY + y * 32 + 16,
-  };
+  return walkSpritePosition(x, y, 32, offsetX, offsetY);
 }
 
 function sceneObjectsReady(scene, sceneKey, leaderClass = null) {
@@ -656,14 +660,28 @@ function rebuildPlayerSprite(scene) {
         x,
         y,
         walkSheetKey(scene.leaderClass),
-        walkFrameIndex(scene.playerDir, scene.walkFrame || 0),
+        walkFrameIndex(
+          scene.playerDir,
+          scene.walkFrame || 0,
+          scene.leaderClass,
+        ),
       )
+      .setOrigin(0.5, 1)
       .setDepth(10)
-      .setScale(0.5);
+      .setScale(walkSpriteScale(32, scene.leaderClass));
   } else {
+    scene.playerFallbackTexture = scene.textures.exists(scene.leaderClass)
+      ? scene.leaderClass
+      : `player_${scene.playerDir}`;
     scene.player = scene.add
-      .image(x, y, `player_${scene.playerDir}`)
+      .image(x, y, scene.playerFallbackTexture)
+      .setOrigin(0.5, 1)
       .setDepth(10);
+    scene.player.setScale(
+      scene.playerFallbackTexture === scene.leaderClass
+        ? classPortraitFallbackScale(32)
+        : fallbackWalkSpriteScale(32),
+    );
   }
   if (scene?.scene?.key === "World") {
     scene.cameras?.main?.startFollow?.(scene.player, true, 0.1, 0.1);
@@ -680,10 +698,18 @@ function setPlayerSprite(scene) {
   if (scene.hasWalkSheet) {
     scene.player.setTexture(
       walkSheetKey(scene.leaderClass),
-      walkFrameIndex(scene.playerDir, scene.walkFrame || 0),
+      walkFrameIndex(scene.playerDir, scene.walkFrame || 0, scene.leaderClass),
     );
   } else {
-    scene.player.setTexture(`player_${scene.playerDir}`);
+    scene.playerFallbackTexture = scene.textures.exists(scene.leaderClass)
+      ? scene.leaderClass
+      : `player_${scene.playerDir}`;
+    scene.player.setTexture(scene.playerFallbackTexture);
+    scene.player.setScale(
+      scene.playerFallbackTexture === scene.leaderClass
+        ? classPortraitFallbackScale(32)
+        : fallbackWalkSpriteScale(32),
+    );
   }
 }
 
@@ -735,6 +761,66 @@ function frameHash(scene) {
     hash = Math.imul(hash, 16777619);
   }
   return `${textureKey}:${hash >>> 0}`;
+}
+
+function framePixelAudit(scene) {
+  const frame = scene?.player?.frame;
+  const image = frame?.source?.image;
+  if (!frame || !image) return null;
+
+  const width = frame.cutWidth;
+  const height = frame.cutHeight;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.clearRect(0, 0, width, height);
+  ctx.drawImage(
+    image,
+    frame.cutX,
+    frame.cutY,
+    width,
+    height,
+    0,
+    0,
+    width,
+    height,
+  );
+  const pixels = ctx.getImageData(0, 0, width, height).data;
+  let opaquePixels = 0;
+  let edgePixels = 0;
+  let left = width;
+  let top = height;
+  let right = -1;
+  let bottom = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (pixels[(y * width + x) * 4 + 3] <= 8) continue;
+      opaquePixels++;
+      if (x === 0 || y === 0 || x === width - 1 || y === height - 1) {
+        edgePixels++;
+      }
+      left = Math.min(left, x);
+      top = Math.min(top, y);
+      right = Math.max(right, x);
+      bottom = Math.max(bottom, y);
+    }
+  }
+  return {
+    opaquePixels,
+    edgePixels,
+    bounds:
+      right >= left
+        ? {
+            left,
+            top,
+            right,
+            bottom,
+            width: right - left + 1,
+            height: bottom - top + 1,
+          }
+        : null,
+  };
 }
 
 function exportPlayerFrame(scene) {
@@ -794,11 +880,21 @@ function playerSnapshot(scene, moved) {
     walkFrame: scene?.walkFrame ?? null,
     hasWalkSheet: !!scene?.hasWalkSheet,
     leaderClass: scene?.leaderClass || null,
+    walkFrameAudit: clone(scene?.walkFrameAudit || []),
     frameHash: frameHash(scene),
+    framePixels: framePixelAudit(scene),
     x: scene?.playerX ?? null,
     y: scene?.playerY ?? null,
     screenX,
     screenY,
+    displayWidth: scene?.player?.displayWidth ?? null,
+    displayHeight: scene?.player?.displayHeight ?? null,
+    originX: scene?.player?.originX ?? null,
+    originY: scene?.player?.originY ?? null,
+    scaleX: scene?.player?.scaleX ?? null,
+    scaleY: scene?.player?.scaleY ?? null,
+    frameWidth: frame?.cutWidth ?? frame?.width ?? null,
+    frameHeight: frame?.cutHeight ?? frame?.height ?? null,
   };
 }
 
@@ -988,10 +1084,12 @@ function findCharacterDetailButton(scene, label) {
   return null;
 }
 
-function findStraightAuditAnchor(scene, dir, steps) {
+function findStraightAuditAnchor(scene, dir, steps, preferCenter = false) {
   const [dx, dy] = DIR_DELTAS[dir] || [0, 0];
   const width = scene?.mapW ?? scene?.roomW;
   const height = scene?.mapH ?? scene?.roomH;
+  let best = null;
+  let bestDistance = Infinity;
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
       if (!canWalk(scene, x, y)) continue;
@@ -1002,10 +1100,16 @@ function findStraightAuditAnchor(scene, dir, steps) {
           break;
         }
       }
-      if (ok) return { x, y };
+      if (!ok) continue;
+      if (!preferCenter) return { x, y };
+      const distance = (x - width / 2) ** 2 + (y - height / 2) ** 2;
+      if (distance < bestDistance) {
+        best = { x, y };
+        bestDistance = distance;
+      }
     }
   }
-  return null;
+  return best;
 }
 
 function setSceneLeaderClass(scene, classId, sceneKey) {
@@ -1074,6 +1178,15 @@ export function installDevTestBridge(game) {
       return game.scene.isActive(sceneKey);
     },
 
+    textureExists(key) {
+      return game.textures.exists(key);
+    },
+
+    setNoEncounters(enabled = true) {
+      globalThis.__kithlandsNoEncounters = !!enabled;
+      return { noEncounters: globalThis.__kithlandsNoEncounters };
+    },
+
     sceneFlags(sceneKey) {
       const scene = getScene(game, sceneKey);
       return {
@@ -1101,6 +1214,13 @@ export function installDevTestBridge(game) {
         roomH: scene?.roomH ?? null,
         hasCanWalkTile: typeof scene?.canWalkTile === "function",
         leaderClass: scene?.leaderClass || null,
+        playerFrameIndex: scene?.player?.frame?.index ?? null,
+        playerDisplayWidth: scene?.player?.displayWidth ?? null,
+        playerDisplayHeight: scene?.player?.displayHeight ?? null,
+        playerOriginX: scene?.player?.originX ?? null,
+        playerOriginY: scene?.player?.originY ?? null,
+        playerScaleX: scene?.player?.scaleX ?? null,
+        playerScaleY: scene?.player?.scaleY ?? null,
         hudAttached: scene?.hudText?.scene === scene,
         hudFooterAttached: scene?.hudFooter?.scene === scene,
       };
@@ -1210,6 +1330,20 @@ export function installDevTestBridge(game) {
 
     walkSheetClassIds() {
       return [...WALK_SHEET_CLASS_IDS];
+    },
+
+    walkSheetContract(classId) {
+      const geometry = walkSheetGeometryForClass(classId);
+      return clone({
+        ...geometry,
+        frameSequence: walkFrameSequence(classId),
+        baseFrameByDirection: Object.fromEntries(
+          Object.keys(DIR_DELTAS).map((dir) => [
+            dir,
+            walkFrameIndex(dir, 0, classId),
+          ]),
+        ),
+      });
     },
 
     async debugGiveItem(itemId, qty = 1, sceneKey) {
@@ -1630,9 +1764,9 @@ export function installDevTestBridge(game) {
       return findDirectionAuditAnchor(scene);
     },
 
-    findStraightAuditAnchor(dir, steps = 1, sceneKey) {
+    findStraightAuditAnchor(dir, steps = 1, sceneKey, preferCenter = false) {
       const scene = getScene(game, sceneKey);
-      return findStraightAuditAnchor(scene, dir, steps);
+      return findStraightAuditAnchor(scene, dir, steps, preferCenter);
     },
 
     setPlayerFacing(dir, sceneKey) {
@@ -1648,6 +1782,15 @@ export function installDevTestBridge(game) {
       const scene = getScene(game, sceneKey);
       if (!scene?.player) throw new Error("Scene has no player");
       setPlayerTile(scene, x, y);
+      return playerSnapshot(scene, false);
+    },
+
+    centerCameraOnPlayer(sceneKey) {
+      const scene = getScene(game, sceneKey);
+      if (!scene?.player || !scene?.cameras?.main) {
+        throw new Error("Scene has no player camera");
+      }
+      scene.cameras.main.centerOn(scene.player.x, scene.player.y);
       return playerSnapshot(scene, false);
     },
 
@@ -1685,11 +1828,43 @@ export function installDevTestBridge(game) {
       const beforeX = scene.playerX;
       const beforeY = scene.playerY;
       const [dx, dy] = DIR_DELTAS[dir] || [0, 0];
+      if (scene.scene?.key === "World") scene.stepCount = 0;
       scene.tryMove(dx, dy);
       return playerSnapshot(
         scene,
         beforeX !== scene.playerX || beforeY !== scene.playerY,
       );
+    },
+
+    async sampleMovePlayer(dir, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      if (!scene?.player || typeof scene.tryMove !== "function") {
+        throw new Error("Scene cannot move player");
+      }
+      const beforeX = scene.playerX;
+      const beforeY = scene.playerY;
+      const [dx, dy] = DIR_DELTAS[dir] || [0, 0];
+      if (scene.scene?.key === "World") scene.stepCount = 0;
+      scene.tryMove(dx, dy);
+      const moved = beforeX !== scene.playerX || beforeY !== scene.playerY;
+      const stepMs = walkStepMs();
+      const delays = [0, 0.3, 0.55, 0.8, 1.2].map((ratio) =>
+        Math.round(stepMs * ratio),
+      );
+      const samples = await Promise.all(
+        delays.map(
+          (delay) =>
+            new Promise((resolve) => {
+              window.setTimeout(
+                () => resolve(playerSnapshot(scene, moved)),
+                delay,
+              );
+            }),
+        ),
+      );
+      await waitFor(() => !scene.animating, 1000);
+      samples.push(playerSnapshot(scene, moved));
+      return samples;
     },
 
     exportPlayerFrame(sceneKey = "World") {
@@ -1841,7 +2016,13 @@ export function installDevTestBridge(game) {
       let settled = false;
       const interval = setInterval(() => {
         if (settled) return;
-        scene.input.keyboard.emit("keydown-ENTER");
+        const event = {
+          key: "Enter",
+          code: "Enter",
+          preventDefault() {},
+        };
+        scene.input.keyboard.emit("keydown", event);
+        scene.input.keyboard.emit("keydown-ENTER", event);
       }, 200);
       try {
         await pending;

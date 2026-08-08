@@ -5,6 +5,7 @@ import { WizardScene } from "./scenes/wizard.js";
 import { WorldScene } from "./scenes/world.js";
 import { BattleScene } from "./scenes/battle.js";
 import { TownScene } from "./scenes/town.js";
+import { SettlementScene } from "./scenes/settlement.js";
 
 const config = {
   type: Phaser.AUTO,
@@ -27,6 +28,7 @@ const config = {
     TitleScene,
     WizardScene,
     WorldScene,
+    SettlementScene,
     BattleScene,
     TownScene,
   ],

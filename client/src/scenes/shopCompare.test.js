@@ -92,7 +92,7 @@ describe("shopCompare helpers", () => {
       expect.arrayContaining([
         { label: "Power", value: "8" },
         { label: "Hit%", value: "-5" },
-        { label: "Classes", value: "warrior, wayfarer" },
+        { label: "Wielders", value: "warrior, wayfarer" },
       ]),
     );
 
@@ -129,6 +129,6 @@ describe("shopCompare helpers", () => {
   });
 
   it("formats the buy-for button label from the focused member", () => {
-    expect(buyForMemberLabel({ name: "Mira" })).toBe("BUY FOR Mira");
+    expect(buyForMemberLabel({ name: "Mira" })).toBe("Buy for Mira");
   });
 });

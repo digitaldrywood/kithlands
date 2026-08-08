@@ -26,6 +26,7 @@ import {
   planSmartRound,
   resolveAction,
 } from "../systems/auto_battle.js";
+import { attackFrameIndex, attackSheetKey } from "./walkFrame.js";
 import { drawButton, drawFF6BottomStrip, drawPanel } from "../ui/panel.js";
 import { TILE_COLORS, TILE_IDS } from "./tileConstants.js";
 import { pickBackgroundKey } from "./battleBackgrounds.js";
@@ -109,21 +110,21 @@ const CLASS_SPRITES = {
 
 const DEFAULT_BATTLE_TILE = TILE_IDS.grass;
 const ACTION_HUD = {
-  centerX: 190,
-  centerY: 535,
-  width: 340,
-  height: 132,
-  portraitX: 74,
-  portraitY: 514,
+  centerX: 188,
+  centerY: 526,
+  width: 344,
+  height: 124,
+  portraitX: 70,
+  portraitY: 510,
   portraitSize: 60,
   portraitFrame: 68,
-  buttonStartX: 168,
-  buttonStartY: 500,
-  buttonWidth: 82,
-  buttonHeight: 28,
-  buttonGapX: 10,
-  buttonGapY: 10,
-  buttonColumns: 3,
+  buttonStartX: 166,
+  buttonStartY: 494,
+  buttonWidth: 92,
+  buttonHeight: 24,
+  buttonGapX: 12,
+  buttonGapY: 8,
+  buttonColumns: 2,
 };
 
 function mixColor(colorA, colorB, ratio = 0.5) {
@@ -287,13 +288,14 @@ export class BattleScene extends Phaser.Scene {
     this.floatingText = new FloatingTextPool(this);
     if (this.messageWindow) this.messageWindow.destroy();
     this.messageWindow = new MessageWindow(this, {
-      x: 384,
-      y: 478,
-      width: 406,
-      height: 112,
-      minHeight: 96,
-      maxHeight: 140,
+      x: 372,
+      y: 468,
+      width: 416,
+      height: 118,
+      minHeight: 92,
+      maxHeight: 124,
       depth: 20,
+      fontSize: "16px",
     });
     this.promptText = this.messageWindow;
     this.actorCursor = new TargetCursor(this, {
@@ -1041,6 +1043,7 @@ export class BattleScene extends Phaser.Scene {
       this.partyArrows[i] = arrow;
 
       const fallbackKey = CLASS_SPRITES[p.sprite_id || p.class_id];
+      const classId = p.sprite_id || p.class_id || fallbackKey;
       const composition = p.composition || {
         base_sprite: fallbackKey || "",
       };
@@ -1072,6 +1075,8 @@ export class BattleScene extends Phaser.Scene {
         alive,
         slot: i,
         row: placement.row,
+        classId,
+        baseTextureKey: fallbackKey,
       };
 
       if (alive) {
@@ -1533,6 +1538,7 @@ export class BattleScene extends Phaser.Scene {
 
   async lungePartySprite(actorEntry, targetEntry) {
     if (!actorEntry?.sprite || !targetEntry) return;
+    const attackPlayback = this.playPartyAttackSheet(actorEntry, "down");
     const dx = targetEntry.x - actorEntry.x;
     const dy = targetEntry.y - actorEntry.y;
     const lungeX = actorEntry.x + dx * 0.38;
@@ -1543,6 +1549,7 @@ export class BattleScene extends Phaser.Scene {
       duration: 150,
       ease: "Power2",
     });
+    await attackPlayback;
   }
 
   async resetPartySprite(actorEntry) {
@@ -1553,6 +1560,54 @@ export class BattleScene extends Phaser.Scene {
       duration: ACTION_BEAT_MS.recovery,
       ease: "Power1",
     });
+    this.restorePartySpriteTexture(actorEntry);
+  }
+
+  playPartyAttackSheet(actorEntry, dir = "right") {
+    const classId = actorEntry?.classId;
+    const sprite = actorEntry?.sprite;
+    const key = attackSheetKey(classId);
+    if (!sprite || !classId || !this.textures.exists(key)) {
+      return Promise.resolve(false);
+    }
+
+    const original = {
+      textureKey: sprite.texture?.key,
+      frameName: sprite.frame?.name,
+      scaleX: sprite.scaleX,
+      scaleY: sprite.scaleY,
+    };
+    actorEntry.restoreAttackTexture = original;
+    sprite.setTexture(key, attackFrameIndex(dir, 0));
+    sprite.setScale(100 / 64);
+
+    const frames = [0, 1, 2, 3, 4, 5, 6, 7];
+    const frameMs = this.scaledMs(35);
+    return new Promise((resolve) => {
+      frames.forEach((frame, index) => {
+        this.time.delayedCall(index * frameMs, () => {
+          if (sprite.active && sprite.texture?.key === key) {
+            sprite.setFrame(attackFrameIndex(dir, frame));
+          }
+        });
+      });
+      this.time.delayedCall(frames.length * frameMs, () => resolve(true));
+    });
+  }
+
+  restorePartySpriteTexture(actorEntry) {
+    const sprite = actorEntry?.sprite;
+    const restore = actorEntry?.restoreAttackTexture;
+    if (
+      !sprite ||
+      !restore?.textureKey ||
+      !this.textures.exists(restore.textureKey)
+    ) {
+      return;
+    }
+    sprite.setTexture(restore.textureKey, restore.frameName);
+    sprite.setScale(restore.scaleX, restore.scaleY);
+    actorEntry.restoreAttackTexture = null;
   }
 
   drawActions(gs, slot) {
@@ -1575,10 +1630,14 @@ export class BattleScene extends Phaser.Scene {
       ACTION_HUD.width,
       ACTION_HUD.height,
       {
-        fill: 0x08111f,
-        fillAlpha: 0.9,
-        stroke: 0x6ea8ff,
-        strokeWidth: 2,
+        variant: "ff6",
+        radius: 8,
+        innerInset: 5,
+        outerFill: 0x315f9b,
+        innerTop: 0x10294d,
+        innerBottom: 0x071424,
+        outerStroke: 0xbfdcff,
+        innerStroke: 0x6ea8ff,
         depth: 16,
       },
     );
@@ -1635,7 +1694,7 @@ export class BattleScene extends Phaser.Scene {
         .setOrigin(0.5)
         .setDepth(18),
       this.add
-        .text(ACTION_HUD.portraitX, 569, member.class_name, {
+        .text(ACTION_HUD.portraitX, 568, member.class_name, {
           fontSize: "9px",
           color: "#ffcc66",
           fontFamily: "monospace",
@@ -1643,7 +1702,7 @@ export class BattleScene extends Phaser.Scene {
         .setOrigin(0.5)
         .setDepth(18),
       this.add
-        .text(166, 474, "COMMAND", {
+        .text(150, 470, "COMMAND", {
           fontSize: "11px",
           color: "#cfe6ff",
           fontFamily: "monospace",
@@ -1672,7 +1731,7 @@ export class BattleScene extends Phaser.Scene {
         () => this.handleActionButton(button, member, gs, slot),
         {
           depth: 17,
-          fontSize: "10px",
+          fontSize: "9px",
           textColor: button.color,
           textColorDisabled: "#6e7d91",
           fill: 0x173054,
@@ -3214,6 +3273,15 @@ export class BattleScene extends Phaser.Scene {
   showVictoryResults(gs) {
     this.children.removeAll(true);
     this.add.rectangle(400, 300, 800, 600, 0x0a0a1e);
+    drawPanel(this, 400, 305, 720, 520, {
+      variant: "ff6",
+      depth: 0,
+      radius: 12,
+      innerTop: 0x17284a,
+      innerBottom: 0x090d21,
+      outerFill: 0x314d78,
+      interactive: false,
+    });
 
     this.victoryFastForwarded = false;
     this.victoryContinueShown = false;
@@ -3229,7 +3297,8 @@ export class BattleScene extends Phaser.Scene {
       .text(400, 30, isDefeat ? "DEFEAT" : "VICTORY!", {
         fontSize: "32px",
         color: isDefeat ? "#ff4444" : "#ffff44",
-        fontFamily: "monospace",
+        fontFamily: "Georgia",
+        fontStyle: "bold",
       })
       .setOrigin(0.5);
 
@@ -3244,7 +3313,7 @@ export class BattleScene extends Phaser.Scene {
 
       // Defeat options
       const loadBtn = this.add
-        .text(400, 300, "[ LOAD LAST SAVE ]", {
+        .text(400, 300, "Load Last Save", {
           fontSize: "18px",
           color: "#4488ff",
           fontFamily: "monospace",
@@ -3256,7 +3325,7 @@ export class BattleScene extends Phaser.Scene {
       loadBtn.on("pointerdown", () => this.scene.start("Title"));
 
       const titleBtn = this.add
-        .text(400, 360, "[ TITLE SCREEN ]", {
+        .text(400, 360, "Title Screen", {
           fontSize: "18px",
           color: "#aaaaaa",
           fontFamily: "monospace",
@@ -3278,9 +3347,9 @@ export class BattleScene extends Phaser.Scene {
       if (l.includes("Victory") || l.includes("Found:")) {
         this.add
           .text(400, y, l, {
-            fontSize: "11px",
-            color: "#44ff44",
-            fontFamily: "monospace",
+            fontSize: "12px",
+            color: "#88d47a",
+            fontFamily: "Arial",
           })
           .setOrigin(0.5);
         y += 16;
@@ -3291,9 +3360,9 @@ export class BattleScene extends Phaser.Scene {
     for (const l of log.filter((l) => l.includes("Quest complete"))) {
       this.add
         .text(400, y, l, {
-          fontSize: "11px",
-          color: "#44ccff",
-          fontFamily: "monospace",
+          fontSize: "12px",
+          color: "#8ed2ff",
+          fontFamily: "Arial",
         })
         .setOrigin(0.5);
       y += 16;
@@ -3637,17 +3706,23 @@ export class BattleScene extends Phaser.Scene {
   }
 
   addContinueButton(gs) {
-    const btn = this.add
-      .text(400, 545, "[ CONTINUE ]", {
-        fontSize: "20px",
-        color: "#44ff44",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    btn.on("pointerover", () => btn.setColor("#88ff88"));
-    btn.on("pointerout", () => btn.setColor("#44ff44"));
-    btn.on("pointerdown", () => this.returnFromBattle(gs));
+    drawButton(
+      this,
+      400,
+      545,
+      150,
+      34,
+      "Continue",
+      () => this.returnFromBattle(gs),
+      {
+        depth: 8,
+        fontSize: "16px",
+        fill: 0x1d4938,
+        fillHover: 0x2f6a50,
+        stroke: 0x9cdfb4,
+        fontFamily: "Arial",
+      },
+    );
     this.input.keyboard.on("keydown-ENTER", () => this.returnFromBattle(gs));
     this.input.keyboard.on("keydown-SPACE", () => this.returnFromBattle(gs));
   }

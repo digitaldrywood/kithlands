@@ -1,5 +1,11 @@
 import { MONSTER_SPRITE_LOAD } from "../data/monsterSprites.js";
-import { WALK_SHEET_CLASS_IDS } from "./walkFrame.js";
+import {
+  RUNTIME_WALK_SHEET_CLASS_IDS,
+  WALK_SHEET_CLASS_IDS,
+  attackSheetFrameSize,
+  attackSheetKey,
+  walkSheetFrameSize,
+} from "./walkFrame.js";
 import { registerGeneratedTerrainTextures } from "./terrainAutotile.js";
 import { enumerateBackgrounds } from "./battleBackgrounds.js";
 
@@ -52,12 +58,25 @@ export class BootScene extends Phaser.Scene {
     // class portrait so all four movement directions preserve class identity.
     // Fallback player_{dir} sprites remain loaded for safety, but normal
     // movement should now use the class-specific walk sheet.
-    const CLASSES_WITH_WALK_SHEETS = CLASS_SPRITE_KEYS;
+    const CLASSES_WITH_WALK_SHEETS = RUNTIME_WALK_SHEET_CLASS_IDS;
     for (const key of CLASSES_WITH_WALK_SHEETS) {
+      const frameSize = walkSheetFrameSize(key);
       this.load.spritesheet(`${key}_walk`, `/sprites/walk/${key}_walk.png`, {
-        frameWidth: 128,
-        frameHeight: 128,
+        frameWidth: frameSize,
+        frameHeight: frameSize,
       });
+    }
+
+    for (const key of CLASS_SPRITE_KEYS) {
+      const frameSize = attackSheetFrameSize(key);
+      this.load.spritesheet(
+        attackSheetKey(key),
+        `/sprites/attack/${key}_attack.png`,
+        {
+          frameWidth: frameSize,
+          frameHeight: frameSize,
+        },
+      );
     }
 
     // Status effect icons

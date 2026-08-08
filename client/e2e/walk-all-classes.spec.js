@@ -22,14 +22,12 @@ const OPPOSITE_DIR = {
   left: "right",
   right: "left",
 };
-const BASE_FRAME = {
-  down: 0,
-  up: 4,
-  left: 8,
-  right: 12,
-};
-
 async function startGame(page) {
+  // The audit must display every biomechanical pose even when headless
+  // Chromium is under load; the normal-speed smoke test runs separately.
+  await page.addInitScript(() => {
+    localStorage.setItem("kithlands_prefs", JSON.stringify({ walkSpeed: 1 }));
+  });
   await page.goto("/");
   await page.waitForFunction(() => !!window.__kithlandsTest);
   await page.waitForFunction(() =>
@@ -54,6 +52,10 @@ async function restartSceneWithLeaderClass(page, sceneKey, classId) {
 
 async function auditClassScene(page, sceneKey, classId) {
   await restartSceneWithLeaderClass(page, sceneKey, classId);
+  const contract = await page.evaluate(
+    (id) => window.__kithlandsTest.walkSheetContract(id),
+    classId,
+  );
 
   for (const dir of DIRS) {
     const anchor = await page.evaluate(
@@ -74,16 +76,11 @@ async function auditClassScene(page, sceneKey, classId) {
       { dir: OPPOSITE_DIR[dir], sceneKey },
     );
 
-    const sequence = [];
-    for (let step = 0; step < 4; step++) {
-      sequence.push(
-        await page.evaluate(
-          ({ dir, sceneKey }) =>
-            window.__kithlandsTest.movePlayer(dir, sceneKey),
-          { dir, sceneKey },
-        ),
-      );
-    }
+    const sequence = await page.evaluate(
+      ({ dir, sceneKey }) =>
+        window.__kithlandsTest.sampleMovePlayer(dir, sceneKey),
+      { dir, sceneKey },
+    );
 
     expect(sequence.every((step) => step.moved)).toBe(true);
     expect(sequence.every((step) => step.playerDir === dir)).toBe(true);
@@ -92,13 +89,44 @@ async function auditClassScene(page, sceneKey, classId) {
     expect(
       sequence.every((step) => step.textureKey === `${classId}_walk`),
     ).toBe(true);
-    expect(sequence.map((step) => step.frameIndex)).toEqual([
-      BASE_FRAME[dir] + 0,
-      BASE_FRAME[dir] + 1,
-      BASE_FRAME[dir] + 2,
-      BASE_FRAME[dir] + 3,
-    ]);
-    expect(new Set(sequence.map((step) => step.frameHash)).size).toBe(4);
+    const auditedFrames = sequence
+      .at(-1)
+      .walkFrameAudit.filter((entry) => entry.dir === dir)
+      .map((entry) => entry.frameIndex);
+    const expectedFrames = contract.frameSequence.map(
+      (frame) => contract.baseFrameByDirection[dir] + frame,
+    );
+    expect(auditedFrames.every((frame) => expectedFrames.includes(frame))).toBe(
+      true,
+    );
+    expect(new Set(auditedFrames).size).toBeGreaterThanOrEqual(
+      Math.min(4, contract.frameSequence.length),
+    );
+    const passingFrames = [2, 6]
+      .filter((frame) => contract.frameSequence.includes(frame))
+      .map((frame) => contract.baseFrameByDirection[dir] + frame);
+    expect(auditedFrames.some((frame) => passingFrames.includes(frame))).toBe(
+      true,
+    );
+    expect(auditedFrames).toContain(sequence.at(-1).frameIndex);
+    expect(
+      sequence.every((step) => step.frameWidth === contract.cellSize),
+    ).toBe(true);
+    expect(
+      sequence.every((step) => step.frameHeight === contract.cellSize),
+    ).toBe(true);
+    expect(sequence.every((step) => step.originX === 0.5)).toBe(true);
+    expect(sequence.every((step) => step.originY === 1)).toBe(true);
+    expect(sequence.every((step) => step.framePixels?.opaquePixels > 120)).toBe(
+      true,
+    );
+    expect(sequence.every((step) => step.framePixels?.edgePixels === 0)).toBe(
+      true,
+    );
+    expect(new Set(sequence.map((step) => step.displayWidth)).size).toBe(1);
+    expect(new Set(sequence.map((step) => step.displayHeight)).size).toBe(1);
+    expect(new Set(sequence.map((step) => step.scaleX)).size).toBe(1);
+    expect(new Set(sequence.map((step) => step.scaleY)).size).toBe(1);
   }
 
   const perDirection = {};

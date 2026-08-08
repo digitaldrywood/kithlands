@@ -28,8 +28,8 @@
     "strong_level_rate_pct": 50,
     "strong_level_bonus_hp": 20,
     "equipment": {
-      "weapons": ["sword", "axe", "hammer", "dagger", "bow", "staff"],
-      "armor": ["robe", "leather", "chain", "plate"],
+      "weapons": ["sword", "axe", "hammer"],
+      "armor": ["leather", "chain", "plate"],
       "shields": true,
       "helmets": ["cap", "helm", "great_helm"]
     },
@@ -167,7 +167,7 @@
     "strong_level_rate_pct": 30,
     "strong_level_bonus_hp": 20,
     "equipment": {
-      "weapons": ["hammer", "staff"],
+      "weapons": ["staff"],
       "armor": ["robe"],
       "shields": true,
       "helmets": ["cap"]

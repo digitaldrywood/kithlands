@@ -209,6 +209,36 @@ For any visible change:
 - confirm the layout and content match the intended behavior
 - clean generated `client/tmp/` and `client/test-results/` before committing
 
+### Walk Animation Gate
+
+For any runtime walk-sheet, direction mapping, scale, origin, idle-frame, or
+leader-cycling change, follow
+`docs/CHARACTER_ANIMATION_PRODUCTION.md` and run:
+
+```sh
+python3 skills/kithlands-visual-production/scripts/audit_walk_sheets.py \
+  client/public/sprites/walk \
+  --classes warrior brawler rogue mender cinder wayfarer knight champion \
+    shadow sage pyromancer wanderer \
+  --columns 6 --rows 8 --mode enforce
+
+cd client
+npm test -- --run
+npm run build
+VITE_PORT="$VITE_PORT" npx playwright test --config=e2e/playwright.config.js \
+  e2e/walk-all-classes.spec.js
+VITE_PORT="$VITE_PORT" npx playwright test --config=e2e/playwright.config.js \
+  e2e/world-space-cycle.spec.js
+VITE_PORT="$VITE_PORT" npx playwright test --config=e2e/playwright.config.js \
+  e2e/world-walk-audit-party.spec.js
+```
+
+Finally open `/?walkAudit=1&noEncounters=1`, focus the game canvas, cycle all
+twelve classes with Space, and inspect each class while walking and stopped.
+Check front/back/profile direction, full-body crop, constant apparent size,
+feet anchor, frame continuity, and absence of alpha fringe. Record visual
+acceptance separately from automated pass results.
+
 ## 8. What To Say In PRs
 
 Good validation notes are concrete:

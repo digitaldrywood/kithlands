@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kithlands Visual Production"
+  short_description: "Produce and verify Kithlands game visuals."
+  default_prompt: "Use $kithlands-visual-production to plan, create, integrate, and visually verify this game-art change."
