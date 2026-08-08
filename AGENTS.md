@@ -16,6 +16,9 @@ Before making claims, plans, or code changes:
 4. Check the current repo state with `git status --short`.
 5. Verify the task against the actual code and behavior. Do not trust prior
    chat summaries, issue titles, or merged PR titles.
+6. For sprite, animation, map, environment, battle presentation, menu styling,
+   or other visible work, read
+   [skills/kithlands-visual-production/SKILL.md](skills/kithlands-visual-production/SKILL.md).
 
 ## 2. Product Rules
 
@@ -215,6 +218,11 @@ Use these after reading `AGENTS.md`:
   Slack-controlled one-issue-at-a-time workflow, stop conditions, and state.
 - [docs/KITHLANDS_DESIGN.md](docs/KITHLANDS_DESIGN.md)
   Product and architecture source of truth.
+- [skills/kithlands-visual-production/SKILL.md](skills/kithlands-visual-production/SKILL.md)
+  Repo-owned art production, no-subscription tooling, asset contracts, and
+  visual acceptance gates.
+- [docs/VISUAL_PRODUCTION_ROADMAP_2026-08-08.md](docs/VISUAL_PRODUCTION_ROADMAP_2026-08-08.md)
+  Current visual recovery sequence, exit gates, and platform direction.
 - [CLAUDE.md](CLAUDE.md)
   Claude-specific guidance for direct implementation versus orchestrating
   Codex/OpenClaw.

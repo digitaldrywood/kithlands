@@ -8,6 +8,7 @@ For broader repo workflow, validation, and agent coordination rules, also read:
 3. [docs/CODEX_VALIDATION.md](docs/CODEX_VALIDATION.md)
 4. [docs/CODEX_PR_WORKFLOW.md](docs/CODEX_PR_WORKFLOW.md)
 5. [docs/CODEX_OPENCLAW_WORKFLOW.md](docs/CODEX_OPENCLAW_WORKFLOW.md)
+6. [skills/kithlands-visual-production/SKILL.md](skills/kithlands-visual-production/SKILL.md)
 
 ## Claude's Role In This Repo
 
