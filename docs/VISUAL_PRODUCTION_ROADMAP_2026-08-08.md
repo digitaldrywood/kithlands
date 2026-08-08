@@ -21,29 +21,37 @@ The repo-owned production process is
 
 ## Current Baseline
 
-The character pipeline is not internally consistent:
+Walk animation is now the first accepted visual production slice:
 
-- the current warrior walk sheet is 384x512 (6 frames x 8 directions);
-- the other eleven runtime sheets are 512x512 (8 frames x 8 directions);
-- all eleven 512x512 sheets have visible alpha content touching cell edges;
-- runtime code supports three formats;
-- the all-class Playwright test still contains legacy 8x4 indexing;
-- old documentation still describes a 128px, 8x4 runtime contract.
+- all twelve runtime classes use native 384x512 RGBA sheets;
+- every sheet uses 64x64 cells, six walk frames, and eight direction rows;
+- runtime class mappings use the single `gameCharacter64` format;
+- the static audit enforces exact geometry, nonempty frames, and clean edges;
+- Playwright verifies all classes in World and Town, real Space leader cycling,
+  stable scale/origin, correct texture selection, and frame progression;
+- `/?walkAudit=1&noEncounters=1` provides a temporary all-class party for
+  actual-game visual review without changing a real save;
+- all twelve classes were visually accepted in that route on 2026-08-08.
 
-Run the current baseline report with:
+The full operational contract is
+[`docs/CHARACTER_ANIMATION_PRODUCTION.md`](CHARACTER_ANIMATION_PRODUCTION.md).
+Run the enforced baseline audit with:
 
 ```bash
 python3 skills/kithlands-visual-production/scripts/audit_walk_sheets.py \
-  client/public/sprites/walk --mode report
+  client/public/sprites/walk \
+  --classes warrior brawler rogue mender cinder wayfarer knight champion \
+    shadow sage pyromancer wanderer \
+  --columns 6 --rows 8 --mode enforce
 ```
 
-Geometry and alpha checks currently report 0 of 12 runtime sheets accepted.
-This is expected migration debt and must not be hidden by loosening thresholds.
+Attack sheets, maps, buildings, interiors, battle presentation, and menus have
+not inherited this acceptance and remain active visual recovery work.
 
-## Phase 0: Make Proof Trustworthy
+## Phase 0: Make Walk Proof Trustworthy (Complete)
 
 1. Replace the three runtime walk formats with one explicit 64px, 8-direction,
-   8-pose contract.
+   6-pose contract.
 2. Make one manifest the source of truth for sheet geometry, row order, frame
    names, origins, scale, and class asset paths.
 3. Update the Phaser loader, sprite debugger, world/town/interior movement, and
@@ -57,17 +65,17 @@ This is expected migration debt and must not be hidden by loosening thresholds.
 Exit gate: a deliberately malformed fixture fails every relevant automated
 check, and the test suite no longer hardcodes legacy 8x4 indexing.
 
-## Phase 1: Gold Warrior Movement And Attack
+## Phase 1: Character Movement Complete; Attack Pending
 
-1. Approve one original warrior identity sheet at intended in-game scale.
-2. Create reusable eight-direction pose guides or a deterministic rig.
-3. Produce the eight-pose walk one direction at a time.
+1. Preserve the accepted all-class walk sheets and their proof gate.
+2. Create reusable attack pose guides or a deterministic rig.
+3. Produce attack animation one direction at a time without modifying the
+   accepted walk contract.
 4. Produce idle, attack, hit, defend, cast/use-item, victory, and KO states from
    the same identity and anchor system.
 5. Repair individual frames in Pixelorama/Krita; do not regenerate accepted
    rows.
-6. Verify the warrior in the sprite debugger, overland, settlement, interior,
-   and battle.
+6. Verify every attack state in the sprite debugger and actual battle flow.
 
 Exit gate: no clipping, fallback flash, size change, floating debris, backward
 direction, head jerk, foot skating, or missing passing pose in inspected motion

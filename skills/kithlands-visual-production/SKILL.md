@@ -44,26 +44,26 @@ Use these targets for new playable character assets:
 
 - transparent PNG
 - 64x64 cell
+- 384x512 sheet with 6 animation columns and 8 direction rows
 - 8 direction rows in this order: south, south-east, east, north-east, north,
   north-west, west, south-west
-- 8 walk frames in this order: contact A, down A, passing A, high A, contact B,
-  down B, passing B, high B
+- 6 walk frames in this order: contact A, down A, passing A, high A, contact B,
+  down B
 - fixed feet anchor and stable head/torso mass across every frame
 - no baked ground shadow; render a separate runtime shadow
 - distinct source, candidate, approved, and runtime locations
 
-The current repo is in migration and contains both six-frame and eight-frame
-sheets. Do not generate more mixed-format assets. Run the contract audit before
-and after character work:
+All twelve runtime classes use this native format. The accepted operational
+contract is `docs/CHARACTER_ANIMATION_PRODUCTION.md`. Run its all-class audit
+before and after character work:
 
 ```bash
 python3 skills/kithlands-visual-production/scripts/audit_walk_sheets.py \
-  client/public/sprites/walk --mode report
+  client/public/sprites/walk \
+  --classes warrior brawler rogue mender cinder wayfarer knight champion \
+    shadow sage pyromancer wanderer \
+  --columns 6 --rows 8 --mode enforce
 ```
-
-Use `--mode enforce` only when every runtime class has migrated to the canonical
-format. A report that identifies existing failures is evidence of remaining
-work, not a reason to weaken the contract.
 
 ## Character Workflow
 
@@ -77,6 +77,9 @@ work, not a reason to weaken the contract.
 6. Run geometry and motion audits, then inspect the loop and travel preview.
 7. Install the candidate in the game only after source-level approval.
 8. Verify world, settlement, interior, and battle usage as applicable.
+
+For all-class walk approval, use `/?walkAudit=1&noEncounters=1`, cycle every
+class with Space, and inspect movement and idle state in the actual game.
 
 For walk-cycle details and rejection criteria, read
 `references/character-pipeline.md`.

@@ -137,19 +137,10 @@ reach the reference quality, Kithlands should keep Phaser but move to:
 
 ## Walk Sprite Pipeline Notes
 
-- The detailed acceptance standard is now tracked in
-  `docs/WALK_CYCLE_ART_SPEC.md`.
-- Runtime walk sheets are 1024x512 transparent PNGs with 128px cells.
-- Row order is down, up, left, right.
-- Each row has 8 frames. Dense modern sprites need more than a 4-frame legacy
-  RPG shuffle to avoid reading as skipping.
-- Side-view rows must use the contact/down/passing/high/contact/down/passing/high
-  pose progression from the walk-cycle art spec. Extreme-foot-only sheets are
-  rejected, even if the runtime indexes them correctly.
-- The `/sprites.html` debugger now labels the required pose for every frame so
-  the missing-passing-pose failure is visible during review.
-- Use `scripts/extract_generated_walk_sheet.sh` to convert reviewed 8x4
-  generated sheets into the runtime format.
-- Use `scripts/export_walk_cycle_gif.sh` to export left/right animated proof.
-  A sheet is not accepted just because it indexes correctly; the side GIF must
-  read as walking.
+- This section originally described the rejected 128px conversion workflow.
+- Current walk production is defined by
+  `docs/CHARACTER_ANIMATION_PRODUCTION.md`: native 384x512 RGBA sheets, 64x64
+  cells, six animation columns, and eight direction rows.
+- All twelve classes passed the static and runtime gates and were visually
+  accepted in the actual all-class audit game on 2026-08-08.
+- Attack animation is not covered by that acceptance and remains separate work.

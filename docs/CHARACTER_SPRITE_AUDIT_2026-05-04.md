@@ -1,5 +1,11 @@
 # Character Sprite Audit - 2026-05-04
 
+> Historical audit. Its failures were resolved by the accepted native walk
+> pipeline on 2026-08-08. Do not use the geometry or migration state below as
+> current guidance; use `docs/CHARACTER_ANIMATION_PRODUCTION.md`. Attack-sheet
+> findings remain unresolved unless a newer attack-specific audit supersedes
+> them.
+
 ## Verdict
 
 The current generated walk and attack sheets are not production-acceptable.

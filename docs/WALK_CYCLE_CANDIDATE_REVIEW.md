@@ -1,5 +1,9 @@
 # Walk Cycle Candidate Review
 
+> Historical candidate review from the rejected legacy workflow. Do not use
+> its geometry or recommendations for current production. The accepted native
+> contract is `docs/CHARACTER_ANIMATION_PRODUCTION.md`.
+
 Date: 2026-04-26
 
 ## Warrior Candidate 2026-04-26

@@ -182,6 +182,27 @@ Tests are not enough for visible work.
 - For generated sprite sheets, inspect the actual frames.
 - Prefer running the game over reasoning from code when the change is visible.
 
+### Character Walk Animation
+
+The accepted walk contract and production workflow are defined in
+[docs/CHARACTER_ANIMATION_PRODUCTION.md](docs/CHARACTER_ANIMATION_PRODUCTION.md).
+It is authoritative over older audit notes and prompt experiments. Runtime walk
+sheets are native 384x512 RGBA atlases with 64x64 cells, six animation columns,
+and eight direction rows. Do not reintroduce the rejected legacy 128px,
+eight-column, four-row, or full-sheet conversion paths.
+
+Before reporting a walk change as fixed, agents must:
+
+- enforce the six-column/eight-row contract across all twelve classes;
+- run `walk-all-classes.spec.js`, `world-space-cycle.spec.js`, and
+  `world-walk-audit-party.spec.js`;
+- inspect `/sprites.html` and the real `/?walkAudit=1&noEncounters=1` game flow;
+- use Space to cycle every class and visually inspect walking, stopping, scale,
+  anchors, cropping, orientation, and continuity.
+
+Passing automation alone is not visual acceptance. Attack sheets have their
+own unfinished contract and are not covered by walk-sheet approval.
+
 The local Playwright wrapper already uses worktree-local ports and browser
 state:
 
@@ -223,6 +244,9 @@ Use these after reading `AGENTS.md`:
   visual acceptance gates.
 - [docs/VISUAL_PRODUCTION_ROADMAP_2026-08-08.md](docs/VISUAL_PRODUCTION_ROADMAP_2026-08-08.md)
   Current visual recovery sequence, exit gates, and platform direction.
+- [docs/CHARACTER_ANIMATION_PRODUCTION.md](docs/CHARACTER_ANIMATION_PRODUCTION.md)
+  Accepted native walk-sheet contract, production workflow, and mandatory
+  all-class visual gate.
 - [CLAUDE.md](CLAUDE.md)
   Claude-specific guidance for direct implementation versus orchestrating
   Codex/OpenClaw.

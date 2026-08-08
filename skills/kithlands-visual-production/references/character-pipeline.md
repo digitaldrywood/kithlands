@@ -3,13 +3,12 @@
 ## Canonical Runtime Contract
 
 - cell size: 64x64 pixels
-- sheet size: 512x512 pixels
-- columns: 8 animation poses
+- sheet size: 384x512 pixels
+- columns: 6 animation poses
 - rows: 8 directions
 - direction rows: south, south-east, east, north-east, north, north-west, west,
   south-west
-- frame poses: contact A, down A, passing A, high A, contact B, down B,
-  passing B, high B
+- frame poses: contact A, down A, passing A, high A, contact B, down B
 - file type: RGBA PNG with transparent background
 - origin: bottom center at the feet anchor
 - runtime scale: identical for idle and motion frames
@@ -31,10 +30,10 @@ source/characters/<class-id>/
     west.png
     palette.png
   guides/
-    walk-8pose.png
+    walk-6pose.png
     attack-8pose.png
   walk/
-    south/frame-00.png ... frame-07.png
+    south/frame-00.png ... frame-05.png
     ...
   attack/
     ...
@@ -86,10 +85,10 @@ Reject when:
 7. Assemble the sheet from named frame files; do not crop a free-form grid.
 8. Run the sheet audit and preview the loop before runtime installation.
 
-## Current Migration Warning
+## Runtime Acceptance
 
-`client/src/scenes/walkFrame.js` currently supports multiple sheet formats and
-`client/e2e/walk-all-classes.spec.js` contains legacy indexing assumptions.
-Treat both as migration debt. Do not use the mixed state as a template for new
-assets. The migration is complete only when runtime code, debugger, tests, and
-all twelve PNGs use this canonical contract.
+The twelve production walk sheets use the canonical six-column contract.
+Legacy format declarations may remain temporarily for non-production migration
+or attack compatibility, but no runtime walk class may map to them. Use
+`docs/CHARACTER_ANIMATION_PRODUCTION.md` for the exact scripts, tests, audit
+route, and visual acceptance procedure.
