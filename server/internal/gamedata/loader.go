@@ -208,6 +208,8 @@ func (gd *GameData) buildIndexes() {
 }
 
 func (gd *GameData) validate() {
+	gd.validateLoot()
+
 	if len(gd.Classes) == 0 {
 		panic("gamedata: classes.json is empty")
 	}
