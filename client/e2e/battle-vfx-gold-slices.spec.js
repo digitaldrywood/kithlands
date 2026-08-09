@@ -61,4 +61,48 @@ test.describe("content-driven battle VFX gold slices", () => {
     ).toBe(1);
     await expectNoSave(page);
   });
+
+  test("Cure forms a restorative field before one healing result", async ({
+    page,
+  }, testInfo) => {
+    const state = await openShowcase(page, { width: 1280, height: 720 });
+    expectPresentation(state, "cure", "restorative_light", 1);
+    const proof = await runGoldSpellFlow(page, testInfo, {
+      mode: "cure",
+      family: "restorative_light",
+      tier: 1,
+      side: "party",
+      targetCount: 1,
+      middleStage: "field",
+      label: "cure-single-healing-desktop-1280x720",
+      vitals: [{ slot: 0, hp: 1 }],
+    });
+    expect(
+      proof.trace.find((frame) => frame.label.endsWith("-impact")).snapshot
+        .reticles,
+    ).toBeGreaterThanOrEqual(1);
+    await expectNoSave(page);
+  });
+
+  test("Heala forms one simultaneous all-party restorative field", async ({
+    page,
+  }, testInfo) => {
+    const state = await openShowcase(page, { width: 390, height: 844 });
+    expectPresentation(state, "heala", "restorative_light", 3);
+    const proof = await runGoldSpellFlow(page, testInfo, {
+      mode: "heala",
+      family: "restorative_light",
+      tier: 3,
+      side: "party",
+      targetCount: 4,
+      middleStage: "field",
+      label: "heala-all-party-healing-mobile-390x844",
+      vitals: [0, 1, 2, 3].map((slot) => ({ slot, hp: 1 })),
+    });
+    expect(
+      proof.trace.find((frame) => frame.label.endsWith("-impact")).snapshot
+        .groupCursors,
+    ).toBe(1);
+    await expectNoSave(page);
+  });
 });
