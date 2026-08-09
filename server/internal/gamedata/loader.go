@@ -264,11 +264,7 @@ func (gd *GameData) buildEquipmentIndex() {
 		})
 	}
 	for _, item := range gd.Items.Gear {
-		add(EquipmentBase{
-			ID: item.ID, Name: item.Name, IconKey: item.IconKey, Kind: item.Kind, Category: item.Category, Tier: item.Tier,
-			RequiredLevel: item.RequiredLevel, Classes: item.Classes, Stats: item.Stats,
-			BuyPrice: item.BuyPrice, SellPrice: item.SellPrice,
-		})
+		add(EquipmentBase(item))
 	}
 }
 
