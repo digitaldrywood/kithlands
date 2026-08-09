@@ -10,6 +10,7 @@ import (
 
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
 	"github.com/digitaldrywood/kithlands/internal/interiors"
+	"github.com/digitaldrywood/kithlands/internal/settlements"
 )
 
 func main() {
@@ -38,9 +39,14 @@ func run(sharedDir string) (err error) {
 	if err := validateChestAnchors(gd, registry); err != nil {
 		return err
 	}
+	settlementRegistry, err := settlements.LoadDir(sharedDir)
+	if err != nil {
+		return fmt.Errorf("loading settlements: %w", err)
+	}
 	fmt.Printf("loaded %d classes, %d spells, %d monsters, %d formations\n",
 		len(gd.Classes), len(gd.Spells.Spells), len(gd.Monsters), len(gd.Formations))
-	fmt.Printf("loaded %d interior templates and %d chest definitions\n", len(registry.Templates), len(gd.Chests))
+	fmt.Printf("loaded %d interior templates, %d settlement maps, and %d chest definitions\n",
+		len(registry.Templates), len(settlementRegistry.Maps), len(gd.Chests))
 	return nil
 }
 
