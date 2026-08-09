@@ -116,12 +116,11 @@ export function playBattleEffectRelease(scene, actor, presentation) {
   });
 }
 
-export function playBattleEffectToTarget(scene, target, presentation) {
+export function playBattleEffectToTarget(scene, actor, target, presentation) {
   if (!presentation || !target) return null;
   const reducedMotion = scene.reducedBattleMotion();
   const motion = battleEffectMotion(presentation, reducedMotion);
   if (presentation.motion === "projectile") {
-    const actor = scene.resolveVisualEntry(scene._activeBattleEffectActor);
     if (!actor) return null;
     const destinationY = target.y + target.height * 0.2;
     const projectile = tagEffect(

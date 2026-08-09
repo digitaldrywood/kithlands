@@ -3355,6 +3355,7 @@ export class BattleScene extends Phaser.Scene {
 
         const actorEntry = pe || enemyCaster;
         const style = battleElementStyle(element);
+        const effectPresentation = battleEffectPresentation(action);
         this.revealLine(`${caster} casts ${spellName}!`, "#88aaff");
         await this.showActionTitle(
           actorEntry,
@@ -3363,7 +3364,14 @@ export class BattleScene extends Phaser.Scene {
         );
         await this.playMajorCinematicPrelude(action, actorEntry, element);
         await this.playCastAnticipation(actorEntry, element);
-        playSFX(ELEMENT_SFX[element] || "sfx_spell");
+        await playBattleEffectRelease(
+          this,
+          this.resolveVisualEntry(actorEntry),
+          effectPresentation,
+        );
+        playSFX(
+          effectPresentation?.soundHook || ELEMENT_SFX[element] || "sfx_spell",
+        );
 
         const presentations = targets.map((tgt) => {
           const ee = this.enemySprites[tgt.targetId];
@@ -3392,9 +3400,18 @@ export class BattleScene extends Phaser.Scene {
         // One cast beat fans out to every target at once. Damage remains one
         // authoritative server entry per target, but presentation is atomic.
         await Promise.all(
-          presentations.map(({ targetEntry }) =>
-            this.launchSpellProjectile(actorEntry, targetEntry, element),
-          ),
+          presentations.map(({ targetEntry }) => {
+            const customEffect = playBattleEffectToTarget(
+              this,
+              this.resolveVisualEntry(actorEntry),
+              this.resolveVisualEntry(targetEntry),
+              effectPresentation,
+            );
+            return (
+              customEffect ||
+              this.launchSpellProjectile(actorEntry, targetEntry, element)
+            );
+          }),
         );
         await Promise.all(
           presentations.map(async ({ tgt, ee, pt }) => {
@@ -3517,6 +3534,7 @@ export class BattleScene extends Phaser.Scene {
           healPresentations.map((entry) => {
             const customEffect = playBattleEffectToTarget(
               this,
+              this.resolveVisualEntry(casterEntry),
               this.resolveVisualEntry(entry.target),
               presentation,
             );
