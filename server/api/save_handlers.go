@@ -191,6 +191,10 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		lootRollSeq:          worldState.LootRollSequence,
 		trans:                trans,
 		lastRoundActions:     cloneMemberActionReqs(worldState.LastRoundActions),
+		location: LocationState{
+			Kind:        LocationWorld,
+			WorldNodeID: walk.Spawn.ID,
+		},
 	}
 
 	// Saves written before the transport pipeline landed have no transport
@@ -431,6 +435,10 @@ func (s *Server) handleLoadSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.games.applyInteriorTemplates(game.tileMap)
+	if err := s.games.attachSettlementMap(game); err != nil {
+		httpError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	s.games.mu.Lock()
 	s.games.games[game.id] = game

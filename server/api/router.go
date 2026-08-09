@@ -51,6 +51,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/game/new", s.auth.Middleware(http.HandlerFunc(s.handleNewGame)))
 	mux.Handle("GET /api/game/{id}", s.auth.Middleware(http.HandlerFunc(s.handleGetGame)))
 	mux.Handle("POST /api/game/{id}/action", s.auth.Middleware(http.HandlerFunc(s.handleGameAction)))
+	mux.Handle("POST /api/game/{id}/transition", s.auth.Middleware(http.HandlerFunc(s.handleLocationTransition)))
 	mux.Handle("POST /api/game/{id}/promote", s.auth.Middleware(http.HandlerFunc(s.handlePromote)))
 	mux.Handle("GET /api/game/{id}/shop/{nodeId}", s.auth.Middleware(http.HandlerFunc(s.handleShop)))
 	mux.Handle("GET /api/game/{id}/npc/{nodeId}/talk", s.auth.Middleware(http.HandlerFunc(s.handleNPCTalk)))
