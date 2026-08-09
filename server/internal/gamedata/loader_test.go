@@ -21,6 +21,25 @@ func TestLoadValidData(t *testing.T) {
 	}
 }
 
+func TestBattleEffectPresentationMetadataLoads(t *testing.T) {
+	gd := gamedata.Load("../../../shared")
+	wants := map[string]struct {
+		family string
+		tier   int
+	}{
+		"spark": {"fire", 1}, "ember": {"fire", 1},
+		"fireball": {"fire", 2}, "blaze": {"fire", 3},
+		"cure": {"restorative_light", 1}, "heal": {"restorative_light", 2},
+		"cura": {"restorative_light", 2}, "heala": {"restorative_light", 3},
+	}
+	for id, want := range wants {
+		spell := gd.SpellByID(id)
+		if spell == nil || spell.Presentation == nil || spell.Presentation.EffectFamily != want.family || spell.Presentation.IntensityTier != want.tier {
+			t.Errorf("%s presentation = %#v, want %s tier %d", id, spell, want.family, want.tier)
+		}
+	}
+}
+
 func TestLayeredWeaponVisualMetadataLoads(t *testing.T) {
 	gd := gamedata.Load("../../../shared")
 	wants := map[string]string{

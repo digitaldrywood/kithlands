@@ -72,6 +72,9 @@ func TestSpellStateExposesTargetAndEffect(t *testing.T) {
 	if !cure.Castable {
 		t.Errorf("cure.Castable = false, want true (heal effect is dispatchable)")
 	}
+	if cure.Presentation == nil || cure.Presentation.EffectFamily != "restorative_light" || cure.Presentation.IntensityTier != 1 {
+		t.Errorf("cure presentation = %#v, want restorative_light tier 1", cure.Presentation)
+	}
 	if resurrect == nil {
 		t.Fatalf("resurrect should be teachable")
 	}
@@ -118,6 +121,9 @@ func TestMajorSpellCombatActionCarriesPresentationMetadata(t *testing.T) {
 		}
 		if action.CinematicTier != "major" {
 			t.Fatalf("cinematic_tier = %q, want major", action.CinematicTier)
+		}
+		if action.Presentation == nil || action.Presentation.EffectFamily != "fire" || action.Presentation.IntensityTier != 2 {
+			t.Fatalf("fireball presentation = %#v, want fire tier 2", action.Presentation)
 		}
 		return
 	}
