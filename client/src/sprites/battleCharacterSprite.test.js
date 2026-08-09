@@ -304,3 +304,19 @@ describe("Pyromancer battle runtime contract", () => {
     ).toBe(true);
   });
 });
+
+describe("Wanderer battle runtime contract", () => {
+  it("keeps the two-tone explorer body separate from the shared staff", () => {
+    const scene = sceneWith([
+      "battle_wanderer_staff_waystar_body",
+      "battle_weapon_war_staff",
+    ]);
+    expect(
+      canUseBattleCharacterSprite(scene, {
+        base_sprite: "wanderer",
+        weapon_visual_id: "war_staff",
+        weapon_animation_set: "staff",
+      }),
+    ).toBe(true);
+  });
+});

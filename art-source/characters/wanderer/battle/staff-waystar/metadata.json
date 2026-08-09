@@ -1,0 +1,33 @@
+{
+  "status": "visual_approval_pending",
+  "generated_on": "2026-08-08",
+  "generator": "OpenAI built-in imagegen",
+  "identity_references": [
+    "client/public/sprites/wanderer.png",
+    "client/public/sprites/walk/wanderer_walk.png"
+  ],
+  "frame_contract": {
+    "frame_size": [192, 192],
+    "order": [
+      "idle_guard",
+      "prepare",
+      "raise_free_hand",
+      "point_horizon",
+      "peak_waystar",
+      "recover"
+    ],
+    "anchor": "bottom_center",
+    "baseline_y": 185,
+    "staff_baked_in": false,
+    "effect_baked_in": false
+  },
+  "attachment": {
+    "item_id": "war_staff",
+    "visual_id": "war_staff",
+    "animation_set": "staff",
+    "slot": "weapon_back",
+    "grip_origin": [0.5, 0.48]
+  },
+  "prompt_template": "IDENTITY-PRESERVE Wanderer battle frame. Accepted portrait and walk assets lock the short tousled golden-blond hair, fair face, layered brown leather explorer gear, silver shoulder and knee guards, and asymmetric cape with an image-left white/silver half and image-right indigo/night half. The prior frame locks rendering and the guide locks the Waystar pose. BODY AND PERMANENT CLOTHING ONLY: no staff, sword, dagger, sidearm, weapon, spell, star, effect, shadow, text, UI, or scenery. The image-right staff hand remains a complete closed empty grip.",
+  "notes": "Wanderer's first class-specific slice is a six-pose Waystar horizon invocation. The two-tone cape remains permanent identity clothing; the War Staff remains the same shared item-driven attachment used by other staff users. Installed for aggregate all-class review."
+}

@@ -225,3 +225,15 @@ filigree, and split coat tails distinguish it from Cinder. The body contains
 no staff, crystal, dagger, fire, or flame ribbon; shared `war_staff` metadata
 selects the equipment layer and the audit supplies the all-enemies fire
 effect. Its aggregate-review status is `visual_approval_pending`.
+
+### Wanderer Staff Waystar
+
+Wanderer's first installed slice is a six-pose Waystar invocation: idle guard,
+prepare, raise the free hand, point toward the horizon, peak Waystar, and
+recover. The accepted short golden-blond hair, layered brown explorer leathers,
+silver shoulder and knee guards, and asymmetric white/silver and indigo/night
+cape keep the promoted traveler distinct from Wayfarer. The cape is permanent
+identity clothing, but the body contains no staff, sidearm, star, spell, or
+effect. Shared `war_staff` metadata selects the equipment layer, with the grip
+authored in the image-right hand. Its aggregate-review status is
+`visual_approval_pending`.

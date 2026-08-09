@@ -83,8 +83,10 @@ Primary and official sources:
 | Shadow     | R          | R dagger  | F               | F              | F   | F    | -       | F   | R dagger / bow pending   |
 | Sage       | R          | F         | R Sanctuary     | F              | F   | F    | -       | F   | R staff                  |
 | Pyromancer | R          | F         | R staff Inferno | F              | F   | F    | -       | F   | R staff / dagger pending |
-| Wanderer   | F          | F         | F               | F              | F   | F    | -       | F   | - mixed                  |
+| Wanderer   | R          | F         | R staff Waystar | F              | F   | F    | -       | F   | R staff / mixed pending  |
 
 Mender cast/guard was explicitly approved in the real Systems Showcase battle.
-Remaining class slices now proceed one class and one action at a time, using the
-same body/attachment separation and visual-inspection gate.
+All twelve identities now have one authored signature slice for aggregate
+review. Remaining state cells still use the generic fallback and proceed one
+class and one action at a time through the same body/attachment separation and
+visual-inspection gate.

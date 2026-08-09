@@ -739,10 +739,74 @@
     },
     {
       "id": "wanderer",
-      "status": "production_pending",
-      "default_state": "",
-      "attachments": {},
-      "states": {}
+      "status": "visual_approval_pending",
+      "default_state": "cast_class_ability",
+      "attachments": {
+        "staff": { "origin": [0.5, 0.48] }
+      },
+      "states": {
+        "idle_guard": {
+          "body_key": "battle_wanderer_staff_waystar_body",
+          "body_path": "/sprites/battle/wanderer/staff-waystar-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 120,
+              "attachments": {
+                "staff": { "x": 31, "y": -4, "angle": -4, "front": false }
+              }
+            }
+          ]
+        },
+        "cast_class_ability": {
+          "body_key": "battle_wanderer_staff_waystar_body",
+          "body_path": "/sprites/battle/wanderer/staff-waystar-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 105,
+              "attachments": {
+                "staff": { "x": 31, "y": -4, "angle": -4, "front": false }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 100,
+              "attachments": {
+                "staff": { "x": 34, "y": 0, "angle": -3, "front": false }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 120,
+              "attachments": {
+                "staff": { "x": 30, "y": 2, "angle": -2, "front": false }
+              }
+            },
+            {
+              "frame": 3,
+              "duration": 145,
+              "attachments": {
+                "staff": { "x": 29, "y": -7, "angle": -3, "front": false }
+              }
+            },
+            {
+              "frame": 4,
+              "duration": 175,
+              "attachments": {
+                "staff": { "x": 27, "y": -63, "angle": -8, "front": false }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 105,
+              "attachments": {
+                "staff": { "x": 30, "y": -8, "angle": -4, "front": false }
+              }
+            }
+          ]
+        }
+      }
     }
   ]
 }
