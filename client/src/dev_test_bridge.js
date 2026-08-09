@@ -914,6 +914,22 @@ function visibleBattleFxSnapshot(scene) {
         child.visible !== false &&
         (child.alpha ?? 1) > 0.01,
     ).length;
+  const battleEffects = children
+    .filter(
+      (child) =>
+        child?._battleEffectFamily &&
+        child.active !== false &&
+        child.visible !== false &&
+        (child.alpha ?? 1) > 0.01,
+    )
+    .map((child) => ({
+      family: child._battleEffectFamily,
+      stage: child._battleEffectStage,
+      tier: child._battleEffectTier,
+      x: child.x ?? null,
+      y: child.y ?? null,
+      alpha: child.alpha ?? 1,
+    }));
   const partyMembers = Object.values(scene?.partySprites || {})
     .sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0))
     .map((entry) => ({
@@ -994,6 +1010,8 @@ function visibleBattleFxSnapshot(scene) {
     spellProjectiles: taggedCount("spell-projectile"),
     spellTrails: taggedCount("spell-trail"),
     spellImpacts: taggedCount("spell-impact"),
+    effectReleases: taggedCount("effect-release"),
+    battleEffects,
     majorCinematics: taggedCount("major-cinematic"),
     majorAuras: taggedCount("major-aura"),
     cinematicSkipButtons: taggedCount("cinematic-skip"),
@@ -1591,6 +1609,17 @@ export function installDevTestBridge(game) {
         (enemy) => (enemy.current_hp ?? enemy.hp ?? 0) > 0,
       )?.id;
       if (!enemyId) throw new Error("Battle scene has no living enemy");
+      const exactSpellID = {
+        cure: "cure",
+        heala: "heala",
+        fireball: "fireball",
+        blaze: "blaze",
+      }[mode];
+      const wantsSpell =
+        !!exactSpellID ||
+        mode === "spell" ||
+        mode === "all_spell" ||
+        mode === "all_heal";
 
       let spellAssigned = false;
       let inspireAssigned = false;
@@ -1615,6 +1644,7 @@ export function installDevTestBridge(game) {
               entry?.id &&
               entry?.castable_in_combat !== false &&
               (member.mp ?? 0) >= (entry.mp_cost ?? 0) &&
+              (!exactSpellID || entry.id === exactSpellID) &&
               (mode !== "all_spell" ||
                 entry.target_modes?.includes("all_enemies")) &&
               (mode !== "all_heal" ||
@@ -1624,13 +1654,16 @@ export function installDevTestBridge(game) {
                   entry.target_modes?.includes("all_allies"))),
           );
           if (
-            (mode === "spell" || mode === "all_spell" || mode === "all_heal") &&
+            wantsSpell &&
             !spellAssigned &&
             spell
           ) {
             spellAssigned = true;
             const groupMode =
-              mode === "all_spell"
+              exactSpellID &&
+              (spell.target === "all_enemies" || spell.target === "all_allies")
+                ? spell.target
+                : mode === "all_spell"
                 ? "all_enemies"
                 : mode === "all_heal"
                   ? "all_allies"
@@ -1638,7 +1671,7 @@ export function installDevTestBridge(game) {
             return {
               slot,
               type: "spell",
-              target_id: groupMode ? -1 : enemyId,
+              target_id: groupMode ? -1 : exactSpellID === "cure" ? 0 : enemyId,
               spell_id: spell.id,
               ...(groupMode ? { target_mode: groupMode } : {}),
             };
@@ -1647,8 +1680,7 @@ export function installDevTestBridge(game) {
         })
         .filter(Boolean);
       if (
-        (mode === "spell" || mode === "all_spell" || mode === "all_heal") &&
-        !spellAssigned
+        wantsSpell && !spellAssigned
       ) {
         throw new Error("Battle party has no castable spell");
       }
