@@ -501,10 +501,28 @@
     },
     {
       "id": "champion",
-      "status": "production_pending",
-      "default_state": "",
+      "status": "visual_approval_pending",
+      "default_state": "physical_attack",
       "attachments": {},
-      "states": {}
+      "states": {
+        "idle_guard": {
+          "body_key": "battle_champion_unarmed_palm_burst_body",
+          "body_path": "/sprites/battle/champion/unarmed-palm-burst-body.png",
+          "frames": [{ "frame": 0, "duration": 120, "attachments": {} }]
+        },
+        "physical_attack": {
+          "body_key": "battle_champion_unarmed_palm_burst_body",
+          "body_path": "/sprites/battle/champion/unarmed-palm-burst-body.png",
+          "frames": [
+            { "frame": 0, "duration": 90, "attachments": {} },
+            { "frame": 1, "duration": 80, "attachments": {} },
+            { "frame": 2, "duration": 80, "attachments": {} },
+            { "frame": 3, "duration": 105, "attachments": {} },
+            { "frame": 4, "duration": 110, "attachments": {} },
+            { "frame": 5, "duration": 90, "attachments": {} }
+          ]
+        }
+      }
     },
     {
       "id": "shadow",

@@ -79,7 +79,7 @@ Primary and official sources:
 | Cinder     | R          | F         | R staff cast    | F              | F   | F    | -       | F   | R staff                 |
 | Wayfarer   | R          | F         | R staff Inspire | F              | F   | F    | -       | F   | R staff / mixed pending |
 | Knight     | R          | F         | F               | R sword/shield | F   | F    | -       | F   | R sword/shield          |
-| Champion   | F          | F         | F               | F              | F   | F    | -       | F   | - unarmed               |
+| Champion   | R          | R unarmed | F               | F              | F   | F    | -       | F   | R unarmed               |
 | Shadow     | F          | F         | F               | F              | F   | F    | -       | F   | - dagger/bow            |
 | Sage       | F          | F         | F               | F              | F   | F    | -       | F   | - staff                 |
 | Pyromancer | F          | F         | F               | F              | F   | F    | -       | F   | - dagger/staff          |

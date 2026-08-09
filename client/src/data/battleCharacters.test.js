@@ -43,6 +43,7 @@ describe("shared battle character catalog", () => {
       "battle_cinder_staff_cast_body",
       "battle_wayfarer_staff_inspire_body",
       "battle_knight_sword_shield_defend_body",
+      "battle_champion_unarmed_palm_burst_body",
     ]);
     expect(battleProfileFor("brawler").status).toBe("visual_approval_pending");
     expect(battleStateFor("brawler", "physical_attack").frames).toHaveLength(6);
@@ -59,5 +60,9 @@ describe("shared battle character catalog", () => {
     ).toHaveLength(6);
     expect(battleProfileFor("knight").status).toBe("visual_approval_pending");
     expect(battleStateFor("knight", "defend").frames).toHaveLength(6);
+    expect(battleProfileFor("champion").status).toBe("visual_approval_pending");
+    expect(battleStateFor("champion", "physical_attack").frames).toHaveLength(
+      6,
+    );
   });
 });

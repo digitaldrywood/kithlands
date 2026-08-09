@@ -181,3 +181,14 @@ white tabard, long cape, and noble full plate remain distinct from Warrior's
 body. Both hands are empty in the atlas: the Mythril Sword and Steel Shield
 are independent item-driven runtime layers with per-frame `sword` and `shield`
 sockets. Its aggregate-review status is `visual_approval_pending`.
+
+### Champion Unarmed Palm Burst
+
+Champion's first installed slice is a six-pose two-hand palm burst: idle
+guard, coil, step, double-palm impact, follow-through, and recover. It keeps
+the accepted stern tan face, dark hair, long red headband tails, scarred bare
+chest, dark teal one-shoulder wrap, red-brown sash, loose trousers, bracers,
+and wrapped boots. The silhouette and two-hand action remain distinct from
+Brawler's bald orange-gi straight punch. `unarmed` has no attachment, and the
+portrait's fist flame is reserved for runtime effects rather than baked into
+the body atlas. Its aggregate-review status is `visual_approval_pending`.

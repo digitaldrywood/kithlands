@@ -238,3 +238,21 @@ describe("Knight battle runtime contract", () => {
     ).toBe(false);
   });
 });
+
+describe("Champion battle runtime contract", () => {
+  it("uses a distinct promoted unarmed body with no invented attachment", () => {
+    const scene = sceneWith(["battle_champion_unarmed_palm_burst_body"]);
+    expect(
+      canUseBattleCharacterSprite(scene, {
+        base_sprite: "champion",
+      }),
+    ).toBe(true);
+    expect(
+      canUseBattleCharacterSprite(scene, {
+        base_sprite: "champion",
+        weapon_visual_id: "iron_sword",
+        weapon_animation_set: "sword",
+      }),
+    ).toBe(false);
+  });
+});
