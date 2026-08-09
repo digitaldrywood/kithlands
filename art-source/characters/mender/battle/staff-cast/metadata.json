@@ -1,5 +1,7 @@
 {
-  "status": "visual_approval_pending",
+  "status": "approved_runtime",
+  "approved_on": "2026-08-08",
+  "approval_source": "explicit in-browser user review",
   "generated_on": "2026-08-08",
   "generator": "OpenAI built-in imagegen",
   "identity_references": [
@@ -28,5 +30,5 @@
     "grip_origin": [0.5, 0.48]
   },
   "prompt_template": "IDENTITY-PRESERVE Mender battle frame. Accepted portrait and walk assets lock the slim blond hooded healer identity; the current sequence frame locks pixel density and palette; the authored guide locks the pose and empty staff hand. Preserve the pointed white hood, pale-blue shadows, gold trim, shoulder cape, cyan bodice and waist panel, round gold clasp, long split robe tails, gloves and boots. BODY ONLY: no staff, weapon, crystal, magic, effect, shadow, text, UI or scenery. Flat chroma-key backdrop, full body visible, common bottom-center baseline.",
-  "notes": "Second battle-character gold slice. The source frames and runtime atlas are installed only to support real-browser review; approval is still required before this status changes or the pattern is used for Cinder or any other class."
+  "notes": "Second battle-character gold slice. Approved after real-browser review; this body-only cast and separate staff attachment are the production template for subsequent class-specific battle work."
 }

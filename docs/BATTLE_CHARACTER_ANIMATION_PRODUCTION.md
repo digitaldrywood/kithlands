@@ -90,12 +90,13 @@ Required proof is a source contact sheet, an animation trace or GIF, and the
 complete attack-and-return sequence in the real Systems Showcase battle. The
 Warrior sword set passed this gate on 2026-08-08.
 
-## Mender Staff-Cast Review Candidate
+## Mender Staff-Cast Approved Gold Slice
 
 The second gold slice is intentionally limited to Mender's staff-cast action.
-It is installed for real-browser review but remains `visual_approval_pending`;
-do not use it as the basis for Cinder or another class until that review is
-recorded.
+It was visually approved in the real Systems Showcase battle on 2026-08-08
+and is recorded as `approved_runtime`. Its body-only frames and item-driven
+staff attachment are the production template for subsequent classes; class
+identity and action-specific pose work still require their own acceptance.
 
 - Facing: three-quarter left
 - Action: restorative staff cast
@@ -109,7 +110,6 @@ recorded.
 - Runtime entry points: Mender's real spell anticipation and the debug-only
   `cast_class_ability` audit state
 
-This candidate must pass an inspected six-frame trace, an attack-and-return
-GIF, the real Systems Showcase cast, a real simultaneous all-party healing
-effect, and explicit visual approval before its metadata becomes
-`approved_runtime`.
+This candidate passed an inspected six-frame trace, an attack-and-return GIF,
+the real Systems Showcase cast, a real simultaneous all-party healing effect,
+and explicit visual approval before its metadata became `approved_runtime`.
