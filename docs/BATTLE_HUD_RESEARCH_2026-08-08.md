@@ -80,7 +80,7 @@ Primary and official sources:
 | Wayfarer   | R          | F         | R staff Inspire | F              | F   | F    | -       | F   | R staff / mixed pending |
 | Knight     | R          | F         | F               | R sword/shield | F   | F    | -       | F   | R sword/shield          |
 | Champion   | R          | R unarmed | F               | F              | F   | F    | -       | F   | R unarmed               |
-| Shadow     | F          | F         | F               | F              | F   | F    | -       | F   | - dagger/bow            |
+| Shadow     | R          | R dagger  | F               | F              | F   | F    | -       | F   | R dagger / bow pending  |
 | Sage       | F          | F         | F               | F              | F   | F    | -       | F   | - staff                 |
 | Pyromancer | F          | F         | F               | F              | F   | F    | -       | F   | - dagger/staff          |
 | Wanderer   | F          | F         | F               | F              | F   | F    | -       | F   | - mixed                 |

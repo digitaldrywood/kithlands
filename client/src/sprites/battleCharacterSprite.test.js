@@ -256,3 +256,19 @@ describe("Champion battle runtime contract", () => {
     ).toBe(false);
   });
 });
+
+describe("Shadow battle runtime contract", () => {
+  it("keeps the promoted violet body distinct while sharing dagger metadata", () => {
+    const scene = sceneWith([
+      "battle_shadow_dagger_veil_strike_body",
+      "battle_weapon_shadow_blade",
+    ]);
+    expect(
+      canUseBattleCharacterSprite(scene, {
+        base_sprite: "shadow",
+        weapon_visual_id: "shadow_blade",
+        weapon_animation_set: "dagger",
+      }),
+    ).toBe(true);
+  });
+});

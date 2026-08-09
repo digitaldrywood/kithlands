@@ -1,0 +1,31 @@
+{
+  "status": "visual_approval_pending",
+  "generated_on": "2026-08-08",
+  "generator": "OpenAI built-in imagegen",
+  "identity_references": [
+    "client/public/sprites/shadow.png",
+    "client/public/sprites/walk/shadow_walk.png"
+  ],
+  "frame_contract": {
+    "frame_size": [192, 192],
+    "order": [
+      "idle_guard",
+      "crouch",
+      "cloak_windup",
+      "low_dash",
+      "peak_slash",
+      "recover"
+    ],
+    "anchor": "bottom_center",
+    "baseline_y": 185,
+    "dagger_baked_in": false
+  },
+  "attachment": {
+    "item_id": "shadow_blade",
+    "visual_id": "shadow_blade",
+    "animation_set": "dagger",
+    "grip_origin": [0.5, 0.78]
+  },
+  "prompt_template": "IDENTITY-PRESERVE Shadow battle frame. Accepted portrait and walk assets lock the pale shadowed face, narrow magenta eyes, fitted violet hood and high scarf, black segmented armor with violet seams, and permanent wing-like layered violet cape. The prior frame locks rendering and the guide locks the low veil-strike pose. BODY AND PERMANENT CLOTHING ONLY: no dagger, second blade, bow, smoke, aura, effect, shadow, text, UI, or scenery. The forward weapon hand remains a complete closed empty grip.",
+  "notes": "Shadow's first class-specific battle slice is a low veil strike, distinct from Rogue's upright slash. The shared Shadow Blade remains an item-driven attachment and the portrait's second dagger is not baked into the body atlas. Installed for aggregate all-class review."
+}

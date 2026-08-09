@@ -192,3 +192,14 @@ and wrapped boots. The silhouette and two-hand action remain distinct from
 Brawler's bald orange-gi straight punch. `unarmed` has no attachment, and the
 portrait's fist flame is reserved for runtime effects rather than baked into
 the body atlas. Its aggregate-review status is `visual_approval_pending`.
+
+### Shadow Dagger Veil Strike
+
+Shadow's first installed slice is a six-pose low veil strike: idle guard,
+crouch, cloak windup, low dash, peak slash, and recover. The accepted pale
+shadowed face, narrow magenta eyes, fitted violet hood and high scarf, black
+segmented armor, violet seams, and wing-like layered cape remain permanent
+identity anchors. Its horizontal dash and cape sweep differ from Rogue's
+upright slash. The body contains no dagger; shared `shadow_blade` item metadata
+selects the runtime layer and the portrait's second blade is not baked into
+the atlas. Its aggregate-review status is `visual_approval_pending`.

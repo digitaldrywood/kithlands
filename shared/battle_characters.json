@@ -526,10 +526,74 @@
     },
     {
       "id": "shadow",
-      "status": "production_pending",
-      "default_state": "",
-      "attachments": {},
-      "states": {}
+      "status": "visual_approval_pending",
+      "default_state": "physical_attack",
+      "attachments": {
+        "dagger": { "origin": [0.5, 0.78] }
+      },
+      "states": {
+        "idle_guard": {
+          "body_key": "battle_shadow_dagger_veil_strike_body",
+          "body_path": "/sprites/battle/shadow/dagger-veil-strike-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 120,
+              "attachments": {
+                "dagger": { "x": -46, "y": 0, "angle": -45, "front": false }
+              }
+            }
+          ]
+        },
+        "physical_attack": {
+          "body_key": "battle_shadow_dagger_veil_strike_body",
+          "body_path": "/sprites/battle/shadow/dagger-veil-strike-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 90,
+              "attachments": {
+                "dagger": { "x": -46, "y": 0, "angle": -45, "front": false }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 80,
+              "attachments": {
+                "dagger": { "x": -51, "y": 44, "angle": -135, "front": false }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 75,
+              "attachments": {
+                "dagger": { "x": -48, "y": 12, "angle": -45, "front": false }
+              }
+            },
+            {
+              "frame": 3,
+              "duration": 85,
+              "attachments": {
+                "dagger": { "x": -81, "y": 37, "angle": -105, "front": false }
+              }
+            },
+            {
+              "frame": 4,
+              "duration": 105,
+              "attachments": {
+                "dagger": { "x": -80, "y": -18, "angle": -45, "front": true }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 90,
+              "attachments": {
+                "dagger": { "x": -41, "y": -4, "angle": -50, "front": false }
+              }
+            }
+          ]
+        }
+      }
     },
     {
       "id": "sage",
