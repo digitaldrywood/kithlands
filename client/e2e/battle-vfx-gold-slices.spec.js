@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { runGoldSpellFlow } from "./battle-vfx-flow.js";
-import { openShowcase } from "./battle-vfx-proof-helpers.js";
+import {
+  battleSnapshot,
+  captureProofFrame,
+  openShowcase,
+  writeTrace,
+} from "./battle-vfx-proof-helpers.js";
 
 function expectPresentation(state, spellID, family, tier) {
   const spell = state.party
@@ -103,6 +108,86 @@ test.describe("content-driven battle VFX gold slices", () => {
       proof.trace.find((frame) => frame.label.endsWith("-impact")).snapshot
         .groupCursors,
     ).toBe(1);
+    await expectNoSave(page);
+  });
+
+  test("Mute keeps the approved generic status path before scaling", async ({
+    page,
+  }, testInfo) => {
+    const state = await openShowcase(page, { width: 800, height: 600 });
+    const mute = state.party
+      .flatMap((member) => member.spells || [])
+      .find((spell) => spell.id === "mute");
+    expect(mute?.presentation).toBeUndefined();
+    const trace = [
+      {
+        label: "before",
+        capturedAt: Date.now(),
+        snapshot: await battleSnapshot(page),
+      },
+    ];
+    const actions = await page.evaluate(() =>
+      window.__kithlandsTest.startAuthoritativeBattleRound("mute"),
+    );
+    expect(actions).toContainEqual(
+      expect.objectContaining({ type: "spell", spell_id: "mute" }),
+    );
+    await page.waitForFunction(() => {
+      const snapshot = window.__kithlandsTest.battleVisibilitySnapshot();
+      return (
+        snapshot.messageWindow.text.includes("Mute") &&
+        snapshot.spellProjectiles === 1
+      );
+    });
+    const formation = await captureProofFrame(
+      page,
+      testInfo,
+      trace,
+      "mute-generic-status-800x600-formation",
+    );
+    expect(formation.battleEffects).toHaveLength(0);
+    await page.waitForFunction(
+      () =>
+        window.__kithlandsTest.battleVisibilitySnapshot().spellProjectiles ===
+        0,
+    );
+    await captureProofFrame(
+      page,
+      testInfo,
+      trace,
+      "mute-generic-status-800x600-result",
+      { fullPage: true },
+    );
+    await writeTrace(testInfo, "mute-generic-status-800x600", trace);
+    await expectNoSave(page);
+  });
+
+  test("reduced motion preserves Fireball stages without a cinematic", async ({
+    page,
+  }, testInfo) => {
+    await openShowcase(page, {
+      width: 800,
+      height: 600,
+      reducedMotion: "reduce",
+    });
+    const proof = await runGoldSpellFlow(page, testInfo, {
+      mode: "fireball",
+      family: "fire",
+      tier: 2,
+      side: "enemy",
+      targetCount: 1,
+      middleStage: "travel",
+      label: "fireball-reduced-motion-800x600",
+      reducedMotion: true,
+    });
+    expect(
+      proof.trace.every((frame) => frame.snapshot.majorCinematics === 0),
+    ).toBe(true);
+    expect(
+      Math.max(
+        ...proof.trace.map((frame) => frame.snapshot.battleEffects.length),
+      ),
+    ).toBeLessThanOrEqual(2);
     await expectNoSave(page);
   });
 });
