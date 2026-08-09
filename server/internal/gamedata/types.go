@@ -59,6 +59,54 @@ type BareHand struct {
 	LevelScalingFormula string `json:"level_scaling_formula"`
 }
 
+// BattleCharactersData is the shared presentation manifest for authored
+// battle bodies and their equipment attachment sockets. It contains no combat
+// rules; Go loads and validates it so shared content remains the single source
+// of truth while Phaser consumes the same JSON at build time.
+type BattleCharactersData struct {
+	FrameSize      int                      `json:"frame_size"`
+	RequiredStates []string                 `json:"required_states"`
+	WeaponAssets   []BattleWeaponAsset      `json:"weapon_assets"`
+	Classes        []BattleCharacterProfile `json:"classes"`
+}
+
+type BattleWeaponAsset struct {
+	VisualID string `json:"visual_id"`
+	Key      string `json:"key"`
+	Path     string `json:"path"`
+}
+
+type BattleCharacterProfile struct {
+	ID           string                                `json:"id"`
+	Status       string                                `json:"status"`
+	DefaultState string                                `json:"default_state"`
+	Attachments  map[string]BattleAttachmentDefinition `json:"attachments"`
+	States       map[string]BattleStateDefinition      `json:"states"`
+}
+
+type BattleAttachmentDefinition struct {
+	Origin []float64 `json:"origin"`
+}
+
+type BattleStateDefinition struct {
+	BodyKey  string             `json:"body_key"`
+	BodyPath string             `json:"body_path"`
+	Frames   []BattleStateFrame `json:"frames"`
+}
+
+type BattleStateFrame struct {
+	Frame       int                              `json:"frame"`
+	Duration    int                              `json:"duration"`
+	Attachments map[string]BattleAttachmentFrame `json:"attachments"`
+}
+
+type BattleAttachmentFrame struct {
+	X     float64 `json:"x"`
+	Y     float64 `json:"y"`
+	Angle float64 `json:"angle"`
+	Front bool    `json:"front"`
+}
+
 // StatsConfig holds stat definitions, XP curve, and combat constants from shared/stats.json.
 type StatsConfig struct {
 	CoreStats    []StatDef          `json:"core_stats"`

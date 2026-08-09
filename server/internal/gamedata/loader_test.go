@@ -40,6 +40,32 @@ func TestLayeredWeaponVisualMetadataLoads(t *testing.T) {
 	}
 }
 
+func TestBattleCharacterManifestLoadsEveryRuntimeIdentity(t *testing.T) {
+	gd := gamedata.Load("../../../shared")
+	if got := len(gd.BattleCharacters.Classes); got != 12 {
+		t.Fatalf("battle character identities = %d, want 12", got)
+	}
+	if got := len(gd.BattleCharacters.RequiredStates); got != 8 {
+		t.Fatalf("battle character required states = %d, want 8", got)
+	}
+
+	warrior := gd.BattleCharacterByID("warrior")
+	if warrior == nil || warrior.Status != "approved_runtime" {
+		t.Fatalf("warrior battle profile = %#v, want approved_runtime", warrior)
+	}
+	if len(warrior.States["physical_attack"].Frames) != 6 {
+		t.Fatalf("warrior physical attack does not have six frames")
+	}
+
+	mender := gd.BattleCharacterByID("mender")
+	if mender == nil || mender.Status != "approved_runtime" {
+		t.Fatalf("mender battle profile = %#v, want approved_runtime", mender)
+	}
+	if len(mender.States["cast_class_ability"].Frames) != 6 {
+		t.Fatalf("mender cast does not have six frames")
+	}
+}
+
 func TestClassByID(t *testing.T) {
 	gd := gamedata.Load("../../../shared")
 

@@ -5,6 +5,7 @@ import {
   WARRIOR_BATTLE_BODY_KEY,
   WARRIOR_SWORD_ATTACK_FRAMES,
   battleFrameDelay,
+  canUseBattleCharacterSprite,
   canUseMenderBattleSprite,
   canUseWarriorBattleSprite,
   weaponTextureKey,
@@ -109,6 +110,27 @@ describe("Mender battle runtime contract", () => {
         base_sprite: "mender",
         weapon_visual_id: "war_staff",
         weapon_animation_set: "sword",
+      }),
+    ).toBe(false);
+  });
+
+  it("uses the same generic content-driven selection path as Warrior", () => {
+    const scene = sceneWith([
+      MENDER_BATTLE_BODY_KEY,
+      "battle_weapon_war_staff",
+    ]);
+    expect(
+      canUseBattleCharacterSprite(scene, {
+        base_sprite: "mender",
+        weapon_visual_id: "war_staff",
+        weapon_animation_set: "staff",
+      }),
+    ).toBe(true);
+    expect(
+      canUseBattleCharacterSprite(scene, {
+        base_sprite: "cinder",
+        weapon_visual_id: "war_staff",
+        weapon_animation_set: "staff",
       }),
     ).toBe(false);
   });

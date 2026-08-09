@@ -113,3 +113,16 @@ identity and action-specific pose work still require their own acceptance.
 This candidate passed an inspected six-frame trace, an attack-and-return GIF,
 the real Systems Showcase cast, a real simultaneous all-party healing effect,
 and explicit visual approval before its metadata became `approved_runtime`.
+
+## Shared Battle-Character Manifest
+
+`shared/battle_characters.json` is the production registry for all twelve
+runtime identities. It records the required state vocabulary, body atlases,
+frame timing, and per-equipment attachment sockets. Go loads and validates the
+manifest with the rest of game data; Phaser imports that same content and uses
+one generic compositor instead of class-specific rendering branches.
+
+An identity may remain `production_pending` with no installed states. An
+installed state must declare an equipment-free body atlas and named attachment
+sockets. Weapon images are registered separately by `visual_id`, and the
+equipped item selects the attachment through its shared `animation_set`.

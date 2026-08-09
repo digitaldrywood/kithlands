@@ -1,57 +1,110 @@
+import {
+  BATTLE_CHARACTER_CATALOG,
+  battleProfileFor,
+  battleStateFor,
+  battleWeaponAssets,
+} from "../data/battleCharacters.js";
 import { createComposedSprite } from "./composedSprite.js";
 
-export const WARRIOR_BATTLE_BODY_KEY = "battle_warrior_sword_attack_body";
-export const WARRIOR_BATTLE_FRAME_SIZE = 192;
-export const MENDER_BATTLE_BODY_KEY = "battle_mender_staff_cast_body";
-export const MENDER_BATTLE_FRAME_SIZE = 192;
+const weaponAssetsByVisualID = new Map(
+  battleWeaponAssets().map((asset) => [asset.visual_id, asset]),
+);
 
-// Socket positions are local to a bottom-center anchored 192px body frame.
-// Two weapon images let an action move the same equipment behind or in front
-// of the body without baking that equipment into every pose.
-export const WARRIOR_SWORD_ATTACK_FRAMES = [
-  { frame: 0, x: -48, y: -7, angle: -135, front: true, duration: 90 },
-  { frame: 1, x: 31, y: -7, angle: 55, front: false, duration: 80 },
-  { frame: 2, x: 0, y: -57, angle: -18, front: true, duration: 85 },
-  { frame: 3, x: -49, y: -13, angle: -90, front: true, duration: 95 },
-  { frame: 4, x: -48, y: 2, angle: -132, front: true, duration: 105 },
-  { frame: 5, x: -38, y: 1, angle: -52, front: true, duration: 90 },
-];
-
-// Mender keeps the same anatomical staff hand throughout the cast. The staff
-// rises from the chest to the hood while the other hand releases the heal.
-// All staff poses sit behind the body so the authored glove remains the grip.
-export const MENDER_STAFF_CAST_FRAMES = [
-  { frame: 0, x: 16, y: -20, angle: 8, front: false, duration: 120 },
-  { frame: 1, x: 27, y: -47, angle: 12, front: false, duration: 110 },
-  { frame: 2, x: 10, y: -21, angle: 5, front: false, duration: 130 },
-  { frame: 3, x: 30, y: -47, angle: 10, front: false, duration: 150 },
-  { frame: 4, x: 26, y: -45, angle: 8, front: false, duration: 170 },
-  { frame: 5, x: 12, y: -19, angle: 8, front: false, duration: 110 },
-];
+const STATE_METHODS = {
+  physical_attack: "playBattleAttack",
+  cast_class_ability: "playBattleCast",
+  defend: "playBattleDefend",
+  hit_reaction: "playBattleHitReaction",
+  item_use: "playBattleItemUse",
+  victory: "playBattleVictory",
+  ko_defeated: "playBattleKO",
+};
 
 export function weaponTextureKey(visualID) {
-  return visualID ? `battle_weapon_${visualID}` : "";
-}
-
-export function canUseWarriorBattleSprite(scene, composition, opts = {}) {
-  if (composition?.base_sprite !== "warrior") return false;
-  if (composition?.weapon_animation_set !== "sword") return false;
-  const weaponKey = weaponTextureKey(composition?.weapon_visual_id);
+  if (!visualID) return "";
   return (
-    !!weaponKey &&
-    scene.textures.exists(WARRIOR_BATTLE_BODY_KEY) &&
-    scene.textures.exists(weaponKey)
+    weaponAssetsByVisualID.get(visualID)?.key || `battle_weapon_${visualID}`
   );
 }
 
-export function canUseMenderBattleSprite(scene, composition, opts = {}) {
-  if (composition?.base_sprite !== "mender") return false;
-  if (composition?.weapon_animation_set !== "staff") return false;
-  const weaponKey = weaponTextureKey(composition?.weapon_visual_id);
+function stateFrames(profile, stateID, attachmentID) {
+  const state = profile?.states?.[stateID];
+  if (!state) return [];
+  return state.frames.map((frame) => ({
+    frame: frame.frame,
+    duration: frame.duration,
+    ...(frame.attachments?.[attachmentID] || {
+      x: 0,
+      y: 0,
+      angle: 0,
+      front: false,
+    }),
+  }));
+}
+
+export const WARRIOR_BATTLE_BODY_KEY = battleStateFor(
+  "warrior",
+  "physical_attack",
+).body_key;
+export const WARRIOR_BATTLE_FRAME_SIZE = BATTLE_CHARACTER_CATALOG.frame_size;
+export const WARRIOR_SWORD_ATTACK_FRAMES = stateFrames(
+  battleProfileFor("warrior"),
+  "physical_attack",
+  "sword",
+);
+export const MENDER_BATTLE_BODY_KEY = battleStateFor(
+  "mender",
+  "cast_class_ability",
+).body_key;
+export const MENDER_BATTLE_FRAME_SIZE = BATTLE_CHARACTER_CATALOG.frame_size;
+export const MENDER_STAFF_CAST_FRAMES = stateFrames(
+  battleProfileFor("mender"),
+  "cast_class_ability",
+  "staff",
+);
+
+function runtimeDefinition(scene, composition) {
+  const profile = battleProfileFor(composition?.base_sprite);
+  const signatureState = profile?.states?.[profile?.default_state];
+  if (!profile || !signatureState) return null;
+  if (!scene.textures.exists(signatureState.body_key)) return null;
+
+  const attachmentID = composition?.weapon_animation_set || "";
+  const attachment = profile.attachments?.[attachmentID] || null;
+  const attachmentCount = Object.keys(profile.attachments || {}).length;
+  let weaponKey = "";
+  if (attachmentCount > 0) {
+    if (!attachment || !composition?.weapon_visual_id) return null;
+    weaponKey = weaponTextureKey(composition.weapon_visual_id);
+    if (!weaponKey || !scene.textures.exists(weaponKey)) return null;
+  } else if (composition?.weapon_visual_id) {
+    return null;
+  }
+
+  return {
+    profile,
+    signatureState,
+    attachmentID,
+    attachment,
+    weaponKey,
+  };
+}
+
+export function canUseBattleCharacterSprite(scene, composition) {
+  return runtimeDefinition(scene, composition) !== null;
+}
+
+export function canUseWarriorBattleSprite(scene, composition) {
   return (
-    !!weaponKey &&
-    scene.textures.exists(MENDER_BATTLE_BODY_KEY) &&
-    scene.textures.exists(weaponKey)
+    composition?.base_sprite === "warrior" &&
+    canUseBattleCharacterSprite(scene, composition)
+  );
+}
+
+export function canUseMenderBattleSprite(scene, composition) {
+  return (
+    composition?.base_sprite === "mender" &&
+    canUseBattleCharacterSprite(scene, composition)
   );
 }
 
@@ -67,25 +120,53 @@ export function battleFrameDelay(
   return (reducedMotion ? 45 : pose.duration) * multiplier;
 }
 
-function applyFrame(container, index) {
-  const pose = container.battleFrames[index] || container.battleFrames[0];
-  container.battleBody.setFrame(pose.frame);
-  for (const weapon of [
-    container.battleWeaponBack,
-    container.battleWeaponFront,
-  ]) {
-    weapon.setPosition(pose.x, pose.y).setAngle(pose.angle);
-  }
-  container.battleWeaponBack.setVisible(!pose.front);
-  container.battleWeaponFront.setVisible(pose.front);
-  container.battleFrameIndex = pose.frame;
-  return pose;
-}
-
 function waitForScene(scene, ms) {
   return new Promise((resolve) =>
     scene.time.delayedCall(Math.max(0, ms), resolve),
   );
+}
+
+function frameIndices(frameCount, reducedMotion) {
+  if (!reducedMotion || frameCount <= 3) {
+    return Array.from({ length: frameCount }, (_, index) => index);
+  }
+  return [...new Set([1, Math.floor(frameCount / 2), frameCount - 1])].filter(
+    (index) => index >= 0 && index < frameCount,
+  );
+}
+
+function applyStateFrame(container, stateID, index) {
+  const state = container.battleStates[stateID];
+  if (!state) return null;
+  const manifestFrame = state.frames[index] || state.frames[0];
+  const pose =
+    stateFrames(container.battleProfile, stateID, container.attachmentID)[
+      index
+    ] ||
+    stateFrames(container.battleProfile, stateID, container.attachmentID)[0];
+  if (!manifestFrame || !pose) return null;
+
+  if (container.battleTextureKey !== state.body_key) {
+    container.battleBody.setTexture(state.body_key, manifestFrame.frame);
+    container.battleTextureKey = state.body_key;
+  } else {
+    container.battleBody.setFrame(manifestFrame.frame);
+  }
+
+  if (container.battleWeaponBack && container.battleWeaponFront) {
+    for (const weapon of [
+      container.battleWeaponBack,
+      container.battleWeaponFront,
+    ]) {
+      weapon.setPosition(pose.x, pose.y).setAngle(pose.angle);
+    }
+    container.battleWeaponBack.setVisible(!pose.front);
+    container.battleWeaponFront.setVisible(pose.front);
+  }
+
+  container.battleState = stateID;
+  container.battleFrameIndex = manifestFrame.frame;
+  return pose;
 }
 
 export function createBattleCharacterSprite(
@@ -95,91 +176,112 @@ export function createBattleCharacterSprite(
   composition,
   opts = {},
 ) {
-  let definition = null;
-  if (canUseWarriorBattleSprite(scene, composition, opts)) {
-    definition = {
-      bodyKey: WARRIOR_BATTLE_BODY_KEY,
-      frameSize: WARRIOR_BATTLE_FRAME_SIZE,
-      frames: WARRIOR_SWORD_ATTACK_FRAMES,
-      weaponOrigin: [0.5, 0.92],
-      actionMethod: "playBattleAttack",
-      animationKind: "physical_attack",
-    };
-  } else if (canUseMenderBattleSprite(scene, composition, opts)) {
-    definition = {
-      bodyKey: MENDER_BATTLE_BODY_KEY,
-      frameSize: MENDER_BATTLE_FRAME_SIZE,
-      frames: MENDER_STAFF_CAST_FRAMES,
-      weaponOrigin: [0.5, 0.48],
-      actionMethod: "playBattleCast",
-      animationKind: "cast_class_ability",
-    };
-  }
+  const definition = runtimeDefinition(scene, composition);
   if (!definition) {
     return createComposedSprite(scene, x, y, composition, opts);
   }
 
+  const frameSize = BATTLE_CHARACTER_CATALOG.frame_size;
   const targetSize = opts.targetSize || 100;
-  const weaponKey = weaponTextureKey(composition.weapon_visual_id);
-  const weaponBack = scene.add
-    .image(0, 0, weaponKey)
-    .setOrigin(...definition.weaponOrigin);
-  const body = scene.add.sprite(0, 0, definition.bodyKey, 0);
-  const weaponFront = scene.add
-    .image(0, 0, weaponKey)
-    .setOrigin(...definition.weaponOrigin);
-  const container = scene.add.container(x, y, [weaponBack, body, weaponFront]);
-  container.setSize(definition.frameSize, definition.frameSize);
-  container.setScale(targetSize / definition.frameSize);
+  const origin = definition.attachment?.origin || [0.5, 0.5];
+  const children = [];
+  let weaponBack = null;
+  let weaponFront = null;
+  if (definition.weaponKey) {
+    weaponBack = scene.add
+      .image(0, 0, definition.weaponKey)
+      .setOrigin(...origin);
+    children.push(weaponBack);
+  }
+  const body = scene.add.sprite(
+    0,
+    0,
+    definition.signatureState.body_key,
+    definition.signatureState.frames[0].frame,
+  );
+  children.push(body);
+  if (definition.weaponKey) {
+    weaponFront = scene.add
+      .image(0, 0, definition.weaponKey)
+      .setOrigin(...origin);
+    children.push(weaponFront);
+  }
+
+  const container = scene.add.container(x, y, children);
+  container.setSize(frameSize, frameSize);
+  container.setScale(targetSize / frameSize);
 
   container.battleBody = body;
   container.battleWeaponBack = weaponBack;
   container.battleWeaponFront = weaponFront;
-  container.battleTextureKey = definition.bodyKey;
-  container.battleFrames = definition.frames;
-  container.battleAnimationKind = definition.animationKind;
-  container.weaponTextureKey = weaponKey;
+  container.battleTextureKey = definition.signatureState.body_key;
+  container.battleProfile = definition.profile;
+  container.battleStates = definition.profile.states;
+  container.battleDefaultState = definition.profile.default_state;
+  container.battleFrames = stateFrames(
+    definition.profile,
+    definition.profile.default_state,
+    definition.attachmentID,
+  );
+  container.battleAvailableStates = Object.keys(definition.profile.states);
+  container.battleAnimationKind = definition.profile.default_state;
+  container.weaponTextureKey = definition.weaponKey || null;
+  container.attachmentID = definition.attachmentID;
   container.isBattleCharacter = true;
   container._battleAnimationToken = 0;
 
-  container.applyBattleFrame = (index) => applyFrame(container, index);
+  container.applyBattleFrame = (
+    index,
+    stateID = container.battleDefaultState,
+  ) => applyStateFrame(container, stateID, index);
   container.resetBattlePose = () => {
     container._battleAnimationToken += 1;
-    applyFrame(container, 0);
+    const resetState = container.battleStates.idle_guard
+      ? "idle_guard"
+      : container.battleDefaultState;
+    applyStateFrame(container, resetState, 0);
     return container;
   };
-  const playBattleSequence = async ({
-    reducedMotion = false,
-    speedMultiplier = 1,
-  } = {}) => {
+  container.playBattleState = async (
+    stateID,
+    { reducedMotion = false, speedMultiplier = 1 } = {},
+  ) => {
+    const state = container.battleStates[stateID];
+    if (!state) return false;
     const token = ++container._battleAnimationToken;
-    const indices = reducedMotion ? [1, 3, 5] : [0, 1, 2, 3, 4, 5];
-    for (const index of indices) {
-      if (token !== container._battleAnimationToken) return;
-      const pose = applyFrame(container, index);
+    for (const index of frameIndices(state.frames.length, reducedMotion)) {
+      if (token !== container._battleAnimationToken) return false;
+      const pose = applyStateFrame(container, stateID, index);
       await waitForScene(
         scene,
         battleFrameDelay(pose, reducedMotion, speedMultiplier),
       );
     }
-    if (token === container._battleAnimationToken) applyFrame(container, 0);
+    if (token === container._battleAnimationToken) container.resetBattlePose();
+    return true;
   };
-  container[definition.actionMethod] = playBattleSequence;
+
+  for (const [stateID, method] of Object.entries(STATE_METHODS)) {
+    if (container.battleStates[stateID]) {
+      container[method] = (options = {}) =>
+        container.playBattleState(stateID, options);
+    }
+  }
 
   container.setTint = (color) => {
     body.setTint(color);
-    weaponBack.setTint(color);
-    weaponFront.setTint(color);
+    weaponBack?.setTint(color);
+    weaponFront?.setTint(color);
     return container;
   };
   container.clearTint = () => {
     body.clearTint();
-    weaponBack.clearTint();
-    weaponFront.clearTint();
+    weaponBack?.clearTint();
+    weaponFront?.clearTint();
     return container;
   };
 
-  applyFrame(container, 0);
+  container.resetBattlePose();
   if (opts.alive === false) container.setTint(0x444444);
   return container;
 }

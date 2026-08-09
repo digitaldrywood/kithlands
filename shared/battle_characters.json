@@ -1,0 +1,244 @@
+{
+  "frame_size": 192,
+  "required_states": [
+    "idle_guard",
+    "physical_attack",
+    "cast_class_ability",
+    "defend",
+    "hit_reaction",
+    "item_use",
+    "victory",
+    "ko_defeated"
+  ],
+  "weapon_assets": [
+    {
+      "visual_id": "iron_sword",
+      "key": "battle_weapon_iron_sword",
+      "path": "/sprites/battle/weapons/iron-sword.png"
+    },
+    {
+      "visual_id": "mythril_sword",
+      "key": "battle_weapon_mythril_sword",
+      "path": "/sprites/battle/weapons/mythril-sword.png"
+    },
+    {
+      "visual_id": "war_staff",
+      "key": "battle_weapon_war_staff",
+      "path": "/sprites/battle/weapons/war-staff.png"
+    }
+  ],
+  "classes": [
+    {
+      "id": "warrior",
+      "status": "approved_runtime",
+      "default_state": "physical_attack",
+      "attachments": {
+        "sword": { "origin": [0.5, 0.92] }
+      },
+      "states": {
+        "idle_guard": {
+          "body_key": "battle_warrior_sword_attack_body",
+          "body_path": "/sprites/battle/warrior/sword-attack-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 120,
+              "attachments": {
+                "sword": { "x": -48, "y": -7, "angle": -135, "front": true }
+              }
+            }
+          ]
+        },
+        "physical_attack": {
+          "body_key": "battle_warrior_sword_attack_body",
+          "body_path": "/sprites/battle/warrior/sword-attack-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 90,
+              "attachments": {
+                "sword": { "x": -48, "y": -7, "angle": -135, "front": true }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 80,
+              "attachments": {
+                "sword": { "x": 31, "y": -7, "angle": 55, "front": false }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 85,
+              "attachments": {
+                "sword": { "x": 0, "y": -57, "angle": -18, "front": true }
+              }
+            },
+            {
+              "frame": 3,
+              "duration": 95,
+              "attachments": {
+                "sword": { "x": -49, "y": -13, "angle": -90, "front": true }
+              }
+            },
+            {
+              "frame": 4,
+              "duration": 105,
+              "attachments": {
+                "sword": { "x": -48, "y": 2, "angle": -132, "front": true }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 90,
+              "attachments": {
+                "sword": { "x": -38, "y": 1, "angle": -52, "front": true }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "brawler",
+      "status": "production_pending",
+      "default_state": "",
+      "attachments": {},
+      "states": {}
+    },
+    {
+      "id": "rogue",
+      "status": "production_pending",
+      "default_state": "",
+      "attachments": {},
+      "states": {}
+    },
+    {
+      "id": "mender",
+      "status": "approved_runtime",
+      "default_state": "cast_class_ability",
+      "attachments": {
+        "staff": { "origin": [0.5, 0.48] }
+      },
+      "states": {
+        "idle_guard": {
+          "body_key": "battle_mender_staff_cast_body",
+          "body_path": "/sprites/battle/mender/staff-cast-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 120,
+              "attachments": {
+                "staff": { "x": 16, "y": -20, "angle": 8, "front": false }
+              }
+            }
+          ]
+        },
+        "cast_class_ability": {
+          "body_key": "battle_mender_staff_cast_body",
+          "body_path": "/sprites/battle/mender/staff-cast-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 120,
+              "attachments": {
+                "staff": { "x": 16, "y": -20, "angle": 8, "front": false }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 110,
+              "attachments": {
+                "staff": { "x": 27, "y": -47, "angle": 12, "front": false }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 130,
+              "attachments": {
+                "staff": { "x": 10, "y": -21, "angle": 5, "front": false }
+              }
+            },
+            {
+              "frame": 3,
+              "duration": 150,
+              "attachments": {
+                "staff": { "x": 30, "y": -47, "angle": 10, "front": false }
+              }
+            },
+            {
+              "frame": 4,
+              "duration": 170,
+              "attachments": {
+                "staff": { "x": 26, "y": -45, "angle": 8, "front": false }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 110,
+              "attachments": {
+                "staff": { "x": 12, "y": -19, "angle": 8, "front": false }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "cinder",
+      "status": "production_pending",
+      "default_state": "",
+      "attachments": {},
+      "states": {}
+    },
+    {
+      "id": "wayfarer",
+      "status": "production_pending",
+      "default_state": "",
+      "attachments": {},
+      "states": {}
+    },
+    {
+      "id": "knight",
+      "status": "production_pending",
+      "default_state": "",
+      "attachments": {},
+      "states": {}
+    },
+    {
+      "id": "champion",
+      "status": "production_pending",
+      "default_state": "",
+      "attachments": {},
+      "states": {}
+    },
+    {
+      "id": "shadow",
+      "status": "production_pending",
+      "default_state": "",
+      "attachments": {},
+      "states": {}
+    },
+    {
+      "id": "sage",
+      "status": "production_pending",
+      "default_state": "",
+      "attachments": {},
+      "states": {}
+    },
+    {
+      "id": "pyromancer",
+      "status": "production_pending",
+      "default_state": "",
+      "attachments": {},
+      "states": {}
+    },
+    {
+      "id": "wanderer",
+      "status": "production_pending",
+      "default_state": "",
+      "attachments": {},
+      "states": {}
+    }
+  ]
+}

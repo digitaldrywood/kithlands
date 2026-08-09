@@ -41,28 +41,30 @@ type DialoguePool struct {
 
 // GameData holds all loaded game data from shared/.
 type GameData struct {
-	Classes    []Class
-	Stats      StatsConfig
-	Items      ItemsData
-	Abilities  []Ability
-	Chests     ChestCatalog
-	Spells     SpellsData
-	Monsters   []Monster
-	Formations []Formation
-	Transport  TransportData
-	Palettes   Palettes
-	Dialogue   DialoguePool
-	Showcase   ShowcaseData
+	Classes          []Class
+	Stats            StatsConfig
+	Items            ItemsData
+	Abilities        []Ability
+	Chests           ChestCatalog
+	Spells           SpellsData
+	Monsters         []Monster
+	Formations       []Formation
+	Transport        TransportData
+	Palettes         Palettes
+	Dialogue         DialoguePool
+	Showcase         ShowcaseData
+	BattleCharacters BattleCharactersData
 
-	classByID     map[string]*Class
-	weaponByID    map[string]*Weapon
-	abilityByID   map[string]*Ability
-	armorByID     map[string]*Armor
-	spellByID     map[string]*Spell
-	monsterByID   map[string]*Monster
-	formationByID map[string]*Formation
-	keyItemByID   map[string]*KeyItem
-	chestByID     map[string]*ChestDefinition
+	classByID           map[string]*Class
+	weaponByID          map[string]*Weapon
+	abilityByID         map[string]*Ability
+	armorByID           map[string]*Armor
+	spellByID           map[string]*Spell
+	monsterByID         map[string]*Monster
+	formationByID       map[string]*Formation
+	keyItemByID         map[string]*KeyItem
+	chestByID           map[string]*ChestDefinition
+	battleCharacterByID map[string]*BattleCharacterProfile
 }
 
 // Load reads and validates all game data from the shared directory.
@@ -84,6 +86,7 @@ func Load(sharedDir string) *GameData {
 	gd.Palettes = loadJSON[Palettes](sharedDir, "palettes.json")
 	gd.Dialogue = loadJSON[DialoguePool](sharedDir, "dialogue.json")
 	gd.Showcase = loadJSON[ShowcaseData](sharedDir, "showcase.json")
+	gd.BattleCharacters = loadJSON[BattleCharactersData](sharedDir, "battle_characters.json")
 
 	gd.buildIndexes()
 	gd.validate()
@@ -101,6 +104,9 @@ func (gd *GameData) FormationByID(id string) *Formation { return gd.formationByI
 func (gd *GameData) KeyItemByID(id string) *KeyItem     { return gd.keyItemByID[id] }
 func (gd *GameData) ChestByID(id string) *ChestDefinition {
 	return gd.chestByID[id]
+}
+func (gd *GameData) BattleCharacterByID(id string) *BattleCharacterProfile {
+	return gd.battleCharacterByID[id]
 }
 
 func (gd *GameData) buildIndexes() {
@@ -156,6 +162,12 @@ func (gd *GameData) buildIndexes() {
 	for id, chest := range gd.Chests {
 		chestCopy := chest
 		gd.chestByID[id] = &chestCopy
+	}
+
+	gd.battleCharacterByID = make(map[string]*BattleCharacterProfile, len(gd.BattleCharacters.Classes))
+	for i := range gd.BattleCharacters.Classes {
+		profile := &gd.BattleCharacters.Classes[i]
+		gd.battleCharacterByID[profile.ID] = profile
 	}
 }
 
@@ -394,7 +406,100 @@ func (gd *GameData) validate() {
 		}
 	}
 
+	gd.validateBattleCharacters(classIDs)
 	gd.validateShowcase(classIDs)
+}
+
+func (gd *GameData) validateBattleCharacters(baseClassIDs map[string]bool) {
+	cfg := gd.BattleCharacters
+	if cfg.FrameSize <= 0 {
+		panic("gamedata: battle_characters.json frame_size must be positive")
+	}
+	if len(cfg.RequiredStates) == 0 {
+		panic("gamedata: battle_characters.json has no required_states")
+	}
+	requiredStates := make(map[string]bool, len(cfg.RequiredStates))
+	for _, state := range cfg.RequiredStates {
+		if strings.TrimSpace(state) == "" || requiredStates[state] {
+			panic(fmt.Sprintf("gamedata: battle_characters.json has invalid required state %q", state))
+		}
+		requiredStates[state] = true
+	}
+	weaponVisuals := make(map[string]bool, len(cfg.WeaponAssets))
+	weaponKeys := make(map[string]bool, len(cfg.WeaponAssets))
+	for _, asset := range cfg.WeaponAssets {
+		if asset.VisualID == "" || asset.Key == "" || asset.Path == "" || weaponVisuals[asset.VisualID] || weaponKeys[asset.Key] {
+			panic(fmt.Sprintf("gamedata: battle_characters.json has invalid weapon asset %q", asset.VisualID))
+		}
+		weaponVisuals[asset.VisualID] = true
+		weaponKeys[asset.Key] = true
+	}
+	for _, weapon := range gd.Items.Weapons {
+		if weapon.VisualID != "" && !weaponVisuals[weapon.VisualID] {
+			panic(fmt.Sprintf("gamedata: weapon %q references missing battle asset %q", weapon.ID, weapon.VisualID))
+		}
+	}
+
+	runtimeIDs := make(map[string]bool, len(baseClassIDs)*2)
+	for _, class := range gd.Classes {
+		runtimeIDs[class.ID] = true
+		if class.PromotesTo != "" {
+			runtimeIDs[class.PromotesTo] = true
+		}
+	}
+	if len(cfg.Classes) != len(runtimeIDs) {
+		panic(fmt.Sprintf("gamedata: battle_characters.json has %d identities, want %d", len(cfg.Classes), len(runtimeIDs)))
+	}
+
+	seen := make(map[string]bool, len(cfg.Classes))
+	validStatuses := map[string]bool{
+		"production_pending":      true,
+		"visual_approval_pending": true,
+		"approved_runtime":        true,
+	}
+	for _, profile := range cfg.Classes {
+		if !runtimeIDs[profile.ID] || seen[profile.ID] {
+			panic(fmt.Sprintf("gamedata: battle_characters.json has invalid identity %q", profile.ID))
+		}
+		seen[profile.ID] = true
+		if !validStatuses[profile.Status] {
+			panic(fmt.Sprintf("gamedata: battle character %q has invalid status %q", profile.ID, profile.Status))
+		}
+		if profile.DefaultState != "" && !requiredStates[profile.DefaultState] {
+			panic(fmt.Sprintf("gamedata: battle character %q has invalid default_state %q", profile.ID, profile.DefaultState))
+		}
+		if len(profile.States) > 0 && profile.DefaultState == "" {
+			panic(fmt.Sprintf("gamedata: battle character %q has states but no default_state", profile.ID))
+		}
+		if profile.DefaultState != "" {
+			if _, ok := profile.States[profile.DefaultState]; !ok {
+				panic(fmt.Sprintf("gamedata: battle character %q default_state %q is not authored", profile.ID, profile.DefaultState))
+			}
+		}
+		for attachmentID, attachment := range profile.Attachments {
+			if strings.TrimSpace(attachmentID) == "" || len(attachment.Origin) != 2 {
+				panic(fmt.Sprintf("gamedata: battle character %q has invalid attachment %q", profile.ID, attachmentID))
+			}
+		}
+		for stateID, state := range profile.States {
+			if !requiredStates[stateID] {
+				panic(fmt.Sprintf("gamedata: battle character %q has unknown state %q", profile.ID, stateID))
+			}
+			if state.BodyKey == "" || state.BodyPath == "" || len(state.Frames) == 0 {
+				panic(fmt.Sprintf("gamedata: battle character %q state %q is incomplete", profile.ID, stateID))
+			}
+			for frameIndex, frame := range state.Frames {
+				if frame.Frame < 0 || frame.Duration <= 0 {
+					panic(fmt.Sprintf("gamedata: battle character %q state %q frame %d is invalid", profile.ID, stateID, frameIndex))
+				}
+				for attachmentID := range frame.Attachments {
+					if _, ok := profile.Attachments[attachmentID]; !ok {
+						panic(fmt.Sprintf("gamedata: battle character %q state %q references unknown attachment %q", profile.ID, stateID, attachmentID))
+					}
+				}
+			}
+		}
+	}
 }
 
 func (gd *GameData) validateShowcase(classIDs map[string]bool) {

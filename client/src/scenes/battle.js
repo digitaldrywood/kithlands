@@ -969,27 +969,59 @@ export class BattleScene extends Phaser.Scene {
       this.spawnCastAura(actor, "holy");
       void this.showActionTitle(actor, "CLASS ABILITY", "#fff2bd");
     } else if (state === "defend") {
-      actor.sprite.setTint?.(0x88ccff);
-      this.spawnActionReticle(actor, 0x88ccff, 480);
-      this.scaledDelay(480, () => actor.sprite?.clearTint?.());
+      if (actor.sprite.playBattleDefend) {
+        void actor.sprite.playBattleDefend({
+          reducedMotion: this.reducedBattleMotion(),
+          speedMultiplier: battleSpeedMul(),
+        });
+      } else {
+        actor.sprite.setTint?.(0x88ccff);
+        this.spawnActionReticle(actor, 0x88ccff, 480);
+        this.scaledDelay(480, () => actor.sprite?.clearTint?.());
+      }
     } else if (state === "hit_reaction") {
-      this.playCombatantHitReaction(actor, { isParty: true });
+      if (actor.sprite.playBattleHitReaction) {
+        void actor.sprite.playBattleHitReaction({
+          reducedMotion: this.reducedBattleMotion(),
+          speedMultiplier: battleSpeedMul(),
+        });
+      } else {
+        this.playCombatantHitReaction(actor, { isParty: true });
+      }
     } else if (state === "item_use") {
+      void actor.sprite.playBattleItemUse?.({
+        reducedMotion: this.reducedBattleMotion(),
+        speedMultiplier: battleSpeedMul(),
+      });
       this.spawnSpellImpact(actor, "holy");
       void this.showActionTitle(actor, "ITEM", "#66ff99");
     } else if (state === "victory") {
-      this.tweens.add({
-        targets: actor.sprite,
-        y: actor.y - 18,
-        duration: this.scaledMs(180),
-        yoyo: true,
-        repeat: 1,
-        ease: "Sine.Out",
-      });
+      if (actor.sprite.playBattleVictory) {
+        void actor.sprite.playBattleVictory({
+          reducedMotion: this.reducedBattleMotion(),
+          speedMultiplier: battleSpeedMul(),
+        });
+      } else {
+        this.tweens.add({
+          targets: actor.sprite,
+          y: actor.y - 18,
+          duration: this.scaledMs(180),
+          yoyo: true,
+          repeat: 1,
+          ease: "Sine.Out",
+        });
+      }
     } else if (state === "ko_defeated") {
-      actor.sprite.setTint?.(0x444444);
-      actor.sprite.setAngle?.(90);
-      actor.sprite.setAlpha?.(0.68);
+      if (actor.sprite.playBattleKO) {
+        void actor.sprite.playBattleKO({
+          reducedMotion: this.reducedBattleMotion(),
+          speedMultiplier: battleSpeedMul(),
+        });
+      } else {
+        actor.sprite.setTint?.(0x444444);
+        actor.sprite.setAngle?.(90);
+        actor.sprite.setAlpha?.(0.68);
+      }
     }
 
     const enemies = Object.values(this.enemySprites || {}).filter(
