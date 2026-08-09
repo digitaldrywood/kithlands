@@ -1,0 +1,34 @@
+{
+  "status": "approved_runtime",
+  "approved_on": "2026-08-08",
+  "approval_source": "explicit in-browser user review",
+  "generated_on": "2026-08-08",
+  "generator": "OpenAI built-in imagegen",
+  "identity_references": [
+    "client/public/sprites/mender.png",
+    "client/public/sprites/walk/mender_walk.png"
+  ],
+  "frame_contract": {
+    "frame_size": [192, 192],
+    "order": [
+      "idle_guard",
+      "invoke",
+      "gather",
+      "release",
+      "sustain",
+      "recover"
+    ],
+    "anchor": "bottom_center",
+    "baseline_y": 184,
+    "staff_baked_in": false
+  },
+  "attachment": {
+    "item_id": "war_staff",
+    "visual_id": "war_staff",
+    "animation_set": "staff",
+    "slot": "weapon_back",
+    "grip_origin": [0.5, 0.48]
+  },
+  "prompt_template": "IDENTITY-PRESERVE Mender battle frame. Accepted portrait and walk assets lock the slim blond hooded healer identity; the current sequence frame locks pixel density and palette; the authored guide locks the pose and empty staff hand. Preserve the pointed white hood, pale-blue shadows, gold trim, shoulder cape, cyan bodice and waist panel, round gold clasp, long split robe tails, gloves and boots. BODY ONLY: no staff, weapon, crystal, magic, effect, shadow, text, UI or scenery. Flat chroma-key backdrop, full body visible, common bottom-center baseline.",
+  "notes": "Second battle-character gold slice. Approved after real-browser review; this body-only cast and separate staff attachment are the production template for subsequent class-specific battle work."
+}

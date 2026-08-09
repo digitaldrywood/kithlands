@@ -1,0 +1,19 @@
+{
+  "status": "visual_approval_pending",
+  "generated_on": "2026-08-08",
+  "generator": "OpenAI built-in imagegen",
+  "identity_references": [
+    "client/public/sprites/brawler.png",
+    "client/public/sprites/walk/brawler_walk.png"
+  ],
+  "frame_contract": {
+    "frame_size": [192, 192],
+    "order": ["idle_guard", "coil", "step", "impact", "follow_through", "recover"],
+    "anchor": "bottom_center",
+    "baseline_y": 185,
+    "weapon_baked_in": false
+  },
+  "attachment": null,
+  "prompt_template": "IDENTITY-PRESERVE Brawler battle frame. Accepted portrait and walk assets lock the bald head, broad muscular build, tan skin, stern face, orange sleeveless deep-V gi, white rope belt, white hand and foot wraps, and dark sandal soles. The prior sequence frame locks rendering and the authored guide locks the pose. BODY ONLY: no weapon, held object, effect, shadow, text, UI or scenery. Flat chroma-key backdrop, full body visible, common bottom-center baseline.",
+  "notes": "Brawler's first class-specific battle slice. The unarmed body and clothing contain no swappable equipment. Installed for aggregate all-class review."
+}

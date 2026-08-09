@@ -1,0 +1,32 @@
+{
+  "status": "visual_approval_pending",
+  "generated_on": "2026-08-08",
+  "generator": "OpenAI built-in imagegen",
+  "identity_references": [
+    "client/public/sprites/pyromancer.png",
+    "client/public/sprites/walk/pyromancer_walk.png"
+  ],
+  "frame_contract": {
+    "frame_size": [192, 192],
+    "order": [
+      "idle_guard",
+      "coil",
+      "raise_staff",
+      "peak_invocation",
+      "release",
+      "recover"
+    ],
+    "anchor": "bottom_center",
+    "baseline_y": 185,
+    "staff_baked_in": false,
+    "effect_baked_in": false
+  },
+  "attachment": {
+    "item_id": "war_staff",
+    "visual_id": "war_staff",
+    "animation_set": "staff",
+    "grip_origin": [0.5, 0.48]
+  },
+  "prompt_template": "IDENTITY-PRESERVE Pyromancer battle frame. Accepted portrait and walk assets lock the faceless black-void crimson hood, permanent orange-gold curved horn ornament, layered red/magenta robes, black mantle and gloves, dense gold flame filigree, and split coat tails. The prior frame locks rendering and the guide locks the Inferno invocation. BODY AND PERMANENT CLOTHING/ORNAMENT ONLY: no staff, crystal, dagger, fire, flame ribbon, aura, spell, effect, shadow, text, UI, or scenery. The image-left staff hand remains a complete closed empty grip.",
+  "notes": "Pyromancer's first class-specific slice is a dramatic staff Inferno invocation. The curved hood ornament is permanent identity regalia; the portrait staff and flames are separated into shared equipment and runtime effect layers. Installed for aggregate all-class review."
+}

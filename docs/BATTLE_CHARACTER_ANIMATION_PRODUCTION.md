@@ -89,3 +89,149 @@ pass. Runtime assets are installed only from an accepted candidate.
 Required proof is a source contact sheet, an animation trace or GIF, and the
 complete attack-and-return sequence in the real Systems Showcase battle. The
 Warrior sword set passed this gate on 2026-08-08.
+
+## Mender Staff-Cast Approved Gold Slice
+
+The second gold slice is intentionally limited to Mender's staff-cast action.
+It was visually approved in the real Systems Showcase battle on 2026-08-08
+and is recorded as `approved_runtime`. Its body-only frames and item-driven
+staff attachment are the production template for subsequent classes; class
+identity and action-specific pose work still require their own acceptance.
+
+- Facing: three-quarter left
+- Action: restorative staff cast
+- Body poses: `idle_guard`, `invoke`, `gather`, `release`, `sustain`, `recover`
+- Body atlas: `client/public/sprites/battle/mender/staff-cast-body.png`
+- Equipment: `war_staff` selected through shared item `visual_id` and
+  `animation_set` metadata
+- Staff layer: `client/public/sprites/battle/weapons/war-staff.png`
+- Grip: one consistent authored hand; the staff stays behind the body so the
+  visible glove reads as the grip
+- Runtime entry points: Mender's real spell anticipation and the debug-only
+  `cast_class_ability` audit state
+
+This candidate passed an inspected six-frame trace, an attack-and-return GIF,
+the real Systems Showcase cast, a real simultaneous all-party healing effect,
+and explicit visual approval before its metadata became `approved_runtime`.
+
+## Shared Battle-Character Manifest
+
+`shared/battle_characters.json` is the production registry for all twelve
+runtime identities. It records the required state vocabulary, body atlases,
+frame timing, and per-equipment attachment sockets. Go loads and validates the
+manifest with the rest of game data; Phaser imports that same content and uses
+one generic compositor instead of class-specific rendering branches.
+
+The same composition contract now carries optional authoritative shield visual
+metadata from `EquipmentSlots.ShieldID`. `off_hand_assets` registers reusable
+shield images separately from weapon images, and a profile may synchronize a
+`shield` socket alongside its weapon socket. A class without authored shield
+sockets keeps its approved body/weapon presentation and omits only the pending
+shield layer; shield absorb and equip rules remain unchanged in Go.
+
+An identity may remain `production_pending` with no installed states. An
+installed state must declare an equipment-free body atlas and named attachment
+sockets. Weapon images are registered separately by `visual_id`, and the
+equipped item selects the attachment through its shared `animation_set`.
+
+### Cinder Staff Cast
+
+Cinder's first installed slice uses six body-only poses—idle, coil, gather,
+release, sustain, and recover—with the same shared War Staff attachment used by
+Mender. The body preserves Cinder's shadowed face, cyan eyes, crooked violet
+hat, gold-trimmed purple robes, and red-violet clasp; it does not reuse or
+recolor Mender's body. Its aggregate-review status is `approved_runtime`.
+
+### Brawler Unarmed Strike
+
+Brawler's first installed slice is a six-pose straight punch: idle guard,
+coil, step, impact, follow-through, and recover. It preserves the accepted bald
+martial-artist identity, broad muscular proportions, orange gi, rope belt, and
+white hand-and-foot wraps. The atlas is body-and-clothing only: `unarmed` is an
+explicit equipment mode with no weapon attachment, not a weapon painted into
+the body. Its aggregate-review status is `approved_runtime`.
+
+### Rogue Shadow-Blade Slash
+
+Rogue's first installed slice uses six body-only dagger poses: idle guard,
+coil, step, impact, follow-through, and recover. The accepted green pointed
+hood, long cloak, charcoal leather armor, crossed belts, and utility pouches
+remain the identity anchors. The portrait blade is not present in the atlas;
+`shadow_blade` now selects a separate curved dagger through shared item visual
+metadata and per-frame `dagger` hand sockets. Its aggregate-review status is
+`approved_runtime`.
+
+### Wayfarer Staff Inspire
+
+Wayfarer's first installed slice is the six-pose all-party Inspire rally:
+idle guard, prepare, raise, rally, share, and recover. The accepted friendly
+chestnut-haired face, feathered travel hat, brown cape, blue tunic, red sash,
+stocky proportions, backpack, and bedroll remain identity anchors. The pack is
+permanent identity gear; the staff is not in the atlas and uses the shared War
+Staff item attachment. Its aggregate-review status is `approved_runtime`.
+
+### Knight Sword-and-Shield Defend
+
+Knight's first installed slice is a six-pose defensive brace: idle guard,
+brace, raise, peak guard, absorb, and recover. The accepted fully enclosed
+ivory-silver great helm, closed gold-trim visor, dark eye slit, blue gems,
+white tabard, long cape, and noble full plate remain distinct from Warrior's
+body. Both hands are empty in the atlas: the Mythril Sword and Steel Shield
+are independent item-driven runtime layers with per-frame `sword` and `shield`
+sockets. Its aggregate-review status is `approved_runtime`.
+
+### Champion Unarmed Palm Burst
+
+Champion's first installed slice is a six-pose two-hand palm burst: idle
+guard, coil, step, double-palm impact, follow-through, and recover. It keeps
+the accepted stern tan face, dark hair, long red headband tails, scarred bare
+chest, dark teal one-shoulder wrap, red-brown sash, loose trousers, bracers,
+and wrapped boots. The silhouette and two-hand action remain distinct from
+Brawler's bald orange-gi straight punch. `unarmed` has no attachment, and the
+portrait's fist flame is reserved for runtime effects rather than baked into
+the body atlas. Its aggregate-review status is `approved_runtime`.
+
+### Shadow Dagger Veil Strike
+
+Shadow's first installed slice is a six-pose low veil strike: idle guard,
+crouch, cloak windup, low dash, peak slash, and recover. The accepted pale
+shadowed face, narrow magenta eyes, fitted violet hood and high scarf, black
+segmented armor, violet seams, and wing-like layered cape remain permanent
+identity anchors. Its horizontal dash and cape sweep differ from Rogue's
+upright slash. The body contains no dagger; shared `shadow_blade` item metadata
+selects the runtime layer and the portrait's second blade is not baked into
+the atlas. Its aggregate-review status is `approved_runtime`.
+
+### Sage Staff Sanctuary
+
+Sage's first installed slice is a six-pose all-party Sanctuary blessing: idle
+guard, prepare, raise blessing, project blessing, peak Sanctuary, and recover.
+The accepted dignified elderly face, long white hair and beard, circular gold
+halo, ivory gold-filigree robes, silver-lavender mantle, blue gems, and layered
+gold chains distinguish the promoted healer from Mender. The halo is permanent
+class regalia, while the body contains no staff or spell effect. Shared
+`war_staff` metadata selects the equipment layer and the audit supplies the
+all-allies effect. Its aggregate-review status is `approved_runtime`.
+
+### Pyromancer Staff Inferno
+
+Pyromancer's first installed slice is a six-pose Inferno invocation: idle
+guard, coil, raise staff, peak invocation, release, and recover. The accepted
+faceless black-void crimson hood, permanent curved orange-gold horn ornament,
+layered red and magenta robes, black mantle and gloves, dense gold flame
+filigree, and split coat tails distinguish it from Cinder. The body contains
+no staff, crystal, dagger, fire, or flame ribbon; shared `war_staff` metadata
+selects the equipment layer and the audit supplies the all-enemies fire
+effect. Its aggregate-review status is `approved_runtime`.
+
+### Wanderer Staff Waystar
+
+Wanderer's first installed slice is a six-pose Waystar invocation: idle guard,
+prepare, raise the free hand, point toward the horizon, peak Waystar, and
+recover. The accepted short golden-blond hair, layered brown explorer leathers,
+silver shoulder and knee guards, and asymmetric white/silver and indigo/night
+cape keep the promoted traveler distinct from Wayfarer. The cape is permanent
+identity clothing, but the body contains no staff, sidearm, star, spell, or
+effect. Shared `war_staff` metadata selects the equipment layer, with the grip
+authored in the image-right hand. Its aggregate-review status is
+`approved_runtime`.

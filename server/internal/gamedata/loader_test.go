@@ -28,15 +28,68 @@ func TestLayeredWeaponVisualMetadataLoads(t *testing.T) {
 		"iron_sword":    "iron_sword",
 		"steel_sword":   "mythril_sword",
 		"mythril_sword": "mythril_sword",
+		"shadow_blade":  "shadow_blade",
 	}
 	for id, visualID := range wants {
 		weapon := gd.WeaponByID(id)
 		if weapon == nil {
 			t.Fatalf("%s not loaded", id)
 		}
-		if weapon.VisualID != visualID || weapon.AnimationSet != "sword" {
-			t.Fatalf("%s visual metadata = (%q, %q), want (%q, sword)", id, weapon.VisualID, weapon.AnimationSet, visualID)
+		animationSet := "sword"
+		if id == "shadow_blade" {
+			animationSet = "dagger"
 		}
+		if weapon.VisualID != visualID || weapon.AnimationSet != animationSet {
+			t.Fatalf("%s visual metadata = (%q, %q), want (%q, %s)", id, weapon.VisualID, weapon.AnimationSet, visualID, animationSet)
+		}
+	}
+}
+
+func TestLayeredShieldVisualMetadataLoads(t *testing.T) {
+	gd := gamedata.Load("../../../shared")
+	shield := gd.ShieldByID("steel_shield")
+	if shield == nil {
+		t.Fatal("steel_shield not loaded")
+	}
+	if shield.VisualID != "steel_shield" || shield.AnimationSet != "shield" {
+		t.Fatalf("steel_shield visual metadata = (%q, %q), want (steel_shield, shield)", shield.VisualID, shield.AnimationSet)
+	}
+	if len(gd.BattleCharacters.OffHandAssets) != 1 || gd.BattleCharacters.OffHandAssets[0].VisualID != "steel_shield" {
+		t.Fatalf("off-hand assets = %#v, want steel_shield", gd.BattleCharacters.OffHandAssets)
+	}
+}
+
+func TestBattleCharacterManifestLoadsEveryRuntimeIdentity(t *testing.T) {
+	gd := gamedata.Load("../../../shared")
+	if got := len(gd.BattleCharacters.Classes); got != 12 {
+		t.Fatalf("battle character identities = %d, want 12", got)
+	}
+	if got := len(gd.BattleCharacters.RequiredStates); got != 8 {
+		t.Fatalf("battle character required states = %d, want 8", got)
+	}
+
+	warrior := gd.BattleCharacterByID("warrior")
+	if warrior == nil || warrior.Status != "approved_runtime" {
+		t.Fatalf("warrior battle profile = %#v, want approved_runtime", warrior)
+	}
+	if len(warrior.States["physical_attack"].Frames) != 6 {
+		t.Fatalf("warrior physical attack does not have six frames")
+	}
+
+	mender := gd.BattleCharacterByID("mender")
+	if mender == nil || mender.Status != "approved_runtime" {
+		t.Fatalf("mender battle profile = %#v, want approved_runtime", mender)
+	}
+	if len(mender.States["cast_class_ability"].Frames) != 6 {
+		t.Fatalf("mender cast does not have six frames")
+	}
+
+	rogue := gd.BattleCharacterByID("rogue")
+	if rogue == nil || rogue.Status != "approved_runtime" {
+		t.Fatalf("rogue battle profile = %#v, want approved_runtime", rogue)
+	}
+	if len(rogue.States["physical_attack"].Frames) != 6 {
+		t.Fatalf("rogue physical attack does not have six frames")
 	}
 }
 

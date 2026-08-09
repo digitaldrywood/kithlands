@@ -6,6 +6,11 @@ import {
 } from "./walkFrame.js";
 import { registerGeneratedTerrainTextures } from "./terrainAutotile.js";
 import { enumerateBackgrounds } from "./battleBackgrounds.js";
+import {
+  battleBodyAssets,
+  battleOffHandAssets,
+  battleWeaponAssets,
+} from "../data/battleCharacters.js";
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -65,21 +70,21 @@ export class BootScene extends Phaser.Scene {
       });
     }
 
-    // Warrior battle-animation gold slice. The body atlas contains no weapon;
-    // equipped sword visuals are separate overlays selected by server content.
-    this.load.spritesheet(
-      "battle_warrior_sword_attack_body",
-      "/sprites/battle/warrior/sword-attack-body.png",
-      { frameWidth: 192, frameHeight: 192 },
-    );
-    this.load.image(
-      "battle_weapon_iron_sword",
-      "/sprites/battle/weapons/iron-sword.png",
-    );
-    this.load.image(
-      "battle_weapon_mythril_sword",
-      "/sprites/battle/weapons/mythril-sword.png",
-    );
+    // Authored battle bodies and equipment layers come from the shared
+    // battle-character manifest. Bodies remain equipment-free; the server's
+    // composition descriptor chooses the item visual at runtime.
+    for (const asset of battleBodyAssets()) {
+      this.load.spritesheet(asset.key, asset.path, {
+        frameWidth: asset.frameSize,
+        frameHeight: asset.frameSize,
+      });
+    }
+    for (const asset of battleWeaponAssets()) {
+      this.load.image(asset.key, asset.path);
+    }
+    for (const asset of battleOffHandAssets()) {
+      this.load.image(asset.key, asset.path);
+    }
 
     // Status effect icons
     this.load.image("icon_poison", "/sprites/ui/icon_poison.png");

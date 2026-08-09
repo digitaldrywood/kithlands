@@ -1,0 +1,25 @@
+{
+  "status": "visual_approval_pending",
+  "generated_on": "2026-08-08",
+  "generator": "OpenAI built-in imagegen",
+  "identity_references": [
+    "client/public/sprites/rogue.png",
+    "client/public/sprites/walk/rogue_walk.png"
+  ],
+  "frame_contract": {
+    "frame_size": [192, 192],
+    "order": ["idle_guard", "coil", "step", "impact", "follow_through", "recover"],
+    "anchor": "bottom_center",
+    "baseline_y": 185,
+    "dagger_baked_in": false
+  },
+  "attachment": {
+    "item_id": "shadow_blade",
+    "visual_id": "shadow_blade",
+    "animation_set": "dagger",
+    "slot": "weapon_back",
+    "grip_origin": [0.5, 0.78]
+  },
+  "prompt_template": "IDENTITY-PRESERVE Rogue battle frame. Accepted portrait and walk assets lock the rugged fair-skinned face, forest-green pointed hood and long cloak, charcoal ribbed leather armor, brown belts and utility pouches, black gloves, dark trousers, and leather boots. The prior sequence frame locks rendering and the guide locks the pose. BODY ONLY: no dagger, sword, bow, held object, effect, shadow, text, UI or scenery. The weapon hand remains a complete closed empty grip for the runtime attachment.",
+  "notes": "Rogue's first class-specific battle slice. The accepted portrait's baked blade is removed; Shadow Blade is now a shared item-driven attachment. Installed for aggregate all-class review."
+}

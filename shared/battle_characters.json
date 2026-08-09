@@ -1,0 +1,812 @@
+{
+  "frame_size": 192,
+  "required_states": [
+    "idle_guard",
+    "physical_attack",
+    "cast_class_ability",
+    "defend",
+    "hit_reaction",
+    "item_use",
+    "victory",
+    "ko_defeated"
+  ],
+  "weapon_assets": [
+    {
+      "visual_id": "iron_sword",
+      "key": "battle_weapon_iron_sword",
+      "path": "/sprites/battle/weapons/iron-sword.png"
+    },
+    {
+      "visual_id": "mythril_sword",
+      "key": "battle_weapon_mythril_sword",
+      "path": "/sprites/battle/weapons/mythril-sword.png"
+    },
+    {
+      "visual_id": "war_staff",
+      "key": "battle_weapon_war_staff",
+      "path": "/sprites/battle/weapons/war-staff.png"
+    },
+    {
+      "visual_id": "shadow_blade",
+      "key": "battle_weapon_shadow_blade",
+      "path": "/sprites/battle/weapons/shadow-blade.png"
+    }
+  ],
+  "off_hand_assets": [
+    {
+      "visual_id": "steel_shield",
+      "key": "battle_off_hand_steel_shield",
+      "path": "/sprites/battle/off-hand/steel-shield.png"
+    }
+  ],
+  "classes": [
+    {
+      "id": "warrior",
+      "status": "approved_runtime",
+      "default_state": "physical_attack",
+      "attachments": {
+        "sword": { "origin": [0.5, 0.92] }
+      },
+      "states": {
+        "idle_guard": {
+          "body_key": "battle_warrior_sword_attack_body",
+          "body_path": "/sprites/battle/warrior/sword-attack-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 120,
+              "attachments": {
+                "sword": { "x": -48, "y": -7, "angle": -135, "front": true }
+              }
+            }
+          ]
+        },
+        "physical_attack": {
+          "body_key": "battle_warrior_sword_attack_body",
+          "body_path": "/sprites/battle/warrior/sword-attack-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 90,
+              "attachments": {
+                "sword": { "x": -48, "y": -7, "angle": -135, "front": true }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 80,
+              "attachments": {
+                "sword": { "x": 31, "y": -7, "angle": 55, "front": false }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 85,
+              "attachments": {
+                "sword": { "x": 0, "y": -57, "angle": -18, "front": true }
+              }
+            },
+            {
+              "frame": 3,
+              "duration": 95,
+              "attachments": {
+                "sword": { "x": -49, "y": -13, "angle": -90, "front": true }
+              }
+            },
+            {
+              "frame": 4,
+              "duration": 105,
+              "attachments": {
+                "sword": { "x": -48, "y": 2, "angle": -132, "front": true }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 90,
+              "attachments": {
+                "sword": { "x": -38, "y": 1, "angle": -52, "front": true }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "brawler",
+      "status": "approved_runtime",
+      "default_state": "physical_attack",
+      "attachments": {},
+      "states": {
+        "idle_guard": {
+          "body_key": "battle_brawler_unarmed_strike_body",
+          "body_path": "/sprites/battle/brawler/unarmed-strike-body.png",
+          "frames": [{ "frame": 0, "duration": 120, "attachments": {} }]
+        },
+        "physical_attack": {
+          "body_key": "battle_brawler_unarmed_strike_body",
+          "body_path": "/sprites/battle/brawler/unarmed-strike-body.png",
+          "frames": [
+            { "frame": 0, "duration": 90, "attachments": {} },
+            { "frame": 1, "duration": 80, "attachments": {} },
+            { "frame": 2, "duration": 75, "attachments": {} },
+            { "frame": 3, "duration": 95, "attachments": {} },
+            { "frame": 4, "duration": 105, "attachments": {} },
+            { "frame": 5, "duration": 90, "attachments": {} }
+          ]
+        }
+      }
+    },
+    {
+      "id": "rogue",
+      "status": "approved_runtime",
+      "default_state": "physical_attack",
+      "attachments": {
+        "dagger": { "origin": [0.5, 0.78] }
+      },
+      "states": {
+        "idle_guard": {
+          "body_key": "battle_rogue_dagger_slash_body",
+          "body_path": "/sprites/battle/rogue/dagger-slash-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 120,
+              "attachments": {
+                "dagger": { "x": -47, "y": -4, "angle": -45, "front": false }
+              }
+            }
+          ]
+        },
+        "physical_attack": {
+          "body_key": "battle_rogue_dagger_slash_body",
+          "body_path": "/sprites/battle/rogue/dagger-slash-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 90,
+              "attachments": {
+                "dagger": { "x": -47, "y": -4, "angle": -45, "front": false }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 80,
+              "attachments": {
+                "dagger": { "x": 31, "y": -48, "angle": 38, "front": false }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 75,
+              "attachments": {
+                "dagger": { "x": 45, "y": -28, "angle": 58, "front": false }
+              }
+            },
+            {
+              "frame": 3,
+              "duration": 95,
+              "attachments": {
+                "dagger": { "x": -80, "y": -5, "angle": -105, "front": false }
+              }
+            },
+            {
+              "frame": 4,
+              "duration": 105,
+              "attachments": {
+                "dagger": { "x": -79, "y": 0, "angle": -120, "front": false }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 90,
+              "attachments": {
+                "dagger": { "x": -42, "y": -2, "angle": -50, "front": false }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "mender",
+      "status": "approved_runtime",
+      "default_state": "cast_class_ability",
+      "attachments": {
+        "staff": { "origin": [0.5, 0.48] }
+      },
+      "states": {
+        "idle_guard": {
+          "body_key": "battle_mender_staff_cast_body",
+          "body_path": "/sprites/battle/mender/staff-cast-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 120,
+              "attachments": {
+                "staff": { "x": 16, "y": -20, "angle": 8, "front": false }
+              }
+            }
+          ]
+        },
+        "cast_class_ability": {
+          "body_key": "battle_mender_staff_cast_body",
+          "body_path": "/sprites/battle/mender/staff-cast-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 120,
+              "attachments": {
+                "staff": { "x": 16, "y": -20, "angle": 8, "front": false }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 110,
+              "attachments": {
+                "staff": { "x": 27, "y": -47, "angle": 12, "front": false }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 130,
+              "attachments": {
+                "staff": { "x": 10, "y": -21, "angle": 5, "front": false }
+              }
+            },
+            {
+              "frame": 3,
+              "duration": 150,
+              "attachments": {
+                "staff": { "x": 30, "y": -47, "angle": 10, "front": false }
+              }
+            },
+            {
+              "frame": 4,
+              "duration": 170,
+              "attachments": {
+                "staff": { "x": 26, "y": -45, "angle": 8, "front": false }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 110,
+              "attachments": {
+                "staff": { "x": 12, "y": -19, "angle": 8, "front": false }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "cinder",
+      "status": "approved_runtime",
+      "default_state": "cast_class_ability",
+      "attachments": {
+        "staff": { "origin": [0.5, 0.48] }
+      },
+      "states": {
+        "idle_guard": {
+          "body_key": "battle_cinder_staff_cast_body",
+          "body_path": "/sprites/battle/cinder/staff-cast-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 120,
+              "attachments": {
+                "staff": { "x": 27, "y": 13, "angle": 8, "front": false }
+              }
+            }
+          ]
+        },
+        "cast_class_ability": {
+          "body_key": "battle_cinder_staff_cast_body",
+          "body_path": "/sprites/battle/cinder/staff-cast-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 110,
+              "attachments": {
+                "staff": { "x": 27, "y": 13, "angle": 8, "front": false }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 100,
+              "attachments": {
+                "staff": { "x": 28, "y": -20, "angle": 10, "front": false }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 120,
+              "attachments": {
+                "staff": { "x": 31, "y": -52, "angle": 12, "front": false }
+              }
+            },
+            {
+              "frame": 3,
+              "duration": 145,
+              "attachments": {
+                "staff": { "x": 69, "y": -39, "angle": 14, "front": false }
+              }
+            },
+            {
+              "frame": 4,
+              "duration": 165,
+              "attachments": {
+                "staff": { "x": 55, "y": -54, "angle": 12, "front": false }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 105,
+              "attachments": {
+                "staff": { "x": 26, "y": 14, "angle": 8, "front": false }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "wayfarer",
+      "status": "approved_runtime",
+      "default_state": "cast_class_ability",
+      "attachments": {
+        "staff": { "origin": [0.5, 0.48] }
+      },
+      "states": {
+        "idle_guard": {
+          "body_key": "battle_wayfarer_staff_inspire_body",
+          "body_path": "/sprites/battle/wayfarer/staff-inspire-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 120,
+              "attachments": {
+                "staff": { "x": -47, "y": 14, "angle": 4, "front": false }
+              }
+            }
+          ]
+        },
+        "cast_class_ability": {
+          "body_key": "battle_wayfarer_staff_inspire_body",
+          "body_path": "/sprites/battle/wayfarer/staff-inspire-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 110,
+              "attachments": {
+                "staff": { "x": -47, "y": 14, "angle": 4, "front": false }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 100,
+              "attachments": {
+                "staff": { "x": -48, "y": 15, "angle": 4, "front": false }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 120,
+              "attachments": {
+                "staff": { "x": -48, "y": 14, "angle": 3, "front": false }
+              }
+            },
+            {
+              "frame": 3,
+              "duration": 155,
+              "attachments": {
+                "staff": { "x": -49, "y": 15, "angle": 3, "front": false }
+              }
+            },
+            {
+              "frame": 4,
+              "duration": 170,
+              "attachments": {
+                "staff": { "x": -47, "y": 15, "angle": 4, "front": false }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 105,
+              "attachments": {
+                "staff": { "x": -45, "y": 15, "angle": 5, "front": false }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "knight",
+      "status": "approved_runtime",
+      "default_state": "defend",
+      "attachments": {
+        "sword": { "origin": [0.5, 0.92] },
+        "shield": { "origin": [0.5, 0.5] }
+      },
+      "states": {
+        "idle_guard": {
+          "body_key": "battle_knight_sword_shield_defend_body",
+          "body_path": "/sprites/battle/knight/sword-shield-defend-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 120,
+              "attachments": {
+                "sword": { "x": -49, "y": 4, "angle": -135, "front": true },
+                "shield": { "x": 36, "y": -3, "angle": 5, "front": true }
+              }
+            }
+          ]
+        },
+        "defend": {
+          "body_key": "battle_knight_sword_shield_defend_body",
+          "body_path": "/sprites/battle/knight/sword-shield-defend-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 110,
+              "attachments": {
+                "sword": { "x": -49, "y": 4, "angle": -135, "front": true },
+                "shield": { "x": 36, "y": -3, "angle": 5, "front": true }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 100,
+              "attachments": {
+                "sword": { "x": -51, "y": 3, "angle": -135, "front": true },
+                "shield": { "x": 36, "y": -3, "angle": 4, "front": true }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 120,
+              "attachments": {
+                "sword": { "x": -52, "y": 6, "angle": -135, "front": true },
+                "shield": { "x": 34, "y": -12, "angle": -8, "front": true }
+              }
+            },
+            {
+              "frame": 3,
+              "duration": 160,
+              "attachments": {
+                "sword": { "x": -45, "y": 7, "angle": -135, "front": true },
+                "shield": { "x": 4, "y": -18, "angle": 0, "front": true }
+              }
+            },
+            {
+              "frame": 4,
+              "duration": 170,
+              "attachments": {
+                "sword": { "x": -43, "y": 9, "angle": -135, "front": true },
+                "shield": { "x": 1, "y": -16, "angle": 2, "front": true }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 105,
+              "attachments": {
+                "sword": { "x": -49, "y": 3, "angle": -135, "front": true },
+                "shield": { "x": 45, "y": -10, "angle": 7, "front": true }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "champion",
+      "status": "approved_runtime",
+      "default_state": "physical_attack",
+      "attachments": {},
+      "states": {
+        "idle_guard": {
+          "body_key": "battle_champion_unarmed_palm_burst_body",
+          "body_path": "/sprites/battle/champion/unarmed-palm-burst-body.png",
+          "frames": [{ "frame": 0, "duration": 120, "attachments": {} }]
+        },
+        "physical_attack": {
+          "body_key": "battle_champion_unarmed_palm_burst_body",
+          "body_path": "/sprites/battle/champion/unarmed-palm-burst-body.png",
+          "frames": [
+            { "frame": 0, "duration": 90, "attachments": {} },
+            { "frame": 1, "duration": 80, "attachments": {} },
+            { "frame": 2, "duration": 80, "attachments": {} },
+            { "frame": 3, "duration": 105, "attachments": {} },
+            { "frame": 4, "duration": 110, "attachments": {} },
+            { "frame": 5, "duration": 90, "attachments": {} }
+          ]
+        }
+      }
+    },
+    {
+      "id": "shadow",
+      "status": "approved_runtime",
+      "default_state": "physical_attack",
+      "attachments": {
+        "dagger": { "origin": [0.5, 0.78] }
+      },
+      "states": {
+        "idle_guard": {
+          "body_key": "battle_shadow_dagger_veil_strike_body",
+          "body_path": "/sprites/battle/shadow/dagger-veil-strike-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 120,
+              "attachments": {
+                "dagger": { "x": -46, "y": 0, "angle": -45, "front": false }
+              }
+            }
+          ]
+        },
+        "physical_attack": {
+          "body_key": "battle_shadow_dagger_veil_strike_body",
+          "body_path": "/sprites/battle/shadow/dagger-veil-strike-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 90,
+              "attachments": {
+                "dagger": { "x": -46, "y": 0, "angle": -45, "front": false }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 80,
+              "attachments": {
+                "dagger": { "x": -51, "y": 44, "angle": -135, "front": false }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 75,
+              "attachments": {
+                "dagger": { "x": -48, "y": 12, "angle": -45, "front": false }
+              }
+            },
+            {
+              "frame": 3,
+              "duration": 85,
+              "attachments": {
+                "dagger": { "x": -81, "y": 37, "angle": -105, "front": false }
+              }
+            },
+            {
+              "frame": 4,
+              "duration": 105,
+              "attachments": {
+                "dagger": { "x": -80, "y": -18, "angle": -45, "front": true }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 90,
+              "attachments": {
+                "dagger": { "x": -41, "y": -4, "angle": -50, "front": false }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "sage",
+      "status": "approved_runtime",
+      "default_state": "cast_class_ability",
+      "attachments": {
+        "staff": { "origin": [0.5, 0.48] }
+      },
+      "states": {
+        "idle_guard": {
+          "body_key": "battle_sage_staff_sanctuary_body",
+          "body_path": "/sprites/battle/sage/staff-sanctuary-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 120,
+              "attachments": {
+                "staff": { "x": -41, "y": 5, "angle": 3, "front": false }
+              }
+            }
+          ]
+        },
+        "cast_class_ability": {
+          "body_key": "battle_sage_staff_sanctuary_body",
+          "body_path": "/sprites/battle/sage/staff-sanctuary-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 110,
+              "attachments": {
+                "staff": { "x": -41, "y": 5, "angle": 3, "front": false }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 105,
+              "attachments": {
+                "staff": { "x": -39, "y": 6, "angle": 3, "front": false }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 125,
+              "attachments": {
+                "staff": { "x": -41, "y": 5, "angle": 2, "front": false }
+              }
+            },
+            {
+              "frame": 3,
+              "duration": 155,
+              "attachments": {
+                "staff": { "x": -41, "y": 6, "angle": 2, "front": false }
+              }
+            },
+            {
+              "frame": 4,
+              "duration": 175,
+              "attachments": {
+                "staff": { "x": -41, "y": 8, "angle": 2, "front": false }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 105,
+              "attachments": {
+                "staff": { "x": -39, "y": 6, "angle": 3, "front": false }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "pyromancer",
+      "status": "approved_runtime",
+      "default_state": "cast_class_ability",
+      "attachments": {
+        "staff": { "origin": [0.5, 0.48] }
+      },
+      "states": {
+        "idle_guard": {
+          "body_key": "battle_pyromancer_staff_inferno_body",
+          "body_path": "/sprites/battle/pyromancer/staff-inferno-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 120,
+              "attachments": {
+                "staff": { "x": -42, "y": 5, "angle": 5, "front": false }
+              }
+            }
+          ]
+        },
+        "cast_class_ability": {
+          "body_key": "battle_pyromancer_staff_inferno_body",
+          "body_path": "/sprites/battle/pyromancer/staff-inferno-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 105,
+              "attachments": {
+                "staff": { "x": -42, "y": 5, "angle": 5, "front": false }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 100,
+              "attachments": {
+                "staff": { "x": -40, "y": -6, "angle": 6, "front": false }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 120,
+              "attachments": {
+                "staff": { "x": -37, "y": -38, "angle": 8, "front": false }
+              }
+            },
+            {
+              "frame": 3,
+              "duration": 155,
+              "attachments": {
+                "staff": { "x": -30, "y": -57, "angle": 10, "front": false }
+              }
+            },
+            {
+              "frame": 4,
+              "duration": 170,
+              "attachments": {
+                "staff": { "x": -28, "y": -47, "angle": 9, "front": false }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 105,
+              "attachments": {
+                "staff": { "x": -39, "y": 8, "angle": 5, "front": false }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "wanderer",
+      "status": "approved_runtime",
+      "default_state": "cast_class_ability",
+      "attachments": {
+        "staff": { "origin": [0.5, 0.48] }
+      },
+      "states": {
+        "idle_guard": {
+          "body_key": "battle_wanderer_staff_waystar_body",
+          "body_path": "/sprites/battle/wanderer/staff-waystar-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 120,
+              "attachments": {
+                "staff": { "x": 31, "y": -4, "angle": -4, "front": false }
+              }
+            }
+          ]
+        },
+        "cast_class_ability": {
+          "body_key": "battle_wanderer_staff_waystar_body",
+          "body_path": "/sprites/battle/wanderer/staff-waystar-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 105,
+              "attachments": {
+                "staff": { "x": 31, "y": -4, "angle": -4, "front": false }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 100,
+              "attachments": {
+                "staff": { "x": 34, "y": 0, "angle": -3, "front": false }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 120,
+              "attachments": {
+                "staff": { "x": 30, "y": 2, "angle": -2, "front": false }
+              }
+            },
+            {
+              "frame": 3,
+              "duration": 145,
+              "attachments": {
+                "staff": { "x": 29, "y": -7, "angle": -3, "front": false }
+              }
+            },
+            {
+              "frame": 4,
+              "duration": 175,
+              "attachments": {
+                "staff": { "x": 27, "y": -63, "angle": -8, "front": false }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 105,
+              "attachments": {
+                "staff": { "x": 30, "y": -8, "angle": -4, "front": false }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "status": "visual_approval_pending",
+  "generated_on": "2026-08-08",
+  "generator": "OpenAI built-in imagegen",
+  "identity_references": [
+    "client/public/sprites/champion.png",
+    "client/public/sprites/walk/champion_walk.png"
+  ],
+  "frame_contract": {
+    "frame_size": [192, 192],
+    "order": [
+      "idle_guard",
+      "coil",
+      "step",
+      "double_palm_impact",
+      "follow_through",
+      "recover"
+    ],
+    "anchor": "bottom_center",
+    "baseline_y": 185,
+    "equipment_mode": "unarmed",
+    "effect_baked_in": false
+  },
+  "prompt_template": "IDENTITY-PRESERVE Champion battle frame. Accepted portrait and walk assets lock the stern tan face, short dark hair, vivid red headband and long tails, muscular scarred bare chest, dark teal one-shoulder wrap, broad belt, red-brown sash, loose dark teal trousers, bracers, and wrapped boots. The prior frame locks rendering and the guide locks the palm-burst pose. BODY AND PERMANENT CLOTHING ONLY: unarmed, with no flame, aura, glow, weapon, shadow, text, UI, or scenery.",
+  "notes": "Champion's first class-specific battle slice is a two-hand palm burst, deliberately distinct from Brawler's straight punch. The portrait flame is treated as a runtime ability effect rather than painted into the body atlas. Installed for aggregate all-class review."
+}

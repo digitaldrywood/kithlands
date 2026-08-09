@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <rect width="256" height="256" fill="#fff"/>
+  <path d="M24 228H232" stroke="#bbb" stroke-width="2"/>
+  <path d="M113 30Q135 10 155 31L160 62Q136 77 109 60Z" fill="#e8eef7" stroke="#222" stroke-width="5"/>
+  <circle cx="135" cy="48" r="16" fill="#f8d7b8" stroke="#222" stroke-width="4"/>
+  <line x1="135" y1="66" x2="137" y2="141" stroke="#111" stroke-width="10"/>
+  <line x1="133" y1="82" x2="117" y2="91" stroke="#111" stroke-width="8"/><line x1="117" y1="91" x2="105" y2="112" stroke="#111" stroke-width="8"/>
+  <line x1="139" y1="82" x2="153" y2="91" stroke="#111" stroke-width="8"/><line x1="153" y1="91" x2="154" y2="112" stroke="#111" stroke-width="8"/>
+  <line x1="137" y1="141" x2="108" y2="182" stroke="#111" stroke-width="9"/><line x1="108" y1="182" x2="102" y2="226" stroke="#111" stroke-width="9"/>
+  <line x1="138" y1="141" x2="166" y2="182" stroke="#111" stroke-width="9"/><line x1="166" y1="182" x2="174" y2="226" stroke="#111" stroke-width="9"/>
+  <circle cx="105" cy="112" r="8" fill="#f6ad55"/>
+  <circle cx="154" cy="112" r="9" fill="#22b8cf" stroke="#075985" stroke-width="3"/>
+</svg>

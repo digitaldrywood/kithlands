@@ -245,3 +245,28 @@ func TestComposeIncludesWeaponVisualMetadata(t *testing.T) {
 		t.Errorf("WeaponAnimationSet = %q, want sword", got.WeaponAnimationSet)
 	}
 }
+
+func TestComposeIncludesShieldVisualMetadata(t *testing.T) {
+	lookup := testLookup()
+	lookup.ShieldVisual = func(id string) (string, string, bool) {
+		if id == "steel_shield" {
+			return "steel_shield", "shield", true
+		}
+		return "", "", false
+	}
+
+	got := sprites.Compose(sprites.Input{
+		ClassID: "warrior",
+		Equip: inventory.EquipmentSlots{
+			ShieldID: "steel_shield",
+		},
+		Lookup: lookup,
+	})
+
+	if got.ShieldVisualID != "steel_shield" {
+		t.Errorf("ShieldVisualID = %q, want steel_shield", got.ShieldVisualID)
+	}
+	if got.ShieldAnimationSet != "shield" {
+		t.Errorf("ShieldAnimationSet = %q, want shield", got.ShieldAnimationSet)
+	}
+}

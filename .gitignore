@@ -15,6 +15,7 @@ server/dashboard
 client/node_modules/
 client/dist/
 client/test-results/
+client/tmp/
 .vite/
 
 # Generated language caches
