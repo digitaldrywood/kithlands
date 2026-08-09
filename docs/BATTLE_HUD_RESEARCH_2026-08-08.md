@@ -67,26 +67,26 @@ Primary and official sources:
 
 ## Twelve-Class Authored Battle Coverage
 
-`A` = approved authored class animation, `R` = installed review candidate,
-`F` = generic runtime fallback, `-` = absent.
+`A` = approved authored class animation, `F` = generic runtime fallback,
+`-` = absent.
 
 | Class      | Idle/guard | Physical  | Cast/ability    | Defend         | Hit | Item | Victory | KO  | Equipment                |
 | ---------- | ---------- | --------- | --------------- | -------------- | --- | ---- | ------- | --- | ------------------------ |
 | Warrior    | A          | A sword   | -               | F              | F   | F    | -       | F   | A sword                  |
-| Brawler    | R          | R unarmed | F               | F              | F   | F    | -       | F   | R unarmed                |
-| Rogue      | R          | R dagger  | F               | F              | F   | F    | -       | F   | R dagger / bow pending   |
+| Brawler    | A          | A unarmed | F               | F              | F   | F    | -       | F   | A unarmed                |
+| Rogue      | A          | A dagger  | F               | F              | F   | F    | -       | F   | A dagger / bow pending   |
 | Mender     | A          | F         | A staff cast    | F              | F   | F    | -       | F   | A staff                  |
-| Cinder     | R          | F         | R staff cast    | F              | F   | F    | -       | F   | R staff                  |
-| Wayfarer   | R          | F         | R staff Inspire | F              | F   | F    | -       | F   | R staff / mixed pending  |
-| Knight     | R          | F         | F               | R sword/shield | F   | F    | -       | F   | R sword/shield           |
-| Champion   | R          | R unarmed | F               | F              | F   | F    | -       | F   | R unarmed                |
-| Shadow     | R          | R dagger  | F               | F              | F   | F    | -       | F   | R dagger / bow pending   |
-| Sage       | R          | F         | R Sanctuary     | F              | F   | F    | -       | F   | R staff                  |
-| Pyromancer | R          | F         | R staff Inferno | F              | F   | F    | -       | F   | R staff / dagger pending |
-| Wanderer   | R          | F         | R staff Waystar | F              | F   | F    | -       | F   | R staff / mixed pending  |
+| Cinder     | A          | F         | A staff cast    | F              | F   | F    | -       | F   | A staff                  |
+| Wayfarer   | A          | F         | A staff Inspire | F              | F   | F    | -       | F   | A staff / mixed pending  |
+| Knight     | A          | F         | F               | A sword/shield | F   | F    | -       | F   | A sword/shield           |
+| Champion   | A          | A unarmed | F               | F              | F   | F    | -       | F   | A unarmed                |
+| Shadow     | A          | A dagger  | F               | F              | F   | F    | -       | F   | A dagger / bow pending   |
+| Sage       | A          | F         | A Sanctuary     | F              | F   | F    | -       | F   | A staff                  |
+| Pyromancer | A          | F         | A staff Inferno | F              | F   | F    | -       | F   | A staff / dagger pending |
+| Wanderer   | A          | F         | A staff Waystar | F              | F   | F    | -       | F   | A staff / mixed pending  |
 
 Mender cast/guard was explicitly approved in the real Systems Showcase battle.
-All twelve identities now have one authored signature slice for aggregate
-review. Remaining state cells still use the generic fallback and proceed one
-class and one action at a time through the same body/attachment separation and
-visual-inspection gate.
+All twelve identities now have one approved authored signature slice after
+aggregate showcase review. Remaining state cells still use the generic
+fallback and proceed one class and one action at a time through the same
+body/attachment separation and visual-inspection gate.

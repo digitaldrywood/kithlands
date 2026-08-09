@@ -49,36 +49,34 @@ describe("shared battle character catalog", () => {
       "battle_pyromancer_staff_inferno_body",
       "battle_wanderer_staff_waystar_body",
     ]);
-    expect(battleProfileFor("brawler").status).toBe("visual_approval_pending");
+    expect(battleProfileFor("brawler").status).toBe("approved_runtime");
     expect(battleStateFor("brawler", "physical_attack").frames).toHaveLength(6);
     expect(battleStateFor("rogue", "physical_attack").frames).toHaveLength(6);
     expect(battleStateFor("mender", "cast_class_ability").frames).toHaveLength(
       6,
     );
-    expect(battleProfileFor("cinder").status).toBe("visual_approval_pending");
+    expect(battleProfileFor("cinder").status).toBe("approved_runtime");
     expect(battleStateFor("cinder", "cast_class_ability").frames).toHaveLength(
       6,
     );
     expect(
       battleStateFor("wayfarer", "cast_class_ability").frames,
     ).toHaveLength(6);
-    expect(battleProfileFor("knight").status).toBe("visual_approval_pending");
+    expect(battleProfileFor("knight").status).toBe("approved_runtime");
     expect(battleStateFor("knight", "defend").frames).toHaveLength(6);
-    expect(battleProfileFor("champion").status).toBe("visual_approval_pending");
+    expect(battleProfileFor("champion").status).toBe("approved_runtime");
     expect(battleStateFor("champion", "physical_attack").frames).toHaveLength(
       6,
     );
-    expect(battleProfileFor("shadow").status).toBe("visual_approval_pending");
+    expect(battleProfileFor("shadow").status).toBe("approved_runtime");
     expect(battleStateFor("shadow", "physical_attack").frames).toHaveLength(6);
-    expect(battleProfileFor("sage").status).toBe("visual_approval_pending");
+    expect(battleProfileFor("sage").status).toBe("approved_runtime");
     expect(battleStateFor("sage", "cast_class_ability").frames).toHaveLength(6);
-    expect(battleProfileFor("pyromancer").status).toBe(
-      "visual_approval_pending",
-    );
+    expect(battleProfileFor("pyromancer").status).toBe("approved_runtime");
     expect(
       battleStateFor("pyromancer", "cast_class_ability").frames,
     ).toHaveLength(6);
-    expect(battleProfileFor("wanderer").status).toBe("visual_approval_pending");
+    expect(battleProfileFor("wanderer").status).toBe("approved_runtime");
     expect(
       battleStateFor("wanderer", "cast_class_ability").frames,
     ).toHaveLength(6);

@@ -140,8 +140,7 @@ Cinder's first installed slice uses six body-only poses—idle, coil, gather,
 release, sustain, and recover—with the same shared War Staff attachment used by
 Mender. The body preserves Cinder's shadowed face, cyan eyes, crooked violet
 hat, gold-trimmed purple robes, and red-violet clasp; it does not reuse or
-recolor Mender's body. Its aggregate-review status is
-`visual_approval_pending`.
+recolor Mender's body. Its aggregate-review status is `approved_runtime`.
 
 ### Brawler Unarmed Strike
 
@@ -150,7 +149,7 @@ coil, step, impact, follow-through, and recover. It preserves the accepted bald
 martial-artist identity, broad muscular proportions, orange gi, rope belt, and
 white hand-and-foot wraps. The atlas is body-and-clothing only: `unarmed` is an
 explicit equipment mode with no weapon attachment, not a weapon painted into
-the body. Its aggregate-review status is `visual_approval_pending`.
+the body. Its aggregate-review status is `approved_runtime`.
 
 ### Rogue Shadow-Blade Slash
 
@@ -160,7 +159,7 @@ hood, long cloak, charcoal leather armor, crossed belts, and utility pouches
 remain the identity anchors. The portrait blade is not present in the atlas;
 `shadow_blade` now selects a separate curved dagger through shared item visual
 metadata and per-frame `dagger` hand sockets. Its aggregate-review status is
-`visual_approval_pending`.
+`approved_runtime`.
 
 ### Wayfarer Staff Inspire
 
@@ -169,8 +168,7 @@ idle guard, prepare, raise, rally, share, and recover. The accepted friendly
 chestnut-haired face, feathered travel hat, brown cape, blue tunic, red sash,
 stocky proportions, backpack, and bedroll remain identity anchors. The pack is
 permanent identity gear; the staff is not in the atlas and uses the shared War
-Staff item attachment. Its aggregate-review status is
-`visual_approval_pending`.
+Staff item attachment. Its aggregate-review status is `approved_runtime`.
 
 ### Knight Sword-and-Shield Defend
 
@@ -180,7 +178,7 @@ ivory-silver great helm, closed gold-trim visor, dark eye slit, blue gems,
 white tabard, long cape, and noble full plate remain distinct from Warrior's
 body. Both hands are empty in the atlas: the Mythril Sword and Steel Shield
 are independent item-driven runtime layers with per-frame `sword` and `shield`
-sockets. Its aggregate-review status is `visual_approval_pending`.
+sockets. Its aggregate-review status is `approved_runtime`.
 
 ### Champion Unarmed Palm Burst
 
@@ -191,7 +189,7 @@ chest, dark teal one-shoulder wrap, red-brown sash, loose trousers, bracers,
 and wrapped boots. The silhouette and two-hand action remain distinct from
 Brawler's bald orange-gi straight punch. `unarmed` has no attachment, and the
 portrait's fist flame is reserved for runtime effects rather than baked into
-the body atlas. Its aggregate-review status is `visual_approval_pending`.
+the body atlas. Its aggregate-review status is `approved_runtime`.
 
 ### Shadow Dagger Veil Strike
 
@@ -202,7 +200,7 @@ segmented armor, violet seams, and wing-like layered cape remain permanent
 identity anchors. Its horizontal dash and cape sweep differ from Rogue's
 upright slash. The body contains no dagger; shared `shadow_blade` item metadata
 selects the runtime layer and the portrait's second blade is not baked into
-the atlas. Its aggregate-review status is `visual_approval_pending`.
+the atlas. Its aggregate-review status is `approved_runtime`.
 
 ### Sage Staff Sanctuary
 
@@ -213,7 +211,7 @@ halo, ivory gold-filigree robes, silver-lavender mantle, blue gems, and layered
 gold chains distinguish the promoted healer from Mender. The halo is permanent
 class regalia, while the body contains no staff or spell effect. Shared
 `war_staff` metadata selects the equipment layer and the audit supplies the
-all-allies effect. Its aggregate-review status is `visual_approval_pending`.
+all-allies effect. Its aggregate-review status is `approved_runtime`.
 
 ### Pyromancer Staff Inferno
 
@@ -224,7 +222,7 @@ layered red and magenta robes, black mantle and gloves, dense gold flame
 filigree, and split coat tails distinguish it from Cinder. The body contains
 no staff, crystal, dagger, fire, or flame ribbon; shared `war_staff` metadata
 selects the equipment layer and the audit supplies the all-enemies fire
-effect. Its aggregate-review status is `visual_approval_pending`.
+effect. Its aggregate-review status is `approved_runtime`.
 
 ### Wanderer Staff Waystar
 
@@ -236,4 +234,4 @@ cape keep the promoted traveler distinct from Wayfarer. The cape is permanent
 identity clothing, but the body contains no staff, sidearm, star, spell, or
 effect. Shared `war_staff` metadata selects the equipment layer, with the grip
 authored in the image-right hand. Its aggregate-review status is
-`visual_approval_pending`.
+`approved_runtime`.

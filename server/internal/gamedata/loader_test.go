@@ -85,8 +85,8 @@ func TestBattleCharacterManifestLoadsEveryRuntimeIdentity(t *testing.T) {
 	}
 
 	rogue := gd.BattleCharacterByID("rogue")
-	if rogue == nil || rogue.Status != "visual_approval_pending" {
-		t.Fatalf("rogue battle profile = %#v, want visual_approval_pending", rogue)
+	if rogue == nil || rogue.Status != "approved_runtime" {
+		t.Fatalf("rogue battle profile = %#v, want approved_runtime", rogue)
 	}
 	if len(rogue.States["physical_attack"].Frames) != 6 {
 		t.Fatalf("rogue physical attack does not have six frames")
