@@ -528,40 +528,43 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 
 	if combat.CheckVictory(g.enemies) {
 		totalXP, totalGold := 0, 0
-		var drops []string
+		type dropRoll struct {
+			itemID    string
+			itemLevel int
+		}
+		var drops []dropRoll
 		for _, e := range g.enemies {
 			// XP comes straight off the scaled combatant — issue #121. Gold
 			// and drops still need the base Monster record.
 			totalXP += e.XPReward
-			for _, m := range g.gd.Monsters {
-				if m.Name == e.Name {
-					totalGold += m.GoldReward
-					// Roll drops
-					for _, drop := range m.Drops {
-						if g.rng.IntN(100) < drop.ChancePct {
-							drops = append(drops, drop.ItemID)
-						}
+			monster := g.gd.MonsterByID(e.MonsterID)
+			if monster == nil {
+				for i := range g.gd.Monsters {
+					if g.gd.Monsters[i].Name == e.Name {
+						monster = &g.gd.Monsters[i]
+						break
 					}
-					break
+				}
+			}
+			if monster != nil {
+				totalGold += monster.GoldReward
+				// Roll drops
+				for _, drop := range monster.Drops {
+					if g.rng.IntN(100) < drop.ChancePct {
+						drops = append(drops, dropRoll{itemID: drop.ItemID, itemLevel: monster.Tier})
+					}
 				}
 			}
 		}
 		g.inv.Gold += totalGold
 		// Add dropped items to inventory
-		for _, itemID := range drops {
-			g.inv.Consumables[itemID]++
-			// Find item name for log
-			itemName := itemID
-			for _, c := range g.gd.Items.Consumables {
-				if c.ID == itemID {
-					itemName = c.Name
-					break
-				}
+		for _, drop := range drops {
+			grant, err := g.grantLoot(drop.itemID, drop.itemLevel, 0)
+			if err != nil {
+				g.logCombat(fmt.Sprintf("Loot error: %v", err), CombatActionEntry{Kind: "info"})
+				continue
 			}
-			if w := g.gd.WeaponByID(itemID); w != nil {
-				itemName = w.Name
-			}
-			g.logCombat(fmt.Sprintf("Found: %s!", itemName), CombatActionEntry{Kind: "info"})
+			g.logCombat(fmt.Sprintf("Found: %s!", grant.Name), CombatActionEntry{Kind: "info"})
 		}
 		// Snapshot who was dead at victory resolution BEFORE any XP is
 		// distributed and BEFORE restParty() heals them. The client uses this
@@ -707,8 +710,7 @@ func (g *Game) logResolvedCombatAction(
 					Damage: r.TotalDmg, Killed: r.Killed, Crit: anyCrit(r.Hits), Hits: toHitEntries(r.Hits),
 					Initiative: r.Initiative}))
 		case "steal":
-			if itemID, itemName, ok := g.tryStealFrom(r.TargetID); ok {
-				g.inv.Consumables[itemID]++
+			if _, itemName, ok := g.tryStealFrom(r.TargetID); ok {
 				g.logCombat(
 					fmt.Sprintf("%s steals %s from %s!", r.ActorName, itemName, targetName),
 					g.abilityCombatAction(abilityID, CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Initiative: r.Initiative}))
@@ -1255,32 +1257,33 @@ func (g *Game) tryStealFrom(targetID int) (string, string, bool) {
 	if enemy == nil {
 		return "", "", false
 	}
-	var drops []string
-	for _, m := range g.gd.Monsters {
-		if m.Name == enemy.Name {
-			for _, drop := range m.Drops {
-				if g.rng.IntN(100) < drop.ChancePct {
-					drops = append(drops, drop.ItemID)
-				}
+	monster := g.gd.MonsterByID(enemy.MonsterID)
+	if monster == nil {
+		for i := range g.gd.Monsters {
+			if g.gd.Monsters[i].Name == enemy.Name {
+				monster = &g.gd.Monsters[i]
+				break
 			}
-			break
+		}
+	}
+	if monster == nil {
+		return "", "", false
+	}
+	var drops []string
+	for _, drop := range monster.Drops {
+		if g.rng.IntN(100) < drop.ChancePct {
+			drops = append(drops, drop.ItemID)
 		}
 	}
 	if len(drops) == 0 {
 		return "", "", false
 	}
 	itemID := drops[g.rng.IntN(len(drops))]
-	itemName := itemID
-	for _, c := range g.gd.Items.Consumables {
-		if c.ID == itemID {
-			itemName = c.Name
-			break
-		}
+	grant, err := g.grantLoot(itemID, monster.Tier, 0)
+	if err != nil {
+		return "", "", false
 	}
-	if w := g.gd.WeaponByID(itemID); w != nil {
-		itemName = w.Name
-	}
-	return itemID, itemName, true
+	return itemID, grant.Name, true
 }
 
 // resolveHealSpell applies a heal-effect spell to the appropriate target based

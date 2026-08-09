@@ -4,10 +4,16 @@ import { getAutosaveEnabled, setAutosaveEnabled } from "../systems/prefs.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 import { showWorldMap } from "./world_interact.js";
 import { openCharacterDetail } from "./character_detail.js";
+import { showEquipmentScreen } from "./equipment_screen.js";
 import { showOptions } from "./options.js";
 import { showItemMenu } from "./item_menu.js";
 import { hasCastableFieldSpell, showFieldMagicMenu } from "./field_magic.js";
 import { showFormationMenu } from "./formation_menu.js";
+import {
+  craftableRecipeCount,
+  gemWorkshopEnabled,
+  showGemWorkshop,
+} from "./gem_workshop.js";
 import { inferPartyRow } from "./battle_layout.js";
 import { drawPanel, drawButton, drawLabeledStatBar } from "../ui/panel.js";
 import { hpBarColorPct } from "../systems/hpBar.js";
@@ -163,6 +169,8 @@ export function toggleMenu(scene) {
   const magicEnabled = Array.isArray(gs.party)
     ? gs.party.some((member) => hasCastableFieldSpell(member, gs.party))
     : false;
+  const gemsEnabled = gemWorkshopEnabled(gs);
+  const readyGemRecipes = craftableRecipeCount(gs);
   layoutButtonRow(scene, scene.menuGroup, PANEL_CX, FOOTER_TOP + 16, [
     {
       label: "CHARACTER",
@@ -176,7 +184,7 @@ export function toggleMenu(scene) {
       label: "ITEMS",
       hotkey: "I",
       primary: true,
-      w: 128,
+      w: 118,
       iconKey: "icon_potion",
       iconFallback: "I",
       enabled: itemsEnabled,
@@ -192,7 +200,7 @@ export function toggleMenu(scene) {
       label: "MAGIC",
       hotkey: "M",
       primary: true,
-      w: 128,
+      w: 118,
       iconKey: "icon_spell",
       iconFallback: "M",
       enabled: magicEnabled,
@@ -201,6 +209,18 @@ export function toggleMenu(scene) {
         showFieldMagicMenu(scene, {
           onClose: () => toggleMenu(scene),
         });
+      },
+    },
+    {
+      label: readyGemRecipes > 0 ? `GEMS (${readyGemRecipes})` : "GEMS",
+      hotkey: "G",
+      primary: true,
+      w: 118,
+      iconFallback: "G",
+      enabled: gemsEnabled,
+      onClick: () => {
+        closeMenu(scene);
+        showGemWorkshop(scene, { onClose: () => toggleMenu(scene) });
       },
     },
     {
@@ -325,7 +345,7 @@ function closeMenu(scene) {
 
 function openSelectedCharacter(scene) {
   const slot = scene.partyMenuState?.selectedSlot ?? 0;
-  openCharacterDetail(scene, slot);
+  showEquipmentScreen(scene, slot);
 }
 
 function applyTextGlow(text, shadowColor, blur = 1) {
@@ -725,7 +745,7 @@ function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
   rowBg.on("pointerdown", () => selectPartySlot(scene, slot));
   rowBg.on("pointerup", () => {
     selectPartySlot(scene, slot);
-    openCharacterDetail(scene, slot);
+    showEquipmentScreen(scene, slot);
   });
 }
 

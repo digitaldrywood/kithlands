@@ -24,6 +24,10 @@ import {
 } from "./scenes/character_detail.js";
 import { showEquipPicker } from "./scenes/world_menu.js";
 import {
+  showEquipmentScreen,
+  closeEquipmentScreen as closeEquipmentScreenOverlay,
+} from "./scenes/equipment_screen.js";
+import {
   walkSheetKey,
   walkSheetGeometryForClass,
   walkFrameIndex,
@@ -1231,7 +1235,9 @@ export function installDevTestBridge(game) {
       const scene = getScene(game, sceneKey);
       return {
         menuOpen: !!scene?.menuOpen,
-        characterDetailOpen: !!scene?.characterDetailGroup,
+        characterDetailOpen:
+          !!scene?.characterDetailGroup || !!scene?.equipmentScreenState,
+        equipmentScreenOpen: !!scene?.equipmentScreenState,
         debugPanelOpen: !!scene?.debugPanelOpen,
         fieldMagicOpen: !!scene?.fieldMagicMenuState,
       };
@@ -1964,6 +1970,48 @@ export function installDevTestBridge(game) {
       clickGameObject(target);
     },
 
+    hoverCharacterDetailEquipment(slot, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      const target = (scene?.characterDetailGroup || []).find(
+        (entry) =>
+          entry?.characterDetailMeta?.role === "equipment_card" &&
+          entry.characterDetailMeta.slot === slot,
+      );
+      if (!target) {
+        throw new Error(`Character detail equipment not found: ${slot}`);
+      }
+      target.emit("pointerover");
+      return clone(scene.characterEquipmentInspector?.state || null);
+    },
+
+    leaveCharacterDetailEquipment(slot, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      const target = (scene?.characterDetailGroup || []).find(
+        (entry) =>
+          entry?.characterDetailMeta?.role === "equipment_card" &&
+          entry.characterDetailMeta.slot === slot,
+      );
+      if (!target) {
+        throw new Error(`Character detail equipment not found: ${slot}`);
+      }
+      target.emit("pointerout");
+      return clone(scene.characterEquipmentInspector?.state || null);
+    },
+
+    pinCharacterDetailEquipment(slot, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      const target = (scene?.characterDetailGroup || []).find(
+        (entry) =>
+          entry?.bg?.characterDetailMeta?.role === "equipment_details" &&
+          entry.bg.characterDetailMeta.slot === slot,
+      );
+      if (!target?.bg) {
+        throw new Error(`Character detail DETAILS button not found: ${slot}`);
+      }
+      clickGameObject(target.bg);
+      return clone(scene.characterEquipmentInspector?.state || null);
+    },
+
     openEquipPickerFromCharacterDetail(index, type, sceneKey) {
       const scene = getScene(game, sceneKey);
       closeCharacterDetail(scene);
@@ -1975,6 +2023,20 @@ export function installDevTestBridge(game) {
     openCharacterDetail(index = 0, sceneKey) {
       const scene = getScene(game, sceneKey);
       openCharacterDetail(scene, index);
+      return this.sceneFlags(sceneKey);
+    },
+
+    openEquipmentScreen(index = 0, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      if (!scene?.gameState) throw new Error("Scene has no game state");
+      if (scene.characterDetailGroup) closeCharacterDetail(scene);
+      showEquipmentScreen(scene, index);
+      return this.sceneFlags(sceneKey);
+    },
+
+    closeEquipmentScreen(sceneKey) {
+      const scene = getScene(game, sceneKey);
+      closeEquipmentScreenOverlay(scene);
       return this.sceneFlags(sceneKey);
     },
 

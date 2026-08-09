@@ -3,12 +3,21 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("./world_menu.js", () => ({
   showEquipPicker: vi.fn(),
 }));
+vi.mock("./gem_workshop.js", () => ({
+  showGemWorkshop: vi.fn(),
+}));
+vi.mock("./equipment_screen.js", () => ({
+  showEquipmentScreen: vi.fn(),
+}));
 
 import {
+  buildEquipmentBreakdown,
   openCharacterDetail,
   closeCharacterDetail,
 } from "./character_detail.js";
 import { showEquipPicker } from "./world_menu.js";
+import { showGemWorkshop } from "./gem_workshop.js";
+import { showEquipmentScreen } from "./equipment_screen.js";
 import { isWorldInputLocked } from "../systems/modalLock.js";
 
 function makeRectangle() {
@@ -158,6 +167,14 @@ function makeScene(partySize = 4) {
       equipment: Array.from({ length: partySize }, (_, idx) => ({
         weapon_name: `Sword ${idx + 1}`,
         weapon_power: 5 + idx,
+        weapon_item: {
+          id: `wpn_gear_${idx + 1}`,
+          instance_id: `gear_${idx + 1}`,
+          kind: "weapon",
+          name: `Sword ${idx + 1}`,
+          power: 5 + idx,
+          sockets: [{ index: 0 }],
+        },
         armor_name: `Armor ${idx + 1}`,
         armor_absorb: 2 + idx,
       })),
@@ -243,6 +260,49 @@ function isDestroyed(entry) {
 
 beforeEach(() => {
   showEquipPicker.mockClear();
+  showGemWorkshop.mockClear();
+  showEquipmentScreen.mockClear();
+});
+
+describe("equipment stat breakdown", () => {
+  it("separates the base item, affix, and socket values from the resolved total", () => {
+    const breakdown = buildEquipmentBreakdown(
+      {
+        power: 11,
+        affixes: [{ name: "Keen", stat: "power", value: 2 }],
+        sockets: [
+          {
+            gem_id: "ember_gem",
+            gem_name: "Ember Gem",
+            stat: "power",
+            value: 3,
+          },
+        ],
+      },
+      "weapon",
+    );
+
+    expect(breakdown).toEqual({
+      kind: "weapon",
+      stat: "power",
+      statLabel: "POWER",
+      total: 11,
+      base: 6,
+      additions: [
+        { source: "Keen", value: 2, type: "affix" },
+        { source: "Ember Gem", value: 3, type: "gem" },
+      ],
+    });
+  });
+
+  it("uses the resolved equipment total for catalog gear without a rolled instance", () => {
+    expect(buildEquipmentBreakdown(null, "armor", 5)).toMatchObject({
+      stat: "absorb",
+      total: 5,
+      base: 5,
+      additions: [],
+    });
+  });
 });
 
 describe("character detail navigation", () => {
@@ -330,6 +390,24 @@ describe("character detail navigation", () => {
     });
   });
 
+  it("opens the complete loadout manager and returns to the character", () => {
+    const scene = makeScene(2);
+    openCharacterDetail(scene, 1);
+    const loadoutButton = scene.characterDetailGroup.find(
+      (entry) => entry?.label?.text === "FULL LOADOUT",
+    );
+
+    loadoutButton.bg.handlers.pointerdown();
+    loadoutButton.bg.handlers.pointerup();
+
+    expect(showEquipmentScreen).toHaveBeenCalledTimes(1);
+    expect(showEquipmentScreen.mock.calls[0][0]).toBe(scene);
+    expect(showEquipmentScreen.mock.calls[0][1]).toBe(1);
+    showEquipmentScreen.mock.calls[0][2].onClose();
+    expect(scene.characterDetailIndex).toBe(1);
+    expect(currentTextValues(scene)).toContain("Hero 2");
+  });
+
   it("shows derived attack using the equipped weapon power", () => {
     const scene = makeScene(1);
 
@@ -337,6 +415,123 @@ describe("character detail navigation", () => {
 
     expect(currentTextValues(scene)).toContain("ATK: 11");
     expect(currentTextValues(scene)).toContain("STR: 6");
+  });
+
+  it("shows the equipped weapon breakdown immediately and armor on hover", () => {
+    const scene = makeScene(1);
+    scene.gameState.equipment[0].weapon_item = {
+      ...scene.gameState.equipment[0].weapon_item,
+      rarity: "Magic",
+      item_level: 1,
+      required_level: 1,
+      power: 10,
+      affixes: [{ name: "Keen", stat: "power", value: 2 }],
+      sockets: [
+        {
+          index: 0,
+          gem_id: "ember_gem",
+          gem_name: "Ember Gem",
+          stat: "power",
+          value: 3,
+        },
+      ],
+    };
+    scene.gameState.equipment[0].weapon_power = 10;
+
+    openCharacterDetail(scene, 0);
+
+    expect(currentTextValues(scene)).toEqual(
+      expect.arrayContaining([
+        "EQUIPMENT DETAILS",
+        "MAGIC • ITEM LV.1 • REQ LV.1",
+        "POWER BREAKDOWN",
+        "Base item  5",
+        "Keen  +2",
+        "Ember Gem  +3",
+        "TOTAL POWER  10",
+        "ATK 16 = STR 6 + WEAPON 10",
+        "STR 6 = HERO 6 + GEAR 0",
+        "AGI 5 = HERO 5 + GEAR 0",
+      ]),
+    );
+
+    const [, armorCard] = currentEquipCards(scene);
+    armorCard.handlers.pointerover();
+    expect(currentTextValues(scene)).toEqual(
+      expect.arrayContaining([
+        "Armor 1",
+        "ABSORB BREAKDOWN",
+        "Base item  2",
+        "TOTAL ABSORB  2",
+        "DAMAGE ABSORB 2 = ARMOR 2",
+      ]),
+    );
+
+    armorCard.handlers.pointerout();
+    expect(currentTextValues(scene)).toContain("POWER BREAKDOWN");
+  });
+
+  it("pins an armor inspection for touch and ignores later weapon hover", () => {
+    const scene = makeScene(1);
+    openCharacterDetail(scene, 0);
+    const detailsButtons = scene.characterDetailGroup.filter(
+      (entry) => entry?.label?.text === "DETAILS",
+    );
+    expect(detailsButtons).toHaveLength(2);
+
+    detailsButtons[1].bg.handlers.pointerdown();
+    detailsButtons[1].bg.handlers.pointerup();
+    expect(scene.characterEquipmentInspector.state.pinnedSlot).toBe("armor");
+    expect(currentTextValues(scene)).toContain("PINNED • TAP TO RELEASE");
+    expect(currentTextValues(scene)).toContain("ABSORB BREAKDOWN");
+
+    const [weaponCard] = currentEquipCards(scene);
+    weaponCard.handlers.pointerover();
+    expect(currentTextValues(scene)).toContain("ABSORB BREAKDOWN");
+
+    detailsButtons[1].bg.handlers.pointerdown();
+    detailsButtons[1].bg.handlers.pointerup();
+    expect(scene.characterEquipmentInspector.state.pinnedSlot).toBeNull();
+    expect(currentTextValues(scene)).toContain("HOVER • TAP DETAILS");
+  });
+
+  it("opens socketing directly from the equipped weapon and returns to the character", () => {
+    const scene = makeScene(1);
+
+    openCharacterDetail(scene, 0);
+    const socketButton = scene.characterDetailGroup.find(
+      (entry) => entry?.label?.text === "SOCKET",
+    );
+    expect(socketButton).toBeTruthy();
+
+    socketButton.bg.handlers.pointerdown();
+    socketButton.bg.handlers.pointerup();
+
+    expect(showGemWorkshop).toHaveBeenCalledTimes(1);
+    expect(showGemWorkshop.mock.calls[0][0]).toBe(scene);
+    expect(showGemWorkshop.mock.calls[0][1].preselectedInstanceID).toBe(
+      "gear_1",
+    );
+
+    showGemWorkshop.mock.calls[0][1].onClose();
+    expect(scene.characterDetailIndex).toBe(0);
+    expect(currentTextValues(scene)).toContain("Hero 1");
+  });
+
+  it("shows the applied gem by name instead of another socket action", () => {
+    const scene = makeScene(1);
+    scene.gameState.equipment[0].weapon_item.sockets = [
+      { index: 0, gem_id: "ember_gem", gem_name: "Ember Gem" },
+    ];
+
+    openCharacterDetail(scene, 0);
+
+    expect(currentTextValues(scene)).toContain("◆ EMBER GEM");
+    expect(
+      scene.characterDetailGroup.some(
+        (entry) => entry?.label?.text === "SOCKET",
+      ),
+    ).toBe(false);
   });
 
   it("keeps field healing selectable and explains the next step", () => {

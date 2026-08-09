@@ -24,6 +24,9 @@ func TestEquipWeapon(t *testing.T) {
 	if inv.WeaponPower(0, gd) != 12 {
 		t.Errorf("weapon power: got %d, want 12", inv.WeaponPower(0, gd))
 	}
+	if got := inv.Equipment[0].Equipped(inventory.MainHandSlot).ItemID; got != "iron_sword" {
+		t.Errorf("canonical main hand = %q, want iron_sword", got)
+	}
 }
 
 func TestEquipWeaponClassRestriction(t *testing.T) {
@@ -63,6 +66,9 @@ func TestEquipArmor(t *testing.T) {
 	absorb := inv.TotalAbsorb(0, gd)
 	if absorb != 12 {
 		t.Errorf("armor absorb: got %d, want 12", absorb)
+	}
+	if got := inv.Equipment[0].Equipped(inventory.BodySlot).ItemID; got != "chain_mail" {
+		t.Errorf("canonical body = %q, want chain_mail", got)
 	}
 }
 

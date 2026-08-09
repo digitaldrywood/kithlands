@@ -44,16 +44,37 @@ const DETAIL_SPECS = {
   ],
 };
 
-function statSpecs(type) {
-  return DETAIL_SPECS[type] || [];
+const GENERIC_STAT_LABELS = {
+  power: "Power",
+  absorb: "Absorb",
+  str: "Strength",
+  agi: "Agility",
+  int: "Intellect",
+  vit: "Vitality",
+  lck: "Luck",
+  hit_pct: "Hit%",
+  crit_pct: "Crit%",
+  magic_defense: "MagicDef",
+  evade_penalty: "Evade",
+};
+
+function statSpecs(item) {
+  const type = itemType(item);
+  if (type !== "equipment") return DETAIL_SPECS[type] || [];
+  return Object.keys(item?.stats || {}).map((key) => ({
+    key,
+    label: GENERIC_STAT_LABELS[key] || key,
+  }));
 }
 
 function itemType(item) {
-  return item?.type === "weapon" ? "weapon" : "armor";
+  if (item?.type === "weapon") return "weapon";
+  if (item?.type === "equipment") return "equipment";
+  return "armor";
 }
 
 export function isEquipmentShopItem(item) {
-  return item?.type === "weapon" || item?.type === "armor";
+  return ["weapon", "armor", "equipment"].includes(item?.type);
 }
 
 export function allowedClassIds(item) {
@@ -84,7 +105,11 @@ export function indicatorForMember(item, member, equipped = {}) {
     };
   }
 
-  const delta = computeEquipDelta(item, equipped, item.type);
+  const delta =
+    item.type === "equipment"
+      ? genericItemScore(item) -
+        genericItemScore(currentGenericItem(item, equipped))
+      : computeEquipDelta(item, equipped, item.type);
   if (delta > 0) {
     return {
       state: "upgrade",
@@ -132,12 +157,19 @@ export function buildItemStatBlock(item) {
     stats.push({ label: "Hit%", value: `${item?.hit_pct ?? 0}` });
     stats.push({ label: "Crit%", value: `${item?.crit_pct ?? 0}` });
     stats.push({ label: "MagicDef", value: "0" });
-  } else {
+  } else if (type === "armor") {
     stats.push({ label: "Power", value: "0" });
     stats.push({ label: "Absorb", value: `${item?.absorb ?? 0}` });
     stats.push({ label: "Hit%", value: "0" });
     stats.push({ label: "Crit%", value: "0" });
     stats.push({ label: "MagicDef", value: `${item?.magic_defense ?? 0}` });
+  } else {
+    for (const spec of statSpecs(item)) {
+      stats.push({
+        label: spec.label,
+        value: `${item?.stats?.[spec.key] ?? 0}`,
+      });
+    }
   }
   stats.push({ label: "Element", value: item?.element || "none" });
   stats.push({
@@ -150,14 +182,20 @@ export function buildItemStatBlock(item) {
 export function buildFocusedMemberCompare(item, member, equipped = {}) {
   const type = itemType(item);
   const canEquip = canPartyMemberEquip(item, member);
+  const genericCurrent =
+    type === "equipment" ? currentGenericItem(item, equipped) : null;
   const currentName =
     type === "weapon"
       ? equipped?.weapon_name || "None"
-      : equipped?.armor_name || "None";
+      : type === "armor"
+        ? equipped?.armor_name || "None"
+        : genericCurrent?.name || "None";
   const currentElement =
     type === "weapon"
       ? equipped?.weapon_element || "none"
-      : equipped?.armor_element || "none";
+      : type === "armor"
+        ? equipped?.armor_element || "none"
+        : "none";
 
   return {
     canEquip,
@@ -165,20 +203,60 @@ export function buildFocusedMemberCompare(item, member, equipped = {}) {
     nextName: item?.name || "",
     currentElement,
     nextElement: item?.element || "none",
-    lines: statSpecs(type).map((spec) => {
-      const delta = computeEquipDelta(item, equipped, type, spec.key);
-      const deltaLabel = formatDeltaLabel(delta, type, spec.key);
+    lines: statSpecs(item).map((spec) => {
+      const currentValue =
+        type === "equipment"
+          ? (genericCurrent?.stats?.[spec.key] ?? 0)
+          : (equipped?.[spec.equippedKey] ?? 0);
+      const nextValue =
+        type === "equipment"
+          ? (item?.stats?.[spec.key] ?? 0)
+          : (item?.[spec.key] ?? 0);
+      const delta = nextValue - currentValue;
+      const deltaLabel =
+        type === "equipment"
+          ? {
+              text: `${delta > 0 ? "+" : ""}${delta}`,
+              color:
+                delta === 0
+                  ? SHOP_COMPARE_COLORS.equal
+                  : spec.key === "evade_penalty"
+                    ? delta < 0
+                      ? SHOP_COMPARE_COLORS.upgrade
+                      : SHOP_COMPARE_COLORS.downgrade
+                    : delta > 0
+                      ? SHOP_COMPARE_COLORS.upgrade
+                      : SHOP_COMPARE_COLORS.downgrade,
+            }
+          : formatDeltaLabel(delta, type, spec.key);
       return {
         key: spec.key,
         label: spec.label,
-        currentValue: equipped?.[spec.equippedKey] ?? 0,
-        nextValue: item?.[spec.key] ?? 0,
+        currentValue,
+        nextValue,
         delta,
         deltaText: deltaLabel.text,
         color: canEquip ? deltaLabel.color : SHOP_COMPARE_COLORS.locked,
       };
     }),
   };
+}
+
+function currentGenericItem(item, equipped = {}) {
+  return (
+    (equipped?.loadout || []).find(
+      (slot) => slot?.item?.category === item?.category,
+    )?.item || null
+  );
+}
+
+function genericItemScore(item) {
+  return Object.entries(item?.stats || {}).reduce(
+    (total, [key, value]) =>
+      total +
+      (key === "evade_penalty" ? -Number(value || 0) : Number(value || 0)),
+    0,
+  );
 }
 
 export function buyForMemberLabel(member) {

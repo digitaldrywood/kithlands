@@ -6,6 +6,7 @@ import { WorldScene } from "./scenes/world.js";
 import { BattleScene } from "./scenes/battle.js";
 import { TownScene } from "./scenes/town.js";
 import { SettlementScene } from "./scenes/settlement.js";
+import "./styles/equipment-screen.css";
 
 const config = {
   type: Phaser.AUTO,

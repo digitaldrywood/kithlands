@@ -1,0 +1,30 @@
+{
+  "rarities": [
+    {"id": "common", "name": "Common", "min_item_level": 1, "weight": 60, "affixes": {"min": 0, "max": 0}, "sockets": {"min": 0, "max": 1}},
+    {"id": "magic", "name": "Magic", "min_item_level": 1, "weight": 30, "affixes": {"min": 1, "max": 1}, "sockets": {"min": 1, "max": 1}},
+    {"id": "rare", "name": "Rare", "min_item_level": 3, "weight": 10, "affixes": {"min": 2, "max": 2}, "sockets": {"min": 1, "max": 2}}
+  ],
+  "affixes": [
+    {"id": "keen", "name": "Keen", "position": "prefix", "kinds": ["weapon"], "min_item_level": 1, "required_level": 1, "weight": 100, "modifier": {"stat": "power", "min": 1, "max": 2}},
+    {"id": "brutal", "name": "of Force", "position": "suffix", "kinds": ["weapon"], "min_item_level": 3, "required_level": 12, "weight": 50, "modifier": {"stat": "power", "min": 3, "max": 5}},
+    {"id": "reinforced", "name": "Reinforced", "position": "prefix", "kinds": ["armor"], "min_item_level": 1, "required_level": 1, "weight": 100, "modifier": {"stat": "absorb", "min": 1, "max": 2}},
+    {"id": "sheltering", "name": "of Shelter", "position": "suffix", "kinds": ["armor"], "min_item_level": 3, "required_level": 12, "weight": 50, "modifier": {"stat": "absorb", "min": 2, "max": 4}},
+    {"id": "vigorous", "name": "Vigorous", "position": "prefix", "kinds": ["accessory"], "min_item_level": 1, "required_level": 1, "weight": 100, "modifier": {"stat": "vit", "min": 1, "max": 2}},
+    {"id": "fortunate", "name": "of Fortune", "position": "suffix", "kinds": ["accessory"], "min_item_level": 3, "required_level": 12, "weight": 50, "modifier": {"stat": "lck", "min": 2, "max": 4}}
+  ],
+  "gems": [
+    {"id": "ember_shard", "name": "Ember Shard", "tier": 1, "required_level": 1, "description": "Adds a small equipment bonus.", "socket_color": "#ff8a3d", "glow_color": "#ffc05c", "effects": [{"kind": "weapon", "stat": "power", "value": 1}, {"kind": "armor", "stat": "absorb", "value": 1}, {"kind": "accessory", "stat": "str", "value": 1}]},
+    {"id": "ember_gem", "name": "Ember Gem", "tier": 2, "required_level": 1, "description": "Adds a moderate equipment bonus.", "socket_color": "#ff5c2a", "glow_color": "#ffd166", "effects": [{"kind": "weapon", "stat": "power", "value": 3}, {"kind": "armor", "stat": "absorb", "value": 2}, {"kind": "accessory", "stat": "str", "value": 3}]},
+    {"id": "ember_crystal", "name": "Ember Crystal", "tier": 4, "required_level": 20, "description": "Adds a powerful equipment bonus.", "socket_color": "#ff3b18", "glow_color": "#fff0a6", "effects": [{"kind": "weapon", "stat": "power", "value": 7}, {"kind": "armor", "stat": "absorb", "value": 5}, {"kind": "accessory", "stat": "str", "value": 7}]},
+    {"id": "ward_shard", "name": "Ward Shard", "tier": 1, "required_level": 1, "description": "Favors armor when socketed.", "socket_color": "#62c9ff", "glow_color": "#9ee8ff", "effects": [{"kind": "weapon", "stat": "power", "value": 1}, {"kind": "armor", "stat": "absorb", "value": 2}, {"kind": "accessory", "stat": "vit", "value": 1}]},
+    {"id": "ward_gem", "name": "Ward Gem", "tier": 2, "required_level": 1, "description": "Strongly favors armor when socketed.", "socket_color": "#28a9ff", "glow_color": "#b6f4ff", "effects": [{"kind": "weapon", "stat": "power", "value": 2}, {"kind": "armor", "stat": "absorb", "value": 4}, {"kind": "accessory", "stat": "vit", "value": 3}]},
+    {"id": "ward_crystal", "name": "Ward Crystal", "tier": 4, "required_level": 20, "description": "Greatly strengthens socketed armor.", "socket_color": "#2474ff", "glow_color": "#e0fbff", "effects": [{"kind": "weapon", "stat": "power", "value": 4}, {"kind": "armor", "stat": "absorb", "value": 8}, {"kind": "accessory", "stat": "vit", "value": 7}]}
+  ],
+  "recipes": [
+    {"id": "refine_ember_gem", "name": "Transmute Ember Gem", "required_level": 1, "inputs": [{"gem_id": "ember_shard", "count": 3}], "output": {"gem_id": "ember_gem", "count": 1}},
+    {"id": "refine_ember_crystal", "name": "Transmute Ember Crystal", "required_level": 20, "inputs": [{"gem_id": "ember_gem", "count": 3}], "output": {"gem_id": "ember_crystal", "count": 1}},
+    {"id": "refine_ward_gem", "name": "Transmute Ward Gem", "required_level": 1, "inputs": [{"gem_id": "ward_shard", "count": 3}], "output": {"gem_id": "ward_gem", "count": 1}},
+    {"id": "refine_ward_crystal", "name": "Transmute Ward Crystal", "required_level": 20, "inputs": [{"gem_id": "ward_gem", "count": 3}], "output": {"gem_id": "ward_crystal", "count": 1}}
+  ],
+  "starter": {"gem_id": "ember_shard", "gem_count": 3, "min_sockets": 1}
+}

@@ -9,23 +9,79 @@ import (
 
 // Inventory holds a party's items and equipment state.
 type Inventory struct {
-	Gold        int               `json:"gold"`
-	Consumables map[string]int    `json:"consumables"`
-	KeyItems    []string          `json:"key_items"`
-	Equipment   [4]EquipmentSlots `json:"equipment"` // indexed by party slot
+	SchemaVersion int                           `json:"schema_version,omitempty"`
+	Gold          int                           `json:"gold"`
+	Consumables   map[string]int                `json:"consumables"`
+	Gems          map[string]int                `json:"gems,omitempty"`
+	Instances     map[string]*EquipmentInstance `json:"instances,omitempty"`
+	NextInstance  uint64                        `json:"next_instance,omitempty"`
+	KeyItems      []string                      `json:"key_items"`
+	Equipment     [4]EquipmentSlots             `json:"equipment"` // indexed by party slot
 }
 
 // EquipmentSlots tracks what a single character has equipped.
 type EquipmentSlots struct {
-	WeaponID string `json:"weapon_id,omitempty"`
-	ArmorID  string `json:"armor_id,omitempty"`
-	ShieldID string `json:"shield_id,omitempty"`
-	HelmetID string `json:"helmet_id,omitempty"`
+	WeaponID         string                     `json:"weapon_id,omitempty"`
+	WeaponInstanceID string                     `json:"weapon_instance_id,omitempty"`
+	ArmorID          string                     `json:"armor_id,omitempty"`
+	ArmorInstanceID  string                     `json:"armor_instance_id,omitempty"`
+	ShieldID         string                     `json:"shield_id,omitempty"`
+	HelmetID         string                     `json:"helmet_id,omitempty"`
+	Loadout          map[string]EquippedItemRef `json:"loadout,omitempty"`
 }
+
+// EquippedItemRef is the stable persisted reference stored in a canonical
+// loadout slot. ItemID points at shared content; InstanceID distinguishes a
+// particular randomized roll when present.
+type EquippedItemRef struct {
+	ItemID     string `json:"item_id,omitempty"`
+	InstanceID string `json:"instance_id,omitempty"`
+}
+
+const (
+	MainHandSlot = "main_hand"
+	BodySlot     = "body"
+)
 
 func New() *Inventory {
 	return &Inventory{
-		Consumables: make(map[string]int),
+		SchemaVersion: currentSchemaVersion,
+		Consumables:   make(map[string]int),
+		Gems:          make(map[string]int),
+		Instances:     make(map[string]*EquipmentInstance),
+	}
+}
+
+// Equipped returns the canonical reference for a slot, with compatibility
+// fallbacks for legacy saves that only contain weapon_id and armor_id.
+func (slots EquipmentSlots) Equipped(slotID string) EquippedItemRef {
+	if ref, ok := slots.Loadout[slotID]; ok {
+		return ref
+	}
+	switch slotID {
+	case MainHandSlot:
+		return EquippedItemRef{ItemID: slots.WeaponID, InstanceID: slots.WeaponInstanceID}
+	case BodySlot:
+		return EquippedItemRef{ItemID: slots.ArmorID, InstanceID: slots.ArmorInstanceID}
+	default:
+		return EquippedItemRef{}
+	}
+}
+
+func (slots *EquipmentSlots) setEquipped(slotID string, ref EquippedItemRef) {
+	if slots.Loadout == nil {
+		slots.Loadout = make(map[string]EquippedItemRef)
+	}
+	if ref.ItemID == "" && ref.InstanceID == "" {
+		delete(slots.Loadout, slotID)
+	} else {
+		slots.Loadout[slotID] = ref
+	}
+	switch slotID {
+	case MainHandSlot:
+		slots.WeaponID, slots.WeaponInstanceID = ref.ItemID, ref.InstanceID
+	case BodySlot:
+		slots.ArmorID, slots.ArmorInstanceID = ref.ItemID, ref.InstanceID
 	}
 }
 
@@ -76,8 +132,8 @@ func (inv *Inventory) EquipWeapon(slot int, weaponID string, classID string, gd 
 		return "", fmt.Errorf("class %q cannot equip weapon %q", classID, weaponID)
 	}
 
-	prev := inv.Equipment[slot].WeaponID
-	inv.Equipment[slot].WeaponID = weaponID
+	prev := inv.Equipment[slot].Equipped(MainHandSlot).ItemID
+	inv.Equipment[slot].setEquipped(MainHandSlot, EquippedItemRef{ItemID: weaponID})
 	return prev, nil
 }
 
@@ -91,13 +147,18 @@ func (inv *Inventory) EquipArmor(slot int, armorID string, classID string, gd *g
 		return "", fmt.Errorf("class %q cannot equip armor %q", classID, armorID)
 	}
 
-	prev := inv.Equipment[slot].ArmorID
-	inv.Equipment[slot].ArmorID = armorID
+	prev := inv.Equipment[slot].Equipped(BodySlot).ItemID
+	inv.Equipment[slot].setEquipped(BodySlot, EquippedItemRef{ItemID: armorID})
 	return prev, nil
 }
 
 // TotalAbsorb returns the combined armor absorb for a party slot.
 func (inv *Inventory) TotalAbsorb(slot int, gd *gamedata.GameData) int {
+	if id := inv.Equipment[slot].ArmorInstanceID; id != "" {
+		if resolved, err := ResolveInstance(inv.Instance(id), gd); err == nil {
+			return resolved.Absorb
+		}
+	}
 	total := 0
 	if id := inv.Equipment[slot].ArmorID; id != "" {
 		if a := gd.ArmorByID(id); a != nil {
@@ -125,6 +186,11 @@ func (inv *Inventory) TotalAbsorb(slot int, gd *gamedata.GameData) int {
 
 // WeaponPower returns the equipped weapon's power for a party slot.
 func (inv *Inventory) WeaponPower(slot int, gd *gamedata.GameData) int {
+	if id := inv.Equipment[slot].WeaponInstanceID; id != "" {
+		if resolved, err := ResolveInstance(inv.Instance(id), gd); err == nil {
+			return resolved.Power
+		}
+	}
 	if id := inv.Equipment[slot].WeaponID; id != "" {
 		if w := gd.WeaponByID(id); w != nil {
 			return w.Power
@@ -151,6 +217,45 @@ func (inv *Inventory) WeaponLongRange(slot int, gd *gamedata.GameData) bool {
 		}
 	}
 	return false
+}
+
+// LoadoutStats resolves the complete equipped stat contribution for inventory
+// comparisons. Combat continues using its legacy weapon/armor accessors until
+// the expanded stat model is deliberately integrated there.
+func (inv *Inventory) LoadoutStats(slot int, gd *gamedata.GameData) map[string]int {
+	totals := make(map[string]int)
+	if slot < 0 || slot >= len(inv.Equipment) {
+		return totals
+	}
+	refs := make(map[string]EquippedItemRef, len(inv.Equipment[slot].Loadout)+2)
+	for slotID, ref := range inv.Equipment[slot].Loadout {
+		refs[slotID] = ref
+	}
+	if _, ok := refs[MainHandSlot]; !ok {
+		refs[MainHandSlot] = inv.Equipment[slot].Equipped(MainHandSlot)
+	}
+	if _, ok := refs[BodySlot]; !ok {
+		refs[BodySlot] = inv.Equipment[slot].Equipped(BodySlot)
+	}
+	for _, ref := range refs {
+		if ref.ItemID == "" {
+			continue
+		}
+		if ref.InstanceID != "" {
+			if resolved, err := ResolveInstance(inv.Instance(ref.InstanceID), gd); err == nil {
+				for stat, value := range resolved.Stats {
+					totals[stat] += value
+				}
+			}
+			continue
+		}
+		if base := gd.EquipmentBaseByID(ref.ItemID); base != nil {
+			for stat, value := range base.Stats {
+				totals[stat] += value
+			}
+		}
+	}
+	return totals
 }
 
 // BuyItem purchases a consumable from a shop.

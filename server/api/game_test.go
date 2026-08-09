@@ -392,7 +392,7 @@ func TestEquipWeapon(t *testing.T) {
 	})
 	gameID := gs["id"].(string)
 
-	// Baseline party state: starting warrior has short_sword (T1) + leather_armor (T1).
+	// Baseline party state: starting warrior has shared-data tier-one equipment.
 	party := gs["party"].([]any)
 	base := party[0].(map[string]any)
 	baseComp, ok := base["composition"].(map[string]any)
@@ -798,8 +798,8 @@ func TestEquipStateIncludesPowerAndAbsorb(t *testing.T) {
 	})
 	gameID := gs["id"].(string)
 
-	// The starting warrior has short_sword (tier 1, power 5) and
-	// leather_armor (tier 1, absorb 2) equipped, so the EquipState
+	// The starting warrior has shared-data tier-one weapon and body armor
+	// instances equipped, so the EquipState
 	// entries should already expose WeaponPower > 0 and ArmorAbsorb > 0.
 	equipment := gs["equipment"].([]any)
 	eq0 := equipment[0].(map[string]any)

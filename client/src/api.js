@@ -131,11 +131,54 @@ export async function buyItem(gameId, itemId, type) {
   return apiCall("POST", `/game/${gameId}/buy`, { item_id: itemId, type });
 }
 
-export async function equipItem(gameId, slot, itemId, type) {
+export async function equipItem(
+  gameId,
+  slot,
+  itemId,
+  type,
+  equipmentSlot = "",
+) {
   return apiCall("POST", `/game/${gameId}/equip`, {
     slot,
     item_id: itemId,
     type,
+    equipment_slot: equipmentSlot,
+  });
+}
+
+export async function unequipItem(gameId, slot, equipmentSlot) {
+  return apiCall("POST", `/game/${gameId}/unequip`, {
+    slot,
+    equipment_slot: equipmentSlot,
+  });
+}
+
+export async function recommendEquipment(gameId, slot, goal = "balanced") {
+  return apiCall("POST", `/game/${gameId}/equipment/recommend`, { slot, goal });
+}
+
+export async function applyRecommendedEquipment(
+  gameId,
+  slot,
+  goal = "balanced",
+) {
+  return apiCall("POST", `/game/${gameId}/equipment/recommend/apply`, {
+    slot,
+    goal,
+  });
+}
+
+export async function socketGem(gameId, instanceId, socket, gemId) {
+  return apiCall("POST", `/game/${gameId}/socket`, {
+    instance_id: instanceId,
+    socket,
+    gem_id: gemId,
+  });
+}
+
+export async function craftGem(gameId, recipeId) {
+  return apiCall("POST", `/game/${gameId}/craft`, {
+    recipe_id: recipeId,
   });
 }
 

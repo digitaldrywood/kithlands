@@ -671,6 +671,19 @@ Status effects do not stack — a character is either poisoned or not. This is a
 
 The player should be able to look at a weapon and understand *why* it's better than the previous one. No hidden modifiers, no opaque stats. A bigger number is a bigger sword.
 
+The expanded character loadout, comparison flow, socket/transmutation return
+flow, recommendation preview, DOM boundary, and future icon contract are
+defined in [docs/EQUIPMENT_SCREEN_CONTRACT.md](EQUIPMENT_SCREEN_CONTRACT.md).
+The normal Character action presents status and the spatial loadout together;
+slot-specific inventory and comparison controls appear in context. Battle
+presentation remains a later decision.
+
+The staged weapon, armor, accessory, class-access, affix, and icon-production
+taxonomy is defined in
+[docs/EQUIPMENT_CONTENT_TAXONOMY.md](EQUIPMENT_CONTENT_TAXONOMY.md). It is a
+content architecture, not authorization to generate the entire asset catalog
+before the mechanics and visual gold slice are approved.
+
 Each weapon has:
 - **Power** (added to STR for damage)
 - **Hit%** (added to character's hit%)

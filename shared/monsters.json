@@ -20,7 +20,8 @@
     "resistances": [],
     "absorbs": [],
     "drops": [
-      { "item_id": "potion", "chance_pct": 15 }
+      { "item_id": "potion", "chance_pct": 15 },
+      { "item_id": "ember_shard", "chance_pct": 15 }
     ],
     "encounter_weight": 30,
     "min_group": 1,
@@ -48,7 +49,9 @@
     "absorbs": [],
     "drops": [
       { "item_id": "potion", "chance_pct": 10 },
-      { "item_id": "rusty_dagger", "chance_pct": 5 }
+      { "item_id": "rusty_dagger", "chance_pct": 5 },
+      { "item_id": "leather_gloves", "chance_pct": 8 },
+      { "item_id": "ward_shard", "chance_pct": 12 }
     ],
     "encounter_weight": 25,
     "min_group": 1,
@@ -75,7 +78,9 @@
     "resistances": ["ice"],
     "absorbs": [],
     "drops": [
-      { "item_id": "antidote", "chance_pct": 20 }
+      { "item_id": "antidote", "chance_pct": 20 },
+      { "item_id": "trail_boots", "chance_pct": 8 },
+      { "item_id": "ember_shard", "chance_pct": 10 }
     ],
     "encounter_weight": 20,
     "min_group": 1,
@@ -104,7 +109,9 @@
     "absorbs": [],
     "drops": [
       { "item_id": "potion", "chance_pct": 15 },
-      { "item_id": "iron_sword", "chance_pct": 3 }
+      { "item_id": "iron_sword", "chance_pct": 3 },
+      { "item_id": "leather_cap", "chance_pct": 6 },
+      { "item_id": "ward_shard", "chance_pct": 10 }
     ],
     "encounter_weight": 15,
     "min_group": 1,
@@ -132,7 +139,8 @@
     "resistances": ["dark", "ice"],
     "absorbs": [],
     "drops": [
-      { "item_id": "steel_sword", "chance_pct": 100 }
+      { "item_id": "steel_sword", "chance_pct": 100 },
+      { "item_id": "ember_gem", "chance_pct": 8 }
     ],
     "encounter_weight": 0,
     "min_group": 1,
@@ -159,7 +167,8 @@
     "resistances": [],
     "absorbs": [],
     "drops": [
-      { "item_id": "antidote", "chance_pct": 10 }
+      { "item_id": "antidote", "chance_pct": 10 },
+      { "item_id": "copper_ring", "chance_pct": 6 }
     ],
     "encounter_weight": 35,
     "min_group": 2,
@@ -215,7 +224,8 @@
     "absorbs": [],
     "drops": [
       { "item_id": "hi_potion", "chance_pct": 15 },
-      { "item_id": "steel_sword", "chance_pct": 3 }
+      { "item_id": "steel_sword", "chance_pct": 3 },
+      { "item_id": "ward_gem", "chance_pct": 8 }
     ],
     "encounter_weight": 12,
     "min_group": 1,
@@ -270,7 +280,8 @@
     "absorbs": [],
     "drops": [
       { "item_id": "hi_potion", "chance_pct": 15 },
-      { "item_id": "mythril_sword", "chance_pct": 3 }
+      { "item_id": "mythril_sword", "chance_pct": 3 },
+      { "item_id": "ember_gem", "chance_pct": 10 }
     ],
     "encounter_weight": 12,
     "min_group": 1,
@@ -297,7 +308,8 @@
     "resistances": ["fire", "ice"],
     "absorbs": [],
     "drops": [
-      { "item_id": "mythril_axe", "chance_pct": 4 }
+      { "item_id": "mythril_axe", "chance_pct": 4 },
+      { "item_id": "ward_gem", "chance_pct": 10 }
     ],
     "encounter_weight": 8,
     "min_group": 1,
@@ -384,7 +396,8 @@
     "drops": [
       { "item_id": "phoenix_down", "chance_pct": 15 },
       { "item_id": "hi_ether", "chance_pct": 10 },
-      { "item_id": "rune_blade", "chance_pct": 2 }
+      { "item_id": "rune_blade", "chance_pct": 2 },
+      { "item_id": "ember_crystal", "chance_pct": 8 }
     ],
     "encounter_weight": 4,
     "min_group": 1,
@@ -412,7 +425,8 @@
     "resistances": ["dark"],
     "absorbs": [],
     "drops": [
-      { "item_id": "rune_blade", "chance_pct": 100 }
+      { "item_id": "rune_blade", "chance_pct": 100 },
+      { "item_id": "ward_crystal", "chance_pct": 8 }
     ],
     "encounter_weight": 0,
     "min_group": 1,

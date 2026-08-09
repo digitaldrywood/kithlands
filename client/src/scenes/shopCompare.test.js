@@ -32,14 +32,58 @@ describe("shopCompare helpers", () => {
     element: "",
     class_ids: ["mender", "cinder", "rogue", "wayfarer"],
   };
+  const gloves = {
+    id: "training_wraps",
+    type: "equipment",
+    category: "gloves",
+    name: "Hearthbound Wraps",
+    stats: { power: 2, hit_pct: 2 },
+    class_ids: ["brawler"],
+  };
 
   it("detects equipment rows and parses allowed classes", () => {
     expect(isEquipmentShopItem(weapon)).toBe(true);
+    expect(isEquipmentShopItem(gloves)).toBe(true);
     expect(isEquipmentShopItem({ type: "consumable" })).toBe(false);
     expect(allowedClassIds({ classes: "warrior, rogue" })).toEqual([
       "warrior",
       "rogue",
     ]);
+  });
+
+  it("compares expanded gear against its matching paper-doll category", () => {
+    const compare = buildFocusedMemberCompare(
+      gloves,
+      { class_id: "brawler" },
+      {
+        loadout: [
+          {
+            id: "hands",
+            item: {
+              name: "Old Wraps",
+              category: "gloves",
+              stats: { power: 1, hit_pct: 1 },
+            },
+          },
+        ],
+      },
+    );
+
+    expect(compare.currentName).toBe("Old Wraps");
+    expect(compare.lines).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: "Power",
+          currentValue: 1,
+          nextValue: 2,
+        }),
+        expect.objectContaining({
+          label: "Hit%",
+          currentValue: 1,
+          nextValue: 2,
+        }),
+      ]),
+    );
   });
 
   it("checks class-lock eligibility against class_ids", () => {

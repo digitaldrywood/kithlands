@@ -65,6 +65,7 @@ func (g *Game) ToSaveState(name, userID string) (*save.SaveState, error) {
 		"building_side_quests":   g.buildingSideQuests,
 		"last_round_actions":     g.lastRoundActions,
 		"world_encounter_count":  g.worldEncounterCount,
+		"loot_roll_sequence":     g.lootRollSeq,
 	}
 	worldJSON, err := json.Marshal(worldState)
 	if err != nil {
@@ -109,6 +110,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	if err := json.Unmarshal(ss.Inventory, &inv); err != nil {
 		return nil, fmt.Errorf("unmarshaling inventory: %w", err)
 	}
+	inv.Normalize()
 
 	var quests []generator.Quest
 	if err := json.Unmarshal(ss.QuestState, &quests); err != nil {
@@ -126,6 +128,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		BuildingSideQuests   map[string]generator.BuildingSideQuest `json:"building_side_quests"`
 		LastRoundActions     []MemberActionReq                      `json:"last_round_actions"`
 		WorldEncounterCount  int                                    `json:"world_encounter_count"`
+		LootRollSequence     uint64                                 `json:"loot_roll_sequence"`
 	}
 	if err := json.Unmarshal(ss.WorldState, &worldState); err != nil {
 		return nil, fmt.Errorf("unmarshaling world state: %w", err)
@@ -185,6 +188,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		collectedHiddenItems: collectedHidden,
 		triggeredFlags:       triggeredFlags,
 		worldEncounterCount:  worldState.WorldEncounterCount,
+		lootRollSeq:          worldState.LootRollSequence,
 		trans:                trans,
 		lastRoundActions:     cloneMemberActionReqs(worldState.LastRoundActions),
 	}

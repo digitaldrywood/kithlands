@@ -2,23 +2,24 @@ package gamedata
 
 // Class represents a playable character class loaded from shared/classes.json.
 type Class struct {
-	ID               string           `json:"id"`
-	Name             string           `json:"name"`
-	Role             string           `json:"role"`
-	DefaultRow       string           `json:"default_row,omitempty"`
-	PromotesTo       string           `json:"promotes_to"`
-	PromotedName     string           `json:"promoted_name"`
-	StartingStats    StartingStats    `json:"starting_stats"`
-	StatGrowthEights StatGrowthEights `json:"stat_growth_eighths"`
-	HPPerLevel       int              `json:"hp_per_level"`
-	MPPerLevel       int              `json:"mp_per_level"`
-	StrongLevelRate  int              `json:"strong_level_rate_pct"`
-	StrongLevelBonus int              `json:"strong_level_bonus_hp"`
-	Equipment        Equipment        `json:"equipment"`
-	Magic            Magic            `json:"magic"`
-	Abilities        []string         `json:"abilities"`
-	BareHand         *BareHand        `json:"bare_hand,omitempty"`
-	Description      string           `json:"description"`
+	ID               string            `json:"id"`
+	Name             string            `json:"name"`
+	Role             string            `json:"role"`
+	DefaultRow       string            `json:"default_row,omitempty"`
+	PromotesTo       string            `json:"promotes_to"`
+	PromotedName     string            `json:"promoted_name"`
+	StartingStats    StartingStats     `json:"starting_stats"`
+	StatGrowthEights StatGrowthEights  `json:"stat_growth_eighths"`
+	HPPerLevel       int               `json:"hp_per_level"`
+	MPPerLevel       int               `json:"mp_per_level"`
+	StrongLevelRate  int               `json:"strong_level_rate_pct"`
+	StrongLevelBonus int               `json:"strong_level_bonus_hp"`
+	Equipment        Equipment         `json:"equipment"`
+	Magic            Magic             `json:"magic"`
+	Abilities        []string          `json:"abilities"`
+	StartingLoadout  map[string]string `json:"starting_loadout,omitempty"`
+	BareHand         *BareHand         `json:"bare_hand,omitempty"`
+	Description      string            `json:"description"`
 }
 
 type StartingStats struct {
@@ -181,12 +182,14 @@ type ShowcaseBattleCharacterAudit struct {
 }
 
 type ShowcasePartyMember struct {
-	Name     string   `json:"name"`
-	ClassID  string   `json:"class_id"`
-	Row      string   `json:"row,omitempty"`
-	WeaponID string   `json:"weapon_id"`
-	ArmorID  string   `json:"armor_id"`
-	Spells   []string `json:"spells,omitempty"`
+	Name     string              `json:"name"`
+	ClassID  string              `json:"class_id"`
+	Row      string              `json:"row,omitempty"`
+	WeaponID string              `json:"weapon_id,omitempty"`
+	ArmorID  string              `json:"armor_id,omitempty"`
+	Loadout  map[string]string   `json:"loadout,omitempty"`
+	Sockets  map[string][]string `json:"sockets,omitempty"`
+	Spells   []string            `json:"spells,omitempty"`
 }
 
 type ShowcaseEncounter struct {
@@ -197,12 +200,58 @@ type ShowcaseEncounter struct {
 // Items
 
 type ItemsData struct {
-	Weapons     []Weapon     `json:"weapons"`
-	Armor       []Armor      `json:"armor"`
-	Shields     []Shield     `json:"shields"`
-	Helmets     []Helmet     `json:"helmets"`
-	Consumables []Consumable `json:"consumables"`
-	KeyItems    []KeyItem    `json:"key_items"`
+	EquipmentSlots []EquipmentSlotDefinition `json:"equipment_slots"`
+	Gear           []Gear                    `json:"gear"`
+	Weapons        []Weapon                  `json:"weapons"`
+	Armor          []Armor                   `json:"armor"`
+	Shields        []Shield                  `json:"shields"`
+	Helmets        []Helmet                  `json:"helmets"`
+	Consumables    []Consumable              `json:"consumables"`
+	KeyItems       []KeyItem                 `json:"key_items"`
+}
+
+// Gear defines equipment categories that do not need a legacy combat-specific
+// catalog. Kind selects the affix and gem family; Category selects a loadout
+// position through EquipmentSlotDefinition.Accepts.
+type Gear struct {
+	ID            string         `json:"id"`
+	Name          string         `json:"name"`
+	IconKey       string         `json:"icon_key,omitempty"`
+	Kind          string         `json:"kind"`
+	Category      string         `json:"category"`
+	Tier          int            `json:"tier"`
+	RequiredLevel int            `json:"required_level"`
+	Classes       []string       `json:"classes"`
+	Stats         map[string]int `json:"stats"`
+	BuyPrice      int            `json:"buy_price"`
+	SellPrice     int            `json:"sell_price"`
+}
+
+// EquipmentBase is the normalized server view of every rollable equipment
+// catalog, including legacy weapons, armor, shields, and helmets.
+type EquipmentBase struct {
+	ID            string
+	Name          string
+	IconKey       string
+	Kind          string
+	Category      string
+	Tier          int
+	RequiredLevel int
+	Classes       []string
+	Stats         map[string]int
+	BuyPrice      int
+	SellPrice     int
+}
+
+// EquipmentSlotDefinition describes one position in a character loadout.
+// Content owns the display order and accepted item categories so adding a
+// future slot does not require another Go or save-schema redesign.
+type EquipmentSlotDefinition struct {
+	ID      string   `json:"id"`
+	Name    string   `json:"name"`
+	Group   string   `json:"group"`
+	Order   int      `json:"order"`
+	Accepts []string `json:"accepts"`
 }
 
 // Chests
@@ -246,6 +295,7 @@ type KeyItem struct {
 type Weapon struct {
 	ID           string   `json:"id"`
 	Name         string   `json:"name"`
+	IconKey      string   `json:"icon_key,omitempty"`
 	Type         string   `json:"type"`
 	Tier         int      `json:"tier"`
 	Power        int      `json:"power"`
@@ -272,6 +322,7 @@ type Ability struct {
 type Armor struct {
 	ID            string   `json:"id"`
 	Name          string   `json:"name"`
+	IconKey       string   `json:"icon_key,omitempty"`
 	Type          string   `json:"type"`
 	Tier          int      `json:"tier"`
 	Absorb        int      `json:"absorb"`
@@ -286,6 +337,7 @@ type Armor struct {
 type Shield struct {
 	ID           string   `json:"id"`
 	Name         string   `json:"name"`
+	IconKey      string   `json:"icon_key,omitempty"`
 	Tier         int      `json:"tier"`
 	Absorb       int      `json:"absorb"`
 	EvadePenalty int      `json:"evade_penalty"`
@@ -299,6 +351,7 @@ type Shield struct {
 type Helmet struct {
 	ID        string   `json:"id"`
 	Name      string   `json:"name"`
+	IconKey   string   `json:"icon_key,omitempty"`
 	Type      string   `json:"type"`
 	Tier      int      `json:"tier"`
 	Absorb    int      `json:"absorb"`
@@ -317,6 +370,83 @@ type Consumable struct {
 	Description  string `json:"description,omitempty"`
 	CombatUsable bool   `json:"combat_usable,omitempty"`
 	WorldUsable  bool   `json:"world_usable,omitempty"`
+}
+
+// LootData defines randomized equipment, socket gems, and known recipes.
+// Base equipment continues to live in ItemsData.
+type LootData struct {
+	Rarities []LootRarity `json:"rarities"`
+	Affixes  []LootAffix  `json:"affixes"`
+	Gems     []Gem        `json:"gems"`
+	Recipes  []GemRecipe  `json:"recipes"`
+	Starter  StarterLoot  `json:"starter"`
+}
+
+type IntRange struct {
+	Min int `json:"min"`
+	Max int `json:"max"`
+}
+
+type LootRarity struct {
+	ID           string   `json:"id"`
+	Name         string   `json:"name"`
+	MinItemLevel int      `json:"min_item_level"`
+	Weight       int      `json:"weight"`
+	Affixes      IntRange `json:"affixes"`
+	Sockets      IntRange `json:"sockets"`
+}
+
+type LootAffix struct {
+	ID            string       `json:"id"`
+	Name          string       `json:"name"`
+	Position      string       `json:"position"`
+	Kinds         []string     `json:"kinds"`
+	MinItemLevel  int          `json:"min_item_level"`
+	RequiredLevel int          `json:"required_level"`
+	Weight        int          `json:"weight"`
+	Modifier      LootModifier `json:"modifier"`
+}
+
+type LootModifier struct {
+	Stat string `json:"stat"`
+	Min  int    `json:"min"`
+	Max  int    `json:"max"`
+}
+
+type Gem struct {
+	ID            string      `json:"id"`
+	Name          string      `json:"name"`
+	Tier          int         `json:"tier"`
+	RequiredLevel int         `json:"required_level"`
+	Description   string      `json:"description"`
+	SocketColor   string      `json:"socket_color"`
+	GlowColor     string      `json:"glow_color"`
+	Effects       []GemEffect `json:"effects"`
+}
+
+type GemEffect struct {
+	Kind  string `json:"kind"`
+	Stat  string `json:"stat"`
+	Value int    `json:"value"`
+}
+
+type GemRecipe struct {
+	ID            string      `json:"id"`
+	Name          string      `json:"name"`
+	RequiredLevel int         `json:"required_level"`
+	Inputs        []GemAmount `json:"inputs"`
+	Output        GemAmount   `json:"output"`
+}
+
+type GemAmount struct {
+	GemID string `json:"gem_id"`
+	Count int    `json:"count"`
+}
+
+type StarterLoot struct {
+	GemID      string `json:"gem_id"`
+	GemCount   int    `json:"gem_count"`
+	MinSockets int    `json:"min_sockets"`
 }
 
 // Spells

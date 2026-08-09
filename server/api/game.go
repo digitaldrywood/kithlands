@@ -135,6 +135,8 @@ type GameState struct {
 	HiEthers             int                      `json:"hi_ethers"`
 	XEthers              int                      `json:"x_ethers"`
 	Items                []ItemState              `json:"items"`
+	Gems                 []GemState               `json:"gems,omitempty"`
+	GemRecipes           []GemRecipeState         `json:"gem_recipes,omitempty"`
 	Equipment            [4]EquipState            `json:"equipment"`
 	Location             string                   `json:"location"`
 	Message              string                   `json:"message,omitempty"`
@@ -192,9 +194,20 @@ type TransportInfo struct {
 }
 
 type ItemState struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Count int    `json:"count"`
+	ID             string            `json:"id"`
+	InstanceID     string            `json:"instance_id,omitempty"`
+	Kind           string            `json:"kind,omitempty"`
+	Category       string            `json:"category,omitempty"`
+	Name           string            `json:"name"`
+	IconKey        string            `json:"icon_key,omitempty"`
+	Count          int               `json:"count"`
+	Rarity         string            `json:"rarity,omitempty"`
+	ItemLevel      int               `json:"item_level,omitempty"`
+	RequiredLevel  int               `json:"required_level,omitempty"`
+	Affixes        []ItemAffixState  `json:"affixes,omitempty"`
+	Sockets        []ItemSocketState `json:"sockets,omitempty"`
+	AllowedClasses []string          `json:"allowed_classes,omitempty"`
+	Stats          map[string]int    `json:"stats,omitempty"`
 	// Power is set on weapon items (id starts with "wpn_") so the client
 	// can show equip-delta previews without shipping the weapon catalog.
 	Power int `json:"power,omitempty"`
@@ -210,25 +223,102 @@ type ItemState struct {
 	WorldUsable  bool   `json:"world_usable,omitempty"`
 }
 
+type ItemAffixState struct {
+	Name  string `json:"name"`
+	Stat  string `json:"stat"`
+	Value int    `json:"value"`
+}
+
+type ItemSocketState struct {
+	Index     int    `json:"index"`
+	GemID     string `json:"gem_id,omitempty"`
+	GemName   string `json:"gem_name,omitempty"`
+	Color     string `json:"color,omitempty"`
+	GlowColor string `json:"glow_color,omitempty"`
+	Stat      string `json:"stat,omitempty"`
+	Value     int    `json:"value,omitempty"`
+}
+
+type GemState struct {
+	ID            string           `json:"id"`
+	Name          string           `json:"name"`
+	Count         int              `json:"count"`
+	Tier          int              `json:"tier"`
+	RequiredLevel int              `json:"required_level"`
+	Description   string           `json:"description"`
+	Color         string           `json:"color"`
+	GlowColor     string           `json:"glow_color"`
+	Effects       []GemEffectState `json:"effects"`
+}
+
+type GemEffectState struct {
+	Kind  string `json:"kind"`
+	Stat  string `json:"stat"`
+	Value int    `json:"value"`
+}
+
+type GemRecipeState struct {
+	ID            string           `json:"id"`
+	Name          string           `json:"name"`
+	RequiredLevel int              `json:"required_level"`
+	Inputs        []GemAmountState `json:"inputs"`
+	Output        GemAmountState   `json:"output"`
+	Craftable     bool             `json:"craftable"`
+}
+
+type GemAmountState struct {
+	GemID         string           `json:"gem_id"`
+	GemName       string           `json:"gem_name"`
+	Count         int              `json:"count"`
+	Owned         int              `json:"owned"`
+	Tier          int              `json:"tier"`
+	RequiredLevel int              `json:"required_level"`
+	Description   string           `json:"description"`
+	Color         string           `json:"color"`
+	GlowColor     string           `json:"glow_color"`
+	Effects       []GemEffectState `json:"effects"`
+}
+
 type EquipState struct {
-	WeaponID          string `json:"weapon_id"`
-	WeaponName        string `json:"weapon_name"`
-	WeaponPower       int    `json:"weapon_power,omitempty"`
-	WeaponHitPct      int    `json:"weapon_hit_pct,omitempty"`
-	WeaponCritPct     int    `json:"weapon_crit_pct,omitempty"`
-	WeaponElement     string `json:"weapon_element,omitempty"`
-	ArmorID           string `json:"armor_id"`
-	ArmorName         string `json:"armor_name"`
-	ArmorAbsorb       int    `json:"armor_absorb,omitempty"`
-	ArmorMagicDefense int    `json:"armor_magic_defense,omitempty"`
-	ArmorEvadePenalty int    `json:"armor_evade_penalty,omitempty"`
-	ArmorElement      string `json:"armor_element,omitempty"`
+	WeaponID          string           `json:"weapon_id"`
+	WeaponInstanceID  string           `json:"weapon_instance_id,omitempty"`
+	WeaponName        string           `json:"weapon_name"`
+	WeaponPower       int              `json:"weapon_power,omitempty"`
+	WeaponHitPct      int              `json:"weapon_hit_pct,omitempty"`
+	WeaponCritPct     int              `json:"weapon_crit_pct,omitempty"`
+	WeaponElement     string           `json:"weapon_element,omitempty"`
+	WeaponItem        *ItemState       `json:"weapon_item,omitempty"`
+	ArmorID           string           `json:"armor_id"`
+	ArmorInstanceID   string           `json:"armor_instance_id,omitempty"`
+	ArmorName         string           `json:"armor_name"`
+	ArmorAbsorb       int              `json:"armor_absorb,omitempty"`
+	ArmorMagicDefense int              `json:"armor_magic_defense,omitempty"`
+	ArmorEvadePenalty int              `json:"armor_evade_penalty,omitempty"`
+	ArmorElement      string           `json:"armor_element,omitempty"`
+	ArmorItem         *ItemState       `json:"armor_item,omitempty"`
+	Bonuses           map[string]int   `json:"bonuses,omitempty"`
+	Loadout           []EquipSlotState `json:"loadout"`
+}
+
+// EquipSlotState is the client projection of one authored loadout position.
+// Empty slots remain present so the UI can grow without inferring slot rules.
+type EquipSlotState struct {
+	ID         string     `json:"id"`
+	Name       string     `json:"name"`
+	Group      string     `json:"group"`
+	Accepts    []string   `json:"accepts"`
+	ItemID     string     `json:"item_id,omitempty"`
+	InstanceID string     `json:"instance_id,omitempty"`
+	Item       *ItemState `json:"item,omitempty"`
 }
 
 type ShopItemState struct {
 	ID           string              `json:"id"`
 	Name         string              `json:"name"`
+	IconKey      string              `json:"icon_key,omitempty"`
 	Type         string              `json:"type"` // weapon, armor, consumable, spell
+	Category     string              `json:"category,omitempty"`
+	Stats        map[string]int      `json:"stats,omitempty"`
 	Price        int                 `json:"price"`
 	Power        int                 `json:"power,omitempty"`
 	Absorb       int                 `json:"absorb,omitempty"`
@@ -267,6 +357,8 @@ type PartyMemberState struct {
 	STR         int                 `json:"str"`
 	AGI         int                 `json:"agi"`
 	INT         int                 `json:"int_stat"`
+	VIT         int                 `json:"vit"`
+	LCK         int                 `json:"lck"`
 	XP          int                 `json:"xp"`
 	XPNext      int                 `json:"xp_next"`
 	Status      string              `json:"status"`
@@ -452,6 +544,7 @@ type Game struct {
 	visitedNodes         map[string]bool // node IDs the player has entered (sequence-break tracking)
 	formation            string          // current encounter layout type
 	worldEncounterCount  int             // successful overworld encounters started on this save
+	lootRollSeq          uint64          // persisted sequence for isolated deterministic loot rolls
 	lastRoundActions     []MemberActionReq
 	pendingChestClaim    *PendingChestClaim
 	// encounterStart records preemptive/ambush state for the current fight so
@@ -681,6 +774,8 @@ func (g *Game) buildPartyMemberState(c *character.Character, slot int) PartyMemb
 		STR:         c.STR,
 		AGI:         c.AGI,
 		INT:         c.INT,
+		VIT:         c.VIT,
+		LCK:         c.LCK,
 		XP:          c.XP,
 		XPNext:      character.XPToNextLevel(c.Level, &g.gd.Stats.XPCurve),
 		Status:      string(c.Status),
@@ -771,24 +866,41 @@ func (g *Game) fillInventoryState(state *GameState) {
 		// Weapon/armor in inventory -- enrich with Power/Absorb so the
 		// client can compute equip-delta previews (issue #96).
 		if strings.HasPrefix(id, "wpn_") {
-			if w := g.gd.WeaponByID(strings.TrimPrefix(id, "wpn_")); w != nil {
-				item.Name = w.Name
-				item.Power = w.Power
+			if base := g.gd.EquipmentBaseByID(strings.TrimPrefix(id, "wpn_")); base != nil {
+				baseState := baseItemState(base)
+				baseState.ID, baseState.Count = id, count
+				item = baseState
 			}
 		}
 		if strings.HasPrefix(id, "arm_") {
-			if a := g.gd.ArmorByID(strings.TrimPrefix(id, "arm_")); a != nil {
-				item.Name = a.Name
-				item.Absorb = a.Absorb
+			if base := g.gd.EquipmentBaseByID(strings.TrimPrefix(id, "arm_")); base != nil {
+				baseState := baseItemState(base)
+				baseState.ID, baseState.Count = id, count
+				item = baseState
 			}
 		}
 		state.Items = append(state.Items, item)
 	}
+	for id, instance := range g.inv.Instances {
+		if g.inv.InstanceEquipped(id) {
+			continue
+		}
+		item, err := g.rolledItemState(id, instance)
+		if err == nil {
+			state.Items = append(state.Items, item)
+		}
+	}
+	sort.Slice(state.Items, func(i, j int) bool { return state.Items[i].ID < state.Items[j].ID })
+	g.fillGemState(state)
 
 	// Equipment per party slot
 	for i := 0; i < len(g.party) && i < 4; i++ {
 		eq := g.inv.Equipment[i]
-		es := EquipState{WeaponID: eq.WeaponID, ArmorID: eq.ArmorID}
+		es := EquipState{
+			WeaponID: eq.WeaponID, WeaponInstanceID: eq.WeaponInstanceID,
+			ArmorID: eq.ArmorID, ArmorInstanceID: eq.ArmorInstanceID,
+			Bonuses: g.inv.LoadoutStats(i, g.gd),
+		}
 		if w := g.gd.WeaponByID(eq.WeaponID); w != nil {
 			es.WeaponName = w.Name
 			es.WeaponPower = w.Power
@@ -802,6 +914,43 @@ func (g *Game) fillInventoryState(state *GameState) {
 			es.ArmorMagicDefense = a.MagicDefense
 			es.ArmorEvadePenalty = a.EvadePenalty
 			es.ArmorElement = a.ElementResist
+		}
+		if eq.WeaponInstanceID != "" {
+			if resolved, err := inventory.ResolveInstance(g.inv.Instance(eq.WeaponInstanceID), g.gd); err == nil {
+				es.WeaponName = resolved.Name
+				es.WeaponPower = resolved.Power
+			}
+			if item, err := g.rolledItemState(eq.WeaponInstanceID, g.inv.Instance(eq.WeaponInstanceID)); err == nil {
+				es.WeaponItem = &item
+			}
+		}
+		if eq.ArmorInstanceID != "" {
+			if resolved, err := inventory.ResolveInstance(g.inv.Instance(eq.ArmorInstanceID), g.gd); err == nil {
+				es.ArmorName = resolved.Name
+				es.ArmorAbsorb = resolved.Absorb
+			}
+			if item, err := g.rolledItemState(eq.ArmorInstanceID, g.inv.Instance(eq.ArmorInstanceID)); err == nil {
+				es.ArmorItem = &item
+			}
+		}
+		slotDefs := append([]gamedata.EquipmentSlotDefinition(nil), g.gd.Items.EquipmentSlots...)
+		sort.SliceStable(slotDefs, func(i, j int) bool { return slotDefs[i].Order < slotDefs[j].Order })
+		for _, def := range slotDefs {
+			ref := eq.Equipped(def.ID)
+			slot := EquipSlotState{
+				ID: def.ID, Name: def.Name, Group: def.Group,
+				Accepts: append([]string(nil), def.Accepts...),
+				ItemID:  ref.ItemID, InstanceID: ref.InstanceID,
+			}
+			if ref.InstanceID != "" {
+				if item, err := g.rolledItemState(ref.InstanceID, g.inv.Instance(ref.InstanceID)); err == nil {
+					slot.Item = &item
+				}
+			} else if base := g.gd.EquipmentBaseByID(ref.ItemID); base != nil {
+				item := baseItemState(base)
+				slot.Item = &item
+			}
+			es.Loadout = append(es.Loadout, slot)
 		}
 		state.Equipment[i] = es
 	}

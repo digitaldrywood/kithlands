@@ -304,13 +304,13 @@ func TestBuyEquipFullFlow(t *testing.T) {
 		for _, item := range items {
 			im := item.(map[string]any)
 			t.Logf("Inventory item: %v", im)
-			if contains(im["name"].(string), "Short Sword") || contains(im["id"].(string), "short_sword") {
+			if contains(im["name"].(string), "Hearthguard Blade") || contains(im["id"].(string), "militia_sword") {
 				hasOldWeapon = true
 			}
 		}
 	}
 	if !hasOldWeapon {
-		t.Error("old weapon (Short Sword) not returned to inventory after swap")
+		t.Error("old starter weapon was not returned to inventory after swap")
 	}
 
 	t.Logf("Final equipment: %v", eq0)
