@@ -186,10 +186,74 @@
     },
     {
       "id": "cinder",
-      "status": "production_pending",
-      "default_state": "",
-      "attachments": {},
-      "states": {}
+      "status": "visual_approval_pending",
+      "default_state": "cast_class_ability",
+      "attachments": {
+        "staff": { "origin": [0.5, 0.48] }
+      },
+      "states": {
+        "idle_guard": {
+          "body_key": "battle_cinder_staff_cast_body",
+          "body_path": "/sprites/battle/cinder/staff-cast-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 120,
+              "attachments": {
+                "staff": { "x": 27, "y": 13, "angle": 8, "front": false }
+              }
+            }
+          ]
+        },
+        "cast_class_ability": {
+          "body_key": "battle_cinder_staff_cast_body",
+          "body_path": "/sprites/battle/cinder/staff-cast-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 110,
+              "attachments": {
+                "staff": { "x": 27, "y": 13, "angle": 8, "front": false }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 100,
+              "attachments": {
+                "staff": { "x": 28, "y": -20, "angle": 10, "front": false }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 120,
+              "attachments": {
+                "staff": { "x": 31, "y": -52, "angle": 12, "front": false }
+              }
+            },
+            {
+              "frame": 3,
+              "duration": 145,
+              "attachments": {
+                "staff": { "x": 69, "y": -39, "angle": 14, "front": false }
+              }
+            },
+            {
+              "frame": 4,
+              "duration": 165,
+              "attachments": {
+                "staff": { "x": 55, "y": -54, "angle": 12, "front": false }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 105,
+              "attachments": {
+                "staff": { "x": 26, "y": 14, "angle": 8, "front": false }
+              }
+            }
+          ]
+        }
+      }
     },
     {
       "id": "wayfarer",

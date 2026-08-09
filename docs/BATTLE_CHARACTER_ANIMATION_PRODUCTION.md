@@ -126,3 +126,12 @@ An identity may remain `production_pending` with no installed states. An
 installed state must declare an equipment-free body atlas and named attachment
 sockets. Weapon images are registered separately by `visual_id`, and the
 equipped item selects the attachment through its shared `animation_set`.
+
+### Cinder Staff Cast
+
+Cinder's first installed slice uses six body-only poses—idle, coil, gather,
+release, sustain, and recover—with the same shared War Staff attachment used by
+Mender. The body preserves Cinder's shadowed face, cyan eyes, crooked violet
+hat, gold-trimmed purple robes, and red-violet clasp; it does not reuse or
+recolor Mender's body. Its aggregate-review status is
+`visual_approval_pending`.

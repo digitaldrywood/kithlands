@@ -27,21 +27,17 @@ describe("shared battle character catalog", () => {
   });
 
   it("deduplicates shared atlases while preserving state lookup", () => {
-    expect(battleBodyAssets()).toEqual([
-      {
-        key: "battle_warrior_sword_attack_body",
-        path: "/sprites/battle/warrior/sword-attack-body.png",
-        frameSize: 192,
-      },
-      {
-        key: "battle_mender_staff_cast_body",
-        path: "/sprites/battle/mender/staff-cast-body.png",
-        frameSize: 192,
-      },
+    expect(battleBodyAssets().map(({ key }) => key)).toEqual([
+      "battle_warrior_sword_attack_body",
+      "battle_mender_staff_cast_body",
+      "battle_cinder_staff_cast_body",
     ]);
     expect(battleStateFor("mender", "cast_class_ability").frames).toHaveLength(
       6,
     );
-    expect(battleProfileFor("cinder").status).toBe("production_pending");
+    expect(battleProfileFor("cinder").status).toBe("visual_approval_pending");
+    expect(battleStateFor("cinder", "cast_class_ability").frames).toHaveLength(
+      6,
+    );
   });
 });

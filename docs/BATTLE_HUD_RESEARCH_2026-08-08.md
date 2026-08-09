@@ -76,7 +76,7 @@ Primary and official sources:
 | Brawler | F | F | F | F | F | F | - | F | - unarmed |
 | Rogue | F | F | F | F | F | F | - | F | - dagger/bow |
 | Mender | A | F | A staff cast | F | F | F | - | F | A staff |
-| Cinder | F | F | F | F | F | F | - | F | - dagger/staff |
+| Cinder | R | F | R staff cast | F | F | F | - | F | R staff |
 | Wayfarer | F | F | F | F | F | F | - | F | - mixed |
 | Knight | F | F | F | F | F | F | - | F | - weapon/shield |
 | Champion | F | F | F | F | F | F | - | F | - unarmed |
