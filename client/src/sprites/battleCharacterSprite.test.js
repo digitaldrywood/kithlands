@@ -154,3 +154,20 @@ describe("Brawler battle runtime contract", () => {
     ).toBe(false);
   });
 });
+
+describe("Rogue battle runtime contract", () => {
+  it("selects the item-driven dagger attachment for the weapon-free body", () => {
+    const scene = sceneWith([
+      "battle_rogue_dagger_slash_body",
+      "battle_weapon_shadow_blade",
+    ]);
+    expect(weaponTextureKey("shadow_blade")).toBe("battle_weapon_shadow_blade");
+    expect(
+      canUseBattleCharacterSprite(scene, {
+        base_sprite: "rogue",
+        weapon_visual_id: "shadow_blade",
+        weapon_animation_set: "dagger",
+      }),
+    ).toBe(true);
+  });
+});

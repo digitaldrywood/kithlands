@@ -74,7 +74,7 @@ Primary and official sources:
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Warrior | A | A sword | - | F | F | F | - | F | A sword |
 | Brawler | R | R unarmed | F | F | F | F | - | F | R unarmed |
-| Rogue | F | F | F | F | F | F | - | F | - dagger/bow |
+| Rogue | R | R dagger | F | F | F | F | - | F | R dagger / bow pending |
 | Mender | A | F | A staff cast | F | F | F | - | F | A staff |
 | Cinder | R | F | R staff cast | F | F | F | - | F | R staff |
 | Wayfarer | F | F | F | F | F | F | - | F | - mixed |

@@ -144,3 +144,13 @@ martial-artist identity, broad muscular proportions, orange gi, rope belt, and
 white hand-and-foot wraps. The atlas is body-and-clothing only: `unarmed` is an
 explicit equipment mode with no weapon attachment, not a weapon painted into
 the body. Its aggregate-review status is `visual_approval_pending`.
+
+### Rogue Shadow-Blade Slash
+
+Rogue's first installed slice uses six body-only dagger poses: idle guard,
+coil, step, impact, follow-through, and recover. The accepted green pointed
+hood, long cloak, charcoal leather armor, crossed belts, and utility pouches
+remain the identity anchors. The portrait blade is not present in the atlas;
+`shadow_blade` now selects a separate curved dagger through shared item visual
+metadata and per-frame `dagger` hand sockets. Its aggregate-review status is
+`visual_approval_pending`.

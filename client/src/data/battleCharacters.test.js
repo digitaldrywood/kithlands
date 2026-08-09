@@ -30,11 +30,13 @@ describe("shared battle character catalog", () => {
     expect(battleBodyAssets().map(({ key }) => key)).toEqual([
       "battle_warrior_sword_attack_body",
       "battle_brawler_unarmed_strike_body",
+      "battle_rogue_dagger_slash_body",
       "battle_mender_staff_cast_body",
       "battle_cinder_staff_cast_body",
     ]);
     expect(battleProfileFor("brawler").status).toBe("visual_approval_pending");
     expect(battleStateFor("brawler", "physical_attack").frames).toHaveLength(6);
+    expect(battleStateFor("rogue", "physical_attack").frames).toHaveLength(6);
     expect(battleStateFor("mender", "cast_class_ability").frames).toHaveLength(
       6,
     );

@@ -28,14 +28,19 @@ func TestLayeredWeaponVisualMetadataLoads(t *testing.T) {
 		"iron_sword":    "iron_sword",
 		"steel_sword":   "mythril_sword",
 		"mythril_sword": "mythril_sword",
+		"shadow_blade":  "shadow_blade",
 	}
 	for id, visualID := range wants {
 		weapon := gd.WeaponByID(id)
 		if weapon == nil {
 			t.Fatalf("%s not loaded", id)
 		}
-		if weapon.VisualID != visualID || weapon.AnimationSet != "sword" {
-			t.Fatalf("%s visual metadata = (%q, %q), want (%q, sword)", id, weapon.VisualID, weapon.AnimationSet, visualID)
+		animationSet := "sword"
+		if id == "shadow_blade" {
+			animationSet = "dagger"
+		}
+		if weapon.VisualID != visualID || weapon.AnimationSet != animationSet {
+			t.Fatalf("%s visual metadata = (%q, %q), want (%q, %s)", id, weapon.VisualID, weapon.AnimationSet, visualID, animationSet)
 		}
 	}
 }
@@ -63,6 +68,14 @@ func TestBattleCharacterManifestLoadsEveryRuntimeIdentity(t *testing.T) {
 	}
 	if len(mender.States["cast_class_ability"].Frames) != 6 {
 		t.Fatalf("mender cast does not have six frames")
+	}
+
+	rogue := gd.BattleCharacterByID("rogue")
+	if rogue == nil || rogue.Status != "visual_approval_pending" {
+		t.Fatalf("rogue battle profile = %#v, want visual_approval_pending", rogue)
+	}
+	if len(rogue.States["physical_attack"].Frames) != 6 {
+		t.Fatalf("rogue physical attack does not have six frames")
 	}
 }
 

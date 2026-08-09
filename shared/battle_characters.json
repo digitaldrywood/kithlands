@@ -25,6 +25,11 @@
       "visual_id": "war_staff",
       "key": "battle_weapon_war_staff",
       "path": "/sprites/battle/weapons/war-staff.png"
+    },
+    {
+      "visual_id": "shadow_blade",
+      "key": "battle_weapon_shadow_blade",
+      "path": "/sprites/battle/weapons/shadow-blade.png"
     }
   ],
   "classes": [
@@ -126,10 +131,74 @@
     },
     {
       "id": "rogue",
-      "status": "production_pending",
-      "default_state": "",
-      "attachments": {},
-      "states": {}
+      "status": "visual_approval_pending",
+      "default_state": "physical_attack",
+      "attachments": {
+        "dagger": { "origin": [0.5, 0.78] }
+      },
+      "states": {
+        "idle_guard": {
+          "body_key": "battle_rogue_dagger_slash_body",
+          "body_path": "/sprites/battle/rogue/dagger-slash-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 120,
+              "attachments": {
+                "dagger": { "x": -47, "y": -4, "angle": -45, "front": false }
+              }
+            }
+          ]
+        },
+        "physical_attack": {
+          "body_key": "battle_rogue_dagger_slash_body",
+          "body_path": "/sprites/battle/rogue/dagger-slash-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 90,
+              "attachments": {
+                "dagger": { "x": -47, "y": -4, "angle": -45, "front": false }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 80,
+              "attachments": {
+                "dagger": { "x": 31, "y": -48, "angle": 38, "front": false }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 75,
+              "attachments": {
+                "dagger": { "x": 45, "y": -28, "angle": 58, "front": false }
+              }
+            },
+            {
+              "frame": 3,
+              "duration": 95,
+              "attachments": {
+                "dagger": { "x": -80, "y": -5, "angle": -105, "front": false }
+              }
+            },
+            {
+              "frame": 4,
+              "duration": 105,
+              "attachments": {
+                "dagger": { "x": -79, "y": 0, "angle": -120, "front": false }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 90,
+              "attachments": {
+                "dagger": { "x": -42, "y": -2, "angle": -50, "front": false }
+              }
+            }
+          ]
+        }
+      }
     },
     {
       "id": "mender",
