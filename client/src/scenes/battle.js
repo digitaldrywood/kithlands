@@ -761,6 +761,12 @@ export class BattleScene extends Phaser.Scene {
         this.input.keyboard.on("keydown-V", () =>
           this.cycleBattleCharacterAudit("effect", 1),
         );
+        this.input.keyboard.on("keydown-B", () =>
+          this.cycleBattleCharacterAudit("family", 1),
+        );
+        this.input.keyboard.on("keydown-T", () =>
+          this.cycleBattleCharacterAudit("intensity", 1),
+        );
         this.input.keyboard.on("keydown-P", () =>
           this.playBattleCharacterAudit(),
         );
@@ -848,9 +854,9 @@ export class BattleScene extends Phaser.Scene {
     const panel = this.add.graphics().setDepth(11).setScrollFactor(0);
     panel._combatFxTag = "showcase-banner";
     panel.fillStyle(0x160b1d, 0.9);
-    panel.fillRoundedRect(12, 10, 420, 66, 7);
+    panel.fillRoundedRect(12, 10, 520, 76, 7);
     panel.lineStyle(2, 0xff66cc, 0.9);
-    panel.strokeRoundedRect(12, 10, 420, 66, 7);
+    panel.strokeRoundedRect(12, 10, 520, 76, 7);
     this.add
       .text(24, 17, title, {
         fontSize: "12px",
@@ -930,8 +936,9 @@ export class BattleScene extends Phaser.Scene {
     this.battleAuditReadout?.setText(
       [
         `AUDIT ${this.battleAuditSelection.identityIndex + 1}/${this.battleAuditSelection.catalog.identities.length}  ${identity.name.toUpperCase()} · ${equipment.type.toUpperCase()} [${layerLabel}${shieldLabel}]`,
-        `STATE ${String(selection.animationState).toUpperCase()} · FX ${String(selection.effectMode).toUpperCase()}`,
-        "J/K class · E gear · N state · V effect · P play",
+        `STATE ${String(selection.animationState).toUpperCase()} · SCOPE ${String(selection.effectMode).toUpperCase()}`,
+        `VFX ${String(selection.effectFamily).toUpperCase()} · TIER ${selection.intensityTier}`,
+        "J/K class · E gear · N state · V scope · B family · T tier · P play",
       ].join("\n"),
     );
     return selection;
@@ -962,6 +969,12 @@ export class BattleScene extends Phaser.Scene {
     const actor = lead ? this.partySprites?.[lead.name] : null;
     if (!selection || !actor?.sprite) return null;
     this.resetBattleCharacterAuditSprite(actor);
+    const effectPresentation = battleEffectPresentation({
+      presentation: {
+        effect_family: selection.effectFamily,
+        intensity_tier: selection.intensityTier,
+      },
+    });
 
     const state = selection.animationState;
     if (state === "physical_attack") {
@@ -985,6 +998,11 @@ export class BattleScene extends Phaser.Scene {
         speedMultiplier: battleSpeedMul(),
       });
       this.spawnCastAura(actor, "holy");
+      void playBattleEffectRelease(
+        this,
+        this.resolveVisualEntry(actor),
+        effectPresentation,
+      );
       void this.showActionTitle(actor, "CLASS ABILITY", "#fff2bd");
     } else if (state === "defend") {
       if (actor.sprite.playBattleDefend) {
@@ -1050,15 +1068,24 @@ export class BattleScene extends Phaser.Scene {
     );
     this.targetCursor?.hide();
     this.destroyGroupTargetCursor();
+    const playPreview = (entry, fallbackElement) => {
+      const customEffect = playBattleEffectToTarget(
+        this,
+        this.resolveVisualEntry(actor),
+        this.resolveVisualEntry(entry),
+        effectPresentation,
+      );
+      if (!customEffect) this.spawnSpellImpact(entry, fallbackElement);
+    };
     if (selection.effectMode === "single_target" && enemies[0]) {
       this.showTargetCursor(enemies[0], "enemy");
-      this.spawnSpellImpact(enemies[0], "holy");
+      playPreview(enemies[0], "holy");
     } else if (selection.effectMode === "all_enemies") {
       this.showGroupTargetCursor(enemies, "enemy");
-      enemies.forEach((entry) => this.spawnSpellImpact(entry, "fire"));
+      enemies.forEach((entry) => playPreview(entry, "fire"));
     } else if (selection.effectMode === "all_allies") {
       this.showGroupTargetCursor(allies, "party");
-      allies.forEach((entry) => this.spawnSpellImpact(entry, "holy"));
+      allies.forEach((entry) => playPreview(entry, "holy"));
     }
     return selection;
   }
@@ -1081,6 +1108,8 @@ export class BattleScene extends Phaser.Scene {
       ],
       animationStates: [...catalog.animation_states],
       effectModes: [...catalog.effect_modes],
+      effectFamilies: [...catalog.effect_families],
+      intensityTiers: [...catalog.intensity_tiers],
       identityIndex: this.battleAuditSelection.identityIndex,
       identityID: current.identity.id,
       equipmentType: current.equipment?.type || null,
@@ -1088,6 +1117,8 @@ export class BattleScene extends Phaser.Scene {
       supportsShield: current.identity.supports_shield || false,
       animationState: current.animationState,
       effectMode: current.effectMode,
+      effectFamily: current.effectFamily,
+      intensityTier: current.intensityTier,
       textureKey:
         entry?.sprite?.battleTextureKey ?? entry?.sprite?.texture?.key ?? null,
       weaponTextureKey: entry?.sprite?.weaponTextureKey ?? null,
