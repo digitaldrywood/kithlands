@@ -103,6 +103,14 @@ test("manages the full loadout, previews recommendations, and returns from socke
 
   const slots = page.locator(".equipment-slot");
   await expect(slots).toHaveCount(12);
+  const desktopWeaponFrame = await page
+    .locator('[data-slot-id="main_hand"] .equipment-slot-frame')
+    .boundingBox();
+  expect(desktopWeaponFrame.width).toBeGreaterThanOrEqual(80);
+  const desktopAvatar = await page
+    .locator(".paperdoll-character-art")
+    .boundingBox();
+  expect(desktopAvatar.width).toBeLessThanOrEqual(190);
   await expect(page.locator('[data-slot-id="ring_1"]')).toBeVisible();
   await expect(page.locator('[data-slot-id="ring_2"]')).toBeVisible();
   await page.screenshot({
@@ -207,6 +215,10 @@ test("manages the full loadout, previews recommendations, and returns from socke
   await expect(page.locator(".kith-equipment-screen")).toHaveClass(
     /is-compact/,
   );
+  const mobileWeaponFrame = await page
+    .locator('[data-slot-id="main_hand"] .equipment-slot-frame')
+    .boundingBox();
+  expect(mobileWeaponFrame.width).toBeGreaterThanOrEqual(68);
   await page.screenshot({
     path: path.join(PROOF_DIR, "equipment-mobile-390x844.png"),
     fullPage: true,
