@@ -34,6 +34,24 @@ async function startLevelOneGame(page) {
   );
 }
 
+async function openSocketWorkshopFromEquipment(page) {
+  await page.keyboard.press("m");
+  await page.waitForFunction(
+    () => window.__kithlandsTest.sceneFlags("World").menuOpen,
+  );
+  await page.evaluate(() =>
+    window.__kithlandsTest.clickMenuButton("CHARACTER", "World"),
+  );
+  await expect(page.getByRole("dialog", { name: "Character" })).toBeVisible();
+  await page.locator('[data-slot-id="main_hand"]').click();
+  await page.getByRole("button", { name: "Socket", exact: true }).click();
+  await page.waitForFunction(() =>
+    window.__kithlandsTest
+      .visibleTexts("World")
+      .some((entry) => entry.text === "GEM WORKSHOP"),
+  );
+}
+
 test("previews and sockets equipped gear from the character screen", async ({
   page,
 }) => {
@@ -58,21 +76,16 @@ test("previews and sockets equipped gear from the character screen", async ({
   await page.evaluate(() =>
     window.__kithlandsTest.clickMenuButton("CHARACTER", "World"),
   );
-  await page.waitForFunction(
-    () => window.__kithlandsTest.sceneFlags("World").characterDetailOpen,
-  );
-  await page.waitForFunction(() =>
-    window.__kithlandsTest
-      .visibleTexts("World")
-      .some((entry) => entry.text === "SOCKET"),
-  );
+  await expect(page.getByRole("dialog", { name: "Character" })).toBeVisible();
+  await page.locator('[data-slot-id="main_hand"]').click();
+  await expect(
+    page.getByRole("button", { name: "Socket", exact: true }),
+  ).toBeVisible();
   await page.screenshot({
     path: `tmp/character-equipped-socket-${RUN_ID}.png`,
     fullPage: true,
   });
-  await page.evaluate(() =>
-    window.__kithlandsTest.clickInteractiveText("SOCKET", "World"),
-  );
+  await page.getByRole("button", { name: "Socket", exact: true }).click();
   await page.waitForFunction(() =>
     window.__kithlandsTest
       .visibleTexts("World")
@@ -195,80 +208,30 @@ test("previews and sockets equipped gear from the character screen", async ({
   await page.evaluate(() =>
     window.__kithlandsTest.clickInteractiveText("CLOSE", "World"),
   );
-  await page.waitForFunction(
-    () => window.__kithlandsTest.sceneFlags("World").characterDetailOpen,
+  const characterDialog = page.getByRole("dialog", { name: "Character" });
+  await expect(characterDialog).toBeVisible();
+  const mainHand = page.locator('[data-slot-id="main_hand"]');
+  await expect(mainHand).toHaveClass(/is-socketed/);
+  await expect(mainHand.locator(".equipment-sockets")).toHaveAttribute(
+    "aria-label",
+    /1\/1 sockets filled · Ember Gem/,
   );
-  const returnedTexts = await page.evaluate(() =>
-    window.__kithlandsTest.visibleTexts("World").map((entry) => entry.text),
-  );
-  expect(returnedTexts).toContain("◆ EMBER GEM");
-  expect(returnedTexts).not.toContain("SOCKET");
+  await expect(
+    page.getByRole("button", { name: "Socket", exact: true }),
+  ).toHaveCount(0);
   const equippedWeapon = socketed.equipment[0].weapon_item;
-  const weaponBase =
-    equippedWeapon.power -
-    (equippedWeapon.affixes || [])
-      .filter((affix) => affix.stat === "power")
-      .reduce((sum, affix) => sum + affix.value, 0) -
-    (equippedWeapon.sockets || [])
-      .filter((socket) => socket.gem_id && socket.stat === "power")
-      .reduce((sum, socket) => sum + socket.value, 0);
-  expect(returnedTexts).toEqual(
-    expect.arrayContaining([
-      `Power ${equippedWeapon.power}`,
-      "EQUIPMENT DETAILS",
-      "POWER BREAKDOWN",
-      `Base item  ${weaponBase}`,
-      "Ember Gem  +3",
-      `TOTAL POWER  ${equippedWeapon.power}`,
-      `ATK ${socketed.party[0].str + equippedWeapon.power} = STR ${socketed.party[0].str} + WEAPON ${equippedWeapon.power}`,
-      `STR ${socketed.party[0].str} = HERO ${socketed.party[0].str} + GEAR 0`,
-      `AGI ${socketed.party[0].agi} = HERO ${socketed.party[0].agi} + GEAR 0`,
-    ]),
-  );
+  await mainHand.hover();
+  const weaponTooltip = mainHand.locator(".equipment-tooltip");
+  await expect(weaponTooltip).toBeVisible();
+  await expect(weaponTooltip).toContainText(equippedWeapon.name);
+  await expect(weaponTooltip).toContainText("Ember Gem");
+  await expect(weaponTooltip).toContainText("Power +3");
   await page.screenshot({
     path: `tmp/character-weapon-details-${RUN_ID}.png`,
     fullPage: true,
   });
-
-  const hoverState = await page.evaluate(() =>
-    window.__kithlandsTest.hoverCharacterDetailEquipment("armor", "World"),
-  );
-  expect(hoverState.activeSlot).toBe("armor");
-  const armorTexts = await page.evaluate(() =>
-    window.__kithlandsTest.visibleTexts("World").map((entry) => entry.text),
-  );
-  expect(armorTexts).toEqual(
-    expect.arrayContaining([
-      `Absorb ${socketed.equipment[0].armor_absorb}`,
-      "ABSORB BREAKDOWN",
-      `Base item  ${socketed.equipment[0].armor_absorb}`,
-      `TOTAL ABSORB  ${socketed.equipment[0].armor_absorb}`,
-      `DAMAGE ABSORB ${socketed.equipment[0].armor_absorb} = ARMOR ${socketed.equipment[0].armor_absorb}`,
-    ]),
-  );
-  await page.screenshot({
-    path: `tmp/character-armor-hover-details-${RUN_ID}.png`,
-    fullPage: true,
-  });
-
-  const pinnedState = await page.evaluate(() =>
-    window.__kithlandsTest.pinCharacterDetailEquipment("armor", "World"),
-  );
-  expect(pinnedState).toMatchObject({
-    activeSlot: "armor",
-    pinnedSlot: "armor",
-  });
-  await page.waitForFunction(() =>
-    window.__kithlandsTest
-      .visibleTexts("World")
-      .some((entry) => entry.text === "PINNED • TAP TO RELEASE"),
-  );
-
-  await page.evaluate(() => {
-    window.__kithlandsTest.pinCharacterDetailEquipment("armor", "World");
-    window.__kithlandsTest.leaveCharacterDetailEquipment("armor", "World");
-    window.__kithlandsTest.hoverCharacterDetailEquipment("weapon", "World");
-  });
+  await page.locator(".character-summary-panel").hover();
+  await expect(weaponTooltip).toBeHidden();
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.waitForTimeout(150);
   await page.screenshot({
@@ -295,19 +258,7 @@ test("keeps the comparison readable at desktop and mobile viewports", async ({
   page,
 }) => {
   await startLevelOneGame(page);
-  await page.keyboard.press("m");
-  await page.waitForFunction(
-    () => window.__kithlandsTest.sceneFlags("World").menuOpen,
-  );
-  await page.evaluate(() =>
-    window.__kithlandsTest.clickMenuButton("CHARACTER", "World"),
-  );
-  await page.waitForFunction(
-    () => window.__kithlandsTest.sceneFlags("World").characterDetailOpen,
-  );
-  await page.evaluate(() =>
-    window.__kithlandsTest.clickInteractiveText("SOCKET", "World"),
-  );
+  await openSocketWorkshopFromEquipment(page);
   await page.waitForFunction(() =>
     window.__kithlandsTest
       .visibleTexts("World")

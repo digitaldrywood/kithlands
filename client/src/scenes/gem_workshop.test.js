@@ -114,6 +114,22 @@ describe("Gem Workshop selectors", () => {
     expect(firstOpenSocket(state.items[0])).toBe(0);
   });
 
+  it("ignores legacy equipped records that do not expose socket arrays", () => {
+    expect(
+      workshopGear({
+        party: [{ name: "Ayla" }],
+        equipment: [
+          {
+            weapon_item: {
+              instance_id: "legacy_weapon",
+              name: "Legacy Sword",
+            },
+          },
+        ],
+      }),
+    ).toEqual([]);
+  });
+
   it("exposes known recipes and readable costs", () => {
     expect(knownRecipes(state)).toHaveLength(1);
     expect(recipeCostLabel(state.gem_recipes[0], state.gems)).toBe("2x Ruby");

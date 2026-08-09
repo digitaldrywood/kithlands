@@ -25,7 +25,10 @@ function equippedGear(gs) {
   for (let slot = 0; slot < (gs?.equipment || []).length; slot += 1) {
     const equip = gs.equipment[slot] || {};
     const owner = gs?.party?.[slot]?.name || `Party ${slot + 1}`;
-    if (equip.weapon_item?.instance_id) {
+    if (
+      equip.weapon_item?.instance_id &&
+      Array.isArray(equip.weapon_item.sockets)
+    ) {
       result.push({
         ...equip.weapon_item,
         equipped_slot: slot,
@@ -33,7 +36,10 @@ function equippedGear(gs) {
         equipped_kind: "Weapon",
       });
     }
-    if (equip.armor_item?.instance_id) {
+    if (
+      equip.armor_item?.instance_id &&
+      Array.isArray(equip.armor_item.sockets)
+    ) {
       result.push({
         ...equip.armor_item,
         equipped_slot: slot,
