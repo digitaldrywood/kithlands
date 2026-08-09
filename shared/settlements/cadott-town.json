@@ -1,0 +1,139 @@
+{
+  "compressionlevel": -1,
+  "height": 18,
+  "infinite": false,
+  "orientation": "orthogonal",
+  "renderorder": "right-down",
+  "tiledversion": "1.11.2",
+  "tileheight": 32,
+  "tilewidth": 32,
+  "type": "map",
+  "version": "1.10",
+  "width": 25,
+  "properties": [
+    { "name": "id", "type": "string", "value": "cadott-town" },
+    { "name": "locality", "type": "string", "value": "Cadott" },
+    { "name": "kind", "type": "string", "value": "town" }
+  ],
+  "layers": [
+    {
+      "id": 1,
+      "name": "ground",
+      "type": "imagelayer",
+      "image": "/maps/cadott/cadott-town-background.png",
+      "opacity": 1,
+      "visible": true,
+      "x": 0,
+      "y": 0
+    },
+    { "id": 2, "name": "terrain-detail", "type": "objectgroup", "draworder": "topdown", "objects": [], "opacity": 1, "visible": true, "x": 0, "y": 0 },
+    { "id": 3, "name": "roads-and-water", "type": "objectgroup", "draworder": "topdown", "objects": [], "opacity": 1, "visible": true, "x": 0, "y": 0 },
+    {
+      "id": 4,
+      "name": "structures",
+      "type": "objectgroup",
+      "draworder": "topdown",
+      "opacity": 1,
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "objects": [
+        { "id": 1, "name": "Cadott Civic Hall", "type": "civic", "x": 288, "y": 32, "width": 224, "height": 160, "rotation": 0, "visible": true },
+        { "id": 2, "name": "Riverlight Inn", "type": "inn", "x": 32, "y": 96, "width": 240, "height": 160, "rotation": 0, "visible": true },
+        { "id": 3, "name": "Cadott General Store", "type": "shop", "x": 512, "y": 96, "width": 288, "height": 224, "rotation": 0, "visible": true },
+        { "id": 4, "name": "Garden House", "type": "house", "x": 256, "y": 320, "width": 192, "height": 144, "rotation": 0, "visible": true }
+      ]
+    },
+    { "id": 5, "name": "props-below-player", "type": "objectgroup", "draworder": "topdown", "objects": [], "opacity": 1, "visible": true, "x": 0, "y": 0 },
+    {
+      "id": 6,
+      "name": "collision",
+      "type": "objectgroup",
+      "draworder": "topdown",
+      "opacity": 1,
+      "visible": false,
+      "x": 0,
+      "y": 0,
+      "objects": [
+        { "id": 10, "name": "north-tree-line", "type": "solid", "x": 0, "y": 0, "width": 800, "height": 64, "rotation": 0, "visible": true },
+        { "id": 11, "name": "west-tree-line", "type": "solid", "x": 0, "y": 0, "width": 40, "height": 576, "rotation": 0, "visible": true },
+        { "id": 12, "name": "east-tree-line", "type": "solid", "x": 760, "y": 0, "width": 40, "height": 576, "rotation": 0, "visible": true },
+        { "id": 13, "name": "southwest-tree-line", "type": "solid", "x": 0, "y": 512, "width": 384, "height": 64, "rotation": 0, "visible": true },
+        { "id": 14, "name": "southeast-tree-line", "type": "solid", "x": 416, "y": 512, "width": 384, "height": 64, "rotation": 0, "visible": true },
+        { "id": 15, "name": "civic-hall", "type": "solid", "x": 288, "y": 64, "width": 224, "height": 96, "rotation": 0, "visible": true },
+        { "id": 16, "name": "inn-upper", "type": "solid", "x": 32, "y": 96, "width": 240, "height": 112, "rotation": 0, "visible": true },
+        { "id": 17, "name": "inn-left", "type": "solid", "x": 32, "y": 208, "width": 144, "height": 48, "rotation": 0, "visible": true },
+        { "id": 18, "name": "inn-right", "type": "solid", "x": 208, "y": 208, "width": 64, "height": 48, "rotation": 0, "visible": true },
+        { "id": 19, "name": "store-upper", "type": "solid", "x": 512, "y": 96, "width": 288, "height": 144, "rotation": 0, "visible": true },
+        { "id": 20, "name": "store-left", "type": "solid", "x": 512, "y": 240, "width": 64, "height": 80, "rotation": 0, "visible": true },
+        { "id": 21, "name": "store-right", "type": "solid", "x": 640, "y": 240, "width": 160, "height": 80, "rotation": 0, "visible": true },
+        { "id": 22, "name": "house-upper", "type": "solid", "x": 256, "y": 320, "width": 192, "height": 96, "rotation": 0, "visible": true },
+        { "id": 23, "name": "house-left", "type": "solid", "x": 256, "y": 416, "width": 80, "height": 48, "rotation": 0, "visible": true },
+        { "id": 24, "name": "house-right", "type": "solid", "x": 368, "y": 416, "width": 80, "height": 48, "rotation": 0, "visible": true },
+        { "id": 25, "name": "well", "type": "solid", "x": 320, "y": 208, "width": 64, "height": 64, "rotation": 0, "visible": true }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "interactions",
+      "type": "objectgroup",
+      "draworder": "topdown",
+      "opacity": 1,
+      "visible": false,
+      "x": 0,
+      "y": 0,
+      "objects": [
+        { "id": 30, "name": "civic-door", "type": "door", "x": 384, "y": 160, "width": 32, "height": 32, "rotation": 0, "visible": true, "properties": [
+          { "name": "destination_id", "type": "string", "value": "cadott-civic-hall" }, { "name": "destination_kind", "type": "string", "value": "interior" }, { "name": "display_name", "type": "string", "value": "Cadott Civic Hall" }, { "name": "building_type", "type": "string", "value": "house" }, { "name": "tags", "type": "string", "value": "civic" }, { "name": "return_anchor", "type": "string", "value": "civic-return" }
+        ] },
+        { "id": 31, "name": "inn-door", "type": "door", "x": 176, "y": 224, "width": 32, "height": 32, "rotation": 0, "visible": true, "properties": [
+          { "name": "destination_id", "type": "string", "value": "cadott-riverlight-inn" }, { "name": "destination_kind", "type": "string", "value": "interior" }, { "name": "display_name", "type": "string", "value": "Riverlight Inn" }, { "name": "building_type", "type": "string", "value": "inn" }, { "name": "tags", "type": "string", "value": "rest" }, { "name": "return_anchor", "type": "string", "value": "inn-return" }
+        ] },
+        { "id": 32, "name": "general-store-door", "type": "door", "x": 576, "y": 256, "width": 64, "height": 32, "rotation": 0, "visible": true, "properties": [
+          { "name": "destination_id", "type": "string", "value": "cadott-general-store" }, { "name": "destination_kind", "type": "string", "value": "interior" }, { "name": "display_name", "type": "string", "value": "Cadott General Store" }, { "name": "building_type", "type": "string", "value": "shop" }, { "name": "tags", "type": "string", "value": "shop,commerce" }, { "name": "return_anchor", "type": "string", "value": "general-store-return" }
+        ] },
+        { "id": 33, "name": "house-door", "type": "door", "x": 336, "y": 416, "width": 32, "height": 32, "rotation": 0, "visible": true, "properties": [
+          { "name": "destination_id", "type": "string", "value": "cadott-garden-house" }, { "name": "destination_kind", "type": "string", "value": "interior" }, { "name": "display_name", "type": "string", "value": "Garden House" }, { "name": "building_type", "type": "string", "value": "house" }, { "name": "tags", "type": "string", "value": "house" }, { "name": "return_anchor", "type": "string", "value": "house-return" }
+        ] },
+        { "id": 34, "name": "south-exit", "type": "exit", "x": 384, "y": 544, "width": 32, "height": 32, "rotation": 0, "visible": true, "properties": [
+          { "name": "destination_id", "type": "string", "value": "cadott-overworld" }, { "name": "destination_kind", "type": "string", "value": "world" }, { "name": "display_name", "type": "string", "value": "Overworld" }, { "name": "return_anchor", "type": "string", "value": "world-entry" }
+        ] }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "npc-spawns",
+      "type": "objectgroup",
+      "draworder": "topdown",
+      "opacity": 1,
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "objects": [
+        { "id": 40, "name": "market-neighbor", "type": "npc", "x": 480, "y": 336, "point": true, "rotation": 0, "visible": true, "properties": [ { "name": "role", "type": "string", "value": "gossip" }, { "name": "sprite", "type": "string", "value": "npc_gossip" } ] },
+        { "id": 41, "name": "hall-guard", "type": "npc", "x": 544, "y": 208, "point": true, "rotation": 0, "visible": true, "properties": [ { "name": "role", "type": "string", "value": "guard" }, { "name": "sprite", "type": "string", "value": "npc_guard" } ] }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "player-spawns",
+      "type": "objectgroup",
+      "draworder": "topdown",
+      "opacity": 1,
+      "visible": false,
+      "x": 0,
+      "y": 0,
+      "objects": [
+        { "id": 50, "name": "world-entry", "type": "spawn", "x": 400, "y": 528, "point": true, "rotation": 0, "visible": true, "properties": [ { "name": "direction", "type": "string", "value": "up" } ] },
+        { "id": 51, "name": "general-store-return", "type": "spawn", "x": 608, "y": 320, "point": true, "rotation": 0, "visible": true, "properties": [ { "name": "direction", "type": "string", "value": "down" } ] },
+        { "id": 52, "name": "inn-return", "type": "spawn", "x": 192, "y": 288, "point": true, "rotation": 0, "visible": true, "properties": [ { "name": "direction", "type": "string", "value": "down" } ] },
+        { "id": 53, "name": "civic-return", "type": "spawn", "x": 400, "y": 224, "point": true, "rotation": 0, "visible": true, "properties": [ { "name": "direction", "type": "string", "value": "down" } ] },
+        { "id": 54, "name": "house-return", "type": "spawn", "x": 352, "y": 480, "point": true, "rotation": 0, "visible": true, "properties": [ { "name": "direction", "type": "string", "value": "down" } ] }
+      ]
+    },
+    { "id": 10, "name": "foreground", "type": "objectgroup", "draworder": "topdown", "objects": [], "opacity": 1, "visible": true, "x": 0, "y": 0 },
+    { "id": 11, "name": "lighting-and-atmosphere", "type": "objectgroup", "draworder": "topdown", "objects": [], "opacity": 1, "visible": true, "x": 0, "y": 0 }
+  ],
+  "nextlayerid": 12,
+  "nextobjectid": 55
+}
