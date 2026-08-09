@@ -288,3 +288,19 @@ describe("Sage battle runtime contract", () => {
     ).toBe(true);
   });
 });
+
+describe("Pyromancer battle runtime contract", () => {
+  it("uses the shared staff over a distinct faceless promoted body", () => {
+    const scene = sceneWith([
+      "battle_pyromancer_staff_inferno_body",
+      "battle_weapon_war_staff",
+    ]);
+    expect(
+      canUseBattleCharacterSprite(scene, {
+        base_sprite: "pyromancer",
+        weapon_visual_id: "war_staff",
+        weapon_animation_set: "staff",
+      }),
+    ).toBe(true);
+  });
+});

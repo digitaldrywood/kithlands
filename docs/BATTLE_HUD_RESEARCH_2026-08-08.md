@@ -70,20 +70,20 @@ Primary and official sources:
 `A` = approved authored class animation, `R` = installed review candidate,
 `F` = generic runtime fallback, `-` = absent.
 
-| Class      | Idle/guard | Physical  | Cast/ability    | Defend         | Hit | Item | Victory | KO  | Equipment               |
-| ---------- | ---------- | --------- | --------------- | -------------- | --- | ---- | ------- | --- | ----------------------- |
-| Warrior    | A          | A sword   | -               | F              | F   | F    | -       | F   | A sword                 |
-| Brawler    | R          | R unarmed | F               | F              | F   | F    | -       | F   | R unarmed               |
-| Rogue      | R          | R dagger  | F               | F              | F   | F    | -       | F   | R dagger / bow pending  |
-| Mender     | A          | F         | A staff cast    | F              | F   | F    | -       | F   | A staff                 |
-| Cinder     | R          | F         | R staff cast    | F              | F   | F    | -       | F   | R staff                 |
-| Wayfarer   | R          | F         | R staff Inspire | F              | F   | F    | -       | F   | R staff / mixed pending |
-| Knight     | R          | F         | F               | R sword/shield | F   | F    | -       | F   | R sword/shield          |
-| Champion   | R          | R unarmed | F               | F              | F   | F    | -       | F   | R unarmed               |
-| Shadow     | R          | R dagger  | F               | F              | F   | F    | -       | F   | R dagger / bow pending  |
-| Sage       | R          | F         | R Sanctuary     | F              | F   | F    | -       | F   | R staff                 |
-| Pyromancer | F          | F         | F               | F              | F   | F    | -       | F   | - dagger/staff          |
-| Wanderer   | F          | F         | F               | F              | F   | F    | -       | F   | - mixed                 |
+| Class      | Idle/guard | Physical  | Cast/ability    | Defend         | Hit | Item | Victory | KO  | Equipment                |
+| ---------- | ---------- | --------- | --------------- | -------------- | --- | ---- | ------- | --- | ------------------------ |
+| Warrior    | A          | A sword   | -               | F              | F   | F    | -       | F   | A sword                  |
+| Brawler    | R          | R unarmed | F               | F              | F   | F    | -       | F   | R unarmed                |
+| Rogue      | R          | R dagger  | F               | F              | F   | F    | -       | F   | R dagger / bow pending   |
+| Mender     | A          | F         | A staff cast    | F              | F   | F    | -       | F   | A staff                  |
+| Cinder     | R          | F         | R staff cast    | F              | F   | F    | -       | F   | R staff                  |
+| Wayfarer   | R          | F         | R staff Inspire | F              | F   | F    | -       | F   | R staff / mixed pending  |
+| Knight     | R          | F         | F               | R sword/shield | F   | F    | -       | F   | R sword/shield           |
+| Champion   | R          | R unarmed | F               | F              | F   | F    | -       | F   | R unarmed                |
+| Shadow     | R          | R dagger  | F               | F              | F   | F    | -       | F   | R dagger / bow pending   |
+| Sage       | R          | F         | R Sanctuary     | F              | F   | F    | -       | F   | R staff                  |
+| Pyromancer | R          | F         | R staff Inferno | F              | F   | F    | -       | F   | R staff / dagger pending |
+| Wanderer   | F          | F         | F               | F              | F   | F    | -       | F   | - mixed                  |
 
 Mender cast/guard was explicitly approved in the real Systems Showcase battle.
 Remaining class slices now proceed one class and one action at a time, using the

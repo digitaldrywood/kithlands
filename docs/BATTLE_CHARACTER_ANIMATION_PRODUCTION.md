@@ -214,3 +214,14 @@ gold chains distinguish the promoted healer from Mender. The halo is permanent
 class regalia, while the body contains no staff or spell effect. Shared
 `war_staff` metadata selects the equipment layer and the audit supplies the
 all-allies effect. Its aggregate-review status is `visual_approval_pending`.
+
+### Pyromancer Staff Inferno
+
+Pyromancer's first installed slice is a six-pose Inferno invocation: idle
+guard, coil, raise staff, peak invocation, release, and recover. The accepted
+faceless black-void crimson hood, permanent curved orange-gold horn ornament,
+layered red and magenta robes, black mantle and gloves, dense gold flame
+filigree, and split coat tails distinguish it from Cinder. The body contains
+no staff, crystal, dagger, fire, or flame ribbon; shared `war_staff` metadata
+selects the equipment layer and the audit supplies the all-enemies fire
+effect. Its aggregate-review status is `visual_approval_pending`.
