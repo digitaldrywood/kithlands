@@ -5,6 +5,7 @@ import {
   collectHiddenItem,
   interactWithNpc,
   restAtTown,
+  transitionLocation,
 } from "../api.js";
 import { openDialogue } from "./town_dialogue.js";
 import { toggleMenu } from "./world_menu.js";
@@ -1299,6 +1300,10 @@ export class TownScene extends Phaser.Scene {
     }
   }
 
+  handleAction() {
+    return this.interact();
+  }
+
   async openNearbyChest() {
     if (!this.nearChest) return false;
 
@@ -1400,12 +1405,31 @@ export class TownScene extends Phaser.Scene {
     }
   }
 
-  exitToWorld() {
+  async exitToWorld() {
+    if (this._exiting) return;
+    this._exiting = true;
     this.animating = true;
+    let nextState = this.gameState;
+    if (this.gameState?.current_location?.kind === "interior") {
+      nextState = await transitionLocation(this.gameState.id, "exit-interior");
+      if (nextState?.error) {
+        this._exiting = false;
+        this.animating = false;
+        this.showMessage(nextState.error);
+        this.time.delayedCall(1800, () => this.hideMessage());
+        return;
+      }
+      this.gameState = nextState;
+    }
+
     playSFX("sfx_door");
     this.cameras.main.fadeOut(300, 0, 0, 0);
     this.cameras.main.once("camerafadeoutcomplete", () => {
       playMusic("music_overworld");
+      if (nextState.current_location?.kind === "settlement") {
+        this.scene.start("Settlement", { gameState: nextState });
+        return;
+      }
       if (this.returnScene?.sceneKey === "Settlement") {
         this.scene.start("Settlement", {
           gameState: this.gameState,
