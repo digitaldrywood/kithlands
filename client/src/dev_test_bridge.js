@@ -2258,6 +2258,12 @@ export function installDevTestBridge(game) {
       return debugSetPartyVitals(gameId, updates).then((result) => {
         if (!result?.error) {
           applySceneGameState(game, scene, result);
+          for (const member of result.party || []) {
+            const entry = scene.partySprites?.[member.name];
+            if (entry?.hpBar && typeof scene.animateHPBar === "function") {
+              scene.animateHPBar(entry.hpBar, member.hp, member.max_hp);
+            }
+          }
         }
         return clone(result);
       });
