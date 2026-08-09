@@ -77,7 +77,7 @@ Primary and official sources:
 | Rogue | R | R dagger | F | F | F | F | - | F | R dagger / bow pending |
 | Mender | A | F | A staff cast | F | F | F | - | F | A staff |
 | Cinder | R | F | R staff cast | F | F | F | - | F | R staff |
-| Wayfarer | F | F | F | F | F | F | - | F | - mixed |
+| Wayfarer | R | F | R staff Inspire | F | F | F | - | F | R staff / mixed pending |
 | Knight | F | F | F | F | F | F | - | F | - weapon/shield |
 | Champion | F | F | F | F | F | F | - | F | - unarmed |
 | Shadow | F | F | F | F | F | F | - | F | - dagger/bow |

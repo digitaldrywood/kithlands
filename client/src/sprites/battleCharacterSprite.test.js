@@ -171,3 +171,19 @@ describe("Rogue battle runtime contract", () => {
     ).toBe(true);
   });
 });
+
+describe("Wayfarer battle runtime contract", () => {
+  it("keeps the travel body distinct while sharing equipped staff metadata", () => {
+    const scene = sceneWith([
+      "battle_wayfarer_staff_inspire_body",
+      "battle_weapon_war_staff",
+    ]);
+    expect(
+      canUseBattleCharacterSprite(scene, {
+        base_sprite: "wayfarer",
+        weapon_visual_id: "war_staff",
+        weapon_animation_set: "staff",
+      }),
+    ).toBe(true);
+  });
+});

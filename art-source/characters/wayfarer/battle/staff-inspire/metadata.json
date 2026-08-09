@@ -1,0 +1,25 @@
+{
+  "status": "visual_approval_pending",
+  "generated_on": "2026-08-08",
+  "generator": "OpenAI built-in imagegen",
+  "identity_references": [
+    "client/public/sprites/wayfarer.png",
+    "client/public/sprites/walk/wayfarer_walk.png"
+  ],
+  "frame_contract": {
+    "frame_size": [192, 192],
+    "order": ["idle_guard", "prepare", "raise", "rally", "share", "recover"],
+    "anchor": "bottom_center",
+    "baseline_y": 185,
+    "staff_baked_in": false
+  },
+  "attachment": {
+    "item_id": "war_staff",
+    "visual_id": "war_staff",
+    "animation_set": "staff",
+    "slot": "weapon_back",
+    "grip_origin": [0.5, 0.48]
+  },
+  "prompt_template": "IDENTITY-PRESERVE Wayfarer battle frame. Accepted portrait and walk assets lock the friendly chestnut-haired face, stocky compact build, wide brown feathered hat, shoulder cape, blue tunic, straps, red-rust sash, teal-gray trousers, boots, tan pack and bedroll. The prior frame locks rendering and the guide locks the pose. BODY AND PERMANENT TRAVEL GEAR ONLY: no staff, weapon, effect, shadow, text, UI or scenery. The staff hand remains a complete closed empty grip.",
+  "notes": "Wayfarer's first class-specific battle slice is the all-party Inspire rally. The pack remains identity gear; the War Staff remains the same shared item-driven attachment used by other staff users. Installed for aggregate all-class review."
+}

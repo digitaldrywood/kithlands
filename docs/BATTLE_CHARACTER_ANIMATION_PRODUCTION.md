@@ -154,3 +154,13 @@ remain the identity anchors. The portrait blade is not present in the atlas;
 `shadow_blade` now selects a separate curved dagger through shared item visual
 metadata and per-frame `dagger` hand sockets. Its aggregate-review status is
 `visual_approval_pending`.
+
+### Wayfarer Staff Inspire
+
+Wayfarer's first installed slice is the six-pose all-party Inspire rally:
+idle guard, prepare, raise, rally, share, and recover. The accepted friendly
+chestnut-haired face, feathered travel hat, brown cape, blue tunic, red sash,
+stocky proportions, backpack, and bedroll remain identity anchors. The pack is
+permanent identity gear; the staff is not in the atlas and uses the shared War
+Staff item attachment. Its aggregate-review status is
+`visual_approval_pending`.
