@@ -131,6 +131,8 @@ func buildBattleCharacterAudit(gd *gamedata.GameData, cfg gamedata.ShowcaseBattl
 	audit := BattleCharacterAudit{
 		AnimationStates: append([]string(nil), cfg.AnimationStates...),
 		EffectModes:     append([]string(nil), cfg.EffectModes...),
+		EffectFamilies:  append([]string(nil), cfg.EffectFamilies...),
+		IntensityTiers:  append([]int(nil), cfg.IntensityTiers...),
 	}
 	for _, class := range gd.Classes {
 		audit.Identities = append(audit.Identities, buildBattleAuditIdentity(gd, class, false))
@@ -240,6 +242,8 @@ func cloneBattleCharacterAudit(source *BattleCharacterAudit) *BattleCharacterAud
 	clone := &BattleCharacterAudit{
 		AnimationStates: append([]string(nil), source.AnimationStates...),
 		EffectModes:     append([]string(nil), source.EffectModes...),
+		EffectFamilies:  append([]string(nil), source.EffectFamilies...),
+		IntensityTiers:  append([]int(nil), source.IntensityTiers...),
 		Identities:      make([]BattleAuditIdentity, len(source.Identities)),
 	}
 	for i, identity := range source.Identities {
