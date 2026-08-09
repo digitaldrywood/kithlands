@@ -73,7 +73,7 @@ Primary and official sources:
 | Class | Idle/guard | Physical | Cast/ability | Defend | Hit | Item | Victory | KO | Equipment |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Warrior | A | A sword | - | F | F | F | - | F | A sword |
-| Brawler | F | F | F | F | F | F | - | F | - unarmed |
+| Brawler | R | R unarmed | F | F | F | F | - | F | R unarmed |
 | Rogue | F | F | F | F | F | F | - | F | - dagger/bow |
 | Mender | A | F | A staff cast | F | F | F | - | F | A staff |
 | Cinder | R | F | R staff cast | F | F | F | - | F | R staff |
@@ -85,6 +85,6 @@ Primary and official sources:
 | Pyromancer | F | F | F | F | F | F | - | F | - dagger/staff |
 | Wanderer | F | F | F | F | F | F | - | F | - mixed |
 
-The next gold slice is Mender cast/guard with a separate staff attachment.
-No other class asset should be generated until that slice is visually approved
-in the real Systems Showcase battle.
+Mender cast/guard was explicitly approved in the real Systems Showcase battle.
+Remaining class slices now proceed one class and one action at a time, using the
+same body/attachment separation and visual-inspection gate.

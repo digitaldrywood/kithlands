@@ -135,3 +135,12 @@ Mender. The body preserves Cinder's shadowed face, cyan eyes, crooked violet
 hat, gold-trimmed purple robes, and red-violet clasp; it does not reuse or
 recolor Mender's body. Its aggregate-review status is
 `visual_approval_pending`.
+
+### Brawler Unarmed Strike
+
+Brawler's first installed slice is a six-pose straight punch: idle guard,
+coil, step, impact, follow-through, and recover. It preserves the accepted bald
+martial-artist identity, broad muscular proportions, orange gi, rope belt, and
+white hand-and-foot wraps. The atlas is body-and-clothing only: `unarmed` is an
+explicit equipment mode with no weapon attachment, not a weapon painted into
+the body. Its aggregate-review status is `visual_approval_pending`.

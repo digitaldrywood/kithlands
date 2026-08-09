@@ -135,3 +135,22 @@ describe("Mender battle runtime contract", () => {
     ).toBe(false);
   });
 });
+
+describe("Brawler battle runtime contract", () => {
+  it("uses the shared compositor without inventing a weapon attachment", () => {
+    const scene = sceneWith(["battle_brawler_unarmed_strike_body"]);
+    expect(
+      canUseBattleCharacterSprite(scene, {
+        base_sprite: "brawler",
+        weapon_animation_set: "unarmed",
+      }),
+    ).toBe(true);
+    expect(
+      canUseBattleCharacterSprite(scene, {
+        base_sprite: "brawler",
+        weapon_visual_id: "iron_sword",
+        weapon_animation_set: "unarmed",
+      }),
+    ).toBe(false);
+  });
+});
