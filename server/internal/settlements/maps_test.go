@@ -45,6 +45,16 @@ func TestMapValidationRejectsBrokenTransitionContent(t *testing.T) {
 		{name: "door outside map", mutate: func(townMap *Map) {
 			townMap.Layer("interactions").Objects[0].X = 900
 		}, wantErr: "out of bounds"},
+		{name: "player spawn inside collision", mutate: func(townMap *Map) {
+			townMap.Layer("player-spawns").Objects[0].X = 20
+		}, wantErr: "overlaps collision"},
+		{name: "npc spawn inside building", mutate: func(townMap *Map) {
+			townMap.Layer("npc-spawns").Objects[0].X = 544
+			townMap.Layer("npc-spawns").Objects[0].Y = 208
+		}, wantErr: "overlaps collision"},
+		{name: "unreviewed npc sprite", mutate: func(townMap *Map) {
+			townMap.Layer("npc-spawns").Objects[0].Properties[1].Value = "npc_missing"
+		}, wantErr: "unreviewed sprite"},
 	}
 
 	for _, tc := range tests {

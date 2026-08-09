@@ -110,8 +110,8 @@
       "x": 0,
       "y": 0,
       "objects": [
-        { "id": 40, "name": "market-neighbor", "type": "npc", "x": 480, "y": 336, "point": true, "rotation": 0, "visible": true, "properties": [ { "name": "role", "type": "string", "value": "gossip" }, { "name": "sprite", "type": "string", "value": "npc_gossip" } ] },
-        { "id": 41, "name": "hall-guard", "type": "npc", "x": 544, "y": 208, "point": true, "rotation": 0, "visible": true, "properties": [ { "name": "role", "type": "string", "value": "guard" }, { "name": "sprite", "type": "string", "value": "npc_guard" } ] }
+        { "id": 40, "name": "market-neighbor", "type": "npc", "x": 480, "y": 336, "point": true, "rotation": 0, "visible": true, "properties": [ { "name": "role", "type": "string", "value": "gossip" }, { "name": "sprite", "type": "string", "value": "npc_elder" } ] },
+        { "id": 41, "name": "hall-guard", "type": "npc", "x": 464, "y": 208, "point": true, "rotation": 0, "visible": true, "properties": [ { "name": "role", "type": "string", "value": "guard" }, { "name": "sprite", "type": "string", "value": "npc_guard" } ] }
       ]
     },
     {

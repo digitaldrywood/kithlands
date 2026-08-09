@@ -18,6 +18,11 @@ var requiredLayerOrder = []string{
 	"player-spawns", "foreground", "lighting-and-atmosphere",
 }
 
+var reviewedNPCSprites = map[string]bool{
+	"npc_elder": true,
+	"npc_guard": true,
+}
+
 type Registry struct {
 	Maps       []*Map
 	ByID       map[string]*Map
@@ -271,6 +276,9 @@ func (m *Map) validateSpawns() error {
 		if err := m.validateObjectBounds(spawn, true); err != nil {
 			return fmt.Errorf("player spawn %q: %w", spawn.Name, err)
 		}
+		if collision := m.collisionAt(spawn.X, spawn.Y); collision != nil {
+			return fmt.Errorf("player spawn %q overlaps collision %q", spawn.Name, collision.Name)
+		}
 		direction := spawn.Property("direction")
 		if direction != "up" && direction != "down" && direction != "left" && direction != "right" {
 			return fmt.Errorf("player spawn %q has invalid direction %q", spawn.Name, direction)
@@ -285,8 +293,25 @@ func (m *Map) validateSpawns() error {
 		if err := m.validateObjectBounds(npc, true); err != nil {
 			return fmt.Errorf("npc spawn %q: %w", npc.Name, err)
 		}
+		if collision := m.collisionAt(npc.X, npc.Y); collision != nil {
+			return fmt.Errorf("npc spawn %q overlaps collision %q", npc.Name, collision.Name)
+		}
 		if npc.Property("role") == "" || npc.Property("sprite") == "" {
 			return fmt.Errorf("npc spawn %q requires role and sprite", npc.Name)
+		}
+		if sprite := npc.Property("sprite"); !reviewedNPCSprites[sprite] {
+			return fmt.Errorf("npc spawn %q uses unreviewed sprite %q", npc.Name, sprite)
+		}
+	}
+	return nil
+}
+
+func (m *Map) collisionAt(x, y float64) *Object {
+	collisions := m.Layer("collision")
+	for i := range collisions.Objects {
+		collision := &collisions.Objects[i]
+		if x >= collision.X && x < collision.X+collision.Width && y >= collision.Y && y < collision.Y+collision.Height {
+			return collision
 		}
 	}
 	return nil

@@ -90,6 +90,40 @@ func TestCadottWorldShopRoundTripPreservesGameState(t *testing.T) {
 	assertRoundTripState(t, afterPurchase, roundTrip)
 }
 
+func TestLocationTransitionsRespectNavigablePhases(t *testing.T) {
+	t.Run("quest complete can continue into the reached settlement", func(t *testing.T) {
+		game := newTownTestGame(t)
+		game.phase = "quest_complete"
+		initial := game.State()
+		state, err := game.ProcessLocationTransition(LocationTransitionRequest{
+			TransitionID: "enter-settlement",
+			WorldNodeID:  initial.SettlementEntryNodeID,
+		})
+		if err != nil {
+			t.Fatalf("enter settlement: %v", err)
+		}
+		if state.CurrentLocation.Kind != LocationSettlement {
+			t.Fatalf("location = %q, want settlement", state.CurrentLocation.Kind)
+		}
+	})
+
+	t.Run("promotion cannot mutate location", func(t *testing.T) {
+		game := newTownTestGame(t)
+		game.phase = "promotion"
+		initial := game.State()
+		_, err := game.ProcessLocationTransition(LocationTransitionRequest{
+			TransitionID: "enter-settlement",
+			WorldNodeID:  initial.SettlementEntryNodeID,
+		})
+		if err == nil {
+			t.Fatal("promotion accepted a location transition")
+		}
+		if got := game.State().CurrentLocation.Kind; got != LocationWorld {
+			t.Fatalf("rejected transition mutated location to %q", got)
+		}
+	})
+}
+
 func hasItem(items []ItemState, id string, count int) bool {
 	for _, item := range items {
 		if item.ID == id && item.Count == count {

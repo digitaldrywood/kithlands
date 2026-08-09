@@ -35,9 +35,9 @@ type LocationTransitionRequest struct {
 // interior back to that content-driven graph.
 func (g *Game) ProcessLocationTransition(req LocationTransitionRequest) (GameState, error) {
 	g.mu.Lock()
-	if g.phase != "world" {
+	if g.phase != "world" && g.phase != "quest_complete" {
 		g.mu.Unlock()
-		return GameState{}, fmt.Errorf("location transitions require world phase")
+		return GameState{}, fmt.Errorf("location transitions are unavailable during %s", g.phase)
 	}
 
 	var err error
