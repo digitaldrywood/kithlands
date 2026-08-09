@@ -80,7 +80,7 @@ test.describe("content-driven battle VFX gold slices", () => {
       targetCount: 1,
       middleStage: "field",
       label: "cure-single-healing-desktop-1280x720",
-      vitals: [{ slot: 0, hp: 1 }],
+      vitals: [{ slot: 0, hp: 300 }],
     });
     expect(
       proof.trace.find((frame) => frame.label.endsWith("-impact")).snapshot
@@ -102,7 +102,7 @@ test.describe("content-driven battle VFX gold slices", () => {
       targetCount: 4,
       middleStage: "field",
       label: "heala-all-party-healing-mobile-390x844",
-      vitals: [0, 1, 2, 3].map((slot) => ({ slot, hp: 1 })),
+      vitals: [300, 160, 250, 200].map((hp, slot) => ({ slot, hp })),
     });
     expect(
       proof.trace.find((frame) => frame.label.endsWith("-impact")).snapshot
