@@ -1,0 +1,32 @@
+{
+  "status": "visual_approval_pending",
+  "generated_on": "2026-08-08",
+  "generator": "OpenAI built-in imagegen",
+  "identity_references": [
+    "client/public/sprites/sage.png",
+    "client/public/sprites/walk/sage_walk.png"
+  ],
+  "frame_contract": {
+    "frame_size": [192, 192],
+    "order": [
+      "idle_guard",
+      "prepare",
+      "raise_blessing",
+      "project_blessing",
+      "peak_sanctuary",
+      "recover"
+    ],
+    "anchor": "bottom_center",
+    "baseline_y": 185,
+    "staff_baked_in": false,
+    "effect_baked_in": false
+  },
+  "attachment": {
+    "item_id": "war_staff",
+    "visual_id": "war_staff",
+    "animation_set": "staff",
+    "grip_origin": [0.5, 0.48]
+  },
+  "prompt_template": "IDENTITY-PRESERVE Sage battle frame. Accepted portrait and walk assets lock the dignified elderly face, long white hair and beard, circular gold halo, ivory-white gold-filigree robes, silver-lavender mantle and sleeves, blue gems, and layered gold chains. The prior frame locks rendering and the guide locks the Sanctuary blessing. BODY AND PERMANENT REGALIA ONLY: no staff, crystal, held object, aura, spell, effect, shadow, text, UI, or scenery. The image-left staff hand remains a complete closed empty grip.",
+  "notes": "Sage's first class-specific slice is an all-party Sanctuary blessing. The halo is permanent identity regalia; the War Staff remains the same shared item-driven attachment used by staff classes, and the blessing effect is runtime-driven. Installed for aggregate all-class review."
+}

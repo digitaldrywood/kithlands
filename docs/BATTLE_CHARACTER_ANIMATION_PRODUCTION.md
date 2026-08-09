@@ -203,3 +203,14 @@ identity anchors. Its horizontal dash and cape sweep differ from Rogue's
 upright slash. The body contains no dagger; shared `shadow_blade` item metadata
 selects the runtime layer and the portrait's second blade is not baked into
 the atlas. Its aggregate-review status is `visual_approval_pending`.
+
+### Sage Staff Sanctuary
+
+Sage's first installed slice is a six-pose all-party Sanctuary blessing: idle
+guard, prepare, raise blessing, project blessing, peak Sanctuary, and recover.
+The accepted dignified elderly face, long white hair and beard, circular gold
+halo, ivory gold-filigree robes, silver-lavender mantle, blue gems, and layered
+gold chains distinguish the promoted healer from Mender. The halo is permanent
+class regalia, while the body contains no staff or spell effect. Shared
+`war_staff` metadata selects the equipment layer and the audit supplies the
+all-allies effect. Its aggregate-review status is `visual_approval_pending`.

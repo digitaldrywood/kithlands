@@ -272,3 +272,19 @@ describe("Shadow battle runtime contract", () => {
     ).toBe(true);
   });
 });
+
+describe("Sage battle runtime contract", () => {
+  it("shares staff item metadata without sharing Mender's body", () => {
+    const scene = sceneWith([
+      "battle_sage_staff_sanctuary_body",
+      "battle_weapon_war_staff",
+    ]);
+    expect(
+      canUseBattleCharacterSprite(scene, {
+        base_sprite: "sage",
+        weapon_visual_id: "war_staff",
+        weapon_animation_set: "staff",
+      }),
+    ).toBe(true);
+  });
+});

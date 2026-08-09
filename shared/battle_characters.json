@@ -597,10 +597,74 @@
     },
     {
       "id": "sage",
-      "status": "production_pending",
-      "default_state": "",
-      "attachments": {},
-      "states": {}
+      "status": "visual_approval_pending",
+      "default_state": "cast_class_ability",
+      "attachments": {
+        "staff": { "origin": [0.5, 0.48] }
+      },
+      "states": {
+        "idle_guard": {
+          "body_key": "battle_sage_staff_sanctuary_body",
+          "body_path": "/sprites/battle/sage/staff-sanctuary-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 120,
+              "attachments": {
+                "staff": { "x": -41, "y": 5, "angle": 3, "front": false }
+              }
+            }
+          ]
+        },
+        "cast_class_ability": {
+          "body_key": "battle_sage_staff_sanctuary_body",
+          "body_path": "/sprites/battle/sage/staff-sanctuary-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 110,
+              "attachments": {
+                "staff": { "x": -41, "y": 5, "angle": 3, "front": false }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 105,
+              "attachments": {
+                "staff": { "x": -39, "y": 6, "angle": 3, "front": false }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 125,
+              "attachments": {
+                "staff": { "x": -41, "y": 5, "angle": 2, "front": false }
+              }
+            },
+            {
+              "frame": 3,
+              "duration": 155,
+              "attachments": {
+                "staff": { "x": -41, "y": 6, "angle": 2, "front": false }
+              }
+            },
+            {
+              "frame": 4,
+              "duration": 175,
+              "attachments": {
+                "staff": { "x": -41, "y": 8, "angle": 2, "front": false }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 105,
+              "attachments": {
+                "staff": { "x": -39, "y": 6, "angle": 3, "front": false }
+              }
+            }
+          ]
+        }
+      }
     },
     {
       "id": "pyromancer",

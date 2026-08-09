@@ -81,7 +81,7 @@ Primary and official sources:
 | Knight     | R          | F         | F               | R sword/shield | F   | F    | -       | F   | R sword/shield          |
 | Champion   | R          | R unarmed | F               | F              | F   | F    | -       | F   | R unarmed               |
 | Shadow     | R          | R dagger  | F               | F              | F   | F    | -       | F   | R dagger / bow pending  |
-| Sage       | F          | F         | F               | F              | F   | F    | -       | F   | - staff                 |
+| Sage       | R          | F         | R Sanctuary     | F              | F   | F    | -       | F   | R staff                 |
 | Pyromancer | F          | F         | F               | F              | F   | F    | -       | F   | - dagger/staff          |
 | Wanderer   | F          | F         | F               | F              | F   | F    | -       | F   | - mixed                 |
 
