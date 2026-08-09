@@ -67,11 +67,35 @@ func (g *Game) applyShowcase(cfg gamedata.ShowcaseData) error {
 		c.CurrentHP = c.MaxHP
 		c.CurrentMP = c.MaxMP
 
-		if _, err := g.inv.EquipWeapon(slot, member.WeaponID, c.ClassID, g.gd); err != nil {
-			return fmt.Errorf("equipping showcase member %q: %w", c.Name, err)
-		}
-		if _, err := g.inv.EquipArmor(slot, member.ArmorID, c.ClassID, g.gd); err != nil {
-			return fmt.Errorf("equipping showcase member %q: %w", c.Name, err)
+		if len(member.Loadout) == 0 {
+			if _, err := g.inv.EquipWeapon(slot, member.WeaponID, c.ClassID, g.gd); err != nil {
+				return fmt.Errorf("equipping showcase member %q: %w", c.Name, err)
+			}
+			if _, err := g.inv.EquipArmor(slot, member.ArmorID, c.ClassID, g.gd); err != nil {
+				return fmt.Errorf("equipping showcase member %q: %w", c.Name, err)
+			}
+		} else {
+			for _, loadoutSlot := range g.gd.Items.EquipmentSlots {
+				baseID := member.Loadout[loadoutSlot.ID]
+				if baseID == "" {
+					continue
+				}
+				gemIDs := member.Sockets[loadoutSlot.ID]
+				grant, err := g.grantLoot(baseID, c.Level, len(gemIDs))
+				if err != nil {
+					return fmt.Errorf("granting showcase member %q item %q: %w", c.Name, baseID, err)
+				}
+				for socketIndex, gemID := range gemIDs {
+					g.inv.Normalize()
+					g.inv.Gems[gemID]++
+					if err := g.inv.SocketGem(grant.InstanceID, socketIndex, gemID, c.Level, g.gd); err != nil {
+						return fmt.Errorf("socketing showcase member %q item %q: %w", c.Name, baseID, err)
+					}
+				}
+				if _, err := g.inv.EquipInstanceAt(slot, loadoutSlot.ID, grant.InstanceID, c.ClassID, c.Level, g.gd); err != nil {
+					return fmt.Errorf("equipping showcase member %q item %q: %w", c.Name, baseID, err)
+				}
+			}
 		}
 
 		if len(class.Magic.Schools) > 0 {

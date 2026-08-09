@@ -42,8 +42,42 @@ test.describe("developer systems showcase", () => {
       expect.arrayContaining(["cure", "cura", "aegis"]),
     );
     expect(state.party[3].abilities).toContain("backstab");
-    expect(state.equipment[0].weapon_id).toBe("mythril_sword");
+    expect(state.equipment[0].weapon_id).toBe("sunforged_oathblade");
     expect(state.equipment[3].weapon_id).toBe("shadow_blade");
+
+    const loadout = page.getByRole("dialog", { name: "Character" });
+    await expect(loadout).toBeVisible();
+    await expect(page.locator(".equipment-character")).toHaveText("Hero");
+    await expect(page.locator(".equipment-slot")).toHaveCount(12);
+    await expect(page.locator(".equipment-slot.is-socketed")).toHaveCount(12);
+    const oathblade = page.locator('[data-slot-id="main_hand"]');
+    await expect(
+      oathblade.locator(".equipment-socket-pip.is-filled"),
+    ).toHaveCount(2);
+    await expect(oathblade).toHaveCSS("--socket-color", "#ff5c2a");
+    await expect(oathblade).toHaveCSS("--socket-color-secondary", "#28a9ff");
+    await page.screenshot({
+      path: testInfo.outputPath(`systems-showcase-loadout-${RUN_ID}.png`),
+      fullPage: true,
+    });
+    await oathblade.hover();
+    await expect(oathblade.locator(".equipment-tooltip")).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath(`systems-showcase-socket-glow-${RUN_ID}.png`),
+      fullPage: true,
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(loadout).toHaveClass(/is-compact/);
+    await expect(page.locator(".equipment-slot.is-socketed")).toHaveCount(12);
+    await page.screenshot({
+      path: testInfo.outputPath(
+        `systems-showcase-loadout-mobile-${RUN_ID}.png`,
+      ),
+      fullPage: true,
+    });
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.getByRole("button", { name: "Close equipment" }).click();
+    await expect(loadout).toBeHidden();
 
     await page.waitForFunction(() => {
       const snapshot = window.__kithlandsTest.battleVisibilitySnapshot();

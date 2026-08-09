@@ -182,12 +182,14 @@ type ShowcaseBattleCharacterAudit struct {
 }
 
 type ShowcasePartyMember struct {
-	Name     string   `json:"name"`
-	ClassID  string   `json:"class_id"`
-	Row      string   `json:"row,omitempty"`
-	WeaponID string   `json:"weapon_id"`
-	ArmorID  string   `json:"armor_id"`
-	Spells   []string `json:"spells,omitempty"`
+	Name     string              `json:"name"`
+	ClassID  string              `json:"class_id"`
+	Row      string              `json:"row,omitempty"`
+	WeaponID string              `json:"weapon_id,omitempty"`
+	ArmorID  string              `json:"armor_id,omitempty"`
+	Loadout  map[string]string   `json:"loadout,omitempty"`
+	Sockets  map[string][]string `json:"sockets,omitempty"`
+	Spells   []string            `json:"spells,omitempty"`
 }
 
 type ShowcaseEncounter struct {
@@ -417,6 +419,8 @@ type Gem struct {
 	Tier          int         `json:"tier"`
 	RequiredLevel int         `json:"required_level"`
 	Description   string      `json:"description"`
+	SocketColor   string      `json:"socket_color"`
+	GlowColor     string      `json:"glow_color"`
 	Effects       []GemEffect `json:"effects"`
 }
 

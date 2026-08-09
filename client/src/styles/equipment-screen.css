@@ -536,6 +536,81 @@
   background: transparent;
 }
 
+.equipment-slot.is-socketed .equipment-slot-frame {
+  border-color: var(--socket-color);
+  background:
+    radial-gradient(
+      circle at 30% 28%,
+      color-mix(in srgb, var(--socket-color) 24%, transparent),
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 72% 70%,
+      color-mix(in srgb, var(--socket-color-secondary) 22%, transparent),
+      transparent 54%
+    ),
+    linear-gradient(145deg, rgba(54, 100, 148, 0.58), rgba(5, 18, 34, 0.98)),
+    #09192d;
+  box-shadow:
+    inset 0 0 10px color-mix(in srgb, var(--socket-glow) 24%, transparent),
+    0 0 8px color-mix(in srgb, var(--socket-glow-secondary) 32%, transparent),
+    0 5px 12px rgba(0, 0, 0, 0.42);
+}
+
+.equipment-slot.is-socketed .equipment-slot-frame::before {
+  position: absolute;
+  z-index: 0;
+  inset: -5px;
+  padding: 2px;
+  border-radius: 9px;
+  background: conic-gradient(
+    from 28deg,
+    var(--socket-color),
+    var(--socket-color-secondary),
+    var(--socket-glow),
+    var(--socket-color)
+  );
+  content: "";
+  opacity: 0.72;
+  pointer-events: none;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+.equipment-slot.is-socketed .equipment-placeholder-icon {
+  position: relative;
+  z-index: 1;
+}
+
+.equipment-slot.is-socketed:hover .equipment-slot-frame,
+.equipment-slot.is-socketed:focus-visible .equipment-slot-frame,
+.equipment-slot.is-socketed.is-selected .equipment-slot-frame {
+  border-color: var(--socket-glow);
+  box-shadow:
+    inset 0 0 15px color-mix(in srgb, var(--socket-glow) 38%, transparent),
+    0 0 14px color-mix(in srgb, var(--socket-glow) 72%, transparent),
+    0 0 27px color-mix(in srgb, var(--socket-glow-secondary) 60%, transparent),
+    0 7px 15px rgba(0, 0, 0, 0.48);
+}
+
+.equipment-slot.is-socketed:hover .equipment-slot-frame::before,
+.equipment-slot.is-socketed:focus-visible .equipment-slot-frame::before,
+.equipment-slot.is-socketed.is-selected .equipment-slot-frame::before {
+  opacity: 1;
+  filter: drop-shadow(0 0 5px var(--socket-glow))
+    drop-shadow(0 0 8px var(--socket-glow-secondary));
+}
+
+.equipment-slot.is-socketed:hover .equipment-item-art,
+.equipment-slot.is-socketed:focus-visible .equipment-item-art,
+.equipment-slot.is-socketed.is-selected .equipment-item-art {
+  filter: drop-shadow(0 0 4px var(--socket-glow))
+    drop-shadow(0 0 6px var(--socket-glow-secondary));
+}
+
 .equipment-placeholder-icon.small {
   width: 33px;
   height: 33px;
@@ -551,11 +626,32 @@
 
 .equipment-sockets {
   position: absolute;
-  right: 2px;
-  bottom: 1px;
-  color: #69e6b5;
+  right: 3px;
+  bottom: 3px;
+  z-index: 3;
+  display: flex;
+  gap: 2px;
+  padding: 2px 3px;
+  border: 1px solid rgba(181, 218, 247, 0.35);
+  border-radius: 9px;
+  background: rgba(3, 13, 25, 0.86);
   font-size: 9px;
-  letter-spacing: -2px;
+  line-height: 1;
+}
+
+.equipment-sockets:empty {
+  display: none;
+}
+
+.equipment-socket-pip.is-open {
+  color: #a8bdd0;
+}
+
+.equipment-socket-pip.is-filled {
+  color: var(--pip-color);
+  text-shadow:
+    0 0 3px var(--pip-glow),
+    0 0 7px var(--pip-glow);
 }
 
 .equipment-slot[data-slot-id="head"] {

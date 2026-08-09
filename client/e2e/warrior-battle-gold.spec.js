@@ -2,6 +2,13 @@ import { expect, test } from "@playwright/test";
 
 const RUN_ID = Date.now();
 
+async function closeShowcaseLoadout(page) {
+  const loadout = page.getByRole("dialog", { name: "Character" });
+  await expect(loadout).toBeVisible();
+  await page.getByRole("button", { name: "Close equipment" }).click();
+  await expect(loadout).toBeHidden();
+}
+
 test.describe("Warrior layered battle gold slice", () => {
   test.describe.configure({ timeout: 90_000 });
 
@@ -20,6 +27,7 @@ test.describe("Warrior layered battle gold slice", () => {
     expect(state.showcase_mode).toBe(true);
     expect(state.party[0].composition.weapon_visual_id).toBe("mythril_sword");
     expect(state.party[0].composition.weapon_animation_set).toBe("sword");
+    await closeShowcaseLoadout(page);
 
     await page.waitForFunction(
       () =>
@@ -78,6 +86,7 @@ test.describe("Warrior layered battle gold slice", () => {
       { timeout: 90_000 },
     );
     await page.evaluate(() => window.__kithlandsTest.startShowcase());
+    await closeShowcaseLoadout(page);
 
     const menu = await page.evaluate(() =>
       window.__kithlandsTest.previewBattleSpellFlow("spark", false),
@@ -124,6 +133,7 @@ test.describe("Warrior layered battle gold slice", () => {
       { timeout: 90_000 },
     );
     await page.evaluate(() => window.__kithlandsTest.startShowcase());
+    await closeShowcaseLoadout(page);
     const group = await page.evaluate(() =>
       window.__kithlandsTest.previewBattleSpellFlow("blaze"),
     );
@@ -150,6 +160,7 @@ test.describe("Warrior layered battle gold slice", () => {
       { timeout: 90_000 },
     );
     await page.evaluate(() => window.__kithlandsTest.startShowcase());
+    await closeShowcaseLoadout(page);
     const actions = await page.evaluate(() =>
       window.__kithlandsTest.startAuthoritativeBattleRound("all_spell"),
     );

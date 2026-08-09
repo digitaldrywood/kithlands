@@ -632,6 +632,28 @@ function renderSlot(state, slot) {
   control.dataset.testid = `equipment-slot-${slot.id}`;
   control.classList.toggle("is-selected", state.selectedSlotID === slot.id);
   control.classList.toggle("is-empty", !item);
+  const filledSockets = (item?.sockets || []).filter((socket) => socket.gem_id);
+  control.classList.toggle("is-socketed", filledSockets.length > 0);
+  if (filledSockets.length) {
+    const primary = filledSockets[0];
+    const secondary = filledSockets[1] || primary;
+    control.style.setProperty("--socket-color", primary.color || "#ff9f43");
+    control.style.setProperty(
+      "--socket-glow",
+      primary.glow_color || primary.color || "#ffd166",
+    );
+    control.style.setProperty(
+      "--socket-color-secondary",
+      secondary.color || primary.color || "#61cfff",
+    );
+    control.style.setProperty(
+      "--socket-glow-secondary",
+      secondary.glow_color ||
+        secondary.color ||
+        primary.glow_color ||
+        "#b6f4ff",
+    );
+  }
   control.setAttribute(
     "aria-pressed",
     state.selectedSlotID === slot.id ? "true" : "false",
@@ -645,7 +667,7 @@ function renderSlot(state, slot) {
     item,
     SLOT_GLYPHS[slot.id] || slot.name?.slice(0, 1) || "?",
   );
-  const sockets = element("span", "equipment-sockets", socketPips(item));
+  const sockets = renderSocketPips(item);
   sockets.setAttribute("aria-label", socketLabel(item));
   frame.append(icon, sockets);
   const caption = element("span", "equipment-slot-label", slot.name);
@@ -1387,9 +1409,25 @@ function formatTopStats(item) {
     : "No stat bonus";
 }
 
-function socketPips(item) {
-  if (!item?.sockets?.length) return "";
-  return item.sockets.map((socket) => (socket.gem_id ? "◆" : "◇")).join("");
+function renderSocketPips(item) {
+  const sockets = element("span", "equipment-sockets");
+  for (const socket of item?.sockets || []) {
+    const filled = Boolean(socket.gem_id);
+    const pip = element(
+      "span",
+      `equipment-socket-pip ${filled ? "is-filled" : "is-open"}`,
+      filled ? "◆" : "◇",
+    );
+    if (filled) {
+      pip.style.setProperty("--pip-color", socket.color || "#ff9f43");
+      pip.style.setProperty(
+        "--pip-glow",
+        socket.glow_color || socket.color || "#ffd166",
+      );
+    }
+    sockets.append(pip);
+  }
+  return sockets;
 }
 
 function socketLabel(item) {

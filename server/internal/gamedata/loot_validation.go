@@ -1,6 +1,9 @@
 package gamedata
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
 func (gd *GameData) validateLoot() {
 	if len(gd.Loot.Rarities) == 0 {
@@ -49,6 +52,9 @@ func (gd *GameData) validateLoot() {
 		if gem.Name == "" || gem.Tier < 1 || gem.RequiredLevel < 1 || len(gem.Effects) == 0 {
 			panic(fmt.Sprintf("gamedata: gem %q is incomplete", gem.ID))
 		}
+		if !validLootColor(gem.SocketColor) || !validLootColor(gem.GlowColor) {
+			panic(fmt.Sprintf("gamedata: gem %q has invalid socket colors", gem.ID))
+		}
 		for _, effect := range gem.Effects {
 			if !validLootKind(effect.Kind) || !validLootStat(effect.Stat) || effect.Value < 0 {
 				panic(fmt.Sprintf("gamedata: gem %q has invalid effect", gem.ID))
@@ -72,6 +78,14 @@ func (gd *GameData) validateLoot() {
 	if gd.GemByID(gd.Loot.Starter.GemID) == nil || gd.Loot.Starter.GemCount < 0 || gd.Loot.Starter.MinSockets < 0 {
 		panic("gamedata: loot starter grant is invalid")
 	}
+}
+
+func validLootColor(value string) bool {
+	if len(value) != 7 || value[0] != '#' {
+		return false
+	}
+	_, err := strconv.ParseUint(value[1:], 16, 24)
+	return err == nil
 }
 
 func validateLootRange(label string, value IntRange) {

@@ -36,8 +36,28 @@ func TestDebugCreateShowcase_ConfiguresRepresentativeCombatState(t *testing.T) {
 		}
 	}
 
-	if state.Equipment[0].WeaponID != "mythril_sword" || state.Equipment[3].WeaponID != "shadow_blade" {
+	if state.Equipment[0].WeaponID != "sunforged_oathblade" || state.Equipment[3].WeaponID != "shadow_blade" {
 		t.Fatalf("showcase weapons = hero:%q shade:%q", state.Equipment[0].WeaponID, state.Equipment[3].WeaponID)
+	}
+	heroLoadout := make(map[string]api.EquipSlotState, len(state.Equipment[0].Loadout))
+	for _, slot := range state.Equipment[0].Loadout {
+		if slot.Item != nil {
+			heroLoadout[slot.ID] = slot
+		}
+	}
+	if len(heroLoadout) != len(gd.Items.EquipmentSlots) {
+		t.Fatalf("showcase hero equipped slots = %d, want %d", len(heroLoadout), len(gd.Items.EquipmentSlots))
+	}
+	mainHand := heroLoadout["main_hand"].Item
+	if mainHand == nil || mainHand.IconKey != "midlevel/sunforged-oathblade" || len(mainHand.Sockets) != 2 {
+		t.Fatalf("showcase main hand = %#v", mainHand)
+	}
+	if mainHand.Sockets[0].GemID != "ember_gem" || mainHand.Sockets[0].Color != "#ff5c2a" ||
+		mainHand.Sockets[1].GemID != "ward_gem" || mainHand.Sockets[1].Color != "#28a9ff" {
+		t.Fatalf("showcase main-hand socket palette = %#v", mainHand.Sockets)
+	}
+	if heroLoadout["ring_1"].InstanceID == heroLoadout["ring_2"].InstanceID {
+		t.Fatal("showcase rings should be distinct saved item instances")
 	}
 	if state.Gold != 9999 || state.Potions != 12 || state.XEthers != 3 {
 		t.Fatalf("showcase inventory = gold:%d potions:%d x-ethers:%d", state.Gold, state.Potions, state.XEthers)

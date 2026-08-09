@@ -709,13 +709,50 @@ func (gd *GameData) validateShowcase(classIDs map[string]bool) {
 		if characterRow := member.Row; characterRow != "" && characterRow != "front" && characterRow != "back" {
 			panic(fmt.Sprintf("gamedata: showcase.json member %q has invalid row %q", member.Name, characterRow))
 		}
-		weapon := gd.WeaponByID(member.WeaponID)
-		if weapon == nil || !containsString(weapon.Classes, member.ClassID) {
-			panic(fmt.Sprintf("gamedata: showcase.json member %q cannot equip weapon %q", member.Name, member.WeaponID))
-		}
-		armor := gd.ArmorByID(member.ArmorID)
-		if armor == nil || !containsString(armor.Classes, member.ClassID) {
-			panic(fmt.Sprintf("gamedata: showcase.json member %q cannot equip armor %q", member.Name, member.ArmorID))
+		if len(member.Loadout) == 0 {
+			weapon := gd.WeaponByID(member.WeaponID)
+			if weapon == nil || !containsString(weapon.Classes, member.ClassID) {
+				panic(fmt.Sprintf("gamedata: showcase.json member %q cannot equip weapon %q", member.Name, member.WeaponID))
+			}
+			armor := gd.ArmorByID(member.ArmorID)
+			if armor == nil || !containsString(armor.Classes, member.ClassID) {
+				panic(fmt.Sprintf("gamedata: showcase.json member %q cannot equip armor %q", member.Name, member.ArmorID))
+			}
+		} else {
+			maxSockets := 0
+			for _, rarity := range gd.Loot.Rarities {
+				maxSockets = max(maxSockets, rarity.Sockets.Max)
+			}
+			for slotID, baseID := range member.Loadout {
+				slot := gd.EquipmentSlotByID(slotID)
+				base := gd.EquipmentBaseByID(baseID)
+				if slot == nil || base == nil || !slices.Contains(slot.Accepts, base.Category) {
+					panic(fmt.Sprintf("gamedata: showcase.json member %q has invalid %q loadout item %q", member.Name, slotID, baseID))
+				}
+				if !slices.Contains(base.Classes, member.ClassID) || base.RequiredLevel > cfg.Level {
+					panic(fmt.Sprintf("gamedata: showcase.json member %q cannot equip %q at level %d", member.Name, baseID, cfg.Level))
+				}
+			}
+			for slotID, gemIDs := range member.Sockets {
+				baseID := member.Loadout[slotID]
+				base := gd.EquipmentBaseByID(baseID)
+				if base == nil || len(gemIDs) > maxSockets {
+					panic(fmt.Sprintf("gamedata: showcase.json member %q has invalid sockets for slot %q", member.Name, slotID))
+				}
+				for _, gemID := range gemIDs {
+					gem := gd.GemByID(gemID)
+					if gem == nil || gem.RequiredLevel > cfg.Level {
+						panic(fmt.Sprintf("gamedata: showcase.json member %q cannot socket gem %q at level %d", member.Name, gemID, cfg.Level))
+					}
+					compatible := false
+					for _, effect := range gem.Effects {
+						compatible = compatible || effect.Kind == base.Kind
+					}
+					if !compatible {
+						panic(fmt.Sprintf("gamedata: showcase.json gem %q is incompatible with %q", gemID, baseID))
+					}
+				}
+			}
 		}
 		class := gd.ClassByID(member.ClassID)
 		for _, spellID := range member.Spells {

@@ -1,6 +1,6 @@
 {
   "title": "SYSTEMS SHOWCASE",
-  "description": "Developer-only disposable battle setup for checking brisk actions, major cinematics, magic, abilities, equipment, and items.",
+  "description": "Developer-only level-12 equipment and battle lab. The complete socketed Sunforged loadout opens first; close it to enter combat.",
   "town_name": "Cadott Combat Lab",
   "places": ["Showcase Arena", "Equipment Gallery", "Spell Workshop"],
   "big_building": "Systems Hall",
@@ -12,8 +12,34 @@
       "name": "Hero",
       "class_id": "warrior",
       "row": "front",
-      "weapon_id": "mythril_sword",
-      "armor_id": "war_plate"
+      "loadout": {
+        "main_hand": "sunforged_oathblade",
+        "off_hand": "sunforged_aegis",
+        "head": "sunforged_greathelm",
+        "shoulders": "sunforged_mantle",
+        "body": "sunforged_cuirass",
+        "hands": "sunforged_gauntlets",
+        "waist": "sunforged_warbelt",
+        "legs": "sunforged_greaves",
+        "feet": "sunforged_sabatons",
+        "amulet": "sunforged_pendant",
+        "ring_1": "sunforged_signet",
+        "ring_2": "sunforged_signet"
+      },
+      "sockets": {
+        "main_hand": ["ember_gem", "ward_gem"],
+        "off_hand": ["ward_gem", "ember_shard"],
+        "head": ["ward_gem"],
+        "shoulders": ["ember_shard"],
+        "body": ["ward_gem", "ember_gem"],
+        "hands": ["ember_gem"],
+        "waist": ["ward_shard"],
+        "legs": ["ward_gem"],
+        "feet": ["ember_shard"],
+        "amulet": ["ember_gem"],
+        "ring_1": ["ember_shard"],
+        "ring_2": ["ward_shard"]
+      }
     },
     {
       "name": "Sparks",
@@ -73,9 +99,9 @@
     "level": 10
   },
   "tips": [
-    "Brisk: Attack • Spark • Cure",
-    "Major: Backstab • Fireball • Blaze • Cura • Aegis",
-    "SPACE or Skip bypasses a major cinematic"
+    "The level-12 Sunforged loadout opens first",
+    "Hover or focus gear to intensify its fused gem glow",
+    "Close the loadout to enter the combat showcase"
   ],
   "battle_character_audit": {
     "animation_states": [

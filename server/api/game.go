@@ -230,11 +230,13 @@ type ItemAffixState struct {
 }
 
 type ItemSocketState struct {
-	Index   int    `json:"index"`
-	GemID   string `json:"gem_id,omitempty"`
-	GemName string `json:"gem_name,omitempty"`
-	Stat    string `json:"stat,omitempty"`
-	Value   int    `json:"value,omitempty"`
+	Index     int    `json:"index"`
+	GemID     string `json:"gem_id,omitempty"`
+	GemName   string `json:"gem_name,omitempty"`
+	Color     string `json:"color,omitempty"`
+	GlowColor string `json:"glow_color,omitempty"`
+	Stat      string `json:"stat,omitempty"`
+	Value     int    `json:"value,omitempty"`
 }
 
 type GemState struct {
@@ -244,6 +246,8 @@ type GemState struct {
 	Tier          int              `json:"tier"`
 	RequiredLevel int              `json:"required_level"`
 	Description   string           `json:"description"`
+	Color         string           `json:"color"`
+	GlowColor     string           `json:"glow_color"`
 	Effects       []GemEffectState `json:"effects"`
 }
 
@@ -270,6 +274,8 @@ type GemAmountState struct {
 	Tier          int              `json:"tier"`
 	RequiredLevel int              `json:"required_level"`
 	Description   string           `json:"description"`
+	Color         string           `json:"color"`
+	GlowColor     string           `json:"glow_color"`
 	Effects       []GemEffectState `json:"effects"`
 }
 

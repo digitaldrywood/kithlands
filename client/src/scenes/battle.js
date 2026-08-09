@@ -9,6 +9,10 @@ import {
 } from "../systems/battleSpellTargeting.js";
 import { showItemMenu } from "./item_menu.js";
 import {
+  closeEquipmentScreen,
+  showEquipmentScreen,
+} from "./equipment_screen.js";
+import {
   applyDamage,
   applyHeal,
   formatHPLabel,
@@ -332,6 +336,7 @@ export class BattleScene extends Phaser.Scene {
       this.partyStatus?.destroy();
       this.destroyGroupTargetCursor();
       this.finishMajorCinematic?.(true);
+      closeEquipmentScreen(this, { callOnClose: false });
       if (this.scale.gameSize.height !== 600) {
         this.scale.setGameSize(800, 600);
       }
@@ -415,6 +420,14 @@ export class BattleScene extends Phaser.Scene {
       });
     } else {
       this.startTurnOrBanner();
+    }
+
+    if (gs.showcase_mode) {
+      this.time.delayedCall(100, () => {
+        if (this.scene.isActive() && !this.equipmentScreenState) {
+          showEquipmentScreen(this, 0);
+        }
+      });
     }
   }
 
