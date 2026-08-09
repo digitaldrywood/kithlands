@@ -42,6 +42,7 @@ describe("shared battle character catalog", () => {
       "battle_mender_staff_cast_body",
       "battle_cinder_staff_cast_body",
       "battle_wayfarer_staff_inspire_body",
+      "battle_knight_sword_shield_defend_body",
     ]);
     expect(battleProfileFor("brawler").status).toBe("visual_approval_pending");
     expect(battleStateFor("brawler", "physical_attack").frames).toHaveLength(6);
@@ -56,5 +57,7 @@ describe("shared battle character catalog", () => {
     expect(
       battleStateFor("wayfarer", "cast_class_ability").frames,
     ).toHaveLength(6);
+    expect(battleProfileFor("knight").status).toBe("visual_approval_pending");
+    expect(battleStateFor("knight", "defend").frames).toHaveLength(6);
   });
 });

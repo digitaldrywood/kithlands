@@ -1,0 +1,40 @@
+{
+  "status": "visual_approval_pending",
+  "generated_on": "2026-08-08",
+  "generator": "OpenAI built-in imagegen",
+  "identity_references": [
+    "client/public/sprites/knight.png",
+    "client/public/sprites/walk/knight_walk.png"
+  ],
+  "frame_contract": {
+    "frame_size": [192, 192],
+    "order": [
+      "idle_guard",
+      "brace",
+      "raise",
+      "peak_guard",
+      "absorb",
+      "recover"
+    ],
+    "anchor": "bottom_center",
+    "baseline_y": 185,
+    "sword_baked_in": false,
+    "shield_baked_in": false
+  },
+  "attachments": {
+    "weapon": {
+      "item_id": "mythril_sword",
+      "visual_id": "mythril_sword",
+      "animation_set": "sword",
+      "grip_origin": [0.5, 0.92]
+    },
+    "off_hand": {
+      "item_id": "steel_shield",
+      "visual_id": "steel_shield",
+      "animation_set": "shield",
+      "grip_origin": [0.5, 0.5]
+    }
+  },
+  "prompt_template": "IDENTITY-PRESERVE Knight battle frame. Accepted portrait and walk assets lock the fully enclosed ivory-silver great helm with closed gold-trim visor, dark eye slit, blue gems, white tabard, long white cape, and noble full plate. The prior frame locks rendering and the guide locks the defensive pose. BODY AND PERMANENT CLOTHING ONLY: no sword, shield, weapon, effect, shadow, text, UI, or scenery. Both attachment hands remain complete closed empty grips.",
+  "notes": "Knight's first class-specific battle slice is a defensive sword-and-shield brace. The sword and shield are two independent item-driven runtime attachments; neither is baked into the body atlas. Installed for aggregate all-class review."
+}

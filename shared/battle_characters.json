@@ -422,10 +422,82 @@
     },
     {
       "id": "knight",
-      "status": "production_pending",
-      "default_state": "",
-      "attachments": {},
-      "states": {}
+      "status": "visual_approval_pending",
+      "default_state": "defend",
+      "attachments": {
+        "sword": { "origin": [0.5, 0.92] },
+        "shield": { "origin": [0.5, 0.5] }
+      },
+      "states": {
+        "idle_guard": {
+          "body_key": "battle_knight_sword_shield_defend_body",
+          "body_path": "/sprites/battle/knight/sword-shield-defend-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 120,
+              "attachments": {
+                "sword": { "x": -49, "y": 4, "angle": -135, "front": true },
+                "shield": { "x": 36, "y": -3, "angle": 5, "front": true }
+              }
+            }
+          ]
+        },
+        "defend": {
+          "body_key": "battle_knight_sword_shield_defend_body",
+          "body_path": "/sprites/battle/knight/sword-shield-defend-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 110,
+              "attachments": {
+                "sword": { "x": -49, "y": 4, "angle": -135, "front": true },
+                "shield": { "x": 36, "y": -3, "angle": 5, "front": true }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 100,
+              "attachments": {
+                "sword": { "x": -51, "y": 3, "angle": -135, "front": true },
+                "shield": { "x": 36, "y": -3, "angle": 4, "front": true }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 120,
+              "attachments": {
+                "sword": { "x": -52, "y": 6, "angle": -135, "front": true },
+                "shield": { "x": 34, "y": -12, "angle": -8, "front": true }
+              }
+            },
+            {
+              "frame": 3,
+              "duration": 160,
+              "attachments": {
+                "sword": { "x": -45, "y": 7, "angle": -135, "front": true },
+                "shield": { "x": 4, "y": -18, "angle": 0, "front": true }
+              }
+            },
+            {
+              "frame": 4,
+              "duration": 170,
+              "attachments": {
+                "sword": { "x": -43, "y": 9, "angle": -135, "front": true },
+                "shield": { "x": 1, "y": -16, "angle": 2, "front": true }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 105,
+              "attachments": {
+                "sword": { "x": -49, "y": 3, "angle": -135, "front": true },
+                "shield": { "x": 45, "y": -10, "angle": 7, "front": true }
+              }
+            }
+          ]
+        }
+      }
     },
     {
       "id": "champion",

@@ -171,3 +171,13 @@ stocky proportions, backpack, and bedroll remain identity anchors. The pack is
 permanent identity gear; the staff is not in the atlas and uses the shared War
 Staff item attachment. Its aggregate-review status is
 `visual_approval_pending`.
+
+### Knight Sword-and-Shield Defend
+
+Knight's first installed slice is a six-pose defensive brace: idle guard,
+brace, raise, peak guard, absorb, and recover. The accepted fully enclosed
+ivory-silver great helm, closed gold-trim visor, dark eye slit, blue gems,
+white tabard, long cape, and noble full plate remain distinct from Warrior's
+body. Both hands are empty in the atlas: the Mythril Sword and Steel Shield
+are independent item-driven runtime layers with per-frame `sword` and `shield`
+sockets. Its aggregate-review status is `visual_approval_pending`.

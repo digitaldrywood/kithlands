@@ -208,3 +208,33 @@ describe("Wayfarer battle runtime contract", () => {
     ).toBe(true);
   });
 });
+
+describe("Knight battle runtime contract", () => {
+  it("composes independent sword and shield attachments over the closed-visor body", () => {
+    const scene = sceneWith([
+      "battle_knight_sword_shield_defend_body",
+      "battle_weapon_mythril_sword",
+      "battle_off_hand_steel_shield",
+    ]);
+    expect(
+      canUseBattleCharacterSprite(scene, {
+        base_sprite: "knight",
+        weapon_visual_id: "mythril_sword",
+        weapon_animation_set: "sword",
+        shield_visual_id: "steel_shield",
+        shield_animation_set: "shield",
+      }),
+    ).toBe(true);
+  });
+
+  it("does not present the authored Knight body without its required equipment layers", () => {
+    const scene = sceneWith(["battle_knight_sword_shield_defend_body"]);
+    expect(
+      canUseBattleCharacterSprite(scene, {
+        base_sprite: "knight",
+        weapon_animation_set: "sword",
+        shield_animation_set: "shield",
+      }),
+    ).toBe(false);
+  });
+});
