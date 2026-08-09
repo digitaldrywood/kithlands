@@ -49,6 +49,7 @@ export async function runGoldSpellFlow(
   );
 
   await waitForEffectStage(page, family, "release");
+  await page.waitForTimeout(reducedMotion ? 15 : 40);
   const release = await captureProofFrame(
     page,
     testInfo,
@@ -60,6 +61,9 @@ export async function runGoldSpellFlow(
   ).toBe(tier);
 
   await waitForEffectStage(page, family, middleStage, targetCount);
+  await page.waitForTimeout(
+    middleStage === "travel" ? (reducedMotion ? 35 : 150) : 80,
+  );
   await captureProofFrame(page, testInfo, trace, `${label}-${middleStage}`);
   await waitForEffectStage(page, family, "impact", targetCount);
   const impact = await captureProofFrame(

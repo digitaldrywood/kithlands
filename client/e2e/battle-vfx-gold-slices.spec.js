@@ -183,6 +183,14 @@ test.describe("content-driven battle VFX gold slices", () => {
     expect(
       proof.trace.every((frame) => frame.snapshot.majorCinematics === 0),
     ).toBe(true);
+    const reducedTravel = proof.trace
+      .find((frame) => frame.label.endsWith("-travel"))
+      .snapshot.battleEffects.find((effect) => effect.stage === "travel");
+    const reducedImpact = proof.trace
+      .find((frame) => frame.label.endsWith("-impact"))
+      .snapshot.battleEffects.find((effect) => effect.stage === "impact");
+    expect(reducedTravel.x).toBeCloseTo(reducedImpact.x, 1);
+    expect(reducedTravel.y).toBeCloseTo(reducedImpact.y, 1);
     expect(
       Math.max(
         ...proof.trace.map((frame) => frame.snapshot.battleEffects.length),

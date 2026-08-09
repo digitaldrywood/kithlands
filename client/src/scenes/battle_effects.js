@@ -124,7 +124,12 @@ export function playBattleEffectToTarget(scene, actor, target, presentation) {
     if (!actor) return null;
     const destinationY = target.y + target.height * 0.2;
     const projectile = tagEffect(
-      scene.add.container(actor.x, actor.y).setDepth(20),
+      scene.add
+        .container(
+          reducedMotion ? target.x : actor.x,
+          reducedMotion ? destinationY : actor.y,
+        )
+        .setDepth(20),
       presentation,
       "travel",
       "spell-projectile",
@@ -140,7 +145,9 @@ export function playBattleEffectToTarget(scene, actor, target, presentation) {
     flame.fillCircle(-13, -5, 3);
     flame.fillCircle(-20, 5, 2);
     projectile.add(flame);
-    projectile.setRotation(Math.atan2(destinationY - actor.y, target.x - actor.x));
+    projectile.setRotation(
+      Math.atan2(destinationY - actor.y, target.x - actor.x),
+    );
     const duration = reducedMotion ? 90 : 230 + presentation.intensityTier * 35;
     return new Promise((resolve) => {
       scene.tweens.add({
@@ -153,7 +160,10 @@ export function playBattleEffectToTarget(scene, actor, target, presentation) {
         onComplete: () => {
           projectile.destroy();
           const impact = tagEffect(
-            scene.add.graphics().setDepth(21).setPosition(target.x, destinationY),
+            scene.add
+              .graphics()
+              .setDepth(21)
+              .setPosition(target.x, destinationY),
             presentation,
             "impact",
             "spell-impact",
@@ -162,7 +172,14 @@ export function playBattleEffectToTarget(scene, actor, target, presentation) {
           impact.lineStyle(presentation.strokeWidth, presentation.glow, 0.76);
           impact.strokeCircle(0, 8, radius);
           impact.fillStyle(presentation.core, 0.62);
-          impact.fillTriangle(-radius, 18, -radius * 0.55, -18, -radius * 0.1, 18);
+          impact.fillTriangle(
+            -radius,
+            18,
+            -radius * 0.55,
+            -18,
+            -radius * 0.1,
+            18,
+          );
           impact.fillTriangle(radius * 0.1, 18, radius * 0.55, -24, radius, 18);
           impact.lineStyle(2, presentation.accent, 0.72);
           impact.lineBetween(-radius * 0.45, 8, 0, -radius * 0.65);
