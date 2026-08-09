@@ -45,6 +45,20 @@ func TestLayeredWeaponVisualMetadataLoads(t *testing.T) {
 	}
 }
 
+func TestLayeredShieldVisualMetadataLoads(t *testing.T) {
+	gd := gamedata.Load("../../../shared")
+	shield := gd.ShieldByID("steel_shield")
+	if shield == nil {
+		t.Fatal("steel_shield not loaded")
+	}
+	if shield.VisualID != "steel_shield" || shield.AnimationSet != "shield" {
+		t.Fatalf("steel_shield visual metadata = (%q, %q), want (steel_shield, shield)", shield.VisualID, shield.AnimationSet)
+	}
+	if len(gd.BattleCharacters.OffHandAssets) != 1 || gd.BattleCharacters.OffHandAssets[0].VisualID != "steel_shield" {
+		t.Fatalf("off-hand assets = %#v, want steel_shield", gd.BattleCharacters.OffHandAssets)
+	}
+}
+
 func TestBattleCharacterManifestLoadsEveryRuntimeIdentity(t *testing.T) {
 	gd := gamedata.Load("../../../shared")
 	if got := len(gd.BattleCharacters.Classes); got != 12 {

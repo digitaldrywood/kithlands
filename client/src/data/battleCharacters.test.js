@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   BATTLE_CHARACTER_CATALOG,
   battleBodyAssets,
+  battleOffHandAssets,
   battleProfileFor,
   battleStateFor,
 } from "./battleCharacters.js";
@@ -27,6 +28,13 @@ describe("shared battle character catalog", () => {
   });
 
   it("deduplicates shared atlases while preserving state lookup", () => {
+    expect(battleOffHandAssets()).toEqual([
+      {
+        visual_id: "steel_shield",
+        key: "battle_off_hand_steel_shield",
+        path: "/sprites/battle/off-hand/steel-shield.png",
+      },
+    ]);
     expect(battleBodyAssets().map(({ key }) => key)).toEqual([
       "battle_warrior_sword_attack_body",
       "battle_brawler_unarmed_strike_body",

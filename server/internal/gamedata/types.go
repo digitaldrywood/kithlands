@@ -67,6 +67,7 @@ type BattleCharactersData struct {
 	FrameSize      int                      `json:"frame_size"`
 	RequiredStates []string                 `json:"required_states"`
 	WeaponAssets   []BattleWeaponAsset      `json:"weapon_assets"`
+	OffHandAssets  []BattleWeaponAsset      `json:"off_hand_assets"`
 	Classes        []BattleCharacterProfile `json:"classes"`
 }
 
@@ -289,6 +290,8 @@ type Shield struct {
 	Absorb       int      `json:"absorb"`
 	EvadePenalty int      `json:"evade_penalty"`
 	Classes      []string `json:"classes"`
+	VisualID     string   `json:"visual_id,omitempty"`
+	AnimationSet string   `json:"animation_set,omitempty"`
 	BuyPrice     int      `json:"buy_price"`
 	SellPrice    int      `json:"sell_price"`
 }

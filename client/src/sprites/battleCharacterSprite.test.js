@@ -8,6 +8,7 @@ import {
   canUseBattleCharacterSprite,
   canUseMenderBattleSprite,
   canUseWarriorBattleSprite,
+  offHandTextureKey,
   weaponTextureKey,
 } from "./battleCharacterSprite.js";
 
@@ -37,6 +38,26 @@ describe("Warrior battle runtime contract", () => {
         base_sprite: "warrior",
         weapon_visual_id: "mythril_sword",
         weapon_animation_set: "sword",
+      }),
+    ).toBe(true);
+  });
+
+  it("keeps the approved sword body when an unauthored shield layer is equipped", () => {
+    expect(offHandTextureKey("steel_shield")).toBe(
+      "battle_off_hand_steel_shield",
+    );
+    const scene = sceneWith([
+      WARRIOR_BATTLE_BODY_KEY,
+      "battle_weapon_mythril_sword",
+      "battle_off_hand_steel_shield",
+    ]);
+    expect(
+      canUseWarriorBattleSprite(scene, {
+        base_sprite: "warrior",
+        weapon_visual_id: "mythril_sword",
+        weapon_animation_set: "sword",
+        shield_visual_id: "steel_shield",
+        shield_animation_set: "shield",
       }),
     ).toBe(true);
   });

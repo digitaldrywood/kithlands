@@ -32,6 +32,13 @@
       "path": "/sprites/battle/weapons/shadow-blade.png"
     }
   ],
+  "off_hand_assets": [
+    {
+      "visual_id": "steel_shield",
+      "key": "battle_off_hand_steel_shield",
+      "path": "/sprites/battle/off-hand/steel-shield.png"
+    }
+  ],
   "classes": [
     {
       "id": "warrior",

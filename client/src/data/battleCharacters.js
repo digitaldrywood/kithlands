@@ -31,3 +31,9 @@ export function battleBodyAssets() {
 export function battleWeaponAssets() {
   return BATTLE_CHARACTER_CATALOG.weapon_assets.map((asset) => ({ ...asset }));
 }
+
+export function battleOffHandAssets() {
+  return BATTLE_CHARACTER_CATALOG.off_hand_assets.map((asset) => ({
+    ...asset,
+  }));
+}

@@ -8,6 +8,7 @@ import { registerGeneratedTerrainTextures } from "./terrainAutotile.js";
 import { enumerateBackgrounds } from "./battleBackgrounds.js";
 import {
   battleBodyAssets,
+  battleOffHandAssets,
   battleWeaponAssets,
 } from "../data/battleCharacters.js";
 
@@ -79,6 +80,9 @@ export class BootScene extends Phaser.Scene {
       });
     }
     for (const asset of battleWeaponAssets()) {
+      this.load.image(asset.key, asset.path);
+    }
+    for (const asset of battleOffHandAssets()) {
       this.load.image(asset.key, asset.path);
     }
 

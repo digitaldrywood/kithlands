@@ -923,6 +923,7 @@ function visibleBattleFxSnapshot(scene) {
       textureKey:
         entry?.sprite?.battleTextureKey ?? entry?.sprite?.texture?.key ?? null,
       weaponTextureKey: entry?.sprite?.weaponTextureKey ?? null,
+      shieldTextureKey: entry?.sprite?.shieldTextureKey ?? null,
       battleFrameIndex: entry?.sprite?.battleFrameIndex ?? null,
       spriteBounds: objectBounds(entry?.sprite),
       hpBarBounds: objectBounds(entry?.hpBar?.bg),

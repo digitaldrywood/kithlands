@@ -122,6 +122,13 @@ frame timing, and per-equipment attachment sockets. Go loads and validates the
 manifest with the rest of game data; Phaser imports that same content and uses
 one generic compositor instead of class-specific rendering branches.
 
+The same composition contract now carries optional authoritative shield visual
+metadata from `EquipmentSlots.ShieldID`. `off_hand_assets` registers reusable
+shield images separately from weapon images, and a profile may synchronize a
+`shield` socket alongside its weapon socket. A class without authored shield
+sockets keeps its approved body/weapon presentation and omits only the pending
+shield layer; shield absorb and equip rules remain unchanged in Go.
+
 An identity may remain `production_pending` with no installed states. An
 installed state must declare an equipment-free body atlas and named attachment
 sockets. Weapon images are registered separately by `visual_id`, and the

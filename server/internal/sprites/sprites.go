@@ -21,6 +21,8 @@ type Composition struct {
 	ArmorAccent        string `json:"armor_accent,omitempty"`
 	WeaponVisualID     string `json:"weapon_visual_id,omitempty"`
 	WeaponAnimationSet string `json:"weapon_animation_set,omitempty"`
+	ShieldVisualID     string `json:"shield_visual_id,omitempty"`
+	ShieldAnimationSet string `json:"shield_animation_set,omitempty"`
 }
 
 // ItemLookup bridges the sprites package to gamedata without creating a
@@ -29,6 +31,7 @@ type Composition struct {
 type ItemLookup struct {
 	WeaponTier   func(id string) (int, bool)
 	WeaponVisual func(id string) (visualID, animationSet string, ok bool)
+	ShieldVisual func(id string) (visualID, animationSet string, ok bool)
 	ArmorTier    func(id string) (int, bool)
 }
 
@@ -57,6 +60,12 @@ func Compose(in Input) Composition {
 		if visualID, animationSet, ok := in.Lookup.WeaponVisual(in.Equip.WeaponID); ok {
 			comp.WeaponVisualID = visualID
 			comp.WeaponAnimationSet = animationSet
+		}
+	}
+	if in.Equip.ShieldID != "" && in.Lookup.ShieldVisual != nil {
+		if visualID, animationSet, ok := in.Lookup.ShieldVisual(in.Equip.ShieldID); ok {
+			comp.ShieldVisualID = visualID
+			comp.ShieldAnimationSet = animationSet
 		}
 	}
 	if in.Equip.ArmorID != "" && in.Lookup.ArmorTier != nil {
@@ -99,6 +108,12 @@ func LookupFromGameData(gd *gamedata.GameData) ItemLookup {
 		WeaponVisual: func(id string) (string, string, bool) {
 			if w := gd.WeaponByID(id); w != nil {
 				return w.VisualID, w.AnimationSet, w.VisualID != "" && w.AnimationSet != ""
+			}
+			return "", "", false
+		},
+		ShieldVisual: func(id string) (string, string, bool) {
+			if shield := gd.ShieldByID(id); shield != nil {
+				return shield.VisualID, shield.AnimationSet, shield.VisualID != "" && shield.AnimationSet != ""
 			}
 			return "", "", false
 		},

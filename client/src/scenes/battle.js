@@ -1073,6 +1073,7 @@ export class BattleScene extends Phaser.Scene {
       textureKey:
         entry?.sprite?.battleTextureKey ?? entry?.sprite?.texture?.key ?? null,
       weaponTextureKey: entry?.sprite?.weaponTextureKey ?? null,
+      shieldTextureKey: entry?.sprite?.shieldTextureKey ?? null,
     };
   }
 

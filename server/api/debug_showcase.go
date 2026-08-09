@@ -168,6 +168,21 @@ func battleAuditEquipment(gd *gamedata.GameData, class gamedata.Class, promoted 
 		itemID = weapon.ID
 		itemName = weapon.Name
 	}
+	if class.Equipment.Shields {
+		var selected *gamedata.Shield
+		for i := range gd.Items.Shields {
+			shield := &gd.Items.Shields[i]
+			if shield.VisualID == "" || !auditContains(shield.Classes, class.ID) {
+				continue
+			}
+			if selected == nil || shield.Tier > selected.Tier {
+				selected = shield
+			}
+		}
+		if selected != nil {
+			equip.ShieldID = selected.ID
+		}
+	}
 	composition := sprites.Compose(sprites.Input{
 		ClassID:    class.ID,
 		Promoted:   promoted,
@@ -180,7 +195,7 @@ func battleAuditEquipment(gd *gamedata.GameData, class gamedata.Class, promoted 
 		Type:           equipmentType,
 		ItemID:         itemID,
 		ItemName:       itemName,
-		LayerAvailable: composition.WeaponVisualID != "",
+		LayerAvailable: composition.WeaponVisualID != "" || composition.ShieldVisualID != "",
 		Composition:    composition,
 	}
 }

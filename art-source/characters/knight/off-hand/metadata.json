@@ -1,0 +1,16 @@
+{
+  "status": "runtime_attachment",
+  "generated_on": "2026-08-08",
+  "generator": "OpenAI built-in imagegen",
+  "identity_reference": "client/public/sprites/knight.png",
+  "item_id": "steel_shield",
+  "visual_id": "steel_shield",
+  "animation_set": "shield",
+  "runtime_path": "client/public/sprites/battle/off-hand/steel-shield.png",
+  "contract": {
+    "canvas": [68, 86],
+    "front_face": true,
+    "body_baked_in": false
+  },
+  "notes": "Original ivory-steel heater shield with gold sunburst. Shared item metadata selects this off-hand layer; no class body may bake it into frames."
+}

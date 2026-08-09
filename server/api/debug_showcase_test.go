@@ -98,6 +98,10 @@ func TestDebugCreateShowcase_ConfiguresRepresentativeCombatState(t *testing.T) {
 			t.Errorf("audit catalog missing equipment type %q", equipmentType)
 		}
 	}
+	knight := audit.Identities[6]
+	if knight.ID != "knight" || knight.Equipment[0].Composition.ShieldVisualID != "steel_shield" {
+		t.Fatalf("knight audit shield composition = %#v, want steel_shield", knight.Equipment[0].Composition)
+	}
 	if got := audit.AnimationStates; len(got) != 8 || got[0] != "idle_guard" || got[7] != "ko_defeated" {
 		t.Errorf("audit animation states = %v", got)
 	}

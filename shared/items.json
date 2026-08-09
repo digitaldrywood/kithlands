@@ -891,6 +891,8 @@
       "id": "steel_shield",
       "name": "Steel Shield",
       "tier": 3,
+      "visual_id": "steel_shield",
+      "animation_set": "shield",
       "absorb": 14,
       "evade_penalty": -3,
       "classes": ["warrior", "mender"],

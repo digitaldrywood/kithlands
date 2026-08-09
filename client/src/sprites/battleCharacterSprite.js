@@ -1,5 +1,6 @@
 import {
   BATTLE_CHARACTER_CATALOG,
+  battleOffHandAssets,
   battleProfileFor,
   battleStateFor,
   battleWeaponAssets,
@@ -8,6 +9,9 @@ import { createComposedSprite } from "./composedSprite.js";
 
 const weaponAssetsByVisualID = new Map(
   battleWeaponAssets().map((asset) => [asset.visual_id, asset]),
+);
+const offHandAssetsByVisualID = new Map(
+  battleOffHandAssets().map((asset) => [asset.visual_id, asset]),
 );
 
 const STATE_METHODS = {
@@ -24,6 +28,13 @@ export function weaponTextureKey(visualID) {
   if (!visualID) return "";
   return (
     weaponAssetsByVisualID.get(visualID)?.key || `battle_weapon_${visualID}`
+  );
+}
+
+export function offHandTextureKey(visualID) {
+  if (!visualID) return "";
+  return (
+    offHandAssetsByVisualID.get(visualID)?.key || `battle_off_hand_${visualID}`
   );
 }
 
@@ -69,24 +80,49 @@ function runtimeDefinition(scene, composition) {
   if (!profile || !signatureState) return null;
   if (!scene.textures.exists(signatureState.body_key)) return null;
 
-  const attachmentID = composition?.weapon_animation_set || "";
-  const attachment = profile.attachments?.[attachmentID] || null;
   const attachmentCount = Object.keys(profile.attachments || {}).length;
-  let weaponKey = "";
-  if (attachmentCount > 0) {
-    if (!attachment || !composition?.weapon_visual_id) return null;
-    weaponKey = weaponTextureKey(composition.weapon_visual_id);
-    if (!weaponKey || !scene.textures.exists(weaponKey)) return null;
-  } else if (composition?.weapon_visual_id) {
+  const attachmentLayers = [];
+
+  if (composition?.weapon_visual_id) {
+    const attachmentID = composition.weapon_animation_set || "";
+    const attachment = profile.attachments?.[attachmentID] || null;
+    if (!attachment) return null;
+    const textureKey = weaponTextureKey(composition.weapon_visual_id);
+    if (!textureKey || !scene.textures.exists(textureKey)) return null;
+    attachmentLayers.push({
+      channel: "weapon",
+      attachmentID,
+      attachment,
+      textureKey,
+    });
+  }
+
+  if (composition?.shield_visual_id) {
+    const attachmentID = composition.shield_animation_set || "";
+    const attachment = profile.attachments?.[attachmentID] || null;
+    if (attachment) {
+      const textureKey = offHandTextureKey(composition.shield_visual_id);
+      if (!textureKey || !scene.textures.exists(textureKey)) return null;
+      attachmentLayers.push({
+        channel: "shield",
+        attachmentID,
+        attachment,
+        textureKey,
+      });
+    }
+  }
+
+  if (attachmentCount > 0 && attachmentLayers.length === 0) {
+    return null;
+  }
+  if (attachmentCount === 0 && composition?.weapon_visual_id) {
     return null;
   }
 
   return {
     profile,
     signatureState,
-    attachmentID,
-    attachment,
-    weaponKey,
+    attachmentLayers,
   };
 }
 
@@ -139,12 +175,7 @@ function applyStateFrame(container, stateID, index) {
   const state = container.battleStates[stateID];
   if (!state) return null;
   const manifestFrame = state.frames[index] || state.frames[0];
-  const pose =
-    stateFrames(container.battleProfile, stateID, container.attachmentID)[
-      index
-    ] ||
-    stateFrames(container.battleProfile, stateID, container.attachmentID)[0];
-  if (!manifestFrame || !pose) return null;
+  if (!manifestFrame) return null;
 
   if (container.battleTextureKey !== state.body_key) {
     container.battleBody.setTexture(state.body_key, manifestFrame.frame);
@@ -153,20 +184,21 @@ function applyStateFrame(container, stateID, index) {
     container.battleBody.setFrame(manifestFrame.frame);
   }
 
-  if (container.battleWeaponBack && container.battleWeaponFront) {
-    for (const weapon of [
-      container.battleWeaponBack,
-      container.battleWeaponFront,
-    ]) {
-      weapon.setPosition(pose.x, pose.y).setAngle(pose.angle);
+  for (const layer of container.battleAttachmentLayers) {
+    const pose =
+      stateFrames(container.battleProfile, stateID, layer.attachmentID)[
+        index
+      ] || stateFrames(container.battleProfile, stateID, layer.attachmentID)[0];
+    for (const image of [layer.back, layer.front]) {
+      image.setPosition(pose.x, pose.y).setAngle(pose.angle);
     }
-    container.battleWeaponBack.setVisible(!pose.front);
-    container.battleWeaponFront.setVisible(pose.front);
+    layer.back.setVisible(!pose.front);
+    layer.front.setVisible(pose.front);
   }
 
   container.battleState = stateID;
   container.battleFrameIndex = manifestFrame.frame;
-  return pose;
+  return { duration: manifestFrame.duration };
 }
 
 export function createBattleCharacterSprite(
@@ -183,37 +215,43 @@ export function createBattleCharacterSprite(
 
   const frameSize = BATTLE_CHARACTER_CATALOG.frame_size;
   const targetSize = opts.targetSize || 100;
-  const origin = definition.attachment?.origin || [0.5, 0.5];
-  const children = [];
-  let weaponBack = null;
-  let weaponFront = null;
-  if (definition.weaponKey) {
-    weaponBack = scene.add
-      .image(0, 0, definition.weaponKey)
-      .setOrigin(...origin);
-    children.push(weaponBack);
-  }
+  const attachmentLayers = definition.attachmentLayers.map((layer) => ({
+    ...layer,
+    back: scene.add
+      .image(0, 0, layer.textureKey)
+      .setOrigin(...(layer.attachment.origin || [0.5, 0.5])),
+    front: scene.add
+      .image(0, 0, layer.textureKey)
+      .setOrigin(...(layer.attachment.origin || [0.5, 0.5])),
+  }));
   const body = scene.add.sprite(
     0,
     0,
     definition.signatureState.body_key,
     definition.signatureState.frames[0].frame,
   );
-  children.push(body);
-  if (definition.weaponKey) {
-    weaponFront = scene.add
-      .image(0, 0, definition.weaponKey)
-      .setOrigin(...origin);
-    children.push(weaponFront);
-  }
+  const children = [
+    ...attachmentLayers.map((layer) => layer.back),
+    body,
+    ...attachmentLayers.map((layer) => layer.front),
+  ];
 
   const container = scene.add.container(x, y, children);
   container.setSize(frameSize, frameSize);
   container.setScale(targetSize / frameSize);
 
   container.battleBody = body;
-  container.battleWeaponBack = weaponBack;
-  container.battleWeaponFront = weaponFront;
+  container.battleAttachmentLayers = attachmentLayers;
+  const weaponLayer = attachmentLayers.find(
+    (layer) => layer.channel === "weapon",
+  );
+  const shieldLayer = attachmentLayers.find(
+    (layer) => layer.channel === "shield",
+  );
+  container.battleWeaponBack = weaponLayer?.back || null;
+  container.battleWeaponFront = weaponLayer?.front || null;
+  container.battleShieldBack = shieldLayer?.back || null;
+  container.battleShieldFront = shieldLayer?.front || null;
   container.battleTextureKey = definition.signatureState.body_key;
   container.battleProfile = definition.profile;
   container.battleStates = definition.profile.states;
@@ -221,12 +259,13 @@ export function createBattleCharacterSprite(
   container.battleFrames = stateFrames(
     definition.profile,
     definition.profile.default_state,
-    definition.attachmentID,
+    attachmentLayers[0]?.attachmentID || "",
   );
   container.battleAvailableStates = Object.keys(definition.profile.states);
   container.battleAnimationKind = definition.profile.default_state;
-  container.weaponTextureKey = definition.weaponKey || null;
-  container.attachmentID = definition.attachmentID;
+  container.weaponTextureKey = weaponLayer?.textureKey || null;
+  container.shieldTextureKey = shieldLayer?.textureKey || null;
+  container.attachmentID = attachmentLayers[0]?.attachmentID || "";
   container.isBattleCharacter = true;
   container._battleAnimationToken = 0;
 
@@ -270,14 +309,18 @@ export function createBattleCharacterSprite(
 
   container.setTint = (color) => {
     body.setTint(color);
-    weaponBack?.setTint(color);
-    weaponFront?.setTint(color);
+    for (const layer of attachmentLayers) {
+      layer.back.setTint(color);
+      layer.front.setTint(color);
+    }
     return container;
   };
   container.clearTint = () => {
     body.clearTint();
-    weaponBack?.clearTint();
-    weaponFront?.clearTint();
+    for (const layer of attachmentLayers) {
+      layer.back.clearTint();
+      layer.front.clearTint();
+    }
     return container;
   };
 

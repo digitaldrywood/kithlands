@@ -59,6 +59,7 @@ type GameData struct {
 	weaponByID          map[string]*Weapon
 	abilityByID         map[string]*Ability
 	armorByID           map[string]*Armor
+	shieldByID          map[string]*Shield
 	spellByID           map[string]*Spell
 	monsterByID         map[string]*Monster
 	formationByID       map[string]*Formation
@@ -98,6 +99,7 @@ func (gd *GameData) ClassByID(id string) *Class         { return gd.classByID[id
 func (gd *GameData) WeaponByID(id string) *Weapon       { return gd.weaponByID[id] }
 func (gd *GameData) AbilityByID(id string) *Ability     { return gd.abilityByID[id] }
 func (gd *GameData) ArmorByID(id string) *Armor         { return gd.armorByID[id] }
+func (gd *GameData) ShieldByID(id string) *Shield       { return gd.shieldByID[id] }
 func (gd *GameData) SpellByID(id string) *Spell         { return gd.spellByID[id] }
 func (gd *GameData) MonsterByID(id string) *Monster     { return gd.monsterByID[id] }
 func (gd *GameData) FormationByID(id string) *Formation { return gd.formationByID[id] }
@@ -128,6 +130,11 @@ func (gd *GameData) buildIndexes() {
 	gd.armorByID = make(map[string]*Armor, len(gd.Items.Armor))
 	for i := range gd.Items.Armor {
 		gd.armorByID[gd.Items.Armor[i].ID] = &gd.Items.Armor[i]
+	}
+
+	gd.shieldByID = make(map[string]*Shield, len(gd.Items.Shields))
+	for i := range gd.Items.Shields {
+		gd.shieldByID[gd.Items.Shields[i].ID] = &gd.Items.Shields[i]
 	}
 
 	// Backfill MP cost for spells that omit it: cost = spell_level * 2 per GDD §8.1.
@@ -248,6 +255,9 @@ func (gd *GameData) validate() {
 	for _, s := range gd.Items.Shields {
 		if s.ID == "" {
 			panic("gamedata: shield with empty id")
+		}
+		if (s.VisualID == "") != (s.AnimationSet == "") {
+			panic(fmt.Sprintf("gamedata: shield %q must define visual_id and animation_set together", s.ID))
 		}
 		validateClassRefs("shield", s.ID, s.Classes, classIDs)
 	}
@@ -426,17 +436,30 @@ func (gd *GameData) validateBattleCharacters(baseClassIDs map[string]bool) {
 		requiredStates[state] = true
 	}
 	weaponVisuals := make(map[string]bool, len(cfg.WeaponAssets))
-	weaponKeys := make(map[string]bool, len(cfg.WeaponAssets))
+	assetKeys := make(map[string]bool, len(cfg.WeaponAssets)+len(cfg.OffHandAssets))
 	for _, asset := range cfg.WeaponAssets {
-		if asset.VisualID == "" || asset.Key == "" || asset.Path == "" || weaponVisuals[asset.VisualID] || weaponKeys[asset.Key] {
+		if asset.VisualID == "" || asset.Key == "" || asset.Path == "" || weaponVisuals[asset.VisualID] || assetKeys[asset.Key] {
 			panic(fmt.Sprintf("gamedata: battle_characters.json has invalid weapon asset %q", asset.VisualID))
 		}
 		weaponVisuals[asset.VisualID] = true
-		weaponKeys[asset.Key] = true
+		assetKeys[asset.Key] = true
 	}
 	for _, weapon := range gd.Items.Weapons {
 		if weapon.VisualID != "" && !weaponVisuals[weapon.VisualID] {
 			panic(fmt.Sprintf("gamedata: weapon %q references missing battle asset %q", weapon.ID, weapon.VisualID))
+		}
+	}
+	offHandVisuals := make(map[string]bool, len(cfg.OffHandAssets))
+	for _, asset := range cfg.OffHandAssets {
+		if asset.VisualID == "" || asset.Key == "" || asset.Path == "" || offHandVisuals[asset.VisualID] || assetKeys[asset.Key] {
+			panic(fmt.Sprintf("gamedata: battle_characters.json has invalid off-hand asset %q", asset.VisualID))
+		}
+		offHandVisuals[asset.VisualID] = true
+		assetKeys[asset.Key] = true
+	}
+	for _, shield := range gd.Items.Shields {
+		if shield.VisualID != "" && !offHandVisuals[shield.VisualID] {
+			panic(fmt.Sprintf("gamedata: shield %q references missing battle asset %q", shield.ID, shield.VisualID))
 		}
 	}
 
