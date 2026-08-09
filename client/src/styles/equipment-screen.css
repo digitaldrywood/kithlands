@@ -719,10 +719,10 @@
   left: calc(100% + 9px);
   top: 0;
   z-index: 50;
-  width: 240px;
+  width: 286px;
   display: none;
-  gap: 5px;
-  padding: 10px;
+  gap: 6px;
+  padding: 12px;
   border: 2px solid #78afe4;
   border-radius: 5px;
   color: var(--sheet-text);
@@ -780,6 +780,12 @@
   font-size: 9px;
 }
 
+.tooltip-copy {
+  padding-top: 5px;
+  border-top: 1px solid rgba(91, 148, 202, 0.28);
+  color: #b9d8f5;
+}
+
 .tooltip-stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -792,6 +798,52 @@
 .tooltip-stat {
   color: #dcecff;
   font-size: 9px;
+}
+
+.tooltip-section-label {
+  color: var(--sheet-gold);
+  font-size: 8px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.tooltip-sources {
+  display: grid;
+  gap: 4px;
+}
+
+.tooltip-source-row {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 5px;
+  align-items: center;
+  padding: 4px 5px;
+  border-left: 2px solid #6e9bc6;
+  border-radius: 2px;
+  background: rgba(27, 59, 92, 0.55);
+  font-size: 8px;
+}
+
+.tooltip-source-row.is-socket.is-filled {
+  border-left-color: var(--tooltip-gem-color);
+  box-shadow: inset 6px 0 12px
+    color-mix(in srgb, var(--tooltip-gem-glow) 15%, transparent);
+}
+
+.tooltip-source-row.is-socket.is-open {
+  border-left-style: dashed;
+  color: var(--sheet-muted);
+}
+
+.tooltip-source-kind {
+  color: #93b8d9;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.tooltip-source-value {
+  color: #8df0b9;
+  white-space: nowrap;
 }
 
 .equipment-drawer {

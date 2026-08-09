@@ -403,7 +403,7 @@ function renderMain(
     element(
       "p",
       "paperdoll-help",
-      "Hover or focus a slot to inspect it. Select a slot to change gear.",
+      "Hover or focus for full stats—no click needed. Click only to change gear.",
     ),
   );
 
@@ -671,7 +671,11 @@ function renderSlot(state, slot) {
   sockets.setAttribute("aria-label", socketLabel(item));
   frame.append(icon, sockets);
   const caption = element("span", "equipment-slot-label", slot.name);
-  const tooltip = renderItemTooltip(slot.name, item, "Select to change gear");
+  const tooltip = renderItemTooltip(
+    slot.name,
+    item,
+    "Click only when you want to change gear",
+  );
   tooltip.id = `equipment-slot-tip-${state.partyIndex}-${slot.id}`;
   control.setAttribute("aria-describedby", tooltip.id);
   control.append(frame, caption, tooltip);
@@ -771,7 +775,7 @@ function renderEquipmentDrawer(
       element(
         "p",
         "drawer-hint",
-        "Hover for a quick comparison. Select an item to review and equip it.",
+        "Hover for full stats and comparison. Click only to select an item for equipping.",
       ),
     );
   }
@@ -822,6 +826,9 @@ function renderCandidate(state, slot, candidate, selected) {
     candidate.disabledReason ||
       `Compare with ${slot.item?.name || "empty slot"}`,
     item,
+    candidate.compatible
+      ? "Click to select for equip review"
+      : "Cannot equip this item",
   );
   tooltip.classList.add("candidate-tooltip");
   const deltas = element("div", "tooltip-deltas");
@@ -936,7 +943,58 @@ function renderItemTooltip(label, item, footer = "") {
       ),
     );
   }
-  tooltip.append(stats, element("span", "tooltip-sockets", socketLabel(item)));
+  tooltip.append(stats);
+
+  const sources = element("span", "tooltip-sources");
+  for (const affix of item.affixes || []) {
+    const row = element("span", "tooltip-source-row is-affix");
+    row.append(
+      element("span", "tooltip-source-kind", "Affix"),
+      element("strong", "", affix.name || "Equipment bonus"),
+      element(
+        "span",
+        "tooltip-source-value",
+        `${statLabel(affix.stat)} ${formatSigned(Number(affix.value) || 0)}`,
+      ),
+    );
+    sources.append(row);
+  }
+  for (const socket of item.sockets || []) {
+    const filled = Boolean(socket.gem_id);
+    const row = element(
+      "span",
+      `tooltip-source-row is-socket ${filled ? "is-filled" : "is-open"}`,
+    );
+    if (filled) {
+      row.style.setProperty("--tooltip-gem-color", socket.color || "#69e6b5");
+      row.style.setProperty(
+        "--tooltip-gem-glow",
+        socket.glow_color || socket.color || "#b6f4ff",
+      );
+    }
+    row.append(
+      element("span", "tooltip-source-kind", filled ? "Gem" : "Socket"),
+      element(
+        "strong",
+        "",
+        filled ? socket.gem_name || "Socketed gem" : "Open socket",
+      ),
+      element(
+        "span",
+        "tooltip-source-value",
+        filled
+          ? `${statLabel(socket.stat)} ${formatSigned(Number(socket.value) || 0)}`
+          : "Ready",
+      ),
+    );
+    sources.append(row);
+  }
+  if (sources.childElementCount > 0) {
+    tooltip.append(
+      element("span", "tooltip-section-label", "Bonuses & Sockets"),
+      sources,
+    );
+  }
   if (footer) tooltip.append(element("span", "tooltip-copy", footer));
   return tooltip;
 }

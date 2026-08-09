@@ -57,21 +57,39 @@ test.describe("developer systems showcase", () => {
     await expect(oathblade).toHaveCSS("--socket-color", "#ff5c2a");
     await expect(oathblade).toHaveCSS("--socket-color-secondary", "#28a9ff");
     await page.screenshot({
-      path: testInfo.outputPath(`systems-showcase-loadout-${RUN_ID}.png`),
+      path: testInfo.outputPath(
+        `systems-showcase-loadout-default-${RUN_ID}.png`,
+      ),
       fullPage: true,
     });
+    await page.setViewportSize({ width: 1440, height: 900 });
     await oathblade.hover();
-    await expect(oathblade.locator(".equipment-tooltip")).toBeVisible();
+    const hoverCard = oathblade.locator(".equipment-tooltip");
+    await expect(hoverCard).toBeVisible();
+    await expect(hoverCard).toContainText("Bonuses & Sockets");
+    await expect(hoverCard).toContainText("Ember Gem");
+    await expect(hoverCard).toContainText("Ward Gem");
+    await expect(hoverCard).toContainText("Power +3");
+    await expect(hoverCard).toContainText("Power +2");
+    await expect(hoverCard).toContainText(
+      "Click only when you want to change gear",
+    );
+    await expect(page.locator(".equipment-drawer")).toHaveCount(0);
     await page.screenshot({
-      path: testInfo.outputPath(`systems-showcase-socket-glow-${RUN_ID}.png`),
+      path: testInfo.outputPath(
+        `systems-showcase-hover-inspection-1440x900-${RUN_ID}.png`,
+      ),
       fullPage: true,
     });
+    await page.locator(".character-summary-panel").hover();
+    await expect(hoverCard).toBeHidden();
+    await expect(page.locator(".equipment-drawer")).toHaveCount(0);
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(loadout).toHaveClass(/is-compact/);
     await expect(page.locator(".equipment-slot.is-socketed")).toHaveCount(12);
     await page.screenshot({
       path: testInfo.outputPath(
-        `systems-showcase-loadout-mobile-${RUN_ID}.png`,
+        `systems-showcase-loadout-mobile-390x844-${RUN_ID}.png`,
       ),
       fullPage: true,
     });
