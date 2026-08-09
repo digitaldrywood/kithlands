@@ -76,5 +76,18 @@
     "Brisk: Attack • Spark • Cure",
     "Major: Backstab • Fireball • Blaze • Cura • Aegis",
     "SPACE or Skip bypasses a major cinematic"
-  ]
+  ],
+  "battle_character_audit": {
+    "animation_states": [
+      "idle_guard",
+      "physical_attack",
+      "cast_class_ability",
+      "defend",
+      "hit_reaction",
+      "item_use",
+      "victory",
+      "ko_defeated"
+    ],
+    "effect_modes": ["single_target", "all_enemies", "all_allies"]
+  }
 }

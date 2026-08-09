@@ -5,7 +5,9 @@ import (
 
 	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
+	"github.com/digitaldrywood/kithlands/internal/inventory"
 	"github.com/digitaldrywood/kithlands/internal/magic"
+	"github.com/digitaldrywood/kithlands/internal/sprites"
 )
 
 // DebugCreateShowcase creates a disposable, server-authoritative combat lab
@@ -95,6 +97,115 @@ func (g *Game) applyShowcase(cfg gamedata.ShowcaseData) error {
 	g.showcaseMode = true
 	g.showcaseTitle = cfg.Title
 	g.showcaseTips = append([]string(nil), cfg.Tips...)
+	audit := buildBattleCharacterAudit(g.gd, cfg.BattleCharacterAudit)
+	g.battleAudit = &audit
 	g.message = cfg.Description
 	return nil
+}
+
+func buildBattleCharacterAudit(gd *gamedata.GameData, cfg gamedata.ShowcaseBattleCharacterAudit) BattleCharacterAudit {
+	audit := BattleCharacterAudit{
+		AnimationStates: append([]string(nil), cfg.AnimationStates...),
+		EffectModes:     append([]string(nil), cfg.EffectModes...),
+	}
+	for _, class := range gd.Classes {
+		audit.Identities = append(audit.Identities, buildBattleAuditIdentity(gd, class, false))
+	}
+	for _, class := range gd.Classes {
+		if class.PromotesTo == "" {
+			continue
+		}
+		audit.Identities = append(audit.Identities, buildBattleAuditIdentity(gd, class, true))
+	}
+	return audit
+}
+
+func buildBattleAuditIdentity(gd *gamedata.GameData, class gamedata.Class, promoted bool) BattleAuditIdentity {
+	id := class.ID
+	name := class.Name
+	if promoted {
+		id = class.PromotesTo
+		name = class.PromotedName
+	}
+	identity := BattleAuditIdentity{
+		ID:             id,
+		Name:           name,
+		BaseClassID:    class.ID,
+		Promoted:       promoted,
+		SupportsShield: class.Equipment.Shields,
+	}
+
+	if len(class.Equipment.Weapons) == 0 {
+		identity.Equipment = append(identity.Equipment, battleAuditEquipment(gd, class, promoted, "unarmed", nil))
+		return identity
+	}
+	for _, weaponType := range class.Equipment.Weapons {
+		var selected *gamedata.Weapon
+		for i := range gd.Items.Weapons {
+			weapon := &gd.Items.Weapons[i]
+			if weapon.Type != weaponType || !auditContains(weapon.Classes, class.ID) {
+				continue
+			}
+			if selected == nil ||
+				(selected.VisualID == "" && weapon.VisualID != "") ||
+				(selected.VisualID != "" && weapon.VisualID != "" && weapon.Tier > selected.Tier) {
+				selected = weapon
+			}
+		}
+		if selected != nil {
+			identity.Equipment = append(identity.Equipment, battleAuditEquipment(gd, class, promoted, weaponType, selected))
+		}
+	}
+	return identity
+}
+
+func battleAuditEquipment(gd *gamedata.GameData, class gamedata.Class, promoted bool, equipmentType string, weapon *gamedata.Weapon) BattleAuditEquipment {
+	equip := inventory.EquipmentSlots{}
+	itemName := "Unarmed"
+	itemID := ""
+	if weapon != nil {
+		equip.WeaponID = weapon.ID
+		itemID = weapon.ID
+		itemName = weapon.Name
+	}
+	composition := sprites.Compose(sprites.Input{
+		ClassID:    class.ID,
+		Promoted:   promoted,
+		PromotesTo: class.PromotesTo,
+		Equip:      equip,
+		Palettes:   &gd.Palettes,
+		Lookup:     sprites.LookupFromGameData(gd),
+	})
+	return BattleAuditEquipment{
+		Type:           equipmentType,
+		ItemID:         itemID,
+		ItemName:       itemName,
+		LayerAvailable: composition.WeaponVisualID != "",
+		Composition:    composition,
+	}
+}
+
+func auditContains(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
+}
+
+func cloneBattleCharacterAudit(source *BattleCharacterAudit) *BattleCharacterAudit {
+	if source == nil {
+		return nil
+	}
+	clone := &BattleCharacterAudit{
+		AnimationStates: append([]string(nil), source.AnimationStates...),
+		EffectModes:     append([]string(nil), source.EffectModes...),
+		Identities:      make([]BattleAuditIdentity, len(source.Identities)),
+	}
+	for i, identity := range source.Identities {
+		clone.Identities[i] = identity
+		clone.Identities[i].Equipment = append([]BattleAuditEquipment(nil), identity.Equipment...)
+	}
+	return clone
 }

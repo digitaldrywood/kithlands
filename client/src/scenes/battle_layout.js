@@ -1,13 +1,7 @@
 const PARTY_LAYOUT = {
-  frontX: 520,
-  backX: 556,
-  spriteOffsetX: 15,
-  arrowOffsetX: -18,
-  slotStartY: 142,
-  slotGapY: 74,
-  frontYOffset: 22,
-  backYOffset: -12,
-  slotJitterY: [-4, 2, 0, -2],
+  desktop: { frontX: 548, backX: 630, slotStartY: 110, slotGapY: 88 },
+  mobile: { frontX: 552, backX: 628, slotStartY: 88, slotGapY: 140 },
+  arrowOffsetX: -42,
   floatingTextLift: 12,
 };
 
@@ -35,26 +29,57 @@ export function inferPartyRow(member = {}) {
   return "front";
 }
 
-export function buildPartyBattleLayout(party = []) {
+export function buildPartyBattleLayout(party = [], { compact = false } = {}) {
+  const config = compact ? PARTY_LAYOUT.mobile : PARTY_LAYOUT.desktop;
   return party.map((member, slot) => {
     const row = inferPartyRow(member);
-    const jitter =
-      PARTY_LAYOUT.slotJitterY[slot % PARTY_LAYOUT.slotJitterY.length] || 0;
-    const baseY = PARTY_LAYOUT.slotStartY + slot * PARTY_LAYOUT.slotGapY;
-    const yOffset =
-      row === "front" ? PARTY_LAYOUT.frontYOffset : PARTY_LAYOUT.backYOffset;
-    const y = baseY + yOffset + jitter;
-    const x = row === "front" ? PARTY_LAYOUT.frontX : PARTY_LAYOUT.backX;
+    const y = config.slotStartY + slot * config.slotGapY;
+    const x = row === "front" ? config.frontX : config.backX;
 
     return {
       slot,
       row,
       x,
       y,
-      spriteX: x + PARTY_LAYOUT.spriteOffsetX,
+      spriteX: x,
       spriteY: y,
       arrowX: x + PARTY_LAYOUT.arrowOffsetX,
       arrowY: y,
+      lane: {
+        x: 500,
+        y: y - config.slotGapY / 2,
+        width: 292,
+        height: config.slotGapY,
+      },
+    };
+  });
+}
+
+export function buildEnemyBattleLayout(enemies = [], bounds = {}) {
+  const area = { x: 24, y: 84, width: 430, height: 320, ...bounds };
+  const count = Math.max(1, enemies.length);
+  const columns = Math.min(3, Math.ceil(Math.sqrt(count)));
+  const rows = Math.ceil(count / columns);
+  const cellWidth = area.width / columns;
+  const cellHeight = area.height / rows;
+  const spriteSize = rows === 1 ? 82 : rows === 2 ? 64 : 50;
+
+  return enemies.map((_, index) => {
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    const lane = {
+      x: area.x + column * cellWidth,
+      y: area.y + row * cellHeight,
+      width: cellWidth,
+      height: cellHeight,
+    };
+    return {
+      lane,
+      x: lane.x + lane.width / 2,
+      y: lane.y + lane.height * 0.56,
+      nameY: lane.y + 8,
+      numberY: lane.y + lane.height - 10,
+      spriteSize,
     };
   });
 }

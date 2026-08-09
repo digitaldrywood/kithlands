@@ -459,6 +459,24 @@ func (gd *GameData) validateShowcase(classIDs map[string]bool) {
 			panic(fmt.Sprintf("gamedata: showcase.json references unknown monster %q", monsterID))
 		}
 	}
+	validateShowcaseAuditValues("animation state", cfg.BattleCharacterAudit.AnimationStates)
+	validateShowcaseAuditValues("effect mode", cfg.BattleCharacterAudit.EffectModes)
+}
+
+func validateShowcaseAuditValues(label string, values []string) {
+	if len(values) == 0 {
+		panic(fmt.Sprintf("gamedata: showcase.json battle character audit has no %ss", label))
+	}
+	seen := make(map[string]bool, len(values))
+	for _, value := range values {
+		if strings.TrimSpace(value) == "" {
+			panic(fmt.Sprintf("gamedata: showcase.json battle character audit has empty %s", label))
+		}
+		if seen[value] {
+			panic(fmt.Sprintf("gamedata: showcase.json battle character audit repeats %s %q", label, value))
+		}
+		seen[value] = true
+	}
 }
 
 func containsString(values []string, target string) bool {

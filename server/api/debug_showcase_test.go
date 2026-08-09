@@ -66,4 +66,42 @@ func TestDebugCreateShowcase_ConfiguresRepresentativeCombatState(t *testing.T) {
 	if !backstab {
 		t.Errorf("rogue showcase member missing Backstab ability")
 	}
+
+	audit := state.BattleCharacterAudit
+	if audit == nil {
+		t.Fatal("showcase missing battle character audit catalog")
+	}
+	wantIdentities := []string{
+		"warrior", "brawler", "rogue", "mender", "cinder", "wayfarer",
+		"knight", "champion", "shadow", "sage", "pyromancer", "wanderer",
+	}
+	if len(audit.Identities) != len(wantIdentities) {
+		t.Fatalf("audit identities = %d, want %d", len(audit.Identities), len(wantIdentities))
+	}
+	equipmentTypes := make(map[string]bool)
+	for i, identity := range audit.Identities {
+		if identity.ID != wantIdentities[i] {
+			t.Errorf("audit identity %d = %q, want %q", i, identity.ID, wantIdentities[i])
+		}
+		if len(identity.Equipment) == 0 {
+			t.Errorf("audit identity %q has no equipment options", identity.ID)
+		}
+		for _, equipment := range identity.Equipment {
+			equipmentTypes[equipment.Type] = true
+			if equipment.Composition.BaseSprite != identity.ID {
+				t.Errorf("audit %q %q base sprite = %q", identity.ID, equipment.Type, equipment.Composition.BaseSprite)
+			}
+		}
+	}
+	for _, equipmentType := range []string{"sword", "dagger", "staff", "bow", "axe", "hammer", "unarmed"} {
+		if !equipmentTypes[equipmentType] {
+			t.Errorf("audit catalog missing equipment type %q", equipmentType)
+		}
+	}
+	if got := audit.AnimationStates; len(got) != 8 || got[0] != "idle_guard" || got[7] != "ko_defeated" {
+		t.Errorf("audit animation states = %v", got)
+	}
+	if got := audit.EffectModes; len(got) != 3 || got[0] != "single_target" || got[2] != "all_allies" {
+		t.Errorf("audit effect modes = %v", got)
+	}
 }
