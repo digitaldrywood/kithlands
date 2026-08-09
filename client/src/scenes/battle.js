@@ -58,6 +58,11 @@ import {
   shouldPlayMajorCinematic,
   spellTravelDuration,
 } from "./battle_cinematics.js";
+import {
+  battleEffectPresentation,
+  playBattleEffectRelease,
+  playBattleEffectToTarget,
+} from "./battle_effects.js";
 
 const ENEMY_COLORS = {
   Slime: 0x42a5f5,
@@ -3461,6 +3466,7 @@ export class BattleScene extends Phaser.Scene {
         const casterEntry =
           this.partySprites[action.actor_name] ||
           this.findEnemySpriteForAction(action, action.actor_name);
+        const presentation = battleEffectPresentation(action);
         let healPresentations = healActions.map((entry) => ({
           ...entry,
           target:
@@ -3487,6 +3493,11 @@ export class BattleScene extends Phaser.Scene {
         );
         await this.playMajorCinematicPrelude(action, casterEntry, "holy");
         await this.playCastAnticipation(casterEntry, "holy");
+        await playBattleEffectRelease(
+          this,
+          this.resolveVisualEntry(casterEntry),
+          presentation,
+        );
         if (
           isGroupTargetMode(action.target_mode) &&
           healPresentations.length > 1
@@ -3503,11 +3514,19 @@ export class BattleScene extends Phaser.Scene {
           });
         }
         await Promise.all(
-          healPresentations.map((entry) =>
-            this.launchSpellProjectile(casterEntry, entry.target, "holy"),
-          ),
+          healPresentations.map((entry) => {
+            const customEffect = playBattleEffectToTarget(
+              this,
+              this.resolveVisualEntry(entry.target),
+              presentation,
+            );
+            return (
+              customEffect ||
+              this.launchSpellProjectile(casterEntry, entry.target, "holy")
+            );
+          }),
         );
-        playSFX("sfx_heal");
+        playSFX(presentation?.soundHook || "sfx_heal");
         for (const presentation of healPresentations) {
           const amount =
             presentation.action.damage ||

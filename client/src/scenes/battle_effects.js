@@ -50,7 +50,7 @@ function tagEffect(object, presentation, stage, legacyTag) {
   return object;
 }
 
-export function spawnBattleEffectRelease(scene, actor, presentation) {
+export function playBattleEffectRelease(scene, actor, presentation) {
   if (!presentation || presentation.motion !== "field" || !actor) return null;
   const reducedMotion = scene.reducedBattleMotion();
   const y = actor.y + actor.height * 0.34;
@@ -66,17 +66,19 @@ export function spawnBattleEffectRelease(scene, actor, presentation) {
   release.strokeEllipse(0, 0, actor.width * 0.54, 10);
   release.lineBetween(-9, 0, 9, 0);
   release.lineBetween(0, -5, 0, 5);
-  scene.tweens.add({
-    targets: release,
-    alpha: 0.82,
-    scaleX: presentation.scale,
-    scaleY: reducedMotion ? 1 : presentation.scale,
-    duration: scene.scaledMs(reducedMotion ? 80 : 150),
-    yoyo: true,
-    hold: scene.scaledMs(80),
-    onComplete: () => release.destroy(),
+  return new Promise((resolve) => {
+    scene.tweens.add({
+      targets: release,
+      alpha: 0.82,
+      scaleX: presentation.scale,
+      scaleY: reducedMotion ? 1 : presentation.scale,
+      duration: scene.scaledMs(reducedMotion ? 80 : 150),
+      yoyo: true,
+      hold: scene.scaledMs(80),
+      onYoyo: resolve,
+      onComplete: () => release.destroy(),
+    });
   });
-  return release;
 }
 
 export function playBattleEffectToTarget(scene, target, presentation) {
