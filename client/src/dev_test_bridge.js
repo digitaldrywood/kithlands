@@ -947,6 +947,8 @@ function visibleBattleFxSnapshot(scene) {
       battleFrameIndex: entry?.sprite?.battleFrameIndex ?? null,
       spriteBounds: objectBounds(entry?.sprite),
       hpBarBounds: objectBounds(entry?.hpBar?.bg),
+      currentHP: entry?.hpBar?.currentHP ?? null,
+      maxHP: entry?.hpBar?.maxHP ?? null,
     }));
   const enemyMembers = Object.values(scene?.enemySprites || {})
     .filter((entry) => entry && !entry.dead && !entry.dying)
@@ -959,6 +961,8 @@ function visibleBattleFxSnapshot(scene) {
       spriteY: entry?.sprite?.y ?? null,
       spriteBounds: objectBounds(entry?.sprite),
       hpBarBounds: objectBounds(entry?.hpBar?.bg),
+      currentHP: entry?.hpBar?.currentHP ?? null,
+      maxHP: entry?.hpBar?.maxHP ?? null,
     }));
 
   // Find tagged UI bounds so design-validation runner can verify layout
@@ -1614,6 +1618,7 @@ export function installDevTestBridge(game) {
         heala: "heala",
         fireball: "fireball",
         blaze: "blaze",
+        mute: "mute",
       }[mode];
       const wantsSpell =
         !!exactSpellID ||
@@ -1653,21 +1658,17 @@ export function installDevTestBridge(game) {
                   entry.target === "all_allies" &&
                   entry.target_modes?.includes("all_allies"))),
           );
-          if (
-            wantsSpell &&
-            !spellAssigned &&
-            spell
-          ) {
+          if (wantsSpell && !spellAssigned && spell) {
             spellAssigned = true;
             const groupMode =
               exactSpellID &&
               (spell.target === "all_enemies" || spell.target === "all_allies")
                 ? spell.target
                 : mode === "all_spell"
-                ? "all_enemies"
-                : mode === "all_heal"
-                  ? "all_allies"
-                  : null;
+                  ? "all_enemies"
+                  : mode === "all_heal"
+                    ? "all_allies"
+                    : null;
             return {
               slot,
               type: "spell",
@@ -1679,9 +1680,7 @@ export function installDevTestBridge(game) {
           return { slot, type: "attack", target_id: enemyId };
         })
         .filter(Boolean);
-      if (
-        wantsSpell && !spellAssigned
-      ) {
+      if (wantsSpell && !spellAssigned) {
         throw new Error("Battle party has no castable spell");
       }
       if (mode === "inspire" && !inspireAssigned) {
