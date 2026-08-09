@@ -16,12 +16,19 @@ export async function openShowcase(
 ) {
   await page.emulateMedia({ reducedMotion });
   await page.setViewportSize({ width, height });
-  await page.goto("/");
-  await page.waitForFunction(
-    () => window.__kithlandsTest?.activeSceneKey() === "Title",
-    null,
-    { timeout: 90_000 },
-  );
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    await page.goto("/");
+    try {
+      await page.waitForFunction(
+        () => window.__kithlandsTest?.activeSceneKey() === "Title",
+        null,
+        { timeout: 15_000 },
+      );
+      break;
+    } catch (error) {
+      if (attempt === 1) throw error;
+    }
+  }
   const state = await page.evaluate(() =>
     window.__kithlandsTest.startShowcase(),
   );

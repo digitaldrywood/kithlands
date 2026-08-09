@@ -75,7 +75,7 @@ export async function runGoldSpellFlow(
   ).toHaveLength(targetCount);
   expect(impact.majorCinematics).toBe(0);
 
-  const beforeHP = JSON.stringify(hpValues(before, side));
+  const impactHP = JSON.stringify(hpValues(impact, side));
   await page.waitForFunction(
     ({ effectFamily, targetSide, initialHP }) => {
       const snapshot = window.__kithlandsTest.battleVisibilitySnapshot();
@@ -90,7 +90,7 @@ export async function runGoldSpellFlow(
         ) && renderedHP !== initialHP
       );
     },
-    { effectFamily: family, targetSide: side, initialHP: beforeHP },
+    { effectFamily: family, targetSide: side, initialHP: impactHP },
   );
   const result = await captureProofFrame(
     page,
@@ -99,7 +99,7 @@ export async function runGoldSpellFlow(
     `${label}-result`,
     { fullPage: true },
   );
-  expect(JSON.stringify(hpValues(result, side))).not.toBe(beforeHP);
+  expect(JSON.stringify(hpValues(result, side))).not.toBe(impactHP);
   if (reducedMotion) expect(result.majorCinematics).toBe(0);
   await writeTrace(testInfo, label, trace);
   return { before, result, trace };
