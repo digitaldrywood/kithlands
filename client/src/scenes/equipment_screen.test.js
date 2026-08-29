@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildEquipmentCandidates,
   buildEquipmentComparison,
+  buildEquipmentComparisonRows,
   buildEquipmentScreenModel,
   itemStats,
 } from "./equipment_screen.js";
@@ -171,6 +172,24 @@ describe("equipment screen model", () => {
       absorb: 0,
     });
     expect(comparison.character).toContain("Attack 26 → 29");
+    expect(buildEquipmentComparisonRows(comparison)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          stat: "power",
+          current: 6,
+          preview: 9,
+          delta: 3,
+          tone: "positive",
+        }),
+        expect.objectContaining({
+          stat: "absorb",
+          current: 5,
+          preview: 5,
+          delta: 0,
+          tone: "neutral",
+        }),
+      ]),
+    );
   });
 
   it("treats moving one instance between repeated slots as a move, not a duplicate", () => {

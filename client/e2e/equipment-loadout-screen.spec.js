@@ -143,6 +143,9 @@ test("manages the full loadout, previews recommendations, and returns from socke
   await expect(page.locator(".comparison-impact")).toContainText(
     "Equip in Ring II",
   );
+  await expect(page.locator(".comparison-table-head")).toContainText("Current");
+  await expect(page.locator(".comparison-table-head")).toContainText("Preview");
+  await expect(page.locator(".comparison-table-row").first()).toBeVisible();
   await page.screenshot({
     path: path.join(PROOF_DIR, "equipment-ring-comparison.png"),
     fullPage: true,
