@@ -39,6 +39,12 @@ async function startPartyMenuGame(page) {
   await page.waitForFunction(
     () => window.__kithlandsTest.activeSceneKey() === "World",
   );
+  await page.evaluate(() =>
+    window.__kithlandsTest.setPartyVitalsLocal(
+      [{ slot: 2, status: "poison" }],
+      "World",
+    ),
+  );
 }
 
 async function openPartyMenu(page) {
@@ -59,6 +65,8 @@ test.describe("party menu FF6 styling pass", () => {
       window.__kithlandsTest.partyMenuSummary("World"),
     );
     expect(summary.rows).toHaveLength(4);
+    expect(summary.rows.map((row) => row.nextLevel)).toEqual([70, 70, 70, 70]);
+    expect(summary.rows.find((row) => row.slot === 2)?.status).toBe("POISON");
     expect(summary.resourceChips.map((chip) => chip.key).sort()).toEqual([
       "ether",
       "gold",

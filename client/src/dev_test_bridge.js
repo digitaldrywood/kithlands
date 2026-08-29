@@ -528,6 +528,18 @@ function partyMenuSummary(scene) {
         bounds: entry.bounds,
         portraitKind: portrait?.partyMenuMeta?.kind || null,
         portraitKey: portrait?.partyMenuMeta?.key || null,
+        nextLevel:
+          entries.find(
+            (candidate) =>
+              candidate?.partyMenuMeta?.role === "next_level" &&
+              candidate.partyMenuMeta.slot === entry.partyMenuMeta.slot,
+          )?.partyMenuMeta?.value ?? null,
+        status:
+          entries.find(
+            (candidate) =>
+              candidate?.partyMenuMeta?.role === "status" &&
+              candidate.partyMenuMeta.slot === entry.partyMenuMeta.slot,
+          )?.partyMenuMeta?.value || "",
       };
     });
 
