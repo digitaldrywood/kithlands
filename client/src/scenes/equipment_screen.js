@@ -146,6 +146,34 @@ export function buildEquipmentScreenModel(gameState, partyIndex) {
   };
 }
 
+export function buildCharacterSummaryResources(member = {}) {
+  const xp = Math.max(0, Number(member.xp) || 0);
+  const xpNext = Math.max(0, Number(member.xp_next) || 0);
+  return [
+    {
+      label: "HP",
+      current: Math.max(0, Number(member.hp) || 0),
+      maximum: Math.max(0, Number(member.max_hp) || 0),
+      tone: "hp",
+      note: "",
+    },
+    {
+      label: "MP",
+      current: Math.max(0, Number(member.mp) || 0),
+      maximum: Math.max(0, Number(member.max_mp) || 0),
+      tone: "mp",
+      note: "",
+    },
+    {
+      label: "XP",
+      current: xp,
+      maximum: xpNext,
+      tone: "xp",
+      note: xpNext > 0 ? `Next level in ${Math.max(0, xpNext - xp)}` : "",
+    },
+  ];
+}
+
 export function buildEquipmentCandidates(gameState, partyIndex, slotID) {
   const model = buildEquipmentScreenModel(gameState, partyIndex);
   const slot = model.slots.find((entry) => entry.id === slotID);
@@ -506,15 +534,11 @@ function renderCharacterSummary(state, model) {
 function renderSummaryTab(panel, model) {
   const member = model.member;
 
+  const vitals = element("section", "character-summary-group");
+  vitals.append(element("h3", "character-summary-label", "Vitals"));
   const bars = element("div", "character-resource-bars");
-  for (const resource of [
-    ["HP", member.hp, member.max_hp, "hp"],
-    ["MP", member.mp, member.max_mp, "mp"],
-    ["XP", member.xp, member.xp_next, "xp"],
-  ]) {
-    const [label, currentValue, maxValue, tone] = resource;
-    const current = Number(currentValue) || 0;
-    const maximum = Number(maxValue) || 0;
+  for (const resource of buildCharacterSummaryResources(member)) {
+    const { label, current, maximum, tone, note } = resource;
     const row = element("div", "character-resource");
     const labelRow = element("div", "character-resource-label");
     labelRow.append(
@@ -526,9 +550,11 @@ function renderSummaryTab(panel, model) {
     fill.style.width = `${maximum > 0 ? Math.max(0, Math.min(100, (current / maximum) * 100)) : 0}%`;
     track.append(fill);
     row.append(labelRow, track);
+    if (note) row.append(element("span", "character-resource-note", note));
     bars.append(row);
   }
-  panel.append(bars);
+  vitals.append(bars);
+  panel.append(vitals);
 
   const hero = {
     str: Number(member.str) || 0,
@@ -539,6 +565,8 @@ function renderSummaryTab(panel, model) {
   };
   const attack =
     hero.str + (model.gearTotals.str || 0) + (model.gearTotals.power || 0);
+  const combat = element("section", "character-summary-group");
+  combat.append(element("h3", "character-summary-label", "Combat"));
   const stats = element("dl", "character-stat-grid");
   for (const [label, base, bonus, total] of [
     [
@@ -592,14 +620,18 @@ function renderSummaryTab(panel, model) {
       );
     stats.append(term, value);
   }
-  panel.append(stats);
+  combat.append(stats);
+  panel.append(combat);
 
+  const condition = element("section", "character-summary-group");
+  condition.append(element("h3", "character-summary-label", "Condition"));
   const conditions = element("div", "character-conditions");
   conditions.append(
     element("span", "condition-label", "Status"),
     element("strong", "", member.status || "Normal"),
   );
-  panel.append(conditions);
+  condition.append(conditions);
+  panel.append(condition);
 }
 
 function renderSpellsTab(panel, member) {
