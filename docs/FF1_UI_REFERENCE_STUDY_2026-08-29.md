@@ -68,12 +68,12 @@ slice:
   targets, keyboard navigation, and an explicit return to the item list.
 - Equipment previews show server-provided loadout values in Current, Preview,
   and Change columns, with unchanged rows visually quiet.
+- Field magic keeps the selected spell's server-authored description, MP cost,
+  target contract, caster MP, and target validity visible across each step.
 
 Remaining priorities:
 
-1. Spell pickers: extend the same persistent description, cost, and target
-   treatment to the field-magic flow.
-2. Party and status: reduce equally weighted borders and improve scan order.
-3. Battle resolution: clearer action title cards and damage/status feedback.
-4. Level-up detail: a second, server-backed changed-stat panel when the API
+1. Party and status: reduce equally weighted borders and improve scan order.
+2. Battle resolution: clearer action title cards and damage/status feedback.
+3. Level-up detail: a second, server-backed changed-stat panel when the API
    exposes before/after values explicitly.

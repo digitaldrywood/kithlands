@@ -3,6 +3,8 @@ import {
   buildFieldSpellList,
   canTargetFieldSpell,
   collectFieldSpellTargets,
+  fieldSpellContext,
+  fieldSpellTargetLabel,
   hasCastableFieldSpell,
   isFieldCastableSpell,
   spellNeedsFieldTarget,
@@ -15,6 +17,34 @@ function makeParty() {
     { name: "Scout", hp: 0, max_hp: 24, mp: 0, max_mp: 0, status: "death" },
   ];
 }
+
+describe("field spell context", () => {
+  it("describes server-authored cost and targeting without changing mechanics", () => {
+    expect(
+      fieldSpellContext({
+        id: "cure",
+        effect: "heal",
+        target: "single_ally",
+        mp_cost: 2,
+      }),
+    ).toBe("2 MP · One ally");
+    expect(
+      fieldSpellTargetLabel({
+        id: "resurrect",
+        effect: "utility",
+        target: "single_ally",
+      }),
+    ).toBe("One fallen ally");
+    expect(
+      fieldSpellTargetLabel({
+        id: "cure_poison",
+        effect: "cure_status",
+        cures_status: "poison",
+        target: "single_ally",
+      }),
+    ).toBe("One poisoned ally");
+  });
+});
 
 describe("isFieldCastableSpell", () => {
   it("accepts heal, cure-status, and resurrect", () => {
