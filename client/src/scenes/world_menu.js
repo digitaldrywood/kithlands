@@ -65,6 +65,20 @@ const BODY_TOP = PANEL_TOP + 70; // title area reserved above
 const FOOTER_TOP = PANEL_BOTTOM - 108; // two button rows + margins
 const BODY_H = FOOTER_TOP - BODY_TOP;
 
+export function buildPartyMemberScanContext(member = {}) {
+  const xp = Math.max(0, Number(member.xp) || 0);
+  const xpNext = Math.max(0, Number(member.xp_next) || 0);
+  const rawStatus = String(member.status || "").trim();
+  const normalizedStatus = rawStatus.toLowerCase();
+  return {
+    xpRemaining: xpNext > 0 ? Math.max(0, xpNext - xp) : null,
+    status:
+      normalizedStatus && !["normal", "none"].includes(normalizedStatus)
+        ? rawStatus.replaceAll("_", " ").toUpperCase()
+        : "",
+  };
+}
+
 export function toggleMenu(scene) {
   if (scene.menuOpen) {
     closeMenu(scene);
@@ -657,6 +671,49 @@ function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
       valueText: statValueText(member.xp, member.xp_next),
     },
   );
+  const scanContext = buildPartyMemberScanContext(member);
+  const contextY = compactBarTop + compactBarGap * 2;
+  const nextLevelText = scene.add
+    .text(
+      x + w - 190,
+      contextY,
+      scanContext.xpRemaining == null
+        ? "NEXT  —"
+        : `NEXT  ${scanContext.xpRemaining} XP`,
+      {
+        fontSize: compact ? "8px" : "9px",
+        fontStyle: "bold",
+        color: "#f4d881",
+        fontFamily: "Courier New",
+      },
+    )
+    .setOrigin(0, 0.5)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT + 2);
+  nextLevelText.__kithlandsPartyMenu = {
+    role: "next_level",
+    slot,
+    value: scanContext.xpRemaining,
+  };
+  const contextObjects = [nextLevelText];
+  if (scanContext.status) {
+    const statusText = scene.add
+      .text(x + w - 320, contextY, scanContext.status, {
+        fontSize: compact ? "8px" : "9px",
+        fontStyle: "bold",
+        color: "#ffb38a",
+        fontFamily: "Courier New",
+      })
+      .setOrigin(0, 0.5)
+      .setScrollFactor(0)
+      .setDepth(DEPTH_CONTENT + 2);
+    statusText.__kithlandsPartyMenu = {
+      role: "status",
+      slot,
+      value: scanContext.status,
+    };
+    contextObjects.push(statusText);
+  }
   hpBar.track.__kithlandsPartyMenu = {
     role: "stat_bar_track",
     slot,
@@ -688,6 +745,7 @@ function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
     xpBar.track,
     xpBar.fill,
     xpBar.valueLabel,
+    ...contextObjects,
   );
 
   const rowHandle = {
