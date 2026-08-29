@@ -238,6 +238,21 @@ describe("drawButton", () => {
     const btn = drawButton(scene, 0, 0, 100, 30, "X", () => {});
     btn.bg.handlers.pointerover();
     expect(btn.bg.fill).toBe(0x2a4a7a);
+    expect(btn.bg.stroke).toBe(0x88ccff);
+  });
+
+  it("reports focus and blur for contextual help", () => {
+    const scene = freshScene();
+    const onFocus = vi.fn();
+    const onBlur = vi.fn();
+    const btn = drawButton(scene, 0, 0, 100, 30, "X", () => {}, {
+      onFocus,
+      onBlur,
+    });
+    btn.bg.handlers.pointerover();
+    btn.bg.handlers.pointerout();
+    expect(onFocus).toHaveBeenCalledTimes(1);
+    expect(onBlur).toHaveBeenCalledTimes(1);
   });
 
   it("pointerover on a disabled button is a no-op", () => {

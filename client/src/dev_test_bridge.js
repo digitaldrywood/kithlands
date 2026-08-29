@@ -1069,6 +1069,10 @@ function visibleBattleFxSnapshot(scene) {
     groundPlaneCount: taggedCount("ground-plane"),
     shadowCount: taggedCount("combat-shadow"),
     actionPanelCount: taggedCount("action-panel"),
+    victoryReportPanelCount: taggedCount("victory-report-panel"),
+    victoryRewardCardCount: taggedCount("victory-reward-card"),
+    victoryPartyRowCount: taggedCount("victory-party-row"),
+    victorySpoilsPanelCount: taggedCount("victory-spoils-panel"),
     partyMembers,
     enemyMembers,
     floatingTexts: (scene?.floatingText?.active || [])

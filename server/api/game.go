@@ -369,6 +369,7 @@ type PartyMemberState struct {
 type SpellState struct {
 	ID           string   `json:"id"`
 	Name         string   `json:"name"`
+	Description  string   `json:"description,omitempty"`
 	Target       string   `json:"target"`
 	TargetModes  []string `json:"target_modes,omitempty"`
 	Effect       string   `json:"effect"`
@@ -791,6 +792,7 @@ func (g *Game) buildPartyMemberState(c *character.Character, slot int) PartyMemb
 					pm.Spells = append(pm.Spells, SpellState{
 						ID:           sid,
 						Name:         sp.Name,
+						Description:  sp.Description,
 						Target:       sp.Target,
 						TargetModes:  append([]string(nil), sp.TargetModes...),
 						Effect:       sp.Effect,
