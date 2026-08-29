@@ -229,6 +229,37 @@ export function buildEquipmentComparison(
   };
 }
 
+export function buildEquipmentComparisonRows(comparison) {
+  const before = comparison?.before || {};
+  const after = comparison?.after || {};
+  const deltas = comparison?.deltas || {};
+  const keys = new Set([
+    ...STAT_ORDER,
+    ...Object.keys(before),
+    ...Object.keys(after),
+  ]);
+  return [...keys]
+    .filter((stat) => {
+      const current = Number(before[stat]) || 0;
+      const preview = Number(after[stat]) || 0;
+      const delta = Number(deltas[stat]) || 0;
+      return current !== 0 || preview !== 0 || delta !== 0;
+    })
+    .map((stat) => {
+      const current = Number(before[stat]) || 0;
+      const preview = Number(after[stat]) || 0;
+      const delta = Number(deltas[stat]) || preview - current;
+      return {
+        stat,
+        label: statLabel(stat),
+        current,
+        preview,
+        delta,
+        tone: deltaTone(stat, delta),
+      };
+    });
+}
+
 export function itemStats(item) {
   const stats = normalizeStats(item?.stats);
   if (item?.power != null && stats.power == null)
@@ -859,20 +890,39 @@ function renderComparison(state, model, slot, selectedCandidate, comparison) {
   region.append(
     element("h3", "section-title", `Equip ${selectedCandidate.item.name}?`),
   );
-  const deltas = significantStatEntries(comparison.deltas);
-  const deltaList = element("div", "comparison-deltas");
-  if (deltas.length === 0)
-    deltaList.append(element("span", "delta neutral", "No stat change"));
-  for (const [stat, value] of deltas) {
-    deltaList.append(
+  const comparisonTable = element("div", "comparison-table");
+  comparisonTable.setAttribute(
+    "aria-label",
+    "Current and preview loadout stats",
+  );
+  const tableHead = element("div", "comparison-table-head");
+  tableHead.append(
+    element("span", "comparison-stat", "Loadout stat"),
+    element("span", "comparison-current", "Current"),
+    element("span", "comparison-arrow", ""),
+    element("span", "comparison-preview", "Preview"),
+    element("span", "comparison-delta", "Change"),
+  );
+  comparisonTable.append(tableHead);
+  for (const row of buildEquipmentComparisonRows(comparison)) {
+    const tableRow = element(
+      "div",
+      `comparison-table-row ${row.tone}${row.delta === 0 ? " is-unchanged" : ""}`,
+    );
+    tableRow.append(
+      element("span", "comparison-stat", row.label),
+      element("span", "comparison-current", String(row.current)),
+      element("span", "comparison-arrow", "→"),
+      element("span", "comparison-preview", String(row.preview)),
       element(
         "span",
-        `delta ${deltaTone(stat, value)}`,
-        `${statLabel(stat)} ${formatSigned(value)}`,
+        `comparison-delta delta ${row.tone}`,
+        row.delta === 0 ? "—" : formatSigned(row.delta),
       ),
     );
+    comparisonTable.append(tableRow);
   }
-  region.append(deltaList);
+  region.append(comparisonTable);
   for (const line of comparison.character) {
     region.append(element("p", "character-impact-line", line));
   }

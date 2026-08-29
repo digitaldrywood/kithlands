@@ -59,9 +59,21 @@ separate regions and avoid letting borders become louder than the action.
 
 ## Follow-up priorities
 
-1. Item and spell pickers: persistent description, cost, and target mode.
-2. Equipment: before/after stat comparison with quiet unchanged values.
-3. Party and status: reduce equally weighted borders and improve scan order.
-4. Battle resolution: clearer action title cards and damage/status feedback.
-5. Level-up detail: a second, server-backed changed-stat panel when the API
+The item and equipment lessons are now represented in a second implementation
+slice:
+
+- Field and battle items keep the selected name, carried count, description,
+  availability, and target contract visible while browsing.
+- Target selection is a labeled step with party vitals, disabled invalid
+  targets, keyboard navigation, and an explicit return to the item list.
+- Equipment previews show server-provided loadout values in Current, Preview,
+  and Change columns, with unchanged rows visually quiet.
+
+Remaining priorities:
+
+1. Spell pickers: extend the same persistent description, cost, and target
+   treatment to the field-magic flow.
+2. Party and status: reduce equally weighted borders and improve scan order.
+3. Battle resolution: clearer action title cards and damage/status feedback.
+4. Level-up detail: a second, server-backed changed-stat panel when the API
    exposes before/after values explicitly.
