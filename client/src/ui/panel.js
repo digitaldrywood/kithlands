@@ -8,7 +8,7 @@ import { barFillWidth, barLabel } from "../systems/hpBar.js";
 
 const DEFAULT_BUTTON_STYLE = {
   fontSize: "12px",
-  fontFamily: "monospace",
+  fontFamily: "Arial, sans-serif",
   fontStyle: "",
   textColor: "#ffffff",
   textColorDisabled: "#666666",
@@ -212,7 +212,12 @@ export function drawButton(scene, x, y, w, h, label, onClick, opts = {}) {
     .setDepth(style.depth + 1)
     .setInteractive({ useHandCursor: true });
 
-  const state = { enabled: true, active: false, pressed: false };
+  const state = {
+    enabled: true,
+    active: false,
+    pressed: false,
+    focused: false,
+  };
 
   const repaint = () => {
     if (!state.enabled) {
@@ -230,16 +235,25 @@ export function drawButton(scene, x, y, w, h, label, onClick, opts = {}) {
     }
     bg.setStrokeStyle(
       style.strokeWidth,
-      state.active ? style.strokeActive : style.stroke,
+      state.active || state.focused ? style.strokeActive : style.stroke,
     );
     text.setColor(style.textColor);
   };
 
   const onPointerOver = () => {
     if (!state.enabled) return;
+    if (!state.focused) {
+      state.focused = true;
+      if (typeof style.onFocus === "function") style.onFocus();
+    }
     if (!state.pressed) bg.setFillStyle(style.fillHover, 1);
+    bg.setStrokeStyle(style.strokeWidth, style.strokeActive);
   };
   const onPointerOut = () => {
+    if (state.focused) {
+      state.focused = false;
+      if (typeof style.onBlur === "function") style.onBlur();
+    }
     state.pressed = false;
     repaint();
   };
@@ -280,6 +294,7 @@ export function drawButton(scene, x, y, w, h, label, onClick, opts = {}) {
         bg.disableInteractive();
         text.disableInteractive();
         state.pressed = false;
+        state.focused = false;
       }
       repaint();
     },

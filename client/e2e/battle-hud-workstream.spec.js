@@ -11,6 +11,12 @@ async function openShowcase(page, viewport) {
     { timeout: 90_000 },
   );
   await page.evaluate(() => window.__kithlandsTest.startShowcase());
+  const closeEquipment = page.getByRole("button", {
+    name: "Close equipment",
+  });
+  await closeEquipment.waitFor({ state: "visible" });
+  await closeEquipment.click();
+  await closeEquipment.waitFor({ state: "hidden" });
   await page.waitForFunction(() => {
     const snapshot = window.__kithlandsTest.battleVisibilitySnapshot();
     return (
@@ -115,6 +121,13 @@ test.describe("battle HUD workstream #270/#265", () => {
         .visibleTexts("Battle")
         .some((entry) => entry.text === "VICTORY!"),
     );
+    const victorySnapshot = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+    expect(victorySnapshot.victoryReportPanelCount).toBe(1);
+    expect(victorySnapshot.victoryRewardCardCount).toBe(3);
+    expect(victorySnapshot.victoryPartyRowCount).toBe(4);
+    expect(victorySnapshot.victorySpoilsPanelCount).toBe(1);
     await page.screenshot({
       path: testInfo.outputPath(`battle-victory-${RUN_ID}.png`),
       fullPage: true,
@@ -135,6 +148,17 @@ test.describe("battle HUD workstream #270/#265", () => {
     );
     await page.screenshot({
       path: testInfo.outputPath(`battle-mobile-390x844-${RUN_ID}.png`),
+      fullPage: true,
+    });
+
+    await page.evaluate(() => window.__kithlandsTest.forceVictory());
+    await page.waitForFunction(
+      () =>
+        window.__kithlandsTest.battleVisibilitySnapshot()
+          .victoryPartyRowCount === 4,
+    );
+    await page.screenshot({
+      path: testInfo.outputPath(`battle-victory-mobile-390x844-${RUN_ID}.png`),
       fullPage: true,
     });
   });
