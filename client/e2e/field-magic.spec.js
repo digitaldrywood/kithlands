@@ -83,6 +83,15 @@ async function setFieldMagicVitals(page, updates) {
   );
 }
 
+async function clickFieldMagicRow(page, text) {
+  const position = await page.evaluate(
+    (label) => window.__kithlandsTest.fieldMagicRowPosition(label, "World"),
+    text,
+  );
+  expect(position).toBeTruthy();
+  await page.mouse.click(position.x, position.y);
+}
+
 test.describe("field magic flow", () => {
   test("casts Cure from MAGIC menu and character detail with visual proof", async ({
     page,
@@ -124,17 +133,13 @@ test.describe("field magic flow", () => {
       fullPage: true,
     });
 
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("Mira", "World"),
-    );
+    await clickFieldMagicRow(page, "Mira");
     await page.waitForFunction(() =>
       window.__kithlandsTest
         .visibleTexts("World")
         .some((entry) => entry.text.includes("Cure")),
     );
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("Cure", "World"),
-    );
+    await clickFieldMagicRow(page, "Cure");
     await page.waitForFunction(
       ({ targetName }) =>
         window.__kithlandsTest
@@ -142,11 +147,7 @@ test.describe("field magic flow", () => {
           .some((entry) => entry.text.includes(targetName)),
       { targetName: menuTargetName },
     );
-    await page.evaluate(
-      ({ targetName }) =>
-        window.__kithlandsTest.clickInteractiveText(targetName, "World"),
-      { targetName: menuTargetName },
-    );
+    await clickFieldMagicRow(page, menuTargetName);
     await page.waitForFunction(
       ({ targetIdx, beforeHP }) => {
         const party = window.__kithlandsTest.gameState("World").party;
@@ -163,9 +164,13 @@ test.describe("field magic flow", () => {
       fullPage: true,
     });
 
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickMenuButton("CLOSE (M/ESC)", "World"),
-    );
+    if (
+      await page.evaluate(
+        () => window.__kithlandsTest.sceneFlags("World").menuOpen,
+      )
+    ) {
+      await page.keyboard.press("Escape");
+    }
     await page.waitForFunction(
       () => !window.__kithlandsTest.sceneFlags("World").menuOpen,
     );
@@ -208,11 +213,7 @@ test.describe("field magic flow", () => {
           .some((entry) => entry.text.includes(targetName)),
       { targetName: detailTargetName },
     );
-    await page.evaluate(
-      ({ targetName }) =>
-        window.__kithlandsTest.clickInteractiveText(targetName, "World"),
-      { targetName: detailTargetName },
-    );
+    await clickFieldMagicRow(page, detailTargetName);
     await page.waitForFunction(
       ({ targetIdx, beforeHP }) => {
         const party = window.__kithlandsTest.gameState("World").party;
