@@ -4,11 +4,90 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import sys
 from pathlib import Path
 
 from audit_walk_sheets import decode_rgba, png_header
+
+
+def expand_profile_states(
+    profile: dict[str, object], recipes: dict[str, object]
+) -> tuple[dict[str, object], list[str]]:
+    """Expand presentation recipes using this identity's own authored sockets."""
+    profile_id = str(profile.get("id", ""))
+    expanded = copy.deepcopy(profile)
+    errors: list[str] = []
+    states = expanded.get("states", {})
+    if not isinstance(states, dict):
+        return expanded, [f"{profile_id}: states must be an object"]
+
+    recipe_id = str(expanded.get("state_recipe", ""))
+    recipe = recipes.get(recipe_id)
+    if not isinstance(recipe, dict):
+        return expanded, [f"{profile_id}: unknown state recipe {recipe_id!r}"]
+    recipe_states = recipe.get("states", {})
+    if not isinstance(recipe_states, dict):
+        return expanded, [f"{profile_id}: recipe {recipe_id!r} states must be an object"]
+
+    default_state = str(expanded.get("default_state", ""))
+    signature = states.get(default_state)
+    if not isinstance(signature, dict):
+        return expanded, [f"{profile_id}: missing default state {default_state!r}"]
+    signature_frames = signature.get("frames", [])
+    if not isinstance(signature_frames, list) or not signature_frames:
+        return expanded, [f"{profile_id}: default state {default_state!r} has no frames"]
+    frames_by_atlas = {
+        frame.get("frame"): frame
+        for frame in signature_frames
+        if isinstance(frame, dict) and isinstance(frame.get("frame"), int)
+    }
+
+    for state_id, recipe_state_value in recipe_states.items():
+        if state_id in states:
+            continue
+        recipe_state = (
+            recipe_state_value if isinstance(recipe_state_value, dict) else {}
+        )
+        expanded_frames: list[dict[str, object]] = []
+        for index, recipe_frame_value in enumerate(recipe_state.get("frames", [])):
+            recipe_frame = (
+                recipe_frame_value if isinstance(recipe_frame_value, dict) else {}
+            )
+            atlas_frame = recipe_frame.get("frame")
+            source_frame = frames_by_atlas.get(atlas_frame)
+            if not isinstance(source_frame, dict):
+                errors.append(
+                    f"{profile_id}/{state_id}[{index}]: recipe frame "
+                    f"{atlas_frame!r} is absent from default state {default_state!r}"
+                )
+                continue
+            attachments = copy.deepcopy(source_frame.get("attachments", {}))
+            visibility = recipe_state.get("attachments_visible")
+            if isinstance(attachments, dict) and isinstance(visibility, bool):
+                for pose in attachments.values():
+                    if isinstance(pose, dict):
+                        pose["visible"] = visibility
+            expanded_frames.append(
+                {
+                    "frame": atlas_frame,
+                    "duration": recipe_frame.get("duration"),
+                    "body": copy.deepcopy(recipe_frame.get("body", {})),
+                    "attachments": attachments,
+                }
+            )
+        states[state_id] = {
+            "body_key": signature.get("body_key"),
+            "body_path": signature.get("body_path"),
+            **(
+                {"hold_last_frame": True}
+                if recipe_state.get("hold_last_frame") is True
+                else {}
+            ),
+            "frames": expanded_frames,
+        }
+    return expanded, errors
 
 
 def frame_has_pixels(
@@ -127,28 +206,35 @@ def main() -> int:
     repo_root = Path(__file__).resolve().parents[3]
     parser = argparse.ArgumentParser()
     parser.add_argument("--shared", type=Path, default=repo_root / "shared")
-    parser.add_argument("--classes", nargs="+", default=["warrior"])
+    parser.add_argument("--classes", nargs="+")
     parser.add_argument("--require-complete", action="store_true")
     args = parser.parse_args()
 
     catalog = json.loads((args.shared / "battle_characters.json").read_text())
-    profiles = {profile["id"]: profile for profile in catalog["classes"]}
+    profiles: dict[str, dict[str, object]] = {
+        profile["id"]: profile for profile in catalog["classes"]
+    }
+    class_ids = args.classes or list(profiles)
     errors: list[str] = []
-    for class_id in args.classes:
+    for class_id in class_ids:
         profile = profiles.get(class_id)
         if profile is None:
             errors.append(f"unknown battle character {class_id}")
             continue
+        expanded_profile, expansion_errors = expand_profile_states(
+            profile, catalog.get("state_recipes", {})
+        )
+        errors.extend(expansion_errors)
         profile_errors = audit_profile(
             repo_root,
-            profile,
+            expanded_profile,
             catalog["required_states"],
             catalog["frame_size"],
             args.require_complete,
         )
         errors.extend(profile_errors)
-        if not profile_errors:
-            print(f"PASS {class_id}: {len(profile['states'])} states")
+        if not expansion_errors and not profile_errors:
+            print(f"PASS {class_id}: {len(expanded_profile['states'])} states")
 
     if errors:
         for error in errors:

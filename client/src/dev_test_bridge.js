@@ -1897,6 +1897,78 @@ export function installDevTestBridge(game) {
       };
     },
 
+    previewBattleCharacterStateFrame(
+      actorName = "Hero",
+      stateID = "idle_guard",
+      stateFrameIndex = 0,
+      sceneKey = "Battle",
+    ) {
+      const scene = getScene(game, sceneKey);
+      const entry = scene?.partySprites?.[actorName];
+      if (!entry?.sprite?.applyBattleFrame) {
+        throw new Error(`${actorName} has no layered battle candidate`);
+      }
+      const state = entry.sprite.battleStates?.[stateID];
+      if (!state?.frames?.length) {
+        throw new Error(`${actorName} has no battle state ${stateID}`);
+      }
+      const index =
+        stateFrameIndex < 0
+          ? state.frames.length - 1
+          : Math.min(stateFrameIndex, state.frames.length - 1);
+      const animationIndex =
+        scene.battleAuditSelection?.catalog?.animation_states?.indexOf(stateID);
+      if (animationIndex >= 0) {
+        scene.battleAuditSelection.animationIndex = animationIndex;
+        scene.refreshBattleCharacterAudit?.(false);
+      }
+      entry.sprite.applyBattleFrame(index, stateID);
+      return {
+        actorName,
+        stateID: entry.sprite.battleState,
+        stateFrameIndex: index,
+        frameIndex: entry.sprite.battleFrameIndex,
+        stateFrameCount: state.frames.length,
+        textureKey: entry.sprite.battleTextureKey,
+        weaponTextureKey: entry.sprite.weaponTextureKey,
+        shieldTextureKey: entry.sprite.shieldTextureKey,
+        bodyX: entry.sprite.battleBody?.x ?? null,
+        bodyY: entry.sprite.battleBody?.y ?? null,
+        bodyAngle: entry.sprite.battleBody?.angle ?? null,
+        attachments: (entry.sprite.battleAttachmentLayers || []).map(
+          (layer) => ({
+            id: layer.attachmentID,
+            backVisible: layer.back?.visible ?? false,
+            frontVisible: layer.front?.visible ?? false,
+          }),
+        ),
+      };
+    },
+
+    async playBattleCharacterState(
+      actorName = "Hero",
+      stateID = "idle_guard",
+      sceneKey = "Battle",
+    ) {
+      const scene = getScene(game, sceneKey);
+      const entry = scene?.partySprites?.[actorName];
+      if (!entry?.sprite?.playBattleState) {
+        throw new Error(`${actorName} has no layered battle candidate`);
+      }
+      entry.sprite.resetBattlePose?.();
+      const played = await entry.sprite.playBattleState(stateID, {
+        reducedMotion: false,
+        speedMultiplier: 0.05,
+      });
+      if (!played) throw new Error(`${actorName} could not play ${stateID}`);
+      return {
+        actorName,
+        stateID: entry.sprite.battleState,
+        frameIndex: entry.sprite.battleFrameIndex,
+        bodyAngle: entry.sprite.battleBody?.angle ?? null,
+      };
+    },
+
     cycleBattleCharacterAudit(kind, direction = 1, sceneKey = "Battle") {
       const scene = getScene(game, sceneKey);
       if (!scene || scene.scene?.key !== "Battle") {

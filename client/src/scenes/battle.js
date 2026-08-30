@@ -1127,6 +1127,7 @@ export class BattleScene extends Phaser.Scene {
       layerAvailable: entry?.sprite?.isBattleCharacter || false,
       supportsShield: current.identity.supports_shield || false,
       animationState: current.animationState,
+      availableStates: [...(entry?.sprite?.battleAvailableStates || [])],
       effectMode: current.effectMode,
       effectFamily: current.effectFamily,
       intensityTier: current.intensityTier,

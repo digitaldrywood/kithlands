@@ -97,11 +97,76 @@ func Load(sharedDir string) *GameData {
 	gd.Dialogue = loadJSON[DialoguePool](sharedDir, "dialogue.json")
 	gd.Showcase = loadJSON[ShowcaseData](sharedDir, "showcase.json")
 	gd.BattleCharacters = loadJSON[BattleCharactersData](sharedDir, "battle_characters.json")
+	gd.expandBattleCharacterStates()
 
 	gd.buildIndexes()
 	gd.validate()
 
 	return gd
+}
+
+func cloneBattleAttachmentFrames(
+	source map[string]BattleAttachmentFrame,
+	visibility *bool,
+) map[string]BattleAttachmentFrame {
+	cloned := make(map[string]BattleAttachmentFrame, len(source))
+	for id, pose := range source {
+		if visibility != nil {
+			visible := *visibility
+			pose.Visible = &visible
+		}
+		cloned[id] = pose
+	}
+	return cloned
+}
+
+// expandBattleCharacterStates applies shared presentation recipes to missing
+// states. Explicitly authored identity states always win; recipes only reuse
+// that identity's own atlas frames and attachment sockets.
+func (gd *GameData) expandBattleCharacterStates() {
+	for profileIndex := range gd.BattleCharacters.Classes {
+		profile := &gd.BattleCharacters.Classes[profileIndex]
+		if profile.StateRecipe == "" {
+			continue
+		}
+		recipe, ok := gd.BattleCharacters.StateRecipes[profile.StateRecipe]
+		if !ok {
+			panic(fmt.Sprintf("gamedata: battle character %q references missing state recipe %q", profile.ID, profile.StateRecipe))
+		}
+		signature, ok := profile.States[profile.DefaultState]
+		if !ok || len(signature.Frames) == 0 {
+			panic(fmt.Sprintf("gamedata: battle character %q cannot expand recipe %q without default state %q", profile.ID, profile.StateRecipe, profile.DefaultState))
+		}
+		signatureFrames := make(map[int]BattleStateFrame, len(signature.Frames))
+		for _, frame := range signature.Frames {
+			signatureFrames[frame.Frame] = frame
+		}
+
+		for stateID, recipeState := range recipe.States {
+			if _, authored := profile.States[stateID]; authored {
+				continue
+			}
+			frames := make([]BattleStateFrame, 0, len(recipeState.Frames))
+			for recipeFrameIndex, recipeFrame := range recipeState.Frames {
+				sourceFrame, exists := signatureFrames[recipeFrame.Frame]
+				if !exists {
+					panic(fmt.Sprintf("gamedata: battle character %q recipe state %q frame %d references unauthored atlas frame %d", profile.ID, stateID, recipeFrameIndex, recipeFrame.Frame))
+				}
+				frames = append(frames, BattleStateFrame{
+					Frame:       recipeFrame.Frame,
+					Duration:    recipeFrame.Duration,
+					Body:        recipeFrame.Body,
+					Attachments: cloneBattleAttachmentFrames(sourceFrame.Attachments, recipeState.AttachmentsVisible),
+				})
+			}
+			profile.States[stateID] = BattleStateDefinition{
+				BodyKey:       signature.BodyKey,
+				BodyPath:      signature.BodyPath,
+				HoldLastFrame: recipeState.HoldLastFrame,
+				Frames:        frames,
+			}
+		}
+	}
 }
 
 func (gd *GameData) ClassByID(id string) *Class         { return gd.classByID[id] }
@@ -591,6 +656,33 @@ func (gd *GameData) validateBattleCharacters(baseClassIDs map[string]bool) {
 		}
 		requiredStates[state] = true
 	}
+	if len(cfg.StateRecipes) == 0 {
+		panic("gamedata: battle_characters.json has no state_recipes")
+	}
+	for recipeID, recipe := range cfg.StateRecipes {
+		if strings.TrimSpace(recipeID) == "" || len(recipe.States) == 0 {
+			panic(fmt.Sprintf("gamedata: battle_characters.json has invalid state recipe %q", recipeID))
+		}
+		for stateID, state := range recipe.States {
+			if !requiredStates[stateID] {
+				panic(fmt.Sprintf("gamedata: battle state recipe %q has unknown state %q", recipeID, stateID))
+			}
+			if state.HoldLastFrame && stateID != "ko_defeated" {
+				panic(fmt.Sprintf("gamedata: battle state recipe %q state %q cannot hold its last frame", recipeID, stateID))
+			}
+			if len(state.Frames) == 0 {
+				panic(fmt.Sprintf("gamedata: battle state recipe %q state %q has no frames", recipeID, stateID))
+			}
+			for frameIndex, frame := range state.Frames {
+				if frame.Frame < 0 || frame.Duration <= 0 ||
+					frame.Body.X < -float64(cfg.FrameSize) || frame.Body.X > float64(cfg.FrameSize) ||
+					frame.Body.Y < -float64(cfg.FrameSize) || frame.Body.Y > float64(cfg.FrameSize) ||
+					frame.Body.Angle < -180 || frame.Body.Angle > 180 {
+					panic(fmt.Sprintf("gamedata: battle state recipe %q state %q frame %d is invalid", recipeID, stateID, frameIndex))
+				}
+			}
+		}
+	}
 	weaponVisuals := make(map[string]bool, len(cfg.WeaponAssets))
 	assetKeys := make(map[string]bool, len(cfg.WeaponAssets)+len(cfg.OffHandAssets))
 	for _, asset := range cfg.WeaponAssets {
@@ -644,6 +736,11 @@ func (gd *GameData) validateBattleCharacters(baseClassIDs map[string]bool) {
 		if !validStatuses[profile.Status] {
 			panic(fmt.Sprintf("gamedata: battle character %q has invalid status %q", profile.ID, profile.Status))
 		}
+		if profile.StateRecipe != "" {
+			if _, ok := cfg.StateRecipes[profile.StateRecipe]; !ok {
+				panic(fmt.Sprintf("gamedata: battle character %q references invalid state recipe %q", profile.ID, profile.StateRecipe))
+			}
+		}
 		if profile.DefaultState != "" && !requiredStates[profile.DefaultState] {
 			panic(fmt.Sprintf("gamedata: battle character %q has invalid default_state %q", profile.ID, profile.DefaultState))
 		}
@@ -653,6 +750,13 @@ func (gd *GameData) validateBattleCharacters(baseClassIDs map[string]bool) {
 		if profile.DefaultState != "" {
 			if _, ok := profile.States[profile.DefaultState]; !ok {
 				panic(fmt.Sprintf("gamedata: battle character %q default_state %q is not authored", profile.ID, profile.DefaultState))
+			}
+		}
+		if profile.Status == "approved_runtime" {
+			for _, stateID := range cfg.RequiredStates {
+				if _, ok := profile.States[stateID]; !ok {
+					panic(fmt.Sprintf("gamedata: approved battle character %q is missing required state %q", profile.ID, stateID))
+				}
 			}
 		}
 		for attachmentID, attachment := range profile.Attachments {
@@ -682,6 +786,11 @@ func (gd *GameData) validateBattleCharacters(baseClassIDs map[string]bool) {
 				for attachmentID := range frame.Attachments {
 					if _, ok := profile.Attachments[attachmentID]; !ok {
 						panic(fmt.Sprintf("gamedata: battle character %q state %q references unknown attachment %q", profile.ID, stateID, attachmentID))
+					}
+				}
+				for attachmentID := range profile.Attachments {
+					if _, ok := frame.Attachments[attachmentID]; !ok {
+						panic(fmt.Sprintf("gamedata: battle character %q state %q frame %d is missing attachment %q", profile.ID, stateID, frameIndex, attachmentID))
 					}
 				}
 			}

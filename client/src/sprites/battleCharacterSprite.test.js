@@ -108,6 +108,21 @@ describe("Warrior battle runtime contract", () => {
   });
 });
 
+describe("all-class battle state runtime contract", () => {
+  it("exposes the complete method-backed state vocabulary for every identity", () => {
+    for (const profile of BATTLE_CHARACTER_CATALOG.classes) {
+      expect(Object.keys(profile.states), profile.id).toEqual(
+        BATTLE_CHARACTER_CATALOG.required_states,
+      );
+      expect(profile.states.ko_defeated.hold_last_frame, profile.id).toBe(true);
+      expect(
+        profile.states.ko_defeated.frames.at(-1).body,
+        `${profile.id}/ko_defeated`,
+      ).toMatchObject({ angle: 90 });
+    }
+  });
+});
+
 describe("Mender battle runtime contract", () => {
   it("keeps one readable six-pose staff-cast action", () => {
     expect(MENDER_STAFF_CAST_FRAMES.map((pose) => pose.frame)).toEqual([

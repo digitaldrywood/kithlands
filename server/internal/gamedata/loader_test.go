@@ -87,38 +87,56 @@ func TestBattleCharacterManifestLoadsEveryRuntimeIdentity(t *testing.T) {
 		t.Fatalf("battle character required states = %d, want 8", got)
 	}
 
-	warrior := gd.BattleCharacterByID("warrior")
-	if warrior == nil || warrior.Status != "approved_runtime" {
-		t.Fatalf("warrior battle profile = %#v, want approved_runtime", warrior)
-	}
-	if len(warrior.States["physical_attack"].Frames) != 6 {
-		t.Fatalf("warrior physical attack does not have six frames")
-	}
-	if got := len(warrior.States); got != len(gd.BattleCharacters.RequiredStates) {
-		t.Fatalf("warrior battle states = %d, want %d", got, len(gd.BattleCharacters.RequiredStates))
-	}
-	if !warrior.States["ko_defeated"].HoldLastFrame {
-		t.Fatal("warrior KO state must hold its last frame")
-	}
-	finalKO := warrior.States["ko_defeated"].Frames[len(warrior.States["ko_defeated"].Frames)-1]
-	if finalKO.Body.Angle != 90 {
-		t.Fatalf("warrior final KO body angle = %v, want 90", finalKO.Body.Angle)
-	}
-
-	mender := gd.BattleCharacterByID("mender")
-	if mender == nil || mender.Status != "approved_runtime" {
-		t.Fatalf("mender battle profile = %#v, want approved_runtime", mender)
-	}
-	if len(mender.States["cast_class_ability"].Frames) != 6 {
-		t.Fatalf("mender cast does not have six frames")
-	}
-
-	rogue := gd.BattleCharacterByID("rogue")
-	if rogue == nil || rogue.Status != "approved_runtime" {
-		t.Fatalf("rogue battle profile = %#v, want approved_runtime", rogue)
-	}
-	if len(rogue.States["physical_attack"].Frames) != 6 {
-		t.Fatalf("rogue physical attack does not have six frames")
+	for _, profile := range gd.BattleCharacters.Classes {
+		if profile.Status != "approved_runtime" {
+			t.Fatalf("%s battle profile status = %q, want approved_runtime", profile.ID, profile.Status)
+		}
+		if profile.StateRecipe == "" {
+			t.Fatalf("%s battle profile has no state recipe", profile.ID)
+		}
+		if got := len(profile.States); got != len(gd.BattleCharacters.RequiredStates) {
+			t.Fatalf("%s battle states = %d, want %d", profile.ID, got, len(gd.BattleCharacters.RequiredStates))
+		}
+		signature := profile.States[profile.DefaultState]
+		for _, stateID := range gd.BattleCharacters.RequiredStates {
+			state, ok := profile.States[stateID]
+			if !ok || len(state.Frames) == 0 {
+				t.Fatalf("%s is missing populated state %s", profile.ID, stateID)
+			}
+			if state.BodyKey != signature.BodyKey || state.BodyPath != signature.BodyPath {
+				t.Fatalf("%s/%s changed identity atlas", profile.ID, stateID)
+			}
+			for frameIndex, frame := range state.Frames {
+				for attachmentID := range profile.Attachments {
+					if _, ok := frame.Attachments[attachmentID]; !ok {
+						t.Fatalf("%s/%s[%d] missing %s attachment", profile.ID, stateID, frameIndex, attachmentID)
+					}
+				}
+			}
+		}
+		ko := profile.States["ko_defeated"]
+		if !ko.HoldLastFrame {
+			t.Fatalf("%s KO state must hold its last frame", profile.ID)
+		}
+		finalKO := ko.Frames[len(ko.Frames)-1]
+		if finalKO.Body.Angle != 90 {
+			t.Fatalf("%s final KO body angle = %v, want 90", profile.ID, finalKO.Body.Angle)
+		}
+		hiddenItemAttachments := 0
+		totalItemAttachments := 0
+		for _, frame := range profile.States["item_use"].Frames {
+			for attachmentID, pose := range frame.Attachments {
+				totalItemAttachments++
+				if pose.Visible != nil && !*pose.Visible {
+					hiddenItemAttachments++
+				} else if profile.ID != "warrior" {
+					t.Fatalf("%s item_use leaves %s visible", profile.ID, attachmentID)
+				}
+			}
+		}
+		if totalItemAttachments > 0 && hiddenItemAttachments == 0 {
+			t.Fatalf("%s item_use never hides its equipment", profile.ID)
+		}
 	}
 }
 

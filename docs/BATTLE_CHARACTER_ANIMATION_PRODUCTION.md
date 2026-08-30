@@ -122,6 +122,14 @@ frame timing, and per-equipment attachment sockets. Go loads and validates the
 manifest with the rest of game data; Phaser imports that same content and uses
 one generic compositor instead of class-specific rendering branches.
 
+The manifest also defines shared presentation-only `state_recipes` for
+unarmed, weapon, and caster choreography. Each profile names its recipe with
+`state_recipe`. Loading expands only missing states from that identity's own
+default-state atlas frames and attachment sockets; an explicitly authored
+identity state always wins. Recipes therefore standardize timing, body motion,
+attachment visibility, reset behavior, and the persistent KO pose without
+sharing or recoloring a class body.
+
 The same composition contract now carries optional authoritative shield visual
 metadata from `EquipmentSlots.ShieldID`. `off_hand_assets` registers reusable
 shield images separately from weapon images, and a profile may synchronize a
@@ -136,7 +144,9 @@ equipped item selects the attachment through its shared `animation_set`.
 
 ### Complete Battle-State Contract
 
-An identity marked complete must author the required states in catalog order:
+An identity marked structurally complete must expose the required states in
+catalog order, either as an explicit identity state or through its declared
+presentation recipe:
 
 1. `idle_guard`
 2. `physical_attack`
@@ -161,16 +171,17 @@ Required contract and browser checks for a complete identity include:
 
 ```bash
 python3 skills/kithlands-visual-production/scripts/audit_battle_character_sheets.py \
-  --classes warrior --require-complete
+  --require-complete
 cd client && npm test -- --run src/data/battleCharacters.test.js \
   src/sprites/battleCharacterSprite.test.js
-cd .. && ./scripts/run_playwright_local.sh e2e/warrior-battle-gold.spec.js
+cd .. && ./scripts/run_playwright_local.sh e2e/all-class-battle-states.spec.js
 ```
 
-Inspect unique current-run screenshots for every authored state, the persistent
-KO pose in desktop and portrait viewports, and the layered character in a real
-fresh-game encounter. Passing dimensions or automation alone is not visual
-acceptance.
+The audit defaults to every registered identity. Inspect unique current-run
+screenshots for every effective state, the persistent KO pose in desktop and
+portrait viewports, and the layered character in a real fresh-game encounter.
+Structural completion and passing automation do not replace class-by-class
+visual acceptance.
 
 ### Cinder Staff Cast
 
