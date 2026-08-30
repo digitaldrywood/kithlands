@@ -55,6 +55,38 @@ export function hpBarColorPct(currentHP, maxHP) {
   return Math.min(1, hp / max);
 }
 
+// Return a short, color-independent health warning for player-facing HUDs.
+// The thresholds intentionally mirror the existing green / amber / red bar
+// bands so players who cannot distinguish those colors receive the same
+// information in text. A missing max HP means the caller does not have enough
+// data to infer a condition, so it produces no warning instead of a false KO.
+export function hpConditionLabel(currentHP, maxHP) {
+  const hp = toInt(currentHP);
+  const max = toInt(maxHP);
+  if (max <= 0) return "";
+  if (hp <= 0) return "KO";
+  const pct = hpBarColorPct(hp, max);
+  if (pct <= 0.25) return "CRITICAL";
+  if (pct <= 0.5) return "LOW HP";
+  return "";
+}
+
+// Combine an abnormal status with the HP warning without making either state
+// depend on color alone. KO takes precedence over stale server status text.
+export function combatantConditionLabel(currentHP, maxHP, status = "") {
+  const health = hpConditionLabel(currentHP, maxHP);
+  if (health === "KO") return health;
+
+  const rawStatus = String(status || "").trim();
+  const normalizedStatus = rawStatus.toLowerCase();
+  const abnormal =
+    normalizedStatus && !["normal", "none", "ok"].includes(normalizedStatus)
+      ? rawStatus.replaceAll("_", " ").toUpperCase()
+      : "";
+
+  return [abnormal, health].filter(Boolean).join(" · ");
+}
+
 // Generic aliases for HP/MP/XP bars so call sites read naturally. Same
 // integer-safe math — the party menu (#94) uses these for all three stats.
 export const barFillWidth = hpBarFillWidth;

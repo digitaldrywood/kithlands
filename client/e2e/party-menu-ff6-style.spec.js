@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 const RUN_ID = Date.now();
 
 test.use({
-  viewport: { width: 1280, height: 720 },
+  viewport: { width: 1440, height: 900 },
 });
 
 async function waitForBridge(page) {
@@ -41,7 +41,7 @@ async function startPartyMenuGame(page) {
   );
   await page.evaluate(() =>
     window.__kithlandsTest.setPartyVitalsLocal(
-      [{ slot: 2, status: "poison" }],
+      [{ slot: 2, hp: 4, status: "poison" }],
       "World",
     ),
   );
@@ -66,7 +66,9 @@ test.describe("party menu FF6 styling pass", () => {
     );
     expect(summary.rows).toHaveLength(4);
     expect(summary.rows.map((row) => row.nextLevel)).toEqual([70, 70, 70, 70]);
-    expect(summary.rows.find((row) => row.slot === 2)?.status).toBe("POISON");
+    expect(summary.rows.find((row) => row.slot === 2)?.status).toBe(
+      "POISON · CRITICAL",
+    );
     expect(summary.resourceChips.map((chip) => chip.key).sort()).toEqual([
       "ether",
       "gold",
@@ -142,6 +144,30 @@ test.describe("party menu FF6 styling pass", () => {
 
     await page.screenshot({
       path: `e2e/issue-247-party-menu-ff6-proof-${RUN_ID}.png`,
+    });
+  });
+
+  test("keeps critical condition text visible in a portrait viewport", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await startPartyMenuGame(page);
+    await openPartyMenu(page);
+
+    const summary = await page.evaluate(() =>
+      window.__kithlandsTest.partyMenuSummary("World"),
+    );
+    expect(summary.rows.find((row) => row.slot === 2)?.status).toBe(
+      "POISON · CRITICAL",
+    );
+
+    const layout = await page.evaluate(() =>
+      window.__kithlandsTest.partyMenuLayout("World"),
+    );
+    expect(layout.outOfBounds).toEqual([]);
+
+    await page.screenshot({
+      path: `e2e/party-menu-critical-mobile-390x844-${RUN_ID}.png`,
     });
   });
 });

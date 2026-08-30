@@ -16,7 +16,7 @@ import {
 } from "./gem_workshop.js";
 import { inferPartyRow } from "./battle_layout.js";
 import { drawPanel, drawButton, drawLabeledStatBar } from "../ui/panel.js";
-import { hpBarColorPct } from "../systems/hpBar.js";
+import { combatantConditionLabel, hpBarColorPct } from "../systems/hpBar.js";
 import {
   questKindLabel,
   questObjectiveText,
@@ -68,14 +68,9 @@ const BODY_H = FOOTER_TOP - BODY_TOP;
 export function buildPartyMemberScanContext(member = {}) {
   const xp = Math.max(0, Number(member.xp) || 0);
   const xpNext = Math.max(0, Number(member.xp_next) || 0);
-  const rawStatus = String(member.status || "").trim();
-  const normalizedStatus = rawStatus.toLowerCase();
   return {
     xpRemaining: xpNext > 0 ? Math.max(0, xpNext - xp) : null,
-    status:
-      normalizedStatus && !["normal", "none"].includes(normalizedStatus)
-        ? rawStatus.replaceAll("_", " ").toUpperCase()
-        : "",
+    status: combatantConditionLabel(member.hp, member.max_hp, member.status),
   };
 }
 

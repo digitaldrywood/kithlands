@@ -17,4 +17,28 @@ describe("party menu scan context", () => {
       }),
     ).toEqual({ xpRemaining: 0, status: "TURNED TO STONE" });
   });
+
+  it("adds a color-independent HP warning to the scan line", () => {
+    expect(
+      buildPartyMemberScanContext({
+        hp: 18,
+        max_hp: 100,
+        xp: 10,
+        xp_next: 30,
+        status: "poison",
+      }),
+    ).toEqual({ xpRemaining: 20, status: "POISON · CRITICAL" });
+  });
+
+  it("labels a defeated member as KO even when another status is stale", () => {
+    expect(
+      buildPartyMemberScanContext({
+        hp: 0,
+        max_hp: 100,
+        xp: 10,
+        xp_next: 30,
+        status: "poison",
+      }),
+    ).toEqual({ xpRemaining: 20, status: "KO" });
+  });
 });
