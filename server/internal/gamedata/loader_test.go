@@ -94,6 +94,16 @@ func TestBattleCharacterManifestLoadsEveryRuntimeIdentity(t *testing.T) {
 	if len(warrior.States["physical_attack"].Frames) != 6 {
 		t.Fatalf("warrior physical attack does not have six frames")
 	}
+	if got := len(warrior.States); got != len(gd.BattleCharacters.RequiredStates) {
+		t.Fatalf("warrior battle states = %d, want %d", got, len(gd.BattleCharacters.RequiredStates))
+	}
+	if !warrior.States["ko_defeated"].HoldLastFrame {
+		t.Fatal("warrior KO state must hold its last frame")
+	}
+	finalKO := warrior.States["ko_defeated"].Frames[len(warrior.States["ko_defeated"].Frames)-1]
+	if finalKO.Body.Angle != 90 {
+		t.Fatalf("warrior final KO body angle = %v, want 90", finalKO.Body.Angle)
+	}
 
 	mender := gd.BattleCharacterByID("mender")
 	if mender == nil || mender.Status != "approved_runtime" {

@@ -411,6 +411,12 @@ func TestEquipWeapon(t *testing.T) {
 	if baseComp["weapon_accent"] != "#8a8275" {
 		t.Errorf("starting weapon_accent: got %v, want #8a8275", baseComp["weapon_accent"])
 	}
+	if baseComp["weapon_visual_id"] != "iron_sword" {
+		t.Errorf("starting weapon_visual_id: got %v, want iron_sword", baseComp["weapon_visual_id"])
+	}
+	if baseComp["weapon_animation_set"] != "sword" {
+		t.Errorf("starting weapon_animation_set: got %v, want sword", baseComp["weapon_animation_set"])
+	}
 
 	// Buy iron sword
 	post(t, ts.URL+"/api/game/"+gameID+"/buy", map[string]string{

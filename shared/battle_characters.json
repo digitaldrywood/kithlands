@@ -108,6 +108,253 @@
               }
             }
           ]
+        },
+        "cast_class_ability": {
+          "body_key": "battle_warrior_sword_attack_body",
+          "body_path": "/sprites/battle/warrior/sword-attack-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 90,
+              "attachments": {
+                "sword": { "x": -48, "y": -7, "angle": -135, "front": true }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 95,
+              "body": { "y": -2 },
+              "attachments": {
+                "sword": { "x": 31, "y": -7, "angle": 55, "front": false }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 150,
+              "body": { "y": -5 },
+              "attachments": {
+                "sword": { "x": 0, "y": -57, "angle": -18, "front": true }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 120,
+              "body": { "y": -7 },
+              "attachments": {
+                "sword": { "x": 0, "y": -57, "angle": -18, "front": true }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 90,
+              "attachments": {
+                "sword": { "x": 31, "y": -7, "angle": 55, "front": false }
+              }
+            },
+            {
+              "frame": 0,
+              "duration": 80,
+              "attachments": {
+                "sword": { "x": -48, "y": -7, "angle": -135, "front": true }
+              }
+            }
+          ]
+        },
+        "defend": {
+          "body_key": "battle_warrior_sword_attack_body",
+          "body_path": "/sprites/battle/warrior/sword-attack-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 90,
+              "attachments": {
+                "sword": { "x": -48, "y": -7, "angle": -135, "front": true }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 120,
+              "body": { "x": 3, "y": 3 },
+              "attachments": {
+                "sword": { "x": -38, "y": 1, "angle": -52, "front": true }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 180,
+              "body": { "x": 5, "y": 5 },
+              "attachments": {
+                "sword": { "x": -38, "y": 1, "angle": -52, "front": true }
+              }
+            },
+            {
+              "frame": 0,
+              "duration": 90,
+              "attachments": {
+                "sword": { "x": -48, "y": -7, "angle": -135, "front": true }
+              }
+            }
+          ]
+        },
+        "hit_reaction": {
+          "body_key": "battle_warrior_sword_attack_body",
+          "body_path": "/sprites/battle/warrior/sword-attack-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 55,
+              "attachments": {
+                "sword": { "x": -48, "y": -7, "angle": -135, "front": true }
+              }
+            },
+            {
+              "frame": 4,
+              "duration": 80,
+              "body": { "x": 8, "y": 2, "angle": 4 },
+              "attachments": {
+                "sword": { "x": -48, "y": 2, "angle": -132, "front": true }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 105,
+              "body": { "x": 13, "y": 5, "angle": 7 },
+              "attachments": {
+                "sword": { "x": -38, "y": 1, "angle": -52, "front": true }
+              }
+            },
+            {
+              "frame": 0,
+              "duration": 90,
+              "attachments": {
+                "sword": { "x": -48, "y": -7, "angle": -135, "front": true }
+              }
+            }
+          ]
+        },
+        "item_use": {
+          "body_key": "battle_warrior_sword_attack_body",
+          "body_path": "/sprites/battle/warrior/sword-attack-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 80,
+              "attachments": {
+                "sword": { "x": -48, "y": -7, "angle": -135, "front": true }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 90,
+              "attachments": {
+                "sword": { "x": 31, "y": -7, "angle": 55, "front": false, "visible": false }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 150,
+              "body": { "y": -4 },
+              "attachments": {
+                "sword": { "x": 0, "y": -57, "angle": -18, "front": true, "visible": false }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 90,
+              "attachments": {
+                "sword": { "x": 31, "y": -7, "angle": 55, "front": false, "visible": false }
+              }
+            },
+            {
+              "frame": 0,
+              "duration": 80,
+              "attachments": {
+                "sword": { "x": -48, "y": -7, "angle": -135, "front": true }
+              }
+            }
+          ]
+        },
+        "victory": {
+          "body_key": "battle_warrior_sword_attack_body",
+          "body_path": "/sprites/battle/warrior/sword-attack-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 85,
+              "attachments": {
+                "sword": { "x": -48, "y": -7, "angle": -135, "front": true }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 90,
+              "body": { "y": -3 },
+              "attachments": {
+                "sword": { "x": 31, "y": -7, "angle": 55, "front": false }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 150,
+              "body": { "y": -9 },
+              "attachments": {
+                "sword": { "x": 0, "y": -57, "angle": -18, "front": true }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 130,
+              "body": { "y": -6 },
+              "attachments": {
+                "sword": { "x": 0, "y": -57, "angle": -18, "front": true }
+              }
+            },
+            {
+              "frame": 0,
+              "duration": 90,
+              "attachments": {
+                "sword": { "x": -48, "y": -7, "angle": -135, "front": true }
+              }
+            }
+          ]
+        },
+        "ko_defeated": {
+          "body_key": "battle_warrior_sword_attack_body",
+          "body_path": "/sprites/battle/warrior/sword-attack-body.png",
+          "hold_last_frame": true,
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 65,
+              "attachments": {
+                "sword": { "x": -48, "y": -7, "angle": -135, "front": true }
+              }
+            },
+            {
+              "frame": 4,
+              "duration": 90,
+              "body": { "x": 8, "y": 5, "angle": 25 },
+              "attachments": {
+                "sword": { "x": -48, "y": 2, "angle": -132, "front": true }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 105,
+              "body": { "x": 14, "y": 10, "angle": 60 },
+              "attachments": {
+                "sword": { "x": -38, "y": 1, "angle": -52, "front": true }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 120,
+              "body": { "x": 18, "y": 16, "angle": 90 },
+              "attachments": {
+                "sword": { "x": -38, "y": 1, "angle": -52, "front": true }
+              }
+            }
+          ]
         }
       }
     },

@@ -201,7 +201,9 @@ Before reporting a walk change as fixed, agents must:
   anchors, cropping, orientation, and continuity.
 
 Passing automation alone is not visual acceptance. Attack sheets have their
-own unfinished contract and are not covered by walk-sheet approval.
+own contract in
+[docs/BATTLE_CHARACTER_ANIMATION_PRODUCTION.md](docs/BATTLE_CHARACTER_ANIMATION_PRODUCTION.md)
+and are not covered by walk-sheet approval.
 
 The local Playwright wrapper already uses worktree-local ports and browser
 state:
@@ -247,6 +249,9 @@ Use these after reading `AGENTS.md`:
 - [docs/CHARACTER_ANIMATION_PRODUCTION.md](docs/CHARACTER_ANIMATION_PRODUCTION.md)
   Accepted native walk-sheet contract, production workflow, and mandatory
   all-class visual gate.
+- [docs/BATTLE_CHARACTER_ANIMATION_PRODUCTION.md](docs/BATTLE_CHARACTER_ANIMATION_PRODUCTION.md)
+  Content-driven battle-state contract, attachment transforms, persistent KO,
+  and battle visual acceptance gate.
 - [CLAUDE.md](CLAUDE.md)
   Claude-specific guidance for direct implementation versus orchestrating
   Codex/OpenClaw.

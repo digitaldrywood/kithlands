@@ -184,16 +184,33 @@ function applyStateFrame(container, stateID, index) {
     container.battleBody.setFrame(manifestFrame.frame);
   }
 
+  const bodyPose = {
+    x: manifestFrame.body?.x || 0,
+    y: manifestFrame.body?.y || 0,
+    angle: manifestFrame.body?.angle || 0,
+  };
+  container.battleBody
+    .setPosition(bodyPose.x, bodyPose.y)
+    .setAngle(bodyPose.angle);
+  const radians = (bodyPose.angle * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+
   for (const layer of container.battleAttachmentLayers) {
     const pose =
       stateFrames(container.battleProfile, stateID, layer.attachmentID)[
         index
       ] || stateFrames(container.battleProfile, stateID, layer.attachmentID)[0];
+    const attachmentX = bodyPose.x + pose.x * cos - pose.y * sin;
+    const attachmentY = bodyPose.y + pose.x * sin + pose.y * cos;
     for (const image of [layer.back, layer.front]) {
-      image.setPosition(pose.x, pose.y).setAngle(pose.angle);
+      image
+        .setPosition(attachmentX, attachmentY)
+        .setAngle(pose.angle + bodyPose.angle);
     }
-    layer.back.setVisible(!pose.front);
-    layer.front.setVisible(pose.front);
+    const visible = pose.visible !== false;
+    layer.back.setVisible(visible && !pose.front);
+    layer.front.setVisible(visible && pose.front);
   }
 
   container.battleState = stateID;
@@ -296,7 +313,9 @@ export function createBattleCharacterSprite(
         battleFrameDelay(pose, reducedMotion, speedMultiplier),
       );
     }
-    if (token === container._battleAnimationToken) container.resetBattlePose();
+    if (token === container._battleAnimationToken && !state.hold_last_frame) {
+      container.resetBattlePose();
+    }
     return true;
   };
 
@@ -325,6 +344,12 @@ export function createBattleCharacterSprite(
   };
 
   container.resetBattlePose();
-  if (opts.alive === false) container.setTint(0x444444);
+  if (opts.alive === false) {
+    const koState = container.battleStates.ko_defeated;
+    if (koState) {
+      applyStateFrame(container, "ko_defeated", koState.frames.length - 1);
+    }
+    container.setTint(0x555b66);
+  }
   return container;
 }

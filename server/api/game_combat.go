@@ -639,6 +639,15 @@ func (g *Game) logResolvedCombatAction(
 	r combat.ResolvedAction,
 ) {
 	switch r.Kind {
+	case combat.ActionDefend:
+		g.logCombat(
+			fmt.Sprintf("%s defends.", r.ActorName),
+			CombatActionEntry{
+				Kind:       "defend",
+				ActorID:    r.ActorID,
+				ActorName:  r.ActorName,
+				Initiative: r.Initiative,
+			})
 	case combat.ActionPoisonTick:
 		status := ""
 		if r.Killed {

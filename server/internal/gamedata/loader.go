@@ -664,12 +664,20 @@ func (gd *GameData) validateBattleCharacters(baseClassIDs map[string]bool) {
 			if !requiredStates[stateID] {
 				panic(fmt.Sprintf("gamedata: battle character %q has unknown state %q", profile.ID, stateID))
 			}
+			if state.HoldLastFrame && stateID != "ko_defeated" {
+				panic(fmt.Sprintf("gamedata: battle character %q state %q cannot hold its last frame", profile.ID, stateID))
+			}
 			if state.BodyKey == "" || state.BodyPath == "" || len(state.Frames) == 0 {
 				panic(fmt.Sprintf("gamedata: battle character %q state %q is incomplete", profile.ID, stateID))
 			}
 			for frameIndex, frame := range state.Frames {
 				if frame.Frame < 0 || frame.Duration <= 0 {
 					panic(fmt.Sprintf("gamedata: battle character %q state %q frame %d is invalid", profile.ID, stateID, frameIndex))
+				}
+				if frame.Body.X < -float64(cfg.FrameSize) || frame.Body.X > float64(cfg.FrameSize) ||
+					frame.Body.Y < -float64(cfg.FrameSize) || frame.Body.Y > float64(cfg.FrameSize) ||
+					frame.Body.Angle < -180 || frame.Body.Angle > 180 {
+					panic(fmt.Sprintf("gamedata: battle character %q state %q frame %d has an invalid body transform", profile.ID, stateID, frameIndex))
 				}
 				for attachmentID := range frame.Attachments {
 					if _, ok := profile.Attachments[attachmentID]; !ok {

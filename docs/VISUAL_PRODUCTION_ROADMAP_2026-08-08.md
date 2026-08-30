@@ -67,6 +67,9 @@ check, and the test suite no longer hardcodes legacy 8x4 indexing.
 
 ## Phase 1: Character Movement Complete; Attack Pending
 
+Battle-state authoring and verification follow
+[`BATTLE_CHARACTER_ANIMATION_PRODUCTION.md`](BATTLE_CHARACTER_ANIMATION_PRODUCTION.md).
+
 1. Preserve the accepted all-class walk sheets and their proof gate.
 2. Create reusable attack pose guides or a deterministic rig.
 3. Produce attack animation one direction at a time without modifying the

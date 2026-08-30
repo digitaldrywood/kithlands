@@ -11,6 +11,10 @@ import {
   offHandTextureKey,
   weaponTextureKey,
 } from "./battleCharacterSprite.js";
+import {
+  BATTLE_CHARACTER_CATALOG,
+  battleProfileFor,
+} from "../data/battleCharacters.js";
 
 function sceneWith(keys) {
   const loaded = new Set(keys);
@@ -23,6 +27,18 @@ describe("Warrior battle runtime contract", () => {
       0, 1, 2, 3, 4, 5,
     ]);
     expect(WARRIOR_SWORD_ATTACK_FRAMES.some((pose) => !pose.front)).toBe(true);
+  });
+
+  it("authors every required battle state and holds the final KO pose", () => {
+    const warrior = battleProfileFor("warrior");
+    expect(Object.keys(warrior.states)).toEqual(
+      BATTLE_CHARACTER_CATALOG.required_states,
+    );
+    expect(warrior.states.hit_reaction.frames[2]).toMatchObject({
+      frame: 5,
+      body: { x: 13, y: 5, angle: 7 },
+    });
+    expect(warrior.states.ko_defeated.hold_last_frame).toBe(true);
   });
 
   it("uses the equipped weapon visual instead of a baked sword", () => {

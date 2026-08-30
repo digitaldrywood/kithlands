@@ -1074,6 +1074,10 @@ function visibleBattleFxSnapshot(scene) {
       weaponTextureKey: entry?.sprite?.weaponTextureKey ?? null,
       shieldTextureKey: entry?.sprite?.shieldTextureKey ?? null,
       battleFrameIndex: entry?.sprite?.battleFrameIndex ?? null,
+      battleState: entry?.sprite?.battleState ?? null,
+      battleBodyX: entry?.sprite?.battleBody?.x ?? null,
+      battleBodyY: entry?.sprite?.battleBody?.y ?? null,
+      battleBodyAngle: entry?.sprite?.battleBody?.angle ?? null,
       spriteBounds: objectBounds(entry?.sprite),
       hpBarBounds: objectBounds(entry?.hpBar?.bg),
       currentHP: entry?.hpBar?.currentHP ?? null,
@@ -1802,9 +1806,14 @@ export function installDevTestBridge(game) {
 
       let spellAssigned = false;
       let inspireAssigned = false;
+      let defendAssigned = false;
       const actions = (scene.gameState?.party || [])
         .map((member, slot) => {
           if ((member.hp ?? 0) <= 0) return null;
+          if (mode === "defend" && !defendAssigned) {
+            defendAssigned = true;
+            return { slot, type: "defend" };
+          }
           if (
             mode === "inspire" &&
             !inspireAssigned &&
@@ -1859,6 +1868,9 @@ export function installDevTestBridge(game) {
       }
       if (mode === "inspire" && !inspireAssigned) {
         throw new Error("Battle party has no Inspire ability");
+      }
+      if (mode === "defend" && !defendAssigned) {
+        throw new Error("Battle party has no living defender");
       }
 
       scene.memberActions = actions;

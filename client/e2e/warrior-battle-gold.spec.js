@@ -12,6 +12,84 @@ async function closeShowcaseLoadout(page) {
 test.describe("Warrior layered battle gold slice", () => {
   test.describe.configure({ timeout: 90_000 });
 
+  test("plays every authored Warrior state and holds KO", async ({
+    page,
+  }, testInfo) => {
+    await page.goto("/");
+    await page.waitForFunction(
+      () => window.__kithlandsTest?.activeSceneKey() === "Title",
+      null,
+      { timeout: 90_000 },
+    );
+    await page.evaluate(() => window.__kithlandsTest.startShowcase());
+    await closeShowcaseLoadout(page);
+    await page.waitForFunction(
+      () =>
+        window.__kithlandsTest.battleVisibilitySnapshot().battleCharacterAudit
+          ?.identityCount === 12,
+    );
+
+    const expectedStates = [
+      "idle_guard",
+      "physical_attack",
+      "cast_class_ability",
+      "defend",
+      "hit_reaction",
+      "item_use",
+      "victory",
+      "ko_defeated",
+    ];
+    const firstState = await page.evaluate(() =>
+      window.__kithlandsTest.cycleBattleCharacterAudit("animation", 1),
+    );
+    expect(firstState.identityID).toBe("warrior");
+    expect(firstState.animationStates).toEqual(expectedStates);
+    expect(firstState.animationState).toBe("physical_attack");
+
+    const proofDelays = {
+      physical_attack: 170,
+      cast_class_ability: 250,
+      defend: 180,
+      hit_reaction: 150,
+      item_use: 230,
+      victory: 260,
+      ko_defeated: 520,
+    };
+    for (const [index, state] of expectedStates.slice(1).entries()) {
+      const selected =
+        index === 0
+          ? firstState
+          : await page.evaluate(() =>
+              window.__kithlandsTest.cycleBattleCharacterAudit("animation", 1),
+            );
+      expect(selected.animationState).toBe(state);
+      await page.evaluate(() =>
+        window.__kithlandsTest.playBattleCharacterAudit(),
+      );
+      await page.waitForTimeout(proofDelays[state]);
+      const member = await page.evaluate(
+        () => window.__kithlandsTest.battleVisibilitySnapshot().partyMembers[0],
+      );
+      expect(member.battleState).toBe(state);
+      await page.screenshot({
+        path: testInfo.outputPath(`warrior-state-${state}-${RUN_ID}.png`),
+        fullPage: true,
+      });
+    }
+
+    const ko = await page.evaluate(
+      () => window.__kithlandsTest.battleVisibilitySnapshot().partyMembers[0],
+    );
+    expect(ko.battleState).toBe("ko_defeated");
+    expect(ko.battleBodyAngle).toBe(90);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({
+      path: testInfo.outputPath(`warrior-state-ko-mobile-${RUN_ID}.png`),
+      fullPage: true,
+    });
+  });
+
   test("keeps Warrior identity and swaps equipment layers", async ({
     page,
   }, testInfo) => {
@@ -61,15 +139,18 @@ test.describe("Warrior layered battle gold slice", () => {
     await page.waitForFunction(
       () => window.__kithlandsTest?.activeSceneKey() === "World",
     );
-    await page.evaluate(() =>
+    const encounter = await page.evaluate(() =>
       window.__kithlandsTest.forceEncounter(["slime", "goblin"], 2),
     );
+    expect(encounter.error).toBeFalsy();
+    expect(encounter.phase).toBe("combat");
     await page.waitForFunction(
-      () =>
-        window.__kithlandsTest.activeSceneKey() === "Battle" &&
-        window.__kithlandsTest.battleVisibilitySnapshot().partyMembers[0]
-          ?.textureKey === "battle_warrior_sword_attack_body",
+      () => window.__kithlandsTest.activeSceneKey() === "Battle",
     );
+    const startingWarrior = await page.evaluate(
+      () => window.__kithlandsTest.battleVisibilitySnapshot().partyMembers[0],
+    );
+    expect(startingWarrior.textureKey).toBe("battle_warrior_sword_attack_body");
     await page.screenshot({
       path: testInfo.outputPath(`warrior-starting-loadout-${RUN_ID}.png`),
       fullPage: true,
@@ -232,6 +313,43 @@ test.describe("Warrior layered battle gold slice", () => {
     expect(snapshot.spellProjectiles).toBeGreaterThanOrEqual(2);
     await page.screenshot({
       path: testInfo.outputPath(`all-allies-simultaneous-${RUN_ID}.png`),
+      fullPage: true,
+    });
+  });
+
+  test("plays Warrior defend from an authoritative combat action", async ({
+    page,
+  }, testInfo) => {
+    await page.goto("/");
+    await page.waitForFunction(
+      () => window.__kithlandsTest?.activeSceneKey() === "Title",
+      null,
+      { timeout: 90_000 },
+    );
+    await page.evaluate(() => window.__kithlandsTest.startQuickGame());
+    await page.waitForFunction(
+      () => window.__kithlandsTest.activeSceneKey() === "World",
+    );
+    const encounter = await page.evaluate(() =>
+      window.__kithlandsTest.forceEncounter(["slime", "goblin"], 2),
+    );
+    expect(encounter.error).toBeFalsy();
+    expect(encounter.phase).toBe("combat");
+    await page.waitForFunction(
+      () => window.__kithlandsTest.activeSceneKey() === "Battle",
+    );
+
+    const actions = await page.evaluate(() =>
+      window.__kithlandsTest.startAuthoritativeBattleRound("defend"),
+    );
+    expect(actions[0]).toMatchObject({ slot: 0, type: "defend" });
+    await page.waitForFunction(
+      () =>
+        window.__kithlandsTest.battleVisibilitySnapshot().partyMembers[0]
+          ?.battleState === "defend",
+    );
+    await page.screenshot({
+      path: testInfo.outputPath(`warrior-authoritative-defend-${RUN_ID}.png`),
       fullPage: true,
     });
   });

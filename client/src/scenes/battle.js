@@ -534,6 +534,12 @@ export class BattleScene extends Phaser.Scene {
       await this.animateCombatLog(log, actions);
       await this.reconcileEnemySprites(result.enemies || []);
       this.gameState = result;
+      if (
+        this.gameState.phase !== "combat" &&
+        this.gameState.phase !== "defeat"
+      ) {
+        await this.playPartyVictoryBeat();
+      }
       this.time.delayedCall(400, () => {
         this.animating = false;
         if (this.gameState.phase !== "combat") {
@@ -1684,6 +1690,34 @@ export class BattleScene extends Phaser.Scene {
     if (!visual) return;
 
     const { sprite, x, y } = visual;
+    const defeated = isParty && Number.isFinite(newHP) && newHP <= 0;
+
+    this.tweens.killTweensOf(sprite);
+    this.setSpritePosition(sprite, x, y);
+
+    if (defeated) {
+      targetEntry.alive = false;
+      sprite.disableInteractive?.();
+      sprite.clearTint?.();
+      if (sprite.playBattleKO) {
+        void sprite
+          .playBattleKO({
+            reducedMotion: this.reducedBattleMotion(),
+            speedMultiplier: battleSpeedMul(),
+          })
+          .then(() => sprite.setTint?.(0x555b66));
+      } else {
+        sprite.setTint?.(0x555b66);
+        sprite.setAngle?.(90);
+        sprite.setAlpha?.(0.68);
+      }
+      return;
+    }
+
+    void sprite?.playBattleHitReaction?.({
+      reducedMotion: this.reducedBattleMotion(),
+      speedMultiplier: battleSpeedMul(),
+    });
 
     if (sprite?.setTint) {
       sprite.setTint(0xff0000);
@@ -1691,8 +1725,6 @@ export class BattleScene extends Phaser.Scene {
       this.scaledDelay(320, () => sprite.clearTint?.());
     }
 
-    this.tweens.killTweensOf(sprite);
-    this.setSpritePosition(sprite, x, y);
     this.tweens.add({
       targets: sprite,
       x: x + 3,
@@ -1710,6 +1742,22 @@ export class BattleScene extends Phaser.Scene {
     if (isParty && isLowHpDanger(newHP, maxHP)) {
       this.pulseLowHpVignette();
     }
+  }
+
+  async playPartyVictoryBeat() {
+    const animations = Object.values(this.partySprites || {})
+      .filter(
+        (entry) => entry?.alive !== false && entry?.sprite?.playBattleVictory,
+      )
+      .map((entry) =>
+        entry.sprite.playBattleVictory({
+          reducedMotion: this.reducedBattleMotion(),
+          speedMultiplier: battleSpeedMul(),
+        }),
+      );
+    if (animations.length === 0) return false;
+    await Promise.all(animations);
+    return true;
   }
 
   playPartyHitReaction(targetEntry, { newHP, maxHP } = {}) {
@@ -3162,6 +3210,10 @@ export class BattleScene extends Phaser.Scene {
       const finalResult = await this.resolvePendingTownChestClaim(result);
       this.gameState = finalResult;
 
+      if (finalResult.phase !== "combat" && finalResult.phase !== "defeat") {
+        await this.playPartyVictoryBeat();
+      }
+
       // Persist this round's actions for REPEAT / AUTO from the
       // authoritative server state, not browser storage.
       const savedActions = normalizeLastRoundActions(
@@ -3390,6 +3442,24 @@ export class BattleScene extends Phaser.Scene {
         }
         await this.wait(ACTION_BEAT_MS.postDamage);
         await this.wait(ACTION_BEAT_MS.interAction);
+      } else if (action.kind === "defend") {
+        const actorEntry =
+          this.partySprites[action.actor_name] ||
+          this.findEnemySpriteForAction(action, action.actor_name);
+        this.revealLine(line, "#88ccff");
+        await this.showActionTitle(actorEntry, "DEFEND", "#88ccff");
+        if (actorEntry?.sprite?.playBattleDefend) {
+          await actorEntry.sprite.playBattleDefend({
+            reducedMotion: this.reducedBattleMotion(),
+            speedMultiplier: battleSpeedMul(),
+          });
+        } else if (actorEntry) {
+          actorEntry.sprite?.setTint?.(0x88ccff);
+          this.spawnActionReticle(actorEntry, 0x88ccff, 420);
+          await this.wait(ACTION_BEAT_MS.briefStatus);
+          actorEntry.sprite?.clearTint?.();
+        }
+        await this.wait(ACTION_BEAT_MS.interAction);
       } else if (action.kind === "counter" || counterMatch) {
         if (this.isDefeatedEnemyActor(action)) {
           continue;
@@ -3593,7 +3663,10 @@ export class BattleScene extends Phaser.Scene {
         this.hideGroupTargetCursor();
         await this.wait(ACTION_BEAT_MS.postDamage);
         await this.wait(ACTION_BEAT_MS.interAction);
-      } else if (action.kind === "heal" || line.includes("healed")) {
+      } else if (
+        action.kind === "heal" ||
+        (line.includes("healed") && action.kind !== "item")
+      ) {
         const healActions = [{ action, line }];
         while (i + 1 < log.length) {
           const nextAction = actions[i + 1] || {};
@@ -3710,6 +3783,49 @@ export class BattleScene extends Phaser.Scene {
         await this.resetPartySprite(casterEntry);
         this.hideGroupTargetCursor();
         await this.wait(ACTION_BEAT_MS.briefStatus);
+      } else if (action.kind === "item") {
+        const actorEntry = this.partySprites[action.actor_name];
+        const targetEntry =
+          this.partySprites[action.target_name] || actorEntry || null;
+        this.revealLine(line, "#66ff99");
+        await this.showActionTitle(actorEntry, "ITEM", "#66ff99");
+        if (actorEntry?.sprite?.playBattleItemUse) {
+          await actorEntry.sprite.playBattleItemUse({
+            reducedMotion: this.reducedBattleMotion(),
+            speedMultiplier: battleSpeedMul(),
+          });
+        }
+        if (targetEntry) {
+          this.showActionFocus(actorEntry, targetEntry, {
+            targetColor: CURSOR_TINTS.ally,
+          });
+          this.spawnSpellImpact(targetEntry, "holy");
+          if (
+            line.includes("healed") &&
+            action.damage > 0 &&
+            targetEntry.hpBar
+          ) {
+            const newHP = applyHeal(
+              targetEntry.hpBar.currentHP,
+              action.damage,
+              targetEntry.hpBar.maxHP,
+            );
+            this.animateHPBar(
+              targetEntry.hpBar,
+              newHP,
+              targetEntry.hpBar.maxHP,
+            );
+          }
+          if (line.includes("revived")) {
+            targetEntry.alive = true;
+            targetEntry.sprite?.resetBattlePose?.();
+            targetEntry.sprite?.clearTint?.();
+            targetEntry.sprite?.setAngle?.(0);
+            targetEntry.sprite?.setAlpha?.(1);
+            targetEntry.sprite?.setInteractive?.({ useHandCursor: true });
+          }
+        }
+        await this.wait(ACTION_BEAT_MS.briefStatus);
       } else if (line.includes("Found:")) {
         this.revealLine(line, "#44ff44");
         await this.wait(ACTION_BEAT_MS.infoPause);
@@ -3749,9 +3865,16 @@ export class BattleScene extends Phaser.Scene {
           // Issue #69: poison ticks used to skip the HP bar + death FX
           // entirely, so a tick that killed an enemy left the bar at the
           // pre-tick value and the sprite visible. Apply both here.
+          let newHP;
           if (sprite.hpBar) {
-            const newHP = applyDamage(sprite.hpBar.currentHP, dmg);
+            newHP = applyDamage(sprite.hpBar.currentHP, dmg);
             this.animateHPBar(sprite.hpBar, newHP, sprite.hpBar.maxHP);
+          }
+          if (pt && newHP != null) {
+            this.playPartyHitReaction(pt, {
+              newHP,
+              maxHP: pt.hpBar.maxHP,
+            });
           }
           if (ee && defeatMatch) await this.enemyDeathFx(ee);
         }
