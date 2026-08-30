@@ -15,6 +15,7 @@ import {
   showGemWorkshop,
 } from "./gem_workshop.js";
 import { inferPartyRow } from "./battle_layout.js";
+import { partyMenuLayout } from "./party_menu_layout.js";
 import { drawPanel, drawButton, drawLabeledStatBar } from "../ui/panel.js";
 import { combatantConditionLabel, hpBarColorPct } from "../systems/hpBar.js";
 import {
@@ -28,22 +29,8 @@ import {
   formatDeltaLabel,
 } from "./equipPicker.js";
 
-// Panel geometry (issue #94). All layout math derives from these constants
-// so the 4-member → 6-member scaling is just `rowH` shrinking; no absolute
-// y-coordinates sprinkled through the body.
-const PANEL_CX = 400;
-const PANEL_CY = 300;
-const PANEL_W = 760;
-const PANEL_H = 540;
-const PANEL_LEFT = PANEL_CX - PANEL_W / 2; // 20
-const PANEL_RIGHT = PANEL_CX + PANEL_W / 2; // 780
-const PANEL_TOP = PANEL_CY - PANEL_H / 2; // 30
-const PANEL_BOTTOM = PANEL_CY + PANEL_H / 2; // 570
 const DEPTH_BG = 40;
 const DEPTH_CONTENT = 41;
-const HEADER_Y = PANEL_TOP + 34;
-const TITLE_Y = PANEL_TOP + 29;
-const HEADER_DIVIDER_Y = PANEL_TOP + 64;
 const MENU_FRAME_VARIANT = "ff6";
 const FF6_BLUE = 0x4d78bf;
 const FF6_NAVY = 0x122545;
@@ -58,12 +45,6 @@ const FF6_ROW_GLOW = 0x7fc7ff;
 const FF6_TRACK = 0x142442;
 const FF6_TRACK_INNER = 0x20365f;
 const FF6_BAR_TEXT = "#f4f7ff";
-
-// The body region starts below the title strip and ends above the footer
-// button rows. rowH is computed dynamically so 4–6 party members all fit.
-const BODY_TOP = PANEL_TOP + 70; // title area reserved above
-const FOOTER_TOP = PANEL_BOTTOM - 108; // two button rows + margins
-const BODY_H = FOOTER_TOP - BODY_TOP;
 
 export function buildPartyMemberScanContext(member = {}) {
   const xp = Math.max(0, Number(member.xp) || 0);
@@ -85,22 +66,69 @@ export function toggleMenu(scene) {
   scene.menuGroup = [];
   scene.partyMenuState = { selectedSlot: 0, rows: [] };
   const gs = scene.gameState;
-
-  const panel = drawPanel(scene, PANEL_CX, PANEL_CY, PANEL_W, PANEL_H, {
-    depth: DEPTH_BG,
-    interactive: false,
-    variant: MENU_FRAME_VARIANT,
+  const party = Array.isArray(gs.party) ? gs.party : [];
+  const layout = partyMenuLayout({
+    viewportWidth: globalThis.window?.innerWidth ?? 800,
+    viewportHeight: globalThis.window?.innerHeight ?? 600,
+    partyCount: party.length,
   });
+  scene.partyMenuLayout = layout;
+  scene.partyMenuPreviousGameSize = {
+    width: scene.scale.gameSize.width,
+    height: scene.scale.gameSize.height,
+  };
+  if (
+    scene.scale.gameSize.width !== layout.gameWidth ||
+    scene.scale.gameSize.height !== layout.gameHeight
+  ) {
+    scene.scale.setGameSize(layout.gameWidth, layout.gameHeight);
+  }
+  if (!scene.partyMenuShutdownHook) {
+    scene.partyMenuShutdownHook = true;
+    scene.events.once("shutdown", () => {
+      restorePartyMenuGameSize(scene);
+      scene.partyMenuShutdownHook = false;
+    });
+  }
+
+  if (layout.mode === "mobile") {
+    const scrim = scene.add
+      .rectangle(
+        layout.gameWidth / 2,
+        layout.gameHeight / 2,
+        layout.gameWidth,
+        layout.gameHeight,
+        0x020711,
+        0.96,
+      )
+      .setScrollFactor(0)
+      .setDepth(DEPTH_BG - 1)
+      .setInteractive();
+    scene.menuGroup.push(scrim);
+  }
+
+  const panel = drawPanel(
+    scene,
+    layout.panel.x,
+    layout.panel.y,
+    layout.panel.width,
+    layout.panel.height,
+    {
+      depth: DEPTH_BG,
+      interactive: false,
+      variant: MENU_FRAME_VARIANT,
+    },
+  );
   scene.menuGroup.push(panel.bg);
 
   const title = scene.add
-    .text(PANEL_LEFT + 62, TITLE_Y, "PARTY MENU", {
-      fontSize: "24px",
+    .text(layout.title.x, layout.title.y, "PARTY MENU", {
+      fontSize: `${layout.title.fontSize}px`,
       fontStyle: "bold",
       color: "#fff5c2",
       fontFamily: "Georgia",
     })
-    .setOrigin(0, 0.5)
+    .setOrigin(layout.title.originX, 0.5)
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
   applyTextGlow(title, "#2c5f9d", 2);
@@ -110,63 +138,82 @@ export function toggleMenu(scene) {
     {
       key: "gold",
       value: gs.gold || 0,
-      width: 86,
+      width: layout.resources.widths[0],
       iconKey: "icon_gold",
       accent: 0xf8d56c,
     },
     {
       key: "potions",
       value: gs.potions || 0,
-      width: 84,
+      width: layout.resources.widths[1],
       iconKey: "icon_potion",
       accent: 0x8ed2ff,
     },
     {
       key: "ether",
       value: (gs.ethers || 0) + (gs.hi_ethers || 0) + (gs.x_ethers || 0),
-      width: 84,
+      width: layout.resources.widths[2],
       accent: 0xc8b6ff,
       iconType: "orb",
     },
   ];
-  let resourceCursor = PANEL_RIGHT - 28;
+  let resourceCursor = layout.resources.right;
   for (let i = resourceStrip.length - 1; i >= 0; i -= 1) {
+    const spec = {
+      ...resourceStrip[i],
+      height: layout.resources.height,
+      fontSize: layout.resources.fontSize,
+      mobile: layout.mode === "mobile",
+    };
     const chip = drawResourceChip(
       scene,
       scene.menuGroup,
-      resourceCursor - resourceStrip[i].width / 2,
-      HEADER_Y,
-      resourceStrip[i].width,
-      resourceStrip[i],
+      resourceCursor - spec.width / 2,
+      layout.resources.y,
+      spec.width,
+      spec,
     );
-    resourceCursor -= chip.width + 10;
+    resourceCursor -= chip.width + layout.resources.gap;
   }
 
   const dividerShadow = scene.add
-    .rectangle(PANEL_CX, HEADER_DIVIDER_Y + 2, PANEL_W - 64, 2, 0x071123, 0.55)
+    .rectangle(
+      layout.panel.x,
+      layout.dividerY + 2,
+      layout.panel.width - 64,
+      2,
+      0x071123,
+      0.55,
+    )
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
   const divider = scene.add
-    .rectangle(PANEL_CX, HEADER_DIVIDER_Y, PANEL_W - 72, 2, 0x8ebeff, 0.72)
+    .rectangle(
+      layout.panel.x,
+      layout.dividerY,
+      layout.panel.width - 72,
+      2,
+      0x8ebeff,
+      0.72,
+    )
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT + 1);
   scene.menuGroup.push(dividerShadow, divider);
 
   // Body: party rows. Row height scales so 4 or 6 members both fit cleanly.
-  const party = Array.isArray(gs.party) ? gs.party : [];
-  const n = Math.max(1, party.length);
-  const rowH = Math.floor(BODY_H / n);
+  const rowH = layout.body.rowHeight;
   for (let i = 0; i < party.length; i++) {
     const p = party[i];
     drawPartyRow(
       scene,
       scene.menuGroup,
-      PANEL_LEFT + 20,
-      BODY_TOP + i * rowH,
-      PANEL_W - 40,
+      layout.body.x,
+      layout.body.y + i * rowH,
+      layout.body.width,
       rowH,
       p,
       i,
+      { mobile: layout.mode === "mobile" },
     );
   }
   repaintPartyRows(scene);
@@ -180,7 +227,7 @@ export function toggleMenu(scene) {
     : false;
   const gemsEnabled = gemWorkshopEnabled(gs);
   const readyGemRecipes = craftableRecipeCount(gs);
-  layoutButtonRow(scene, scene.menuGroup, PANEL_CX, FOOTER_TOP + 16, [
+  const primaryActions = [
     {
       label: "CHARACTER",
       hotkey: "C",
@@ -244,97 +291,107 @@ export function toggleMenu(scene) {
         showFormationMenu(scene);
       },
     },
-  ]);
+  ];
+  layoutActionButtons(
+    scene,
+    scene.menuGroup,
+    layout.panel.x,
+    layout.actions.primaryY,
+    primaryActions,
+    layout.actions,
+  );
 
   // Footer row B — save / autosave / close.
   const autoEnabled = getAutosaveEnabled();
   let saveHandle = null;
   let autoHandle = null;
-  const row = layoutButtonRow(
+  const secondaryActions = [
+    {
+      label: "QUEST LOG",
+      hotkey: "Q",
+      w: 126,
+      iconKey: "icon_xp",
+      iconFallback: "Q",
+      onClick: () => showQuestLog(scene),
+    },
+    {
+      label: "WORLD MAP",
+      hotkey: "W",
+      w: 126,
+      iconKey: "target_cursor",
+      iconFallback: "W",
+      onClick: () => {
+        closeMenu(scene);
+        showWorldMap(scene);
+      },
+    },
+    {
+      label: "SAVE",
+      hotkey: "S",
+      w: 96,
+      iconKey: "icon_gold",
+      iconFallback: "S",
+      onClick: async () => {
+        if (!saveHandle) return;
+        saveHandle.setLabel("Saving...");
+        const gss = scene.gameState;
+        const saveName = `${gss.location} - ${gss.party.map((pp) => pp.name).join(", ")}`;
+        const result = await saveGame(gss.id, saveName);
+        playSFX("sfx_save");
+        closeMenu(scene);
+        if (result.error) {
+          scene.showMessage(`Save failed: ${result.error}`);
+        } else {
+          scene.showMessage("Game saved!");
+        }
+        scene.time.delayedCall(1500, () => scene.hideMessage());
+      },
+    },
+    {
+      label: autoEnabled ? "AUTO: ON" : "AUTO: OFF",
+      hotkey: "A",
+      w: 122,
+      iconKey: "icon_gold",
+      iconFallback: "A",
+      onClick: () => {
+        const nowEnabled = !getAutosaveEnabled();
+        setAutosaveEnabled(nowEnabled);
+        if (autoHandle) {
+          autoHandle.setLabel(nowEnabled ? "AUTO: ON" : "AUTO: OFF");
+        }
+        if (scene.startAutosaveTimer) {
+          if (nowEnabled) scene.startAutosaveTimer();
+          else scene.stopAutosaveTimer();
+        }
+      },
+    },
+    {
+      label: "OPTIONS",
+      hotkey: "O",
+      w: 104,
+      iconFallback: "O",
+      onClick: () => {
+        closeMenu(scene);
+        showOptions(scene);
+      },
+    },
+    {
+      label: "CLOSE",
+      hotkey: "ESC",
+      w: 104,
+      iconFallback: "X",
+      onClick: () => closeMenu(scene),
+    },
+  ];
+  const row = layoutActionButtons(
     scene,
     scene.menuGroup,
-    PANEL_CX,
-    FOOTER_TOP + 58,
-    [
-      {
-        label: "QUEST LOG",
-        hotkey: "Q",
-        w: 126,
-        iconKey: "icon_xp",
-        iconFallback: "Q",
-        onClick: () => showQuestLog(scene),
-      },
-      {
-        label: "WORLD MAP",
-        hotkey: "W",
-        w: 126,
-        iconKey: "target_cursor",
-        iconFallback: "W",
-        onClick: () => {
-          closeMenu(scene);
-          showWorldMap(scene);
-        },
-      },
-      {
-        label: "SAVE",
-        hotkey: "S",
-        w: 96,
-        iconKey: "icon_gold",
-        iconFallback: "S",
-        onClick: async () => {
-          if (!saveHandle) return;
-          saveHandle.setLabel("Saving...");
-          const gss = scene.gameState;
-          const saveName = `${gss.location} - ${gss.party.map((pp) => pp.name).join(", ")}`;
-          const result = await saveGame(gss.id, saveName);
-          playSFX("sfx_save");
-          closeMenu(scene);
-          if (result.error) {
-            scene.showMessage(`Save failed: ${result.error}`);
-          } else {
-            scene.showMessage("Game saved!");
-          }
-          scene.time.delayedCall(1500, () => scene.hideMessage());
-        },
-      },
-      {
-        label: autoEnabled ? "AUTO: ON" : "AUTO: OFF",
-        hotkey: "A",
-        w: 122,
-        iconKey: "icon_gold",
-        iconFallback: "A",
-        onClick: () => {
-          const nowEnabled = !getAutosaveEnabled();
-          setAutosaveEnabled(nowEnabled);
-          if (autoHandle) {
-            autoHandle.setLabel(nowEnabled ? "AUTO: ON" : "AUTO: OFF");
-          }
-          if (scene.startAutosaveTimer) {
-            if (nowEnabled) scene.startAutosaveTimer();
-            else scene.stopAutosaveTimer();
-          }
-        },
-      },
-      {
-        label: "OPTIONS",
-        hotkey: "O",
-        w: 104,
-        iconFallback: "O",
-        onClick: () => {
-          closeMenu(scene);
-          showOptions(scene);
-        },
-      },
-      {
-        label: "CLOSE",
-        hotkey: "ESC",
-        w: 104,
-        iconFallback: "X",
-        onClick: () => closeMenu(scene),
-      },
-    ],
+    layout.panel.x,
+    layout.actions.secondaryY,
+    secondaryActions,
+    layout.actions,
   );
-  [saveHandle, autoHandle] = [row[0], row[1]];
+  [saveHandle, autoHandle] = [row[2], row[3]];
 }
 
 // Close the menu and tear down everything in scene.menuGroup. Button
@@ -346,9 +403,23 @@ function closeMenu(scene) {
     scene.menuGroup = null;
   }
   scene.partyMenuState = null;
+  scene.partyMenuLayout = null;
+  restorePartyMenuGameSize(scene);
   if (scene.menuOpen) {
     scene.menuOpen = false;
     resumeWorldFor(scene, "party_menu");
+  }
+}
+
+function restorePartyMenuGameSize(scene) {
+  const previous = scene.partyMenuPreviousGameSize;
+  scene.partyMenuPreviousGameSize = null;
+  if (!previous) return;
+  if (
+    scene.scale.gameSize.width !== previous.width ||
+    scene.scale.gameSize.height !== previous.height
+  ) {
+    scene.scale.setGameSize(previous.width, previous.height);
   }
 }
 
@@ -365,24 +436,26 @@ function applyTextGlow(text, shadowColor, blur = 1) {
 }
 
 function drawResourceChip(scene, group, x, y, w, spec) {
+  const mobile = !!spec.mobile;
+  const height = spec.height || 24;
   const chipShadow = scene.add
-    .rectangle(x + 2, y + 2, w, 24, 0x071123, 0.4)
+    .rectangle(x + 2, y + 2, w, height, 0x071123, 0.4)
     .setStrokeStyle(0)
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
   const chipBg = scene.add
-    .rectangle(x, y, w, 24, 0x1a3156, 0.98)
+    .rectangle(x, y, w, height, 0x1a3156, 0.98)
     .setStrokeStyle(2, FF6_GLOW)
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT + 1);
   chipBg.__kithlandsPartyMenu = { role: "resource_chip", key: spec.key };
   const chipInner = scene.add
-    .rectangle(x, y, w - 6, 18, 0x10203d, 0.95)
+    .rectangle(x, y, w - 6, height - 6, 0x10203d, 0.95)
     .setStrokeStyle(1, spec.accent || FF6_GOLD)
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT + 2);
 
-  const iconX = x - w / 2 + 15;
+  const iconX = x - w / 2 + (mobile ? 30 : 15);
   const iconY = y;
   if (spec.iconKey && scene.textures.exists(spec.iconKey)) {
     const icon = scene.add
@@ -390,24 +463,30 @@ function drawResourceChip(scene, group, x, y, w, spec) {
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT + 3);
     const srcSize = Math.max(icon.width || 16, icon.height || 16);
-    icon.setScale(13 / srcSize);
+    icon.setScale((mobile ? 28 : 13) / srcSize);
     group.push(icon);
   } else if (spec.iconType === "orb") {
     const orb = scene.add
-      .circle(iconX, iconY, 6, spec.accent || 0xc8b6ff, 1)
-      .setStrokeStyle(1, 0xf4f7ff, 0.9)
+      .circle(iconX, iconY, mobile ? 13 : 6, spec.accent || 0xc8b6ff, 1)
+      .setStrokeStyle(mobile ? 2 : 1, 0xf4f7ff, 0.9)
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT + 3);
     const orbHighlight = scene.add
-      .circle(iconX - 2, iconY - 2, 2, 0xffffff, 0.65)
+      .circle(
+        iconX - (mobile ? 4 : 2),
+        iconY - (mobile ? 4 : 2),
+        mobile ? 4 : 2,
+        0xffffff,
+        0.65,
+      )
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT + 4);
     group.push(orb, orbHighlight);
   }
 
   const value = scene.add
-    .text(x - w / 2 + 28, y, `${spec.value}`, {
-      fontSize: "12px",
+    .text(x - w / 2 + (mobile ? 56 : 28), y, `${spec.value}`, {
+      fontSize: `${spec.fontSize || 12}px`,
       fontStyle: "bold",
       color: "#f7fbff",
       fontFamily: "Trebuchet MS",
@@ -422,10 +501,20 @@ function drawResourceChip(scene, group, x, y, w, spec) {
 // drawPartyRow renders a single member's block: framed portrait, separated
 // name/class strip, and FF-style HP/MP/XP bars. All created objects are
 // pushed into `group` so closeMenu can tear them down cleanly.
-function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
+function drawPartyRow(
+  scene,
+  group,
+  x,
+  y,
+  w,
+  rowH,
+  member,
+  slot,
+  { mobile = false } = {},
+) {
   const alive = (member.hp || 0) > 0;
-  const compact = rowH < 64;
-  const frameH = Math.max(52, rowH - 8);
+  const compact = mobile ? rowH < 150 : rowH < 64;
+  const frameH = Math.max(mobile ? (compact ? 104 : 150) : 52, rowH - 8);
   const top = y + Math.floor((rowH - frameH) / 2);
   const centerY = top + frameH / 2;
   const rowShadow = scene.add
@@ -460,17 +549,31 @@ function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
 
   const formationRow = inferPartyRow(member);
   const portraitAccent = formationRow === "back" ? 0xb9c8ff : FF6_GOLD;
+  const portraitX = x + (mobile ? (compact ? 54 : 70) : 40);
+  const portraitBackdropWidth = mobile ? (compact ? 82 : 112) : 60;
+  const portraitBackdropHeight = mobile
+    ? Math.min(frameH - 16, compact ? 90 : 138)
+    : frameH - 10;
+  const portraitPlateSize = mobile ? (compact ? 70 : 104) : compact ? 40 : 44;
+  const portraitFrameSize = mobile ? (compact ? 62 : 94) : compact ? 34 : 38;
   const portraitBackdrop = scene.add
-    .rectangle(x + 40, centerY, 60, frameH - 10, 0x0b1324, 0.98)
+    .rectangle(
+      portraitX,
+      centerY,
+      portraitBackdropWidth,
+      portraitBackdropHeight,
+      0x0b1324,
+      0.98,
+    )
     .setStrokeStyle(2, portraitAccent)
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT + 1);
   const portraitPlate = scene.add
     .rectangle(
-      x + 40,
+      portraitX,
       centerY,
-      50,
-      compact ? 40 : 44,
+      portraitPlateSize,
+      portraitPlateSize,
       formationRow === "back" ? 0x27395e : 0x4b3e24,
       1,
     )
@@ -478,7 +581,14 @@ function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT + 2);
   const portraitFrame = scene.add
-    .rectangle(x + 40, centerY, 42, compact ? 34 : 38, 0x162949, 1)
+    .rectangle(
+      portraitX,
+      centerY,
+      portraitFrameSize,
+      portraitFrameSize,
+      0x162949,
+      1,
+    )
     .setStrokeStyle(2, portraitAccent)
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT + 3);
@@ -487,11 +597,13 @@ function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
   const portraitKey = resolvePortraitTextureKey(scene, member);
   if (portraitKey) {
     const portrait = scene.add
-      .image(x + 40, centerY, portraitKey)
+      .image(portraitX, centerY, portraitKey)
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT + 4);
     const srcSize = Math.max(portrait.width || 64, portrait.height || 64);
-    portrait.setScale((compact ? 34 : 38) / srcSize);
+    portrait.setScale(
+      (mobile ? portraitFrameSize - 8 : compact ? 34 : 38) / srcSize,
+    );
     portrait.__kithlandsPartyMenu = {
       role: "portrait",
       slot,
@@ -501,7 +613,14 @@ function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
     group.push(portrait);
   } else {
     const fallbackBg = scene.add
-      .rectangle(x + 40, centerY, 34, 34, 0x10233f, 1)
+      .rectangle(
+        portraitX,
+        centerY,
+        mobile ? portraitFrameSize - 8 : 34,
+        mobile ? portraitFrameSize - 8 : 34,
+        0x10233f,
+        1,
+      )
       .setStrokeStyle(1, 0x88ccff)
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT + 4);
@@ -511,8 +630,14 @@ function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
       kind: "fallback",
     };
     const fallbackGlyph = scene.add
-      .text(x + 40, centerY, (member.class_name || "?")[0] || "?", {
-        fontSize: compact ? "18px" : "20px",
+      .text(portraitX, centerY, (member.class_name || "?")[0] || "?", {
+        fontSize: mobile
+          ? compact
+            ? "34px"
+            : "46px"
+          : compact
+            ? "18px"
+            : "20px",
         fontStyle: "bold",
         color: "#eef7ff",
         fontFamily: "Georgia",
@@ -523,24 +648,35 @@ function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
     group.push(fallbackBg, fallbackGlyph);
   }
 
-  const infoX = x + 80;
+  const infoX = x + (mobile ? (compact ? 104 : 134) : 80);
   const nameText = scene.add
-    .text(infoX, top + (compact ? 5 : 7), member.name, {
-      fontSize: compact ? "13px" : "15px",
-      fontStyle: "bold",
-      color: alive ? "#f7fbff" : "#a1adbe",
-      fontFamily: "Trebuchet MS",
-    })
+    .text(
+      infoX,
+      top + (mobile ? (compact ? 8 : 14) : compact ? 5 : 7),
+      member.name,
+      {
+        fontSize: mobile
+          ? compact
+            ? "20px"
+            : "26px"
+          : compact
+            ? "13px"
+            : "15px",
+        fontStyle: "bold",
+        color: alive ? "#f7fbff" : "#a1adbe",
+        fontFamily: "Trebuchet MS",
+      },
+    )
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT + 2);
   applyTextGlow(nameText, "#0d1830", 1);
 
   const levelFrame = scene.add
     .rectangle(
-      x + w - 42,
-      top + (compact ? 13 : 15),
-      66,
-      compact ? 18 : 20,
+      x + w - (mobile ? 68 : 42),
+      top + (mobile ? (compact ? 18 : 26) : compact ? 13 : 15),
+      mobile ? 112 : 66,
+      mobile ? (compact ? 34 : 42) : compact ? 18 : 20,
       0x132947,
       0.98,
     )
@@ -549,10 +685,10 @@ function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
     .setDepth(DEPTH_CONTENT + 1);
   const levelInner = scene.add
     .rectangle(
-      x + w - 42,
-      top + (compact ? 13 : 15),
-      58,
-      compact ? 12 : 14,
+      x + w - (mobile ? 68 : 42),
+      top + (mobile ? (compact ? 18 : 26) : compact ? 13 : 15),
+      mobile ? 102 : 58,
+      mobile ? (compact ? 24 : 30) : compact ? 12 : 14,
       0x2b4a75,
       0.9,
     )
@@ -560,44 +696,79 @@ function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT + 2);
   const levelText = scene.add
-    .text(x + w - 42, top + (compact ? 13 : 15), `Lv ${member.level}`, {
-      fontSize: compact ? "9px" : "10px",
-      fontStyle: "bold",
-      color: "#fff5d1",
-      fontFamily: "Courier New",
-    })
+    .text(
+      x + w - (mobile ? 68 : 42),
+      top + (mobile ? (compact ? 18 : 26) : compact ? 13 : 15),
+      `Lv ${member.level}`,
+      {
+        fontSize: mobile
+          ? compact
+            ? "16px"
+            : "19px"
+          : compact
+            ? "9px"
+            : "10px",
+        fontStyle: "bold",
+        color: "#fff5d1",
+        fontFamily: "Courier New",
+      },
+    )
     .setOrigin(0.5)
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT + 3);
 
   const classText = scene.add
-    .text(infoX, top + (compact ? 17 : 21), member.class_name || "Adventurer", {
-      fontSize: compact ? "9px" : "10px",
-      fontStyle: "italic",
-      color: alive ? "#d2bdd7" : "#7b8193",
-      fontFamily: "Georgia",
-    })
+    .text(
+      infoX,
+      top + (mobile ? (compact ? 34 : 46) : compact ? 17 : 21),
+      member.class_name || "Adventurer",
+      {
+        fontSize: mobile
+          ? compact
+            ? "14px"
+            : "17px"
+          : compact
+            ? "9px"
+            : "10px",
+        fontStyle: "italic",
+        color: alive ? "#d2bdd7" : "#7b8193",
+        fontFamily: "Georgia",
+      },
+    )
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT + 2);
   classText.__kithlandsPartyMenu = { role: "class_text", slot };
   group.push(nameText, levelFrame, levelInner, levelText, classText);
 
-  const compactBarTop = top + (compact ? 27 : 33);
-  const compactBarGap = compact ? 9 : 11;
-  const barHeight = compact ? 5 : 6;
-  const trackYOffset = compact ? 3 : 4;
+  const compactBarTop =
+    top + (mobile ? (compact ? 54 : 70) : compact ? 27 : 33);
+  const compactBarGap = mobile ? (compact ? 19 : 27) : compact ? 9 : 11;
+  const barHeight = mobile ? (compact ? 8 : 12) : compact ? 5 : 6;
+  const trackYOffset = mobile ? (compact ? 5 : 7) : compact ? 3 : 4;
   const statBarBaseStyle = {
     depth: DEPTH_CONTENT + 1,
-    width: 258,
+    width: mobile ? (compact ? 390 : 430) : 258,
     height: barHeight,
     trackYOffset,
-    labelWidth: 22,
-    valueWidth: 50,
-    valueGap: 6,
-    labelFontSize: compact ? "9px" : "10px",
+    labelWidth: mobile ? 40 : 22,
+    valueWidth: mobile ? (compact ? 100 : 116) : 50,
+    valueGap: mobile ? 12 : 6,
+    labelFontSize: mobile
+      ? compact
+        ? "14px"
+        : "18px"
+      : compact
+        ? "9px"
+        : "10px",
     labelFontStyle: "bold",
     labelFontFamily: "Trebuchet MS",
-    valueFontSize: compact ? "9px" : "10px",
+    valueFontSize: mobile
+      ? compact
+        ? "14px"
+        : "18px"
+      : compact
+        ? "9px"
+        : "10px",
     valueFontStyle: "bold",
     valueFontFamily: "Courier New",
     valueColor: FF6_BAR_TEXT,
@@ -606,7 +777,7 @@ function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
     trackInner: FF6_TRACK_INNER,
     stroke: 0xa7c7ff,
     strokeWidth: 1,
-    tickHeight: compact ? 3 : 4,
+    tickHeight: mobile ? (compact ? 5 : 8) : compact ? 3 : 4,
   };
 
   const hpBar = drawLabeledStatBar(
@@ -667,16 +838,24 @@ function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
     },
   );
   const scanContext = buildPartyMemberScanContext(member);
-  const contextY = compactBarTop + compactBarGap * 2;
+  const contextY = mobile
+    ? top + frameH - (compact ? 10 : 16)
+    : compactBarTop + compactBarGap * 2;
   const nextLevelText = scene.add
     .text(
-      x + w - 190,
+      x + w - (mobile ? (compact ? 224 : 250) : 190),
       contextY,
       scanContext.xpRemaining == null
         ? "NEXT  —"
         : `NEXT  ${scanContext.xpRemaining} XP`,
       {
-        fontSize: compact ? "8px" : "9px",
+        fontSize: mobile
+          ? compact
+            ? "13px"
+            : "16px"
+          : compact
+            ? "8px"
+            : "9px",
         fontStyle: "bold",
         color: "#f4d881",
         fontFamily: "Courier New",
@@ -693,8 +872,14 @@ function drawPartyRow(scene, group, x, y, w, rowH, member, slot) {
   const contextObjects = [nextLevelText];
   if (scanContext.status) {
     const statusText = scene.add
-      .text(x + w - 320, contextY, scanContext.status, {
-        fontSize: compact ? "8px" : "9px",
+      .text(mobile ? infoX : x + w - 320, contextY, scanContext.status, {
+        fontSize: mobile
+          ? compact
+            ? "13px"
+            : "16px"
+          : compact
+            ? "8px"
+            : "9px",
         fontStyle: "bold",
         color: "#ffb38a",
         fontFamily: "Courier New",
@@ -841,6 +1026,46 @@ function repaintPartyRows(scene) {
   }
 }
 
+function layoutActionButtons(scene, group, cx, y, specs, layout) {
+  if (layout.mode !== "grid") {
+    return layoutButtonRow(scene, group, cx, y, specs);
+  }
+  return layoutButtonGrid(scene, group, cx, y, specs, layout);
+}
+
+function layoutButtonGrid(scene, group, cx, firstY, specs, layout) {
+  const columns = Math.max(1, layout.columns || 1);
+  const width = layout.buttonWidth || 220;
+  const gap = layout.columnGap || 12;
+  const rowGap = layout.rowGap || 104;
+  const handles = [];
+
+  for (let start = 0; start < specs.length; start += columns) {
+    const rowSpecs = specs.slice(start, start + columns);
+    const totalW = rowSpecs.length * width + (rowSpecs.length - 1) * gap;
+    let cursor = cx - totalW / 2;
+    const rowIndex = Math.floor(start / columns);
+    for (const spec of rowSpecs) {
+      const x = cursor + width / 2;
+      const mobileSpec = { ...spec, mobile: true, w: width };
+      const button = drawActionButton(
+        scene,
+        group,
+        x,
+        firstY + rowIndex * rowGap,
+        width,
+        spec.label,
+        mobileSpec,
+      );
+      if (spec.enabled === false) button.setEnabled(false);
+      handles.push(button);
+      cursor += width + gap;
+    }
+  }
+
+  return handles;
+}
+
 // Horizontally layout a row of drawButton specs centered on `cx`. Returns
 // the list of button handles (in order) so the caller can mutate individual
 // ones (setLabel, setEnabled) later. 12px gap between buttons.
@@ -862,9 +1087,10 @@ function layoutButtonRow(scene, group, cx, y, specs) {
 
 function drawActionButton(scene, group, x, y, w, label, spec) {
   const primary = !!spec.primary;
-  const h = primary ? 38 : 30;
+  const mobile = !!spec.mobile;
+  const h = mobile ? 92 : primary ? 38 : 30;
   const btn = drawButton(scene, x, y, w, h, label, spec.onClick, {
-    fontSize: primary ? "10px" : "9px",
+    fontSize: mobile ? "24px" : primary ? "10px" : "9px",
     fontStyle: "bold",
     fontFamily: "Trebuchet MS",
     fill: primary ? 0x23497c : 0x1b3660,
@@ -877,19 +1103,32 @@ function drawActionButton(scene, group, x, y, w, label, spec) {
     strokeWidth: 2,
     depth: DEPTH_CONTENT + 1,
   });
+  btn.bg.__kithlandsPartyMenuAction = {
+    label,
+    hotkey: spec.hotkey || null,
+    kind: "button",
+    key: null,
+  };
   btn.label.setOrigin(0, 0.5);
-  btn.label.x = x - w / 2 + 34;
+  btn.label.x = x - w / 2 + (mobile ? 62 : 34);
   btn.label.y = y + (primary ? 1 : 0);
   applyTextGlow(btn.label, "#0d1830", 1);
   group.push(btn);
 
   const ornament = scene.add
-    .rectangle(x, y - h / 2 + 5, w - 12, 6, 0xffffff, primary ? 0.12 : 0.08)
+    .rectangle(
+      x,
+      y - h / 2 + (mobile ? 10 : 5),
+      w - (mobile ? 20 : 12),
+      mobile ? 10 : 6,
+      0xffffff,
+      primary ? 0.12 : 0.08,
+    )
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT + 2);
 
   const iconObjects = [ornament];
-  const iconX = x - w / 2 + 16;
+  const iconX = x - w / 2 + (mobile ? 34 : 16);
   const iconY = y;
   if (spec.iconKey && scene.textures.exists(spec.iconKey)) {
     const icon = scene.add
@@ -897,7 +1136,7 @@ function drawActionButton(scene, group, x, y, w, label, spec) {
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT + 3);
     const srcSize = Math.max(icon.width || 16, icon.height || 16);
-    icon.setScale((primary ? 15 : 13) / srcSize);
+    icon.setScale((mobile ? 34 : primary ? 15 : 13) / srcSize);
     icon.__kithlandsPartyMenuAction = {
       label,
       hotkey: spec.hotkey || null,
@@ -910,8 +1149,8 @@ function drawActionButton(scene, group, x, y, w, label, spec) {
       .rectangle(
         iconX,
         iconY,
-        primary ? 18 : 16,
-        primary ? 18 : 16,
+        mobile ? 40 : primary ? 18 : 16,
+        mobile ? 40 : primary ? 18 : 16,
         0x0d1830,
         1,
       )
@@ -926,7 +1165,7 @@ function drawActionButton(scene, group, x, y, w, label, spec) {
     };
     const glyph = scene.add
       .text(iconX, iconY, spec.iconFallback || "?", {
-        fontSize: primary ? "9px" : "8px",
+        fontSize: mobile ? "20px" : primary ? "9px" : "8px",
         fontStyle: "bold",
         color: "#d7ecff",
         fontFamily: "Courier New",
@@ -940,8 +1179,8 @@ function drawActionButton(scene, group, x, y, w, label, spec) {
   let hotkeyText = null;
   if (spec.hotkey) {
     hotkeyText = scene.add
-      .text(x + w / 2 - 10, y, `[${spec.hotkey}]`, {
-        fontSize: primary ? "10px" : "9px",
+      .text(x + w / 2 - (mobile ? 18 : 10), y, `[${spec.hotkey}]`, {
+        fontSize: mobile ? "18px" : primary ? "10px" : "9px",
         fontStyle: "bold",
         color: "#fff0ad",
         fontFamily: "Courier New",
@@ -981,14 +1220,7 @@ export async function showEquipPicker(scene, slot, type, opts = {}) {
   // { type: "character", index } so the picker hands control back to
   // the detail screen it was opened from.
   const returnTo = opts.returnTo || { type: "party" };
-  if (scene.menuGroup) {
-    scene.menuGroup.forEach((c) => c.destroy());
-    scene.menuGroup = null;
-  }
-  if (scene.menuOpen) {
-    scene.menuOpen = false;
-    resumeWorldFor(scene, "party_menu");
-  }
+  if (scene.menuGroup || scene.menuOpen) closeMenu(scene);
   pauseWorldFor(scene, "equip_picker");
 
   const gs = scene.gameState;
@@ -1100,14 +1332,7 @@ export async function showEquipPicker(scene, slot, type, opts = {}) {
 
 export function showQuestLog(scene) {
   // Close the party menu first so the overlay sits cleanly on its own.
-  if (scene.menuGroup) {
-    scene.menuGroup.forEach((c) => c.destroy());
-    scene.menuGroup = null;
-  }
-  if (scene.menuOpen) {
-    scene.menuOpen = false;
-    resumeWorldFor(scene, "party_menu");
-  }
+  closeMenu(scene);
   pauseWorldFor(scene, "quest_log");
 
   const gs = scene.gameState;

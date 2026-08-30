@@ -560,7 +560,16 @@ function partyMenuSummary(scene) {
       bounds: entry.bounds,
     }));
 
-  return { rows, actionIcons, resourceChips };
+  return {
+    layoutMode: scene.partyMenuLayout?.mode || "desktop",
+    logicalSize: {
+      width: scene.scale?.gameSize?.width || null,
+      height: scene.scale?.gameSize?.height || null,
+    },
+    rows,
+    actionIcons,
+    resourceChips,
+  };
 }
 
 function findPartyMenuRow(scene, slot) {
@@ -1265,6 +1274,14 @@ export function installDevTestBridge(game) {
         equipmentScreenOpen: !!scene?.equipmentScreenState,
         debugPanelOpen: !!scene?.debugPanelOpen,
         fieldMagicOpen: !!scene?.fieldMagicMenuState,
+      };
+    },
+
+    logicalGameSize(sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return {
+        width: scene?.scale?.gameSize?.width || null,
+        height: scene?.scale?.gameSize?.height || null,
       };
     },
 

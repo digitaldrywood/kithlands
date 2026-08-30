@@ -64,6 +64,8 @@ test.describe("party menu FF6 styling pass", () => {
     const summary = await page.evaluate(() =>
       window.__kithlandsTest.partyMenuSummary("World"),
     );
+    expect(summary.layoutMode).toBe("desktop");
+    expect(summary.logicalSize).toEqual({ width: 800, height: 600 });
     expect(summary.rows).toHaveLength(4);
     expect(summary.rows.map((row) => row.nextLevel)).toEqual([70, 70, 70, 70]);
     expect(summary.rows.find((row) => row.slot === 2)?.status).toBe(
@@ -157,9 +159,24 @@ test.describe("party menu FF6 styling pass", () => {
     const summary = await page.evaluate(() =>
       window.__kithlandsTest.partyMenuSummary("World"),
     );
+    expect(summary.layoutMode).toBe("mobile");
+    expect(summary.logicalSize).toEqual({ width: 800, height: 1600 });
     expect(summary.rows.find((row) => row.slot === 2)?.status).toBe(
       "POISON · CRITICAL",
     );
+    expect(summary.rows.every((row) => row.bounds.height >= 160)).toBe(true);
+    const actionButtons = summary.actionIcons.filter(
+      (entry) => entry.kind === "button",
+    );
+    expect(actionButtons).toHaveLength(11);
+    expect(
+      actionButtons.every(
+        (entry) => entry.bounds.width === 334 && entry.bounds.height === 92,
+      ),
+    ).toBe(true);
+    expect(
+      summary.resourceChips.every((entry) => entry.bounds.height === 52),
+    ).toBe(true);
 
     const layout = await page.evaluate(() =>
       window.__kithlandsTest.partyMenuLayout("World"),
@@ -169,5 +186,20 @@ test.describe("party menu FF6 styling pass", () => {
     await page.screenshot({
       path: `e2e/party-menu-critical-mobile-390x844-${RUN_ID}.png`,
     });
+
+    await page.evaluate(() =>
+      window.__kithlandsTest.clickMenuButton("QUEST LOG", "World"),
+    );
+    await page.waitForFunction(
+      () => !window.__kithlandsTest.sceneFlags("World").menuOpen,
+    );
+    expect(
+      await page.evaluate(() =>
+        window.__kithlandsTest.logicalGameSize("World"),
+      ),
+    ).toEqual({ width: 800, height: 600 });
+    await page.evaluate(() =>
+      window.__kithlandsTest.clickInteractiveText("Close", "World"),
+    );
   });
 });
