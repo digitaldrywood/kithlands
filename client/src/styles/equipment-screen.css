@@ -1296,12 +1296,17 @@
   }
 
   .equipment-header {
-    grid-template-columns: 42px minmax(100px, 1fr) 42px 1fr 88px 48px;
+    grid-template-columns: 44px minmax(100px, 1fr) 44px 1fr 92px 52px;
     grid-template-areas:
       "prev identity next recommend recommend close"
       "goal goal goal goal goal goal";
     gap: 5px;
-    padding: 6px;
+    padding: max(6px, env(safe-area-inset-top)) 6px 6px;
+  }
+
+  .equipment-nav {
+    min-width: 44px;
+    min-height: 44px;
   }
 
   .equipment-nav:first-child {
@@ -1345,7 +1350,7 @@
   .equipment-character {
     grid-column: 1;
     overflow: hidden;
-    font-size: 9px;
+    font-size: 11px;
     text-overflow: ellipsis;
   }
 
@@ -1354,7 +1359,7 @@
     grid-row: 2;
     min-width: 30px;
     padding: 1px 4px;
-    font-size: 8px;
+    font-size: 10px;
   }
 
   .equipment-character-meta {
@@ -1364,9 +1369,9 @@
   .equipment-header .equipment-action,
   .equipment-header .equipment-close,
   .equipment-goal {
-    min-height: 30px;
-    padding: 3px 5px;
-    font-size: 8px;
+    min-height: 44px;
+    padding: 5px 6px;
+    font-size: 10px;
   }
 
   .equipment-main,
@@ -1391,6 +1396,13 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 7px 12px;
+  }
+
+  .character-detail-tab {
+    min-height: 44px;
+    padding: 8px 4px;
+    font-size: 11px;
+    touch-action: manipulation;
   }
 
   .character-detail-panel > .character-conditions,
@@ -1473,6 +1485,11 @@
     border: 2px solid #8bc3f3;
     border-radius: 8px;
     box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.68);
+  }
+
+  .equipment-drawer .equipment-action,
+  .drawer-close {
+    min-height: 44px;
   }
 
   .equipment-item-list {
