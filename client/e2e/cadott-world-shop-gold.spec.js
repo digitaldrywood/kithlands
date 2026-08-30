@@ -49,14 +49,54 @@ async function moveSettlement(page, directions) {
   }
 }
 
-async function tapLogicalCanvasPoint(page, x, y) {
+async function tapLogicalCanvasPoint(page, x, y, sceneKey) {
   const canvas = page.locator("canvas");
   const box = await canvas.boundingBox();
   if (!box) throw new Error("game canvas is missing");
-  await page.touchscreen.tap(
-    box.x + (x / 800) * box.width,
-    box.y + (y / 600) * box.height,
+  const size = await page.evaluate(
+    (key) => window.__kithlandsTest.logicalGameSize(key),
+    sceneKey,
   );
+  await page.touchscreen.tap(
+    box.x + (x / size.width) * box.width,
+    box.y + (y / size.height) * box.height,
+  );
+}
+
+async function activateTouchUI(page, sceneKey) {
+  const layout = await page.evaluate(
+    (key) => window.__kithlandsTest.gameplayViewportSnapshot(key),
+    sceneKey,
+  );
+  await tapLogicalCanvasPoint(page, layout.action.x, layout.action.y, sceneKey);
+  await page.waitForTimeout(150);
+}
+
+async function tapActionButton(page, sceneKey) {
+  const layout = await page.evaluate(
+    (key) => window.__kithlandsTest.gameplayViewportSnapshot(key),
+    sceneKey,
+  );
+  await tapLogicalCanvasPoint(page, layout.action.x, layout.action.y, sceneKey);
+}
+
+async function expectGameplayViewport(page, viewport, sceneKey) {
+  const snapshot = await page.evaluate(
+    (key) => ({
+      size: window.__kithlandsTest.logicalGameSize(key),
+      layout: window.__kithlandsTest.gameplayViewportSnapshot(key),
+    }),
+    sceneKey,
+  );
+  expect(snapshot.layout.portrait).toBe(viewport.mobile);
+  expect(snapshot.size.width).toBe(800);
+  expect(snapshot.size.height).toBe(viewport.mobile ? 1731 : 600);
+  const box = await page.locator("canvas").boundingBox();
+  expect(box).not.toBeNull();
+  if (viewport.mobile) {
+    expect(box.y).toBeLessThan(1);
+    expect(box.height).toBeGreaterThan(800);
+  }
 }
 
 function persistentState(state) {
@@ -77,6 +117,7 @@ async function runGoldSlice(page, viewport) {
   await page.waitForFunction(
     () => window.__kithlandsTest.activeSceneKey() === "World",
   );
+  await expectGameplayViewport(page, viewport, "World");
 
   const initialState = await page.evaluate(() =>
     window.__kithlandsTest.gameState("World"),
@@ -104,10 +145,10 @@ async function runGoldSlice(page, viewport) {
       !settlement.animating
     );
   });
+  await expectGameplayViewport(page, viewport, "Settlement");
 
   if (viewport.mobile) {
-    await tapLogicalCanvasPoint(page, 400, 528);
-    await page.waitForTimeout(150);
+    await activateTouchUI(page, "Settlement");
   }
   let exterior = await page.evaluate(() =>
     window.__kithlandsTest.settlementSnapshot(),
@@ -156,7 +197,7 @@ async function runGoldSlice(page, viewport) {
   await capture(page, viewport, "general-store-door");
 
   if (viewport.mobile) {
-    await tapLogicalCanvasPoint(page, 715, 480);
+    await tapActionButton(page, "Settlement");
   } else {
     await page.evaluate(() =>
       window.__kithlandsTest.pressKey("Enter", "Settlement"),
@@ -165,6 +206,7 @@ async function runGoldSlice(page, viewport) {
   await page.waitForFunction(
     () => window.__kithlandsTest.activeSceneKey() === "Town",
   );
+  await expectGameplayViewport(page, viewport, "Town");
   const interior = await page.evaluate(() => ({
     state: window.__kithlandsTest.gameState("Town"),
     town: window.__kithlandsTest.townSnapshot("Town"),
@@ -255,9 +297,9 @@ async function runGoldSlice(page, viewport) {
     () =>
       window.__kithlandsTest.settlementSnapshot().currentInteraction === null,
   );
+  await expectGameplayViewport(page, viewport, "Settlement");
   if (viewport.mobile) {
-    await tapLogicalCanvasPoint(page, 624, 336);
-    await page.waitForTimeout(150);
+    await activateTouchUI(page, "Settlement");
   }
   exterior = await page.evaluate(() =>
     window.__kithlandsTest.settlementSnapshot(),
@@ -301,15 +343,15 @@ async function runGoldSlice(page, viewport) {
   await capture(page, viewport, "overworld-round-trip-complete");
 }
 
-test("Cadott world-to-shop gold slice at desktop and mobile sizes", async ({
-  page,
-}) => {
-  test.setTimeout(120_000);
-  for (const viewport of VIEWPORTS) {
+for (const viewport of VIEWPORTS) {
+  test(`Cadott world-to-shop gold slice at ${viewport.label}`, async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
     await page.setViewportSize({
       width: viewport.width,
       height: viewport.height,
     });
     await runGoldSlice(page, viewport);
-  }
-});
+  });
+}

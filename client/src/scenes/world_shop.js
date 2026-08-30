@@ -172,6 +172,23 @@ export async function openShop(scene, spawn) {
   let focusedMemberIndex = 0;
   let escHandler = null;
   let cycleHandler = null;
+  const shopOffsetY = scene.gameplayLayout?.portrait
+    ? Math.round((scene.gameplayLayout.height - 600) / 2)
+    : 0;
+  const positionPortraitShop = () => {
+    if (shopOffsetY === 0) return;
+    for (const entry of scene.children.list) {
+      if (
+        entry?.depth >= MAIN_PANEL.depth &&
+        Number.isFinite(entry.y) &&
+        !entry.__kithlandsShopOffsetApplied
+      ) {
+        entry.y += shopOffsetY;
+        entry.__kithlandsShopOffsetApplied = true;
+      }
+    }
+  };
+  scene.events.on("postupdate", positionPortraitShop);
 
   const destroyPicker = () => destroyGroup(pickerGroup);
   const destroyDetail = () => destroyGroup(detailGroup);
@@ -849,7 +866,14 @@ export async function openShop(scene, spawn) {
     },
   );
   const scrim = scene.add
-    .rectangle(400, 300, 800, 600, 0x02050b, 0.94)
+    .rectangle(
+      scene.gameplayLayout?.centerX || 400,
+      scene.gameplayLayout?.centerY || 300,
+      scene.gameplayLayout?.width || 800,
+      scene.gameplayLayout?.height || 600,
+      0x02050b,
+      0.94,
+    )
     .setScrollFactor(0)
     .setDepth(MAIN_PANEL.depth - 1)
     .setInteractive();
@@ -927,6 +951,7 @@ export async function openShop(scene, spawn) {
   overlay.push(leaveBtn);
 
   function closeShop() {
+    scene.events.off("postupdate", positionPortraitShop);
     destroyPicker();
     destroyDetail();
     destroyGroup(listGroup);
@@ -975,9 +1000,13 @@ export async function openShop(scene, spawn) {
   };
   scene.input.keyboard.on("keydown-ESC", escHandler);
   scene.input.keyboard.on("keydown", cycleHandler);
+  scene.events.once("shutdown", () => {
+    scene.events.off("postupdate", positionPortraitShop);
+  });
 
   syncSelection();
   renderList(itemsForTab(currentTab));
   renderDetail();
   updateTabButtons();
+  positionPortraitShop();
 }

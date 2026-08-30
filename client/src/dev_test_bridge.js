@@ -1415,6 +1415,11 @@ export function installDevTestBridge(game) {
       };
     },
 
+    gameplayViewportSnapshot(sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return clone(scene?.gameplayLayout || null);
+    },
+
     menuOverlaySummary(kind, sceneKey) {
       const scene = getScene(game, sceneKey);
       return clone(menuOverlaySummary(scene, kind));

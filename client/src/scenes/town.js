@@ -70,6 +70,10 @@ import {
 } from "../systems/modalLock.js";
 import { shouldStartBattle } from "./encounterFlow.js";
 import { isChestOpen } from "./town_chests.js";
+import {
+  applyGameplayViewport,
+  centeredPlayfieldOffset,
+} from "../systems/gameplayViewport.js";
 
 // Seeded PRNG (mulberry32). Returns a () => float [0,1) closure.
 function mulberry32(seed) {
@@ -610,6 +614,7 @@ export class TownScene extends Phaser.Scene {
   }
 
   create() {
+    const layout = applyGameplayViewport(this);
     this.animating = false;
     initAudio(this);
     this.cameras.main.setBackgroundColor("#000000");
@@ -687,8 +692,9 @@ export class TownScene extends Phaser.Scene {
     // Center the room on screen
     const roomPixelW = this.roomW * RENDERED_TILE;
     const roomPixelH = this.roomH * RENDERED_TILE;
-    this.offsetX = Math.floor((800 - roomPixelW) / 2);
-    this.offsetY = Math.floor((600 - roomPixelH) / 2);
+    const roomOffset = centeredPlayfieldOffset(layout, roomPixelW, roomPixelH);
+    this.offsetX = roomOffset.x;
+    this.offsetY = roomOffset.y;
 
     // Draw tiles
     this.roomDrawables = [];
@@ -857,13 +863,13 @@ export class TownScene extends Phaser.Scene {
 
     // Message overlay (same pattern as WorldScene)
     this.messageText = this.add
-      .text(400, 300, "", {
-        fontSize: "14px",
+      .text(layout.centerX, layout.messageY, "", {
+        fontSize: layout.portrait ? "24px" : "14px",
         color: "#ffffff",
         fontFamily: "monospace",
         backgroundColor: "#000000dd",
         padding: { x: 16, y: 12 },
-        wordWrap: { width: 500 },
+        wordWrap: { width: layout.portrait ? 680 : 500 },
         align: "center",
       })
       .setOrigin(0.5)
@@ -1029,7 +1035,7 @@ export class TownScene extends Phaser.Scene {
       Math.max(300, this.spawn.name.length * 12 + 90),
     );
     const height = this.interiorTemplate?.floors?.length > 1 ? 56 : 40;
-    const x = Math.floor((800 - width) / 2);
+    const x = Math.floor((this.gameplayLayout.width - width) / 2);
     const y = 12;
     const depth = DEPTH_UI;
     const innerWidth = Math.max(FRAME_TILE, width - FRAME_TILE * 2);
@@ -1097,7 +1103,7 @@ export class TownScene extends Phaser.Scene {
       .setOrigin(0, 0.5)
       .setDepth(depth + 1);
     const title = this.add
-      .text(400, y + 17, this.spawn.name, {
+      .text(this.gameplayLayout.centerX, y + 17, this.spawn.name, {
         fontSize: "15px",
         color: "#f5efe0",
         fontFamily: "monospace",
@@ -1110,11 +1116,16 @@ export class TownScene extends Phaser.Scene {
     if (this.interiorTemplate?.floors?.length > 1) {
       this.labelBar.push(
         this.add
-          .text(400, y + 35, `Floor ${this.floorIndex + 1}`, {
-            fontSize: "10px",
-            color: "#e8d8a8",
-            fontFamily: "monospace",
-          })
+          .text(
+            this.gameplayLayout.centerX,
+            y + 35,
+            `Floor ${this.floorIndex + 1}`,
+            {
+              fontSize: "10px",
+              color: "#e8d8a8",
+              fontFamily: "monospace",
+            },
+          )
           .setOrigin(0.5)
           .setDepth(depth + 2),
       );
@@ -1124,21 +1135,30 @@ export class TownScene extends Phaser.Scene {
   drawHelpStrip() {
     this.helpStrip?.panel?.bg?.destroy?.();
     this.helpStrip?.text?.destroy?.();
-    const panel = drawPanel(this, 400, 584, 760, 26, {
-      fill: 0x09111f,
-      fillAlpha: 0.92,
-      stroke: 0xc7a458,
-      strokeWidth: 2,
-      depth: DEPTH_UI,
-      interactive: false,
-    });
+    const panel = drawPanel(
+      this,
+      this.gameplayLayout.centerX,
+      this.gameplayLayout.footerY,
+      760,
+      this.gameplayLayout.portrait ? 44 : 26,
+      {
+        fill: 0x09111f,
+        fillAlpha: 0.92,
+        stroke: 0xc7a458,
+        strokeWidth: 2,
+        depth: DEPTH_UI,
+        interactive: false,
+      },
+    );
     const text = this.add
       .text(
-        400,
-        584,
-        "Move: Arrows/WASD     Talk: Enter/Space     Menu: M     Exit: Esc",
+        this.gameplayLayout.centerX,
+        this.gameplayLayout.footerY,
+        this.gameplayLayout.portrait
+          ? "D-PAD / ARROWS  Move     A / ENTER  Talk     MENU"
+          : "Move: Arrows/WASD     Talk: Enter/Space     Menu: M     Exit: Esc",
         {
-          fontSize: "10px",
+          fontSize: this.gameplayLayout.portrait ? "22px" : "10px",
           color: "#e8dcc4",
           fontFamily: "monospace",
         },
