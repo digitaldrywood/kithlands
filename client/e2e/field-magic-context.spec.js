@@ -100,10 +100,57 @@ test("keeps spell cost, purpose, and target validity visible", async ({
     fullPage: true,
   });
 
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(
+    () => window.__kithlandsTest.sceneFlags("World").menuOpen,
+  );
+  await page.keyboard.press("Escape");
+
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.waitForTimeout(150);
+  await page.keyboard.press("m");
+  await page.waitForFunction(
+    () => window.__kithlandsTest.sceneFlags("World").menuOpen,
+  );
+  await page.evaluate(() =>
+    window.__kithlandsTest.clickMenuButton("MAGIC", "World"),
+  );
+  await clickFieldMagicRow(page, "Mira");
+  await clickFieldMagicRow(page, "Cure");
+  await expect.poll(() => visibleText(page, "SELECT TARGET")).toBe(true);
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        window.__kithlandsTest.menuOverlaySummary("magic", "World"),
+      ),
+    )
+    .toMatchObject({
+      layoutMode: "mobile",
+      logicalSize: { width: 800, height: 1600 },
+      panelBounds: { width: 760, height: 1460 },
+      backBounds: { width: 680, height: 94 },
+    });
+  const targetSummary = await page.evaluate(() =>
+    window.__kithlandsTest.menuOverlaySummary("magic", "World"),
+  );
+  expect(targetSummary.rows).toHaveLength(2);
+  expect(targetSummary.rows.every((row) => row.bounds.height >= 80)).toBe(true);
   await page.screenshot({
     path: path.join(PROOF_DIR, "field-magic-target-mobile-390x844.png"),
     fullPage: true,
   });
+
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(
+    () => window.__kithlandsTest.sceneFlags("World").menuOpen,
+  );
+  await page.keyboard.press("Escape");
+  await expect
+    .poll(() =>
+      page.evaluate(() => window.__kithlandsTest.logicalGameSize("World")),
+    )
+    .toEqual({ width: 800, height: 600 });
 });

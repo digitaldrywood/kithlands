@@ -1,19 +1,15 @@
 import { gameAction } from "../api.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 import { drawButton, drawPanel } from "../ui/panel.js";
+import {
+  applyMenuOverlayGameSize,
+  menuOverlayLayout,
+  restoreMenuOverlayGameSize,
+} from "./menu_overlay_layout.js";
 
-const PANEL_CX = 400;
-const PANEL_CY = 300;
-const PANEL_W = 560;
-const PANEL_H = 420;
-const PANEL_LEFT = PANEL_CX - PANEL_W / 2;
-const PANEL_TOP = PANEL_CY - PANEL_H / 2;
-const PANEL_BOTTOM = PANEL_CY + PANEL_H / 2;
 const DEPTH_BG = 70;
 const DEPTH_CONTENT = 71;
 const DEPTH_TEXT = 72;
-const ROW_H = 28;
-const MAX_VISIBLE = 7;
 
 export function isFieldCastableSpell(spell) {
   if (!spell) return false;
@@ -170,9 +166,17 @@ export async function castFieldSpell(
 
 export function showFieldMagicMenu(scene, opts = {}) {
   pauseWorldFor(scene, "field_magic");
+  const layout = menuOverlayLayout({
+    viewportWidth: globalThis.window?.innerWidth ?? 800,
+    viewportHeight: globalThis.window?.innerHeight ?? 600,
+    desktopRowHeight: 28,
+    desktopMaxVisible: 7,
+  });
   const state = {
     scene,
     opts,
+    layout,
+    previousGameSize: applyMenuOverlayGameSize(scene, layout),
     overlay: [],
     rowObjects: [],
     keyHandler: null,
@@ -191,29 +195,68 @@ export function showFieldMagicMenu(scene, opts = {}) {
   };
   scene.fieldMagicMenuState = state;
 
-  const panel = drawPanel(scene, PANEL_CX, PANEL_CY, PANEL_W, PANEL_H, {
-    depth: DEPTH_BG,
-  });
-  state.overlay.push(panel.bg);
+  const { panel } = layout;
+  const panelLeft = panel.x - panel.width / 2;
+  const panelRight = panel.x + panel.width / 2;
+  const panelTop = panel.y - panel.height / 2;
+  const panelBottom = panel.y + panel.height / 2;
+
+  if (layout.mode === "mobile") {
+    state.overlay.push(
+      scene.add
+        .rectangle(
+          layout.gameWidth / 2,
+          layout.gameHeight / 2,
+          layout.gameWidth,
+          layout.gameHeight,
+          0x020711,
+          0.96,
+        )
+        .setScrollFactor(0)
+        .setDepth(DEPTH_BG - 1)
+        .setInteractive(),
+    );
+  }
+
+  const panelHandle = drawPanel(
+    scene,
+    panel.x,
+    panel.y,
+    panel.width,
+    panel.height,
+    { depth: DEPTH_BG },
+  );
+  panelHandle.bg.__kithlandsMenuOverlay = { role: "panel", kind: "magic" };
+  state.overlay.push(panelHandle.bg);
 
   state.titleText = scene.add
-    .text(PANEL_LEFT + 22, PANEL_TOP + 22, "FIELD MAGIC", {
-      fontSize: "18px",
-      color: "#f3d878",
-      fontFamily: "Arial, sans-serif",
-      fontStyle: "bold",
-    })
+    .text(
+      panelLeft + layout.title.xInset,
+      panelTop + layout.title.yInset,
+      "FIELD MAGIC",
+      {
+        fontSize: `${layout.title.fontSize}px`,
+        color: "#f3d878",
+        fontFamily: "Arial, sans-serif",
+        fontStyle: "bold",
+      },
+    )
     .setOrigin(0, 0.5)
     .setScrollFactor(0)
     .setDepth(DEPTH_TEXT);
   state.overlay.push(state.titleText);
 
   state.countText = scene.add
-    .text(PANEL_LEFT + PANEL_W - 22, PANEL_TOP + 22, "", {
-      fontSize: "11px",
-      color: "#9fc4e8",
-      fontFamily: "Arial, sans-serif",
-    })
+    .text(
+      panelRight - layout.count.xInset,
+      panelTop + layout.count.yInset,
+      "",
+      {
+        fontSize: `${layout.count.fontSize}px`,
+        color: "#9fc4e8",
+        fontFamily: "Arial, sans-serif",
+      },
+    )
     .setOrigin(1, 0.5)
     .setScrollFactor(0)
     .setDepth(DEPTH_TEXT);
@@ -221,18 +264,30 @@ export function showFieldMagicMenu(scene, opts = {}) {
 
   state.overlay.push(
     scene.add
-      .rectangle(PANEL_CX, PANEL_TOP + 45, PANEL_W - 40, 1, 0x6d93b7, 0.65)
+      .rectangle(
+        panel.x,
+        panelTop + layout.headerDividerInset,
+        panel.width - layout.list.xInset * 2,
+        1,
+        0x6d93b7,
+        0.65,
+      )
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT),
   );
 
   state.stageText = scene.add
-    .text(PANEL_LEFT + 22, PANEL_TOP + 57, "SELECT CASTER", {
-      fontSize: "9px",
-      color: "#77d4ec",
-      fontFamily: "Arial, sans-serif",
-      fontStyle: "bold",
-    })
+    .text(
+      panelLeft + layout.stage.xInset,
+      panelTop + layout.stage.yInset,
+      "SELECT CASTER",
+      {
+        fontSize: `${layout.stage.fontSize}px`,
+        color: "#77d4ec",
+        fontFamily: "Arial, sans-serif",
+        fontStyle: "bold",
+      },
+    )
     .setOrigin(0, 0.5)
     .setScrollFactor(0)
     .setDepth(DEPTH_TEXT);
@@ -240,36 +295,60 @@ export function showFieldMagicMenu(scene, opts = {}) {
 
   state.overlay.push(
     scene.add
-      .rectangle(PANEL_CX, PANEL_BOTTOM - 116, PANEL_W - 40, 1, 0x6d93b7, 0.65)
+      .rectangle(
+        panel.x,
+        panelBottom - layout.detail.dividerBottomInset,
+        panel.width - layout.list.xInset * 2,
+        1,
+        0x6d93b7,
+        0.65,
+      )
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT),
   );
   state.detailNameText = scene.add
-    .text(PANEL_LEFT + 22, PANEL_BOTTOM - 99, "", {
-      fontSize: "13px",
-      color: "#ffffff",
-      fontFamily: "Arial, sans-serif",
-      fontStyle: "bold",
-    })
+    .text(
+      panelLeft + layout.detail.horizontalInset,
+      panelBottom - layout.detail.nameBottomInset,
+      "",
+      {
+        fontSize: `${layout.detail.nameFontSize}px`,
+        color: "#ffffff",
+        fontFamily: "Arial, sans-serif",
+        fontStyle: "bold",
+      },
+    )
     .setOrigin(0, 0.5)
     .setScrollFactor(0)
     .setDepth(DEPTH_TEXT);
   state.detailMetaText = scene.add
-    .text(PANEL_LEFT + PANEL_W - 22, PANEL_BOTTOM - 99, "", {
-      fontSize: "9px",
-      color: "#77d4ec",
-      fontFamily: "Arial, sans-serif",
-    })
+    .text(
+      panelRight - layout.detail.horizontalInset,
+      panelBottom - layout.detail.nameBottomInset,
+      "",
+      {
+        fontSize: `${layout.detail.metaFontSize}px`,
+        color: "#77d4ec",
+        fontFamily: "Arial, sans-serif",
+      },
+    )
     .setOrigin(1, 0.5)
     .setScrollFactor(0)
     .setDepth(DEPTH_TEXT);
   state.descText = scene.add
-    .text(PANEL_LEFT + 22, PANEL_BOTTOM - 80, "", {
-      fontSize: "11px",
-      color: "#c7d8e9",
-      fontFamily: "Arial, sans-serif",
-      wordWrap: { width: PANEL_W - 44 },
-    })
+    .text(
+      panelLeft + layout.detail.horizontalInset,
+      panelBottom - layout.detail.descriptionBottomInset,
+      "",
+      {
+        fontSize: `${layout.detail.descriptionFontSize}px`,
+        color: "#c7d8e9",
+        fontFamily: "Arial, sans-serif",
+        wordWrap: {
+          width: panel.width - layout.detail.horizontalInset * 2,
+        },
+      },
+    )
     .setScrollFactor(0)
     .setDepth(DEPTH_TEXT);
   state.overlay.push(
@@ -280,22 +359,31 @@ export function showFieldMagicMenu(scene, opts = {}) {
 
   const backBtn = drawButton(
     scene,
-    PANEL_CX,
-    PANEL_BOTTOM - 21,
-    190,
-    26,
+    panel.x,
+    panelBottom - layout.footer.buttonYBottomInset,
+    layout.footer.buttonWidth,
+    layout.footer.buttonHeight,
     "BACK / ESC",
     () => goBack(state),
-    { depth: DEPTH_CONTENT },
+    {
+      depth: DEPTH_CONTENT,
+      fontSize: `${layout.footer.buttonFontSize}px`,
+    },
   );
+  backBtn.bg.__kithlandsMenuOverlay = { role: "back", kind: "magic" };
   state.overlay.push(backBtn);
 
   state.hintText = scene.add
-    .text(PANEL_LEFT + 22, PANEL_BOTTOM - 45, "↑↓ move    Enter/click select", {
-      fontSize: "9px",
-      color: "#8ea4b8",
-      fontFamily: "Arial, sans-serif",
-    })
+    .text(
+      panelLeft + layout.detail.horizontalInset,
+      panelBottom - layout.footer.hintBottomInset,
+      "↑↓ move    Enter/click select",
+      {
+        fontSize: `${layout.footer.hintFontSize}px`,
+        color: "#8ea4b8",
+        fontFamily: "Arial, sans-serif",
+      },
+    )
     .setOrigin(0, 0.5)
     .setScrollFactor(0)
     .setDepth(DEPTH_TEXT);
@@ -436,31 +524,49 @@ function renderTargetRows(state) {
 }
 
 function renderRows(state, rows, emptyText) {
-  const startY = PANEL_TOP + 71;
-  const visible = Math.min(MAX_VISIBLE, rows.length);
+  const { layout } = state;
+  const { panel } = layout;
+  const panelLeft = panel.x - panel.width / 2;
+  const panelRight = panel.x + panel.width / 2;
+  const panelTop = panel.y - panel.height / 2;
+  const { maxVisible, rowHeight } = layout.list;
+  const startY = panelTop + layout.list.startInset;
+  const visible = Math.min(maxVisible, rows.length);
   state.rows = rows;
   if (state.cursor >= rows.length) state.cursor = Math.max(0, rows.length - 1);
   state.scrollTop = Math.min(
     Math.max(0, state.scrollTop),
-    Math.max(0, rows.length - MAX_VISIBLE),
+    Math.max(0, rows.length - maxVisible),
   );
 
   for (let i = 0; i < visible; i += 1) {
     const idx = state.scrollTop + i;
     if (idx >= rows.length) break;
     const row = rows[idx];
-    const y = startY + i * ROW_H + ROW_H / 2;
+    const y = startY + i * rowHeight + rowHeight / 2;
     const baseColor = row.greyed ? "#666666" : "#ffffff";
 
     const bg = state.scene.add
-      .rectangle(PANEL_CX, y, PANEL_W - 56, ROW_H - 2, 0x1a2a4a, 0.8)
+      .rectangle(
+        panel.x,
+        y,
+        panel.width - layout.list.xInset * 2,
+        rowHeight - (layout.mode === "mobile" ? 8 : 2),
+        0x1a2a4a,
+        0.8,
+      )
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT)
       .setStrokeStyle(1, 0x5f7f9f, 0)
       .setInteractive({ useHandCursor: !row.greyed });
+    bg.__kithlandsMenuOverlay = {
+      role: "row",
+      kind: "magic",
+      index: idx,
+    };
     const label = state.scene.add
-      .text(PANEL_LEFT + 28, y, row.label, {
-        fontSize: "12px",
+      .text(panelLeft + layout.list.labelInset, y, row.label, {
+        fontSize: `${layout.list.labelFontSize}px`,
         color: baseColor,
         fontFamily: "Arial, sans-serif",
       })
@@ -468,12 +574,17 @@ function renderRows(state, rows, emptyText) {
       .setScrollFactor(0)
       .setDepth(DEPTH_TEXT);
     const meta = state.scene.add
-      .text(PANEL_CX + 110, y, row.meta || "", {
-        fontSize: "10px",
-        color: row.greyed ? "#555555" : "#88aacc",
-        fontFamily: "Arial, sans-serif",
-      })
-      .setOrigin(0, 0.5)
+      .text(
+        layout.mode === "mobile" ? panelRight - 40 : panel.x + 110,
+        y,
+        row.meta || "",
+        {
+          fontSize: `${layout.list.metaFontSize}px`,
+          color: row.greyed ? "#555555" : "#88aacc",
+          fontFamily: "Arial, sans-serif",
+        },
+      )
+      .setOrigin(layout.mode === "mobile" ? 1 : 0, 0.5)
       .setScrollFactor(0)
       .setDepth(DEPTH_TEXT);
 
@@ -492,8 +603,8 @@ function renderRows(state, rows, emptyText) {
 
   if (rows.length === 0) {
     const empty = state.scene.add
-      .text(PANEL_CX, startY + 40, emptyText, {
-        fontSize: "11px",
+      .text(panel.x, startY + rowHeight, emptyText, {
+        fontSize: `${layout.detail.descriptionFontSize}px`,
         color: "#888888",
         fontFamily: "Arial, sans-serif",
       })
@@ -566,14 +677,15 @@ function onKey(state, ev) {
 }
 
 function moveCursor(state, delta) {
+  const maxVisible = state.layout.list.maxVisible;
   state.cursor = (state.cursor + delta + state.rows.length) % state.rows.length;
   const previousScroll = state.scrollTop;
   if (state.cursor < state.scrollTop) state.scrollTop = state.cursor;
-  if (state.cursor >= state.scrollTop + MAX_VISIBLE)
-    state.scrollTop = state.cursor - MAX_VISIBLE + 1;
+  if (state.cursor >= state.scrollTop + maxVisible)
+    state.scrollTop = state.cursor - maxVisible + 1;
   if (state.cursor === 0) state.scrollTop = 0;
   if (state.cursor === state.rows.length - 1)
-    state.scrollTop = Math.max(0, state.rows.length - MAX_VISIBLE);
+    state.scrollTop = Math.max(0, state.rows.length - maxVisible);
   if (previousScroll !== state.scrollTop) rebuildRows(state);
   else refreshCursor(state);
 }
@@ -613,6 +725,8 @@ function closeFieldMagicMenu(state) {
   state.overlay = [];
   state.rowObjects = [];
   state.scene.fieldMagicMenuState = null;
+  restoreMenuOverlayGameSize(state.scene, state.previousGameSize);
+  state.previousGameSize = null;
   resumeWorldFor(state.scene, "field_magic");
   state.opts.onClose?.();
 }

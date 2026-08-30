@@ -89,7 +89,11 @@ test("keeps item purpose visible and presents an explicit target step", async ({
     fullPage: true,
   });
 
-  await page.keyboard.press("Enter");
+  const potionPosition = await page.evaluate(() =>
+    window.__kithlandsTest.menuOverlayRowPosition("items", "Potion", "World"),
+  );
+  expect(potionPosition).toBeTruthy();
+  await page.mouse.click(potionPosition.x, potionPosition.y);
   await expect.poll(() => visibleText(page, "SELECT TARGET")).toBe(true);
   await expect.poll(() => visibleText(page, "Ayla")).toBe(true);
   await expect.poll(() => visibleText(page, "HP ")).toBe(true);
@@ -122,12 +126,57 @@ test("keeps item purpose visible and presents an explicit target step", async ({
     );
   }
 
+  await page.setViewportSize({ width: 390, height: 844 });
   await openItemMenu(page);
   await expect.poll(() => visibleText(page, "5 usable items")).toBe(true);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.waitForTimeout(150);
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        window.__kithlandsTest.menuOverlaySummary("items", "World"),
+      ),
+    )
+    .toMatchObject({
+      layoutMode: "mobile",
+      logicalSize: { width: 800, height: 1600 },
+      panelBounds: { width: 760, height: 1460 },
+      backBounds: { width: 680, height: 94 },
+    });
+  const listSummary = await page.evaluate(() =>
+    window.__kithlandsTest.menuOverlaySummary("items", "World"),
+  );
+  expect(listSummary.rows).toHaveLength(5);
+  expect(listSummary.rows.every((row) => row.bounds.height >= 80)).toBe(true);
   await page.screenshot({
     path: path.join(PROOF_DIR, "item-list-mobile-390x844.png"),
     fullPage: true,
   });
+
+  const mobilePotionPosition = await page.evaluate(() =>
+    window.__kithlandsTest.menuOverlayRowPosition("items", "Potion", "World"),
+  );
+  expect(mobilePotionPosition).toBeTruthy();
+  await page.mouse.click(mobilePotionPosition.x, mobilePotionPosition.y);
+  await expect.poll(() => visibleText(page, "SELECT TARGET")).toBe(true);
+  const targetSummary = await page.evaluate(() =>
+    window.__kithlandsTest.menuOverlaySummary("items", "World"),
+  );
+  expect(targetSummary.rows.every((row) => row.bounds.height >= 160)).toBe(
+    true,
+  );
+  await page.screenshot({
+    path: path.join(PROOF_DIR, "item-target-mobile-390x844.png"),
+    fullPage: true,
+  });
+
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(
+    () => window.__kithlandsTest.sceneFlags("World").menuOpen,
+  );
+  await page.keyboard.press("Escape");
+  await expect
+    .poll(() =>
+      page.evaluate(() => window.__kithlandsTest.logicalGameSize("World")),
+    )
+    .toEqual({ width: 800, height: 600 });
 });

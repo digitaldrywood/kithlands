@@ -9,9 +9,14 @@
 //   - Phaser overlay (showItemMenu) — renders the scrollable list, persistent
 //     use context, and explicit target picker.
 
-import { drawPanel } from "../ui/panel.js";
+import { drawButton, drawPanel } from "../ui/panel.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 import { gameAction } from "../api.js";
+import {
+  applyMenuOverlayGameSize,
+  menuOverlayLayout,
+  restoreMenuOverlayGameSize,
+} from "./menu_overlay_layout.js";
 
 // ---------- pure helpers ----------
 
@@ -111,21 +116,9 @@ function hasValidTarget(item, party) {
 
 // ---------- Phaser overlay ----------
 
-// Layout constants. Mirrors the world_menu.js panel geometry so the two
-// screens feel visually consistent.
-const PANEL_CX = 400;
-const PANEL_CY = 300;
-const PANEL_W = 560;
-const PANEL_H = 420;
-const PANEL_LEFT = PANEL_CX - PANEL_W / 2;
-const PANEL_RIGHT = PANEL_CX + PANEL_W / 2;
-const PANEL_TOP = PANEL_CY - PANEL_H / 2;
-const PANEL_BOTTOM = PANEL_CY + PANEL_H / 2;
 const DEPTH_BG = 50;
 const DEPTH_CONTENT = 51;
 const DEPTH_TEXT = 52;
-const ROW_H = 25;
-const MAX_VISIBLE = 9;
 
 // showItemMenu renders the overlay. opts:
 //   - mode: "world" | "combat"
@@ -134,10 +127,18 @@ const MAX_VISIBLE = 9;
 //   - onClose(): called after teardown (e.g. to reopen the party menu).
 export function showItemMenu(scene, opts = {}) {
   const mode = opts.mode === "combat" ? "combat" : "world";
+  const layout = menuOverlayLayout({
+    viewportWidth: globalThis.window?.innerWidth ?? 800,
+    viewportHeight: globalThis.window?.innerHeight ?? 600,
+    desktopRowHeight: 25,
+    desktopMaxVisible: 9,
+  });
   const state = {
     scene,
     mode,
     opts,
+    layout,
+    previousGameSize: applyMenuOverlayGameSize(scene, layout),
     overlay: [],
     items: [],
     targets: [],
@@ -155,23 +156,55 @@ export function showItemMenu(scene, opts = {}) {
     keyHandler: null,
     closed: false,
   };
+  scene.itemMenuState = state;
+
+  const { panel } = layout;
+  const panelLeft = panel.x - panel.width / 2;
+  const panelRight = panel.x + panel.width / 2;
+  const panelTop = panel.y - panel.height / 2;
+  const panelBottom = panel.y + panel.height / 2;
 
   if (mode === "world") {
     pauseWorldFor(scene, "item_menu");
   }
 
-  const panel = drawPanel(scene, PANEL_CX, PANEL_CY, PANEL_W, PANEL_H, {
-    depth: DEPTH_BG,
-  });
-  state.overlay.push(panel.bg);
+  if (layout.mode === "mobile") {
+    state.overlay.push(
+      scene.add
+        .rectangle(
+          layout.gameWidth / 2,
+          layout.gameHeight / 2,
+          layout.gameWidth,
+          layout.gameHeight,
+          0x020711,
+          0.96,
+        )
+        .setScrollFactor(0)
+        .setDepth(DEPTH_BG - 1)
+        .setInteractive(),
+    );
+  }
+
+  const panelHandle = drawPanel(
+    scene,
+    panel.x,
+    panel.y,
+    panel.width,
+    panel.height,
+    {
+      depth: DEPTH_BG,
+    },
+  );
+  panelHandle.bg.__kithlandsMenuOverlay = { role: "panel", kind: "items" };
+  state.overlay.push(panelHandle.bg);
 
   const title = scene.add
     .text(
-      PANEL_LEFT + 22,
-      PANEL_TOP + 22,
+      panelLeft + layout.title.xInset,
+      panelTop + layout.title.yInset,
       mode === "combat" ? "BATTLE ITEMS" : "FIELD ITEMS",
       {
-        fontSize: "18px",
+        fontSize: `${layout.title.fontSize}px`,
         color: "#f3d878",
         fontFamily: "Arial, sans-serif",
         fontStyle: "bold",
@@ -183,29 +216,46 @@ export function showItemMenu(scene, opts = {}) {
   state.overlay.push(title);
 
   state.countText = scene.add
-    .text(PANEL_RIGHT - 22, PANEL_TOP + 22, "", {
-      fontSize: "11px",
-      color: "#9fc4e8",
-      fontFamily: "Arial, sans-serif",
-    })
+    .text(
+      panelRight - layout.count.xInset,
+      panelTop + layout.count.yInset,
+      "",
+      {
+        fontSize: `${layout.count.fontSize}px`,
+        color: "#9fc4e8",
+        fontFamily: "Arial, sans-serif",
+      },
+    )
     .setOrigin(1, 0.5)
     .setScrollFactor(0)
     .setDepth(DEPTH_TEXT);
   state.overlay.push(state.countText);
 
   const headerDivider = scene.add
-    .rectangle(PANEL_CX, PANEL_TOP + 45, PANEL_W - 40, 1, 0x6d93b7, 0.65)
+    .rectangle(
+      panel.x,
+      panelTop + layout.headerDividerInset,
+      panel.width - layout.list.xInset * 2,
+      1,
+      0x6d93b7,
+      0.65,
+    )
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
   state.overlay.push(headerDivider);
 
   state.stageText = scene.add
-    .text(PANEL_LEFT + 22, PANEL_TOP + 57, "CHOOSE AN ITEM", {
-      fontSize: "9px",
-      color: "#77d4ec",
-      fontFamily: "Arial, sans-serif",
-      fontStyle: "bold",
-    })
+    .text(
+      panelLeft + layout.stage.xInset,
+      panelTop + layout.stage.yInset,
+      "CHOOSE AN ITEM",
+      {
+        fontSize: `${layout.stage.fontSize}px`,
+        color: "#77d4ec",
+        fontFamily: "Arial, sans-serif",
+        fontStyle: "bold",
+      },
+    )
     .setOrigin(0, 0.5)
     .setScrollFactor(0)
     .setDepth(DEPTH_TEXT);
@@ -213,36 +263,60 @@ export function showItemMenu(scene, opts = {}) {
 
   // FF1 keeps the selected item's explanation in a persistent detail band.
   const detailDivider = scene.add
-    .rectangle(PANEL_CX, PANEL_BOTTOM - 116, PANEL_W - 40, 1, 0x6d93b7, 0.65)
+    .rectangle(
+      panel.x,
+      panelBottom - layout.detail.dividerBottomInset,
+      panel.width - layout.list.xInset * 2,
+      1,
+      0x6d93b7,
+      0.65,
+    )
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
   state.overlay.push(detailDivider);
   state.detailNameText = scene.add
-    .text(PANEL_LEFT + 22, PANEL_BOTTOM - 99, "", {
-      fontSize: "13px",
-      color: "#ffffff",
-      fontFamily: "Arial, sans-serif",
-      fontStyle: "bold",
-    })
+    .text(
+      panelLeft + layout.detail.horizontalInset,
+      panelBottom - layout.detail.nameBottomInset,
+      "",
+      {
+        fontSize: `${layout.detail.nameFontSize}px`,
+        color: "#ffffff",
+        fontFamily: "Arial, sans-serif",
+        fontStyle: "bold",
+      },
+    )
     .setOrigin(0, 0.5)
     .setScrollFactor(0)
     .setDepth(DEPTH_TEXT);
   state.detailMetaText = scene.add
-    .text(PANEL_RIGHT - 22, PANEL_BOTTOM - 99, "", {
-      fontSize: "9px",
-      color: "#77d4ec",
-      fontFamily: "Arial, sans-serif",
-    })
+    .text(
+      panelRight - layout.detail.horizontalInset,
+      panelBottom - layout.detail.nameBottomInset,
+      "",
+      {
+        fontSize: `${layout.detail.metaFontSize}px`,
+        color: "#77d4ec",
+        fontFamily: "Arial, sans-serif",
+      },
+    )
     .setOrigin(1, 0.5)
     .setScrollFactor(0)
     .setDepth(DEPTH_TEXT);
   state.descText = scene.add
-    .text(PANEL_LEFT + 22, PANEL_BOTTOM - 80, "", {
-      fontSize: "11px",
-      color: "#c7d8e9",
-      fontFamily: "Arial, sans-serif",
-      wordWrap: { width: PANEL_W - 44 },
-    })
+    .text(
+      panelLeft + layout.detail.horizontalInset,
+      panelBottom - layout.detail.descriptionBottomInset,
+      "",
+      {
+        fontSize: `${layout.detail.descriptionFontSize}px`,
+        color: "#c7d8e9",
+        fontFamily: "Arial, sans-serif",
+        wordWrap: {
+          width: panel.width - layout.detail.horizontalInset * 2,
+        },
+      },
+    )
     .setScrollFactor(0)
     .setDepth(DEPTH_TEXT);
   state.overlay.push(
@@ -251,18 +325,40 @@ export function showItemMenu(scene, opts = {}) {
     state.descText,
   );
 
-  // Footer hint + close button.
   state.hintText = scene.add
     .text(
-      PANEL_CX,
-      PANEL_BOTTOM - 22,
+      panel.x,
+      panelBottom -
+        (layout.mode === "mobile" ? layout.footer.hintBottomInset : 22),
       "↑↓ move    Enter/click use    Esc close",
-      { fontSize: "9px", color: "#8ea4b8", fontFamily: "Arial, sans-serif" },
+      {
+        fontSize: `${layout.footer.hintFontSize}px`,
+        color: "#8ea4b8",
+        fontFamily: "Arial, sans-serif",
+      },
     )
     .setOrigin(0.5)
     .setScrollFactor(0)
     .setDepth(DEPTH_TEXT);
   state.overlay.push(state.hintText);
+
+  if (layout.mode === "mobile") {
+    const backBtn = drawButton(
+      scene,
+      panel.x,
+      panelBottom - layout.footer.buttonYBottomInset,
+      layout.footer.buttonWidth,
+      layout.footer.buttonHeight,
+      "BACK / ESC",
+      () => closeItemMenu(state),
+      {
+        depth: DEPTH_CONTENT,
+        fontSize: `${layout.footer.buttonFontSize}px`,
+      },
+    );
+    backBtn.bg.__kithlandsMenuOverlay = { role: "back", kind: "items" };
+    state.overlay.push(backBtn);
+  }
 
   rebuildRows(state);
 
@@ -277,6 +373,13 @@ export function showItemMenu(scene, opts = {}) {
 }
 
 function rebuildRows(state) {
+  const { layout } = state;
+  const { panel } = layout;
+  const panelLeft = panel.x - panel.width / 2;
+  const panelRight = panel.x + panel.width / 2;
+  const panelTop = panel.y - panel.height / 2;
+  const { maxVisible, rowHeight } = layout.list;
+
   // Tear down any existing row objects so we can redraw cleanly.
   for (const r of state.rowObjects) {
     if (r.row) r.row.destroy();
@@ -298,27 +401,39 @@ function rebuildRows(state) {
   if (state.cursor >= list.length) state.cursor = Math.max(0, list.length - 1);
   state.scrollTop = Math.min(
     Math.max(0, state.scrollTop),
-    Math.max(0, list.length - MAX_VISIBLE),
+    Math.max(0, list.length - maxVisible),
   );
 
-  const startY = PANEL_TOP + 71;
-  const visible = Math.min(MAX_VISIBLE, list.length);
+  const startY = panelTop + layout.list.startInset;
+  const visible = Math.min(maxVisible, list.length);
   for (let i = 0; i < visible; i++) {
     const idx = state.scrollTop + i;
     if (idx >= list.length) break;
     const item = list[idx];
-    const y = startY + i * ROW_H + ROW_H / 2;
+    const y = startY + i * rowHeight + rowHeight / 2;
 
     const rowBg = state.scene.add
-      .rectangle(PANEL_CX, y, PANEL_W - 40, ROW_H - 2, 0x1a2f4b, 0.15)
+      .rectangle(
+        panel.x,
+        y,
+        panel.width - layout.list.xInset * 2,
+        rowHeight - (layout.mode === "mobile" ? 8 : 2),
+        0x1a2f4b,
+        0.15,
+      )
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT)
       .setStrokeStyle(1, 0x5f7f9f, 0)
       .setInteractive({ useHandCursor: !item.greyed });
+    rowBg.__kithlandsMenuOverlay = {
+      role: "row",
+      kind: "items",
+      index: idx,
+    };
     const color = item.greyed ? "#666666" : "#ffffff";
     const label = state.scene.add
-      .text(PANEL_LEFT + 34, y, item.name, {
-        fontSize: "12px",
+      .text(panelLeft + layout.list.labelInset, y, item.name, {
+        fontSize: `${layout.list.labelFontSize}px`,
         color,
         fontFamily: "Arial, sans-serif",
       })
@@ -326,8 +441,8 @@ function rebuildRows(state) {
       .setScrollFactor(0)
       .setDepth(DEPTH_TEXT);
     const qty = state.scene.add
-      .text(PANEL_RIGHT - 30, y, `x${item.count}`, {
-        fontSize: "12px",
+      .text(panelRight - layout.list.quantityInset, y, `x${item.count}`, {
+        fontSize: `${layout.list.labelFontSize}px`,
         color,
         fontFamily: "Arial, sans-serif",
       })
@@ -350,8 +465,8 @@ function rebuildRows(state) {
   }
   if (list.length === 0) {
     const empty = state.scene.add
-      .text(PANEL_CX, startY + 40, "No usable items in this context.", {
-        fontSize: "11px",
+      .text(panel.x, startY + rowHeight, "No usable items in this context.", {
+        fontSize: `${layout.detail.descriptionFontSize}px`,
         color: "#8ea4b8",
         fontFamily: "Arial, sans-serif",
       })
@@ -423,15 +538,16 @@ function onKey(state, ev) {
 }
 
 function moveItemCursor(state, delta) {
+  const maxVisible = state.layout.list.maxVisible;
   state.cursor =
     (state.cursor + delta + state.items.length) % state.items.length;
   const previousScroll = state.scrollTop;
   if (state.cursor < state.scrollTop) state.scrollTop = state.cursor;
-  if (state.cursor >= state.scrollTop + MAX_VISIBLE)
-    state.scrollTop = state.cursor - MAX_VISIBLE + 1;
+  if (state.cursor >= state.scrollTop + maxVisible)
+    state.scrollTop = state.cursor - maxVisible + 1;
   if (state.cursor === 0) state.scrollTop = 0;
   if (state.cursor === state.items.length - 1)
-    state.scrollTop = Math.max(0, state.items.length - MAX_VISIBLE);
+    state.scrollTop = Math.max(0, state.items.length - maxVisible);
   if (state.scrollTop !== previousScroll) rebuildRows(state);
   else refreshCursor(state);
 }
@@ -448,6 +564,11 @@ function confirmSelection(state) {
 }
 
 function showTargetPicker(state, item) {
+  const { layout } = state;
+  const { panel } = layout;
+  const panelLeft = panel.x - panel.width / 2;
+  const panelTop = panel.y - panel.height / 2;
+
   // Destroy the existing list rows; rebuild them as target rows. This keeps
   // the picker inside the same panel so we don't stack overlays.
   for (const r of state.rowObjects) {
@@ -482,11 +603,16 @@ function showTargetPicker(state, item) {
 
   if (!targets.some((target) => target.valid)) {
     const empty = state.scene.add
-      .text(PANEL_CX, PANEL_TOP + 180, "(no valid targets)", {
-        fontSize: "11px",
-        color: "#ff6666",
-        fontFamily: "Arial, sans-serif",
-      })
+      .text(
+        panel.x,
+        panelTop + layout.targets.startInset,
+        "(no valid targets)",
+        {
+          fontSize: `${layout.detail.descriptionFontSize}px`,
+          color: "#ff6666",
+          fontFamily: "Arial, sans-serif",
+        },
+      )
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(DEPTH_TEXT);
@@ -499,38 +625,63 @@ function showTargetPicker(state, item) {
     return;
   }
 
-  const cardW = (PANEL_W - 54) / 2;
-  const startY = PANEL_TOP + 103;
+  const cardW =
+    (panel.width -
+      layout.targets.horizontalInset * 2 -
+      layout.targets.columnGap * (layout.targets.columns - 1)) /
+    layout.targets.columns;
+  const startY = panelTop + layout.targets.startInset;
   for (let i = 0; i < targets.length; i++) {
     const t = targets[i];
-    const column = i % 2;
-    const rowIndex = Math.floor(i / 2);
-    const x = PANEL_LEFT + 21 + cardW / 2 + column * (cardW + 12);
-    const y = startY + rowIndex * 72;
+    const column = i % layout.targets.columns;
+    const rowIndex = Math.floor(i / layout.targets.columns);
+    const x =
+      panelLeft +
+      layout.targets.horizontalInset +
+      cardW / 2 +
+      column * (cardW + layout.targets.columnGap);
+    const y = startY + rowIndex * layout.targets.rowGap;
     const row = state.scene.add
-      .rectangle(x, y, cardW, 62, 0x1a2f4b, t.valid ? 0.58 : 0.24)
+      .rectangle(
+        x,
+        y,
+        cardW,
+        layout.targets.cardHeight,
+        0x1a2f4b,
+        t.valid ? 0.58 : 0.24,
+      )
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT)
       .setStrokeStyle(1, 0x5f7f9f, 0.55)
       .setInteractive({ useHandCursor: t.valid });
+    row.__kithlandsMenuOverlay = {
+      role: "target",
+      kind: "items",
+      index: i,
+    };
     const label = state.scene.add
-      .text(x - cardW / 2 + 12, y - 17, t.name, {
-        fontSize: "12px",
-        color: t.valid ? "#ffffff" : "#667788",
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold",
-      })
+      .text(
+        x - cardW / 2 + layout.targets.labelInsetX,
+        y + layout.targets.labelOffsetY,
+        t.name,
+        {
+          fontSize: `${layout.targets.labelFontSize}px`,
+          color: t.valid ? "#ffffff" : "#667788",
+          fontFamily: "Arial, sans-serif",
+          fontStyle: "bold",
+        },
+      )
       .setOrigin(0, 0.5)
       .setScrollFactor(0)
       .setDepth(DEPTH_TEXT);
     const vitals = state.scene.add
       .text(
-        x - cardW / 2 + 12,
-        y + 8,
+        x - cardW / 2 + layout.targets.labelInsetX,
+        y + layout.targets.vitalsOffsetY,
         `HP ${t.hp}/${t.max_hp}` +
           (t.max_mp > 0 ? `    MP ${t.mp}/${t.max_mp}` : ""),
         {
-          fontSize: "10px",
+          fontSize: `${layout.targets.vitalsFontSize}px`,
           color: t.valid ? "#9fc4e8" : "#566575",
           fontFamily: "Arial, sans-serif",
         },
@@ -645,6 +796,9 @@ function closeItemMenu(state) {
   }
   state.overlay = [];
   state.rowObjects = [];
+  state.scene.itemMenuState = null;
+  restoreMenuOverlayGameSize(state.scene, state.previousGameSize);
+  state.previousGameSize = null;
   if (state.mode === "world") {
     resumeWorldFor(state.scene, "item_menu");
   }

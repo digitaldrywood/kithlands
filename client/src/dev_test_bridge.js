@@ -357,6 +357,8 @@ function describeObject(entry, index) {
       target?.__kithlandsPartyMenuAction ||
       entry?.__kithlandsPartyMenuAction ||
       null,
+    menuOverlayMeta:
+      target?.__kithlandsMenuOverlay || entry?.__kithlandsMenuOverlay || null,
     fillColor:
       target?.fillColor ??
       target?.fill ??
@@ -505,6 +507,40 @@ function partyMenuLayoutSnapshot(scene) {
     },
     statBars,
     rowMetrics,
+  };
+}
+
+function menuOverlaySummary(scene, kind) {
+  const state =
+    kind === "items" ? scene?.itemMenuState : scene?.fieldMagicMenuState;
+  if (!state?.layout) return null;
+  const entries = flattenMenuEntries(state.overlay).map((entry, index) =>
+    describeObject(entry, index),
+  );
+  const panel = entries.find(
+    (entry) =>
+      entry.menuOverlayMeta?.role === "panel" &&
+      entry.menuOverlayMeta?.kind === kind,
+  );
+  const back = entries.find(
+    (entry) =>
+      entry.menuOverlayMeta?.role === "back" &&
+      entry.menuOverlayMeta?.kind === kind,
+  );
+  return {
+    kind,
+    layoutMode: state.layout.mode,
+    logicalSize: {
+      width: scene?.scale?.gameSize?.width || null,
+      height: scene?.scale?.gameSize?.height || null,
+    },
+    panelBounds: panel?.bounds || null,
+    backBounds: back?.bounds || null,
+    rows: (state.rowObjects || []).map((entry, index) => ({
+      index,
+      label: entry.item?.name || entry.row?.label || entry.label?.text || null,
+      bounds: objectBounds(entry.bg || entry.row),
+    })),
   };
 }
 
@@ -1283,6 +1319,25 @@ export function installDevTestBridge(game) {
         width: scene?.scale?.gameSize?.width || null,
         height: scene?.scale?.gameSize?.height || null,
       };
+    },
+
+    menuOverlaySummary(kind, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return clone(menuOverlaySummary(scene, kind));
+    },
+
+    menuOverlayRowPosition(kind, label, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      const state =
+        kind === "items" ? scene?.itemMenuState : scene?.fieldMagicMenuState;
+      const entry = state?.rowObjects?.find(
+        (row) =>
+          row.item?.name === label ||
+          row.row?.label === label ||
+          row.row?.label?.startsWith?.(`${label} `) ||
+          row.label?.text === label,
+      );
+      return gameObjectCenter(game, entry?.bg || entry?.row);
     },
 
     sceneAuditInfo(sceneKey) {
