@@ -316,4 +316,41 @@ test.describe("Warrior layered battle gold slice", () => {
       fullPage: true,
     });
   });
+
+  test("plays Warrior defend from an authoritative combat action", async ({
+    page,
+  }, testInfo) => {
+    await page.goto("/");
+    await page.waitForFunction(
+      () => window.__kithlandsTest?.activeSceneKey() === "Title",
+      null,
+      { timeout: 90_000 },
+    );
+    await page.evaluate(() => window.__kithlandsTest.startQuickGame());
+    await page.waitForFunction(
+      () => window.__kithlandsTest.activeSceneKey() === "World",
+    );
+    const encounter = await page.evaluate(() =>
+      window.__kithlandsTest.forceEncounter(["slime", "goblin"], 2),
+    );
+    expect(encounter.error).toBeFalsy();
+    expect(encounter.phase).toBe("combat");
+    await page.waitForFunction(
+      () => window.__kithlandsTest.activeSceneKey() === "Battle",
+    );
+
+    const actions = await page.evaluate(() =>
+      window.__kithlandsTest.startAuthoritativeBattleRound("defend"),
+    );
+    expect(actions[0]).toMatchObject({ slot: 0, type: "defend" });
+    await page.waitForFunction(
+      () =>
+        window.__kithlandsTest.battleVisibilitySnapshot().partyMembers[0]
+          ?.battleState === "defend",
+    );
+    await page.screenshot({
+      path: testInfo.outputPath(`warrior-authoritative-defend-${RUN_ID}.png`),
+      fullPage: true,
+    });
+  });
 });

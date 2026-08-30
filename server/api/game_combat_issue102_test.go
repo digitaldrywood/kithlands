@@ -44,6 +44,40 @@ func TestCombatActionsExposeInitiativeInPayload(t *testing.T) {
 	}
 }
 
+func TestDefendCombatActionIsEmitted(t *testing.T) {
+	game := newGameWithParty(t, []api.PartyMemberReq{
+		{Name: "Hero", ClassID: "warrior"},
+	})
+	api.EnterCombatForTest(game, []string{"goblin"}, 1)
+	api.SetEncounterStartForTest(game, combat.EncounterStartPreemptive)
+
+	state, err := game.ProcessAction(api.GameActionRequest{
+		Type: "attack",
+		Actions: []api.MemberActionReq{
+			{Slot: 0, Type: "defend"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("defend round: %v", err)
+	}
+
+	for _, action := range state.CombatActions {
+		if action.ActorName == "Hero" && action.Kind == "defend" {
+			if action.Initiative <= 0 {
+				t.Fatalf("defend action missing initiative: %+v", action)
+			}
+			for _, line := range state.CombatLog {
+				if line == "Hero defends." {
+					return
+				}
+			}
+			t.Fatalf("defend combat log missing; log=%v", state.CombatLog)
+		}
+	}
+
+	t.Fatalf("structured defend action missing; actions=%+v", state.CombatActions)
+}
+
 func TestCombatSpellConsumesExactMPCost(t *testing.T) {
 	game := newGameWithParty(t, []api.PartyMemberReq{
 		{Name: "Hero", ClassID: "warrior"},

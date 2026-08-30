@@ -1806,9 +1806,14 @@ export function installDevTestBridge(game) {
 
       let spellAssigned = false;
       let inspireAssigned = false;
+      let defendAssigned = false;
       const actions = (scene.gameState?.party || [])
         .map((member, slot) => {
           if ((member.hp ?? 0) <= 0) return null;
+          if (mode === "defend" && !defendAssigned) {
+            defendAssigned = true;
+            return { slot, type: "defend" };
+          }
           if (
             mode === "inspire" &&
             !inspireAssigned &&
@@ -1863,6 +1868,9 @@ export function installDevTestBridge(game) {
       }
       if (mode === "inspire" && !inspireAssigned) {
         throw new Error("Battle party has no Inspire ability");
+      }
+      if (mode === "defend" && !defendAssigned) {
+        throw new Error("Battle party has no living defender");
       }
 
       scene.memberActions = actions;
