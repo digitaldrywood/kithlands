@@ -386,7 +386,8 @@ function partyMenuLayoutSnapshot(scene) {
   if (!scene?.menuGroup) return null;
   const flattened = flattenMenuEntries(scene.menuGroup);
   const panel = describeObject(flattened[0], 0);
-  const panelBounds = panel.bounds;
+  const panelBounds =
+    centeredLayoutBounds(scene.partyMenuLayout?.panel) || panel.bounds;
   const entries = flattened.map((entry, index) => describeObject(entry, index));
   const statBars = [];
 
@@ -676,6 +677,39 @@ function formationMenuSummary(scene) {
       moved: !!entry.moved,
       bounds: objectBounds(entry.card),
     })),
+  };
+}
+
+function characterDetailSummary(scene) {
+  const state = scene?.characterDetailState;
+  const layout = state?.layout;
+  if (!layout) return null;
+  const inspector = layout.equipment?.inspector;
+  return {
+    layoutMode: layout.mode,
+    partyIndex: scene.characterDetailIndex ?? null,
+    logicalSize: {
+      width: scene.scale?.gameSize?.width || null,
+      height: scene.scale?.gameSize?.height || null,
+    },
+    shellBounds: centeredLayoutBounds(layout.shell),
+    previousBounds: objectBounds(state.previousButton?.bg),
+    nextBounds: objectBounds(state.nextButton?.bg),
+    loadoutBounds: objectBounds(state.loadoutButton?.bg),
+    closeBounds: objectBounds(state.closeButton?.bg),
+    portraitBounds: centeredLayoutBounds(layout.portrait),
+    equipmentCards: (state.equipmentCards || []).map((card) => ({
+      slot: card.characterDetailMeta?.slot || null,
+      bounds: objectBounds(card),
+    })),
+    inspectorBounds: inspector
+      ? centeredLayoutBounds({
+          x: inspector.x,
+          y: inspector.top + inspector.height / 2,
+          width: inspector.width,
+          height: inspector.height,
+        })
+      : null,
   };
 }
 
@@ -2099,6 +2133,11 @@ export function installDevTestBridge(game) {
       clickGameObject(target);
     },
 
+    characterDetailButtonPosition(label, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return gameObjectCenter(game, findCharacterDetailButton(scene, label));
+    },
+
     hoverCharacterDetailEquipment(slot, sceneKey) {
       const scene = getScene(game, sceneKey);
       const target = (scene?.characterDetailGroup || []).find(
@@ -2177,6 +2216,11 @@ export function installDevTestBridge(game) {
     partyMenuSummary(sceneKey) {
       const scene = getScene(game, sceneKey);
       return clone(partyMenuSummary(scene));
+    },
+
+    characterDetailSummary(sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return clone(characterDetailSummary(scene));
     },
 
     formationMenuSummary(sceneKey) {

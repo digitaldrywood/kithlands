@@ -5,6 +5,11 @@ import { showGemWorkshop } from "./gem_workshop.js";
 import { showEquipmentScreen } from "./equipment_screen.js";
 import { buildFieldSpellList, showFieldMagicMenu } from "./field_magic.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
+import { characterDetailLayout } from "./character_detail_layout.js";
+import {
+  applyMenuOverlayGameSize,
+  restoreMenuOverlayGameSize,
+} from "./menu_overlay_layout.js";
 
 // Depth layering. The party menu panel sits at 40-41; character detail
 // sits above it at 60+ so it can be opened over the menu or standalone
@@ -12,21 +17,6 @@ import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 const DEPTH_BG = 60;
 const DEPTH_CONTENT = 61;
 const DEPTH_LABEL = 62;
-
-const PANEL_CX = 400;
-const PANEL_CY = 300;
-const PANEL_W = 760;
-const PANEL_H = 540;
-const PANEL_LEFT = PANEL_CX - PANEL_W / 2;
-const PANEL_RIGHT = PANEL_CX + PANEL_W / 2;
-const PANEL_TOP = PANEL_CY - PANEL_H / 2;
-const PANEL_BOTTOM = PANEL_CY + PANEL_H / 2;
-const NAV_BTN_W = 34;
-const NAV_BTN_H = 34;
-const NAV_BTN_Y = PANEL_TOP + 42;
-const NAV_LEFT_X = PANEL_LEFT + 28;
-const NAV_RIGHT_X = PANEL_RIGHT - 28;
-const EQUIP_X = PANEL_RIGHT - 140;
 
 // Opens the detail overlay for a single party member. Idempotent: calling
 // twice closes the previous instance before opening the new one, so the
@@ -40,43 +30,83 @@ export function openCharacterDetail(scene, partyIndex) {
   if (!member) return;
   const equip = (gs.equipment && gs.equipment[partyIndex]) || {};
 
+  const layout = characterDetailLayout({
+    viewportWidth: globalThis.window?.innerWidth ?? 800,
+    viewportHeight: globalThis.window?.innerHeight ?? 600,
+  });
+  const previousGameSize = scene?.scale?.gameSize
+    ? applyMenuOverlayGameSize(scene, layout)
+    : null;
+
   pauseWorldFor(scene, "character_detail");
   scene.characterDetailGroup = [];
   scene.characterDetailIndex = partyIndex;
   const group = scene.characterDetailGroup;
+  const state = {
+    layout,
+    previousGameSize,
+    panel: null,
+    previousButton: null,
+    nextButton: null,
+    loadoutButton: null,
+    closeButton: null,
+    equipmentCards: [],
+  };
+  scene.characterDetailState = state;
 
-  const panel = drawPanel(scene, PANEL_CX, PANEL_CY, PANEL_W, PANEL_H, {
-    depth: DEPTH_BG,
-  });
+  const panel = drawPanel(
+    scene,
+    layout.shell.x,
+    layout.shell.y,
+    layout.shell.width,
+    layout.shell.height,
+    {
+      depth: DEPTH_BG,
+      fill: 0x071328,
+      fillAlpha: 0.98,
+      stroke: 0x76a9eb,
+      strokeWidth: layout.mode === "mobile" ? 4 : 2,
+    },
+  );
+  panel.bg.characterDetailMeta = { role: "shell" };
+  state.panel = panel.bg;
   group.push(panel.bg);
 
   const positionLabel = formatCharacterDetailPosition(gs.party, partyIndex);
+  const previousLayout = layout.header.previous;
   const prevBtn = drawButton(
     scene,
-    NAV_LEFT_X,
-    NAV_BTN_Y,
-    NAV_BTN_W,
-    NAV_BTN_H,
+    previousLayout.x,
+    previousLayout.y,
+    previousLayout.width,
+    previousLayout.height,
     "<",
     () => cycleCharacterDetail(scene, -1),
+    { depth: DEPTH_LABEL, fontSize: `${previousLayout.fontSize}px` },
   );
+  const nextLayout = layout.header.next;
   const nextBtn = drawButton(
     scene,
-    NAV_RIGHT_X,
-    NAV_BTN_Y,
-    NAV_BTN_W,
-    NAV_BTN_H,
+    nextLayout.x,
+    nextLayout.y,
+    nextLayout.width,
+    nextLayout.height,
     ">",
     () => cycleCharacterDetail(scene, 1),
+    { depth: DEPTH_LABEL, fontSize: `${nextLayout.fontSize}px` },
   );
+  prevBtn.bg.characterDetailMeta = { role: "previous" };
+  nextBtn.bg.characterDetailMeta = { role: "next" };
+  state.previousButton = prevBtn;
+  state.nextButton = nextBtn;
   group.push(prevBtn, nextBtn);
 
   // Header: name + class · level, centered, with party position shown near
   // the title strip so the player can see which member they're on.
   group.push(
     scene.add
-      .text(PANEL_CX, PANEL_TOP + 32, member.name, {
-        fontSize: "22px",
+      .text(layout.header.name.x, layout.header.name.y, member.name, {
+        fontSize: `${layout.header.name.fontSize}px`,
         color: "#ffffff",
         fontFamily: "monospace",
       })
@@ -85,17 +115,18 @@ export function openCharacterDetail(scene, partyIndex) {
       .setDepth(DEPTH_LABEL),
   );
 
+  const loadoutLayout = layout.header.loadout;
   const loadoutBtn = drawButton(
     scene,
-    PANEL_LEFT + 96,
-    PANEL_TOP + 58,
-    128,
-    25,
+    loadoutLayout.x,
+    loadoutLayout.y,
+    loadoutLayout.width,
+    loadoutLayout.height,
     "FULL LOADOUT",
     () => handOffToEquipmentScreen(scene, partyIndex),
     {
       depth: DEPTH_LABEL,
-      fontSize: "9px",
+      fontSize: `${loadoutLayout.fontSize}px`,
       fill: 0x1f5d48,
       fillHover: 0x2b7d62,
       stroke: 0xa5f0c8,
@@ -103,11 +134,12 @@ export function openCharacterDetail(scene, partyIndex) {
     },
   );
   loadoutBtn.bg.characterDetailMeta = { role: "full_loadout" };
+  state.loadoutButton = loadoutBtn;
   group.push(loadoutBtn);
   group.push(
     scene.add
-      .text(PANEL_RIGHT - 84, PANEL_TOP + 32, positionLabel, {
-        fontSize: "14px",
+      .text(layout.header.position.x, layout.header.position.y, positionLabel, {
+        fontSize: `${layout.header.position.fontSize}px`,
         color: "#88ccff",
         fontFamily: "monospace",
       })
@@ -118,10 +150,14 @@ export function openCharacterDetail(scene, partyIndex) {
   group.push(
     scene.add
       .text(
-        PANEL_CX,
-        PANEL_TOP + 58,
+        layout.header.className.x,
+        layout.header.className.y,
         `${member.class_name} · Lv.${member.level}`,
-        { fontSize: "13px", color: "#ffcc44", fontFamily: "monospace" },
+        {
+          fontSize: `${layout.header.className.fontSize}px`,
+          color: "#ffcc44",
+          fontFamily: "monospace",
+        },
       )
       .setOrigin(0.5)
       .setScrollFactor(0)
@@ -131,28 +167,39 @@ export function openCharacterDetail(scene, partyIndex) {
   // Divider under the title strip, matching world_menu.js.
   group.push(
     scene.add
-      .rectangle(PANEL_CX, PANEL_TOP + 82, PANEL_W - 40, 1, 0x4488ff, 0.6)
+      .rectangle(
+        layout.shell.x,
+        layout.header.dividerY,
+        layout.header.dividerWidth,
+        layout.mode === "mobile" ? 2 : 1,
+        0x4488ff,
+        0.6,
+      )
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT),
   );
 
-  // Three-column body.
-  drawPortrait(scene, group, member, PANEL_LEFT + 120, PANEL_TOP + 230);
-  drawStatBlock(scene, group, member, equip, PANEL_LEFT + 230, PANEL_TOP + 110);
+  // Desktop uses the original three-column composition. Portrait screens use
+  // the same information hierarchy with a larger hero summary and touch-safe
+  // equipment controls below it.
+  drawPortrait(scene, group, member, layout.portrait);
+  drawStatBlock(scene, group, member, equip, layout.stats);
   const equipmentInspector = drawEquipmentInspector(
     scene,
     group,
     member,
     equip,
     equip.weapon_name ? "weapon" : "armor",
+    layout.equipment.inspector,
   );
   scene.characterEquipmentInspector = equipmentInspector;
 
+  const weaponCard = layout.equipment.cards[0];
   drawEquipSlot(
     scene,
     group,
-    EQUIP_X,
-    PANEL_TOP + 135,
+    weaponCard.x,
+    weaponCard.y,
     "WEAPON",
     equip.weapon_name,
     () => handOffToEquipPicker(scene, partyIndex, "weapon"),
@@ -163,13 +210,16 @@ export function openCharacterDetail(scene, partyIndex) {
       inspector: equipmentInspector,
       onSocket: () =>
         handOffToGemWorkshop(scene, partyIndex, equip.weapon_item?.instance_id),
+      layout: layout.equipment,
+      state,
     },
   );
+  const armorCard = layout.equipment.cards[1];
   drawEquipSlot(
     scene,
     group,
-    EQUIP_X,
-    PANEL_TOP + 245,
+    armorCard.x,
+    armorCard.y,
     "ARMOR",
     equip.armor_name,
     () => handOffToEquipPicker(scene, partyIndex, "armor"),
@@ -180,29 +230,28 @@ export function openCharacterDetail(scene, partyIndex) {
       inspector: equipmentInspector,
       onSocket: () =>
         handOffToGemWorkshop(scene, partyIndex, equip.armor_item?.instance_id),
+      layout: layout.equipment,
+      state,
     },
   );
 
   // Bottom strip: spell list.
-  drawSpells(
-    scene,
-    group,
-    member,
-    partyIndex,
-    PANEL_LEFT + 20,
-    PANEL_BOTTOM - 124,
-  );
+  drawSpells(scene, group, member, partyIndex, layout.spells);
 
   // Close button, mirrors the party menu footer style.
+  const closeLayout = layout.close;
   const closeBtn = drawButton(
     scene,
-    PANEL_CX,
-    PANEL_BOTTOM - 40,
-    200,
-    34,
+    closeLayout.x,
+    closeLayout.y,
+    closeLayout.width,
+    closeLayout.height,
     "CLOSE (ESC)",
     () => closeCharacterDetail(scene),
+    { depth: DEPTH_LABEL, fontSize: `${closeLayout.fontSize}px` },
   );
+  closeBtn.bg.characterDetailMeta = { role: "close" };
+  state.closeButton = closeBtn;
   group.push(closeBtn);
 
   // ESC also closes. Stored so closeCharacterDetail can detach cleanly
@@ -221,10 +270,12 @@ export function openCharacterDetail(scene, partyIndex) {
 
 export function closeCharacterDetail(scene) {
   if (!scene.characterDetailGroup) return;
+  const previousGameSize = scene.characterDetailState?.previousGameSize;
   scene.characterDetailGroup.forEach((c) => c.destroy());
   scene.characterDetailGroup = null;
   scene.characterDetailIndex = null;
   scene.characterEquipmentInspector = null;
+  scene.characterDetailState = null;
   if (scene.characterDetailEscHandler) {
     scene.input.keyboard.off("keydown-ESC", scene.characterDetailEscHandler);
     scene.characterDetailEscHandler = null;
@@ -239,6 +290,9 @@ export function closeCharacterDetail(scene) {
       scene.characterDetailRightHandler,
     );
     scene.characterDetailRightHandler = null;
+  }
+  if (scene?.scale?.gameSize) {
+    restoreMenuOverlayGameSize(scene, previousGameSize);
   }
   resumeWorldFor(scene, "character_detail");
 }
@@ -297,13 +351,13 @@ function activePartySlots(party) {
 
 // ------ internal layout helpers ------
 
-function drawPortrait(scene, group, member, cx, cy) {
+function drawPortrait(scene, group, member, layout) {
   // Framed portrait slot. Uses the class sprite (promoted -> base fallback)
   // scaled to fit a 150x150 box. Falls back to a '?' glyph if the texture
   // hasn't loaded for some reason.
   group.push(
     scene.add
-      .rectangle(cx, cy, 180, 200, 0x1a2a4a, 0.9)
+      .rectangle(layout.x, layout.y, layout.width, layout.height, 0x1a2a4a, 0.9)
       .setStrokeStyle(2, 0x4488ff)
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT),
@@ -312,17 +366,17 @@ function drawPortrait(scene, group, member, cx, cy) {
   const portraitKey = resolvePortraitTextureKey(scene, member);
   if (portraitKey && scene.textures.exists(portraitKey)) {
     const img = scene.add
-      .image(cx, cy, portraitKey)
+      .image(layout.x, layout.y, portraitKey)
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT + 1);
     const srcSize = Math.max(img.width || 64, img.height || 64);
-    img.setScale(160 / srcSize);
+    img.setScale(layout.imageSize / srcSize);
     group.push(img);
   } else {
     group.push(
       scene.add
-        .text(cx, cy, (member.class_name || "?")[0] || "?", {
-          fontSize: "64px",
+        .text(layout.x, layout.y, (member.class_name || "?")[0] || "?", {
+          fontSize: `${layout.fallbackFontSize}px`,
           color: "#88ccff",
           fontFamily: "monospace",
         })
@@ -333,33 +387,41 @@ function drawPortrait(scene, group, member, cx, cy) {
   }
 }
 
-function drawStatBlock(scene, group, member, equip, x, y) {
+function drawStatBlock(scene, group, member, equip, layout) {
   // HP / MP / XP bars — re-using the integer-safe helpers from hpBar.js.
   const hpFill = hpColorFor(member.hp, member.max_hp);
+  const barStyle = {
+    depth: DEPTH_CONTENT,
+    height: layout.barHeight,
+    labelFontSize: `${layout.labelFontSize}px`,
+    valueFontSize: `${layout.valueFontSize}px`,
+    labelWidth: layout.labelWidth,
+    valueWidth: layout.valueWidth,
+  };
   const hpBar = drawLabeledStatBar(
     scene,
-    x,
-    y,
-    240,
+    layout.x,
+    layout.y,
+    layout.barWidth,
     member.hp,
     member.max_hp,
     "HP",
     {
-      depth: DEPTH_CONTENT,
+      ...barStyle,
       fill: hpFill,
       labelColor: colorHex(hpFill),
     },
   );
   const mpBar = drawLabeledStatBar(
     scene,
-    x,
-    y + 26,
-    240,
+    layout.x,
+    layout.y + layout.barGap,
+    layout.barWidth,
     member.mp || 0,
     member.max_mp || 0,
     "MP",
     {
-      depth: DEPTH_CONTENT,
+      ...barStyle,
       fill: 0x88aaff,
       labelColor: "#88aaff",
       valueText: (member.max_mp || 0) > 0 ? null : "\u2014",
@@ -367,14 +429,14 @@ function drawStatBlock(scene, group, member, equip, x, y) {
   );
   const xpBar = drawLabeledStatBar(
     scene,
-    x,
-    y + 52,
-    240,
+    layout.x,
+    layout.y + layout.barGap * 2,
+    layout.barWidth,
     member.xp,
     member.xp_next,
     "XP",
     {
-      depth: DEPTH_CONTENT,
+      ...barStyle,
       fill: 0xffcc44,
       labelColor: "#ffcc44",
     },
@@ -406,7 +468,16 @@ function drawStatBlock(scene, group, member, equip, x, y) {
     `Perks:  —`,
   ];
   lines.forEach((line, i) => {
-    group.push(plainText(scene, x, y + 88 + i * 20, line, "#ffffff", "12px"));
+    group.push(
+      plainText(
+        scene,
+        layout.x,
+        layout.y + layout.scalarOffsetY + i * layout.scalarGap,
+        line,
+        "#ffffff",
+        `${layout.scalarFontSize}px`,
+      ),
+    );
   });
 }
 
@@ -445,10 +516,11 @@ function drawEquipSlot(
   slotLabel,
   itemName,
   onClick,
-  { kind, item, total, inspector, onSocket } = {},
+  { kind, item, total, inspector, onSocket, layout, state } = {},
 ) {
+  const content = layout.cardContent;
   const card = scene.add
-    .rectangle(cx, cy, 220, 90, 0x1a2a4a, 0.95)
+    .rectangle(cx, cy, layout.cardWidth, layout.cardHeight, 0x1a2a4a, 0.95)
     .setStrokeStyle(2, 0x4488ff)
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT)
@@ -463,12 +535,13 @@ function drawEquipSlot(
     inspector?.leave(kind);
   });
   card.on("pointerup", onClick);
+  state?.equipmentCards.push(card);
   group.push(card);
 
   group.push(
     scene.add
-      .text(cx - 55, cy - 30, slotLabel, {
-        fontSize: "11px",
+      .text(cx + content.labelX, cy + content.headerY, slotLabel, {
+        fontSize: `${layout.labelFontSize}px`,
         color: "#ffcc44",
         fontFamily: "monospace",
       })
@@ -478,15 +551,15 @@ function drawEquipSlot(
   );
   const detailsButton = drawButton(
     scene,
-    cx + 68,
-    cy - 30,
-    72,
-    19,
+    cx + content.detailsX,
+    cy + content.headerY,
+    layout.details.width,
+    layout.details.height,
     "DETAILS",
     () => inspector?.togglePin(kind),
     {
       depth: DEPTH_LABEL,
-      fontSize: "8px",
+      fontSize: `${layout.details.fontSize}px`,
       fill: 0x14233f,
       fillHover: 0x21406e,
       stroke: 0x6f9fd8,
@@ -500,8 +573,8 @@ function drawEquipSlot(
   group.push(detailsButton);
   group.push(
     scene.add
-      .text(cx, cy - 9, itemName || "(empty)", {
-        fontSize: "12px",
+      .text(cx, cy + content.itemY, itemName || "(empty)", {
+        fontSize: `${layout.itemFontSize}px`,
         color: itemName ? "#ffffff" : "#888888",
         fontFamily: "monospace",
       })
@@ -511,8 +584,8 @@ function drawEquipSlot(
   );
   group.push(
     scene.add
-      .text(cx, cy + 8, compactEquipmentStat(kind, item, total), {
-        fontSize: "9px",
+      .text(cx, cy + content.statY, compactEquipmentStat(kind, item, total), {
+        fontSize: `${layout.statFontSize}px`,
         color: "#a8cfff",
         fontFamily: "monospace",
       })
@@ -522,8 +595,8 @@ function drawEquipSlot(
   );
   group.push(
     scene.add
-      .text(cx - 48, cy + 29, "CHANGE", {
-        fontSize: "9px",
+      .text(cx + content.changeX, cy + content.actionY, "CHANGE", {
+        fontSize: `${layout.actionFontSize}px`,
         color: "#88ccff",
         fontFamily: "monospace",
       })
@@ -536,15 +609,15 @@ function drawEquipSlot(
   if (item?.instance_id && hasOpenSocket) {
     const socketButton = drawButton(
       scene,
-      cx + 55,
-      cy + 29,
-      92,
-      22,
+      cx + content.socketX,
+      cy + content.actionY,
+      layout.socket.width,
+      layout.socket.height,
       "SOCKET",
       onSocket,
       {
         depth: DEPTH_LABEL,
-        fontSize: "9px",
+        fontSize: `${layout.socket.fontSize}px`,
         fill: 0x1f5d48,
         fillHover: 0x2b7d62,
         stroke: 0xa5f0c8,
@@ -564,8 +637,8 @@ function drawEquipSlot(
           : "NO SOCKETS";
     group.push(
       scene.add
-        .text(cx + 55, cy + 29, socketStatus, {
-          fontSize: "8px",
+        .text(cx + content.socketX, cy + content.actionY, socketStatus, {
+          fontSize: `${layout.statFontSize}px`,
           color: appliedGems.length > 0 ? "#8ff0a4" : "#6f819c",
           fontFamily: "monospace",
         })
@@ -628,7 +701,14 @@ function compactEquipmentStat(kind, item, fallbackTotal) {
   return `${titleCase(breakdown.stat)} ${breakdown.total}`;
 }
 
-function drawEquipmentInspector(scene, group, member, equip, defaultSlot) {
+function drawEquipmentInspector(
+  scene,
+  group,
+  member,
+  equip,
+  defaultSlot,
+  layout,
+) {
   const slots = {
     weapon: {
       kind: "weapon",
@@ -644,11 +724,19 @@ function drawEquipmentInspector(scene, group, member, equip, defaultSlot) {
     },
   };
   const state = { activeSlot: defaultSlot, pinnedSlot: null };
-  const left = EQUIP_X - 110;
-  const top = PANEL_TOP + 296;
+  const left = layout.x - layout.width / 2 + layout.horizontalPadding;
+  const right = layout.x + layout.width / 2 - layout.horizontalPadding;
+  const top = layout.top;
 
   const panel = scene.add
-    .rectangle(EQUIP_X, top + 105, 240, 210, 0x10213c, 0.98)
+    .rectangle(
+      layout.x,
+      top + layout.height / 2,
+      layout.width,
+      layout.height,
+      0x10213c,
+      0.98,
+    )
     .setStrokeStyle(1, 0x4488ff)
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
@@ -658,40 +746,96 @@ function drawEquipmentInspector(scene, group, member, equip, defaultSlot) {
   const heading = detailText(
     scene,
     left,
-    top + 8,
+    top + layout.headingOffsetY,
     "EQUIPMENT DETAILS",
     "#ffcc44",
-    "10px",
+    `${layout.headingFontSize}px`,
   );
   const interaction = detailText(
     scene,
-    left + 225,
-    top + 8,
+    right,
+    top + layout.headingOffsetY,
     "HOVER • TAP DETAILS",
     "#88ccff",
-    "7px",
+    `${layout.interactionFontSize}px`,
   ).setOrigin(1, 0);
-  const name = detailText(scene, left, top + 25, "", "#ffffff", "12px");
-  const meta = detailText(scene, left, top + 42, "", "#8fb8e8", "8px");
-  const secondary = detailText(scene, left, top + 55, "", "#a8cfff", "8px");
+  const name = detailText(
+    scene,
+    left,
+    top + layout.nameOffsetY,
+    "",
+    "#ffffff",
+    `${layout.nameFontSize}px`,
+  );
+  const meta = detailText(
+    scene,
+    left,
+    top + layout.metaOffsetY,
+    "",
+    "#8fb8e8",
+    `${layout.metaFontSize}px`,
+  );
+  const secondary = detailText(
+    scene,
+    left,
+    top + layout.secondaryOffsetY,
+    "",
+    "#a8cfff",
+    `${layout.metaFontSize}px`,
+  );
   const divider = scene.add
-    .rectangle(EQUIP_X, top + 70, 220, 1, 0x4488ff, 0.45)
+    .rectangle(
+      layout.x,
+      top + layout.dividerOffsetY,
+      layout.width - layout.horizontalPadding * 2,
+      1,
+      0x4488ff,
+      0.45,
+    )
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
   const breakdownLabel = detailText(
     scene,
     left,
-    top + 77,
+    top + layout.breakdownOffsetY,
     "",
     "#ffcc44",
-    "9px",
+    `${layout.breakdownFontSize}px`,
   );
   const breakdownLines = Array.from({ length: 6 }, (_, index) =>
-    detailText(scene, left, top + 91 + index * 12, "", "#d7e6f7", "8px"),
+    detailText(
+      scene,
+      left,
+      top + layout.lineStartOffsetY + index * layout.lineGap,
+      "",
+      "#d7e6f7",
+      `${layout.lineFontSize}px`,
+    ),
   );
-  const impact = detailText(scene, left, top + 169, "", "#8ff0a4", "9px");
-  const strength = detailText(scene, left, top + 182, "", "#b9c8dc", "8px");
-  const agility = detailText(scene, left, top + 194, "", "#b9c8dc", "8px");
+  const impact = detailText(
+    scene,
+    left,
+    top + layout.lineStartOffsetY + layout.lineGap * 6 + layout.impactGap,
+    "",
+    "#8ff0a4",
+    `${layout.impactFontSize}px`,
+  );
+  const strength = detailText(
+    scene,
+    left,
+    impact.y + layout.secondaryGap,
+    "",
+    "#b9c8dc",
+    `${layout.secondaryFontSize}px`,
+  );
+  const agility = detailText(
+    scene,
+    left,
+    strength.y + layout.secondaryGap,
+    "",
+    "#b9c8dc",
+    `${layout.secondaryFontSize}px`,
+  );
   group.push(
     heading,
     interaction,
@@ -732,10 +876,14 @@ function drawEquipmentInspector(scene, group, member, equip, defaultSlot) {
       line.setColor(index === lines.length - 1 ? "#8ff0a4" : "#d7e6f7");
     });
 
-    const impactY = top + 91 + Math.min(lines.length, 6) * 12 + 8;
+    const impactY =
+      top +
+      layout.lineStartOffsetY +
+      Math.min(lines.length, 6) * layout.lineGap +
+      layout.impactGap;
     impact.y = impactY;
-    strength.y = impactY + 13;
-    agility.y = impactY + 25;
+    strength.y = impactY + layout.secondaryGap;
+    agility.y = impactY + layout.secondaryGap * 2;
 
     const str = Number(member?.str) || 0;
     const agi = Number(member?.agi) || 0;
@@ -806,10 +954,28 @@ function titleCase(value) {
   return value ? value[0].toUpperCase() + value.slice(1) : "";
 }
 
-function drawSpells(scene, group, member, partyIndex, x, y) {
-  group.push(plainText(scene, x, y, "SPELLS", "#8888ff", "12px"));
+function drawSpells(scene, group, member, partyIndex, layout) {
+  group.push(
+    plainText(
+      scene,
+      layout.x,
+      layout.y,
+      "SPELLS",
+      "#8888ff",
+      `${layout.titleFontSize}px`,
+    ),
+  );
   if (!member.spells || member.spells.length === 0) {
-    group.push(plainText(scene, x + 80, y, "(no spells)", "#666666", "11px"));
+    group.push(
+      plainText(
+        scene,
+        layout.x + layout.labelInset,
+        layout.y,
+        "(no spells)",
+        "#666666",
+        `${layout.emptyFontSize}px`,
+      ),
+    );
     return;
   }
   const fieldSpells = buildFieldSpellList(member, scene.gameState?.party);
@@ -818,8 +984,8 @@ function drawSpells(scene, group, member, partyIndex, x, y) {
   member.spells.slice(0, 8).forEach((spell, idx) => {
     const col = Math.floor(idx / 4);
     const row = idx % 4;
-    const tx = x + 82 + col * 230;
-    const ty = y + 4 + row * 18;
+    const tx = layout.x + layout.labelInset + col * layout.columnGap;
+    const ty = layout.y + 4 + row * layout.rowGap;
     const fieldSpell = fieldByID.get(spell.id);
     const interactive = fieldSpell && !fieldSpell.greyed;
     const color = interactive ? "#aaccff" : fieldSpell ? "#666666" : "#555555";
@@ -829,7 +995,14 @@ function drawSpells(scene, group, member, partyIndex, x, y) {
       label += ` - ${fieldSpell.disabledReason}`;
     }
 
-    const text = plainText(scene, tx, ty, label, color, "11px");
+    const text = plainText(
+      scene,
+      tx,
+      ty,
+      label,
+      color,
+      `${layout.spellFontSize}px`,
+    );
     if (interactive) {
       text.setInteractive({ useHandCursor: true });
       text.on("pointerover", () => text.setColor("#ffffff"));
@@ -850,11 +1023,11 @@ function drawSpells(scene, group, member, partyIndex, x, y) {
     group.push(
       plainText(
         scene,
-        x + 82,
-        y + 80,
+        layout.x + layout.labelInset,
+        layout.y + layout.hintOffsetY,
         "Select a spell, then choose a valid target.",
         "#888888",
-        "10px",
+        `${layout.hintFontSize}px`,
       ),
     );
   }
