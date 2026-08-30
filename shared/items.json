@@ -394,6 +394,8 @@
       "name": "Hearthguard Blade",
       "icon_key": "starter/hearthguard-blade",
       "type": "sword",
+      "visual_id": "iron_sword",
+      "animation_set": "sword",
       "tier": 1,
       "power": 6,
       "hit_pct": 1,

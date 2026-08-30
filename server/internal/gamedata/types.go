@@ -91,22 +91,33 @@ type BattleAttachmentDefinition struct {
 }
 
 type BattleStateDefinition struct {
-	BodyKey  string             `json:"body_key"`
-	BodyPath string             `json:"body_path"`
-	Frames   []BattleStateFrame `json:"frames"`
+	BodyKey       string             `json:"body_key"`
+	BodyPath      string             `json:"body_path"`
+	HoldLastFrame bool               `json:"hold_last_frame,omitempty"`
+	Frames        []BattleStateFrame `json:"frames"`
 }
 
 type BattleStateFrame struct {
 	Frame       int                              `json:"frame"`
 	Duration    int                              `json:"duration"`
+	Body        BattleBodyFrame                  `json:"body,omitempty"`
 	Attachments map[string]BattleAttachmentFrame `json:"attachments"`
 }
 
+// BattleBodyFrame applies presentation-only transforms inside the battle
+// sprite container. Combat position and results remain server-authoritative.
+type BattleBodyFrame struct {
+	X     float64 `json:"x,omitempty"`
+	Y     float64 `json:"y,omitempty"`
+	Angle float64 `json:"angle,omitempty"`
+}
+
 type BattleAttachmentFrame struct {
-	X     float64 `json:"x"`
-	Y     float64 `json:"y"`
-	Angle float64 `json:"angle"`
-	Front bool    `json:"front"`
+	X       float64 `json:"x"`
+	Y       float64 `json:"y"`
+	Angle   float64 `json:"angle"`
+	Front   bool    `json:"front"`
+	Visible *bool   `json:"visible,omitempty"`
 }
 
 // StatsConfig holds stat definitions, XP curve, and combat constants from shared/stats.json.

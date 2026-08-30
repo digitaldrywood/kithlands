@@ -134,6 +134,44 @@ installed state must declare an equipment-free body atlas and named attachment
 sockets. Weapon images are registered separately by `visual_id`, and the
 equipped item selects the attachment through its shared `animation_set`.
 
+### Complete Battle-State Contract
+
+An identity marked complete must author the required states in catalog order:
+
+1. `idle_guard`
+2. `physical_attack`
+3. `cast_class_ability`
+4. `defend`
+5. `hit_reaction`
+6. `item_use`
+7. `victory`
+8. `ko_defeated`
+
+Frame-level body transforms (`x`, `y`, and `angle`) are presentation-only and
+remain inside the combatant container. Runtime applies the same transform to
+equipment sockets so the weapon does not drift away from the body. A frame may
+use `visible: false` to hide an attachment during an item-use pose.
+
+Transient states return to `idle_guard`. Only `ko_defeated` may set
+`hold_last_frame`; the held terminal pose survives until an explicit reset or
+scene transition. Damage, defeat, item consumption, and victory remain
+server-authoritative.
+
+Required contract and browser checks for a complete identity include:
+
+```bash
+python3 skills/kithlands-visual-production/scripts/audit_battle_character_sheets.py \
+  --classes warrior --require-complete
+cd client && npm test -- --run src/data/battleCharacters.test.js \
+  src/sprites/battleCharacterSprite.test.js
+cd .. && ./scripts/run_playwright_local.sh e2e/warrior-battle-gold.spec.js
+```
+
+Inspect unique current-run screenshots for every authored state, the persistent
+KO pose in desktop and portrait viewports, and the layered character in a real
+fresh-game encounter. Passing dimensions or automation alone is not visual
+acceptance.
+
 ### Cinder Staff Cast
 
 Cinder's first installed slice uses six body-only poses—idle, coil, gather,

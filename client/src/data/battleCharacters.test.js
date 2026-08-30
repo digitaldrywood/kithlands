@@ -25,6 +25,20 @@ describe("shared battle character catalog", () => {
       "wanderer",
     ]);
     expect(BATTLE_CHARACTER_CATALOG.required_states).toHaveLength(8);
+    expect(Object.keys(battleProfileFor("warrior").states)).toEqual(
+      BATTLE_CHARACTER_CATALOG.required_states,
+    );
+    expect(battleStateFor("warrior", "ko_defeated")).toMatchObject({
+      hold_last_frame: true,
+      frames: expect.arrayContaining([
+        expect.objectContaining({ body: { x: 18, y: 16, angle: 90 } }),
+      ]),
+    });
+    expect(
+      battleStateFor("warrior", "item_use").frames.some(
+        (frame) => frame.attachments.sword.visible === false,
+      ),
+    ).toBe(true);
   });
 
   it("deduplicates shared atlases while preserving state lookup", () => {
