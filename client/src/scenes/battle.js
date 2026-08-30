@@ -3822,6 +3822,7 @@ export class BattleScene extends Phaser.Scene {
             targetEntry.sprite?.clearTint?.();
             targetEntry.sprite?.setAngle?.(0);
             targetEntry.sprite?.setAlpha?.(1);
+            targetEntry.sprite?.setInteractive?.({ useHandCursor: true });
           }
         }
         await this.wait(ACTION_BEAT_MS.briefStatus);
