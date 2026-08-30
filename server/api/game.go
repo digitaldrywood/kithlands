@@ -162,6 +162,8 @@ type BattleCharacterAudit struct {
 	Identities      []BattleAuditIdentity `json:"identities"`
 	AnimationStates []string              `json:"animation_states"`
 	EffectModes     []string              `json:"effect_modes"`
+	EffectFamilies  []string              `json:"effect_families"`
+	IntensityTiers  []int                 `json:"intensity_tiers"`
 }
 
 // BattleAuditIdentity describes one base or promoted runtime visual identity.
@@ -367,20 +369,21 @@ type PartyMemberState struct {
 }
 
 type SpellState struct {
-	ID           string   `json:"id"`
-	Name         string   `json:"name"`
-	Description  string   `json:"description,omitempty"`
-	Target       string   `json:"target"`
-	TargetModes  []string `json:"target_modes,omitempty"`
-	Effect       string   `json:"effect"`
-	MPCost       int      `json:"mp_cost"`
-	Power        int      `json:"power,omitempty"`
-	Element      string   `json:"element,omitempty"`
-	StatusEffect string   `json:"status_effect,omitempty"`
-	CuresStatus  string   `json:"cures_status,omitempty"`
-	BuffStat     string   `json:"buff_stat,omitempty"`
-	AIPolicy     string   `json:"ai_policy,omitempty"`
-	Castable     bool     `json:"castable_in_combat"`
+	ID           string                             `json:"id"`
+	Name         string                             `json:"name"`
+	Description  string                             `json:"description,omitempty"`
+	Target       string                             `json:"target"`
+	TargetModes  []string                           `json:"target_modes,omitempty"`
+	Effect       string                             `json:"effect"`
+	MPCost       int                                `json:"mp_cost"`
+	Power        int                                `json:"power,omitempty"`
+	Element      string                             `json:"element,omitempty"`
+	StatusEffect string                             `json:"status_effect,omitempty"`
+	CuresStatus  string                             `json:"cures_status,omitempty"`
+	BuffStat     string                             `json:"buff_stat,omitempty"`
+	AIPolicy     string                             `json:"ai_policy,omitempty"`
+	Presentation *gamedata.BattleEffectPresentation `json:"presentation,omitempty"`
+	Castable     bool                               `json:"castable_in_combat"`
 }
 
 type EnemyState struct {
@@ -436,24 +439,25 @@ func (g *Game) buildEnemyState(e *combat.Combatant) EnemyState {
 // CombatActionEntry carries structured metadata for a single combat log line.
 // Sent alongside combat_log so the client can drive animations without parsing text.
 type CombatActionEntry struct {
-	Kind          string           `json:"kind"`                  // attack, spell, ability, heal, item, counter, info
-	Element       string           `json:"element,omitempty"`     // fire, ice, lightning, holy, dark, none
-	DamageType    string           `json:"damage_type,omitempty"` // physical, magical
-	ActorID       int              `json:"actor_id,omitempty"`
-	ActorName     string           `json:"actor_name,omitempty"`
-	TargetID      int              `json:"target_id,omitempty"`
-	TargetName    string           `json:"target_name,omitempty"`
-	Damage        int              `json:"damage,omitempty"`
-	Killed        bool             `json:"killed,omitempty"`
-	Crit          bool             `json:"crit,omitempty"`
-	Missed        bool             `json:"missed,omitempty"`
-	Hits          []CombatHitEntry `json:"hits,omitempty"`
-	ActionID      string           `json:"action_id,omitempty"`
-	ActionName    string           `json:"action_name,omitempty"`
-	CinematicTier string           `json:"cinematic_tier,omitempty"`
-	SpellName     string           `json:"spell_name,omitempty"`
-	TargetMode    string           `json:"target_mode,omitempty"`
-	Initiative    int              `json:"initiative,omitempty"` // weighted turn-order roll for this actor
+	Kind          string                             `json:"kind"`                  // attack, spell, ability, heal, item, counter, info
+	Element       string                             `json:"element,omitempty"`     // fire, ice, lightning, holy, dark, none
+	DamageType    string                             `json:"damage_type,omitempty"` // physical, magical
+	ActorID       int                                `json:"actor_id,omitempty"`
+	ActorName     string                             `json:"actor_name,omitempty"`
+	TargetID      int                                `json:"target_id,omitempty"`
+	TargetName    string                             `json:"target_name,omitempty"`
+	Damage        int                                `json:"damage,omitempty"`
+	Killed        bool                               `json:"killed,omitempty"`
+	Crit          bool                               `json:"crit,omitempty"`
+	Missed        bool                               `json:"missed,omitempty"`
+	Hits          []CombatHitEntry                   `json:"hits,omitempty"`
+	ActionID      string                             `json:"action_id,omitempty"`
+	ActionName    string                             `json:"action_name,omitempty"`
+	CinematicTier string                             `json:"cinematic_tier,omitempty"`
+	SpellName     string                             `json:"spell_name,omitempty"`
+	TargetMode    string                             `json:"target_mode,omitempty"`
+	Presentation  *gamedata.BattleEffectPresentation `json:"presentation,omitempty"`
+	Initiative    int                                `json:"initiative,omitempty"` // weighted turn-order roll for this actor
 }
 
 // CombatHitEntry represents a single hit within a multi-hit attack.
@@ -803,6 +807,7 @@ func (g *Game) buildPartyMemberState(c *character.Character, slot int) PartyMemb
 						CuresStatus:  sp.CuresStatus,
 						BuffStat:     sp.BuffStat,
 						AIPolicy:     sp.AIPolicy,
+						Presentation: sp.Presentation,
 						Castable:     isCombatCastableEffect(sp.Effect),
 					})
 				}

@@ -10,6 +10,8 @@ export function createBattleAuditSelection(catalog = {}) {
     equipmentIndex: 0,
     animationIndex: 0,
     effectIndex: 0,
+    familyIndex: 0,
+    intensityIndex: 0,
   };
 }
 
@@ -21,6 +23,8 @@ export function currentBattleAuditSelection(selection) {
   const equipment = identity?.equipment || [];
   const animationStates = catalog.animation_states || [];
   const effectModes = catalog.effect_modes || [];
+  const effectFamilies = catalog.effect_families || [];
+  const intensityTiers = catalog.intensity_tiers || [];
   return {
     identity,
     equipment:
@@ -32,6 +36,14 @@ export function currentBattleAuditSelection(selection) {
     effectMode:
       effectModes[wrap(selection?.effectIndex || 0, effectModes.length)] ||
       null,
+    effectFamily:
+      effectFamilies[
+        wrap(selection?.familyIndex || 0, effectFamilies.length)
+      ] || null,
+    intensityTier:
+      intensityTiers[
+        wrap(selection?.intensityIndex || 0, intensityTiers.length)
+      ] || null,
   };
 }
 
@@ -52,6 +64,12 @@ export function cycleBattleAuditSelection(selection, kind, direction = 1) {
   } else if (kind === "effect") {
     const count = selection.catalog?.effect_modes?.length || 0;
     selection.effectIndex = wrap(selection.effectIndex + delta, count);
+  } else if (kind === "family") {
+    const count = selection.catalog?.effect_families?.length || 0;
+    selection.familyIndex = wrap(selection.familyIndex + delta, count);
+  } else if (kind === "intensity") {
+    const count = selection.catalog?.intensity_tiers?.length || 0;
+    selection.intensityIndex = wrap(selection.intensityIndex + delta, count);
   }
   return selection;
 }

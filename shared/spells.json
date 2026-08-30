@@ -25,6 +25,10 @@
       "effect": "damage",
       "element": "fire",
       "power": 10,
+      "presentation": {
+        "effect_family": "fire",
+        "intensity_tier": 1
+      },
       "description": "Small fire damage to one enemy"
     },
     {
@@ -62,6 +66,10 @@
       "effect": "damage",
       "element": "fire",
       "power": 12,
+      "presentation": {
+        "effect_family": "fire",
+        "intensity_tier": 1
+      },
       "description": "Small fire damage to all enemies"
     },
     {
@@ -98,6 +106,10 @@
       "effect": "heal",
       "element": "none",
       "power": 16,
+      "presentation": {
+        "effect_family": "restorative_light",
+        "intensity_tier": 1
+      },
       "description": "Restore ~16 HP to one ally"
     },
     {
@@ -135,6 +147,10 @@
       "effect": "heal",
       "element": "none",
       "power": 16,
+      "presentation": {
+        "effect_family": "restorative_light",
+        "intensity_tier": 2
+      },
       "description": "Restore ~16 HP to all allies"
     },
     {
@@ -173,6 +189,10 @@
       "element": "fire",
       "power": 20,
       "cinematic_tier": "major",
+      "presentation": {
+        "effect_family": "fire",
+        "intensity_tier": 2
+      },
       "description": "Medium fire damage to one enemy"
     },
     {
@@ -213,6 +233,10 @@
       "element": "fire",
       "power": 24,
       "cinematic_tier": "major",
+      "presentation": {
+        "effect_family": "fire",
+        "intensity_tier": 3
+      },
       "description": "Medium fire damage to all enemies"
     },
     {
@@ -252,6 +276,10 @@
       "element": "none",
       "power": 32,
       "cinematic_tier": "major",
+      "presentation": {
+        "effect_family": "restorative_light",
+        "intensity_tier": 2
+      },
       "description": "Restore ~32 HP to one ally"
     },
     {
@@ -291,6 +319,10 @@
       "element": "none",
       "power": 32,
       "cinematic_tier": "major",
+      "presentation": {
+        "effect_family": "restorative_light",
+        "intensity_tier": 3
+      },
       "description": "Restore ~32 HP to all allies"
     },
     {
