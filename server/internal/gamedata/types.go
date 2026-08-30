@@ -65,11 +65,12 @@ type BareHand struct {
 // rules; Go loads and validates it so shared content remains the single source
 // of truth while Phaser consumes the same JSON at build time.
 type BattleCharactersData struct {
-	FrameSize      int                      `json:"frame_size"`
-	RequiredStates []string                 `json:"required_states"`
-	WeaponAssets   []BattleWeaponAsset      `json:"weapon_assets"`
-	OffHandAssets  []BattleWeaponAsset      `json:"off_hand_assets"`
-	Classes        []BattleCharacterProfile `json:"classes"`
+	FrameSize      int                          `json:"frame_size"`
+	RequiredStates []string                     `json:"required_states"`
+	StateRecipes   map[string]BattleStateRecipe `json:"state_recipes"`
+	WeaponAssets   []BattleWeaponAsset          `json:"weapon_assets"`
+	OffHandAssets  []BattleWeaponAsset          `json:"off_hand_assets"`
+	Classes        []BattleCharacterProfile     `json:"classes"`
 }
 
 type BattleWeaponAsset struct {
@@ -81,9 +82,29 @@ type BattleWeaponAsset struct {
 type BattleCharacterProfile struct {
 	ID           string                                `json:"id"`
 	Status       string                                `json:"status"`
+	StateRecipe  string                                `json:"state_recipe"`
 	DefaultState string                                `json:"default_state"`
 	Attachments  map[string]BattleAttachmentDefinition `json:"attachments"`
 	States       map[string]BattleStateDefinition      `json:"states"`
+}
+
+// BattleStateRecipe supplies reusable presentation-only state choreography.
+// Each identity keeps its own body atlas and attachment sockets; loading
+// expands missing states from the recipe without replacing authored states.
+type BattleStateRecipe struct {
+	States map[string]BattleStateRecipeDefinition `json:"states"`
+}
+
+type BattleStateRecipeDefinition struct {
+	HoldLastFrame      bool                     `json:"hold_last_frame,omitempty"`
+	AttachmentsVisible *bool                    `json:"attachments_visible,omitempty"`
+	Frames             []BattleStateRecipeFrame `json:"frames"`
+}
+
+type BattleStateRecipeFrame struct {
+	Frame    int             `json:"frame"`
+	Duration int             `json:"duration"`
+	Body     BattleBodyFrame `json:"body,omitempty"`
 }
 
 type BattleAttachmentDefinition struct {

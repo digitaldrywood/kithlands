@@ -6,6 +6,7 @@ import {
   battleOffHandAssets,
   battleProfileFor,
   battleStateFor,
+  expandBattleCharacterCatalog,
 } from "./battleCharacters.js";
 
 describe("shared battle character catalog", () => {
@@ -25,9 +26,42 @@ describe("shared battle character catalog", () => {
       "wanderer",
     ]);
     expect(BATTLE_CHARACTER_CATALOG.required_states).toHaveLength(8);
-    expect(Object.keys(battleProfileFor("warrior").states)).toEqual(
-      BATTLE_CHARACTER_CATALOG.required_states,
-    );
+    for (const profile of BATTLE_CHARACTER_CATALOG.classes) {
+      expect(profile.state_recipe, profile.id).toBeTruthy();
+      expect(Object.keys(profile.states), profile.id).toEqual(
+        BATTLE_CHARACTER_CATALOG.required_states,
+      );
+      const signature = profile.states[profile.default_state];
+      for (const stateID of BATTLE_CHARACTER_CATALOG.required_states) {
+        const state = profile.states[stateID];
+        expect(state.frames.length, `${profile.id}/${stateID}`).toBeGreaterThan(
+          0,
+        );
+        expect(state.body_key, `${profile.id}/${stateID}`).toBe(
+          signature.body_key,
+        );
+        expect(state.body_path, `${profile.id}/${stateID}`).toBe(
+          signature.body_path,
+        );
+      }
+      expect(profile.states.ko_defeated.hold_last_frame, profile.id).toBe(true);
+      if (Object.keys(profile.attachments).length > 0) {
+        const itemPoses = profile.states.item_use.frames.flatMap((frame) =>
+          Object.values(frame.attachments),
+        );
+        if (profile.id === "warrior") {
+          expect(
+            itemPoses.some((pose) => pose.visible === false),
+            "warrior/item_use",
+          ).toBe(true);
+        } else {
+          expect(
+            itemPoses.every((pose) => pose.visible === false),
+            `${profile.id}/item_use`,
+          ).toBe(true);
+        }
+      }
+    }
     expect(battleStateFor("warrior", "ko_defeated")).toMatchObject({
       hold_last_frame: true,
       frames: expect.arrayContaining([
@@ -39,6 +73,53 @@ describe("shared battle character catalog", () => {
         (frame) => frame.attachments.sword.visible === false,
       ),
     ).toBe(true);
+  });
+
+  it("keeps explicitly authored and optional states ahead of recipes", () => {
+    const source = {
+      required_states: ["idle_guard", "physical_attack"],
+      state_recipes: {
+        test: {
+          states: {
+            physical_attack: {
+              frames: [{ frame: 0, duration: 999 }],
+            },
+          },
+        },
+      },
+      classes: [
+        {
+          id: "test",
+          state_recipe: "test",
+          default_state: "physical_attack",
+          states: {
+            idle_guard: {
+              body_key: "test_body",
+              body_path: "/test.png",
+              frames: [{ frame: 0, duration: 80, attachments: {} }],
+            },
+            physical_attack: {
+              body_key: "test_body",
+              body_path: "/test.png",
+              frames: [{ frame: 0, duration: 123, attachments: {} }],
+            },
+            optional_flourish: {
+              body_key: "test_body",
+              body_path: "/test.png",
+              frames: [{ frame: 0, duration: 456, attachments: {} }],
+            },
+          },
+        },
+      ],
+    };
+
+    const expanded = expandBattleCharacterCatalog(source);
+    expect(expanded.classes[0].states.physical_attack.frames[0].duration).toBe(
+      123,
+    );
+    expect(
+      expanded.classes[0].states.optional_flourish.frames[0].duration,
+    ).toBe(456);
   });
 
   it("deduplicates shared atlases while preserving state lookup", () => {

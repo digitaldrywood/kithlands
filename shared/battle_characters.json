@@ -10,6 +10,283 @@
     "victory",
     "ko_defeated"
   ],
+  "state_recipes": {
+    "unarmed": {
+      "states": {
+        "physical_attack": {
+          "frames": [
+            { "frame": 0, "duration": 90 },
+            { "frame": 1, "duration": 80 },
+            { "frame": 2, "duration": 75, "body": { "x": -3 } },
+            { "frame": 3, "duration": 95, "body": { "x": -8, "y": -2 } },
+            { "frame": 4, "duration": 105, "body": { "x": -4 } },
+            { "frame": 5, "duration": 90 }
+          ]
+        },
+        "cast_class_ability": {
+          "frames": [
+            { "frame": 0, "duration": 90 },
+            { "frame": 1, "duration": 95, "body": { "y": -2 } },
+            { "frame": 2, "duration": 130, "body": { "y": -5 } },
+            { "frame": 4, "duration": 150, "body": { "y": -8 } },
+            { "frame": 2, "duration": 105, "body": { "y": -5 } },
+            { "frame": 0, "duration": 80 }
+          ]
+        },
+        "defend": {
+          "frames": [
+            { "frame": 0, "duration": 90 },
+            { "frame": 5, "duration": 120, "body": { "x": 3, "y": 3 } },
+            { "frame": 5, "duration": 180, "body": { "x": 6, "y": 6 } },
+            { "frame": 0, "duration": 90 }
+          ]
+        },
+        "hit_reaction": {
+          "frames": [
+            { "frame": 0, "duration": 55 },
+            {
+              "frame": 4,
+              "duration": 80,
+              "body": { "x": 8, "y": 2, "angle": 4 }
+            },
+            {
+              "frame": 5,
+              "duration": 105,
+              "body": { "x": 13, "y": 5, "angle": 7 }
+            },
+            { "frame": 0, "duration": 80 }
+          ]
+        },
+        "item_use": {
+          "attachments_visible": false,
+          "frames": [
+            { "frame": 0, "duration": 80 },
+            { "frame": 1, "duration": 100, "body": { "y": -3 } },
+            { "frame": 2, "duration": 170, "body": { "y": -7 } },
+            { "frame": 1, "duration": 100, "body": { "y": -3 } },
+            { "frame": 0, "duration": 80 }
+          ]
+        },
+        "victory": {
+          "frames": [
+            { "frame": 0, "duration": 90 },
+            { "frame": 2, "duration": 100, "body": { "y": -6 } },
+            { "frame": 3, "duration": 150, "body": { "y": -13, "angle": -3 } },
+            { "frame": 4, "duration": 120, "body": { "y": -8 } },
+            { "frame": 0, "duration": 100 }
+          ]
+        },
+        "ko_defeated": {
+          "hold_last_frame": true,
+          "attachments_visible": false,
+          "frames": [
+            { "frame": 0, "duration": 70 },
+            {
+              "frame": 5,
+              "duration": 90,
+              "body": { "x": 6, "y": 4, "angle": 20 }
+            },
+            {
+              "frame": 4,
+              "duration": 105,
+              "body": { "x": 13, "y": 10, "angle": 60 }
+            },
+            {
+              "frame": 4,
+              "duration": 120,
+              "body": { "x": 18, "y": 16, "angle": 90 }
+            }
+          ]
+        }
+      }
+    },
+    "weapon": {
+      "states": {
+        "physical_attack": {
+          "frames": [
+            { "frame": 0, "duration": 90 },
+            { "frame": 1, "duration": 80 },
+            { "frame": 2, "duration": 80, "body": { "x": -3 } },
+            { "frame": 3, "duration": 95, "body": { "x": -7, "y": -2 } },
+            { "frame": 4, "duration": 105, "body": { "x": -4 } },
+            { "frame": 5, "duration": 90 }
+          ]
+        },
+        "cast_class_ability": {
+          "frames": [
+            { "frame": 0, "duration": 90 },
+            { "frame": 1, "duration": 95, "body": { "y": -2 } },
+            { "frame": 2, "duration": 150, "body": { "y": -5 } },
+            { "frame": 2, "duration": 120, "body": { "y": -7 } },
+            { "frame": 1, "duration": 90 },
+            { "frame": 0, "duration": 80 }
+          ]
+        },
+        "defend": {
+          "frames": [
+            { "frame": 0, "duration": 90 },
+            { "frame": 5, "duration": 120, "body": { "x": 3, "y": 3 } },
+            { "frame": 5, "duration": 180, "body": { "x": 5, "y": 5 } },
+            { "frame": 0, "duration": 90 }
+          ]
+        },
+        "hit_reaction": {
+          "frames": [
+            { "frame": 0, "duration": 55 },
+            {
+              "frame": 4,
+              "duration": 80,
+              "body": { "x": 8, "y": 2, "angle": 4 }
+            },
+            {
+              "frame": 5,
+              "duration": 105,
+              "body": { "x": 13, "y": 5, "angle": 7 }
+            },
+            { "frame": 0, "duration": 80 }
+          ]
+        },
+        "item_use": {
+          "attachments_visible": false,
+          "frames": [
+            { "frame": 0, "duration": 80 },
+            { "frame": 1, "duration": 100, "body": { "y": -3 } },
+            { "frame": 2, "duration": 170, "body": { "y": -7 } },
+            { "frame": 1, "duration": 100, "body": { "y": -3 } },
+            { "frame": 0, "duration": 80 }
+          ]
+        },
+        "victory": {
+          "frames": [
+            { "frame": 0, "duration": 90 },
+            { "frame": 2, "duration": 100, "body": { "y": -6 } },
+            { "frame": 3, "duration": 150, "body": { "y": -14, "angle": -4 } },
+            { "frame": 4, "duration": 120, "body": { "y": -8 } },
+            { "frame": 0, "duration": 100 }
+          ]
+        },
+        "ko_defeated": {
+          "hold_last_frame": true,
+          "attachments_visible": false,
+          "frames": [
+            { "frame": 0, "duration": 70 },
+            {
+              "frame": 5,
+              "duration": 90,
+              "body": { "x": 6, "y": 4, "angle": 20 }
+            },
+            {
+              "frame": 4,
+              "duration": 105,
+              "body": { "x": 13, "y": 10, "angle": 60 }
+            },
+            {
+              "frame": 4,
+              "duration": 120,
+              "body": { "x": 18, "y": 16, "angle": 90 }
+            }
+          ]
+        }
+      }
+    },
+    "caster": {
+      "states": {
+        "physical_attack": {
+          "frames": [
+            { "frame": 0, "duration": 90 },
+            { "frame": 1, "duration": 85, "body": { "x": -2 } },
+            {
+              "frame": 2,
+              "duration": 85,
+              "body": { "x": -5, "y": -1, "angle": -4 }
+            },
+            {
+              "frame": 3,
+              "duration": 105,
+              "body": { "x": -10, "y": -2, "angle": -8 }
+            },
+            { "frame": 5, "duration": 100, "body": { "x": -4 } },
+            { "frame": 0, "duration": 85 }
+          ]
+        },
+        "cast_class_ability": {
+          "frames": [
+            { "frame": 0, "duration": 105 },
+            { "frame": 1, "duration": 100 },
+            { "frame": 2, "duration": 120, "body": { "y": -2 } },
+            { "frame": 3, "duration": 150, "body": { "y": -4 } },
+            { "frame": 4, "duration": 170, "body": { "y": -6 } },
+            { "frame": 5, "duration": 105 }
+          ]
+        },
+        "defend": {
+          "frames": [
+            { "frame": 0, "duration": 90 },
+            { "frame": 1, "duration": 120, "body": { "x": 3, "y": 3 } },
+            { "frame": 5, "duration": 180, "body": { "x": 5, "y": 5 } },
+            { "frame": 0, "duration": 90 }
+          ]
+        },
+        "hit_reaction": {
+          "frames": [
+            { "frame": 0, "duration": 55 },
+            {
+              "frame": 4,
+              "duration": 80,
+              "body": { "x": 8, "y": 2, "angle": 4 }
+            },
+            {
+              "frame": 5,
+              "duration": 105,
+              "body": { "x": 13, "y": 5, "angle": 7 }
+            },
+            { "frame": 0, "duration": 80 }
+          ]
+        },
+        "item_use": {
+          "attachments_visible": false,
+          "frames": [
+            { "frame": 0, "duration": 80 },
+            { "frame": 1, "duration": 100, "body": { "y": -3 } },
+            { "frame": 2, "duration": 170, "body": { "y": -6 } },
+            { "frame": 1, "duration": 100, "body": { "y": -3 } },
+            { "frame": 0, "duration": 80 }
+          ]
+        },
+        "victory": {
+          "frames": [
+            { "frame": 0, "duration": 90 },
+            { "frame": 2, "duration": 100, "body": { "y": -6 } },
+            { "frame": 3, "duration": 150, "body": { "y": -13, "angle": -3 } },
+            { "frame": 4, "duration": 120, "body": { "y": -8 } },
+            { "frame": 0, "duration": 100 }
+          ]
+        },
+        "ko_defeated": {
+          "hold_last_frame": true,
+          "attachments_visible": false,
+          "frames": [
+            { "frame": 0, "duration": 70 },
+            {
+              "frame": 5,
+              "duration": 90,
+              "body": { "x": 5, "y": 4, "angle": 18 }
+            },
+            {
+              "frame": 4,
+              "duration": 105,
+              "body": { "x": 12, "y": 10, "angle": 58 }
+            },
+            {
+              "frame": 4,
+              "duration": 120,
+              "body": { "x": 18, "y": 16, "angle": 90 }
+            }
+          ]
+        }
+      }
+    }
+  },
   "weapon_assets": [
     {
       "visual_id": "iron_sword",
@@ -43,6 +320,7 @@
     {
       "id": "warrior",
       "status": "approved_runtime",
+      "state_recipe": "weapon",
       "default_state": "physical_attack",
       "attachments": {
         "sword": { "origin": [0.5, 0.92] }
@@ -247,7 +525,13 @@
               "frame": 1,
               "duration": 90,
               "attachments": {
-                "sword": { "x": 31, "y": -7, "angle": 55, "front": false, "visible": false }
+                "sword": {
+                  "x": 31,
+                  "y": -7,
+                  "angle": 55,
+                  "front": false,
+                  "visible": false
+                }
               }
             },
             {
@@ -255,14 +539,26 @@
               "duration": 150,
               "body": { "y": -4 },
               "attachments": {
-                "sword": { "x": 0, "y": -57, "angle": -18, "front": true, "visible": false }
+                "sword": {
+                  "x": 0,
+                  "y": -57,
+                  "angle": -18,
+                  "front": true,
+                  "visible": false
+                }
               }
             },
             {
               "frame": 1,
               "duration": 90,
               "attachments": {
-                "sword": { "x": 31, "y": -7, "angle": 55, "front": false, "visible": false }
+                "sword": {
+                  "x": 31,
+                  "y": -7,
+                  "angle": 55,
+                  "front": false,
+                  "visible": false
+                }
               }
             },
             {
@@ -361,6 +657,7 @@
     {
       "id": "brawler",
       "status": "approved_runtime",
+      "state_recipe": "unarmed",
       "default_state": "physical_attack",
       "attachments": {},
       "states": {
@@ -386,6 +683,7 @@
     {
       "id": "rogue",
       "status": "approved_runtime",
+      "state_recipe": "weapon",
       "default_state": "physical_attack",
       "attachments": {
         "dagger": { "origin": [0.5, 0.78] }
@@ -457,6 +755,7 @@
     {
       "id": "mender",
       "status": "approved_runtime",
+      "state_recipe": "caster",
       "default_state": "cast_class_ability",
       "attachments": {
         "staff": { "origin": [0.5, 0.48] }
@@ -528,6 +827,7 @@
     {
       "id": "cinder",
       "status": "approved_runtime",
+      "state_recipe": "caster",
       "default_state": "cast_class_ability",
       "attachments": {
         "staff": { "origin": [0.5, 0.48] }
@@ -599,6 +899,7 @@
     {
       "id": "wayfarer",
       "status": "approved_runtime",
+      "state_recipe": "caster",
       "default_state": "cast_class_ability",
       "attachments": {
         "staff": { "origin": [0.5, 0.48] }
@@ -670,6 +971,7 @@
     {
       "id": "knight",
       "status": "approved_runtime",
+      "state_recipe": "weapon",
       "default_state": "defend",
       "attachments": {
         "sword": { "origin": [0.5, 0.92] },
@@ -749,6 +1051,7 @@
     {
       "id": "champion",
       "status": "approved_runtime",
+      "state_recipe": "unarmed",
       "default_state": "physical_attack",
       "attachments": {},
       "states": {
@@ -774,6 +1077,7 @@
     {
       "id": "shadow",
       "status": "approved_runtime",
+      "state_recipe": "weapon",
       "default_state": "physical_attack",
       "attachments": {
         "dagger": { "origin": [0.5, 0.78] }
@@ -845,6 +1149,7 @@
     {
       "id": "sage",
       "status": "approved_runtime",
+      "state_recipe": "caster",
       "default_state": "cast_class_ability",
       "attachments": {
         "staff": { "origin": [0.5, 0.48] }
@@ -916,6 +1221,7 @@
     {
       "id": "pyromancer",
       "status": "approved_runtime",
+      "state_recipe": "caster",
       "default_state": "cast_class_ability",
       "attachments": {
         "staff": { "origin": [0.5, 0.48] }
@@ -987,6 +1293,7 @@
     {
       "id": "wanderer",
       "status": "approved_runtime",
+      "state_recipe": "caster",
       "default_state": "cast_class_ability",
       "attachments": {
         "staff": { "origin": [0.5, 0.48] }
