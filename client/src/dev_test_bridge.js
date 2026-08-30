@@ -1040,6 +1040,15 @@ function visibleBattleFxSnapshot(scene) {
     partyStatusPanelBounds:
       objectBounds(partyStatusPanel) || layoutBounds(scene?.hudLayout?.party),
     partyStatusRowCount: taggedCount("party-status-row"),
+    partyStatusConditions: children
+      .filter(
+        (child) =>
+          child?._combatFxTag === "party-status-condition" &&
+          child.active !== false &&
+          child.visible !== false,
+      )
+      .sort((a, b) => (a._partySlot ?? 0) - (b._partySlot ?? 0))
+      .map((child) => child.text),
     hudLayoutMode: scene?.hudLayout?.mode || null,
     bottomStripBounds: objectBounds(bottomStrip),
     messageWindowBounds,
@@ -1800,6 +1809,8 @@ export function installDevTestBridge(game) {
           targetColor: 0xff6666,
         });
       } else if (kind === "party_hit") {
+        const maxHP = partyTarget.hpBar?.maxHP ?? 100;
+        const newHP = Math.max(1, Math.floor(maxHP * 0.2));
         scene.showActionFocus(enemyActor, partyTarget, {
           tracerColor: 0xff8800,
           targetColor: 0xff6666,
@@ -1808,12 +1819,10 @@ export function installDevTestBridge(game) {
           targetKey: `proof_party_hit_${stamp}`,
           entry: partyTarget,
         });
+        scene.animateHPBar(partyTarget.hpBar, newHP, maxHP);
         scene.playPartyHitReaction(partyTarget, {
-          newHP: Math.max(
-            1,
-            Math.floor((partyTarget.hpBar?.maxHP ?? 100) * 0.2),
-          ),
-          maxHP: partyTarget.hpBar?.maxHP ?? 100,
+          newHP,
+          maxHP,
         });
       } else if (kind === "floating_text") {
         scene.hitFx(partyTarget.x, partyTarget.y, 34, true, false, "physical", {

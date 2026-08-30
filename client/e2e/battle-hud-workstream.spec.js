@@ -46,6 +46,7 @@ test.describe("battle HUD workstream #270/#265", () => {
     let snapshot = await openShowcase(page, { width: 800, height: 600 });
     expect(snapshot.hudLayoutMode).toBe("desktop");
     expect(snapshot.partyStatusRowCount).toBe(4);
+    expect(snapshot.partyStatusConditions).toEqual(["OK", "OK", "OK", "OK"]);
     expect(
       overlap(snapshot.actionPanelBounds, snapshot.messageWindowBounds),
     ).toBe(false);
@@ -54,6 +55,17 @@ test.describe("battle HUD workstream #270/#265", () => {
     ).toBe(false);
     await page.screenshot({
       path: testInfo.outputPath(`battle-idle-hud-800x600-${RUN_ID}.png`),
+      fullPage: true,
+    });
+
+    const criticalState = await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("party_hit"),
+    );
+    expect(criticalState.partyStatusConditions[0]).toBe("CRITICAL");
+    await page.screenshot({
+      path: testInfo.outputPath(
+        `battle-critical-hp-text-800x600-${RUN_ID}.png`,
+      ),
       fullPage: true,
     });
 
@@ -148,6 +160,17 @@ test.describe("battle HUD workstream #270/#265", () => {
     );
     await page.screenshot({
       path: testInfo.outputPath(`battle-mobile-390x844-${RUN_ID}.png`),
+      fullPage: true,
+    });
+
+    const criticalState = await page.evaluate(() =>
+      window.__kithlandsTest.playBattleVisibilityDemo("party_hit"),
+    );
+    expect(criticalState.partyStatusConditions[0]).toBe("CRITICAL");
+    await page.screenshot({
+      path: testInfo.outputPath(
+        `battle-critical-hp-text-mobile-390x844-${RUN_ID}.png`,
+      ),
       fullPage: true,
     });
 

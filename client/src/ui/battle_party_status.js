@@ -1,5 +1,6 @@
 import {
   formatHPLabel,
+  combatantConditionLabel,
   hpBarColorPct,
   hpBarFillWidth,
 } from "../systems/hpBar.js";
@@ -147,11 +148,12 @@ export function drawBattlePartyStatus(
           },
         )
         .setDepth(20);
-      const statusValue = !alive
-        ? "KO"
-        : member.status
-          ? String(member.status).toUpperCase()
-          : "OK";
+      const conditionValue = combatantConditionLabel(
+        member.hp,
+        member.max_hp,
+        member.status,
+      );
+      const statusValue = conditionValue || "OK";
       const status = scene.add
         .text(
           compact ? bounds.x + bounds.width - 16 : bounds.x + 8,
@@ -166,6 +168,8 @@ export function drawBattlePartyStatus(
         )
         .setOrigin(compact ? 1 : 0, 0)
         .setDepth(20);
+      status._combatFxTag = "party-status-condition";
+      status._partySlot = slot;
       const hp = addMeter(
         scene,
         bounds,
@@ -184,6 +188,8 @@ export function drawBattlePartyStatus(
         member.max_mp || 0,
         compact,
       );
+      hp.data.conditionLabel = status;
+      hp.data.status = member.status || "";
       objects.push(card, name, status, ...hp.objects, ...mp.objects);
       return { bounds, card, name, status, hpBar: hp.data, mpBar: mp.data };
     },

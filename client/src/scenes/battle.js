@@ -16,6 +16,7 @@ import {
   applyDamage,
   applyHeal,
   formatHPLabel,
+  combatantConditionLabel,
   hpBarColorPct,
   hpBarFillWidth,
 } from "../systems/hpBar.js";
@@ -4324,6 +4325,15 @@ export class BattleScene extends Phaser.Scene {
 
     // Update HP label — integer-only via formatHPLabel.
     hpBarData.label?.setText(formatHPLabel(clampedHP, maxHP));
+    const condition = combatantConditionLabel(
+      clampedHP,
+      maxHP,
+      hpBarData.status,
+    );
+    hpBarData.conditionLabel
+      ?.setText(condition || "OK")
+      .setColor(condition ? "#ffd36b" : "#a7b7cb")
+      .setFontStyle(condition ? "bold" : "");
 
     // Ghost bar drains after a short delay
     if (hpBarData.ghost) {
