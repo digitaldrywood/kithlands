@@ -1,19 +1,15 @@
 import { gameAction } from "../api.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 import { drawButton, drawPanel } from "../ui/panel.js";
+import {
+  applyMenuOverlayGameSize,
+  menuOverlayLayout,
+  restoreMenuOverlayGameSize,
+} from "./menu_overlay_layout.js";
 
-const PANEL_CX = 400;
-const PANEL_CY = 300;
-const PANEL_W = 560;
-const PANEL_H = 420;
-const PANEL_LEFT = PANEL_CX - PANEL_W / 2;
-const PANEL_TOP = PANEL_CY - PANEL_H / 2;
-const PANEL_BOTTOM = PANEL_CY + PANEL_H / 2;
 const DEPTH_BG = 70;
 const DEPTH_CONTENT = 71;
 const DEPTH_TEXT = 72;
-const ROW_H = 28;
-const MAX_VISIBLE = 9;
 
 export function isFieldCastableSpell(spell) {
   if (!spell) return false;
@@ -23,6 +19,23 @@ export function isFieldCastableSpell(spell) {
 
 export function spellNeedsFieldTarget(spell) {
   return spell?.target === "single_ally";
+}
+
+export function fieldSpellTargetLabel(spell) {
+  if (!spell) return "No target";
+  if (spell.target === "all_allies") return "All allies";
+  if (spell.effect === "utility" && spell.id === "resurrect")
+    return "One fallen ally";
+  if (spell.effect === "cure_status") {
+    if (spell.cures_status === "all") return "All afflicted allies";
+    if (spell.cures_status === "poison") return "One poisoned ally";
+    if (spell.cures_status) return "One afflicted ally";
+  }
+  return spell.target === "single_ally" ? "One ally" : "Party";
+}
+
+export function fieldSpellContext(spell) {
+  return `${Number(spell?.mp_cost) || 0} MP · ${fieldSpellTargetLabel(spell)}`;
 }
 
 export function canTargetFieldSpell(spell, target) {
@@ -153,77 +166,228 @@ export async function castFieldSpell(
 
 export function showFieldMagicMenu(scene, opts = {}) {
   pauseWorldFor(scene, "field_magic");
+  const layout = menuOverlayLayout({
+    viewportWidth: globalThis.window?.innerWidth ?? 800,
+    viewportHeight: globalThis.window?.innerHeight ?? 600,
+    desktopRowHeight: 28,
+    desktopMaxVisible: 7,
+  });
   const state = {
     scene,
     opts,
+    layout,
+    previousGameSize: applyMenuOverlayGameSize(scene, layout),
     overlay: [],
     rowObjects: [],
     keyHandler: null,
     closed: false,
     cursor: 0,
+    scrollTop: 0,
     titleText: null,
+    countText: null,
+    stageText: null,
+    detailNameText: null,
+    detailMetaText: null,
     descText: null,
+    hintText: null,
     casterSlot: Number.isInteger(opts.casterSlot) ? opts.casterSlot : null,
     spell: null,
   };
   scene.fieldMagicMenuState = state;
 
-  const panel = drawPanel(scene, PANEL_CX, PANEL_CY, PANEL_W, PANEL_H, {
-    depth: DEPTH_BG,
-  });
-  state.overlay.push(panel.bg);
+  const { panel } = layout;
+  const panelLeft = panel.x - panel.width / 2;
+  const panelRight = panel.x + panel.width / 2;
+  const panelTop = panel.y - panel.height / 2;
+  const panelBottom = panel.y + panel.height / 2;
+
+  if (layout.mode === "mobile") {
+    state.overlay.push(
+      scene.add
+        .rectangle(
+          layout.gameWidth / 2,
+          layout.gameHeight / 2,
+          layout.gameWidth,
+          layout.gameHeight,
+          0x020711,
+          0.96,
+        )
+        .setScrollFactor(0)
+        .setDepth(DEPTH_BG - 1)
+        .setInteractive(),
+    );
+  }
+
+  const panelHandle = drawPanel(
+    scene,
+    panel.x,
+    panel.y,
+    panel.width,
+    panel.height,
+    { depth: DEPTH_BG },
+  );
+  panelHandle.bg.__kithlandsMenuOverlay = { role: "panel", kind: "magic" };
+  state.overlay.push(panelHandle.bg);
 
   state.titleText = scene.add
-    .text(PANEL_CX, PANEL_TOP + 24, "MAGIC", {
-      fontSize: "18px",
-      color: "#ffff44",
-      fontFamily: "monospace",
-    })
-    .setOrigin(0.5)
+    .text(
+      panelLeft + layout.title.xInset,
+      panelTop + layout.title.yInset,
+      "FIELD MAGIC",
+      {
+        fontSize: `${layout.title.fontSize}px`,
+        color: "#f3d878",
+        fontFamily: "Arial, sans-serif",
+        fontStyle: "bold",
+      },
+    )
+    .setOrigin(0, 0.5)
     .setScrollFactor(0)
     .setDepth(DEPTH_TEXT);
   state.overlay.push(state.titleText);
 
-  state.descText = scene.add
-    .text(PANEL_LEFT + 24, PANEL_TOP + 56, "", {
-      fontSize: "11px",
-      color: "#aaccff",
-      fontFamily: "monospace",
-      wordWrap: { width: PANEL_W - 48 },
-    })
+  state.countText = scene.add
+    .text(
+      panelRight - layout.count.xInset,
+      panelTop + layout.count.yInset,
+      "",
+      {
+        fontSize: `${layout.count.fontSize}px`,
+        color: "#9fc4e8",
+        fontFamily: "Arial, sans-serif",
+      },
+    )
+    .setOrigin(1, 0.5)
     .setScrollFactor(0)
     .setDepth(DEPTH_TEXT);
-  state.overlay.push(state.descText);
+  state.overlay.push(state.countText);
 
   state.overlay.push(
     scene.add
-      .rectangle(PANEL_CX, PANEL_TOP + 92, PANEL_W - 40, 1, 0x4488ff, 0.6)
+      .rectangle(
+        panel.x,
+        panelTop + layout.headerDividerInset,
+        panel.width - layout.list.xInset * 2,
+        1,
+        0x6d93b7,
+        0.65,
+      )
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT),
   );
 
-  const backBtn = drawButton(
-    scene,
-    PANEL_CX,
-    PANEL_BOTTOM - 34,
-    220,
-    34,
-    "BACK / ESC",
-    () => goBack(state),
-    { depth: DEPTH_CONTENT },
-  );
-  state.overlay.push(backBtn);
-
-  const hint = scene.add
-    .text(PANEL_CX, PANEL_BOTTOM - 62, "↑↓ move    Enter/click select", {
-      fontSize: "10px",
-      color: "#888888",
-      fontFamily: "monospace",
-    })
-    .setOrigin(0.5)
+  state.stageText = scene.add
+    .text(
+      panelLeft + layout.stage.xInset,
+      panelTop + layout.stage.yInset,
+      "SELECT CASTER",
+      {
+        fontSize: `${layout.stage.fontSize}px`,
+        color: "#77d4ec",
+        fontFamily: "Arial, sans-serif",
+        fontStyle: "bold",
+      },
+    )
+    .setOrigin(0, 0.5)
     .setScrollFactor(0)
     .setDepth(DEPTH_TEXT);
-  state.overlay.push(hint);
+  state.overlay.push(state.stageText);
+
+  state.overlay.push(
+    scene.add
+      .rectangle(
+        panel.x,
+        panelBottom - layout.detail.dividerBottomInset,
+        panel.width - layout.list.xInset * 2,
+        1,
+        0x6d93b7,
+        0.65,
+      )
+      .setScrollFactor(0)
+      .setDepth(DEPTH_CONTENT),
+  );
+  state.detailNameText = scene.add
+    .text(
+      panelLeft + layout.detail.horizontalInset,
+      panelBottom - layout.detail.nameBottomInset,
+      "",
+      {
+        fontSize: `${layout.detail.nameFontSize}px`,
+        color: "#ffffff",
+        fontFamily: "Arial, sans-serif",
+        fontStyle: "bold",
+      },
+    )
+    .setOrigin(0, 0.5)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_TEXT);
+  state.detailMetaText = scene.add
+    .text(
+      panelRight - layout.detail.horizontalInset,
+      panelBottom - layout.detail.nameBottomInset,
+      "",
+      {
+        fontSize: `${layout.detail.metaFontSize}px`,
+        color: "#77d4ec",
+        fontFamily: "Arial, sans-serif",
+      },
+    )
+    .setOrigin(1, 0.5)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_TEXT);
+  state.descText = scene.add
+    .text(
+      panelLeft + layout.detail.horizontalInset,
+      panelBottom - layout.detail.descriptionBottomInset,
+      "",
+      {
+        fontSize: `${layout.detail.descriptionFontSize}px`,
+        color: "#c7d8e9",
+        fontFamily: "Arial, sans-serif",
+        wordWrap: {
+          width: panel.width - layout.detail.horizontalInset * 2,
+        },
+      },
+    )
+    .setScrollFactor(0)
+    .setDepth(DEPTH_TEXT);
+  state.overlay.push(
+    state.detailNameText,
+    state.detailMetaText,
+    state.descText,
+  );
+
+  const backBtn = drawButton(
+    scene,
+    panel.x,
+    panelBottom - layout.footer.buttonYBottomInset,
+    layout.footer.buttonWidth,
+    layout.footer.buttonHeight,
+    "BACK / ESC",
+    () => goBack(state),
+    {
+      depth: DEPTH_CONTENT,
+      fontSize: `${layout.footer.buttonFontSize}px`,
+    },
+  );
+  backBtn.bg.__kithlandsMenuOverlay = { role: "back", kind: "magic" };
+  state.overlay.push(backBtn);
+
+  state.hintText = scene.add
+    .text(
+      panelLeft + layout.detail.horizontalInset,
+      panelBottom - layout.footer.hintBottomInset,
+      "↑↓ move    Enter/click select",
+      {
+        fontSize: `${layout.footer.hintFontSize}px`,
+        color: "#8ea4b8",
+        fontFamily: "Arial, sans-serif",
+      },
+    )
+    .setOrigin(0, 0.5)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_TEXT);
+  state.overlay.push(state.hintText);
 
   state.keyHandler = (ev) => onKey(state, ev);
   scene.input?.keyboard?.on("keydown", state.keyHandler);
@@ -246,8 +410,9 @@ function rebuildRows(state) {
   clearRows(state);
 
   if (state.casterSlot == null) {
-    state.titleText.setText("MAGIC");
-    state.descText.setText("Choose a caster.");
+    state.titleText.setText("FIELD MAGIC");
+    state.stageText.setText("SELECT CASTER");
+    state.countText.setText("Choose a caster");
     renderCasterRows(state);
     return;
   }
@@ -260,7 +425,8 @@ function rebuildRows(state) {
 
   if (!state.spell) {
     state.titleText.setText(`${caster.name} MAGIC`);
-    state.descText.setText("Choose a spell.");
+    state.stageText.setText("SELECT SPELL");
+    state.countText.setText(`MP ${caster.mp}/${caster.max_mp}`);
     renderSpellRows(state, caster);
     return;
   }
@@ -270,8 +436,9 @@ function rebuildRows(state) {
     return;
   }
 
-  state.titleText.setText(`${caster.name} -> ${state.spell.name}`);
-  state.descText.setText("Choose a target.");
+  state.titleText.setText(`${caster.name} → ${state.spell.name}`);
+  state.stageText.setText("SELECT TARGET");
+  state.countText.setText(fieldSpellContext(state.spell));
   renderTargetRows(state);
 }
 
@@ -284,10 +451,16 @@ function renderCasterRows(state) {
       caster.fieldSpells.length === 1
         ? caster.fieldSpells[0].name
         : `${caster.fieldSpells.length} field spells`,
+    detail: {
+      name: caster.name,
+      meta: `MP ${caster.mp}/${caster.max_mp}`,
+      description: `${caster.fieldSpells.length} field ${caster.fieldSpells.length === 1 ? "spell" : "spells"} available.`,
+    },
     onSelect: () => {
       state.casterSlot = caster.slot;
       state.spell = null;
       state.cursor = 0;
+      state.scrollTop = 0;
       rebuildRows(state);
     },
   }));
@@ -299,17 +472,18 @@ function renderSpellRows(state, caster) {
   const rows = spells.map((spell) => ({
     id: spell.id,
     label: `${spell.name} (${spell.mp_cost ?? 0} MP)`,
-    meta:
-      spell.target === "all_allies"
-        ? "all allies"
-        : spell.effect === "utility"
-          ? "revive"
-          : "single ally",
+    meta: spell.greyed ? spell.disabledReason : fieldSpellTargetLabel(spell),
+    detail: {
+      name: spell.name,
+      meta: fieldSpellContext(spell),
+      description: `${spell.description || "No description available."}${spell.greyed ? `  Unavailable: ${spell.disabledReason}.` : !spell.hasValidTarget ? "  No valid target right now." : ""}`,
+    },
     greyed: !!spell.greyed,
     onSelect: () => {
       if (spell.greyed) return;
       state.spell = spell;
       state.cursor = 0;
+      state.scrollTop = 0;
       rebuildRows(state);
     },
   }));
@@ -332,6 +506,11 @@ function renderTargetRows(state) {
         : target.status
           ? `status: ${target.status}`
           : "",
+      detail: {
+        name: state.spell.name,
+        meta: fieldSpellContext(state.spell),
+        description: `${state.spell.description || "No description available."}  ${target.name}: HP ${target.hp}/${target.max_hp}${greyed ? ` · ${fieldTargetDisabledReason(state.spell, target)}` : " · valid target"}.`,
+      },
       greyed,
       onSelect: () => {
         if (greyed) return;
@@ -339,63 +518,95 @@ function renderTargetRows(state) {
       },
     };
   });
+  const firstValid = rows.findIndex((row) => !row.greyed);
+  if (firstValid >= 0 && rows[state.cursor]?.greyed) state.cursor = firstValid;
   renderRows(state, rows, "(no party members)");
 }
 
 function renderRows(state, rows, emptyText) {
-  const startY = PANEL_TOP + 120;
-  const visible = Math.min(MAX_VISIBLE, rows.length);
+  const { layout } = state;
+  const { panel } = layout;
+  const panelLeft = panel.x - panel.width / 2;
+  const panelRight = panel.x + panel.width / 2;
+  const panelTop = panel.y - panel.height / 2;
+  const { maxVisible, rowHeight } = layout.list;
+  const startY = panelTop + layout.list.startInset;
+  const visible = Math.min(maxVisible, rows.length);
   state.rows = rows;
   if (state.cursor >= rows.length) state.cursor = Math.max(0, rows.length - 1);
+  state.scrollTop = Math.min(
+    Math.max(0, state.scrollTop),
+    Math.max(0, rows.length - maxVisible),
+  );
 
   for (let i = 0; i < visible; i += 1) {
-    const row = rows[i];
-    const y = startY + i * ROW_H + ROW_H / 2;
+    const idx = state.scrollTop + i;
+    if (idx >= rows.length) break;
+    const row = rows[idx];
+    const y = startY + i * rowHeight + rowHeight / 2;
     const baseColor = row.greyed ? "#666666" : "#ffffff";
 
     const bg = state.scene.add
-      .rectangle(PANEL_CX, y, PANEL_W - 56, ROW_H - 2, 0x1a2a4a, 0.8)
+      .rectangle(
+        panel.x,
+        y,
+        panel.width - layout.list.xInset * 2,
+        rowHeight - (layout.mode === "mobile" ? 8 : 2),
+        0x1a2a4a,
+        0.8,
+      )
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT)
+      .setStrokeStyle(1, 0x5f7f9f, 0)
       .setInteractive({ useHandCursor: !row.greyed });
+    bg.__kithlandsMenuOverlay = {
+      role: "row",
+      kind: "magic",
+      index: idx,
+    };
     const label = state.scene.add
-      .text(PANEL_LEFT + 28, y, row.label, {
-        fontSize: "12px",
+      .text(panelLeft + layout.list.labelInset, y, row.label, {
+        fontSize: `${layout.list.labelFontSize}px`,
         color: baseColor,
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
       })
       .setOrigin(0, 0.5)
       .setScrollFactor(0)
       .setDepth(DEPTH_TEXT);
     const meta = state.scene.add
-      .text(PANEL_CX + 110, y, row.meta || "", {
-        fontSize: "10px",
-        color: row.greyed ? "#555555" : "#88aacc",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0, 0.5)
+      .text(
+        layout.mode === "mobile" ? panelRight - 40 : panel.x + 110,
+        y,
+        row.meta || "",
+        {
+          fontSize: `${layout.list.metaFontSize}px`,
+          color: row.greyed ? "#555555" : "#88aacc",
+          fontFamily: "Arial, sans-serif",
+        },
+      )
+      .setOrigin(layout.mode === "mobile" ? 1 : 0, 0.5)
       .setScrollFactor(0)
       .setDepth(DEPTH_TEXT);
 
     bg.on("pointerover", () => {
-      state.cursor = i;
+      state.cursor = idx;
       refreshCursor(state);
     });
     bg.on("pointerdown", () => {
       if (row.greyed) return;
-      state.cursor = i;
+      state.cursor = idx;
       row.onSelect();
     });
     state.overlay.push(bg, label, meta);
-    state.rowObjects.push({ bg, label, meta, row, idx: i });
+    state.rowObjects.push({ bg, label, meta, row, idx });
   }
 
   if (rows.length === 0) {
     const empty = state.scene.add
-      .text(PANEL_CX, startY + 40, emptyText, {
-        fontSize: "11px",
+      .text(panel.x, startY + rowHeight, emptyText, {
+        fontSize: `${layout.detail.descriptionFontSize}px`,
         color: "#888888",
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
@@ -420,16 +631,25 @@ function refreshCursor(state) {
   for (const row of state.rowObjects) {
     const active = row.idx === state.cursor;
     if (active && !row.row.greyed) {
-      row.bg.setFillStyle(0x2a4a7a, 0.95);
+      row.bg.setFillStyle(0x315884, 0.95);
+      row.bg.setStrokeStyle(1, 0xf1d66e, 1);
       row.label.setColor("#ffffff");
     } else if (active) {
       row.bg.setFillStyle(0x333344, 0.8);
+      row.bg.setStrokeStyle(1, 0xf1d66e, 0.55);
       row.label.setColor("#666666");
     } else {
       row.bg.setFillStyle(0x1a2a4a, 0.8);
+      row.bg.setStrokeStyle(1, 0x5f7f9f, 0);
       row.label.setColor(row.row.greyed ? "#666666" : "#ffffff");
     }
   }
+  const detail = state.rows?.[state.cursor]?.detail;
+  state.detailNameText?.setText(detail?.name || "Nothing selected");
+  state.detailMetaText?.setText(detail?.meta || "");
+  state.descText?.setText(
+    detail?.description || "Choose an option to see what it does.",
+  );
 }
 
 function onKey(state, ev) {
@@ -438,14 +658,12 @@ function onKey(state, ev) {
     case "ArrowDown":
     case "ArrowRight":
       if (!state.rows?.length) return;
-      state.cursor = (state.cursor + 1) % state.rows.length;
-      refreshCursor(state);
+      moveCursor(state, 1);
       break;
     case "ArrowUp":
     case "ArrowLeft":
       if (!state.rows?.length) return;
-      state.cursor = (state.cursor - 1 + state.rows.length) % state.rows.length;
-      refreshCursor(state);
+      moveCursor(state, -1);
       break;
     case "Enter":
     case " ":
@@ -458,16 +676,32 @@ function onKey(state, ev) {
   }
 }
 
+function moveCursor(state, delta) {
+  const maxVisible = state.layout.list.maxVisible;
+  state.cursor = (state.cursor + delta + state.rows.length) % state.rows.length;
+  const previousScroll = state.scrollTop;
+  if (state.cursor < state.scrollTop) state.scrollTop = state.cursor;
+  if (state.cursor >= state.scrollTop + maxVisible)
+    state.scrollTop = state.cursor - maxVisible + 1;
+  if (state.cursor === 0) state.scrollTop = 0;
+  if (state.cursor === state.rows.length - 1)
+    state.scrollTop = Math.max(0, state.rows.length - maxVisible);
+  if (previousScroll !== state.scrollTop) rebuildRows(state);
+  else refreshCursor(state);
+}
+
 function goBack(state) {
   if (state.spell) {
     state.spell = null;
     state.cursor = 0;
+    state.scrollTop = 0;
     rebuildRows(state);
     return;
   }
   if (state.casterSlot != null && state.opts.casterSlot == null) {
     state.casterSlot = null;
     state.cursor = 0;
+    state.scrollTop = 0;
     rebuildRows(state);
     return;
   }
@@ -491,6 +725,8 @@ function closeFieldMagicMenu(state) {
   state.overlay = [];
   state.rowObjects = [];
   state.scene.fieldMagicMenuState = null;
+  restoreMenuOverlayGameSize(state.scene, state.previousGameSize);
+  state.previousGameSize = null;
   resumeWorldFor(state.scene, "field_magic");
   state.opts.onClose?.();
 }

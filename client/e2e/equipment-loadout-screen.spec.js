@@ -113,6 +113,12 @@ test("manages the full loadout, previews recommendations, and returns from socke
   expect(desktopAvatar.width).toBeLessThanOrEqual(190);
   await expect(page.locator('[data-slot-id="ring_1"]')).toBeVisible();
   await expect(page.locator('[data-slot-id="ring_2"]')).toBeVisible();
+  await expect(
+    page.locator(".character-summary-label").allTextContents(),
+  ).resolves.toEqual(["Vitals", "Combat", "Condition"]);
+  await expect(page.locator(".character-resource-note")).toHaveText(
+    /Next level in \d+/,
+  );
   await page.screenshot({
     path: path.join(PROOF_DIR, "equipment-default-800x600.png"),
     fullPage: true,
@@ -143,6 +149,9 @@ test("manages the full loadout, previews recommendations, and returns from socke
   await expect(page.locator(".comparison-impact")).toContainText(
     "Equip in Ring II",
   );
+  await expect(page.locator(".comparison-table-head")).toContainText("Current");
+  await expect(page.locator(".comparison-table-head")).toContainText("Preview");
+  await expect(page.locator(".comparison-table-row").first()).toBeVisible();
   await page.screenshot({
     path: path.join(PROOF_DIR, "equipment-ring-comparison.png"),
     fullPage: true,
@@ -219,6 +228,8 @@ test("manages the full loadout, previews recommendations, and returns from socke
     .locator('[data-slot-id="main_hand"] .equipment-slot-frame')
     .boundingBox();
   expect(mobileWeaponFrame.width).toBeGreaterThanOrEqual(68);
+  await expect(page.locator(".character-summary-label").first()).toBeVisible();
+  await expect(page.locator(".character-resource-note")).toBeVisible();
   await page.screenshot({
     path: path.join(PROOF_DIR, "equipment-mobile-390x844.png"),
     fullPage: true,

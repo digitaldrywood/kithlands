@@ -1,4 +1,4 @@
-// FF6-style Item menu (issue #144). Same module powers the world-menu Item
+// Item menu shared by the world and battle flows. Same module powers the
 // screen and the in-combat item picker; a `mode` parameter decides whether
 // tent/rest-only items are filtered out and whether confirming commits via a
 // direct gameAction() POST or a callback into battle.js.
@@ -6,12 +6,17 @@
 // The exports split into two groups:
 //
 //   - Pure helpers (buildItemList, canUseOnTarget) — reused by vitest.
-//   - Phaser overlay (showItemMenu) — renders the scrollable list, filter
-//     tabs, description line, and target picker.
+//   - Phaser overlay (showItemMenu) — renders the scrollable list, persistent
+//     use context, and explicit target picker.
 
-import { drawPanel, drawButton } from "../ui/panel.js";
+import { drawButton, drawPanel } from "../ui/panel.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 import { gameAction } from "../api.js";
+import {
+  applyMenuOverlayGameSize,
+  menuOverlayLayout,
+  restoreMenuOverlayGameSize,
+} from "./menu_overlay_layout.js";
 
 // ---------- pure helpers ----------
 
@@ -76,6 +81,23 @@ export function canUseOnTarget(item, target) {
   }
 }
 
+// itemUseContext keeps the selected item's use contract visible while the
+// player browses. The wording intentionally describes mechanics already
+// authored by the server instead of introducing new item behavior here.
+export function itemUseContext(item, mode = "world") {
+  const availability = mode === "combat" ? "Battle" : "Field";
+  const targets = {
+    heal: "One injured ally",
+    restore_mp: "One ally missing MP",
+    revive: "One fallen ally",
+    cure_poison: "One poisoned ally",
+    cure_silence: "One silenced ally",
+    cure_stone: "One petrified ally",
+    rest: "Whole party",
+  };
+  return `${availability} · ${targets[item?.effect] || "No valid target"}`;
+}
+
 function hasValidTarget(item, party) {
   if (item.effect === "rest") {
     // Tent should be usable if any living member is not at full HP/MP.
@@ -94,21 +116,9 @@ function hasValidTarget(item, party) {
 
 // ---------- Phaser overlay ----------
 
-// Layout constants. Mirrors the world_menu.js panel geometry so the two
-// screens feel visually consistent.
-const PANEL_CX = 400;
-const PANEL_CY = 300;
-const PANEL_W = 560;
-const PANEL_H = 420;
-const PANEL_LEFT = PANEL_CX - PANEL_W / 2;
-const PANEL_RIGHT = PANEL_CX + PANEL_W / 2;
-const PANEL_TOP = PANEL_CY - PANEL_H / 2;
-const PANEL_BOTTOM = PANEL_CY + PANEL_H / 2;
 const DEPTH_BG = 50;
 const DEPTH_CONTENT = 51;
 const DEPTH_TEXT = 52;
-const ROW_H = 20;
-const MAX_VISIBLE = 10;
 
 // showItemMenu renders the overlay. opts:
 //   - mode: "world" | "combat"
@@ -117,96 +127,238 @@ const MAX_VISIBLE = 10;
 //   - onClose(): called after teardown (e.g. to reopen the party menu).
 export function showItemMenu(scene, opts = {}) {
   const mode = opts.mode === "combat" ? "combat" : "world";
+  const layout = menuOverlayLayout({
+    viewportWidth: globalThis.window?.innerWidth ?? 800,
+    viewportHeight: globalThis.window?.innerHeight ?? 600,
+    desktopRowHeight: 25,
+    desktopMaxVisible: 9,
+  });
   const state = {
     scene,
     mode,
     opts,
+    layout,
+    previousGameSize: applyMenuOverlayGameSize(scene, layout),
     overlay: [],
     items: [],
+    targets: [],
+    selectedItem: null,
+    view: "items",
     cursor: 0,
     scrollTop: 0,
+    stageText: null,
+    countText: null,
+    detailNameText: null,
+    detailMetaText: null,
     descText: null,
+    hintText: null,
     rowObjects: [], // [{row, label, qty, item}]
     keyHandler: null,
     closed: false,
   };
+  scene.itemMenuState = state;
+
+  const { panel } = layout;
+  const panelLeft = panel.x - panel.width / 2;
+  const panelRight = panel.x + panel.width / 2;
+  const panelTop = panel.y - panel.height / 2;
+  const panelBottom = panel.y + panel.height / 2;
 
   if (mode === "world") {
     pauseWorldFor(scene, "item_menu");
   }
 
-  const panel = drawPanel(scene, PANEL_CX, PANEL_CY, PANEL_W, PANEL_H, {
-    depth: DEPTH_BG,
-  });
-  state.overlay.push(panel.bg);
+  if (layout.mode === "mobile") {
+    state.overlay.push(
+      scene.add
+        .rectangle(
+          layout.gameWidth / 2,
+          layout.gameHeight / 2,
+          layout.gameWidth,
+          layout.gameHeight,
+          0x020711,
+          0.96,
+        )
+        .setScrollFactor(0)
+        .setDepth(DEPTH_BG - 1)
+        .setInteractive(),
+    );
+  }
+
+  const panelHandle = drawPanel(
+    scene,
+    panel.x,
+    panel.y,
+    panel.width,
+    panel.height,
+    {
+      depth: DEPTH_BG,
+    },
+  );
+  panelHandle.bg.__kithlandsMenuOverlay = { role: "panel", kind: "items" };
+  state.overlay.push(panelHandle.bg);
 
   const title = scene.add
-    .text(PANEL_CX, PANEL_TOP + 22, "ITEM", {
-      fontSize: "18px",
-      color: "#ffff44",
-      fontFamily: "monospace",
-    })
-    .setOrigin(0.5)
+    .text(
+      panelLeft + layout.title.xInset,
+      panelTop + layout.title.yInset,
+      mode === "combat" ? "BATTLE ITEMS" : "FIELD ITEMS",
+      {
+        fontSize: `${layout.title.fontSize}px`,
+        color: "#f3d878",
+        fontFamily: "Arial, sans-serif",
+        fontStyle: "bold",
+      },
+    )
+    .setOrigin(0, 0.5)
     .setScrollFactor(0)
     .setDepth(DEPTH_TEXT);
   state.overlay.push(title);
 
-  // Filter-tab row. USE is active; KEY / EQUIP are stubbed (empty lists) to
-  // match FF6's three-tab layout from the issue without scope-creeping into
-  // the key-item or equipment screens.
-  const tabY = PANEL_TOP + 56;
-  const tabs = ["USE", "KEY", "EQUIP"];
-  for (let i = 0; i < tabs.length; i++) {
-    const tw = 80;
-    const tx = PANEL_CX + (i - 1) * (tw + 6);
-    const handle = drawButton(scene, tx, tabY, tw, 24, tabs[i], {
-      depth: DEPTH_CONTENT,
-      onClick: () => {
-        // KEY / EQUIP are intentionally empty for #144. Clicking them just
-        // redraws the list with zero rows; pressing USE restores the full
-        // list. This keeps the tabs visible without needing real data.
-        state.activeTab = tabs[i];
-        rebuildRows(state);
+  state.countText = scene.add
+    .text(
+      panelRight - layout.count.xInset,
+      panelTop + layout.count.yInset,
+      "",
+      {
+        fontSize: `${layout.count.fontSize}px`,
+        color: "#9fc4e8",
+        fontFamily: "Arial, sans-serif",
       },
-    });
-    if (handle) {
-      handle.setActive(i === 0);
-      state.overlay.push(handle);
-    }
-  }
-  state.activeTab = "USE";
-
-  // Description line updates as the cursor moves across rows.
-  state.descText = scene.add
-    .text(PANEL_LEFT + 20, PANEL_TOP + 90, "", {
-      fontSize: "11px",
-      color: "#aaccff",
-      fontFamily: "monospace",
-      wordWrap: { width: PANEL_W - 40 },
-    })
+    )
+    .setOrigin(1, 0.5)
     .setScrollFactor(0)
     .setDepth(DEPTH_TEXT);
-  state.overlay.push(state.descText);
+  state.overlay.push(state.countText);
 
-  // Divider below the description.
-  const divider = scene.add
-    .rectangle(PANEL_CX, PANEL_TOP + 114, PANEL_W - 40, 1, 0x4488ff, 0.6)
+  const headerDivider = scene.add
+    .rectangle(
+      panel.x,
+      panelTop + layout.headerDividerInset,
+      panel.width - layout.list.xInset * 2,
+      1,
+      0x6d93b7,
+      0.65,
+    )
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
-  state.overlay.push(divider);
+  state.overlay.push(headerDivider);
 
-  // Footer hint + close button.
-  const hint = scene.add
+  state.stageText = scene.add
     .text(
-      PANEL_CX,
-      PANEL_BOTTOM - 30,
+      panelLeft + layout.stage.xInset,
+      panelTop + layout.stage.yInset,
+      "CHOOSE AN ITEM",
+      {
+        fontSize: `${layout.stage.fontSize}px`,
+        color: "#77d4ec",
+        fontFamily: "Arial, sans-serif",
+        fontStyle: "bold",
+      },
+    )
+    .setOrigin(0, 0.5)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_TEXT);
+  state.overlay.push(state.stageText);
+
+  // FF1 keeps the selected item's explanation in a persistent detail band.
+  const detailDivider = scene.add
+    .rectangle(
+      panel.x,
+      panelBottom - layout.detail.dividerBottomInset,
+      panel.width - layout.list.xInset * 2,
+      1,
+      0x6d93b7,
+      0.65,
+    )
+    .setScrollFactor(0)
+    .setDepth(DEPTH_CONTENT);
+  state.overlay.push(detailDivider);
+  state.detailNameText = scene.add
+    .text(
+      panelLeft + layout.detail.horizontalInset,
+      panelBottom - layout.detail.nameBottomInset,
+      "",
+      {
+        fontSize: `${layout.detail.nameFontSize}px`,
+        color: "#ffffff",
+        fontFamily: "Arial, sans-serif",
+        fontStyle: "bold",
+      },
+    )
+    .setOrigin(0, 0.5)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_TEXT);
+  state.detailMetaText = scene.add
+    .text(
+      panelRight - layout.detail.horizontalInset,
+      panelBottom - layout.detail.nameBottomInset,
+      "",
+      {
+        fontSize: `${layout.detail.metaFontSize}px`,
+        color: "#77d4ec",
+        fontFamily: "Arial, sans-serif",
+      },
+    )
+    .setOrigin(1, 0.5)
+    .setScrollFactor(0)
+    .setDepth(DEPTH_TEXT);
+  state.descText = scene.add
+    .text(
+      panelLeft + layout.detail.horizontalInset,
+      panelBottom - layout.detail.descriptionBottomInset,
+      "",
+      {
+        fontSize: `${layout.detail.descriptionFontSize}px`,
+        color: "#c7d8e9",
+        fontFamily: "Arial, sans-serif",
+        wordWrap: {
+          width: panel.width - layout.detail.horizontalInset * 2,
+        },
+      },
+    )
+    .setScrollFactor(0)
+    .setDepth(DEPTH_TEXT);
+  state.overlay.push(
+    state.detailNameText,
+    state.detailMetaText,
+    state.descText,
+  );
+
+  state.hintText = scene.add
+    .text(
+      panel.x,
+      panelBottom -
+        (layout.mode === "mobile" ? layout.footer.hintBottomInset : 22),
       "↑↓ move    Enter/click use    Esc close",
-      { fontSize: "10px", color: "#888888", fontFamily: "monospace" },
+      {
+        fontSize: `${layout.footer.hintFontSize}px`,
+        color: "#8ea4b8",
+        fontFamily: "Arial, sans-serif",
+      },
     )
     .setOrigin(0.5)
     .setScrollFactor(0)
     .setDepth(DEPTH_TEXT);
-  state.overlay.push(hint);
+  state.overlay.push(state.hintText);
+
+  if (layout.mode === "mobile") {
+    const backBtn = drawButton(
+      scene,
+      panel.x,
+      panelBottom - layout.footer.buttonYBottomInset,
+      layout.footer.buttonWidth,
+      layout.footer.buttonHeight,
+      "BACK / ESC",
+      () => closeItemMenu(state),
+      {
+        depth: DEPTH_CONTENT,
+        fontSize: `${layout.footer.buttonFontSize}px`,
+      },
+    );
+    backBtn.bg.__kithlandsMenuOverlay = { role: "back", kind: "items" };
+    state.overlay.push(backBtn);
+  }
 
   rebuildRows(state);
 
@@ -221,6 +373,13 @@ export function showItemMenu(scene, opts = {}) {
 }
 
 function rebuildRows(state) {
+  const { layout } = state;
+  const { panel } = layout;
+  const panelLeft = panel.x - panel.width / 2;
+  const panelRight = panel.x + panel.width / 2;
+  const panelTop = panel.y - panel.height / 2;
+  const { maxVisible, rowHeight } = layout.list;
+
   // Tear down any existing row objects so we can redraw cleanly.
   for (const r of state.rowObjects) {
     if (r.row) r.row.destroy();
@@ -229,41 +388,63 @@ function rebuildRows(state) {
   }
   state.rowObjects = [];
 
-  const list =
-    state.activeTab === "USE"
-      ? buildItemList(state.scene.gameState, state.mode)
-      : []; // KEY / EQUIP stubs
+  state.view = "items";
+  state.selectedItem = null;
+  state.targets = [];
+  state.stageText?.setText("CHOOSE AN ITEM");
+  state.hintText?.setText("↑↓ move    Enter/click use    Esc close");
+  const list = buildItemList(state.scene.gameState, state.mode);
   state.items = list;
+  state.countText?.setText(
+    `${list.length} usable ${list.length === 1 ? "item" : "items"}`,
+  );
   if (state.cursor >= list.length) state.cursor = Math.max(0, list.length - 1);
+  state.scrollTop = Math.min(
+    Math.max(0, state.scrollTop),
+    Math.max(0, list.length - maxVisible),
+  );
 
-  const startY = PANEL_TOP + 130;
-  const visible = Math.min(MAX_VISIBLE, list.length);
+  const startY = panelTop + layout.list.startInset;
+  const visible = Math.min(maxVisible, list.length);
   for (let i = 0; i < visible; i++) {
     const idx = state.scrollTop + i;
     if (idx >= list.length) break;
     const item = list[idx];
-    const y = startY + i * ROW_H + ROW_H / 2;
+    const y = startY + i * rowHeight + rowHeight / 2;
 
     const rowBg = state.scene.add
-      .rectangle(PANEL_CX, y, PANEL_W - 40, ROW_H, 0x222244, 0.0)
+      .rectangle(
+        panel.x,
+        y,
+        panel.width - layout.list.xInset * 2,
+        rowHeight - (layout.mode === "mobile" ? 8 : 2),
+        0x1a2f4b,
+        0.15,
+      )
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT)
+      .setStrokeStyle(1, 0x5f7f9f, 0)
       .setInteractive({ useHandCursor: !item.greyed });
+    rowBg.__kithlandsMenuOverlay = {
+      role: "row",
+      kind: "items",
+      index: idx,
+    };
     const color = item.greyed ? "#666666" : "#ffffff";
     const label = state.scene.add
-      .text(PANEL_LEFT + 30, y, item.name, {
-        fontSize: "12px",
+      .text(panelLeft + layout.list.labelInset, y, item.name, {
+        fontSize: `${layout.list.labelFontSize}px`,
         color,
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
       })
       .setOrigin(0, 0.5)
       .setScrollFactor(0)
       .setDepth(DEPTH_TEXT);
     const qty = state.scene.add
-      .text(PANEL_RIGHT - 30, y, `x${item.count}`, {
-        fontSize: "12px",
+      .text(panelRight - layout.list.quantityInset, y, `x${item.count}`, {
+        fontSize: `${layout.list.labelFontSize}px`,
         color,
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
       })
       .setOrigin(1, 0.5)
       .setScrollFactor(0)
@@ -284,10 +465,10 @@ function rebuildRows(state) {
   }
   if (list.length === 0) {
     const empty = state.scene.add
-      .text(PANEL_CX, startY + 40, "(no items)", {
-        fontSize: "11px",
-        color: "#888888",
-        fontFamily: "monospace",
+      .text(panel.x, startY + rowHeight, "No usable items in this context.", {
+        fontSize: `${layout.detail.descriptionFontSize}px`,
+        color: "#8ea4b8",
+        fontFamily: "Arial, sans-serif",
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
@@ -301,38 +482,50 @@ function refreshCursor(state) {
   for (const r of state.rowObjects) {
     const isCursor = r.idx === state.cursor;
     if (isCursor && !r.item.greyed) {
-      r.row.setFillStyle(0x2a4a7a, 0.8);
+      r.row.setFillStyle(0x315884, 0.88);
+      r.row.setStrokeStyle(1, 0xf1d66e, 1);
       r.label.setColor("#ffffff");
-      r.qty.setColor("#ffffff");
+      r.qty?.setColor("#f3d878");
     } else if (isCursor) {
       r.row.setFillStyle(0x333344, 0.6);
+      r.row.setStrokeStyle(1, 0xf1d66e, 0.55);
     } else {
-      r.row.setFillStyle(0x222244, 0.0);
+      r.row.setFillStyle(0x1a2f4b, 0.15);
+      r.row.setStrokeStyle(1, 0x5f7f9f, 0);
       r.label.setColor(r.item.greyed ? "#666666" : "#ffffff");
-      r.qty.setColor(r.item.greyed ? "#666666" : "#ffffff");
+      r.qty?.setColor(r.item.greyed ? "#666666" : "#c7d8e9");
     }
   }
   const active = state.items[state.cursor];
-  if (state.descText) {
-    state.descText.setText(active ? active.description : "");
-  }
+  state.detailNameText?.setText(active?.name || "Nothing selected");
+  state.detailMetaText?.setText(
+    active
+      ? `${active.count} carried · ${itemUseContext(active, state.mode)}`
+      : "",
+  );
+  state.descText?.setText(
+    active
+      ? `${active.description}${active.greyed ? "  No valid target right now." : ""}`
+      : "Select an item to review its use and target.",
+  );
 }
 
 function onKey(state, ev) {
   if (state.closed) return;
+  if (state.view === "targets") {
+    onTargetKey(state, ev);
+    return;
+  }
   switch (ev.key) {
     case "ArrowDown":
     case "ArrowRight":
       if (state.items.length === 0) return;
-      state.cursor = (state.cursor + 1) % state.items.length;
-      refreshCursor(state);
+      moveItemCursor(state, 1);
       break;
     case "ArrowUp":
     case "ArrowLeft":
       if (state.items.length === 0) return;
-      state.cursor =
-        (state.cursor - 1 + state.items.length) % state.items.length;
-      refreshCursor(state);
+      moveItemCursor(state, -1);
       break;
     case "Enter":
     case " ":
@@ -342,6 +535,21 @@ function onKey(state, ev) {
       closeItemMenu(state);
       break;
   }
+}
+
+function moveItemCursor(state, delta) {
+  const maxVisible = state.layout.list.maxVisible;
+  state.cursor =
+    (state.cursor + delta + state.items.length) % state.items.length;
+  const previousScroll = state.scrollTop;
+  if (state.cursor < state.scrollTop) state.scrollTop = state.cursor;
+  if (state.cursor >= state.scrollTop + maxVisible)
+    state.scrollTop = state.cursor - maxVisible + 1;
+  if (state.cursor === 0) state.scrollTop = 0;
+  if (state.cursor === state.items.length - 1)
+    state.scrollTop = Math.max(0, state.items.length - maxVisible);
+  if (state.scrollTop !== previousScroll) rebuildRows(state);
+  else refreshCursor(state);
 }
 
 function confirmSelection(state) {
@@ -356,6 +564,11 @@ function confirmSelection(state) {
 }
 
 function showTargetPicker(state, item) {
+  const { layout } = state;
+  const { panel } = layout;
+  const panelLeft = panel.x - panel.width / 2;
+  const panelTop = panel.y - panel.height / 2;
+
   // Destroy the existing list rows; rebuild them as target rows. This keeps
   // the picker inside the same panel so we don't stack overlays.
   for (const r of state.rowObjects) {
@@ -371,18 +584,35 @@ function showTargetPicker(state, item) {
   const targets = [];
   for (let i = 0; i < party.length; i++) {
     const p = party[i];
-    if (canUseOnTarget(item, p)) targets.push({ slot: i, ...p });
+    targets.push({ slot: i, valid: canUseOnTarget(item, p), ...p });
   }
 
-  state.descText.setText(`Use ${item.name} on:`);
+  state.view = "targets";
+  state.selectedItem = item;
+  state.targets = targets;
+  state.cursor = Math.max(
+    0,
+    targets.findIndex((target) => target.valid),
+  );
+  state.stageText?.setText("SELECT TARGET");
+  state.countText?.setText(`${item.count} ${item.name} carried`);
+  state.hintText?.setText("←→↑↓ move    Enter/click confirm    Esc items");
+  state.detailNameText?.setText(item.name);
+  state.detailMetaText?.setText(itemUseContext(item, state.mode));
+  state.descText?.setText(item.description);
 
-  if (targets.length === 0) {
+  if (!targets.some((target) => target.valid)) {
     const empty = state.scene.add
-      .text(PANEL_CX, PANEL_TOP + 180, "(no valid targets)", {
-        fontSize: "11px",
-        color: "#ff6666",
-        fontFamily: "monospace",
-      })
+      .text(
+        panel.x,
+        panelTop + layout.targets.startInset,
+        "(no valid targets)",
+        {
+          fontSize: `${layout.detail.descriptionFontSize}px`,
+          color: "#ff6666",
+          fontFamily: "Arial, sans-serif",
+        },
+      )
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(DEPTH_TEXT);
@@ -395,33 +625,124 @@ function showTargetPicker(state, item) {
     return;
   }
 
-  const startY = PANEL_TOP + 140;
+  const cardW =
+    (panel.width -
+      layout.targets.horizontalInset * 2 -
+      layout.targets.columnGap * (layout.targets.columns - 1)) /
+    layout.targets.columns;
+  const startY = panelTop + layout.targets.startInset;
   for (let i = 0; i < targets.length; i++) {
     const t = targets[i];
-    const y = startY + i * 26 + 13;
+    const column = i % layout.targets.columns;
+    const rowIndex = Math.floor(i / layout.targets.columns);
+    const x =
+      panelLeft +
+      layout.targets.horizontalInset +
+      cardW / 2 +
+      column * (cardW + layout.targets.columnGap);
+    const y = startY + rowIndex * layout.targets.rowGap;
     const row = state.scene.add
-      .rectangle(PANEL_CX, y, PANEL_W - 80, 24, 0x1a2a4a, 0.8)
+      .rectangle(
+        x,
+        y,
+        cardW,
+        layout.targets.cardHeight,
+        0x1a2f4b,
+        t.valid ? 0.58 : 0.24,
+      )
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT)
-      .setInteractive({ useHandCursor: true });
+      .setStrokeStyle(1, 0x5f7f9f, 0.55)
+      .setInteractive({ useHandCursor: t.valid });
+    row.__kithlandsMenuOverlay = {
+      role: "target",
+      kind: "items",
+      index: i,
+    };
     const label = state.scene.add
       .text(
-        PANEL_LEFT + 50,
-        y,
-        `${t.name}  HP:${t.hp}/${t.max_hp}` +
-          (t.max_mp > 0 ? `  MP:${t.mp}/${t.max_mp}` : ""),
-        { fontSize: "12px", color: "#ffffff", fontFamily: "monospace" },
+        x - cardW / 2 + layout.targets.labelInsetX,
+        y + layout.targets.labelOffsetY,
+        t.name,
+        {
+          fontSize: `${layout.targets.labelFontSize}px`,
+          color: t.valid ? "#ffffff" : "#667788",
+          fontFamily: "Arial, sans-serif",
+          fontStyle: "bold",
+        },
       )
       .setOrigin(0, 0.5)
       .setScrollFactor(0)
       .setDepth(DEPTH_TEXT);
-    state.overlay.push(row, label);
+    const vitals = state.scene.add
+      .text(
+        x - cardW / 2 + layout.targets.labelInsetX,
+        y + layout.targets.vitalsOffsetY,
+        `HP ${t.hp}/${t.max_hp}` +
+          (t.max_mp > 0 ? `    MP ${t.mp}/${t.max_mp}` : ""),
+        {
+          fontSize: `${layout.targets.vitalsFontSize}px`,
+          color: t.valid ? "#9fc4e8" : "#566575",
+          fontFamily: "Arial, sans-serif",
+        },
+      )
+      .setOrigin(0, 0.5)
+      .setScrollFactor(0)
+      .setDepth(DEPTH_TEXT);
+    state.overlay.push(row, label, vitals);
 
-    row.on("pointerover", () => row.setFillStyle(0x2a4a7a, 0.9));
-    row.on("pointerout", () => row.setFillStyle(0x1a2a4a, 0.8));
-    row.on("pointerdown", () => useItem(state, item, t.slot));
+    row.on("pointerover", () => {
+      state.cursor = i;
+      refreshTargetCursor(state);
+    });
+    row.on("pointerdown", () => {
+      if (t.valid) useItem(state, item, t.slot);
+    });
 
-    state.rowObjects.push({ row, label, qty: null, item, idx: i });
+    state.rowObjects.push({ row, label, qty: vitals, target: t, idx: i });
+  }
+  refreshTargetCursor(state);
+}
+
+function refreshTargetCursor(state) {
+  for (const entry of state.rowObjects) {
+    const selected = entry.idx === state.cursor;
+    entry.row.setFillStyle(
+      selected ? 0x315884 : 0x1a2f4b,
+      entry.target.valid ? (selected ? 0.88 : 0.58) : 0.24,
+    );
+    entry.row.setStrokeStyle(
+      1,
+      selected ? 0xf1d66e : 0x5f7f9f,
+      selected ? 1 : 0.55,
+    );
+  }
+}
+
+function onTargetKey(state, ev) {
+  switch (ev.key) {
+    case "ArrowRight":
+    case "ArrowDown":
+      if (state.targets.length > 0)
+        state.cursor = (state.cursor + 1) % state.targets.length;
+      refreshTargetCursor(state);
+      break;
+    case "ArrowLeft":
+    case "ArrowUp":
+      if (state.targets.length > 0)
+        state.cursor =
+          (state.cursor - 1 + state.targets.length) % state.targets.length;
+      refreshTargetCursor(state);
+      break;
+    case "Enter":
+    case " ": {
+      const target = state.targets[state.cursor];
+      if (target?.valid) useItem(state, state.selectedItem, target.slot);
+      break;
+    }
+    case "Escape":
+      rebuildRows(state);
+      break;
   }
 }
 
@@ -475,6 +796,9 @@ function closeItemMenu(state) {
   }
   state.overlay = [];
   state.rowObjects = [];
+  state.scene.itemMenuState = null;
+  restoreMenuOverlayGameSize(state.scene, state.previousGameSize);
+  state.previousGameSize = null;
   if (state.mode === "world") {
     resumeWorldFor(state.scene, "item_menu");
   }

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildCharacterSummaryResources,
   buildEquipmentCandidates,
   buildEquipmentComparison,
+  buildEquipmentComparisonRows,
   buildEquipmentScreenModel,
   itemStats,
 } from "./equipment_screen.js";
@@ -117,6 +119,41 @@ function gameState() {
 }
 
 describe("equipment screen model", () => {
+  it("makes remaining experience explicit in the character summary", () => {
+    expect(
+      buildCharacterSummaryResources({
+        hp: 18,
+        max_hp: 24,
+        mp: 4,
+        max_mp: 7,
+        xp: 26,
+        xp_next: 70,
+      }),
+    ).toEqual([
+      {
+        label: "HP",
+        current: 18,
+        maximum: 24,
+        tone: "hp",
+        note: "",
+      },
+      {
+        label: "MP",
+        current: 4,
+        maximum: 7,
+        tone: "mp",
+        note: "",
+      },
+      {
+        label: "XP",
+        current: 26,
+        maximum: 70,
+        tone: "xp",
+        note: "Next level in 44",
+      },
+    ]);
+  });
+
   it("keeps the complete server-authored loadout including repeated rings", () => {
     const model = buildEquipmentScreenModel(gameState(), 0);
 
@@ -171,6 +208,24 @@ describe("equipment screen model", () => {
       absorb: 0,
     });
     expect(comparison.character).toContain("Attack 26 → 29");
+    expect(buildEquipmentComparisonRows(comparison)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          stat: "power",
+          current: 6,
+          preview: 9,
+          delta: 3,
+          tone: "positive",
+        }),
+        expect.objectContaining({
+          stat: "absorb",
+          current: 5,
+          preview: 5,
+          delta: 0,
+          tone: "neutral",
+        }),
+      ]),
+    );
   });
 
   it("treats moving one instance between repeated slots as a move, not a duplicate", () => {

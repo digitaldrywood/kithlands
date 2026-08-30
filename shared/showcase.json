@@ -114,6 +114,8 @@
       "victory",
       "ko_defeated"
     ],
-    "effect_modes": ["single_target", "all_enemies", "all_allies"]
+    "effect_modes": ["single_target", "all_enemies", "all_allies"],
+    "effect_families": ["restorative_light", "fire"],
+    "intensity_tiers": [1, 2, 3]
   }
 }

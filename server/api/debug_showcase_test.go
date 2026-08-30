@@ -128,4 +128,10 @@ func TestDebugCreateShowcase_ConfiguresRepresentativeCombatState(t *testing.T) {
 	if got := audit.EffectModes; len(got) != 3 || got[0] != "single_target" || got[2] != "all_allies" {
 		t.Errorf("audit effect modes = %v", got)
 	}
+	if got := audit.EffectFamilies; len(got) != 2 || got[0] != "restorative_light" || got[1] != "fire" {
+		t.Errorf("audit effect families = %v", got)
+	}
+	if got := audit.IntensityTiers; len(got) != 3 || got[0] != 1 || got[2] != 3 {
+		t.Errorf("audit intensity tiers = %v", got)
+	}
 }

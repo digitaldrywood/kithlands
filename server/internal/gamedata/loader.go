@@ -426,6 +426,7 @@ func (gd *GameData) validate() {
 			panic(fmt.Sprintf("gamedata: ability %q has empty name", a.ID))
 		}
 		validateCinematicTier("ability", a.ID, a.CinematicTier)
+		validateBattleEffectPresentation("ability", a.ID, a.Presentation)
 	}
 
 	for _, s := range gd.Spells.Spells {
@@ -453,6 +454,7 @@ func (gd *GameData) validate() {
 			}
 		}
 		validateCinematicTier("spell", s.ID, s.CinematicTier)
+		validateBattleEffectPresentation("spell", s.ID, s.Presentation)
 	}
 
 	validSizes := map[string]bool{"small": true, "medium": true, "large": true, "boss": true}
@@ -780,6 +782,11 @@ func (gd *GameData) validateShowcase(classIDs map[string]bool) {
 	}
 	validateShowcaseAuditValues("animation state", cfg.BattleCharacterAudit.AnimationStates)
 	validateShowcaseAuditValues("effect mode", cfg.BattleCharacterAudit.EffectModes)
+	validateShowcaseAuditValues("effect family", cfg.BattleCharacterAudit.EffectFamilies)
+	for _, family := range cfg.BattleCharacterAudit.EffectFamilies {
+		validateBattleEffectPresentation("showcase effect family", family, &BattleEffectPresentation{EffectFamily: family, IntensityTier: 1})
+	}
+	validateShowcaseIntensityTiers(cfg.BattleCharacterAudit.IntensityTiers)
 }
 
 func validateShowcaseAuditValues(label string, values []string) {
@@ -880,6 +887,37 @@ func validateCinematicTier(kind, id, tier string) {
 		return
 	}
 	panic(fmt.Sprintf("gamedata: %s %q has invalid cinematic_tier: %q", kind, id, tier))
+}
+
+func validateBattleEffectPresentation(kind, id string, presentation *BattleEffectPresentation) {
+	if presentation == nil {
+		return
+	}
+	validFamilies := map[string]bool{
+		"restorative_light": true, "ward_blessing": true, "fire": true,
+		"ice": true, "lightning": true, "status_dark": true,
+		"holy_revival": true, "focus": true, "counter": true,
+		"steal": true, "backstab": true, "inspire": true,
+	}
+	if !validFamilies[presentation.EffectFamily] {
+		panic(fmt.Sprintf("gamedata: %s %q has invalid effect_family: %q", kind, id, presentation.EffectFamily))
+	}
+	if presentation.IntensityTier < 1 || presentation.IntensityTier > 3 {
+		panic(fmt.Sprintf("gamedata: %s %q has invalid intensity_tier: %d", kind, id, presentation.IntensityTier))
+	}
+}
+
+func validateShowcaseIntensityTiers(tiers []int) {
+	if len(tiers) == 0 {
+		panic("gamedata: showcase.json battle character audit has no intensity tiers")
+	}
+	seen := make(map[int]bool, len(tiers))
+	for _, tier := range tiers {
+		if tier < 1 || tier > 3 || seen[tier] {
+			panic(fmt.Sprintf("gamedata: showcase.json battle character audit has invalid intensity tier %d", tier))
+		}
+		seen[tier] = true
+	}
 }
 
 func validateGrowth(classID, stat string, value int) {

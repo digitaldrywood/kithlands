@@ -29,6 +29,7 @@ test.describe("character detail navigation", () => {
   test("cycles party members by keyboard and on-screen arrows", async ({
     page,
   }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
     await startQuickGame(page);
 
     const party = await page.evaluate(
@@ -36,12 +37,11 @@ test.describe("character detail navigation", () => {
     );
     expect(party.length).toBeGreaterThan(1);
 
-    await page.keyboard.press("m");
-    await page.waitForFunction(
-      () => window.__kithlandsTest.sceneFlags("World").menuOpen,
-    );
+    // The DOM loadout screen owns the current Party > Character flow. Open the
+    // Phaser detail directly here to preserve coverage for callers that return
+    // to this compatibility surface after a character picker.
     await page.evaluate(() =>
-      window.__kithlandsTest.clickMenuButton("CHARACTER", "World"),
+      window.__kithlandsTest.openCharacterDetail(0, "World"),
     );
     await page.waitForFunction(
       () => window.__kithlandsTest.sceneFlags("World").characterDetailOpen,

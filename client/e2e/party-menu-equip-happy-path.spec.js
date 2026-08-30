@@ -76,12 +76,6 @@ async function addProofOverlay(page, stepLabel) {
   );
 }
 
-async function visibleTexts(page) {
-  return page.evaluate(() =>
-    window.__kithlandsTest.visibleTexts("World").map((entry) => entry.text),
-  );
-}
-
 test.describe("party menu equip happy path", () => {
   test("opens party menu, equips a bought weapon, and persists the stat change", async ({
     page,
@@ -132,51 +126,30 @@ test.describe("party menu equip happy path", () => {
       fullPage: true,
     });
 
-    await page.evaluate(
-      ({ slot }) =>
-        window.__kithlandsTest.clickMenuButton("CHARACTER →", "World", slot),
-      { slot: SLOT },
+    await page.evaluate(() =>
+      window.__kithlandsTest.clickMenuButton("CHARACTER", "World"),
     );
-    await page.waitForFunction(
-      () => window.__kithlandsTest.sceneFlags("World").characterDetailOpen,
+    await expect(page.getByRole("dialog", { name: "Character" })).toBeVisible();
+    await expect(page.locator(".equipment-character")).toHaveText(
+      before.member.name,
     );
 
-    await page.waitForFunction(
-      ({ name }) =>
-        window.__kithlandsTest
-          .visibleTexts("World")
-          .some((entry) => entry.text === name),
-      { name: before.member.name },
-    );
-    let texts = await visibleTexts(page);
-    expect(texts).toContain(`ATK: ${before.attack}`);
-    expect(texts).toContain(`STR: ${before.member.str}`);
-    expect(texts).toContain(before.equip.weapon_name || "(empty)");
-
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickCharacterDetailSlot("WEAPON", "World"),
-    );
-    await page.waitForFunction(() =>
-      window.__kithlandsTest
-        .visibleTexts("World")
-        .some((entry) => entry.text.includes("Iron Sword")),
-    );
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("Iron Sword", "World"),
-    );
+    await page.locator('[data-slot-id="main_hand"]').click();
+    const ironSword = page
+      .locator(".equipment-item-row:not(.is-disabled)")
+      .filter({ hasText: "Iron Sword" })
+      .first();
+    await expect(ironSword).toBeVisible();
+    await ironSword.click();
+    await page.getByRole("button", { name: /^Equip in / }).click();
     await page.waitForFunction(
       ({ slot }) =>
         window.__kithlandsTest.gameState("World").equipment[slot]
           .weapon_name === "Iron Sword",
       { slot: SLOT },
     );
-    await page.waitForFunction(
-      () => window.__kithlandsTest.sceneFlags("World").characterDetailOpen,
-    );
-    await page.waitForFunction(() =>
-      window.__kithlandsTest
-        .messageState("World")
-        .text.includes("Equipped Iron Sword"),
+    await expect(page.locator('[data-slot-id="main_hand"]')).toContainText(
+      "Iron Sword",
     );
 
     const afterEquip = await page.evaluate((slot) => {
@@ -192,12 +165,9 @@ test.describe("party menu equip happy path", () => {
     expect(afterEquip.equip.weapon_name).toBe("Iron Sword");
     expect(afterEquip.equip.weapon_power).toBe(12);
     expect(afterEquip.attack).toBeGreaterThan(before.attack);
-    expect(afterEquip.toast.text).toContain("Equipped Iron Sword");
-
-    texts = await visibleTexts(page);
-    expect(texts).toContain("Iron Sword");
-    expect(texts).toContain(`ATK: ${afterEquip.attack}`);
-    expect(texts).toContain(`STR: ${afterEquip.member.str}`);
+    await expect(page.locator(".character-summary-panel")).toContainText(
+      String(afterEquip.attack),
+    );
 
     await addProofOverlay(page, "After equip");
     await page.screenshot({
@@ -205,23 +175,16 @@ test.describe("party menu equip happy path", () => {
       fullPage: true,
     });
 
-    await page.keyboard.press("Escape");
-    await page.waitForFunction(
-      () => !window.__kithlandsTest.sceneFlags("World").characterDetailOpen,
-    );
+    await page.getByRole("button", { name: "Close equipment" }).click();
+    await expect(page.getByRole("dialog", { name: "Character" })).toBeHidden();
 
-    await page.keyboard.press("m");
     await page.waitForFunction(
       () => window.__kithlandsTest.sceneFlags("World").menuOpen,
     );
-    await page.evaluate(
-      ({ slot }) =>
-        window.__kithlandsTest.clickMenuButton("CHARACTER →", "World", slot),
-      { slot: SLOT },
+    await page.evaluate(() =>
+      window.__kithlandsTest.clickMenuButton("CHARACTER", "World"),
     );
-    await page.waitForFunction(
-      () => window.__kithlandsTest.sceneFlags("World").characterDetailOpen,
-    );
+    await expect(page.getByRole("dialog", { name: "Character" })).toBeVisible();
 
     const reopened = await page.evaluate((slot) => {
       const state = window.__kithlandsTest.gameState("World");
@@ -234,10 +197,12 @@ test.describe("party menu equip happy path", () => {
     }, SLOT);
     expect(reopened.equip.weapon_name).toBe("Iron Sword");
     expect(reopened.attack).toBe(afterEquip.attack);
-    texts = await visibleTexts(page);
-    expect(texts).toContain("Iron Sword");
-    expect(texts).toContain(`ATK: ${afterEquip.attack}`);
-    expect(texts).toContain(`STR: ${afterEquip.member.str}`);
+    await expect(page.locator('[data-slot-id="main_hand"]')).toContainText(
+      "Iron Sword",
+    );
+    await expect(page.locator(".character-summary-panel")).toContainText(
+      String(afterEquip.attack),
+    );
 
     await addProofOverlay(page, "Reopened detail persists");
     await page.screenshot({
@@ -245,11 +210,7 @@ test.describe("party menu equip happy path", () => {
       fullPage: true,
     });
 
-    await page.keyboard.press("Escape");
-    await page.waitForFunction(
-      () => !window.__kithlandsTest.sceneFlags("World").characterDetailOpen,
-    );
-    await page.keyboard.press("m");
+    await page.getByRole("button", { name: "Close equipment" }).click();
     await page.waitForFunction(
       () => window.__kithlandsTest.sceneFlags("World").menuOpen,
     );

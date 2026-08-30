@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { buildItemList, canUseOnTarget } from "./item_menu.js";
+import { buildItemList, canUseOnTarget, itemUseContext } from "./item_menu.js";
 
-// These tests pin the pure pieces of the FF6-style item menu (issue #144).
+// These tests pin the pure pieces of the shared field/battle item menu.
 // The Phaser overlay scene imports from the same module so unit tests can
 // exercise the filtering / grey-out / target-validation logic without
 // instantiating Phaser.
@@ -17,6 +17,20 @@ function makeGS(overrides = {}) {
     ...overrides,
   };
 }
+
+describe("itemUseContext", () => {
+  it("keeps field and battle target contracts explicit", () => {
+    expect(itemUseContext({ effect: "heal" }, "world")).toBe(
+      "Field · One injured ally",
+    );
+    expect(itemUseContext({ effect: "restore_mp" }, "combat")).toBe(
+      "Battle · One ally missing MP",
+    );
+    expect(itemUseContext({ effect: "rest" }, "world")).toBe(
+      "Field · Whole party",
+    );
+  });
+});
 
 describe("buildItemList", () => {
   it("returns only world-usable items in world mode", () => {
