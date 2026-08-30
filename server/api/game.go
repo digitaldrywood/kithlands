@@ -18,6 +18,7 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/inventory"
 	"github.com/digitaldrywood/kithlands/internal/locality"
 	"github.com/digitaldrywood/kithlands/internal/magic"
+	"github.com/digitaldrywood/kithlands/internal/settlements"
 	"github.com/digitaldrywood/kithlands/internal/sprites"
 	"github.com/digitaldrywood/kithlands/internal/transport"
 )
@@ -125,34 +126,37 @@ type GameState struct {
 	Formation     string             `json:"formation,omitempty"`
 	// EncounterStart is "preemptive" or "ambush" when the current encounter
 	// started with one side getting a free first round. Empty for normal.
-	EncounterStart       string                   `json:"encounter_start,omitempty"`
-	Quests               []QuestState             `json:"quests"`
-	BuildingSideQuests   []BuildingSideQuestState `json:"building_side_quests,omitempty"`
-	CurrentQ             int                      `json:"current_quest"`
-	Gold                 int                      `json:"gold"`
-	Potions              int                      `json:"potions"`
-	Ethers               int                      `json:"ethers"`
-	HiEthers             int                      `json:"hi_ethers"`
-	XEthers              int                      `json:"x_ethers"`
-	Items                []ItemState              `json:"items"`
-	Gems                 []GemState               `json:"gems,omitempty"`
-	GemRecipes           []GemRecipeState         `json:"gem_recipes,omitempty"`
-	Equipment            [4]EquipState            `json:"equipment"`
-	Location             string                   `json:"location"`
-	Message              string                   `json:"message,omitempty"`
-	CombatLog            []string                 `json:"combat_log,omitempty"`
-	CombatActions        []CombatActionEntry      `json:"combat_actions,omitempty"`
-	LastRoundActions     []MemberActionReq        `json:"last_round_actions,omitempty"`
-	TileMap              *locality.TileMap        `json:"tilemap,omitempty"`
-	ShopItems            []ShopItemState          `json:"shop_items,omitempty"`
-	Transport            TransportInfo            `json:"transport"`
-	CollectedHiddenItems map[string]bool          `json:"collected_hidden_items,omitempty"`
-	TriggeredFlags       map[string]bool          `json:"triggered_flags,omitempty"`
-	PendingChestClaim    *PendingChestClaimState  `json:"pending_chest_claim,omitempty"`
-	ShowcaseMode         bool                     `json:"showcase_mode,omitempty"`
-	ShowcaseTitle        string                   `json:"showcase_title,omitempty"`
-	ShowcaseTips         []string                 `json:"showcase_tips,omitempty"`
-	BattleCharacterAudit *BattleCharacterAudit    `json:"battle_character_audit,omitempty"`
+	EncounterStart        string                   `json:"encounter_start,omitempty"`
+	Quests                []QuestState             `json:"quests"`
+	BuildingSideQuests    []BuildingSideQuestState `json:"building_side_quests,omitempty"`
+	CurrentQ              int                      `json:"current_quest"`
+	Gold                  int                      `json:"gold"`
+	Potions               int                      `json:"potions"`
+	Ethers                int                      `json:"ethers"`
+	HiEthers              int                      `json:"hi_ethers"`
+	XEthers               int                      `json:"x_ethers"`
+	Items                 []ItemState              `json:"items"`
+	Gems                  []GemState               `json:"gems,omitempty"`
+	GemRecipes            []GemRecipeState         `json:"gem_recipes,omitempty"`
+	Equipment             [4]EquipState            `json:"equipment"`
+	Location              string                   `json:"location"`
+	Message               string                   `json:"message,omitempty"`
+	CombatLog             []string                 `json:"combat_log,omitempty"`
+	CombatActions         []CombatActionEntry      `json:"combat_actions,omitempty"`
+	LastRoundActions      []MemberActionReq        `json:"last_round_actions,omitempty"`
+	TileMap               *locality.TileMap        `json:"tilemap,omitempty"`
+	CurrentLocation       LocationState            `json:"current_location"`
+	SettlementMap         *settlements.Map         `json:"settlement_map,omitempty"`
+	SettlementEntryNodeID string                   `json:"settlement_entry_node_id,omitempty"`
+	ShopItems             []ShopItemState          `json:"shop_items,omitempty"`
+	Transport             TransportInfo            `json:"transport"`
+	CollectedHiddenItems  map[string]bool          `json:"collected_hidden_items,omitempty"`
+	TriggeredFlags        map[string]bool          `json:"triggered_flags,omitempty"`
+	PendingChestClaim     *PendingChestClaimState  `json:"pending_chest_claim,omitempty"`
+	ShowcaseMode          bool                     `json:"showcase_mode,omitempty"`
+	ShowcaseTitle         string                   `json:"showcase_title,omitempty"`
+	ShowcaseTips          []string                 `json:"showcase_tips,omitempty"`
+	BattleCharacterAudit  *BattleCharacterAudit    `json:"battle_character_audit,omitempty"`
 }
 
 // BattleCharacterAudit is a read-only renderer catalog attached only to the
@@ -517,28 +521,31 @@ type QuestRewardState struct {
 
 // Game holds the live state of one game session.
 type Game struct {
-	id                 string
-	gd                 *gamedata.GameData
-	rng                *rand.Rand
-	rngSeed            int64
-	loc                *locality.Locality
-	walk               *locality.WalkResult
-	tileMap            *locality.TileMap
-	party              []*character.Character
-	spellBooks         map[string]*magic.SpellBook
-	inv                *inventory.Inventory
-	quests             []generator.Quest
-	buildingSideQuests map[string]generator.BuildingSideQuest
-	currentQ           int
-	phase              string // world, combat, quest_complete, victory, defeat
-	enemies            []*combat.Combatant
-	spellBuffs         map[int][]combat.CombatBuff // slot -> buffs active for current encounter
-	combatLog          []string
-	combatActions      []CombatActionEntry
-	message            string
-	diff               balance.Difficulty
-	xpBefore           []int // snapshot before combat for victory animation
-	levelBefore        []int // snapshot before combat for victory animation
+	id                  string
+	gd                  *gamedata.GameData
+	rng                 *rand.Rand
+	rngSeed             int64
+	loc                 *locality.Locality
+	walk                *locality.WalkResult
+	tileMap             *locality.TileMap
+	settlementMap       *settlements.Map
+	settlementInteriors map[string]locality.MapSpawn
+	location            LocationState
+	party               []*character.Character
+	spellBooks          map[string]*magic.SpellBook
+	inv                 *inventory.Inventory
+	quests              []generator.Quest
+	buildingSideQuests  map[string]generator.BuildingSideQuest
+	currentQ            int
+	phase               string // world, combat, quest_complete, victory, defeat
+	enemies             []*combat.Combatant
+	spellBuffs          map[int][]combat.CombatBuff // slot -> buffs active for current encounter
+	combatLog           []string
+	combatActions       []CombatActionEntry
+	message             string
+	diff                balance.Difficulty
+	xpBefore            []int // snapshot before combat for victory animation
+	levelBefore         []int // snapshot before combat for victory animation
 	// diedThisFight is captured at the exact moment the combat-victory block
 	// distributes XP (before restParty heals dead members). Exposed to the
 	// client via GameState.DiedThisFight.
@@ -600,6 +607,7 @@ func (g *Game) State() GameState {
 		state.Location = g.loc.Name
 		state.TileMap = g.tileMap
 	}
+	g.fillLocationState(&state)
 
 	state.Transport = g.buildTransportInfo()
 	state.CollectedHiddenItems = g.collectedHiddenItems
@@ -979,6 +987,7 @@ func (g *Game) stateUnlocked() GameState {
 	if g.loc != nil {
 		state.Location = g.loc.Name
 	}
+	g.fillLocationState(&state)
 
 	state.Transport = g.buildTransportInfo()
 	state.CollectedHiddenItems = g.collectedHiddenItems

@@ -3,7 +3,9 @@ package api
 import (
 	"context"
 	"fmt"
+	"hash/fnv"
 	"math/rand/v2"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,6 +17,7 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/inventory"
 	"github.com/digitaldrywood/kithlands/internal/locality"
 	"github.com/digitaldrywood/kithlands/internal/magic"
+	"github.com/digitaldrywood/kithlands/internal/settlements"
 	"github.com/digitaldrywood/kithlands/internal/transport"
 )
 
@@ -25,6 +28,7 @@ type GameManager struct {
 	sidePool          []generator.SideQuestEntry
 	buildingQuestPool []generator.BuildingSideQuestEntry
 	interiorTemplates *interiors.Registry
+	settlementMaps    *settlements.Registry
 	games             map[string]*Game
 	mu                sync.RWMutex
 }
@@ -43,6 +47,11 @@ func NewGameManager(gd *gamedata.GameData, sharedDir string) *GameManager {
 			panic(fmt.Sprintf("loading interiors: %v", err))
 		}
 		gm.interiorTemplates = registry
+		settlementMaps, err := settlements.LoadDir(sharedDir)
+		if err != nil {
+			panic(fmt.Sprintf("loading settlement maps: %v", err))
+		}
+		gm.settlementMaps = settlementMaps
 	}
 	return gm
 }
@@ -150,14 +159,25 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 	tileMap := locality.GenerateTileMap(loc, spawnID, walk)
 	gm.applyInteriorTemplates(tileMap)
 	buildingSideQuests := generator.GenerateBuildingSideQuests(loc, walk, rng, gm.buildingQuestPool)
+	settlementMap := gm.settlementMaps.ForLocality(loc.Name)
+	settlementInteriors, err := gm.buildSettlementInteriors(settlementMap)
+	if err != nil {
+		return nil, err
+	}
 
 	game := &Game{
-		id:                   fmt.Sprintf("game_%d", time.Now().UnixNano()),
-		gd:                   gm.gd,
-		rng:                  rng,
-		loc:                  loc,
-		walk:                 walk,
-		tileMap:              tileMap,
+		id:                  fmt.Sprintf("game_%d", time.Now().UnixNano()),
+		gd:                  gm.gd,
+		rng:                 rng,
+		loc:                 loc,
+		walk:                walk,
+		tileMap:             tileMap,
+		settlementMap:       settlementMap,
+		settlementInteriors: settlementInteriors,
+		location: LocationState{
+			Kind:        LocationWorld,
+			WorldNodeID: spawnID,
+		},
 		party:                party,
 		spellBooks:           spellBooks,
 		inv:                  inv,
@@ -191,6 +211,65 @@ func (gm *GameManager) applyInteriorTemplates(tileMap *locality.TileMap) {
 		spawn := &tileMap.Spawns[i]
 		spawn.Interior = gm.interiorTemplates.Pick(spawn.BuildingType, spawn.InteriorSeed)
 	}
+}
+
+func (gm *GameManager) buildSettlementInteriors(townMap *settlements.Map) (map[string]locality.MapSpawn, error) {
+	if townMap == nil {
+		return nil, nil
+	}
+
+	spawns := make(map[string]locality.MapSpawn)
+	for _, interaction := range townMap.Layer("interactions").Objects {
+		if interaction.Type != "door" {
+			continue
+		}
+		destinationID := interaction.Property("destination_id")
+		buildingType := interaction.Property("building_type")
+		seed := stableInteriorSeed(destinationID)
+		spawn := locality.MapSpawn{
+			NodeID:       destinationID,
+			Name:         interaction.Property("display_name"),
+			Kind:         "building",
+			Tags:         splitSettlementTags(interaction.Property("tags")),
+			BuildingType: buildingType,
+			InteriorSeed: seed,
+			Interior:     gm.interiorTemplates.Pick(buildingType, seed),
+		}
+		if spawn.Interior == nil {
+			return nil, fmt.Errorf("settlement %q door %q has no %q interior template", townMap.Property("id"), interaction.Name, buildingType)
+		}
+		spawns[destinationID] = spawn
+	}
+	return spawns, nil
+}
+
+func stableInteriorSeed(id string) int64 {
+	h := fnv.New64a()
+	_, _ = h.Write([]byte(id))
+	return int64(h.Sum64() & 0x7fffffffffffffff)
+}
+
+func splitSettlementTags(value string) []string {
+	var tags []string
+	for _, tag := range strings.Split(value, ",") {
+		if tag = strings.TrimSpace(tag); tag != "" {
+			tags = append(tags, tag)
+		}
+	}
+	return tags
+}
+
+func (gm *GameManager) attachSettlementMap(game *Game) error {
+	if gm == nil || game == nil || game.loc == nil {
+		return nil
+	}
+	game.settlementMap = gm.settlementMaps.ForLocality(game.loc.Name)
+	interiors, err := gm.buildSettlementInteriors(game.settlementMap)
+	if err != nil {
+		return err
+	}
+	game.settlementInteriors = interiors
+	return nil
 }
 
 func (gm *GameManager) GetGame(id string) *Game {

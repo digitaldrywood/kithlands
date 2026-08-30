@@ -123,7 +123,10 @@ function startAutoWalk(scene, path) {
         cancelAutoWalk(scene);
         return;
       }
+      const beforeX = scene.playerX;
+      const beforeY = scene.playerY;
       scene.tryMove(dx, dy);
+      if (scene.playerX === beforeX && scene.playerY === beforeY) return;
       if (preview[idx]) {
         preview[idx].destroy();
         preview[idx] = null;
@@ -320,7 +323,8 @@ function createActionButton(scene) {
   btn.on("pointerdown", () => {
     btn.setFillStyle(0xffc107, 0.45);
     lbl.setAlpha(0.8);
-    interactWithDoor(scene);
+    if (typeof scene.handleAction === "function") scene.handleAction();
+    else interactWithDoor(scene);
   });
   const release = () => {
     btn.setFillStyle(0xffc107, 0.2);

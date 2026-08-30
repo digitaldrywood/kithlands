@@ -1,22 +1,9 @@
 import { playSFX } from "../systems/audio.js";
 import { isTouchDevice } from "../systems/input.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
+import { transitionLocation } from "../api.js";
 import { isRestBuilding } from "./building_type.js";
 import { TILE_COLORS } from "./tileConstants.js";
-
-function opensExteriorSettlement(spawn) {
-  const kind = (spawn?.kind || "").toLowerCase();
-  const type = (spawn?.building_type || "").toLowerCase();
-  return (
-    kind === "place" ||
-    kind === "business" ||
-    kind === "landmark" ||
-    type === "inn" ||
-    type === "shop" ||
-    type === "temple" ||
-    type === "castle"
-  );
-}
 
 export async function interactWithDoor(scene) {
   if (scene.animating || scene.menuOpen || scene.gameOver) return;
@@ -35,12 +22,29 @@ export async function interactWithDoor(scene) {
     await scene.triggerQuestAdvance(spawn.name, spawn.node_id);
   }
 
-  // Transition to interior scene
+  const entersAuthoredSettlement =
+    scene.gameState?.settlement_map &&
+    scene.gameState?.settlement_entry_node_id === spawn.node_id;
+  if (entersAuthoredSettlement) {
+    const result = await transitionLocation(
+      scene.gameState.id,
+      "enter-settlement",
+      spawn.node_id,
+    );
+    if (result?.error) {
+      scene.animating = false;
+      scene.showMessage?.(result.error);
+      return;
+    }
+    scene.gameState = result;
+  }
+
+  // Transition to the authored exterior or the existing direct interior.
   playSFX("sfx_door");
   scene.cameras.main.fadeOut(300, 0, 0, 0);
   scene.cameras.main.once("camerafadeoutcomplete", () => {
-    if (opensExteriorSettlement(spawn)) {
-      scene.scene.start("Settlement", { gameState: scene.gameState, spawn });
+    if (entersAuthoredSettlement) {
+      scene.scene.start("Settlement", { gameState: scene.gameState });
       return;
     }
     scene.scene.start("Town", { gameState: scene.gameState, spawn });

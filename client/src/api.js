@@ -115,6 +115,17 @@ export async function gameAction(gameId, action) {
   return apiCall("POST", `/game/${gameId}/action`, action);
 }
 
+export async function transitionLocation(
+  gameId,
+  transitionId,
+  worldNodeId = "",
+) {
+  return apiCall("POST", `/game/${gameId}/transition`, {
+    transition_id: transitionId,
+    world_node_id: worldNodeId,
+  });
+}
+
 export async function promoteParty(gameId, accept) {
   return apiCall("POST", `/game/${gameId}/promote`, { accept });
 }

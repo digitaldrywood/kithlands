@@ -180,14 +180,17 @@ function findMenuButtonAt(scene, label, occurrence = 0) {
 function findInteractiveText(scene, text) {
   const matcher = String(text).toLowerCase();
   const children = scene?.children?.list || [];
-  for (let i = children.length - 1; i >= 0; i -= 1) {
-    const child = children[i];
-    if (
-      typeof child?.text === "string" &&
-      child.text.toLowerCase().includes(matcher) &&
-      child.input?.enabled
-    ) {
-      return child;
+  for (const exact of [true, false]) {
+    for (let i = children.length - 1; i >= 0; i -= 1) {
+      const child = children[i];
+      const childText = child?.text?.toLowerCase();
+      if (
+        typeof childText === "string" &&
+        (exact ? childText === matcher : childText.includes(matcher)) &&
+        child.input?.enabled
+      ) {
+        return child;
+      }
     }
   }
   return findLabeledButton(scene, text);
@@ -196,26 +199,29 @@ function findInteractiveText(scene, text) {
 function findLabeledButton(scene, text) {
   const matcher = String(text).toLowerCase();
   const children = scene?.children?.list || [];
-  for (let i = children.length - 1; i >= 0; i -= 1) {
-    const label = children[i];
-    if (typeof label?.text !== "string") continue;
-    const labelText = label.text.toLowerCase();
-    if (labelText !== matcher && !labelText.includes(matcher)) continue;
-    for (let j = children.length - 1; j >= 0; j -= 1) {
-      const target = children[j];
-      if (
-        !target?.input?.enabled ||
-        typeof target?.emit !== "function" ||
-        typeof target?.x !== "number" ||
-        typeof target?.y !== "number"
-      ) {
+  for (const exact of [true, false]) {
+    for (let i = children.length - 1; i >= 0; i -= 1) {
+      const label = children[i];
+      if (typeof label?.text !== "string") continue;
+      const labelText = label.text.toLowerCase();
+      if (exact ? labelText !== matcher : !labelText.includes(matcher))
         continue;
-      }
-      if (
-        Math.abs(target.x - label.x) <= 2 &&
-        Math.abs(target.y - label.y) <= 2
-      ) {
-        return target;
+      for (let j = children.length - 1; j >= 0; j -= 1) {
+        const target = children[j];
+        if (
+          !target?.input?.enabled ||
+          typeof target?.emit !== "function" ||
+          typeof target?.x !== "number" ||
+          typeof target?.y !== "number"
+        ) {
+          continue;
+        }
+        if (
+          Math.abs(target.x - label.x) <= 2 &&
+          Math.abs(target.y - label.y) <= 2
+        ) {
+          return target;
+        }
       }
     }
   }
@@ -2553,6 +2559,31 @@ export function installDevTestBridge(game) {
           .flat()
           .filter((tile) => tile === 19).length,
         playerScale: scene.player?.scaleX ?? null,
+      };
+    },
+
+    settlementSnapshot(sceneKey = "Settlement") {
+      const scene = getScene(game, sceneKey);
+      if (!scene) throw new Error("Settlement scene is not active");
+      return {
+        mapId: scene.model?.id ?? null,
+        playerX: scene.playerX ?? null,
+        playerY: scene.playerY ?? null,
+        playerDir: scene.playerDir ?? null,
+        animating: !!scene.animating,
+        currentInteraction: scene.currentInteraction?.name || null,
+        currentDestination:
+          scene.currentInteraction?.properties?.find(
+            (property) => property.name === "display_name",
+          )?.value || null,
+        npcs: (scene.npcs || []).map((npc) => ({
+          name: npc.name,
+          role: npc.role,
+          x: npc.x,
+          y: npc.y,
+          depth: npc.image?.depth ?? null,
+        })),
+        playerDepth: scene.player?.depth ?? null,
       };
     },
 
