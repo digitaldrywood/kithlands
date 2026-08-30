@@ -5,6 +5,8 @@ import {
   formatHPLabel,
   hpBarFillWidth,
   hpBarColorPct,
+  hpConditionLabel,
+  combatantConditionLabel,
   barFillWidth,
   barLabel,
   tweenBarTo,
@@ -110,6 +112,30 @@ describe("hpBarColorPct", () => {
 
   it("is capped at 1 for over-max values", () => {
     expect(hpBarColorPct(20, 10)).toBe(1);
+  });
+});
+
+describe("color-independent HP conditions", () => {
+  it("mirrors the existing health color thresholds with text", () => {
+    expect(hpConditionLabel(51, 100)).toBe("");
+    expect(hpConditionLabel(50, 100)).toBe("LOW HP");
+    expect(hpConditionLabel(25, 100)).toBe("CRITICAL");
+    expect(hpConditionLabel(1, 100)).toBe("CRITICAL");
+    expect(hpConditionLabel(0, 100)).toBe("KO");
+  });
+
+  it("does not infer a false KO when maximum HP is unavailable", () => {
+    expect(hpConditionLabel(0, 0)).toBe("");
+    expect(hpConditionLabel(undefined, undefined)).toBe("");
+  });
+
+  it("combines abnormal status and low health while keeping KO concise", () => {
+    expect(combatantConditionLabel(40, 100, "poison")).toBe("POISON · LOW HP");
+    expect(combatantConditionLabel(80, 100, "turned_to_stone")).toBe(
+      "TURNED TO STONE",
+    );
+    expect(combatantConditionLabel(0, 100, "poison")).toBe("KO");
+    expect(combatantConditionLabel(80, 100, "normal")).toBe("");
   });
 });
 

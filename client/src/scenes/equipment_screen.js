@@ -146,6 +146,34 @@ export function buildEquipmentScreenModel(gameState, partyIndex) {
   };
 }
 
+export function buildCharacterSummaryResources(member = {}) {
+  const xp = Math.max(0, Number(member.xp) || 0);
+  const xpNext = Math.max(0, Number(member.xp_next) || 0);
+  return [
+    {
+      label: "HP",
+      current: Math.max(0, Number(member.hp) || 0),
+      maximum: Math.max(0, Number(member.max_hp) || 0),
+      tone: "hp",
+      note: "",
+    },
+    {
+      label: "MP",
+      current: Math.max(0, Number(member.mp) || 0),
+      maximum: Math.max(0, Number(member.max_mp) || 0),
+      tone: "mp",
+      note: "",
+    },
+    {
+      label: "XP",
+      current: xp,
+      maximum: xpNext,
+      tone: "xp",
+      note: xpNext > 0 ? `Next level in ${Math.max(0, xpNext - xp)}` : "",
+    },
+  ];
+}
+
 export function buildEquipmentCandidates(gameState, partyIndex, slotID) {
   const model = buildEquipmentScreenModel(gameState, partyIndex);
   const slot = model.slots.find((entry) => entry.id === slotID);
@@ -227,6 +255,37 @@ export function buildEquipmentComparison(
     deltas,
     character: characterImpact(model.member, before, after),
   };
+}
+
+export function buildEquipmentComparisonRows(comparison) {
+  const before = comparison?.before || {};
+  const after = comparison?.after || {};
+  const deltas = comparison?.deltas || {};
+  const keys = new Set([
+    ...STAT_ORDER,
+    ...Object.keys(before),
+    ...Object.keys(after),
+  ]);
+  return [...keys]
+    .filter((stat) => {
+      const current = Number(before[stat]) || 0;
+      const preview = Number(after[stat]) || 0;
+      const delta = Number(deltas[stat]) || 0;
+      return current !== 0 || preview !== 0 || delta !== 0;
+    })
+    .map((stat) => {
+      const current = Number(before[stat]) || 0;
+      const preview = Number(after[stat]) || 0;
+      const delta = Number(deltas[stat]) || preview - current;
+      return {
+        stat,
+        label: statLabel(stat),
+        current,
+        preview,
+        delta,
+        tone: deltaTone(stat, delta),
+      };
+    });
 }
 
 export function itemStats(item) {
@@ -475,15 +534,11 @@ function renderCharacterSummary(state, model) {
 function renderSummaryTab(panel, model) {
   const member = model.member;
 
+  const vitals = element("section", "character-summary-group");
+  vitals.append(element("h3", "character-summary-label", "Vitals"));
   const bars = element("div", "character-resource-bars");
-  for (const resource of [
-    ["HP", member.hp, member.max_hp, "hp"],
-    ["MP", member.mp, member.max_mp, "mp"],
-    ["XP", member.xp, member.xp_next, "xp"],
-  ]) {
-    const [label, currentValue, maxValue, tone] = resource;
-    const current = Number(currentValue) || 0;
-    const maximum = Number(maxValue) || 0;
+  for (const resource of buildCharacterSummaryResources(member)) {
+    const { label, current, maximum, tone, note } = resource;
     const row = element("div", "character-resource");
     const labelRow = element("div", "character-resource-label");
     labelRow.append(
@@ -495,9 +550,11 @@ function renderSummaryTab(panel, model) {
     fill.style.width = `${maximum > 0 ? Math.max(0, Math.min(100, (current / maximum) * 100)) : 0}%`;
     track.append(fill);
     row.append(labelRow, track);
+    if (note) row.append(element("span", "character-resource-note", note));
     bars.append(row);
   }
-  panel.append(bars);
+  vitals.append(bars);
+  panel.append(vitals);
 
   const hero = {
     str: Number(member.str) || 0,
@@ -508,6 +565,8 @@ function renderSummaryTab(panel, model) {
   };
   const attack =
     hero.str + (model.gearTotals.str || 0) + (model.gearTotals.power || 0);
+  const combat = element("section", "character-summary-group");
+  combat.append(element("h3", "character-summary-label", "Combat"));
   const stats = element("dl", "character-stat-grid");
   for (const [label, base, bonus, total] of [
     [
@@ -561,14 +620,18 @@ function renderSummaryTab(panel, model) {
       );
     stats.append(term, value);
   }
-  panel.append(stats);
+  combat.append(stats);
+  panel.append(combat);
 
+  const condition = element("section", "character-summary-group");
+  condition.append(element("h3", "character-summary-label", "Condition"));
   const conditions = element("div", "character-conditions");
   conditions.append(
     element("span", "condition-label", "Status"),
     element("strong", "", member.status || "Normal"),
   );
-  panel.append(conditions);
+  condition.append(conditions);
+  panel.append(condition);
 }
 
 function renderSpellsTab(panel, member) {
@@ -859,20 +922,39 @@ function renderComparison(state, model, slot, selectedCandidate, comparison) {
   region.append(
     element("h3", "section-title", `Equip ${selectedCandidate.item.name}?`),
   );
-  const deltas = significantStatEntries(comparison.deltas);
-  const deltaList = element("div", "comparison-deltas");
-  if (deltas.length === 0)
-    deltaList.append(element("span", "delta neutral", "No stat change"));
-  for (const [stat, value] of deltas) {
-    deltaList.append(
+  const comparisonTable = element("div", "comparison-table");
+  comparisonTable.setAttribute(
+    "aria-label",
+    "Current and preview loadout stats",
+  );
+  const tableHead = element("div", "comparison-table-head");
+  tableHead.append(
+    element("span", "comparison-stat", "Loadout stat"),
+    element("span", "comparison-current", "Current"),
+    element("span", "comparison-arrow", ""),
+    element("span", "comparison-preview", "Preview"),
+    element("span", "comparison-delta", "Change"),
+  );
+  comparisonTable.append(tableHead);
+  for (const row of buildEquipmentComparisonRows(comparison)) {
+    const tableRow = element(
+      "div",
+      `comparison-table-row ${row.tone}${row.delta === 0 ? " is-unchanged" : ""}`,
+    );
+    tableRow.append(
+      element("span", "comparison-stat", row.label),
+      element("span", "comparison-current", String(row.current)),
+      element("span", "comparison-arrow", "→"),
+      element("span", "comparison-preview", String(row.preview)),
       element(
         "span",
-        `delta ${deltaTone(stat, value)}`,
-        `${statLabel(stat)} ${formatSigned(value)}`,
+        `comparison-delta delta ${row.tone}`,
+        row.delta === 0 ? "—" : formatSigned(row.delta),
       ),
     );
+    comparisonTable.append(tableRow);
   }
-  region.append(deltaList);
+  region.append(comparisonTable);
   for (const line of comparison.character) {
     region.append(element("p", "character-impact-line", line));
   }

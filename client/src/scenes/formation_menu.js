@@ -3,17 +3,13 @@ import { playSFX } from "../systems/audio.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 import { drawButton, drawPanel } from "../ui/panel.js";
 import { buildPartyBattleLayout, inferPartyRow } from "./battle_layout.js";
+import { formationMenuLayout } from "./formation_menu_layout.js";
+import {
+  applyMenuOverlayGameSize,
+  restoreMenuOverlayGameSize,
+} from "./menu_overlay_layout.js";
 import { toggleMenu } from "./world_menu.js";
 
-const PANEL_CX = 400;
-const PANEL_CY = 300;
-const PANEL_W = 760;
-const PANEL_H = 540;
-const PANEL_LEFT = PANEL_CX - PANEL_W / 2;
-const PANEL_TOP = PANEL_CY - PANEL_H / 2;
-const PANEL_BOTTOM = PANEL_CY + PANEL_H / 2;
-const LEFT_PANE_W = 280;
-const RIGHT_PANE_W = 430;
 const DEPTH_BG = 50;
 const DEPTH_CONTENT = 51;
 const FF6_BLUE = 0x4d78bf;
@@ -109,9 +105,16 @@ export function buildFormationPayload(draftParty) {
 
 export function showFormationMenu(scene) {
   pauseWorldFor(scene, "formation_menu");
+  const layout = formationMenuLayout({
+    viewportWidth: globalThis.window?.innerWidth ?? 800,
+    viewportHeight: globalThis.window?.innerHeight ?? 600,
+  });
+  const previousGameSize = applyMenuOverlayGameSize(scene, layout);
 
   const staticObjects = [];
   const state = {
+    layout,
+    previousGameSize,
     dynamicObjects: [],
     rowObjects: [],
     previewEntries: [],
@@ -167,9 +170,26 @@ export function showFormationMenu(scene) {
     listPanel: null,
   };
 
+  if (layout.mode === "mobile") {
+    staticObjects.push(
+      scene.add
+        .rectangle(
+          layout.gameWidth / 2,
+          layout.gameHeight / 2,
+          layout.gameWidth,
+          layout.gameHeight,
+          0x020711,
+          0.96,
+        )
+        .setScrollFactor(0)
+        .setDepth(DEPTH_BG - 1)
+        .setInteractive(),
+    );
+  }
+
   const title = scene.add
-    .text(PANEL_LEFT + 62, PANEL_TOP + 30, "FORMATION", {
-      fontSize: "24px",
+    .text(layout.title.x, layout.title.y, "FORMATION", {
+      fontSize: `${layout.title.fontSize}px`,
       fontStyle: "bold",
       color: "#fff5c2",
       fontFamily: "Georgia",
@@ -180,27 +200,37 @@ export function showFormationMenu(scene) {
   applyTextGlow(title, "#2c5f9d", 2);
 
   const hintText = scene.add
-    .text(PANEL_CX, PANEL_TOP + 58, "", {
-      fontSize: "10px",
+    .text(layout.hint.x, layout.hint.y, "", {
+      fontSize: `${layout.hint.fontSize}px`,
       color: "#dbe9ff",
       fontFamily: "monospace",
+      align: "center",
+      wordWrap: { width: layout.hint.width },
     })
     .setOrigin(0.5)
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
   state.hintText = hintText;
 
-  const shell = drawPanel(scene, PANEL_CX, PANEL_CY, PANEL_W, PANEL_H, {
-    depth: DEPTH_BG,
-    interactive: false,
-    variant: "ff6",
-  });
+  const shell = drawPanel(
+    scene,
+    layout.shell.x,
+    layout.shell.y,
+    layout.shell.width,
+    layout.shell.height,
+    {
+      depth: DEPTH_BG,
+      interactive: false,
+      variant: "ff6",
+    },
+  );
+  shell.bg.__kithlandsFormation = { role: "shell" };
   const previewPanel = drawPanel(
     scene,
-    PANEL_LEFT + 24 + LEFT_PANE_W / 2,
-    PANEL_TOP + 112 + 340 / 2,
-    LEFT_PANE_W,
-    340,
+    layout.preview.panel.x,
+    layout.preview.panel.y,
+    layout.preview.panel.width,
+    layout.preview.panel.height,
     {
       depth: DEPTH_BG + 0.5,
       interactive: false,
@@ -213,10 +243,10 @@ export function showFormationMenu(scene) {
   );
   const listPanel = drawPanel(
     scene,
-    PANEL_LEFT + 46 + LEFT_PANE_W + RIGHT_PANE_W / 2,
-    PANEL_TOP + 112 + 340 / 2,
-    RIGHT_PANE_W,
-    340,
+    layout.list.panel.x,
+    layout.list.panel.y,
+    layout.list.panel.width,
+    layout.list.panel.height,
     {
       depth: DEPTH_BG + 0.5,
       interactive: false,
@@ -231,8 +261,8 @@ export function showFormationMenu(scene) {
   state.listPanel = listPanel.bg;
 
   const previewTitle = scene.add
-    .text(PANEL_LEFT + 42, PANEL_TOP + 92, "BATTLE PREVIEW", {
-      fontSize: "14px",
+    .text(layout.preview.title.x, layout.preview.title.y, "BATTLE PREVIEW", {
+      fontSize: `${layout.preview.title.fontSize}px`,
       fontStyle: "bold",
       color: "#fff1c2",
       fontFamily: "Georgia",
@@ -240,24 +270,24 @@ export function showFormationMenu(scene) {
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
   const previewHelp = scene.add
-    .text(PANEL_LEFT + 42, PANEL_TOP + 112, "FRONT", {
-      fontSize: "10px",
+    .text(layout.preview.frontHelp.x, layout.preview.frontHelp.y, "FRONT", {
+      fontSize: `${layout.preview.frontHelp.fontSize}px`,
       color: "#f4d881",
       fontFamily: "monospace",
     })
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
   const previewHelpRight = scene.add
-    .text(PANEL_LEFT + 170, PANEL_TOP + 112, "BACK", {
-      fontSize: "10px",
+    .text(layout.preview.backHelp.x, layout.preview.backHelp.y, "BACK", {
+      fontSize: `${layout.preview.backHelp.fontSize}px`,
       color: "#b9c8ff",
       fontFamily: "monospace",
     })
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
   const listTitle = scene.add
-    .text(PANEL_LEFT + LEFT_PANE_W + 64, PANEL_TOP + 92, "ORDER", {
-      fontSize: "14px",
+    .text(layout.list.title.x, layout.list.title.y, "ORDER", {
+      fontSize: `${layout.list.title.fontSize}px`,
       fontStyle: "bold",
       color: "#fff1c2",
       fontFamily: "Georgia",
@@ -289,6 +319,7 @@ export function showFormationMenu(scene) {
   }
 
   function renderPreview() {
+    const preview = layout.preview;
     const previewParty = buildPreviewDraft(
       state.draftParty,
       state.pickedIdx,
@@ -302,12 +333,12 @@ export function showFormationMenu(scene) {
     const maxX = Math.max(...previewLayout.map((entry) => entry.x));
     const minY = Math.min(...previewLayout.map((entry) => entry.y));
     const maxY = Math.max(...previewLayout.map((entry) => entry.y));
-    const paneLeft = PANEL_LEFT + 34;
-    const paneTop = PANEL_TOP + 126;
-    const paneWidth = LEFT_PANE_W - 24;
-    const paneHeight = 286;
-    const cardW = 108;
-    const cardH = 52;
+    const paneLeft = preview.pane.left;
+    const paneTop = preview.pane.top;
+    const paneWidth = preview.pane.width;
+    const paneHeight = preview.pane.height;
+    const cardW = preview.card.width;
+    const cardH = preview.card.height;
     const spanX = Math.max(1, maxX - minX);
     const spanY = Math.max(1, maxY - minY);
 
@@ -340,13 +371,20 @@ export function showFormationMenu(scene) {
         .setScrollFactor(0)
         .setDepth(DEPTH_CONTENT);
       const slotBadge = scene.add
-        .rectangle(x + 16, y + 12, 22, 18, 0x132947, 1)
+        .rectangle(
+          x + preview.slotBadge.x,
+          y + preview.slotBadge.y,
+          preview.slotBadge.width,
+          preview.slotBadge.height,
+          0x132947,
+          1,
+        )
         .setStrokeStyle(1, 0xe7f2ff, 0.8)
         .setScrollFactor(0)
         .setDepth(DEPTH_CONTENT + 1);
       const slotLabel = scene.add
-        .text(x + 16, y + 12, `${slot + 1}`, {
-          fontSize: "10px",
+        .text(x + preview.slotBadge.x, y + preview.slotBadge.y, `${slot + 1}`, {
+          fontSize: `${preview.slotBadge.fontSize}px`,
           fontStyle: "bold",
           color: "#fff7d6",
           fontFamily: "Courier New",
@@ -358,26 +396,31 @@ export function showFormationMenu(scene) {
       let portrait = null;
       if (portraitKey) {
         portrait = scene.add
-          .image(x + 38, y + cardH / 2, portraitKey)
+          .image(x + preview.portrait.x, y + cardH / 2, portraitKey)
           .setScrollFactor(0)
           .setDepth(DEPTH_CONTENT + 2);
         const srcSize = Math.max(portrait.width || 64, portrait.height || 64);
-        portrait.setScale(30 / srcSize);
+        portrait.setScale(preview.portrait.size / srcSize);
       } else {
         portrait = scene.add
-          .text(x + 38, y + cardH / 2, (member.class_name || "?")[0] || "?", {
-            fontSize: "18px",
-            fontStyle: "bold",
-            color: "#eef7ff",
-            fontFamily: "Georgia",
-          })
+          .text(
+            x + preview.portrait.x,
+            y + cardH / 2,
+            (member.class_name || "?")[0] || "?",
+            {
+              fontSize: `${Math.round(preview.portrait.size * 0.6)}px`,
+              fontStyle: "bold",
+              color: "#eef7ff",
+              fontFamily: "Georgia",
+            },
+          )
           .setOrigin(0.5)
           .setScrollFactor(0)
           .setDepth(DEPTH_CONTENT + 2);
       }
       const name = scene.add
-        .text(x + 56, y + 10, member.name, {
-          fontSize: "10px",
+        .text(x + preview.name.x, y + preview.name.y, member.name, {
+          fontSize: `${preview.name.fontSize}px`,
           fontStyle: "bold",
           color: "#f7fbff",
           fontFamily: "Trebuchet MS",
@@ -385,17 +428,22 @@ export function showFormationMenu(scene) {
         .setScrollFactor(0)
         .setDepth(DEPTH_CONTENT + 2);
       const badge = scene.add
-        .text(x + 56, y + 26, rowBadgeLabel(member.row), {
-          fontSize: "9px",
-          color: member.row === "back" ? "#d5e2ff" : "#fff0b4",
-          fontFamily: "monospace",
-        })
+        .text(
+          x + preview.rowLabel.x,
+          y + preview.rowLabel.y,
+          rowBadgeLabel(member.row),
+          {
+            fontSize: `${preview.rowLabel.fontSize}px`,
+            color: member.row === "back" ? "#d5e2ff" : "#fff0b4",
+            fontFamily: "monospace",
+          },
+        )
         .setScrollFactor(0)
         .setDepth(DEPTH_CONTENT + 2);
       const movedTag = moved
         ? scene.add
-            .text(x + 56, y + 38, "SWAP PREVIEW", {
-              fontSize: "8px",
+            .text(x + preview.moved.x, y + preview.moved.y, "SWAP PREVIEW", {
+              fontSize: `${preview.moved.fontSize}px`,
               color: "#8fd7ff",
               fontFamily: "monospace",
             })
@@ -425,9 +473,10 @@ export function showFormationMenu(scene) {
   }
 
   function renderRows() {
-    const rightLeft = PANEL_LEFT + LEFT_PANE_W + 56;
-    const rowTop = PANEL_TOP + 126;
-    const rowHeight = 68;
+    const list = layout.list;
+    const rightLeft = list.left;
+    const rowTop = list.rowTop;
+    const rowHeight = list.rowHeight;
 
     for (let slot = 0; slot < state.draftParty.length; slot += 1) {
       const member = state.draftParty[slot];
@@ -446,10 +495,10 @@ export function showFormationMenu(scene) {
 
       const rowBg = scene.add
         .rectangle(
-          rightLeft + (RIGHT_PANE_W - 36) / 2,
+          rightLeft + list.rowWidth / 2,
           y + rowHeight / 2 - 2,
-          RIGHT_PANE_W - 36,
-          rowHeight - 10,
+          list.rowWidth,
+          list.rowBodyHeight,
           rowFill,
           0.98,
         )
@@ -457,69 +506,103 @@ export function showFormationMenu(scene) {
         .setScrollFactor(0)
         .setDepth(DEPTH_CONTENT);
       rowBg.setInteractive({ useHandCursor: true });
-      rowBg.on("pointerdown", () => state.focusSlot(slot));
+      rowBg.on("pointerdown", () => {
+        state.focusedIdx = slot;
+        state.activateFocused();
+      });
       rowBg.on("pointerover", () => {
         state.hoveredIdx = slot;
-        renderDynamic();
+        if (state.pickedIdx !== slot && state.focusedIdx !== slot) {
+          rowBg.setFillStyle(ROW_FILL_HOVER, 0.98);
+        }
       });
       rowBg.on("pointerout", () => {
         if (state.hoveredIdx === slot) {
           state.hoveredIdx = null;
-          renderDynamic();
+          rowBg.setFillStyle(
+            state.pickedIdx === slot
+              ? PICK_FILL
+              : state.focusedIdx === slot
+                ? ROW_FILL_SELECTED
+                : ROW_FILL,
+            0.98,
+          );
         }
       });
 
       const portraitKey = resolvePortraitTextureKey(scene, member);
       const portraitFrame = scene.add
-        .rectangle(rightLeft + 30, y + 28, 42, 42, 0x10233f, 1)
+        .rectangle(
+          rightLeft + list.portrait.x,
+          y + list.portrait.y,
+          list.portrait.size,
+          list.portrait.size,
+          0x10233f,
+          1,
+        )
         .setStrokeStyle(2, rowColors.stroke)
         .setScrollFactor(0)
         .setDepth(DEPTH_CONTENT + 1);
       let portrait = null;
       if (portraitKey) {
         portrait = scene.add
-          .image(rightLeft + 30, y + 28, portraitKey)
+          .image(rightLeft + list.portrait.x, y + list.portrait.y, portraitKey)
           .setScrollFactor(0)
           .setDepth(DEPTH_CONTENT + 2);
         const srcSize = Math.max(portrait.width || 64, portrait.height || 64);
-        portrait.setScale(30 / srcSize);
+        portrait.setScale(list.portrait.imageSize / srcSize);
       } else {
         portrait = scene.add
-          .text(rightLeft + 30, y + 28, (member.class_name || "?")[0] || "?", {
-            fontSize: "18px",
-            fontStyle: "bold",
-            color: "#eef7ff",
-            fontFamily: "Georgia",
-          })
+          .text(
+            rightLeft + list.portrait.x,
+            y + list.portrait.y,
+            (member.class_name || "?")[0] || "?",
+            {
+              fontSize: `${Math.round(list.portrait.imageSize * 0.6)}px`,
+              fontStyle: "bold",
+              color: "#eef7ff",
+              fontFamily: "Georgia",
+            },
+          )
           .setOrigin(0.5)
           .setScrollFactor(0)
           .setDepth(DEPTH_CONTENT + 2);
       }
 
       const slotText = scene.add
-        .text(rightLeft + 60, y + 8, `${slot + 1}. ${member.name}`, {
-          fontSize: "13px",
-          fontStyle: "bold",
-          color: "#f7fbff",
-          fontFamily: "Trebuchet MS",
-        })
+        .text(
+          rightLeft + list.name.x,
+          y + list.name.y,
+          `${slot + 1}. ${member.name}`,
+          {
+            fontSize: `${list.name.fontSize}px`,
+            fontStyle: "bold",
+            color: "#f7fbff",
+            fontFamily: "Trebuchet MS",
+          },
+        )
         .setScrollFactor(0)
         .setDepth(DEPTH_CONTENT + 2);
       const classText = scene.add
-        .text(rightLeft + 60, y + 24, member.class_name || "Adventurer", {
-          fontSize: "10px",
-          color: "#d2bdd7",
-          fontFamily: "Georgia",
-        })
+        .text(
+          rightLeft + list.className.x,
+          y + list.className.y,
+          member.class_name || "Adventurer",
+          {
+            fontSize: `${list.className.fontSize}px`,
+            color: "#d2bdd7",
+            fontFamily: "Georgia",
+          },
+        )
         .setScrollFactor(0)
         .setDepth(DEPTH_CONTENT + 2);
       const statsText = scene.add
         .text(
-          rightLeft + 210,
-          y + 8,
+          rightLeft + list.stats.x,
+          y + list.stats.y,
           `Lv ${member.level}   HP ${member.hp}/${member.max_hp}   MP ${member.mp || 0}/${member.max_mp || 0}`,
           {
-            fontSize: "10px",
+            fontSize: `${list.stats.fontSize}px`,
             color: "#dbe9ff",
             fontFamily: "Courier New",
           },
@@ -528,10 +611,10 @@ export function showFormationMenu(scene) {
         .setDepth(DEPTH_CONTENT + 2);
       const rowBadgeBg = scene.add
         .rectangle(
-          rightLeft + RIGHT_PANE_W - 92,
-          y + 28,
-          76,
-          22,
+          rightLeft + list.badge.x,
+          y + list.badge.y,
+          list.badge.width,
+          list.badge.height,
           rowColors.fill,
           1,
         )
@@ -540,16 +623,16 @@ export function showFormationMenu(scene) {
         .setDepth(DEPTH_CONTENT + 1);
       rowBadgeBg.setInteractive({ useHandCursor: true });
       rowBadgeBg.on("pointerdown", () => {
-        state.focusSlot(slot);
+        state.focusedIdx = slot;
         state.setRow(slot, member.row === "front" ? "back" : "front");
       });
       const rowBadgeText = scene.add
         .text(
-          rightLeft + RIGHT_PANE_W - 92,
-          y + 28,
+          rightLeft + list.badge.x,
+          y + list.badge.y,
           rowBadgeLabel(member.row),
           {
-            fontSize: "10px",
+            fontSize: `${list.badge.fontSize}px`,
             fontStyle: "bold",
             color: member.row === "back" ? "#e6f0ff" : "#fff5d1",
             fontFamily: "monospace",
@@ -560,8 +643,8 @@ export function showFormationMenu(scene) {
         .setDepth(DEPTH_CONTENT + 2);
       const pickedText = picked
         ? scene.add
-            .text(rightLeft + RIGHT_PANE_W - 92, y + 8, "PICKED", {
-              fontSize: "8px",
+            .text(rightLeft + list.picked.x, y + list.picked.y, "PICKED", {
+              fontSize: `${list.picked.fontSize}px`,
               fontStyle: "bold",
               color: "#ffef9f",
               fontFamily: "monospace",
@@ -610,9 +693,13 @@ export function showFormationMenu(scene) {
     renderRows();
     if (state.hintText) {
       state.hintText.setText(
-        state.pickedIdx == null
-          ? "UP/DOWN move  ENTER pick  LEFT/RIGHT row  ESC save"
-          : "UP/DOWN target  ENTER swap  LEFT/RIGHT row  ESC cancel pick",
+        layout.mode === "mobile"
+          ? state.pickedIdx == null
+            ? "TAP a hero to pick • tap another to swap • tap FRONT/BACK to change row"
+            : "TAP a target to swap • tap FRONT/BACK to change row • BACK cancels"
+          : state.pickedIdx == null
+            ? "UP/DOWN move  ENTER pick  LEFT/RIGHT row  ESC save"
+            : "UP/DOWN target  ENTER swap  LEFT/RIGHT row  ESC cancel pick",
       );
     }
     syncBridgeState();
@@ -632,6 +719,8 @@ export function showFormationMenu(scene) {
       scene.input.keyboard.off("keydown-ESC", esc);
     }
     scene.formationMenuState = null;
+    restoreMenuOverlayGameSize(scene, state.previousGameSize);
+    state.previousGameSize = null;
     resumeWorldFor(scene, "formation_menu");
   };
 
@@ -671,10 +760,10 @@ export function showFormationMenu(scene) {
   state.closeAndSave = closeAndSave;
   state.saveBtn = drawButton(
     scene,
-    PANEL_CX,
-    PANEL_BOTTOM - 38,
-    204,
-    34,
+    layout.save.x,
+    layout.save.y,
+    layout.save.width,
+    layout.save.height,
     "SAVE & CLOSE",
     closeAndSave,
     {
@@ -685,8 +774,10 @@ export function showFormationMenu(scene) {
       fillActive: 0x335c95,
       stroke: FF6_GOLD_DARK,
       strokeActive: FF6_GOLD,
+      fontSize: `${layout.save.fontSize}px`,
     },
   );
+  state.saveBtn.bg.__kithlandsFormation = { role: "save" };
   staticObjects.push(state.saveBtn);
 
   const onUp = () => {
@@ -717,6 +808,8 @@ export function showFormationMenu(scene) {
   scene.input.keyboard.on("keydown-ESC", onEsc);
 
   scene.formationMenuState = {
+    layout,
+    shell: shell.bg,
     rowObjects: state.rowObjects,
     draftParty: state.draftParty,
     draftRows: state.draftRows,

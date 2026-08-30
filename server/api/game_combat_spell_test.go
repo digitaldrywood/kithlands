@@ -41,8 +41,9 @@ func findSpellTarget(t *testing.T, state *api.GameState, memberSlot int, spellID
 }
 
 // TestSpellStateExposesTargetAndEffect verifies the client receives the
-// spell.target, spell.effect, and castable_in_combat fields it needs to
-// route targeting and grey out non-combat spells.
+// authored description, spell.target, spell.effect, and castable_in_combat
+// fields it needs to explain spells, route targeting, and grey out non-combat
+// options.
 func TestSpellStateExposesTargetAndEffect(t *testing.T) {
 	game := newGameWithParty(t, menderParty())
 	api.TeachSpellForTest(game, 0, "resurrect", 4) // utility, single_ally
@@ -62,6 +63,9 @@ func TestSpellStateExposesTargetAndEffect(t *testing.T) {
 	}
 	if cure.Target != "single_ally" {
 		t.Errorf("cure.Target = %q, want single_ally", cure.Target)
+	}
+	if cure.Description == "" {
+		t.Errorf("cure.Description is empty, want shared spell description")
 	}
 	if !containsString(cure.TargetModes, "single_ally") || !containsString(cure.TargetModes, "all_allies") {
 		t.Errorf("cure.TargetModes = %+v, want single_ally and all_allies", cure.TargetModes)

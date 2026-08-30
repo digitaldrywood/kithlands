@@ -256,8 +256,11 @@ function gameObjectCenter(game, obj) {
   }
   const canvas = game?.canvas;
   const rect = canvas?.getBoundingClientRect?.();
-  const width = canvas?.width || game?.scale?.width || 0;
-  const height = canvas?.height || game?.scale?.height || 0;
+  // Phaser can keep a higher-resolution canvas backing store than its logical
+  // game size. Pointer coordinates are expressed in logical game units, so use
+  // the Scale Manager dimensions when mapping them into the CSS canvas rect.
+  const width = game?.scale?.gameSize?.width || game?.scale?.width || 0;
+  const height = game?.scale?.gameSize?.height || game?.scale?.height || 0;
   if (!rect || !width || !height) {
     return { x, y };
   }
@@ -357,6 +360,8 @@ function describeObject(entry, index) {
       target?.__kithlandsPartyMenuAction ||
       entry?.__kithlandsPartyMenuAction ||
       null,
+    menuOverlayMeta:
+      target?.__kithlandsMenuOverlay || entry?.__kithlandsMenuOverlay || null,
     fillColor:
       target?.fillColor ??
       target?.fill ??
@@ -381,7 +386,8 @@ function partyMenuLayoutSnapshot(scene) {
   if (!scene?.menuGroup) return null;
   const flattened = flattenMenuEntries(scene.menuGroup);
   const panel = describeObject(flattened[0], 0);
-  const panelBounds = panel.bounds;
+  const panelBounds =
+    centeredLayoutBounds(scene.partyMenuLayout?.panel) || panel.bounds;
   const entries = flattened.map((entry, index) => describeObject(entry, index));
   const statBars = [];
 
@@ -508,6 +514,40 @@ function partyMenuLayoutSnapshot(scene) {
   };
 }
 
+function menuOverlaySummary(scene, kind) {
+  const state =
+    kind === "items" ? scene?.itemMenuState : scene?.fieldMagicMenuState;
+  if (!state?.layout) return null;
+  const entries = flattenMenuEntries(state.overlay).map((entry, index) =>
+    describeObject(entry, index),
+  );
+  const panel = entries.find(
+    (entry) =>
+      entry.menuOverlayMeta?.role === "panel" &&
+      entry.menuOverlayMeta?.kind === kind,
+  );
+  const back = entries.find(
+    (entry) =>
+      entry.menuOverlayMeta?.role === "back" &&
+      entry.menuOverlayMeta?.kind === kind,
+  );
+  return {
+    kind,
+    layoutMode: state.layout.mode,
+    logicalSize: {
+      width: scene?.scale?.gameSize?.width || null,
+      height: scene?.scale?.gameSize?.height || null,
+    },
+    panelBounds: panel?.bounds || null,
+    backBounds: back?.bounds || null,
+    rows: (state.rowObjects || []).map((entry, index) => ({
+      index,
+      label: entry.item?.name || entry.row?.label || entry.label?.text || null,
+      bounds: objectBounds(entry.bg || entry.row),
+    })),
+  };
+}
+
 function partyMenuSummary(scene) {
   if (!scene?.menuGroup) return null;
   const flattened = flattenMenuEntries(scene.menuGroup);
@@ -528,6 +568,18 @@ function partyMenuSummary(scene) {
         bounds: entry.bounds,
         portraitKind: portrait?.partyMenuMeta?.kind || null,
         portraitKey: portrait?.partyMenuMeta?.key || null,
+        nextLevel:
+          entries.find(
+            (candidate) =>
+              candidate?.partyMenuMeta?.role === "next_level" &&
+              candidate.partyMenuMeta.slot === entry.partyMenuMeta.slot,
+          )?.partyMenuMeta?.value ?? null,
+        status:
+          entries.find(
+            (candidate) =>
+              candidate?.partyMenuMeta?.role === "status" &&
+              candidate.partyMenuMeta.slot === entry.partyMenuMeta.slot,
+          )?.partyMenuMeta?.value || "",
       };
     });
 
@@ -548,7 +600,16 @@ function partyMenuSummary(scene) {
       bounds: entry.bounds,
     }));
 
-  return { rows, actionIcons, resourceChips };
+  return {
+    layoutMode: scene.partyMenuLayout?.mode || "desktop",
+    logicalSize: {
+      width: scene.scale?.gameSize?.width || null,
+      height: scene.scale?.gameSize?.height || null,
+    },
+    rows,
+    actionIcons,
+    resourceChips,
+  };
 }
 
 function findPartyMenuRow(scene, slot) {
@@ -560,17 +621,44 @@ function findPartyMenuRow(scene, slot) {
   );
 }
 
+function centeredLayoutBounds(rect) {
+  if (
+    !rect ||
+    !Number.isFinite(rect.x) ||
+    !Number.isFinite(rect.y) ||
+    !Number.isFinite(rect.width) ||
+    !Number.isFinite(rect.height)
+  ) {
+    return null;
+  }
+  return {
+    left: rect.x - rect.width / 2,
+    right: rect.x + rect.width / 2,
+    top: rect.y - rect.height / 2,
+    bottom: rect.y + rect.height / 2,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
 function formationMenuSummary(scene) {
   const state = scene?.formationMenuState;
   if (!state?.rowObjects) return null;
   return {
+    layoutMode: state.layout?.mode || "desktop",
+    logicalSize: {
+      width: scene.scale?.gameSize?.width || null,
+      height: scene.scale?.gameSize?.height || null,
+    },
+    shellBounds: centeredLayoutBounds(state.layout?.shell),
+    saveBounds: objectBounds(state.saveBtn?.bg),
     focusedIdx: state.focusedIdx ?? null,
     pickedIdx: state.pickedIdx ?? null,
     reorder: (state.draftParty || []).map(
       (member) => member?.originalSlot ?? null,
     ),
-    previewPanelBounds: objectBounds(state.previewPanel),
-    listPanelBounds: objectBounds(state.listPanel),
+    previewPanelBounds: centeredLayoutBounds(state.layout?.preview?.panel),
+    listPanelBounds: centeredLayoutBounds(state.layout?.list?.panel),
     rows: state.rowObjects.map((entry) => ({
       slot: entry.slot,
       name: entry.name?.text || null,
@@ -578,6 +666,8 @@ function formationMenuSummary(scene) {
       originalSlot: state.draftParty?.[entry.slot]?.originalSlot ?? null,
       frontActive: (state.draftRows?.[entry.slot] || null) === "front",
       backActive: (state.draftRows?.[entry.slot] || null) === "back",
+      rowBounds: objectBounds(entry.rowBg),
+      badgeBounds: objectBounds(entry.rowBadge?.bg),
     })),
     preview: (state.previewEntries || []).map((entry) => ({
       slot: entry.slot,
@@ -587,6 +677,39 @@ function formationMenuSummary(scene) {
       moved: !!entry.moved,
       bounds: objectBounds(entry.card),
     })),
+  };
+}
+
+function characterDetailSummary(scene) {
+  const state = scene?.characterDetailState;
+  const layout = state?.layout;
+  if (!layout) return null;
+  const inspector = layout.equipment?.inspector;
+  return {
+    layoutMode: layout.mode,
+    partyIndex: scene.characterDetailIndex ?? null,
+    logicalSize: {
+      width: scene.scale?.gameSize?.width || null,
+      height: scene.scale?.gameSize?.height || null,
+    },
+    shellBounds: centeredLayoutBounds(layout.shell),
+    previousBounds: objectBounds(state.previousButton?.bg),
+    nextBounds: objectBounds(state.nextButton?.bg),
+    loadoutBounds: objectBounds(state.loadoutButton?.bg),
+    closeBounds: objectBounds(state.closeButton?.bg),
+    portraitBounds: centeredLayoutBounds(layout.portrait),
+    equipmentCards: (state.equipmentCards || []).map((card) => ({
+      slot: card.characterDetailMeta?.slot || null,
+      bounds: objectBounds(card),
+    })),
+    inspectorBounds: inspector
+      ? centeredLayoutBounds({
+          x: inspector.x,
+          y: inspector.top + inspector.height / 2,
+          width: inspector.width,
+          height: inspector.height,
+        })
+      : null,
   };
 }
 
@@ -1050,6 +1173,15 @@ function visibleBattleFxSnapshot(scene) {
     partyStatusPanelBounds:
       objectBounds(partyStatusPanel) || layoutBounds(scene?.hudLayout?.party),
     partyStatusRowCount: taggedCount("party-status-row"),
+    partyStatusConditions: children
+      .filter(
+        (child) =>
+          child?._combatFxTag === "party-status-condition" &&
+          child.active !== false &&
+          child.visible !== false,
+      )
+      .sort((a, b) => (a._partySlot ?? 0) - (b._partySlot ?? 0))
+      .map((child) => child.text),
     hudLayoutMode: scene?.hudLayout?.mode || null,
     bottomStripBounds: objectBounds(bottomStrip),
     messageWindowBounds,
@@ -1091,6 +1223,10 @@ function visibleBattleFxSnapshot(scene) {
     groundPlaneCount: taggedCount("ground-plane"),
     shadowCount: taggedCount("combat-shadow"),
     actionPanelCount: taggedCount("action-panel"),
+    victoryReportPanelCount: taggedCount("victory-report-panel"),
+    victoryRewardCardCount: taggedCount("victory-reward-card"),
+    victoryPartyRowCount: taggedCount("victory-party-row"),
+    victorySpoilsPanelCount: taggedCount("victory-spoils-panel"),
     partyMembers,
     enemyMembers,
     floatingTexts: (scene?.floatingText?.active || [])
@@ -1263,6 +1399,33 @@ export function installDevTestBridge(game) {
         debugPanelOpen: !!scene?.debugPanelOpen,
         fieldMagicOpen: !!scene?.fieldMagicMenuState,
       };
+    },
+
+    logicalGameSize(sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return {
+        width: scene?.scale?.gameSize?.width || null,
+        height: scene?.scale?.gameSize?.height || null,
+      };
+    },
+
+    menuOverlaySummary(kind, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return clone(menuOverlaySummary(scene, kind));
+    },
+
+    menuOverlayRowPosition(kind, label, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      const state =
+        kind === "items" ? scene?.itemMenuState : scene?.fieldMagicMenuState;
+      const entry = state?.rowObjects?.find(
+        (row) =>
+          row.item?.name === label ||
+          row.row?.label === label ||
+          row.row?.label?.startsWith?.(`${label} `) ||
+          row.label?.text === label,
+      );
+      return gameObjectCenter(game, entry?.bg || entry?.row);
     },
 
     sceneAuditInfo(sceneKey) {
@@ -1815,6 +1978,8 @@ export function installDevTestBridge(game) {
           targetColor: 0xff6666,
         });
       } else if (kind === "party_hit") {
+        const maxHP = partyTarget.hpBar?.maxHP ?? 100;
+        const newHP = Math.max(1, Math.floor(maxHP * 0.2));
         scene.showActionFocus(enemyActor, partyTarget, {
           tracerColor: 0xff8800,
           targetColor: 0xff6666,
@@ -1823,12 +1988,10 @@ export function installDevTestBridge(game) {
           targetKey: `proof_party_hit_${stamp}`,
           entry: partyTarget,
         });
+        scene.animateHPBar(partyTarget.hpBar, newHP, maxHP);
         scene.playPartyHitReaction(partyTarget, {
-          newHP: Math.max(
-            1,
-            Math.floor((partyTarget.hpBar?.maxHP ?? 100) * 0.2),
-          ),
-          maxHP: partyTarget.hpBar?.maxHP ?? 100,
+          newHP,
+          maxHP,
         });
       } else if (kind === "floating_text") {
         scene.hitFx(partyTarget.x, partyTarget.y, 34, true, false, "physical", {
@@ -2001,6 +2164,11 @@ export function installDevTestBridge(game) {
       clickGameObject(target);
     },
 
+    characterDetailButtonPosition(label, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return gameObjectCenter(game, findCharacterDetailButton(scene, label));
+    },
+
     hoverCharacterDetailEquipment(slot, sceneKey) {
       const scene = getScene(game, sceneKey);
       const target = (scene?.characterDetailGroup || []).find(
@@ -2081,9 +2249,30 @@ export function installDevTestBridge(game) {
       return clone(partyMenuSummary(scene));
     },
 
+    characterDetailSummary(sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return clone(characterDetailSummary(scene));
+    },
+
     formationMenuSummary(sceneKey) {
       const scene = getScene(game, sceneKey);
       return clone(formationMenuSummary(scene));
+    },
+
+    formationRowPosition(slot, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return gameObjectCenter(
+        game,
+        scene?.formationMenuState?.rowObjects?.[slot]?.rowBg,
+      );
+    },
+
+    formationBadgePosition(slot, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return gameObjectCenter(
+        game,
+        scene?.formationMenuState?.rowObjects?.[slot]?.rowBadge?.bg,
+      );
     },
 
     clickFormationToggle(slot, row, sceneKey) {

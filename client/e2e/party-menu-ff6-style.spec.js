@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 const RUN_ID = Date.now();
 
 test.use({
-  viewport: { width: 1280, height: 720 },
+  viewport: { width: 1440, height: 900 },
 });
 
 async function waitForBridge(page) {
@@ -39,6 +39,12 @@ async function startPartyMenuGame(page) {
   await page.waitForFunction(
     () => window.__kithlandsTest.activeSceneKey() === "World",
   );
+  await page.evaluate(() =>
+    window.__kithlandsTest.setPartyVitalsLocal(
+      [{ slot: 2, hp: 4, status: "poison" }],
+      "World",
+    ),
+  );
 }
 
 async function openPartyMenu(page) {
@@ -58,7 +64,13 @@ test.describe("party menu FF6 styling pass", () => {
     const summary = await page.evaluate(() =>
       window.__kithlandsTest.partyMenuSummary("World"),
     );
+    expect(summary.layoutMode).toBe("desktop");
+    expect(summary.logicalSize).toEqual({ width: 800, height: 600 });
     expect(summary.rows).toHaveLength(4);
+    expect(summary.rows.map((row) => row.nextLevel)).toEqual([70, 70, 70, 70]);
+    expect(summary.rows.find((row) => row.slot === 2)?.status).toBe(
+      "POISON · CRITICAL",
+    );
     expect(summary.resourceChips.map((chip) => chip.key).sort()).toEqual([
       "ether",
       "gold",
@@ -135,5 +147,59 @@ test.describe("party menu FF6 styling pass", () => {
     await page.screenshot({
       path: `e2e/issue-247-party-menu-ff6-proof-${RUN_ID}.png`,
     });
+  });
+
+  test("keeps critical condition text visible in a portrait viewport", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await startPartyMenuGame(page);
+    await openPartyMenu(page);
+
+    const summary = await page.evaluate(() =>
+      window.__kithlandsTest.partyMenuSummary("World"),
+    );
+    expect(summary.layoutMode).toBe("mobile");
+    expect(summary.logicalSize).toEqual({ width: 800, height: 1600 });
+    expect(summary.rows.find((row) => row.slot === 2)?.status).toBe(
+      "POISON · CRITICAL",
+    );
+    expect(summary.rows.every((row) => row.bounds.height >= 160)).toBe(true);
+    const actionButtons = summary.actionIcons.filter(
+      (entry) => entry.kind === "button",
+    );
+    expect(actionButtons).toHaveLength(11);
+    expect(
+      actionButtons.every(
+        (entry) => entry.bounds.width === 334 && entry.bounds.height === 92,
+      ),
+    ).toBe(true);
+    expect(
+      summary.resourceChips.every((entry) => entry.bounds.height === 52),
+    ).toBe(true);
+
+    const layout = await page.evaluate(() =>
+      window.__kithlandsTest.partyMenuLayout("World"),
+    );
+    expect(layout.outOfBounds).toEqual([]);
+
+    await page.screenshot({
+      path: `e2e/party-menu-critical-mobile-390x844-${RUN_ID}.png`,
+    });
+
+    await page.evaluate(() =>
+      window.__kithlandsTest.clickMenuButton("QUEST LOG", "World"),
+    );
+    await page.waitForFunction(
+      () => !window.__kithlandsTest.sceneFlags("World").menuOpen,
+    );
+    expect(
+      await page.evaluate(() =>
+        window.__kithlandsTest.logicalGameSize("World"),
+      ),
+    ).toEqual({ width: 800, height: 600 });
+    await page.evaluate(() =>
+      window.__kithlandsTest.clickInteractiveText("Close", "World"),
+    );
   });
 });

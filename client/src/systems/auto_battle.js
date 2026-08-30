@@ -799,7 +799,14 @@ export function buildBattleActionButtons({
   hasLastRound,
   autoMode,
 }) {
-  const buttons = [{ label: "[A]TTACK", type: "attack", color: "#ff4444" }];
+  const buttons = [
+    {
+      label: "[A]TTACK",
+      type: "attack",
+      color: "#ff7777",
+      description: "Basic weapon attack · choose an enemy",
+    },
+  ];
   const hasSpells =
     member.spells?.length > 0 &&
     member.spells.some(
@@ -813,23 +820,56 @@ export function buildBattleActionButtons({
     countConsumable(gameState.items, "phoenix_down") > 0;
 
   if (hasSpells) {
-    buttons.push({ label: "[S]PELL", type: "spell", color: "#8888ff" });
+    buttons.push({
+      label: "[S]PELL",
+      type: "spell",
+      color: "#aaaaff",
+      description: "Cast learned magic · MP and target shown next",
+    });
   }
   if (hasAbilities) {
-    buttons.push({ label: "[B]ABILITY", type: "ability", color: "#ff88ff" });
+    buttons.push({
+      label: "[B]ABILITY",
+      type: "ability",
+      color: "#ff9eea",
+      description: "Use a class ability",
+    });
   }
   if (hasItems) {
-    buttons.push({ label: "[I]TEMS", type: "item", color: "#44ff44" });
+    buttons.push({
+      label: "[I]TEMS",
+      type: "item",
+      color: "#7ee79b",
+      description: "Use a carried battle item",
+    });
   }
-  buttons.push({ label: "S[M]ART", type: "smart", color: "#88ffaa" });
-  buttons.push({ label: "[F]LEE", type: "flee", color: "#ffcc44" });
+  buttons.push({
+    label: "S[M]ART",
+    type: "smart",
+    color: "#9be7d0",
+    description: "Plan the remaining party actions automatically",
+  });
+  buttons.push({
+    label: "[F]LEE",
+    type: "flee",
+    color: "#ffd36b",
+    description: "Attempt to escape this battle",
+  });
 
   if (hasLastRound) {
-    buttons.push({ label: "[R]EPEAT", type: "repeat", color: "#44ccff" });
+    buttons.push({
+      label: "[R]EPEAT",
+      type: "repeat",
+      color: "#72d7ff",
+      description: "Repeat the previous round's plan",
+    });
     buttons.push({
       label: autoMode ? "[Q] AUTO*" : "[Q] AUTO",
       type: "auto",
       color: autoMode ? "#ffaa44" : "#ff8844",
+      description: autoMode
+        ? "Automatic rounds enabled · choose to stop"
+        : "Repeat planned rounds until stopped",
     });
   }
 
