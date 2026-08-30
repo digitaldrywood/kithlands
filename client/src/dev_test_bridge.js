@@ -256,8 +256,11 @@ function gameObjectCenter(game, obj) {
   }
   const canvas = game?.canvas;
   const rect = canvas?.getBoundingClientRect?.();
-  const width = canvas?.width || game?.scale?.width || 0;
-  const height = canvas?.height || game?.scale?.height || 0;
+  // Phaser can keep a higher-resolution canvas backing store than its logical
+  // game size. Pointer coordinates are expressed in logical game units, so use
+  // the Scale Manager dimensions when mapping them into the CSS canvas rect.
+  const width = game?.scale?.gameSize?.width || game?.scale?.width || 0;
+  const height = game?.scale?.gameSize?.height || game?.scale?.height || 0;
   if (!rect || !width || !height) {
     return { x, y };
   }
@@ -617,17 +620,44 @@ function findPartyMenuRow(scene, slot) {
   );
 }
 
+function centeredLayoutBounds(rect) {
+  if (
+    !rect ||
+    !Number.isFinite(rect.x) ||
+    !Number.isFinite(rect.y) ||
+    !Number.isFinite(rect.width) ||
+    !Number.isFinite(rect.height)
+  ) {
+    return null;
+  }
+  return {
+    left: rect.x - rect.width / 2,
+    right: rect.x + rect.width / 2,
+    top: rect.y - rect.height / 2,
+    bottom: rect.y + rect.height / 2,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
 function formationMenuSummary(scene) {
   const state = scene?.formationMenuState;
   if (!state?.rowObjects) return null;
   return {
+    layoutMode: state.layout?.mode || "desktop",
+    logicalSize: {
+      width: scene.scale?.gameSize?.width || null,
+      height: scene.scale?.gameSize?.height || null,
+    },
+    shellBounds: centeredLayoutBounds(state.layout?.shell),
+    saveBounds: objectBounds(state.saveBtn?.bg),
     focusedIdx: state.focusedIdx ?? null,
     pickedIdx: state.pickedIdx ?? null,
     reorder: (state.draftParty || []).map(
       (member) => member?.originalSlot ?? null,
     ),
-    previewPanelBounds: objectBounds(state.previewPanel),
-    listPanelBounds: objectBounds(state.listPanel),
+    previewPanelBounds: centeredLayoutBounds(state.layout?.preview?.panel),
+    listPanelBounds: centeredLayoutBounds(state.layout?.list?.panel),
     rows: state.rowObjects.map((entry) => ({
       slot: entry.slot,
       name: entry.name?.text || null,
@@ -635,6 +665,8 @@ function formationMenuSummary(scene) {
       originalSlot: state.draftParty?.[entry.slot]?.originalSlot ?? null,
       frontActive: (state.draftRows?.[entry.slot] || null) === "front",
       backActive: (state.draftRows?.[entry.slot] || null) === "back",
+      rowBounds: objectBounds(entry.rowBg),
+      badgeBounds: objectBounds(entry.rowBadge?.bg),
     })),
     preview: (state.previewEntries || []).map((entry) => ({
       slot: entry.slot,
@@ -2150,6 +2182,22 @@ export function installDevTestBridge(game) {
     formationMenuSummary(sceneKey) {
       const scene = getScene(game, sceneKey);
       return clone(formationMenuSummary(scene));
+    },
+
+    formationRowPosition(slot, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return gameObjectCenter(
+        game,
+        scene?.formationMenuState?.rowObjects?.[slot]?.rowBg,
+      );
+    },
+
+    formationBadgePosition(slot, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return gameObjectCenter(
+        game,
+        scene?.formationMenuState?.rowObjects?.[slot]?.rowBadge?.bg,
+      );
     },
 
     clickFormationToggle(slot, row, sceneKey) {
