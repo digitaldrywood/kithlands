@@ -29,6 +29,10 @@ func TestLoadDirGroupsTemplatesByBuildingTypeAndPicksDeterministically(t *testin
         "WWWWWW"
       ],
       "entrance": {"x": 3, "y": 0},
+      "presentation": {
+        "background_asset": "/interiors/inn/inn-a.png",
+        "hide_tile_layer": true
+      },
       "stairs": [{"x": 2, "y": 2, "to_floor": 1, "to_x": 2, "to_y": 2, "kind": "up"}],
       "chest_anchors": [{"id": "chest_a", "x": 4, "y": 2}],
       "npc_anchors": [{"role": "innkeeper", "x": 1, "y": 1}]
@@ -111,6 +115,41 @@ func TestLoadDirGroupsTemplatesByBuildingTypeAndPicksDeterministically(t *testin
 	}
 	if registry.Pick("temple", 99) != nil {
 		t.Fatal("expected nil template for missing building type")
+	}
+	gotPresentation := first.Floors[0].Presentation
+	if gotPresentation == nil {
+		t.Fatal("expected authored floor presentation")
+	}
+	if got, want := gotPresentation.BackgroundAsset, "/interiors/inn/inn-a.png"; got != want {
+		t.Fatalf("background asset = %q, want %q", got, want)
+	}
+	if !gotPresentation.HideTileLayer {
+		t.Fatal("expected presentation to hide generated tile layer")
+	}
+}
+
+func TestLoadDirRejectsRelativePresentationAsset(t *testing.T) {
+	dir := t.TempDir()
+	interiorsDir := filepath.Join(dir, "interiors")
+	if err := os.MkdirAll(interiorsDir, 0o755); err != nil {
+		t.Fatalf("mkdir interiors: %v", err)
+	}
+
+	writeTemplate(t, interiorsDir, "broken_house.json", `{
+  "id": "broken_house",
+  "building_type": "house",
+  "floors": [{
+    "floor_id": 0,
+    "width": 5,
+    "height": 5,
+    "rows": ["WWDWW", "W...W", "W...W", "W...W", "WWWWW"],
+    "entrance": {"x": 2, "y": 0},
+    "presentation": {"background_asset": "interiors/house.png"}
+  }]
+}`)
+
+	if _, err := LoadDir(dir); err == nil {
+		t.Fatal("expected relative presentation asset validation error")
 	}
 }
 

@@ -137,9 +137,22 @@ export function buildInteriorFromTemplate(template, floorIndex = 0) {
     chestAnchors: floor.chest_anchors || [],
     windowAnchors: floor.window_anchors || [],
     lightAnchors: floor.light_anchors || [],
+    presentation: interiorPresentationFromTemplate(template, floorIndex),
     stairsByPosition: new Map(
       (floor.stairs || []).map((stair) => [`${stair.x},${stair.y}`, stair]),
     ),
+  };
+}
+
+export function interiorPresentationFromTemplate(template, floorIndex = 0) {
+  const floor = template?.floors?.[floorIndex];
+  const backgroundAsset = floor?.presentation?.background_asset;
+  if (!backgroundAsset) return null;
+
+  return {
+    backgroundAsset,
+    hideTileLayer: floor.presentation.hide_tile_layer === true,
+    textureKey: `interior_background_${template.id}_${floor.floor_id ?? floorIndex}`,
   };
 }
 
