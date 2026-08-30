@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 )
 
 type Registry struct {
@@ -21,14 +22,23 @@ type Template struct {
 }
 
 type Floor struct {
-	FloorID      int           `json:"floor_id"`
-	Width        int           `json:"width"`
-	Height       int           `json:"height"`
-	Rows         []string      `json:"rows"`
-	Entrance     *Entrance     `json:"entrance,omitempty"`
-	Stairs       []Stair       `json:"stairs,omitempty"`
-	ChestAnchors []ChestAnchor `json:"chest_anchors,omitempty"`
-	NPCAnchors   []NPCAnchor   `json:"npc_anchors,omitempty"`
+	FloorID      int                `json:"floor_id"`
+	Width        int                `json:"width"`
+	Height       int                `json:"height"`
+	Rows         []string           `json:"rows"`
+	Entrance     *Entrance          `json:"entrance,omitempty"`
+	Stairs       []Stair            `json:"stairs,omitempty"`
+	ChestAnchors []ChestAnchor      `json:"chest_anchors,omitempty"`
+	NPCAnchors   []NPCAnchor        `json:"npc_anchors,omitempty"`
+	Presentation *FloorPresentation `json:"presentation,omitempty"`
+}
+
+// FloorPresentation describes an optional authored visual layer for a floor.
+// Rows, anchors, and the server-owned location state remain the gameplay
+// contract; the asset is presentation only.
+type FloorPresentation struct {
+	BackgroundAsset string `json:"background_asset"`
+	HideTileLayer   bool   `json:"hide_tile_layer,omitempty"`
 }
 
 type Entrance struct {
@@ -160,6 +170,15 @@ func (t *Template) validate() error {
 		}
 		if floor.Entrance != nil && !withinBounds(floor.Entrance.X, floor.Entrance.Y, floor.Width, floor.Height) {
 			return fmt.Errorf("template %q floor %d entrance out of bounds", t.ID, floor.FloorID)
+		}
+		if floor.Presentation != nil {
+			asset := floor.Presentation.BackgroundAsset
+			if asset == "" {
+				return fmt.Errorf("template %q floor %d presentation missing background_asset", t.ID, floor.FloorID)
+			}
+			if !strings.HasPrefix(asset, "/") {
+				return fmt.Errorf("template %q floor %d background_asset must be an absolute public path", t.ID, floor.FloorID)
+			}
 		}
 
 		for _, anchor := range floor.ChestAnchors {

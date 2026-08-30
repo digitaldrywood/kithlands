@@ -58,6 +58,7 @@ import {
   T_WALL,
   TILE_COLORS,
   TILE_WALKABLE,
+  interiorPresentationFromTemplate,
   tileTextureKey,
 } from "./town_layout.js";
 import { walkStepMs } from "../systems/prefs.js";
@@ -594,6 +595,20 @@ export class TownScene extends Phaser.Scene {
     this.returnScene = data.returnScene || null;
   }
 
+  preload() {
+    this.interiorPresentation = interiorPresentationFromTemplate(
+      this.spawn?.interior_template,
+      this.floorIndex,
+    );
+    const presentation = this.interiorPresentation;
+    if (
+      presentation?.backgroundAsset &&
+      !this.textures.exists(presentation.textureKey)
+    ) {
+      this.load.image(presentation.textureKey, presentation.backgroundAsset);
+    }
+  }
+
   create() {
     this.animating = false;
     initAudio(this);
@@ -609,6 +624,8 @@ export class TownScene extends Phaser.Scene {
       ? buildInteriorFromTemplate(template, this.floorIndex)
       : null;
     this.interiorTemplate = template;
+    this.interiorPresentation =
+      authoredInterior?.presentation || this.interiorPresentation || null;
     this.interiorAppearance = authoredInteriorAppearance(
       buildingType,
       interiorSeed,
@@ -988,6 +1005,20 @@ export class TownScene extends Phaser.Scene {
       .rectangle(centerX, centerY, roomPixelW + 4, roomPixelH + 4, 0x24170f, 1)
       .setDepth(DEPTH_BASE - 1);
     this.backdropDrawables.push(shadow, mat, trim, inner);
+
+    if (this.hasAuthoredInteriorBackground()) {
+      const background = this.add
+        .image(this.offsetX, this.offsetY, this.interiorPresentation.textureKey)
+        .setOrigin(0)
+        .setDisplaySize(roomPixelW, roomPixelH)
+        .setDepth(DEPTH_BASE);
+      this.backdropDrawables.push(background);
+    }
+  }
+
+  hasAuthoredInteriorBackground() {
+    const key = this.interiorPresentation?.textureKey;
+    return !!key && this.textures.exists(key);
   }
 
   drawLabelBar() {
@@ -1897,6 +1928,13 @@ export class TownScene extends Phaser.Scene {
   drawRoom() {
     this.clearDrawables("roomDrawables");
     this.clearDrawables("roomOverlays");
+    if (
+      this.interiorPresentation?.hideTileLayer &&
+      this.hasAuthoredInteriorBackground()
+    ) {
+      this.renderSecretHints();
+      return;
+    }
     for (let y = 0; y < this.roomH; y++) {
       for (let x = 0; x < this.roomW; x++) {
         const tile = this.tiles[y][x];

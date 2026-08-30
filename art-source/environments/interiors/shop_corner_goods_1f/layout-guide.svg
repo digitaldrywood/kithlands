@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="384" viewBox="0 0 512 384">
+  <rect width="512" height="384" fill="#201a16"/>
+  <rect x="32" y="32" width="448" height="320" fill="#b89262"/>
+  <rect x="64" y="128" width="384" height="32" rx="4" fill="#6d3f26"/>
+  <rect x="64" y="64" width="128" height="32" rx="4" fill="#765034"/>
+  <rect x="320" y="64" width="128" height="32" rx="4" fill="#765034"/>
+  <rect x="64" y="32" width="32" height="32" fill="#8a5b36"/>
+  <rect x="416" y="32" width="32" height="32" fill="#8a5b36"/>
+  <rect x="96" y="192" width="32" height="32" rx="12" fill="#83502f"/>
+  <rect x="224" y="192" width="32" height="32" rx="8" fill="#5c3828"/>
+  <rect x="352" y="192" width="32" height="32" rx="12" fill="#83502f"/>
+  <rect x="160" y="256" width="32" height="32" fill="#7a4b2d"/>
+  <rect x="352" y="256" width="32" height="32" fill="#7a4b2d"/>
+  <rect x="208" y="304" width="96" height="32" rx="14" fill="#1f6f68" opacity="0.9"/>
+  <rect x="240" y="352" width="32" height="32" fill="#e1c58d"/>
+  <circle cx="240" cy="112" r="12" fill="#d9a94e"/>
+  <path d="M256 352v-128" stroke="#f4e7ba" stroke-width="6" stroke-dasharray="12 10" opacity="0.55"/>
+  <g stroke="#fff" stroke-width="1" opacity="0.1">
+    <path d="M32 0v384M64 0v384M96 0v384M128 0v384M160 0v384M192 0v384M224 0v384M256 0v384M288 0v384M320 0v384M352 0v384M384 0v384M416 0v384M448 0v384M480 0v384"/>
+    <path d="M0 32h512M0 64h512M0 96h512M0 128h512M0 160h512M0 192h512M0 224h512M0 256h512M0 288h512M0 320h512M0 352h512"/>
+  </g>
+</svg>

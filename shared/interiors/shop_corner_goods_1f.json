@@ -21,6 +21,10 @@
         "WWWWWWWDWWWWWWWW"
       ],
       "entrance": { "x": 7, "y": 11, "from": "overworld" },
+      "presentation": {
+        "background_asset": "/interiors/shop/shop-corner-goods-background.png",
+        "hide_tile_layer": true
+      },
       "npc_anchors": [
         { "role": "shopkeeper", "x": 7, "y": 3 },
         { "role": "merchant_wandering", "x": 3, "y": 6 },
@@ -34,9 +38,7 @@
         { "x": 5, "y": 1, "kind": "lantern" },
         { "x": 10, "y": 1, "kind": "lantern" }
       ],
-      "chest_anchors": [
-        { "id": "corner_goods_stash", "x": 12, "y": 9 }
-      ]
+      "chest_anchors": [{ "id": "corner_goods_stash", "x": 12, "y": 9 }]
     }
   ]
 }

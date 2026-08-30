@@ -177,7 +177,17 @@ async function runGoldSlice(page, viewport) {
     building_type: "shop",
     tags: expect.arrayContaining(["shop", "commerce"]),
   });
-  expect(interior.town.templateId).toBeTruthy();
+  expect(interior.town).toMatchObject({
+    templateId: "shop_corner_goods_1f",
+    roomW: 16,
+    roomH: 12,
+    backgroundAsset: "/interiors/shop/shop-corner-goods-background.png",
+    backgroundTextureKey: "interior_background_shop_corner_goods_1f_0",
+    backgroundLoaded: true,
+    hidesTileLayer: true,
+    roomDrawableCount: 0,
+  });
+  await capture(page, viewport, "shop-interior-arrival");
 
   const proprietor = interior.town.npcPositions[0];
   await page.waitForFunction(

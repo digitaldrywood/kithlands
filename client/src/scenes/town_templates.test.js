@@ -5,6 +5,7 @@ import {
   T_STAIR_UP,
   TILE_WALKABLE,
   buildInteriorFromTemplate,
+  interiorPresentationFromTemplate,
 } from "./town_layout.js";
 
 describe("buildInteriorFromTemplate", () => {
@@ -24,6 +25,10 @@ describe("buildInteriorFromTemplate", () => {
           npc_anchors: [{ role: "innkeeper", x: 1, y: 1 }],
           window_anchors: [{ x: 1, y: 0, side: "north" }],
           light_anchors: [{ x: 4, y: 1, kind: "lantern" }],
+          presentation: {
+            background_asset: "/interiors/inn/hearthside.png",
+            hide_tile_layer: true,
+          },
         },
       ],
     };
@@ -46,6 +51,20 @@ describe("buildInteriorFromTemplate", () => {
     expect(interior.chestAnchors).toEqual([{ id: "c1", x: 4, y: 2 }]);
     expect(interior.windowAnchors).toEqual([{ x: 1, y: 0, side: "north" }]);
     expect(interior.lightAnchors).toEqual([{ x: 4, y: 1, kind: "lantern" }]);
+    expect(interior.presentation).toEqual({
+      backgroundAsset: "/interiors/inn/hearthside.png",
+      hideTileLayer: true,
+      textureKey: "interior_background_inn_2floor_a_0",
+    });
     expect(TILE_WALKABLE[T_SECRET_WALL]).toBe(true);
+  });
+
+  it("returns no presentation when a floor has no authored background", () => {
+    expect(
+      interiorPresentationFromTemplate(
+        { id: "plain", floors: [{ floor_id: 0 }] },
+        0,
+      ),
+    ).toBeNull();
   });
 });

@@ -2535,6 +2535,11 @@ export function installDevTestBridge(game) {
         offsetY: scene.offsetY ?? null,
         roomW: scene.roomW ?? null,
         roomH: scene.roomH ?? null,
+        backgroundAsset: scene.interiorPresentation?.backgroundAsset ?? null,
+        backgroundTextureKey: scene.interiorPresentation?.textureKey ?? null,
+        backgroundLoaded: scene.hasAuthoredInteriorBackground?.() ?? false,
+        hidesTileLayer: scene.interiorPresentation?.hideTileLayer ?? false,
+        roomDrawableCount: scene.roomDrawables?.length ?? 0,
         playerX: scene.playerX ?? null,
         playerY: scene.playerY ?? null,
         npcKeys: (scene.npcs || []).map(
