@@ -10,6 +10,7 @@ import { toggleCodex } from "../scenes/world_codex.js";
 import { toggleMute, isMuted } from "./audio.js";
 import { isWorldInputLocked } from "./modalLock.js";
 import { TILE_WALKABLE } from "../scenes/tileConstants.js";
+import { gameplayViewportLayout } from "./gameplayViewport.js";
 const RENDERED_TILE = 32;
 
 let _isTouch = false;
@@ -95,11 +96,13 @@ function findPath(tileData, sx, sy, ex, ey, mapW, mapH, canWalk) {
 
 function startAutoWalk(scene, path) {
   cancelAutoWalk(scene);
+  const offsetX = scene.offsetX || 0;
+  const offsetY = scene.offsetY || 0;
   const preview = path.map((step) =>
     scene.add
       .circle(
-        step.x * RENDERED_TILE + RENDERED_TILE / 2,
-        step.y * RENDERED_TILE + RENDERED_TILE / 2,
+        offsetX + step.x * RENDERED_TILE + RENDERED_TILE / 2,
+        offsetY + step.y * RENDERED_TILE + RENDERED_TILE / 2,
         4,
         0xffffff,
         0.3,
@@ -150,13 +153,34 @@ function cancelAutoWalk(scene) {
 
 // ─── Tap-to-Move ──────────────────────────────────────────────
 
-function isControlArea(x, y) {
+function touchLayout(scene) {
+  return (
+    scene.gameplayLayout ||
+    gameplayViewportLayout(
+      globalThis.innerWidth || 800,
+      globalThis.innerHeight || 600,
+    )
+  );
+}
+
+function isControlArea(scene, x, y) {
   if (!_isTouch) return false;
-  if (x < 175 && y > 395) return true; // D-pad
-  if (x > 675 && y > 440) return true; // Action button
-  if (x > 660 && y < 260) return true; // Touch HUD
-  if (y > 565) return true; // HUD bar
-  return false;
+  const area = touchLayout(scene).controlArea;
+  return (
+    (x >= area.dpadLeft &&
+      x <= area.dpadRight &&
+      y >= area.dpadTop &&
+      y <= area.dpadBottom) ||
+    (x >= area.actionLeft &&
+      x <= area.actionRight &&
+      y >= area.actionTop &&
+      y <= area.actionBottom) ||
+    (x >= area.touchHudLeft &&
+      x <= area.touchHudRight &&
+      y >= area.touchHudTop &&
+      y <= area.touchHudBottom) ||
+    y >= area.footerTop
+  );
 }
 
 function setupTapToMove(scene) {
@@ -165,7 +189,10 @@ function setupTapToMove(scene) {
   scene.input.on("pointerdown", (pointer) => {
     if (isWorldInputLocked(scene)) return;
     if (!scene.tileData) return;
-    if (isControlArea(pointer.x, pointer.y)) return;
+    // The first real touch is reserved for revealing the touch UI. Without
+    // this guard it also leaks through as a tap-to-walk command.
+    if (pointer.wasTouch && !_isTouch) return;
+    if (isControlArea(scene, pointer.x, pointer.y)) return;
 
     // Cancel any existing auto-walk on new tap
     cancelAutoWalk(scene);
@@ -188,8 +215,12 @@ function setupTapToMove(scene) {
       if (scene.input.pointer2?.isDown) return; // Became a pinch
 
       const worldPoint = scene.cameras.main.getWorldPoint(px, py);
-      const tx = Math.floor(worldPoint.x / RENDERED_TILE);
-      const ty = Math.floor(worldPoint.y / RENDERED_TILE);
+      const tx = Math.floor(
+        (worldPoint.x - (scene.offsetX || 0)) / RENDERED_TILE,
+      );
+      const ty = Math.floor(
+        (worldPoint.y - (scene.offsetY || 0)) / RENDERED_TILE,
+      );
       if (tx === scene.playerX && ty === scene.playerY) return;
 
       const canWalk = scene.canWalkTile
@@ -201,8 +232,8 @@ function setupTapToMove(scene) {
         scene.playerY,
         tx,
         ty,
-        scene.mapW,
-        scene.mapH,
+        scene.mapW ?? scene.roomW,
+        scene.mapH ?? scene.roomH,
         canWalk,
       );
 
@@ -222,14 +253,12 @@ function setupTapToMove(scene) {
 // ─── D-pad ────────────────────────────────────────────────────
 
 function createDpad(scene) {
-  const cx = 85,
-    cy = 470;
-  const size = 58;
-  const offset = size + 4;
+  const layout = touchLayout(scene).dpad;
+  const { x: cx, y: cy, size, offset, radius } = layout;
   const els = _controls.elements;
 
   const bg = scene.add
-    .circle(cx, cy, 82, 0x000000, 0.15)
+    .circle(cx, cy, radius, 0x000000, 0.15)
     .setScrollFactor(0)
     .setDepth(25);
   els.push(bg);
@@ -292,9 +321,7 @@ function createDpad(scene) {
 // ─── Action Button ────────────────────────────────────────────
 
 function createActionButton(scene) {
-  const x = 715,
-    y = 480;
-  const r = 34;
+  const { x, y, radius: r } = touchLayout(scene).action;
   const els = _controls.elements;
 
   const bg = scene.add
@@ -422,11 +449,8 @@ function setupSwipeGestures(scene) {
 
 function createTouchHUD(scene) {
   const els = _controls.elements;
-  const btnW = 55,
-    btnH = 44;
-  const x = 735,
-    startY = 110;
-  const gap = 4;
+  const layout = touchLayout(scene).touchHud;
+  const { width: btnW, height: btnH, x, startY, gap } = layout;
 
   const makeTouchBtn = (y, label, color, handler) => {
     const bg = scene.add
@@ -436,7 +460,7 @@ function createTouchHUD(scene) {
       .setInteractive();
     const txt = scene.add
       .text(x, y, label, {
-        fontSize: "11px",
+        fontSize: touchLayout(scene).portrait ? "19px" : "11px",
         color,
         fontFamily: "monospace",
       })

@@ -19,6 +19,10 @@ import {
   interactionAt,
   objectProperty,
 } from "./settlementMap.js";
+import {
+  applyGameplayViewport,
+  centeredPlayfieldOffset,
+} from "../systems/gameplayViewport.js";
 
 const RENDERED_TILE = 32;
 const DEPTH_BACKGROUND = 0;
@@ -86,6 +90,7 @@ export class SettlementScene extends Phaser.Scene {
   }
 
   create() {
+    const layout = applyGameplayViewport(this);
     this.animating = true;
     this.menuOpen = false;
     this.gameOver = false;
@@ -99,6 +104,13 @@ export class SettlementScene extends Phaser.Scene {
       this.mapW = this.model.width;
       this.mapH = this.model.height;
       this.tileData = this.model.tileData;
+      const offset = centeredPlayfieldOffset(
+        layout,
+        this.model.width * this.model.tileWidth,
+        this.model.height * this.model.tileHeight,
+      );
+      this.offsetX = offset.x;
+      this.offsetY = offset.y;
     } catch (error) {
       this.showLoadFailure(error);
       return;
@@ -111,8 +123,8 @@ export class SettlementScene extends Phaser.Scene {
     }
 
     const loading = this.add
-      .text(400, 300, "Entering town…", {
-        fontSize: "14px",
+      .text(layout.centerX, layout.messageY, "Entering town…", {
+        fontSize: layout.portrait ? "24px" : "14px",
         color: "#f2dfaa",
         fontFamily: "monospace",
       })
@@ -133,7 +145,7 @@ export class SettlementScene extends Phaser.Scene {
 
   buildScene() {
     this.add
-      .image(0, 0, this.backgroundTexture)
+      .image(this.offsetX, this.offsetY, this.backgroundTexture)
       .setOrigin(0)
       .setDisplaySize(
         this.model.width * this.model.tileWidth,
@@ -147,8 +159,8 @@ export class SettlementScene extends Phaser.Scene {
       const texture = objectProperty(npc, "sprite");
       const image = this.add
         .image(
-          x * RENDERED_TILE + RENDERED_TILE / 2,
-          (y + 1) * RENDERED_TILE,
+          this.offsetX + x * RENDERED_TILE + RENDERED_TILE / 2,
+          this.offsetY + (y + 1) * RENDERED_TILE,
           texture,
         )
         .setOrigin(0.5, 1)
@@ -185,6 +197,8 @@ export class SettlementScene extends Phaser.Scene {
       this.playerX,
       this.playerY,
       RENDERED_TILE,
+      this.offsetX,
+      this.offsetY,
     );
     if (this.hasWalkSheet) {
       this.player = this.add
@@ -218,18 +232,25 @@ export class SettlementScene extends Phaser.Scene {
     initTouchControls(this);
 
     this.add
-      .rectangle(400, 588, 800, 24, 0x101820, 0.9)
+      .rectangle(
+        this.gameplayLayout.centerX,
+        this.gameplayLayout.footerY,
+        this.gameplayLayout.width,
+        this.gameplayLayout.portrait ? 44 : 24,
+        0x101820,
+        0.9,
+      )
       .setScrollFactor(0)
       .setDepth(DEPTH_UI);
     this.footer = this.add
       .text(
-        400,
-        588,
-        isTouchDevice()
-          ? "D-PAD  Move     A  Enter / leave"
+        this.gameplayLayout.centerX,
+        this.gameplayLayout.footerY,
+        this.gameplayLayout.portrait || isTouchDevice()
+          ? "D-PAD / ARROWS  Move     A / ENTER  Enter / leave"
           : "MOVE  Arrow Keys / WASD     ENTER  Enter / leave",
         {
-          fontSize: "10px",
+          fontSize: this.gameplayLayout.portrait ? "22px" : "10px",
           color: "#f2e4c4",
           fontFamily: "monospace",
         },
@@ -246,11 +267,11 @@ export class SettlementScene extends Phaser.Scene {
     console.error("[Settlement]", error);
     this.add
       .text(
-        400,
-        300,
+        this.gameplayLayout?.centerX || 400,
+        this.gameplayLayout?.messageY || 300,
         "This town could not be loaded.\nReturn to the overworld.",
         {
-          fontSize: "14px",
+          fontSize: this.gameplayLayout?.portrait ? "24px" : "14px",
           color: "#ffffff",
           fontFamily: "monospace",
           align: "center",
@@ -303,7 +324,13 @@ export class SettlementScene extends Phaser.Scene {
     this.playerX = nextX;
     this.playerY = nextY;
     this.player.setDepth(actorDepth(nextY));
-    const destination = walkSpritePosition(nextX, nextY, RENDERED_TILE);
+    const destination = walkSpritePosition(
+      nextX,
+      nextY,
+      RENDERED_TILE,
+      this.offsetX,
+      this.offsetY,
+    );
     const stepMs = walkStepMs();
     this.animating = true;
     this.walkFrameAudit = [];
@@ -400,15 +427,20 @@ export class SettlementScene extends Phaser.Scene {
   showMessage(text) {
     this.messageText?.destroy();
     this.messageText = this.add
-      .text(400, 300, text, {
-        fontSize: "12px",
-        color: "#ffffff",
-        fontFamily: "monospace",
-        backgroundColor: "#000000e8",
-        padding: { x: 12, y: 8 },
-        wordWrap: { width: 480 },
-        align: "center",
-      })
+      .text(
+        this.gameplayLayout?.centerX || 400,
+        this.gameplayLayout?.messageY || 300,
+        text,
+        {
+          fontSize: this.gameplayLayout?.portrait ? "22px" : "12px",
+          color: "#ffffff",
+          fontFamily: "monospace",
+          backgroundColor: "#000000e8",
+          padding: { x: 12, y: 8 },
+          wordWrap: { width: 480 },
+          align: "center",
+        },
+      )
       .setOrigin(0.5)
       .setDepth(DEPTH_UI + 4);
     this.time.delayedCall(2200, () => {

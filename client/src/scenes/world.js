@@ -49,6 +49,7 @@ import {
 } from "./terrainAutotile.js";
 import { questObjectiveText, questKindLabel } from "./quest_text.js";
 import { walkAuditHUDText } from "./walkAuditMode.js";
+import { applyGameplayViewport } from "../systems/gameplayViewport.js";
 
 const ENEMY_SPRITES = {
   Slime: "monster_slime",
@@ -428,15 +429,22 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
+    const layout = applyGameplayViewport(this);
+
     const tm = cachedTileMap;
     if (!tm) {
       console.error("[World] no tilemap available");
       this.add
-        .text(400, 300, "Error: no tilemap. Try restarting the game.", {
-          fontSize: "14px",
-          color: "#ff4444",
-          fontFamily: "monospace",
-        })
+        .text(
+          layout.centerX,
+          layout.messageY,
+          "Error: no tilemap. Try restarting the game.",
+          {
+            fontSize: "14px",
+            color: "#ff4444",
+            fontFamily: "monospace",
+          },
+        )
         .setOrigin(0.5);
       return;
     }
@@ -562,24 +570,39 @@ export class WorldScene extends Phaser.Scene {
     // HUD — two-line footer: party on top, resources/transport below.
     // Single-line layout overflowed viewport with 4-member parties (#issue screenshot).
     this.add
-      .rectangle(400, 580, 800, 40, 0x000000, 0.8)
+      .rectangle(
+        layout.centerX,
+        layout.worldHud.centerY,
+        layout.width,
+        layout.worldHud.height,
+        0x000000,
+        0.8,
+      )
       .setScrollFactor(0)
       .setDepth(20);
     this.add
-      .rectangle(400, 559, 800, 2, 0xd7b45c, 0.65)
+      .rectangle(
+        layout.centerX,
+        layout.worldHud.dividerY,
+        layout.width,
+        2,
+        0xd7b45c,
+        0.65,
+      )
       .setScrollFactor(0)
       .setDepth(21);
     this.hudText = this.add
-      .text(10, 564, "", {
-        fontSize: "12px",
+      .text(10, layout.worldHud.partyY, "", {
+        fontSize: layout.portrait ? "20px" : "12px",
         color: "#ffffff",
         fontFamily: "monospace",
+        lineSpacing: layout.portrait ? 5 : 0,
       })
       .setScrollFactor(0)
       .setDepth(21);
     this.hudFooter = this.add
-      .text(10, 582, "", {
-        fontSize: "12px",
+      .text(10, layout.worldHud.footerY, "", {
+        fontSize: layout.portrait ? "20px" : "12px",
         color: "#ffcc66",
         fontFamily: "monospace",
       })
@@ -592,11 +615,11 @@ export class WorldScene extends Phaser.Scene {
     this.questCard = this.add.graphics().setScrollFactor(0).setDepth(21);
     this.questText = this.add
       .text(18, 14, "", {
-        fontSize: "11px",
+        fontSize: layout.portrait ? "22px" : "11px",
         color: "#f5efe0",
         fontFamily: "monospace",
         lineSpacing: 3,
-        wordWrap: { width: 250 },
+        wordWrap: { width: layout.portrait ? 500 : 250 },
       })
       .setScrollFactor(0)
       .setDepth(22);
@@ -604,13 +627,13 @@ export class WorldScene extends Phaser.Scene {
 
     // Message overlay
     this.messageText = this.add
-      .text(400, 300, "", {
-        fontSize: "14px",
+      .text(layout.centerX, layout.messageY, "", {
+        fontSize: layout.portrait ? "24px" : "14px",
         color: "#ffffff",
         fontFamily: "monospace",
         backgroundColor: "#000000dd",
         padding: { x: 16, y: 12 },
-        wordWrap: { width: 500 },
+        wordWrap: { width: layout.portrait ? 680 : 500 },
         align: "center",
       })
       .setOrigin(0.5)
@@ -649,6 +672,7 @@ export class WorldScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(21)
       .setInteractive({ useHandCursor: true });
+    muteBtn.setVisible(!layout.portrait);
     muteBtn.on("pointerdown", () => {
       const m = toggleMute();
       muteBtn.setText(m ? "Unmute" : "Mute");
@@ -663,6 +687,7 @@ export class WorldScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(21)
       .setInteractive({ useHandCursor: true });
+    codexBtn.setVisible(!layout.portrait);
     codexBtn.on("pointerdown", () => toggleCodex(this));
 
     const menuBtn = this.add
@@ -674,6 +699,7 @@ export class WorldScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(21)
       .setInteractive({ useHandCursor: true });
+    menuBtn.setVisible(!layout.portrait);
     menuBtn.on("pointerdown", () => toggleMenu(this));
 
     this.lastMoveTime = 0;
@@ -685,7 +711,7 @@ export class WorldScene extends Phaser.Scene {
 
     // Autosave icon (hidden by default)
     this.saveIcon = this.add
-      .text(620, 10, "", {
+      .text(layout.width - 180, 10, "", {
         fontSize: "10px",
         color: "#44ccff",
         fontFamily: "monospace",
@@ -992,7 +1018,7 @@ export class WorldScene extends Phaser.Scene {
   drawMinimap() {
     const mmW = 120,
       mmH = 90;
-    const mmX = 670,
+    const mmX = (this.gameplayLayout?.width || 800) - 130,
       mmY = 10;
     const scaleX = mmW / this.mapW;
     const scaleY = mmH / this.mapH;
@@ -1074,7 +1100,9 @@ export class WorldScene extends Phaser.Scene {
       return p.max_mp > 0 ? `${base} MP:${p.mp}/${p.max_mp}` : base;
     });
     const tierName = gs.transport?.tier_name || "Foot";
-    this.hudText.setText(parts.join(" | "));
+    this.hudText.setText(
+      parts.join(this.gameplayLayout?.portrait ? "\n" : " | "),
+    );
     if (this.hudFooter) {
       const etherTotal =
         (gs.ethers || 0) + (gs.hi_ethers || 0) + (gs.x_ethers || 0);
