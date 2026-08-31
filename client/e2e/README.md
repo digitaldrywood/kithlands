@@ -9,8 +9,9 @@ Playwright now has one working local e2e path for Kithlands:
   confirm the derived attack/weapon change persists after closing and
   reopening.
 - `sprites-debugger.spec.js`: load `/sprites.html` from the active Vite stack,
-  confirm a generated walk sheet renders with visible cell bounds, click an
-  individual atlas cell, and capture a proof screenshot.
+  confirm all 12 native walk sheets render as 384x512 atlases with 48 visible
+  cell bounds and eight motion loops, inspect an atlas cell, and capture proof
+  screenshots from the first and last class.
 - `walk-all-classes.spec.js`: quick-start a game, enter a town interior, and
   verify all 12 walk-sheet classes render the correct directional sequences in
   both `World` and `Town`.
@@ -44,10 +45,14 @@ working party-menu equip flow.
 `walk-all-classes.spec.js` audit once per class in a fresh browser process so
 all 12 classes are checked in both `World` and `Town` without cross-test state.
 
-`make walk-previews` exports enlarged sheets and animated GIFs for every class
-under `client/tmp/walk-previews/`. Open `client/tmp/walk-previews/index.html`
-to review the actual motion class-by-class before accepting any generated walk
-assets.
+`make walk-previews` strictly validates the native 64x64, six-frame,
+eight-direction contract and exports labeled contact sheets, pose grids, and
+animated GIFs for all 12 classes under `client/tmp/walk-previews/`. Open
+`client/tmp/walk-previews/index.html` to review every direction and stride pose
+before accepting any generated walk assets. The target bootstraps its pinned
+Pillow dependency in the ignored `client/tmp/walk-preview-venv` directory.
+Diagonal rows currently reuse the nearest cardinal artwork, matching the
+runtime contract until independent diagonal movement is implemented.
 
 ## Sprite debugger
 

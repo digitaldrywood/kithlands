@@ -1,43 +1,71 @@
 import { expect, test } from "@playwright/test";
+import {
+  WALK_SHEET_CLASS_IDS,
+  WALK_SKILL_DIRECTIONS,
+} from "../src/scenes/walkFrame.js";
 
-test("sprites debugger renders walk-sheet bounds and inspectable cells", async ({
+test("sprites debugger validates every native walk sheet and motion loop", async ({
   page,
 }, testInfo) => {
+  test.setTimeout(120_000);
   await page.goto("/sprites.html");
 
-  const warriorCard = page.getByTestId("walk-sheet-card-warrior");
-  await expect(warriorCard).toBeVisible();
-  await expect(warriorCard).toHaveAttribute("data-loaded", "true");
+  expect(WALK_SHEET_CLASS_IDS).toHaveLength(12);
+  expect(WALK_SKILL_DIRECTIONS).toHaveLength(8);
+  const walkGrid = page.locator("#walk-grid");
 
-  const overlay = page.getByTestId("sheet-grid-overlay-warrior");
-  await expect(overlay).toBeVisible();
-  await expect(
-    warriorCard.locator('[data-testid^="sheet-boundary-warrior-"]'),
-  ).toHaveCount(32);
+  for (const classId of WALK_SHEET_CLASS_IDS) {
+    const card = walkGrid.getByTestId(`walk-sheet-card-${classId}`);
+    await expect(card).toBeVisible();
+    await expect(card).toHaveAttribute("data-loaded", "true");
+    await expect(
+      walkGrid.getByTestId(`sheet-grid-overlay-${classId}`),
+    ).toBeVisible();
+    await expect(
+      card.locator(`[data-testid^="sheet-boundary-${classId}-"]`),
+    ).toHaveCount(48);
+    await expect(card).toContainText("384x512 sheet");
+    await expect(card).toContainText("8 rows x 6 columns");
+    await expect(card).toContainText("64x64 per cell");
+    await expect(
+      walkGrid.getByTestId(`sheet-cell-${classId}-r0-c0`),
+    ).toBeVisible();
+    await expect(
+      walkGrid.getByTestId(`sheet-cell-${classId}-r7-c5`),
+    ).toBeVisible();
 
-  const firstCell = page.getByTestId("sheet-cell-warrior-r0-c0");
-  await expect(firstCell).toBeVisible();
+    for (const direction of WALK_SKILL_DIRECTIONS) {
+      await expect(
+        walkGrid.getByTestId(`motion-loop-${classId}-${direction}`),
+      ).toBeVisible();
+    }
+    await expect(
+      walkGrid.getByTestId(`travel-preview-${classId}-west`),
+    ).toBeVisible();
+    await expect(
+      walkGrid.getByTestId(`travel-preview-${classId}-east`),
+    ).toBeVisible();
+  }
+
+  const firstCell = walkGrid.getByTestId("sheet-cell-warrior-r0-c0");
   await firstCell.click();
-
   await expect(
-    page.getByTestId("sheet-selected-warrior").locator("canvas"),
+    walkGrid.getByTestId("sheet-selected-warrior").locator("canvas"),
   ).toBeVisible();
-  await expect(warriorCard).toContainText("1024x512 sheet");
-  await expect(page.getByTestId("motion-loop-warrior-down")).toBeVisible();
-  await expect(page.getByTestId("motion-loop-warrior-up")).toBeVisible();
-  await expect(page.getByTestId("motion-loop-warrior-left")).toBeVisible();
-  await expect(page.getByTestId("motion-loop-warrior-right")).toBeVisible();
-  await expect(page.getByTestId("travel-preview-warrior-left")).toBeVisible();
-  await expect(page.getByTestId("travel-preview-warrior-right")).toBeVisible();
+  const warriorCard = walkGrid.getByTestId("walk-sheet-card-warrior");
   await expect(warriorCard).toContainText("Selected:");
   await expect(warriorCard).toContainText("r0-c0");
 
-  const screenshotPath = testInfo.outputPath(
-    `issue-163-sprites-debugger-${Date.now()}.png`,
-  );
-  await page.screenshot({ path: screenshotPath, fullPage: true });
-  await testInfo.attach("sprites-debugger", {
-    path: screenshotPath,
-    contentType: "image/png",
-  });
+  for (const classId of ["warrior", "wanderer"]) {
+    const screenshotPath = testInfo.outputPath(
+      `issue-299-sprites-debugger-${classId}-${Date.now()}.png`,
+    );
+    await walkGrid
+      .getByTestId(`walk-sheet-card-${classId}`)
+      .screenshot({ path: screenshotPath });
+    await testInfo.attach(`sprites-debugger-${classId}`, {
+      path: screenshotPath,
+      contentType: "image/png",
+    });
+  }
 });
