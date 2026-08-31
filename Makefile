@@ -7,6 +7,9 @@ DB_NAME      ?= kithlands
 PORT         ?= 8080
 VITE_PORT    ?= 3000
 DATABASE_URL ?= postgres://kithlands:kithlands@localhost:5432/$(DB_NAME)?sslmode=disable
+WALK_PREVIEW_VENV := client/tmp/walk-preview-venv
+WALK_PREVIEW_READY := $(WALK_PREVIEW_VENV)/.ready
+WALK_PREVIEW_PYTHON := $(WALK_PREVIEW_VENV)/bin/python
 
 # Create the worktree database (if missing) and run every migration in order.
 # Idempotent: safe to re-run; existing DBs and already-applied migrations no-op.
@@ -81,10 +84,15 @@ test-visual:
 test-walk-classes:
 	@./scripts/test-walk-all-classes.sh
 
-# Export enlarged sheets plus animated GIF previews for every generated walk
-# sheet under client/tmp/walk-previews so humans can inspect the actual motion.
-walk-previews:
-	@python3 scripts/export_walk_previews.py
+# Strictly validate the native 64x64, 6-frame, 8-direction contract, then export
+# contact sheets and animated GIFs under client/tmp/walk-previews for review.
+$(WALK_PREVIEW_READY): scripts/walk-preview-requirements.txt
+	@python3 -m venv $(WALK_PREVIEW_VENV)
+	@$(WALK_PREVIEW_PYTHON) -m pip install --disable-pip-version-check --quiet -r $<
+	@touch $@
+
+walk-previews: $(WALK_PREVIEW_READY)
+	@$(WALK_PREVIEW_PYTHON) scripts/export_walk_previews.py
 
 # Stable local proof harness for issue-scoped Playwright checks. Boots the
 # worktree stack on its derived ports, then runs the requested spec.
