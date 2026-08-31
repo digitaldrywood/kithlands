@@ -24,7 +24,7 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: '1.24'
+          go-version: "1.24"
           cache: false
           cache-dependency-path: server/go.sum
 
@@ -53,7 +53,7 @@ jobs:
 
       - uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - name: Validate shared JSON files
         run: |
@@ -79,11 +79,15 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: "22"
 
       - name: Install
         working-directory: client
         run: npm ci
+
+      - name: Unit tests
+        working-directory: client
+        run: npm test
 
       - name: Build
         working-directory: client
@@ -96,7 +100,6 @@ jobs:
       - name: Audit dependencies
         working-directory: client
         run: npm audit --audit-level=moderate
-        continue-on-error: true
 
   pr-size:
     if: github.event_name == 'pull_request'
