@@ -1,0 +1,366 @@
+.post-battle-loot-dialog .viewport-dialog-panel {
+  width: min(100%, 920px);
+  border-color: #b9d6f2;
+  background:
+    linear-gradient(145deg, #1b3c61e8, #09172ce8 72%),
+    radial-gradient(circle at 76% 10%, #d7b85d33, transparent 34%);
+}
+
+.battle-loot-progress {
+  margin: 8px 0 0;
+  color: #b8cee5;
+  font-size: 14px;
+}
+
+.battle-loot-item-summary {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  padding: 18px;
+  border: 1px solid #d2b96088;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #152f4b, #081427);
+  box-shadow: inset 0 0 28px #e1c66f12;
+}
+
+.battle-loot-icon {
+  width: 84px;
+  height: 84px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #e5cf87;
+  border-radius: 12px;
+  background: radial-gradient(circle, #365f82, #0b192d 72%);
+  color: #ffe8a2;
+  font:
+    bold 38px/1 Georgia,
+    serif;
+  image-rendering: pixelated;
+}
+
+.battle-loot-icon img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.battle-loot-kicker,
+.battle-loot-meta,
+.battle-loot-affixes,
+.battle-loot-sockets,
+.battle-loot-current,
+.battle-loot-section-heading p {
+  margin: 0;
+}
+
+.battle-loot-kicker {
+  color: #8ec7ed;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.battle-loot-item-copy h2 {
+  margin: 3px 0 2px;
+  color: #fff0bb;
+  font:
+    bold 27px/1.2 Georgia,
+    serif;
+}
+
+.battle-loot-meta {
+  color: #c0d3e8;
+  text-transform: capitalize;
+}
+
+.battle-loot-affixes {
+  margin-top: 7px;
+  color: #dfc8ff;
+  font-size: 14px;
+}
+
+.battle-loot-sockets {
+  margin-top: 4px;
+  color: #91d8ff;
+  font-size: 13px;
+}
+
+.battle-loot-item-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.battle-loot-item-stats li {
+  padding: 4px 8px;
+  border: 1px solid #6f91b866;
+  border-radius: 999px;
+  background: #07162a;
+  color: #eaf4ff;
+  font-size: 12px;
+}
+
+.battle-loot-section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 22px 2px 10px;
+}
+
+.battle-loot-section-heading h2 {
+  margin: 0;
+  color: #f7dda0;
+  font:
+    bold 21px/1.2 Georgia,
+    serif;
+}
+
+.battle-loot-section-heading p {
+  color: #9eb4cb;
+  font-size: 13px;
+}
+
+.battle-loot-comparisons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.battle-loot-comparison {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: 14px;
+  border: 1px solid #507ca8;
+  border-radius: 11px;
+  background: #061426b8;
+}
+
+.battle-loot-comparison-heading h3 {
+  margin: 0;
+  color: #f4f7fb;
+  font-size: 18px;
+}
+
+.battle-loot-comparison-heading p,
+.battle-loot-current {
+  color: #9db6cf;
+  font-size: 13px;
+}
+
+.battle-loot-current {
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+
+.battle-loot-deltas {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0 14px;
+  padding: 0;
+  list-style: none;
+}
+
+.battle-loot-deltas li {
+  display: grid;
+  grid-template-columns: 1fr auto 42px;
+  gap: 8px;
+  align-items: baseline;
+  color: #d9e7f5;
+  font-size: 13px;
+}
+
+.battle-loot-deltas strong {
+  text-align: right;
+}
+
+.battle-loot-deltas .is-up strong {
+  color: #8de1ab;
+}
+
+.battle-loot-deltas .is-down strong {
+  color: #ff9c98;
+}
+
+.battle-loot-deltas .is-neutral {
+  display: block;
+  color: #b1c1d1;
+}
+
+.battle-loot-before-after {
+  color: #9db2c8;
+  font-variant-numeric: tabular-nums;
+}
+
+.post-battle-loot-dialog .battle-loot-equip {
+  width: 100%;
+  margin-top: auto;
+}
+
+.battle-loot-status {
+  min-height: 1.45em;
+}
+
+.battle-loot-no-options {
+  grid-column: 1 / -1;
+  padding: 18px;
+  border: 1px solid #6b88a766;
+  border-radius: 10px;
+  background: #071427;
+  color: #bfd1e4;
+}
+
+@media (max-width: 700px), (max-height: 650px) {
+  .post-battle-loot-dialog .viewport-dialog-header,
+  .post-battle-loot-dialog .viewport-dialog-body,
+  .post-battle-loot-dialog .viewport-dialog-footer {
+    padding: 14px 16px;
+  }
+
+  .post-battle-loot-dialog .viewport-dialog-header h1 {
+    font-size: 25px;
+  }
+
+  .battle-loot-item-summary {
+    grid-template-columns: 68px minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .battle-loot-icon {
+    width: 64px;
+    height: 64px;
+    font-size: 28px;
+  }
+
+  .battle-loot-icon img {
+    width: 50px;
+    height: 50px;
+  }
+
+  .battle-loot-item-copy h2 {
+    font-size: 21px;
+  }
+}
+
+@media (max-width: 700px) {
+  .battle-loot-section-heading {
+    display: block;
+    margin-top: 15px;
+  }
+
+  .battle-loot-comparisons {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-height: 650px) and (min-width: 701px) {
+  .post-battle-loot-dialog .viewport-dialog-header,
+  .post-battle-loot-dialog .viewport-dialog-body,
+  .post-battle-loot-dialog .viewport-dialog-footer {
+    padding: 8px 16px;
+  }
+
+  .post-battle-loot-dialog .viewport-dialog-header h1 {
+    font-size: 22px;
+  }
+
+  .battle-loot-progress {
+    margin-top: 2px;
+    font-size: 12px;
+  }
+
+  .battle-loot-item-summary {
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 10px;
+    padding: 8px 12px;
+  }
+
+  .battle-loot-icon {
+    width: 52px;
+    height: 52px;
+    font-size: 24px;
+  }
+
+  .battle-loot-kicker {
+    font-size: 10px;
+  }
+
+  .battle-loot-item-copy h2 {
+    font-size: 19px;
+  }
+
+  .battle-loot-meta,
+  .battle-loot-affixes,
+  .battle-loot-sockets {
+    font-size: 12px;
+    line-height: 1.25;
+  }
+
+  .battle-loot-item-stats {
+    margin-top: 6px;
+  }
+
+  .battle-loot-item-stats li {
+    padding: 2px 7px;
+    font-size: 11px;
+  }
+
+  .battle-loot-section-heading {
+    margin: 9px 2px 6px;
+  }
+
+  .battle-loot-section-heading h2 {
+    font-size: 18px;
+  }
+
+  .battle-loot-section-heading p,
+  .battle-loot-current,
+  .battle-loot-comparison-heading p,
+  .battle-loot-deltas li {
+    font-size: 12px;
+  }
+
+  .battle-loot-comparison {
+    padding: 9px 12px;
+  }
+
+  .battle-loot-comparison-heading h3 {
+    font-size: 16px;
+  }
+
+  .battle-loot-current {
+    margin-top: 4px;
+  }
+
+  .battle-loot-deltas {
+    gap: 1px;
+    margin: 5px 0 7px;
+  }
+}
+
+@media (max-width: 420px) {
+  .post-battle-loot-dialog.kith-viewport-dialog {
+    padding: max(8px, env(safe-area-inset-top))
+      max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
+  }
+
+  .battle-loot-progress,
+  .battle-loot-kicker,
+  .battle-loot-section-heading p,
+  .battle-loot-affixes,
+  .battle-loot-sockets {
+    font-size: 12px;
+  }
+
+  .battle-loot-item-stats li {
+    font-size: 11px;
+  }
+}

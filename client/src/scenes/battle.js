@@ -26,6 +26,10 @@ import {
   buildFinalePartyXP,
   formatSpoils,
 } from "../systems/victoryPresentation.js";
+import {
+  pendingEquipmentDrops,
+  showPostBattleLoot,
+} from "./post_battle_loot.js";
 import { FloatingTextPool } from "../ui/floating_text.js";
 import { MessageWindow } from "../ui/message_window.js";
 import { TargetCursor } from "../ui/target_cursor.js";
@@ -348,6 +352,7 @@ export class BattleScene extends Phaser.Scene {
       this.destroyGroupTargetCursor();
       this.finishMajorCinematic?.(true);
       closeEquipmentScreen(this, { callOnClose: false });
+      this.postBattleLootDialog?.dispose();
       if (this.scale.gameSize.height !== 600) {
         this.scale.setGameSize(800, 600);
       }
@@ -4720,7 +4725,7 @@ export class BattleScene extends Phaser.Scene {
     }
 
     const log = gs.combat_log || [];
-    const summary = buildVictorySummary(log);
+    const summary = buildVictorySummary(log, gs.battle_rewards);
     const finaleXP = buildFinalePartyXP(gs);
     if (finaleXP)
       summary.xpEarned = finaleXP.reduce((total, xp) => total + xp, 0);
@@ -5213,6 +5218,12 @@ export class BattleScene extends Phaser.Scene {
     if (this.victoryFFHandler) {
       this.input.keyboard.off("keydown-SPACE", this.victoryFFHandler);
       this.victoryFFHandler = null;
+    }
+    if (pendingEquipmentDrops(gs).length > 0) {
+      showPostBattleLoot(this, gs, {
+        onComplete: (latest) => this.addContinueButton(latest),
+      });
+      return;
     }
     this.addContinueButton(gs);
   }

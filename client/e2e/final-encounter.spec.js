@@ -134,6 +134,19 @@ async function arrive(page) {
     window.__kithlandsTest.sceneIsActive("Battle"),
   );
 }
+async function resolvePostBattleLoot(page) {
+  await page.waitForFunction(
+    () =>
+      document.querySelector('.post-battle-loot-dialog[role="dialog"]') ||
+      window.__kithlandsTest
+        .visibleTexts("Battle")
+        .some((entry) => entry.interactive && /^continue$/i.test(entry.text)),
+  );
+  const dialog = page.getByRole("dialog", { name: "New Equipment" });
+  while (await dialog.isVisible()) {
+    await dialog.getByRole("button", { name: "Keep in Inventory" }).click();
+  }
+}
 for (const viewport of [
   { name: "desktop", width: 1440, height: 900 },
   { name: "phone", width: 390, height: 844 },
@@ -219,6 +232,7 @@ for (const viewport of [
     expect(won.phase).toBe("victory");
     expect(won.final_encounter.defeated).toBe(true);
     await page.keyboard.press("Space");
+    await resolvePostBattleLoot(page);
     await page.waitForFunction(() =>
       window.__kithlandsTest
         .visibleTexts("Battle")

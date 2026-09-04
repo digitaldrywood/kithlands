@@ -192,6 +192,21 @@ export async function previewEquipment(
   });
 }
 
+export async function resolveBattleLoot(
+  gameId,
+  instanceId,
+  action,
+  partySlot = 0,
+  equipmentSlot = "",
+) {
+  return apiCall("POST", `/game/${gameId}/battle-loot`, {
+    instance_id: instanceId,
+    action,
+    party_slot: partySlot,
+    equipment_slot: equipmentSlot,
+  });
+}
+
 export async function recommendEquipment(gameId, slot, goal = "balanced") {
   return apiCall("POST", `/game/${gameId}/equipment/recommend`, { slot, goal });
 }

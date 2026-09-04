@@ -1393,6 +1393,15 @@ export function installDevTestBridge(game) {
       return activeScene(game)?.scene?.key || null;
     },
 
+    sceneInputSnapshot(sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return {
+        inputEnabled: scene?.input?.enabled === true,
+        keyboardEnabled: scene?.input?.keyboard?.enabled === true,
+        modalLocks: [...(scene?._modalLocks || [])],
+      };
+    },
+
     sceneIsActive(sceneKey) {
       return game.scene.isActive(sceneKey);
     },

@@ -407,14 +407,10 @@ for (const [width, height] of [
       ).toContain("equipment_screen");
       await page.locator('[data-slot-id="main_hand"]').click();
       await page.getByRole("button", { name: "Socket", exact: true }).click();
-      await page.waitForFunction(() =>
-        window.__kithlandsTest
-          .visibleTexts("World")
-          .some((t) => t.text === "GEM WORKSHOP"),
-      );
-      await page.evaluate(() =>
-        window.__kithlandsTest.clickInteractiveText("CLOSE", "World"),
-      );
+      await expect(
+        page.getByRole("dialog", { name: "Gem Workshop", exact: true }),
+      ).toBeVisible();
+      await page.getByRole("button", { name: "Close", exact: true }).click();
       await expect(
         page.getByRole("dialog", { name: "Character", exact: true }),
       ).toBeVisible();
