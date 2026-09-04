@@ -1573,6 +1573,26 @@ export function installDevTestBridge(game) {
         }));
     },
 
+    townObjectiveVisible() {
+      return getScene(game, "Town")?.objectiveText?.visible === true;
+    },
+
+    townObjectiveInputSnapshot() {
+      const scene = getScene(game, "Town");
+      return {
+        objectiveVisible: scene?.objectiveText?.visible === true,
+        inputEnabled: scene?.input?.enabled === true,
+        keyboardEnabled: scene?.input?.keyboard?.enabled === true,
+        menuOpen: !!scene?.menuOpen,
+        modalLocks: [...(scene?._modalLocks || [])],
+        gameSize: {
+          width: scene?.scale?.gameSize?.width || null,
+          height: scene?.scale?.gameSize?.height || null,
+        },
+        action: clone(scene?.gameplayLayout?.action || null),
+      };
+    },
+
     async startQuickGame(email = `playwright_${Date.now()}@kithlands.dev`) {
       const title = getScene(game, "Title");
       if (!title || typeof title.startGame !== "function") {

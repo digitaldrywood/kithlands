@@ -147,6 +147,51 @@
 .promotion-effects ul {
   padding-left: 20px;
 }
+.objective-quest-log .objective-quest-kicker,
+.objective-quest-log .objective-quest-secondary {
+  color: #b9cce3;
+  font-size: 14px;
+}
+.objective-quest-log h2 {
+  color: #fff4d6;
+  font-size: 21px;
+  margin-bottom: 8px;
+}
+.objective-quest-log h3 {
+  color: #f4d991;
+  font-size: 17px;
+  margin: 18px 0 8px;
+}
+.objective-quest-description {
+  margin-bottom: 18px;
+}
+.objective-quest-plan {
+  margin: 0;
+  padding-left: 25px;
+}
+.objective-quest-plan li {
+  margin-bottom: 10px;
+  padding: 7px 9px;
+  border-radius: 6px;
+  color: #b9cce3;
+}
+.objective-quest-plan .is-current {
+  background: #263f5e;
+  color: #ffe09a;
+  font-weight: bold;
+}
+.objective-quest-plan .is-complete {
+  color: #a5d4af;
+}
+.objective-quest-custody {
+  padding: 12px;
+  border: 1px solid #66906e;
+  border-radius: 7px;
+  color: #c9ebcf;
+}
+.objective-quest-reward {
+  color: #ffe09a;
+}
 .options-rows {
   display: grid;
   gap: 12px;

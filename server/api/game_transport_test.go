@@ -57,10 +57,7 @@ func TestTransportUpgradeThroughFullGame(t *testing.T) {
 			if target == "" {
 				t.Fatalf("quest[%d] has no target_node_id", state.CurrentQ)
 			}
-			if _, err := game.ProcessAction(api.GameActionRequest{
-				Type:   "quest_advance",
-				NodeID: target,
-			}); err != nil {
+			if _, err := game.ProcessAction(nextCampaignAction(state)); err != nil {
 				t.Fatalf("quest_advance: %v", err)
 			}
 		case "combat":

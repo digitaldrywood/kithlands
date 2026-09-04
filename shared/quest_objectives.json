@@ -1,0 +1,110 @@
+{
+  "Q01": {
+    "name": "Fetch",
+    "item": "lost keepsake",
+    "description": "{giver} asks you to recover a lost keepsake from {target}. Speak to its keeper to collect it, then bring it back.",
+    "completion": "{giver} accepts the keepsake with a grateful smile.",
+    "steps": [
+      {
+        "type": "goto",
+        "at": "target",
+        "text": "Travel to {target}.",
+        "prompt": "",
+        "result": ""
+      },
+      {
+        "type": "get",
+        "at": "target",
+        "text": "Collect the {item} from the keeper at {target}.",
+        "prompt": "Collect keepsake",
+        "result": "The keeper returns the {item}. Carry it safely back to {giver}."
+      },
+      {
+        "type": "goto",
+        "at": "giver",
+        "text": "Return to {giver} with the {item}.",
+        "prompt": "",
+        "result": ""
+      },
+      {
+        "type": "give",
+        "at": "giver",
+        "text": "Hand the {item} to the keeper at {giver}.",
+        "prompt": "Return keepsake",
+        "result": "The {item} is safely home."
+      }
+    ]
+  },
+  "Q02": {
+    "name": "Delivery",
+    "item": "sealed parcel",
+    "description": "{giver} has a sealed parcel for {target}. Pick it up from the keeper, then deliver it to the keeper at {target}.",
+    "completion": "The keeper at {target} accepts the parcel. The delivery is complete.",
+    "steps": [
+      {
+        "type": "goto",
+        "at": "giver",
+        "text": "Meet the keeper at {giver}.",
+        "prompt": "",
+        "result": ""
+      },
+      {
+        "type": "get",
+        "at": "giver",
+        "text": "Pick up the {item} at {giver}.",
+        "prompt": "Pick up parcel",
+        "result": "The keeper entrusts you with the {item} for {target}."
+      },
+      {
+        "type": "goto",
+        "at": "target",
+        "text": "Carry the {item} to {target}.",
+        "prompt": "",
+        "result": ""
+      },
+      {
+        "type": "give",
+        "at": "target",
+        "text": "Deliver the {item} to the keeper at {target}.",
+        "prompt": "Deliver parcel",
+        "result": "The keeper checks the seal and accepts the parcel."
+      }
+    ]
+  },
+  "Q03": {
+    "name": "Investigation",
+    "item": "trail notes",
+    "description": "{giver} is mapping a safe trail. Inspect the trail notes with the keeper at {target}, then return and report your findings.",
+    "completion": "{giver} marks the safe trail on the map. Your investigation will help the next travelers.",
+    "steps": [
+      {
+        "type": "goto",
+        "at": "target",
+        "text": "Travel to {target} to investigate.",
+        "prompt": "",
+        "result": ""
+      },
+      {
+        "type": "learn",
+        "at": "target",
+        "text": "Inspect the {item} with the keeper at {target}.",
+        "prompt": "Inspect clue",
+        "result": "The trail notes show a washed-out crossing. The marked upper path is safe. You record the finding."
+      },
+      {
+        "type": "goto",
+        "at": "giver",
+        "text": "Return to {giver} with your findings.",
+        "prompt": "",
+        "result": ""
+      },
+      {
+        "type": "report",
+        "at": "giver",
+        "text": "Report the safe route to the keeper at {giver}.",
+        "prompt": "Report findings",
+        "result": "You explain the damaged crossing and the safe upper path."
+      }
+    ]
+  }
+}

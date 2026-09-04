@@ -7,6 +7,12 @@ import {
   restAtTown,
   transitionLocation,
 } from "../api.js";
+import {
+  drawTownObjective,
+  nearbyQuestObjective,
+  performQuestObjective,
+  syncTownObjectiveVisibility,
+} from "./town_objectives.js";
 import { openDialogue } from "./town_dialogue.js";
 import {
   drawInteriorForeground,
@@ -889,6 +895,7 @@ export class TownScene extends Phaser.Scene {
     }
 
     this.drawHelpStrip();
+    drawTownObjective(this);
 
     this.updateInteractionTargets();
   }
@@ -1205,6 +1212,7 @@ export class TownScene extends Phaser.Scene {
   }
 
   update(time) {
+    syncTownObjectiveVisibility(this);
     if (isWorldInputLocked(this)) return;
     if (this.animating) return;
     if (time - this.lastMoveTime < this.moveCooldown) return;
@@ -1300,6 +1308,7 @@ export class TownScene extends Phaser.Scene {
 
   async interact() {
     if (isWorldInputLocked(this)) return;
+    if (await performQuestObjective(this)) return;
     if (await this.openNearbyChest()) return;
     // Hidden item pickup takes priority
     if (this.nearHiddenItem) {
@@ -1673,6 +1682,12 @@ export class TownScene extends Phaser.Scene {
     }
     this.nearHiddenItem = closestHidden;
 
+    const objective = nearbyQuestObjective(this);
+    if (objective) {
+      this.hideSearchPrompt();
+      this.showInteractPrompt(objective.action.prompt);
+      return;
+    }
     if (this.nearChest) {
       this.hideSearchPrompt();
       this.showInteractPrompt("Open");

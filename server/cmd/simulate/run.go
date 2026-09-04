@@ -128,8 +128,8 @@ func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strategy Strate
 	// real quest advanced, triggering a fresh walk to the next target).
 	// Note: the server also uses phase="quest_complete" as a post-combat
 	// victory-screen state, so we cannot refill on phase transitions alone.
-	pendingRolls := opts.EncounterRollsPerQuest
-	walkedQuestIdx := state.CurrentQ
+	pendingRolls := questLegRolls(&state, opts.EncounterRollsPerQuest)
+	walkedLeg := questTravelLeg(&state)
 
 	for turn := 0; turn < opts.MaxTurns; turn++ {
 		result.TurnsElapsed = turn + 1
@@ -158,13 +158,13 @@ func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strategy Strate
 		}
 
 		// Refill walking rolls at the start of each overworld leg. A leg
-		// starts when CurrentQ advances — i.e. the bot just completed a
-		// quest and is now walking to the next target. Refilling on phase
+		// starts when CurrentQ or a staged travel leg advances. Completing a
+		// collection step can send the party home. Refilling on phase
 		// transitions does NOT work: the server uses phase="quest_complete"
 		// as the post-combat victory screen, which fires on every fight.
-		if state.CurrentQ > walkedQuestIdx {
-			pendingRolls = opts.EncounterRollsPerQuest
-			walkedQuestIdx = state.CurrentQ
+		if leg := questTravelLeg(&state); leg != walkedLeg {
+			pendingRolls = questLegRolls(&state, opts.EncounterRollsPerQuest)
+			walkedLeg = leg
 		}
 
 		// Promotion phase takes a dedicated API call — not ProcessAction.
