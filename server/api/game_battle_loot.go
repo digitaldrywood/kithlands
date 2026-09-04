@@ -1,6 +1,9 @@
 package api
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"sort"
 
@@ -30,6 +33,7 @@ type BattleDropState struct {
 	Name              string                   `json:"name"`
 	Quantity          int                      `json:"quantity"`
 	Decision          string                   `json:"decision,omitempty"`
+	DecisionToken     string                   `json:"decision_token,omitempty"`
 	Item              *ItemState               `json:"item,omitempty"`
 	EquipOptions      []BattleEquipOptionState `json:"equip_options,omitempty"`
 	EquippedPartySlot *int                     `json:"equipped_party_slot,omitempty"`
@@ -52,10 +56,11 @@ type BattleEquipOptionState struct {
 }
 
 type BattleLootDecisionRequest struct {
-	InstanceID    string `json:"instance_id"`
-	Action        string `json:"action"`
-	PartySlot     int    `json:"party_slot,omitempty"`
-	EquipmentSlot string `json:"equipment_slot,omitempty"`
+	InstanceID         string `json:"instance_id"`
+	Action             string `json:"action"`
+	PartySlot          int    `json:"party_slot,omitempty"`
+	EquipmentSlot      string `json:"equipment_slot,omitempty"`
+	ExpectedStateToken string `json:"expected_state_token,omitempty"`
 }
 
 type battleRewardsReceipt struct {
@@ -114,6 +119,7 @@ func (g *Game) fillBattleRewardsState(state *GameState) {
 				drop.Item = &item
 			}
 			if receipt.Decision == battleLootPending {
+				drop.DecisionToken = g.battleLootStateToken(receipt.InstanceID)
 				drop.EquipOptions = g.battleEquipOptions(receipt.InstanceID)
 			}
 			if receipt.Decision == battleLootEquipped {
@@ -124,6 +130,31 @@ func (g *Game) fillBattleRewardsState(state *GameState) {
 		out.Drops = append(out.Drops, drop)
 	}
 	state.BattleRewards = out
+}
+
+// battleLootStateToken binds a displayed comparison to every authoritative
+// input that can affect custody or effective stats. JSON map keys are emitted
+// deterministically by encoding/json, so equal state produces an equal token.
+func (g *Game) battleLootStateToken(instanceID string) string {
+	payload := struct {
+		InstanceID string                `json:"instance_id"`
+		Phase      string                `json:"phase"`
+		Party      any                   `json:"party"`
+		Inventory  *inventory.Inventory  `json:"inventory"`
+		Rewards    *battleRewardsReceipt `json:"rewards"`
+	}{
+		InstanceID: instanceID,
+		Phase:      g.phase,
+		Party:      g.party,
+		Inventory:  g.inv,
+		Rewards:    g.battleRewards,
+	}
+	encoded, err := json.Marshal(payload)
+	if err != nil {
+		return ""
+	}
+	digest := sha256.Sum256(encoded)
+	return hex.EncodeToString(digest[:])
 }
 
 func (g *Game) battleEquipOptions(instanceID string) []BattleEquipOptionState {
@@ -213,7 +244,24 @@ func (g *Game) ResolveBattleLoot(req BattleLootDecisionRequest) (*GameState, err
 			state := g.stateUnlocked()
 			return &state, nil
 		}
-		return nil, fmt.Errorf("battle loot decision was already resolved as %s", receipt.Decision)
+		state := g.stateUnlocked()
+		return &state, fmt.Errorf("battle loot decision was already resolved as %s", receipt.Decision)
+	}
+	if req.Action == "keep" {
+		if partySlot, equipmentSlot, equipped := g.inv.FindEquippedInstance(req.InstanceID); equipped {
+			receipt.Decision = battleLootEquipped
+			receipt.EquippedPartySlot = partySlot
+			receipt.EquipmentSlot = equipmentSlot
+			state := g.stateUnlocked()
+			return &state, nil
+		}
+	}
+	if req.ExpectedStateToken == "" {
+		return nil, fmt.Errorf("expected_state_token is required")
+	}
+	if current := g.battleLootStateToken(req.InstanceID); current == "" || req.ExpectedStateToken != current {
+		state := g.stateUnlocked()
+		return &state, fmt.Errorf("equipment or inventory changed; review the refreshed comparison and try again")
 	}
 	if req.Action == "keep" {
 		receipt.Decision = battleLootKept

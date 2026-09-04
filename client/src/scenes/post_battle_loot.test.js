@@ -1,10 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   comparisonRows,
   equipmentDropDetails,
   itemStatRows,
   pendingEquipmentDrops,
+  withBattleLootDeadline,
 } from "./post_battle_loot.js";
+
+afterEach(() => vi.useRealTimers());
 
 describe("post-battle loot model", () => {
   it("returns only unresolved exact equipment instances", () => {
@@ -52,5 +55,36 @@ describe("post-battle loot model", () => {
       { key: "power", label: "Power", value: 22 },
       { key: "hit_pct", label: "Hit", value: 10 },
     ]);
+  });
+
+  it("aborts and rejects on time even when a request never settles", async () => {
+    vi.useFakeTimers();
+    let signal;
+    const request = withBattleLootDeadline((requestSignal) => {
+      signal = requestSignal;
+      return new Promise(() => {});
+    }, 50);
+    const rejected = expect(request).rejects.toMatchObject({
+      name: "AbortError",
+    });
+
+    await vi.advanceTimersByTimeAsync(50);
+    await rejected;
+    expect(signal.aborted).toBe(true);
+  });
+
+  it("ignores a response that arrives after the bounded deadline", async () => {
+    vi.useFakeTimers();
+    const request = withBattleLootDeadline(
+      () => new Promise((resolve) => setTimeout(() => resolve("late"), 100)),
+      25,
+    );
+    const rejected = expect(request).rejects.toMatchObject({
+      name: "AbortError",
+    });
+
+    await vi.advanceTimersByTimeAsync(25);
+    await rejected;
+    await vi.advanceTimersByTimeAsync(100);
   });
 });

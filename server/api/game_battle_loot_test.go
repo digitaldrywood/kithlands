@@ -1,6 +1,7 @@
 package api
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
@@ -123,6 +124,7 @@ func TestBattleLootEquipNowIsAtomicAndIdempotent(t *testing.T) {
 	rollSequence := game.lootRollSeq
 	req := BattleLootDecisionRequest{
 		InstanceID: drop.InstanceID, Action: "equip", PartySlot: 0, EquipmentSlot: "main_hand",
+		ExpectedStateToken: drop.DecisionToken,
 	}
 
 	equipped, err := game.ResolveBattleLoot(req)
@@ -158,7 +160,9 @@ func TestBattleLootKeepIsIdempotentAndNextEncounterClearsReceipt(t *testing.T) {
 	state := forceBattleLootVictory(t, game)
 	drop := state.BattleRewards.Drops[0]
 	instanceCount := len(game.inv.Instances)
-	req := BattleLootDecisionRequest{InstanceID: drop.InstanceID, Action: "keep"}
+	req := BattleLootDecisionRequest{
+		InstanceID: drop.InstanceID, Action: "keep", ExpectedStateToken: drop.DecisionToken,
+	}
 
 	for attempt := 0; attempt < 2; attempt++ {
 		kept, err := game.ResolveBattleLoot(req)
@@ -213,12 +217,132 @@ func TestBattleLootReceiptAndExactInstanceSurviveSaveLoad(t *testing.T) {
 		t.Fatalf("restored inventory lost %q", drop.InstanceID)
 	}
 	if _, err := loaded.ResolveBattleLoot(BattleLootDecisionRequest{
-		InstanceID: drop.InstanceID, Action: "equip", PartySlot: 0, EquipmentSlot: "ring_1",
+		InstanceID: restored.BattleRewards.Drops[0].InstanceID, Action: "equip",
+		PartySlot: 0, EquipmentSlot: "ring_1",
+		ExpectedStateToken: restored.BattleRewards.Drops[0].DecisionToken,
 	}); err != nil {
 		t.Fatalf("Equip Now after load: %v", err)
 	}
 	if loaded.inv.Equipment[0].Equipped("ring_1").InstanceID != drop.InstanceID {
 		t.Fatal("loaded game did not equip the exact saved instance")
+	}
+}
+
+func TestBattleLootEquipRejectsStaleComparisonAndReturnsRefresh(t *testing.T) {
+	t.Parallel()
+	game, _ := newBattleLootGame(t, []gamedata.Drop{{ItemID: "iron_sword", ChancePct: 100}}, 1)
+	state := forceBattleLootVictory(t, game)
+	drop := state.BattleRewards.Drops[0]
+
+	if err := game.DebugGiveItem("hand_axe", 1); err != nil {
+		t.Fatalf("DebugGiveItem hand axe: %v", err)
+	}
+	var interveningID string
+	for id, instance := range game.inv.Instances {
+		if instance.BaseID == "hand_axe" {
+			interveningID = id
+			break
+		}
+	}
+	if interveningID == "" {
+		t.Fatal("rolled hand axe missing")
+	}
+	if err := game.EquipItemAt(0, "main_hand", interveningID, "weapon"); err != nil {
+		t.Fatalf("intervening EquipItemAt: %v", err)
+	}
+
+	refreshed, err := game.ResolveBattleLoot(BattleLootDecisionRequest{
+		InstanceID: drop.InstanceID, Action: "equip", PartySlot: 0, EquipmentSlot: "main_hand",
+		ExpectedStateToken: drop.DecisionToken,
+	})
+	if err == nil || refreshed == nil {
+		t.Fatalf("stale equip = state %v, err %v; want conflict with refresh", refreshed != nil, err)
+	}
+	if got := refreshed.Equipment[0].WeaponInstanceID; got != interveningID {
+		t.Fatalf("stale choice displaced %q with %q", interveningID, got)
+	}
+	refreshedDrop := refreshed.BattleRewards.Drops[0]
+	if refreshedDrop.Decision != battleLootPending || refreshedDrop.DecisionToken == drop.DecisionToken {
+		t.Fatalf("refresh did not preserve pending choice with a new token: %+v", refreshedDrop)
+	}
+
+	equipped, err := game.ResolveBattleLoot(BattleLootDecisionRequest{
+		InstanceID: drop.InstanceID, Action: "equip", PartySlot: 0, EquipmentSlot: "main_hand",
+		ExpectedStateToken: refreshedDrop.DecisionToken,
+	})
+	if err != nil {
+		t.Fatalf("refreshed equip: %v", err)
+	}
+	if got := equipped.Equipment[0].WeaponInstanceID; got != drop.InstanceID {
+		t.Fatalf("refreshed equip = %q, want %q", got, drop.InstanceID)
+	}
+}
+
+func TestBattleLootConcurrentConflictingDecisionsHaveOneWinner(t *testing.T) {
+	t.Parallel()
+	game, _ := newBattleLootGame(t, []gamedata.Drop{{ItemID: "iron_sword", ChancePct: 100}}, 1)
+	state := forceBattleLootVictory(t, game)
+	drop := state.BattleRewards.Drops[0]
+	requests := []BattleLootDecisionRequest{
+		{InstanceID: drop.InstanceID, Action: "equip", PartySlot: 0, EquipmentSlot: "main_hand", ExpectedStateToken: drop.DecisionToken},
+		{InstanceID: drop.InstanceID, Action: "equip", PartySlot: 0, EquipmentSlot: "off_hand", ExpectedStateToken: drop.DecisionToken},
+	}
+	errs := make([]error, len(requests))
+	results := make([]*GameState, len(requests))
+	var wg sync.WaitGroup
+	for i := range requests {
+		wg.Add(1)
+		go func(index int) {
+			defer wg.Done()
+			results[index], errs[index] = game.ResolveBattleLoot(requests[index])
+		}(i)
+	}
+	wg.Wait()
+
+	successes := 0
+	for _, err := range errs {
+		if err == nil {
+			successes++
+		}
+	}
+	if successes != 1 {
+		t.Fatalf("concurrent successes = %d, want 1; errors=%v", successes, errs)
+	}
+	for index, err := range errs {
+		if err != nil && (results[index] == nil || results[index].BattleRewards.Drops[0].Decision != battleLootEquipped) {
+			t.Fatalf("losing request did not receive resolved refresh: result=%+v err=%v", results[index], err)
+		}
+	}
+	partySlot, equipmentSlot, equipped := game.inv.FindEquippedInstance(drop.InstanceID)
+	if !equipped || partySlot != 0 || (equipmentSlot != "main_hand" && equipmentSlot != "off_hand") {
+		t.Fatalf("winning exact instance custody = party %d slot %q equipped %v", partySlot, equipmentSlot, equipped)
+	}
+	if decision := game.State().BattleRewards.Drops[0].Decision; decision != battleLootEquipped {
+		t.Fatalf("receipt decision = %q, want equipped", decision)
+	}
+}
+
+func TestBattleLootKeepReconcilesExternallyEquippedDrop(t *testing.T) {
+	t.Parallel()
+	game, _ := newBattleLootGame(t, []gamedata.Drop{{ItemID: "copper_ring", ChancePct: 100}}, 1)
+	state := forceBattleLootVictory(t, game)
+	drop := state.BattleRewards.Drops[0]
+	if err := game.EquipItemAt(0, "ring_2", drop.InstanceID, "accessory"); err != nil {
+		t.Fatalf("external EquipItemAt: %v", err)
+	}
+
+	reconciled, err := game.ResolveBattleLoot(BattleLootDecisionRequest{
+		InstanceID: drop.InstanceID, Action: "keep", ExpectedStateToken: drop.DecisionToken,
+	})
+	if err != nil {
+		t.Fatalf("Keep reconcile: %v", err)
+	}
+	got := reconciled.BattleRewards.Drops[0]
+	if got.Decision != battleLootEquipped || got.EquippedPartySlot == nil || *got.EquippedPartySlot != 0 || got.EquipmentSlot != "ring_2" {
+		t.Fatalf("reconciled receipt = %+v", got)
+	}
+	if party, slot, equipped := game.inv.FindEquippedInstance(drop.InstanceID); !equipped || party != 0 || slot != "ring_2" {
+		t.Fatalf("exact drop custody = party %d slot %q equipped %v", party, slot, equipped)
 	}
 }
 

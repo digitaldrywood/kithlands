@@ -36,6 +36,29 @@ const STAT_LABELS = {
   evade_penalty: "Evade penalty",
 };
 
+export const BATTLE_LOOT_REQUEST_TIMEOUT_MS = 15_000;
+
+export async function withBattleLootDeadline(
+  request,
+  timeoutMs = BATTLE_LOOT_REQUEST_TIMEOUT_MS,
+) {
+  const controller = new AbortController();
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      const error = new Error("Battle loot request timed out");
+      error.name = "AbortError";
+      reject(error);
+    }, timeoutMs);
+  });
+  try {
+    return await Promise.race([request(controller.signal), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export function pendingEquipmentDrops(gameState) {
   return (gameState?.battle_rewards?.drops || []).filter(
     (drop) =>
@@ -210,7 +233,11 @@ function renderComparison(option, choose) {
   return card;
 }
 
-export function showPostBattleLoot(scene, initialState, { onComplete } = {}) {
+export function showPostBattleLoot(
+  scene,
+  initialState,
+  { onComplete, requestTimeoutMs = BATTLE_LOOT_REQUEST_TIMEOUT_MS } = {},
+) {
   scene.postBattleLootDialog?.dispose();
   let state = initialState;
   const total = pendingEquipmentDrops(state).length;
@@ -257,14 +284,29 @@ export function showPostBattleLoot(scene, initialState, { onComplete } = {}) {
         : "Equipping the exact roll…";
     status.classList.remove("is-error");
     try {
-      const latest = await resolveBattleLoot(
-        state.id,
-        drop.instance_id,
-        action,
-        option?.party_slot || 0,
-        option?.equipment_slot || "",
+      const latest = await withBattleLootDeadline(
+        (signal) =>
+          resolveBattleLoot(
+            state.id,
+            drop.instance_id,
+            action,
+            option?.party_slot || 0,
+            option?.equipment_slot || "",
+            drop.decision_token,
+            { signal },
+          ),
+        requestTimeoutMs,
       );
       if (latest?.error) {
+        if (latest.state?.id === state.id) {
+          state = latest.state;
+          scene.gameState = state;
+          setBusy(false);
+          render();
+          status.textContent = latest.error;
+          status.classList.add("is-error");
+          return;
+        }
         status.textContent = latest.error;
         status.classList.add("is-error");
         setBusy(false);
@@ -279,7 +321,10 @@ export function showPostBattleLoot(scene, initialState, { onComplete } = {}) {
       setBusy(false);
       render();
     } catch (error) {
-      status.textContent = `Could not save that choice. ${error?.message || "Try again."}`;
+      status.textContent =
+        error?.name === "AbortError"
+          ? "Request timed out. The choice may have completed on the server. Retry the same action to reconcile safely."
+          : `Could not save that choice. ${error?.message || "Try again."}`;
       status.classList.add("is-error");
       setBusy(false);
     }

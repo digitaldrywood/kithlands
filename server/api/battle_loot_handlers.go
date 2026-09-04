@@ -25,6 +25,15 @@ func (s *Server) handleBattleLootDecision(w http.ResponseWriter, r *http.Request
 	}
 	state, err := game.ResolveBattleLoot(req)
 	if err != nil {
+		if state != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"error": err.Error(),
+				"state": state,
+			})
+			return
+		}
 		httpError(w, err.Error(), http.StatusBadRequest)
 		return
 	}

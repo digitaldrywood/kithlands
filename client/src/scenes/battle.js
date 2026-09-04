@@ -5222,6 +5222,7 @@ export class BattleScene extends Phaser.Scene {
     if (pendingEquipmentDrops(gs).length > 0) {
       showPostBattleLoot(this, gs, {
         onComplete: (latest) => this.addContinueButton(latest),
+        requestTimeoutMs: this.postBattleLootRequestTimeoutMs,
       });
       return;
     }

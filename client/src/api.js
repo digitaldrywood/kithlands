@@ -198,13 +198,21 @@ export async function resolveBattleLoot(
   action,
   partySlot = 0,
   equipmentSlot = "",
+  expectedStateToken = "",
+  options = {},
 ) {
-  return apiCall("POST", `/game/${gameId}/battle-loot`, {
-    instance_id: instanceId,
-    action,
-    party_slot: partySlot,
-    equipment_slot: equipmentSlot,
-  });
+  return apiCall(
+    "POST",
+    `/game/${gameId}/battle-loot`,
+    {
+      instance_id: instanceId,
+      action,
+      party_slot: partySlot,
+      equipment_slot: equipmentSlot,
+      expected_state_token: expectedStateToken,
+    },
+    options,
+  );
 }
 
 export async function recommendEquipment(gameId, slot, goal = "balanced") {

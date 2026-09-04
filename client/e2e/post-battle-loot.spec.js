@@ -63,6 +63,19 @@ async function startGame(page, viewport) {
       "World",
     ),
   );
+  if (viewport.name !== "default-800x600") return null;
+  const beforeIDs = await page.evaluate(() =>
+    window.__kithlandsTest
+      .gameState("World")
+      .items.map((item) => item.instance_id)
+      .filter(Boolean),
+  );
+  const granted = await page.evaluate(() =>
+    window.__kithlandsTest.debugGiveItem("hand_axe", 1, "World"),
+  );
+  return granted.items.find(
+    (item) => item.instance_id && !beforeIDs.includes(item.instance_id),
+  );
 }
 
 async function forceGuaranteedLootVictory(page) {
@@ -156,7 +169,10 @@ for (const viewport of VIEWPORTS) {
     const pageErrors = [];
     page.on("pageerror", (error) => pageErrors.push(String(error)));
 
-    await startGame(page, viewport);
+    const conflictItem = await startGame(page, viewport);
+    if (viewport.name === "default-800x600") {
+      expect(conflictItem?.instance_id).toBeTruthy();
+    }
     const first = await forceGuaranteedLootVictory(page);
     const equipmentDrop = first.victory.battle_rewards.drops.find(
       (drop) => drop.kind === "equipment" && drop.item_id === "steel_sword",
@@ -181,6 +197,12 @@ for (const viewport of VIEWPORTS) {
       gemDrop,
       visibleReceipt,
     });
+
+    if (viewport.name === "desktop-1440x900") {
+      await page.evaluate(() =>
+        window.__kithlandsTest.setPostBattleLootRequestTimeout(1_000, "Battle"),
+      );
+    }
 
     const dialog = await openLootDecision(page);
     await expect(dialog).toContainText(equipmentDrop.name);
@@ -224,6 +246,70 @@ for (const viewport of VIEWPORTS) {
       await expect(
         page.getByRole("button", { name: "Keep in Inventory" }),
       ).toBeFocused();
+    }
+
+    if (viewport.name === "desktop-1440x900") {
+      await page.route(
+        "**/api/game/*/battle-loot",
+        async (route) => {
+          const response = await route.fetch();
+          await new Promise((resolve) => setTimeout(resolve, 1_500));
+          try {
+            await route.fulfill({ response });
+          } catch {
+            // The browser intentionally abandoned this late response.
+          }
+        },
+        { times: 1 },
+      );
+      await primaryEquip.click();
+      await expect(dialog.getByRole("status")).toContainText(
+        "Request timed out",
+        { timeout: 5_000 },
+      );
+      await expect(primaryEquip).toBeEnabled();
+      await expect(keep).toBeEnabled();
+      await capture(page, viewport, "timeout-retry", {
+        dialogText: await dialog.innerText(),
+        input: await page.evaluate(() =>
+          window.__kithlandsTest.sceneInputSnapshot("Battle"),
+        ),
+      });
+    }
+
+    if (viewport.name === "default-800x600") {
+      const externalEquip = await page.evaluate(
+        async ({ gameID, instanceID }) => {
+          const { equipItem } = await import("/src/api.js");
+          return equipItem(gameID, 0, instanceID, "weapon", "main_hand");
+        },
+        { gameID: first.victory.id, instanceID: conflictItem.instance_id },
+      );
+      expect(externalEquip.error).toBeUndefined();
+      await primaryEquip.click();
+      await expect(dialog.getByRole("status")).toContainText(
+        "equipment or inventory changed",
+      );
+      await expect(dialog).toContainText(`Current: ${conflictItem.name}`);
+      await expect(primaryEquip).toBeEnabled();
+      const refreshed = await page.evaluate(() =>
+        window.__kithlandsTest.gameState("Battle"),
+      );
+      const refreshedDrop = refreshed.battle_rewards.drops.find(
+        (drop) => drop.instance_id === equipmentDrop.instance_id,
+      );
+      expect(refreshedDrop.decision).toBe("pending");
+      expect(refreshedDrop.decision_token).not.toBe(
+        equipmentDrop.decision_token,
+      );
+      expect(refreshed.equipment[0].weapon_instance_id).toBe(
+        conflictItem.instance_id,
+      );
+      await capture(page, viewport, "stale-comparison-refresh", {
+        conflictItem,
+        refreshedDrop,
+        dialogText: await dialog.innerText(),
+      });
     }
 
     await primaryEquip.click();
