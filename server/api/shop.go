@@ -116,7 +116,8 @@ func (s *Server) handleLearnSpell(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		SpellID  string `json:"spell_id"`
+		NodeID   string `json:"node_id"`
+		StockID  string `json:"stock_id"`
 		CharName string `json:"char_name"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -124,7 +125,7 @@ func (s *Server) handleLearnSpell(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := game.LearnSpell(req.CharName, req.SpellID)
+	err := game.LearnSpell(req.NodeID, req.StockID, req.CharName)
 	if err != nil {
 		httpError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -299,29 +300,36 @@ func (g *Game) UnequipItem(slot int, equipmentSlot string) error {
 	return nil
 }
 
-func (g *Game) LearnSpell(charName, spellID string) error {
+func (g *Game) LearnSpell(nodeID, offerID, charName string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if g.inDungeon() {
-		return fmt.Errorf("return to town before learning spells")
+	if err := g.requireCurrentShopLocked(nodeID); err != nil {
+		return err
+	}
+	entry, err := g.currentStockEntryLocked(nodeID, offerID)
+	if err != nil {
+		return err
+	}
+	if entry.Type != "spell" {
+		return fmt.Errorf("shop offer is not a spell")
 	}
 
-	_, spell, sb, err := g.validateSpellLearningLocked(charName, spellID)
+	_, spell, sb, err := g.validateSpellLearningLocked(charName, entry.ItemID)
 	if err != nil {
 		return err
 	}
 
-	price := spell.SpellLevel * 100
-	if g.inv.Gold < price {
-		return fmt.Errorf("need %d gold, have %d", price, g.inv.Gold)
+	if g.inv.Gold < entry.Price {
+		return fmt.Errorf("need %d gold, have %d", entry.Price, g.inv.Gold)
 	}
 
-	err = sb.LearnSpell(spellID, spell.SpellLevel, g.gd.Spells.ChargeTable.MaxSpellsPerLvl)
+	err = sb.LearnSpell(entry.ItemID, spell.SpellLevel, g.gd.Spells.ChargeTable.MaxSpellsPerLvl)
 	if err != nil {
 		return err
 	}
 
-	g.inv.Gold -= price
+	g.inv.Gold -= entry.Price
+	entry.Version++
 	return nil
 }
 

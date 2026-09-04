@@ -65,13 +65,32 @@ func findShopSpell(items []ShopItemState, id string) *ShopItemState {
 	return nil
 }
 
+func shopTestOffer(t *testing.T, game *Game, itemID string) ShopItemState {
+	t.Helper()
+	nodeID := game.State().CurrentLocation.MapID
+	items, err := game.GetShopItems(nodeID)
+	if err != nil {
+		t.Fatalf("get shop items: %v", err)
+	}
+	for _, item := range items {
+		if item.ID == itemID {
+			return item
+		}
+	}
+	t.Fatalf("shop offer %q not found", itemID)
+	return ShopItemState{}
+}
+
 func TestLearnSpellRejectsPartyMemberBelowRequiredLevel(t *testing.T) {
 	game := newShopSpellGame(t, []PartyMemberReq{
+		{Name: "Bruno", ClassID: "warrior"},
 		{Name: "Nia", ClassID: "mender"},
 	})
+	setPartyLevel(t, game, 0, 7)
 	setGold(t, game, 500)
 
-	err := game.LearnSpell("Nia", "heal")
+	heal := shopTestOffer(t, game, "heal")
+	err := game.LearnSpell("cadott-general-store", heal.StockID, "Nia")
 	if err == nil {
 		t.Fatal("expected level gate error, got nil")
 	}
