@@ -362,7 +362,7 @@ for (const viewport of [
 test("Old Mill keyboard, real defeat recovery and retry at 800x600", async ({
   page,
 }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(240_000);
   const viewport = { width: 800, height: 600 };
   await page.setViewportSize(viewport);
   await page.goto("/?noEncounters=1");
@@ -398,12 +398,25 @@ test("Old Mill keyboard, real defeat recovery and retry at 800x600", async ({
     round++
   ) {
     await page.evaluate(() =>
-      window.__kithlandsTest.submitAction({ type: "wait" }, "Battle"),
+      window.__kithlandsTest.startAuthoritativeBattleRound("wait"),
     );
+    await page.waitForFunction(
+      () =>
+        window.__kithlandsTest.activeSceneKey() === "Dungeon" ||
+        !window.__kithlandsTest.battleVisibilitySnapshot().animating,
+    );
+    expect(
+      await page.evaluate(() =>
+        window.__kithlandsTest
+          .visibleTexts("Battle")
+          .some((t) => t.text === "VICTORY!"),
+      ),
+    ).toBe(false);
   }
   await room(page, "approach");
   const recovered = await state(page);
   expect(recovered.phase).toBe("world");
+  expect(recovered.dungeon.recovered_from_defeat).toBe(true);
   expect(recovered.party.every((p) => p.hp === p.max_hp)).toBe(true);
   expect(recovered.gold).toBe(gold);
   expect(

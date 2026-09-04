@@ -21,16 +21,17 @@ const LocationDungeon = "dungeon"
 // DungeonProgress is additive JSONB save state. Combat is deliberately not
 // checkpointed: saves are taken before an encounter or after its resolution.
 type DungeonProgress struct {
-	ID            string          `json:"id"`
-	RoomID        string          `json:"room_id"`
-	Position      dungeon.Point   `json:"position"`
-	Flags         map[string]bool `json:"flags"`
-	Visited       []string        `json:"visited"`
-	Journal       []string        `json:"journal"`
-	Active        bool            `json:"active"`
-	Origin        LocationState   `json:"origin"`
-	PayoffClaimed bool            `json:"payoff_claimed"`
-	EncounterID   string          `json:"-"`
+	RecoveredFromDefeat bool            `json:"-"`
+	ID                  string          `json:"id"`
+	RoomID              string          `json:"room_id"`
+	Position            dungeon.Point   `json:"position"`
+	Flags               map[string]bool `json:"flags"`
+	Visited             []string        `json:"visited"`
+	Journal             []string        `json:"journal"`
+	Active              bool            `json:"active"`
+	Origin              LocationState   `json:"origin"`
+	PayoffClaimed       bool            `json:"payoff_claimed"`
+	EncounterID         string          `json:"-"`
 }
 
 type DungeonEntryState struct {
@@ -52,20 +53,21 @@ type DungeonActionState struct {
 	Completed bool   `json:"completed"`
 }
 type DungeonState struct {
-	BattleBackground string               `json:"battle_background,omitempty"`
-	ID               string               `json:"id"`
-	Title            string               `json:"title"`
-	LocalityName     string               `json:"locality_name"`
-	RoomID           string               `json:"room_id"`
-	RoomName         string               `json:"room_name"`
-	Description      string               `json:"description"`
-	Objective        string               `json:"objective"`
-	Map              *settlements.Map     `json:"map"`
-	Position         dungeon.Point        `json:"position"`
-	Actions          []DungeonActionState `json:"actions"`
-	Visited          []string             `json:"visited"`
-	Journal          []string             `json:"journal"`
-	Complete         bool                 `json:"complete"`
+	RecoveredFromDefeat bool                 `json:"recovered_from_defeat,omitempty"`
+	BattleBackground    string               `json:"battle_background,omitempty"`
+	ID                  string               `json:"id"`
+	Title               string               `json:"title"`
+	LocalityName        string               `json:"locality_name"`
+	RoomID              string               `json:"room_id"`
+	RoomName            string               `json:"room_name"`
+	Description         string               `json:"description"`
+	Objective           string               `json:"objective"`
+	Map                 *settlements.Map     `json:"map"`
+	Position            dungeon.Point        `json:"position"`
+	Actions             []DungeonActionState `json:"actions"`
+	Visited             []string             `json:"visited"`
+	Journal             []string             `json:"journal"`
+	Complete            bool                 `json:"complete"`
 }
 type DungeonRequest struct {
 	Type     string `json:"type"`
@@ -121,7 +123,7 @@ func (g *Game) fillDungeonState(s *GameState) {
 	if r == nil {
 		return
 	}
-	s.Dungeon = &DungeonState{ID: def.ID, Title: g.dungeonText(def.Title), LocalityName: g.dungeonText("{locality}"), RoomID: r.ID, RoomName: r.Name, Description: g.dungeonText(r.Description), Map: r.Presentation(p.Flags), BattleBackground: r.BattleBackground, Position: p.Position, Visited: slices.Clone(p.Visited), Journal: slices.Clone(p.Journal), Complete: p.Flags[def.CompleteFlag]}
+	s.Dungeon = &DungeonState{ID: def.ID, Title: g.dungeonText(def.Title), LocalityName: g.dungeonText("{locality}"), RoomID: r.ID, RoomName: r.Name, Description: g.dungeonText(r.Description), Map: r.Presentation(p.Flags), BattleBackground: r.BattleBackground, RecoveredFromDefeat: p.RecoveredFromDefeat, Position: p.Position, Visited: slices.Clone(p.Visited), Journal: slices.Clone(p.Journal), Complete: p.Flags[def.CompleteFlag]}
 	for _, o := range def.Objectives {
 		if o.Until == "" || !p.Flags[o.Until] {
 			s.Dungeon.Objective = g.dungeonText(o.Text)
@@ -346,6 +348,7 @@ func (g *Game) startDungeonEncounter(a *dungeon.Action) error {
 	g.scriptedBoss = false
 	g.resetEncounterStartState()
 	g.dungeon.EncounterID = a.ID
+	g.dungeon.RecoveredFromDefeat = false
 	if g.discovered == nil {
 		g.discovered = map[string]bool{}
 	}
@@ -384,6 +387,7 @@ func (g *Game) recoverDungeonDefeat() bool {
 		return false
 	}
 	g.dungeon.EncounterID = ""
+	g.dungeon.RecoveredFromDefeat = true
 	for _, c := range g.party {
 		c.CurrentHP = c.MaxHP
 		c.CurrentMP = c.MaxMP

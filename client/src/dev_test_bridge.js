@@ -1136,6 +1136,7 @@ function visibleBattleFxSnapshot(scene) {
   const portrait = taggedObject("active-portrait");
 
   return {
+    animating: !!scene.animating,
     actorCursors: taggedCount("actor-cursor"),
     animating: !!scene?.animating,
     reticles: taggedCount("reticle"),
@@ -1848,6 +1849,10 @@ export function installDevTestBridge(game) {
       const scene = getScene(game, sceneKey);
       if (!scene || scene.scene?.key !== "Battle") {
         throw new Error("Battle scene is not active");
+      }
+      if (mode === "wait") {
+        void scene.submitWaitAction();
+        return [];
       }
       const enemyId = (scene.gameState?.enemies || []).find(
         (enemy) => (enemy.current_hp ?? enemy.hp ?? 0) > 0,

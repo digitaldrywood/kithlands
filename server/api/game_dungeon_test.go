@@ -280,7 +280,7 @@ func TestDungeonDefeatAndFleeKeepEncounterUncleared(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if state.Phase != "world" || g.dungeon.RoomID != g.dungeonDefinition().EntryRoom || g.dungeon.Flags["trail-bats-cleared"] {
+	if state.Phase != "world" || !state.Dungeon.RecoveredFromDefeat || g.dungeon.RoomID != g.dungeonDefinition().EntryRoom || g.dungeon.Flags["trail-bats-cleared"] {
 		t.Fatal("defeat did not restore safe uncleared entry")
 	}
 	for _, c := range g.party {
@@ -298,7 +298,7 @@ func TestDungeonDefeatAndFleeKeepEncounterUncleared(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if g.phase == "combat" || g.dungeon.Flags["trail-bats-cleared"] || g.dungeon.EncounterID != "" {
+	if g.phase == "combat" || g.dungeon.RecoveredFromDefeat || g.dungeon.Flags["trail-bats-cleared"] || g.dungeon.EncounterID != "" {
 		t.Fatal("flee incorrectly clears encounter")
 	}
 }

@@ -532,6 +532,7 @@ export class BattleScene extends Phaser.Scene {
       const log = result.combat_log || [];
       const actions = result.combat_actions || [];
       await this.animateCombatLog(log, actions);
+      if (this.returnFromDungeonDefeat(result)) return;
       await this.reconcileEnemySprites(result.enemies || []);
       this.gameState = result;
       if (
@@ -3199,6 +3200,7 @@ export class BattleScene extends Phaser.Scene {
       const log = result.combat_log || [];
       const actions = result.combat_actions || [];
       await this.animateCombatLog(log, actions);
+      if (this.returnFromDungeonDefeat(result)) return;
 
       // Reconcile enemy sprites with the authoritative server state BEFORE
       // we restart the scene. The server only sends living enemies in
@@ -3309,6 +3311,15 @@ export class BattleScene extends Phaser.Scene {
       return claimed;
     }
     return result;
+  }
+
+  returnFromDungeonDefeat(gs) {
+    if (gs?.dungeon?.recovered_from_defeat !== true) return false;
+    this.gameState = gs;
+    this.autoMode = false;
+    this.animating = false;
+    this.returnFromBattle(gs);
+    return true;
   }
 
   returnFromBattle(gs) {
@@ -4551,6 +4562,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   showVictoryResults(gs) {
+    if (this.returnFromDungeonDefeat(gs)) return;
     const mobileVictory = this.hudLayout?.mode === "mobile";
     const screenHeight = mobileVictory ? 1600 : 600;
     if (this.scale.gameSize.height !== screenHeight) {
