@@ -144,9 +144,9 @@
           "name": "freight-desk",
           "type": "solid",
           "x": 96,
-          "y": 320,
-          "width": 160,
-          "height": 96
+          "y": 288,
+          "width": 192,
+          "height": 128
         },
         {
           "id": 8,
@@ -161,19 +161,19 @@
           "id": 9,
           "name": "handcart",
           "type": "solid",
-          "x": 512,
-          "y": 160,
-          "width": 128,
-          "height": 64
+          "x": 480,
+          "y": 128,
+          "width": 192,
+          "height": 96
         },
         {
           "id": 10,
           "name": "empty-casks",
           "type": "solid",
-          "x": 64,
-          "y": 160,
+          "x": 96,
+          "y": 128,
           "width": 96,
-          "height": 64
+          "height": 96
         }
       ],
       "draworder": "topdown"

@@ -182,7 +182,7 @@
           "x": 288,
           "y": 64,
           "width": 32,
-          "height": 64
+          "height": 128
         },
         {
           "id": 12,
@@ -190,6 +190,15 @@
           "type": "solid",
           "x": 448,
           "y": 160,
+          "width": 32,
+          "height": 64
+        },
+        {
+          "id": 13,
+          "name": "western-valve-rim",
+          "type": "solid",
+          "x": 256,
+          "y": 64,
           "width": 32,
           "height": 64
         }

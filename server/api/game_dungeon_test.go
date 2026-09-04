@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/digitaldrywood/kithlands/internal/dungeon"
@@ -232,8 +233,14 @@ func TestDungeonFullRouteSaveShortcutAndRepeatSafety(t *testing.T) {
 				t.Fatalf("save replay accepted %s", id)
 			}
 		}
-		if id == "trail-home" && g.State().Gold != before.Gold+80 {
-			t.Fatal("return payoff missing")
+		if id == "trail-home" {
+			returned := g.State()
+			if returned.Gold != before.Gold+80 {
+				t.Fatal("return payoff missing")
+			}
+			if len(returned.CombatLog) != 0 || !strings.Contains(returned.Message, "80 gold") {
+				t.Fatal("return payoff obscured by stale battle results")
+			}
 		}
 	}
 	if !g.dungeon.PayoffClaimed || len(g.dungeon.Visited) != 12 {

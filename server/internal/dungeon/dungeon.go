@@ -50,13 +50,14 @@ type VisualVariant struct {
 }
 
 type Room struct {
-	VisualVariants []VisualVariant  `json:"visual_variants,omitempty"`
-	ID             string           `json:"id"`
-	Name           string           `json:"name"`
-	Description    string           `json:"description"`
-	MapFile        string           `json:"map_file"`
-	Map            *settlements.Map `json:"-"`
-	Actions        []Action         `json:"actions"`
+	BattleBackground string           `json:"battle_background,omitempty"`
+	VisualVariants   []VisualVariant  `json:"visual_variants,omitempty"`
+	ID               string           `json:"id"`
+	Name             string           `json:"name"`
+	Description      string           `json:"description"`
+	MapFile          string           `json:"map_file"`
+	Map              *settlements.Map `json:"-"`
+	Actions          []Action         `json:"actions"`
 }
 type Objective struct {
 	Until string `json:"until"`

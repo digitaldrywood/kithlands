@@ -36,7 +36,7 @@ export class DungeonScene extends Phaser.Scene {
 
   init(data) {
     this.gameState = data.gameState;
-    this.entryMessage = data.entryMessage || "";
+    this.entryMessage = data.entryMessage ?? data.gameState?.message ?? "";
     this.playerDir = data.playerDir || "up";
     this.animating = false;
     this.menuOpen = false;

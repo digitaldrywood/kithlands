@@ -156,7 +156,8 @@
             ],
             "reason": "A barred gate blocks this route. It opens from inside the mill."
           }
-        ]
+        ],
+        "battle_background": "bg_forest_1"
       },
       {
         "id": "receiving",
@@ -213,7 +214,7 @@
             "kind": "hint",
             "position": {
               "x": 6,
-              "y": 9
+              "y": 8
             },
             "flag": "ledger-read",
             "text": "The last entry reads: 'Store the spare handle with the grain. Fit it at the wheel, then open the sluice. Never force the root-choked heart while the race is dry.'"
@@ -224,12 +225,13 @@
             "kind": "rest",
             "position": {
               "x": 3,
-              "y": 9
+              "y": 8
             },
             "repeatable": true,
             "text": "Your party rests at the sheltered freight desk. HP, MP and conditions are restored."
           }
-        ]
+        ],
+        "battle_background": "bg_interior_3"
       },
       {
         "id": "heron-pool",
@@ -256,8 +258,8 @@
             "label": "Inspect the carved heron",
             "kind": "hint",
             "position": {
-              "x": 12,
-              "y": 8
+              "x": 6,
+              "y": 4
             },
             "text": "A reed-shaped mark points to a loose floorboard in the mill loft. The miller hid a blue ward there for someone patient enough to notice.",
             "flag": "heron-secret-read"
@@ -267,8 +269,8 @@
             "label": "Open the fishing satchel",
             "kind": "treasure",
             "position": {
-              "x": 6,
-              "y": 4
+              "x": 5,
+              "y": 5
             },
             "flag": "heron-cache-open",
             "reward": {
@@ -278,7 +280,8 @@
             },
             "text": "Two Antidotes remain dry in the fishing satchel. Cure poison from the Party menu or during battle."
           }
-        ]
+        ],
+        "battle_background": "bg_forest_1"
       },
       {
         "id": "grain-store",
@@ -322,7 +325,7 @@
             "label": "Take the spare wheel handle",
             "kind": "switch",
             "position": {
-              "x": 6,
+              "x": 4,
               "y": 4
             },
             "requires": [
@@ -346,7 +349,8 @@
               "y": 13
             }
           }
-        ]
+        ],
+        "battle_background": "bg_interior_3"
       },
       {
         "id": "drying-room",
@@ -391,7 +395,7 @@
             "kind": "treasure",
             "position": {
               "x": 6,
-              "y": 4
+              "y": 5
             },
             "flag": "potions-taken",
             "reward": {
@@ -410,8 +414,8 @@
             "label": "Unpack the blue supply box",
             "kind": "treasure",
             "position": {
-              "x": 12,
-              "y": 2
+              "x": 17,
+              "y": 4
             },
             "flag": "ethers-taken",
             "reward": {
@@ -439,12 +443,13 @@
               "y": 8
             }
           }
-        ]
+        ],
+        "battle_background": "bg_interior_3"
       },
       {
         "id": "wheel-house",
         "name": "Wheel House",
-        "description": "A massive waterwheel stands silent over the race. Its control spindle is missing a square brass handle.",
+        "description": "A massive waterwheel spans the race. Brass shafts lead to its control spindle, and a service bridge reaches the north gallery.",
         "map_file": "wheel-house.json",
         "actions": [
           {
@@ -526,7 +531,14 @@
               "y": 2
             }
           }
-        ]
+        ],
+        "visual_variants": [
+          {
+            "requires": "wheel-restored",
+            "image": "/api/data/dungeons/art/wheel-house-active.png"
+          }
+        ],
+        "battle_background": "bg_interior_1"
       },
       {
         "id": "maintenance",
@@ -588,12 +600,13 @@
             ],
             "reason": "The gate is barred from the tailrace side. Reach it through the root cellar."
           }
-        ]
+        ],
+        "battle_background": "bg_interior_3"
       },
       {
         "id": "sluice-gallery",
         "name": "Sluice Gallery",
-        "description": "A narrow gallery follows the dark race. The wheel has raised the service bridge, but a sluice gate still holds the river back.",
+        "description": "A narrow gallery follows the dark race. Brass controls stand beside the sluice pools; stone walkways connect the mill loft and root cellar.",
         "map_file": "sluice-gallery.json",
         "actions": [
           {
@@ -638,8 +651,8 @@
             "label": "Open the river sluice",
             "kind": "switch",
             "position": {
-              "x": 6,
-              "y": 4
+              "x": 8,
+              "y": 6
             },
             "flag": "sluice-open",
             "requires": [
@@ -681,7 +694,8 @@
               "y": 8
             }
           }
-        ]
+        ],
+        "battle_background": "bg_interior_1"
       },
       {
         "id": "loft",
@@ -759,7 +773,8 @@
             "reason": "A clue at the quiet fishing pool may explain the floorboard mark. Clear the beetle too.",
             "text": "The floorboard lifts to reveal a Ward Gem. Socket it into armor for a useful defense bonus."
           }
-        ]
+        ],
+        "battle_background": "bg_interior_3"
       },
       {
         "id": "root-cellar",
@@ -845,7 +860,8 @@
             "text": "The Warden is tangled and frightened. Flowing water loosens its roots; fire magic can help. Open the tailrace gate and rest in the workshop before the final encounter.",
             "flag": "roots-warning-read"
           }
-        ]
+        ],
+        "battle_background": "bg_interior_1"
       },
       {
         "id": "mill-heart",
@@ -890,7 +906,7 @@
             "label": "Claim the miller\u2019s keepsake",
             "kind": "treasure",
             "position": {
-              "x": 6,
+              "x": 4,
               "y": 4
             },
             "flag": "mill-reward",
@@ -905,7 +921,8 @@
             "reason": "Calm the Warden before approaching the keepsake.",
             "text": "The Warden uncurls and the race runs clear. An Ember Gem rests in the miller\u2019s keepsake box. Bring the good news back to {locality}."
           }
-        ]
+        ],
+        "battle_background": "bg_interior_1"
       },
       {
         "id": "tailrace",
@@ -933,7 +950,7 @@
             "kind": "switch",
             "position": {
               "x": 12,
-              "y": 8
+              "y": 6
             },
             "flag": "shortcut-open",
             "text": "The heavy bar lifts. The tailrace now connects the workshop to the wagon road: a permanent shortcut for resting or returning to town."
@@ -974,7 +991,8 @@
             ],
             "reason": "Lift the bar first."
           }
-        ]
+        ],
+        "battle_background": "bg_forest_1"
       }
     ]
   }

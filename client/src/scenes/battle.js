@@ -840,7 +840,9 @@ export class BattleScene extends Phaser.Scene {
       this.buildingType ?? "",
       enemyFingerprint,
     ].join("|");
-    const key = pickBackgroundKey(theme.motif, seedParts, this.buildingType);
+    const key =
+      gs.dungeon?.battle_background ||
+      pickBackgroundKey(theme.motif, seedParts, this.buildingType);
     if (key && this.textures.exists(key)) {
       const bg = this.add
         .image(400, 300, key)

@@ -566,6 +566,33 @@ BUILDERS = {'approach': lambda s: outdoor(s), 'heron-pool': lambda s: outdoor(s,
             'mill-heart': mill_heart, 'tailrace': tailrace}
 
 
+def apply_reviewed_footprints(scene):
+    """Refine center-sampled collision for rendered feet at each cell's bottom.
+
+    Interaction paths may stop one cardinal tile from the action. Props must
+    also exclude unsafe adjacent stopping tiles, not just the action tile.
+    """
+    reviewed = {
+        'heron-pool': {'heron-pool': (96, 208, 192, 112)},
+        'tailrace': {'heron-pool': (96, 256, 224, 128),
+                     'causeway-rail': (352, 160, 128, 32)},
+        'receiving': {'freight-desk': (96, 288, 192, 128),
+                      'empty-casks': (96, 128, 96, 96),
+                      'handcart': (480, 128, 192, 96)},
+        'drying-room': {'banked-drying-stove': (560, 160, 80, 96)},
+        'sluice-gallery': {'western-valve': (288, 64, 32, 128)},
+        'mill-heart': {'ancient-root-75': (64, 32, 224, 96)},
+    }
+    for obj in scene.solids:
+        bounds = reviewed.get(scene.key, {}).get(obj['name'])
+        if bounds:
+            obj.update(zip(('x', 'y', 'width', 'height'), bounds))
+    if scene.key == 'mill-heart':
+        scene.solid('keepsake-root-trunk', 64, 96, 64, 96)
+    if scene.key == 'sluice-gallery':
+        scene.solid('western-valve-rim', 256, 64, 32, 64)
+
+
 def validate_map(scene):
     """Check geometry, cardinal connectivity, required actions and boundary."""
     blocked=set()
@@ -609,6 +636,7 @@ def main():
     for key in args.rooms:
         scene=Scene(key)
         BUILDERS[key](scene)
+        apply_reviewed_footprints(scene)
         reachable=validate_map(scene)
         (args.output/'art'/f'{key}.svg').write_text(scene.finish())
         (args.output/'maps'/f'{key}.json').write_text(json.dumps(scene.tiled(),indent=2)+'\n')

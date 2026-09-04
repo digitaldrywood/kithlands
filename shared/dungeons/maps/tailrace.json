@@ -143,10 +143,10 @@
           "id": 7,
           "name": "heron-pool",
           "type": "solid",
-          "x": 64,
-          "y": 320,
+          "x": 96,
+          "y": 256,
           "width": 224,
-          "height": 96
+          "height": 128
         },
         {
           "id": 8,
@@ -251,9 +251,9 @@
           "id": 19,
           "name": "causeway-rail",
           "type": "solid",
-          "x": 320,
-          "y": 192,
-          "width": 160,
+          "x": 352,
+          "y": 160,
+          "width": 128,
           "height": 32
         }
       ],

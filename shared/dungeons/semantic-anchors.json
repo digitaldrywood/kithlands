@@ -1,0 +1,43 @@
+{
+  "coordinate_system": "zero-based 32px tiles; rendered feet at [32*x+16,32*(y+1)]; all walkable Manhattan-distance-1 stopping tiles must remain clear of props",
+  "actions": {
+    "receiving": {
+      "ledger": [6, 8],
+      "keeper-bench": [3, 8]
+    },
+    "heron-pool": {
+      "heron-secret": [6, 4],
+      "heron-cache": [5, 5]
+    },
+    "grain-store": {
+      "spare-handle": [4, 4]
+    },
+    "drying-room": {
+      "supply-potions": [6, 5],
+      "supply-ethers": [17, 4]
+    },
+    "wheel-house": {
+      "wheel-handle": [7, 6]
+    },
+    "maintenance": {
+      "workshop-rest": [6, 4],
+      "maintenance-note": [18, 7]
+    },
+    "sluice-gallery": {
+      "sluice-lever": [8, 6]
+    },
+    "loft": {
+      "loft-secret": [6, 4]
+    },
+    "root-cellar": {
+      "roots-warning": [6, 4]
+    },
+    "mill-heart": {
+      "warden": [12, 8],
+      "miller-keepsake": [4, 4]
+    },
+    "tailrace": {
+      "tailrace-bar": [12, 6]
+    }
+  }
+}

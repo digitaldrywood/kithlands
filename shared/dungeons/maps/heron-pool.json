@@ -143,10 +143,10 @@
           "id": 7,
           "name": "heron-pool",
           "type": "solid",
-          "x": 64,
-          "y": 320,
-          "width": 224,
-          "height": 96
+          "x": 96,
+          "y": 208,
+          "width": 192,
+          "height": 112
         },
         {
           "id": 8,

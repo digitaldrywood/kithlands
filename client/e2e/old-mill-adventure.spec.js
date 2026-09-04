@@ -162,10 +162,16 @@ async function act(page, id, viewport) {
     (key) => window.__kithlandsTest.activeSceneKey() === key,
     scene,
   );
-  await page.evaluate(
-    (key) => window.__kithlandsTest.waitForSceneReady(key),
-    scene,
-  );
+  if (scene === "Battle") {
+    await page.waitForFunction(
+      () => window.__kithlandsTest.visibleTexts("Battle").length > 5,
+    );
+  } else {
+    await page.evaluate(
+      (key) => window.__kithlandsTest.waitForSceneReady(key),
+      scene,
+    );
+  }
   return result;
 }
 // Automated combat inputs use the ordinary action endpoint and real damage,
@@ -297,10 +303,16 @@ for (const viewport of [
       if (id === "trail-home") prePayoff = before.gold;
       const result = await act(page, id, viewport);
       if (result.phase === "combat") {
-        if (id === "warden")
+        if (id === "warden") {
+          await page.waitForTimeout(1500); // Let the existing boss entrance finish.
           await capture(page, `${viewport.width}-warden-battle`);
+        }
         await resolveBattle(page);
-        expect((await state(page)).message).not.toContain("try again");
+        expect(
+          (await state(page)).dungeon.actions.find((a) => a.id === id)
+            ?.completed,
+          `real combat victory for ${id}`,
+        ).toBe(true);
       }
       if (
         id === "wheel-handle" ||
@@ -314,6 +326,8 @@ for (const viewport of [
     expect(seen.size).toBe(12);
     expect(end.dungeon_entry.completed).toBe(true);
     expect(end.gold).toBe(prePayoff + 80);
+    expect(end.message).toContain("80 gold");
+    expect(end.combat_log || []).toEqual([]);
     await capture(page, `${viewport.width}-return-payoff`);
     console.log(
       `Old Mill ${viewport.width}: automated actual-combat route ${((Date.now() - started) / 60000).toFixed(2)} minutes; this is not unassisted first-visit duration.`,
@@ -344,3 +358,83 @@ for (const viewport of [
     expect(errors).toEqual([]);
   });
 }
+
+test("Old Mill keyboard, real defeat recovery and retry at 800x600", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  const viewport = { width: 800, height: 600 };
+  await page.setViewportSize(viewport);
+  await page.goto("/?noEncounters=1");
+  await page.waitForFunction(() =>
+    window.__kithlandsTest?.sceneIsActive("Title"),
+  );
+  await page.evaluate(() => window.__kithlandsTest.startQuickGame());
+  const entry = await page.evaluate(() =>
+    window.__kithlandsTest.interactiveTextPosition("Old Mill trail", "World"),
+  );
+  await page.mouse.click(entry.x, entry.y);
+  await room(page, "approach");
+  const start = (await state(page)).dungeon.position;
+  await page.keyboard.down("ArrowUp");
+  await page.waitForFunction(
+    (y) => window.__kithlandsTest.gameState()?.dungeon?.position.y < y,
+    start.y,
+  );
+  await page.keyboard.up("ArrowUp");
+  await page.evaluate(() =>
+    window.__kithlandsTest.waitForSceneReady("Dungeon"),
+  );
+  await capture(page, "800-keyboard-approach");
+  await act(page, "split-oak", viewport);
+  const gold = (await state(page)).gold;
+  await act(page, "trail-bats", viewport);
+  await capture(page, "800-before-defeat");
+  // Real enemies take ordinary wait turns until the party loses. No debug
+  // damage, forced defeat, level grants or enemy overrides are used.
+  for (
+    let round = 0;
+    round < 120 && (await state(page)).phase === "combat";
+    round++
+  ) {
+    await page.evaluate(() =>
+      window.__kithlandsTest.submitAction({ type: "wait" }, "Battle"),
+    );
+  }
+  await room(page, "approach");
+  const recovered = await state(page);
+  expect(recovered.phase).toBe("world");
+  expect(recovered.party.every((p) => p.hp === p.max_hp)).toBe(true);
+  expect(recovered.gold).toBe(gold);
+  expect(
+    recovered.dungeon.actions.find((a) => a.id === "trail-bats").completed,
+  ).toBe(false);
+  expect(
+    recovered.dungeon.actions.find((a) => a.id === "split-oak").completed,
+  ).toBe(true);
+  await capture(page, "800-defeat-recovered");
+  await act(page, "trail-bats", viewport);
+  // Drive the existing Smart key and let the real battle animation/results
+  // flow run, then use its Continue control to return to exploration.
+  for (
+    let attempt = 0;
+    attempt < 120 && (await state(page)).phase === "combat";
+    attempt++
+  ) {
+    await page.keyboard.press("m");
+    await page.waitForTimeout(500);
+  }
+  await page.waitForFunction(() =>
+    window.__kithlandsTest
+      .visibleTexts("Battle")
+      .some((t) => t.text === "Continue"),
+  );
+  await capture(page, "800-retry-victory-results");
+  await page.keyboard.press("Enter");
+  await room(page, "approach");
+  expect(
+    (await state(page)).dungeon.actions.find((a) => a.id === "trail-bats")
+      .completed,
+  ).toBe(true);
+  await capture(page, "800-retry-victory");
+});
