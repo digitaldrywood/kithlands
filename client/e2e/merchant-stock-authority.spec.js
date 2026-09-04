@@ -136,14 +136,24 @@ async function triggerSceneAction(page, viewport, sceneKey) {
 }
 
 async function enterCadottInterior(page, viewport, revisit = false) {
-  const approach = await page.evaluate(
-    (direction) => window.__kithlandsTest.movePlayer(direction, "World"),
-    revisit ? "down" : "up",
-  );
-  expect(approach.moved).toBe(true);
-  await page.waitForFunction(
-    () => !window.__kithlandsTest.sceneFlags("World").animating,
-  );
+  if (revisit) {
+    const approach = await page.evaluate(() => {
+      const state = window.__kithlandsTest.gameState("World");
+      return window.__kithlandsTest.approachWorldSpawn(
+        state.settlement_entry_node_id,
+        "World",
+      );
+    });
+    expect(approach.nodeId).toBeTruthy();
+  } else {
+    const approach = await page.evaluate(() =>
+      window.__kithlandsTest.movePlayer("up", "World"),
+    );
+    expect(approach.moved).toBe(true);
+    await page.waitForFunction(
+      () => !window.__kithlandsTest.sceneFlags("World").animating,
+    );
+  }
   await triggerSceneAction(page, viewport, "World");
   await page.waitForFunction(
     () => window.__kithlandsTest.activeSceneKey() === "Settlement",

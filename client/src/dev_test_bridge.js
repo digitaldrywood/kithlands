@@ -2628,6 +2628,37 @@ export function installDevTestBridge(game) {
       );
     },
 
+    approachWorldSpawn(nodeId, sceneKey = "World") {
+      const scene = getScene(game, sceneKey);
+      if (!scene?.player || scene.scene?.key !== "World") {
+        throw new Error("World scene is not active");
+      }
+      const spawn = (scene.spawns || []).find(
+        (entry) => entry.node_id === nodeId,
+      );
+      if (!spawn) throw new Error(`World spawn not found: ${nodeId}`);
+      const candidates = [
+        [spawn.x, spawn.y + 1],
+        [spawn.x, spawn.y - 1],
+        [spawn.x + 1, spawn.y],
+        [spawn.x - 1, spawn.y],
+      ];
+      const destination = candidates.find(([x, y]) => {
+        const tile = scene.tileData?.[y]?.[x];
+        return Number.isInteger(tile) && scene.canWalkTile?.(tile);
+      });
+      if (!destination) {
+        throw new Error(`No walkable approach for world spawn: ${nodeId}`);
+      }
+      setPlayerTile(scene, destination[0], destination[1]);
+      scene.currentDoorSpawn = spawn;
+      return {
+        nodeId: spawn.node_id,
+        x: scene.playerX,
+        y: scene.playerY,
+      };
+    },
+
     async sampleMovePlayer(dir, sceneKey) {
       const scene = getScene(game, sceneKey);
       if (!scene?.player || typeof scene.tryMove !== "function") {
