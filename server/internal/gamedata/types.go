@@ -543,6 +543,9 @@ type Spell struct {
 type Monster struct {
 	ID              string       `json:"id"`
 	Name            string       `json:"name"`
+	FieldNote       string       `json:"field_note"`
+	Habitats        []string     `json:"habitats"`
+	Tactics         string       `json:"tactics"`
 	Tier            int          `json:"tier"`
 	Size            string       `json:"size"` // small, medium, large, boss
 	IsBoss          bool         `json:"is_boss"`

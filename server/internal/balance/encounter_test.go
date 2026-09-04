@@ -2,6 +2,7 @@ package balance_test
 
 import (
 	"math/rand/v2"
+	"strconv"
 	"testing"
 
 	"github.com/digitaldrywood/kithlands/internal/balance"
@@ -40,6 +41,10 @@ func TestFormationEligibilityByLevel(t *testing.T) {
 		"starter_slime_pair":   true,
 		"starter_goblin_scout": true,
 		"starter_mixed_duo":    true,
+		"giant_rat_scurry":     true,
+		"bramblehog_rooters":   true,
+		"mire_toad_watch":      true,
+		"ridge_rook_scout":     true,
 	}
 
 	for seed := uint64(0); seed < 1000; seed++ {
@@ -326,6 +331,87 @@ func TestGenerateFormationEncounterHighLevelAvoidsFallback(t *testing.T) {
 	wantXP := int(float64(wolf.XPReward) * diff.XPGainMult * 0.85)
 	if result.Combatants[0].XPReward != wantXP {
 		t.Fatalf("expected relaxed XP reward %d, got %d", wantXP, result.Combatants[0].XPReward)
+	}
+}
+
+func TestAuthoredTerrainCoverageAvoidsSingleSlimeFallback(t *testing.T) {
+	gd := loadTestData(t)
+	diff := balance.GetDifficulty("normal")
+	terrains := []string{"grass", "path", "forest", "marsh", "snow", "hill"}
+
+	for _, terrain := range terrains {
+		for _, level := range []int{1, 50} {
+			t.Run(terrain+"_level_"+strconv.Itoa(level), func(t *testing.T) {
+				for seed := uint64(0); seed < 100; seed++ {
+					rng := rand.New(rand.NewPCG(seed, 0))
+					result := balance.GenerateFormationEncounter(gd, level, diff, terrain, rng)
+					if result.FormationID == "" {
+						t.Fatalf("seed %d: %s level %d fell back outside authored formations", seed, terrain, level)
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestStarterProtectedTerrainUsesSafeAuthoredFormations(t *testing.T) {
+	gd := loadTestData(t)
+	diff := balance.GetDifficulty("normal")
+	terrains := []string{"grass", "path", "forest", "marsh", "snow", "hill"}
+
+	for _, terrain := range terrains {
+		for encounterIndex := 1; encounterIndex < balance.StarterProtectedEncounterCount; encounterIndex++ {
+			rng := rand.New(rand.NewPCG(uint64(encounterIndex), 0))
+			result := balance.GenerateFormationEncounterWithProfile(
+				gd,
+				1,
+				diff,
+				terrain,
+				balance.EncounterProfile{WorldEncounterIndex: encounterIndex},
+				rng,
+			)
+			formation := gd.FormationByID(result.FormationID)
+			if formation == nil {
+				t.Fatalf("%s encounter %d used fallback instead of an authored starter formation", terrain, encounterIndex)
+			}
+			if !formation.StarterSafe {
+				t.Fatalf("%s encounter %d selected unsafe formation %q", terrain, encounterIndex, formation.ID)
+			}
+		}
+	}
+}
+
+func TestOverworldExpansionIdentitiesAreEncounterable(t *testing.T) {
+	gd := loadTestData(t)
+	diff := balance.GetDifficulty("normal")
+	tests := []struct {
+		id      string
+		terrain string
+		level   int
+	}{
+		{id: "giant_rat", terrain: "path", level: 1},
+		{id: "bandit", terrain: "path", level: 4},
+		{id: "war_hydra", terrain: "marsh", level: 100},
+		{id: "wyvern", terrain: "snow", level: 100},
+		{id: "bramblehog", terrain: "forest", level: 1},
+		{id: "mire_toad", terrain: "marsh", level: 1},
+		{id: "frosthorn", terrain: "snow", level: 3},
+		{id: "ridge_rook", terrain: "hill", level: 1},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.id, func(t *testing.T) {
+			for seed := uint64(0); seed < 4096; seed++ {
+				rng := rand.New(rand.NewPCG(seed, 0))
+				result := balance.GenerateFormationEncounter(gd, tt.level, diff, tt.terrain, rng)
+				for _, combatant := range result.Combatants {
+					if combatant.MonsterID == tt.id {
+						return
+					}
+				}
+			}
+			t.Fatalf("%s never appeared on %s at level %d", tt.id, tt.terrain, tt.level)
+		})
 	}
 }
 

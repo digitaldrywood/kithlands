@@ -2,6 +2,14 @@ import {
   monsterSpriteKey,
   MONSTER_SPRITE_LOAD,
 } from "../data/monsterSprites.js";
+import items from "../../../shared/items.json";
+
+const DROP_ITEM_NAMES = new Map(
+  Object.values(items)
+    .flatMap((entries) => (Array.isArray(entries) ? entries : []))
+    .filter((item) => item?.id && item?.name)
+    .map((item) => [item.id, item.name]),
+);
 
 export function element(tag, className = "", text = "") {
   const node = document.createElement(tag);
@@ -43,6 +51,17 @@ export function affinityLabel(values) {
         .map((value) => value.charAt(0).toUpperCase() + value.slice(1))
         .join(", ")
     : "None";
+}
+
+export function dropItemName(itemId) {
+  return (
+    DROP_ITEM_NAMES.get(itemId) ||
+    String(itemId || "Unknown item")
+      .split("_")
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ")
+  );
 }
 
 export function mountBestiary(host, catalog, discovered) {
@@ -169,6 +188,20 @@ function renderDetail(detail, entry) {
   heading.append(element("p", "bestiary-note", tags.join(" · ")));
   detail.append(portrait);
 
+  const fieldNote = element("section", "bestiary-field-note");
+  fieldNote.append(
+    element("h3", "", "Field note"),
+    element("p", "", monster.field_note),
+  );
+  const fieldGuide = element("dl", "bestiary-field-guide");
+  fieldGuide.append(
+    element("dt", "", "Habitats"),
+    element("dd", "", monster.habitats.join(" · ")),
+    element("dt", "", "Tactics"),
+    element("dd", "", monster.tactics),
+  );
+  detail.append(fieldNote, fieldGuide);
+
   const affinities = element("dl", "bestiary-affinities");
   for (const [label, values] of [
     ["Weaknesses", monster.weaknesses],
@@ -180,7 +213,33 @@ function renderDetail(detail, entry) {
       element("dd", "", affinityLabel(values)),
     );
   }
-  detail.append(affinities, element("h3", "", "Base stats & rewards"));
+  detail.append(affinities, element("h3", "", "Known drops"));
+  if (monster.drops.length) {
+    const table = element("table", "bestiary-drops");
+    table.setAttribute("aria-label", `${monster.name} drop table`);
+    const head = element("thead");
+    const headRow = element("tr");
+    for (const label of ["Item", "Chance"]) {
+      const cell = element("th", "", label);
+      cell.scope = "col";
+      headRow.append(cell);
+    }
+    head.append(headRow);
+    const body = element("tbody");
+    for (const drop of monster.drops) {
+      const row = element("tr");
+      row.append(
+        element("td", "", dropItemName(drop.item_id)),
+        element("td", "", `${drop.chance_pct}%`),
+      );
+      body.append(row);
+    }
+    table.append(head, body);
+    detail.append(table);
+  } else {
+    detail.append(element("p", "bestiary-note", "No recorded drops."));
+  }
+  detail.append(element("h3", "", "Base stats & rewards"));
   const stats = element("dl", "bestiary-stats");
   for (const [label, value] of [
     ["HP", monster.hp],

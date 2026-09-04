@@ -551,6 +551,20 @@ func (gd *GameData) validate() {
 		if m.ID == "" {
 			panic("gamedata: monster with empty id")
 		}
+		if strings.TrimSpace(m.FieldNote) == "" {
+			panic(fmt.Sprintf("gamedata: monster %q has empty field_note", m.ID))
+		}
+		if len(m.Habitats) == 0 {
+			panic(fmt.Sprintf("gamedata: monster %q has no habitats", m.ID))
+		}
+		for _, habitat := range m.Habitats {
+			if strings.TrimSpace(habitat) == "" {
+				panic(fmt.Sprintf("gamedata: monster %q has empty habitat", m.ID))
+			}
+		}
+		if strings.TrimSpace(m.Tactics) == "" {
+			panic(fmt.Sprintf("gamedata: monster %q has empty tactics", m.ID))
+		}
 		if m.HP <= 0 {
 			panic(fmt.Sprintf("gamedata: monster %q has invalid hp: %d", m.ID, m.HP))
 		}

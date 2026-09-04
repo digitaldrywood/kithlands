@@ -2,18 +2,15 @@ package locality
 
 import "testing"
 
-func TestEncounterTerrainTag_ExpandedTerrainMapsToSupportedEncounters(t *testing.T) {
+func TestEncounterTerrainTag_EncounterTerrainUsesDistinctTags(t *testing.T) {
 	tests := []struct {
 		name string
 		tile TileType
 		want string
 	}{
 		{name: "bridge maps to path", tile: TileBridge, want: "path"},
-		{name: "marsh maps to dark grass", tile: TileMarsh, want: "dark_grass"},
-		{name: "lake maps to water", tile: TileLake, want: "water"},
-		{name: "river maps to water", tile: TileRiver, want: "water"},
-		{name: "snow maps to hill", tile: TileSnow, want: "hill"},
-		{name: "mountain maps to hill", tile: TileMountain, want: "hill"},
+		{name: "marsh keeps its habitat", tile: TileMarsh, want: "marsh"},
+		{name: "snow keeps its habitat", tile: TileSnow, want: "snow"},
 	}
 
 	for _, tt := range tests {
@@ -26,5 +23,17 @@ func TestEncounterTerrainTag_ExpandedTerrainMapsToSupportedEncounters(t *testing
 				t.Fatalf("EncounterTerrainTag(%v) = %q, want %q", tt.tile, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestEncounterTerrainTag_ZeroRateTerrainIsIneligible(t *testing.T) {
+	t.Parallel()
+	for _, tile := range []TileType{
+		TileWater, TileLake, TileRiver, TileMountain, TileTree,
+		TileBuilding, TileDoor, TileFloor, TileRock, TileBush,
+	} {
+		if tag, ok := EncounterTerrainTag(tile); ok {
+			t.Errorf("EncounterTerrainTag(%v) = %q, true; want ineligible", tile, tag)
+		}
 	}
 }

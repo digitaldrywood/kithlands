@@ -8,9 +8,7 @@
     "starter_safe": true,
     "terrain_tags": ["any"],
     "layout": "line",
-    "slots": [
-      { "monster_id": "slime", "min": 1, "max": 1 }
-    ]
+    "slots": [{ "monster_id": "slime", "min": 1, "max": 1 }]
   },
   {
     "id": "starter_slime_pair",
@@ -20,9 +18,7 @@
     "starter_safe": true,
     "terrain_tags": ["grass", "dark_grass", "sand"],
     "layout": "line",
-    "slots": [
-      { "monster_id": "slime", "min": 1, "max": 2 }
-    ]
+    "slots": [{ "monster_id": "slime", "min": 1, "max": 2 }]
   },
   {
     "id": "starter_goblin_scout",
@@ -32,9 +28,7 @@
     "starter_safe": true,
     "terrain_tags": ["path", "grass", "sand"],
     "layout": "line",
-    "slots": [
-      { "monster_id": "goblin", "min": 1, "max": 1 }
-    ]
+    "slots": [{ "monster_id": "goblin", "min": 1, "max": 1 }]
   },
   {
     "id": "starter_mixed_duo",
@@ -56,9 +50,7 @@
     "max_encounter_level": 3,
     "terrain_tags": ["grass", "dark_grass", "sand"],
     "layout": "line",
-    "slots": [
-      { "monster_id": "slime", "min": 2, "max": 4 }
-    ]
+    "slots": [{ "monster_id": "slime", "min": 2, "max": 4 }]
   },
   {
     "id": "goblin_rabble",
@@ -67,9 +59,7 @@
     "max_encounter_level": 3,
     "terrain_tags": ["path", "grass", "sand"],
     "layout": "line",
-    "slots": [
-      { "monster_id": "goblin", "min": 2, "max": 3 }
-    ]
+    "slots": [{ "monster_id": "goblin", "min": 2, "max": 3 }]
   },
   {
     "id": "mixed_horde",
@@ -102,9 +92,7 @@
     "max_encounter_level": 5,
     "terrain_tags": ["dark_grass", "forest", "hill"],
     "layout": "line",
-    "slots": [
-      { "monster_id": "wolf", "min": 1, "max": 3 }
-    ]
+    "slots": [{ "monster_id": "wolf", "min": 1, "max": 3 }]
   },
   {
     "id": "wolf_pack",
@@ -113,9 +101,7 @@
     "max_encounter_level": 5,
     "terrain_tags": ["forest", "dark_grass"],
     "layout": "rows",
-    "slots": [
-      { "monster_id": "wolf", "min": 2, "max": 3 }
-    ]
+    "slots": [{ "monster_id": "wolf", "min": 2, "max": 3 }]
   },
   {
     "id": "wolf_escort",
@@ -136,9 +122,7 @@
     "max_encounter_level": 5,
     "terrain_tags": ["hill", "sand", "dark_grass"],
     "layout": "line",
-    "slots": [
-      { "monster_id": "skeleton", "min": 1, "max": 2 }
-    ]
+    "slots": [{ "monster_id": "skeleton", "min": 1, "max": 2 }]
   },
   {
     "id": "skeleton_ambush",
@@ -151,6 +135,118 @@
       { "monster_id": "skeleton", "min": 1, "max": 1 },
       { "monster_id": "goblin", "min": 2, "max": 2 }
     ]
+  },
+  {
+    "id": "giant_rat_scurry",
+    "weight": 20,
+    "min_encounter_level": 1,
+    "max_encounter_level": 3,
+    "starter_safe": true,
+    "terrain_tags": ["path", "grass", "sand"],
+    "layout": "scattered",
+    "slots": [{ "monster_id": "giant_rat", "min": 1, "max": 2 }]
+  },
+  {
+    "id": "bandit_lookout",
+    "weight": 16,
+    "min_encounter_level": 4,
+    "max_encounter_level": 10,
+    "terrain_tags": ["path", "grass", "hill"],
+    "layout": "line",
+    "slots": [{ "monster_id": "bandit", "min": 1, "max": 1 }]
+  },
+  {
+    "id": "bramblehog_rooters",
+    "weight": 18,
+    "min_encounter_level": 1,
+    "max_encounter_level": 5,
+    "starter_safe": true,
+    "terrain_tags": ["grass", "dark_grass", "forest"],
+    "layout": "line",
+    "slots": [{ "monster_id": "bramblehog", "min": 1, "max": 2 }]
+  },
+  {
+    "id": "bramblehog_sounder",
+    "weight": 12,
+    "min_encounter_level": 2,
+    "max_encounter_level": 8,
+    "terrain_tags": ["dark_grass", "forest"],
+    "layout": "triangle",
+    "slots": [{ "monster_id": "bramblehog", "min": 2, "max": 3 }]
+  },
+  {
+    "id": "mire_toad_watch",
+    "weight": 26,
+    "min_encounter_level": 1,
+    "max_encounter_level": 4,
+    "starter_safe": true,
+    "terrain_tags": ["marsh"],
+    "layout": "line",
+    "slots": [{ "monster_id": "mire_toad", "min": 1, "max": 1 }]
+  },
+  {
+    "id": "mire_toad_chorus",
+    "weight": 18,
+    "min_encounter_level": 2,
+    "max_encounter_level": 9,
+    "terrain_tags": ["marsh"],
+    "layout": "rows",
+    "slots": [{ "monster_id": "mire_toad", "min": 2, "max": 3 }]
+  },
+  {
+    "id": "war_hydra_bog",
+    "weight": 1,
+    "min_encounter_level": 60,
+    "max_encounter_level": 69,
+    "terrain_tags": ["marsh"],
+    "layout": "line",
+    "slots": [{ "monster_id": "war_hydra", "min": 1, "max": 1 }]
+  },
+  {
+    "id": "ridge_rook_scout",
+    "weight": 24,
+    "min_encounter_level": 1,
+    "max_encounter_level": 10,
+    "starter_safe": true,
+    "terrain_tags": ["hill", "snow"],
+    "layout": "line",
+    "slots": [{ "monster_id": "ridge_rook", "min": 1, "max": 1 }]
+  },
+  {
+    "id": "ridge_rook_flock",
+    "weight": 16,
+    "min_encounter_level": 2,
+    "max_encounter_level": 8,
+    "terrain_tags": ["hill", "snow"],
+    "layout": "vshape",
+    "slots": [{ "monster_id": "ridge_rook", "min": 1, "max": 3 }]
+  },
+  {
+    "id": "frosthorn_trail",
+    "weight": 20,
+    "min_encounter_level": 3,
+    "max_encounter_level": 8,
+    "terrain_tags": ["snow", "hill"],
+    "layout": "line",
+    "slots": [{ "monster_id": "frosthorn", "min": 1, "max": 1 }]
+  },
+  {
+    "id": "frosthorn_herd",
+    "weight": 12,
+    "min_encounter_level": 5,
+    "max_encounter_level": 10,
+    "terrain_tags": ["snow"],
+    "layout": "rows",
+    "slots": [{ "monster_id": "frosthorn", "min": 1, "max": 2 }]
+  },
+  {
+    "id": "wyvern_roost",
+    "weight": 1,
+    "min_encounter_level": 50,
+    "max_encounter_level": 59,
+    "terrain_tags": ["hill", "snow"],
+    "layout": "line",
+    "slots": [{ "monster_id": "wyvern", "min": 1, "max": 1 }]
   },
   {
     "id": "dark_knight_boss",
