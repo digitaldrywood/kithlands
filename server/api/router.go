@@ -43,6 +43,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/data/classes", s.handleGetClasses)
 	mux.HandleFunc("GET /api/data/stats", s.handleGetStats)
 	mux.HandleFunc("GET /api/data/items", s.handleGetItems)
+	mux.HandleFunc("GET /api/data/monsters", s.handleGetMonsters)
 
 	// Protected (auth required)
 	mux.Handle("POST /api/osm/preview", s.auth.Middleware(http.HandlerFunc(s.handleOSMPreview)))
