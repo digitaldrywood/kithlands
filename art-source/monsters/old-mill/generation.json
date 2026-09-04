@@ -1,0 +1,28 @@
+{
+  "generator": "OpenAI built-in image_gen (model version not exposed)",
+  "created": "2026-09-04",
+  "references": [],
+  "seed": null,
+  "assets": [
+    {
+      "id": "mill_bat",
+      "prompt": "Use case: stylized-concept. Create one original Kithlands JRPG battle monster sprite: Mill Bat, a swift little woodland bat roosting in an abandoned watermill. Single full-body creature, wings spread in a readable wide zigzag silhouette, facing right in a three-quarter side view, small alert face with amber eyes, oversized pointed ears, dusky indigo fur and plum-brown wing membranes, warm cream chest tuft. Kid-safe, lively and slightly mischievous, no blood or horror. Detailed restrained 16-bit pixel art, crisp pixel clusters and dark plum outline, limited rich palette, subtle top-left light. Designed to remain clear when displayed about 72 pixels wide. No words, no frame, no grid, no ground shadow, no dust or disconnected particles. Fully transparent background with actual alpha, creature isolated and centered, whole wings and ears inside canvas with generous 15 percent clear margin. One static pose only. Do not copy existing game monsters."
+    },
+    {
+      "id": "briar_spider",
+      "prompt": "Use case: stylized-concept. One original Kithlands JRPG battle monster sprite, Briar Spider: a squat woodland spider with exactly eight widely spaced angular legs, moss olive abdomen patterned like overlapping briar leaves, warm chestnut joints and small golden eyes. Three-quarter side view facing right, full creature entirely visible. Kid-safe stylized fantasy, determined rather than horrific, no gore, no venom, no web scenery. Coherent with restrained 16-bit woodland JRPG pixel art: crisp pixel clusters, dark plum outlines, top-left highlights, ochre/olive/plum palette. Readable at 90 pixels wide, thick legs and strong silhouette. Single static pose only. Actual transparent alpha background, no backdrop or glow, no text, no grid, no ground shadow, no disconnected particles. Center creature with generous clear margins on every edge. Do not copy existing game monsters."
+    },
+    {
+      "id": "rust_beetle",
+      "prompt": "Use case: stylized-concept. Original Kithlands JRPG battle monster: Rust Beetle. One squat sturdy six-legged beetle, rounded shell like overlapping weathered copper plates with rusty orange rivet-like natural spots, charcoal legs, little teal-green patina around the shell seam, two stout curled antennae and modest rounded mandibles. Three-quarter side view facing right. Thick well-separated legs, solid armored silhouette, whole creature visible. Kid-safe woodland fantasy, no weapon, no gore. Restrained detailed 16-bit pixel art, crisp pixel clusters, dark plum outlines, warm ochre highlights from upper left, rust orange and dark brown palette. Readable at 90 pixels wide. Single static battle pose. Transparent actual alpha background with zero scene or backdrop, no glow, no text, no grid, no ground shadow, no particles. Generous clear margins on all sides, centered."
+    },
+    {
+      "id": "moss_slime",
+      "prompt": "Use case: stylized-concept. One original Kithlands JRPG battle monster: Moss Slime, a squat pear-shaped translucent jade-green jelly creature with a mossy cap like a little island of olive leaves, one tiny sprout, pale mint inner swirls and two simple amber eyes. It leans determinedly to the right in a three-quarter battle view. A clear compact mound silhouette with two small side lobes, no arms or legs. Kid-safe woodland fantasy. Restrained polished 16-bit pixel art with crisp pixel clusters, dark plum outline and warm top-left highlights. Strong simple silhouette readable at 80 pixels wide. Single static creature only, centered with generous clear margins. Actual fully transparent alpha background, no colored backdrop, no glow, no ground shadow, no puddle extending away, no text, no grid, no loose bubbles or particles. Do not copy existing game characters."
+    },
+    {
+      "id": "millroot_warden",
+      "prompt": "Use case: stylized-concept. One original Kithlands JRPG dungeon boss sprite: Millroot Warden, a broad ancient wooden guardian formed from the roots around an abandoned watermill. Full body, standing on two chunky interwoven root feet, two thick branch arms with mitten-like wooden fists, barrel-shaped bark torso with a small old millstone embedded in its chest, moss and a few amber leaves at shoulder tops, gentle determined glowing amber eyes in a carved wooden face. Three-quarter view facing right, symmetrical readable mass with visible separation of arms and torso. Imposing but safe for children, no skulls, no spikes, no horror or gore. Same restrained detailed 16-bit woodland pixel-art style: dark plum outlines, warm ochre bark highlights from top-left, olive moss, slate stone accents, strong crisp pixel clusters. Readable at 150 pixels tall. Single static battle stance only, whole head/feet/hands inside generous clear margins. Fully transparent actual alpha background, no scene, no backdrop or glow, no text, no grid, no ground shadow or particles."
+    }
+  ]
+}

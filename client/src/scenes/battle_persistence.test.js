@@ -74,7 +74,7 @@ vi.mock("../ui/floating_text.js", () => ({
 }));
 
 vi.mock("../data/monsterSprites.js", () => ({
-  ENEMY_SPRITES: {},
+  monsterSpriteKey: () => undefined,
 }));
 
 vi.mock("./debug_panel.js", () => ({

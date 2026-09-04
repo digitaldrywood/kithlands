@@ -1,0 +1,30 @@
+=== RUN   TestOldMillMonstersStayOutOfWorldPools
+--- PASS: TestOldMillMonstersStayOutOfWorldPools (0.01s)
+=== RUN   TestOldMillElementalMatchups
+--- PASS: TestOldMillElementalMatchups (0.01s)
+=== RUN   TestOldMillMonsterRouteBalance
+=== RUN   TestOldMillMonsterRouteBalance/party_2
+    old_mill_monsters_test.go:185: entrance: attempts=100 wipes=0 average_rounds=1.16
+    old_mill_monsters_test.go:185: grain_store: attempts=100 wipes=0 average_rounds=1.30
+    old_mill_monsters_test.go:185: drying_room: attempts=100 wipes=0 average_rounds=1.92
+    old_mill_monsters_test.go:185: wheel_house: attempts=100 wipes=0 average_rounds=1.50
+    old_mill_monsters_test.go:185: sluice_gallery: attempts=100 wipes=0 average_rounds=1.99
+    old_mill_monsters_test.go:185: root_cellar: attempts=100 wipes=0 average_rounds=1.58
+    old_mill_monsters_test.go:185: loft: attempts=100 wipes=0 average_rounds=1.91
+    old_mill_monsters_test.go:185: mill_heart: attempts=100 wipes=4 average_rounds=4.53
+    old_mill_monsters_test.go:190: pre-boss warrior average level=1.97; route wins=96/100
+=== RUN   TestOldMillMonsterRouteBalance/party_4
+    old_mill_monsters_test.go:185: entrance: attempts=100 wipes=0 average_rounds=1.48
+    old_mill_monsters_test.go:185: grain_store: attempts=100 wipes=0 average_rounds=1.19
+    old_mill_monsters_test.go:185: drying_room: attempts=100 wipes=0 average_rounds=1.82
+    old_mill_monsters_test.go:185: wheel_house: attempts=100 wipes=0 average_rounds=1.17
+    old_mill_monsters_test.go:185: sluice_gallery: attempts=100 wipes=0 average_rounds=2.33
+    old_mill_monsters_test.go:185: root_cellar: attempts=100 wipes=0 average_rounds=2.43
+    old_mill_monsters_test.go:185: loft: attempts=100 wipes=0 average_rounds=1.89
+    old_mill_monsters_test.go:185: mill_heart: attempts=100 wipes=0 average_rounds=4.27
+    old_mill_monsters_test.go:190: pre-boss warrior average level=1.00; route wins=100/100
+--- PASS: TestOldMillMonsterRouteBalance (0.73s)
+    --- PASS: TestOldMillMonsterRouteBalance/party_2 (0.28s)
+    --- PASS: TestOldMillMonsterRouteBalance/party_4 (0.45s)
+PASS
+ok  	github.com/digitaldrywood/kithlands/api	4.069s

@@ -30,7 +30,16 @@ describe("bestiary catalog projection", () => {
       expect(entry.monster).toEqual(catalog[index]);
       expect(entry.name).toBe(catalog[index].name);
       expect(monsterArt(entry.name)).toMatch(/^\/sprites\/monsters\/.+\.png$/);
+      expect(monsterArt(entry.monster)).toBe(monsterArt(entry.name));
     });
+  });
+
+  it("keeps art when the server renames a monster but retains its stable ID", () => {
+    const bat = catalog.find(({ id }) => id === "mill_bat");
+    expect(monsterArt({ ...bat, name: "Rafter Glider" })).toBe(
+      "/sprites/monsters/mill_bat.png",
+    );
+    expect(monsterArt(bat.name)).toBe("/sprites/monsters/mill_bat.png");
   });
 
   it("picks up additions and changed base stats without client registration", () => {

@@ -1,0 +1,120 @@
+{
+  "textures": [
+    {
+      "key": "monster_slime",
+      "path": "/sprites/monsters/slime.png"
+    },
+    {
+      "key": "monster_goblin",
+      "path": "/sprites/monsters/goblin.png"
+    },
+    {
+      "key": "monster_wolf",
+      "path": "/sprites/monsters/wolf.png"
+    },
+    {
+      "key": "monster_skeleton",
+      "path": "/sprites/monsters/skeleton.png"
+    },
+    {
+      "key": "monster_dark_knight",
+      "path": "/sprites/monsters/dark_knight.png"
+    },
+    {
+      "key": "monster_rat",
+      "path": "/sprites/monsters/rat.png"
+    },
+    {
+      "key": "monster_bandit",
+      "path": "/sprites/monsters/bandit.png"
+    },
+    {
+      "key": "monster_troll",
+      "path": "/sprites/monsters/troll.png"
+    },
+    {
+      "key": "monster_demon",
+      "path": "/sprites/monsters/demon.png"
+    },
+    {
+      "key": "monster_wyvern",
+      "path": "/sprites/monsters/wyvern.png"
+    },
+    {
+      "key": "monster_golem",
+      "path": "/sprites/monsters/golem.png"
+    },
+    {
+      "key": "monster_ghost",
+      "path": "/sprites/monsters/ghost.png"
+    },
+    {
+      "key": "monster_snake",
+      "path": "/sprites/monsters/snake.png"
+    },
+    {
+      "key": "monster_dragon",
+      "path": "/sprites/monsters/dragon.png"
+    },
+    {
+      "key": "monster_lich",
+      "path": "/sprites/monsters/lich.png"
+    },
+    {
+      "key": "monster_bat",
+      "path": "/sprites/monsters/bat.png"
+    },
+    {
+      "key": "monster_orc",
+      "path": "/sprites/monsters/orc.png"
+    },
+    {
+      "key": "monster_spider",
+      "path": "/sprites/monsters/spider.png"
+    },
+    {
+      "key": "monster_mill_bat",
+      "path": "/sprites/monsters/mill_bat.png"
+    },
+    {
+      "key": "monster_briar_spider",
+      "path": "/sprites/monsters/briar_spider.png"
+    },
+    {
+      "key": "monster_rust_beetle",
+      "path": "/sprites/monsters/rust_beetle.png"
+    },
+    {
+      "key": "monster_moss_slime",
+      "path": "/sprites/monsters/moss_slime.png"
+    },
+    {
+      "key": "monster_millroot_warden",
+      "path": "/sprites/monsters/millroot_warden.png"
+    }
+  ],
+  "monster_keys": {
+    "slime": "monster_slime",
+    "goblin": "monster_goblin",
+    "wolf": "monster_wolf",
+    "skeleton": "monster_skeleton",
+    "dark_knight": "monster_dark_knight",
+    "giant_rat": "monster_rat",
+    "bandit": "monster_bandit",
+    "armored_knight": "monster_troll",
+    "gargoyle": "monster_demon",
+    "wyvern": "monster_wyvern",
+    "iron_golem": "monster_golem",
+    "shadow_wraith": "monster_ghost",
+    "war_hydra": "monster_snake",
+    "elder_dragon": "monster_dragon",
+    "siege_commander": "monster_lich",
+    "dragon_lord": "monster_dragon",
+    "trial_guardian": "monster_dark_knight",
+    "mill_bat": "monster_mill_bat",
+    "briar_spider": "monster_briar_spider",
+    "rust_beetle": "monster_rust_beetle",
+    "moss_slime": "monster_moss_slime",
+    "millroot_warden": "monster_millroot_warden"
+  }
+}

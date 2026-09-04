@@ -394,6 +394,7 @@ type SpellState struct {
 
 type EnemyState struct {
 	ID          int      `json:"id"`
+	MonsterID   string   `json:"monster_id,omitempty"`
 	Name        string   `json:"name"`
 	HP          int      `json:"hp"`
 	MaxHP       int      `json:"max_hp"`
@@ -427,13 +428,14 @@ func (g *Game) monsterByName(name string) *gamedata.Monster {
 
 func (g *Game) buildEnemyState(e *combat.Combatant) EnemyState {
 	state := EnemyState{
-		ID:       e.ID,
-		Name:     e.Name,
-		HP:       e.CurrentHP,
-		MaxHP:    e.MaxHP,
-		Size:     e.Size,
-		Status:   string(e.Status),
-		IsUndead: g.isMonsterUndead(e.Name),
+		ID:        e.ID,
+		MonsterID: e.MonsterID,
+		Name:      e.Name,
+		HP:        e.CurrentHP,
+		MaxHP:     e.MaxHP,
+		Size:      e.Size,
+		Status:    string(e.Status),
+		IsUndead:  g.isMonsterUndead(e.Name),
 	}
 	if m := g.monsterByName(e.Name); m != nil {
 		state.Weaknesses = append([]string(nil), m.Weaknesses...)
