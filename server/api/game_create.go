@@ -169,6 +169,7 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 	game := &Game{
 		id:                  fmt.Sprintf("game_%d", time.Now().UnixNano()),
 		gd:                  gm.gd,
+		dungeons:            make(map[string]*DungeonProgress),
 		rng:                 rng,
 		loc:                 loc,
 		walk:                walk,

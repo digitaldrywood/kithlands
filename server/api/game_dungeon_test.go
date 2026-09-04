@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/dungeon"
 )
 
@@ -17,6 +19,27 @@ func enterTestDungeon(t *testing.T, g *Game) GameState {
 		t.Fatal(err)
 	}
 	return s
+}
+
+func dungeonEntryByID(t *testing.T, g *Game, id string) DungeonEntryState {
+	t.Helper()
+	for _, entry := range g.State().DungeonEntries {
+		if entry.ID == id {
+			return entry
+		}
+	}
+	t.Fatalf("missing dungeon entry %s", id)
+	return DungeonEntryState{}
+}
+
+func enterDungeonByID(t *testing.T, g *Game, id string) GameState {
+	t.Helper()
+	entry := dungeonEntryByID(t, g, id)
+	state, err := g.ProcessDungeon(DungeonRequest{Type: "enter", NodeID: entry.NodeID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return state
 }
 
 // Walk through real cardinal server inputs, including collision checks.
@@ -116,6 +139,128 @@ func TestDungeonEntranceRoomExitAndSave(t *testing.T) {
 		t.Fatal("reentry lost progress")
 	}
 }
+
+func TestDungeonCatalogRoutesByWorldNode(t *testing.T) {
+	g := newTownTestGame(t)
+	state := g.State()
+	if len(state.DungeonEntries) != 2 {
+		t.Fatalf("got %d dungeon entries, want 2", len(state.DungeonEntries))
+	}
+	oldMill := dungeonEntryByID(t, g, "old-mill")
+	shrine := dungeonEntryByID(t, g, "forgotten-shrine")
+	if state.DungeonEntry == nil || state.DungeonEntry.ID != oldMill.ID || oldMill.NodeID != g.walk.Spawn.ID {
+		t.Fatalf("legacy Old Mill entry moved: %+v", state.DungeonEntry)
+	}
+	if shrine.NodeID == oldMill.NodeID || g.walk.DistanceMap[shrine.NodeID] <= g.walk.DistanceMap[oldMill.NodeID] {
+		t.Fatalf("Shrine is not bound to a farther world node: old=%+v shrine=%+v", oldMill, shrine)
+	}
+	if _, err := g.ProcessDungeon(DungeonRequest{Type: "enter", NodeID: "forged-node"}); err == nil {
+		t.Fatal("invalid-node dungeon entry accepted")
+	}
+	entered := enterDungeonByID(t, g, "forgotten-shrine")
+	if entered.ActiveDungeonID != "forgotten-shrine" || entered.Dungeon == nil || entered.Dungeon.ID != "forgotten-shrine" {
+		t.Fatalf("wrong active adventure: %+v", entered)
+	}
+}
+
+func TestDungeonProgressPersistsIndependentlyAcrossCatalog(t *testing.T) {
+	g := newTownTestGame(t)
+	enterDungeonByID(t, g, "old-mill")
+	useDungeonAction(t, g, "split-oak")
+	if _, err := g.ProcessDungeon(DungeonRequest{Type: "retreat"}); err != nil {
+		t.Fatal(err)
+	}
+
+	enterDungeonByID(t, g, "forgotten-shrine")
+	useDungeonAction(t, g, "threshold-markers")
+	saved, err := g.ToSaveState("two adventures", "test-user")
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := FromSaveState(saved, g.gd, g.loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.activeDungeonID != "forgotten-shrine" || len(loaded.dungeons) != 2 {
+		t.Fatalf("catalog checkpoint not restored: active=%q progress=%+v", loaded.activeDungeonID, loaded.dungeons)
+	}
+	if !loaded.dungeons["old-mill"].Flags["oak-read"] || !loaded.dungeons["forgotten-shrine"].Flags["ridge-markers-read"] {
+		t.Fatalf("independent flags not restored: %+v", loaded.dungeons)
+	}
+	if _, err := loaded.ProcessDungeon(DungeonRequest{Type: "retreat"}); err != nil {
+		t.Fatal(err)
+	}
+	enterDungeonByID(t, loaded, "old-mill")
+	if loaded.dungeon.Flags["ridge-markers-read"] || !loaded.dungeon.Flags["oak-read"] {
+		t.Fatalf("adventure progress leaked across IDs: %+v", loaded.dungeon.Flags)
+	}
+}
+
+func TestDungeonLegacySingleProgressMigratesIntoCatalog(t *testing.T) {
+	g := newTownTestGame(t)
+	enterDungeonByID(t, g, "old-mill")
+	useDungeonAction(t, g, "split-oak")
+	saved, err := g.ToSaveState("legacy mill", "test-user")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var world map[string]json.RawMessage
+	if err := json.Unmarshal(saved.WorldState, &world); err != nil {
+		t.Fatal(err)
+	}
+	legacy, err := json.Marshal(g.dungeon)
+	if err != nil {
+		t.Fatal(err)
+	}
+	world["dungeon"] = legacy
+	delete(world, "dungeons")
+	delete(world, "active_dungeon_id")
+	saved.WorldState, err = json.Marshal(world)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, err := FromSaveState(saved, g.gd, g.loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.activeDungeonID != "old-mill" || loaded.dungeons["old-mill"] == nil || !loaded.dungeons["old-mill"].Flags["oak-read"] {
+		t.Fatalf("legacy dungeon not migrated: active=%q progress=%+v", loaded.activeDungeonID, loaded.dungeons)
+	}
+}
+
+func TestForgottenShrineAuthoredContract(t *testing.T) {
+	g := newTownTestGame(t)
+	def := g.dungeonDefinitionByID("forgotten-shrine")
+	if def == nil || len(def.Rooms) != 6 {
+		t.Fatalf("Forgotten Shrine room count: %+v", def)
+	}
+	encounters, switches, rests := 0, 0, 0
+	for _, room := range def.Rooms {
+		for _, action := range room.Actions {
+			switch action.Kind {
+			case "encounter":
+				encounters++
+			case "switch":
+				switches++
+			case "rest":
+				rests++
+			}
+		}
+	}
+	if encounters != 4 || switches != 2 || rests != 1 {
+		t.Fatalf("Shrine contract got encounters=%d switches=%d rests=%d", encounters, switches, rests)
+	}
+	boss := def.Room("inner-sanctum").Action("sanctum-guardians")
+	if boss == nil || boss.Encounter == nil || !boss.Encounter.Boss || len(boss.Encounter.Monsters) < 2 {
+		t.Fatalf("boss is not a distinct existing-monster formation: %+v", boss)
+	}
+	reward := g.gd.EquipmentBaseByID("twin_sigil_amulet")
+	wantClasses := []string{"warrior", "brawler", "rogue", "mender", "cinder", "wayfarer"}
+	if reward == nil || reward.Tier != 3 || !slices.Equal(reward.Classes, wantClasses) {
+		t.Fatalf("Shrine reward is not universal tier 3 gear: %+v", reward)
+	}
+}
 func TestDungeonStateDoesNotExposeMutableFlags(t *testing.T) {
 	g := newTownTestGame(t)
 	enterTestDungeon(t, g)
@@ -202,6 +347,202 @@ func finishDungeonFixtureFight(t *testing.T, g *Game) {
 var completeMillRoute = []string{
 	"trail-bats", "mill-door", "ledger", "grain-door", "grain-spider", "spare-handle", "grain-loft", "loft-beetle", "loft-grain", "grain-return",
 	"drying-door", "drying-beetle", "supply-potions", "supply-ethers", "drying-wheel", "wheel-slime", "wheel-handle", "wheel-gallery", "gallery-bats", "sluice-lever", "gallery-roots", "root-spider", "roots-tailrace", "tailrace-bar", "tailrace-workshop", "workshop-rest", "maintenance-shortcut", "tailrace-trail", "heron-trail", "heron-secret", "heron-cache", "pool-return", "trail-shortcut", "tailrace-roots", "roots-gallery", "gallery-loft", "loft-secret", "loft-gallery", "gallery-roots", "roots-heart", "warden", "miller-keepsake", "heart-return", "roots-tailrace", "tailrace-trail", "trail-home",
+}
+
+var completeShrineRoute = []string{
+	"threshold-markers", "threshold-guardians", "threshold-nave", "pilgrim-rest",
+	"nave-chapel", "chapel-sentinels", "bell-tuning-lever", "chapel-return", "pilgrim-rest",
+	"nave-archive", "archive-wraiths", "moon-mirror", "archive-return", "pilgrim-rest",
+	"nave-reliquary", "reliquary-moon-path", "reliquary-bell-path", "reliquary-sanctum",
+	"sanctum-guardians", "twin-sigil-altar", "sanctum-return", "reliquary-return", "nave-threshold", "threshold-return",
+}
+
+func countEquipmentBase(g *Game, baseID string) int {
+	count := 0
+	for _, item := range g.inv.Instances {
+		if item != nil && item.BaseID == baseID {
+			count++
+		}
+	}
+	return count
+}
+
+func TestForgottenShrineFullRouteDefeatRetryAndRepeatSafety(t *testing.T) {
+	g := newTownTestGame(t)
+	enterDungeonByID(t, g, "forgotten-shrine")
+	preBoss := completeShrineRoute[:18]
+	for _, id := range preBoss {
+		state := useDungeonAction(t, g, id)
+		if state.Phase == "combat" {
+			finishDungeonFixtureFight(t, g)
+		}
+	}
+	useDungeonAction(t, g, "sanctum-guardians")
+	for _, member := range g.party {
+		member.CurrentHP = 0
+	}
+	recovered, err := g.ProcessAction(GameActionRequest{Type: "attack"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recovered.Dungeon == nil || !recovered.Dungeon.RecoveredFromDefeat || g.dungeon.Flags["sanctum-guardians-cleared"] {
+		t.Fatalf("boss defeat did not preserve an uncleared retry: %+v", recovered.Dungeon)
+	}
+	for _, flag := range []string{"threshold-guardians-cleared", "bell-tuned", "moon-mirror-aligned"} {
+		if !g.dungeon.Flags[flag] {
+			t.Fatalf("boss defeat lost persistent flag %q", flag)
+		}
+	}
+
+	for _, id := range []string{"threshold-nave", "nave-reliquary", "reliquary-sanctum", "sanctum-guardians"} {
+		state := useDungeonAction(t, g, id)
+		if state.Phase == "combat" {
+			finishDungeonFixtureFight(t, g)
+		}
+	}
+	for _, id := range []string{"twin-sigil-altar", "sanctum-return", "reliquary-return", "nave-threshold"} {
+		useDungeonAction(t, g, id)
+	}
+	beforeReturnGold := g.inv.Gold
+	useDungeonAction(t, g, "threshold-return")
+	if !g.dungeons["forgotten-shrine"].PayoffClaimed || g.inv.Gold != beforeReturnGold+240 || countEquipmentBase(g, "twin_sigil_amulet") != 1 {
+		t.Fatalf("Shrine completion reward missing: gold=%d items=%d progress=%+v", g.inv.Gold, countEquipmentBase(g, "twin_sigil_amulet"), g.dungeons["forgotten-shrine"])
+	}
+
+	enterDungeonByID(t, g, "forgotten-shrine")
+	for _, id := range []string{"threshold-nave", "nave-reliquary", "reliquary-sanctum"} {
+		useDungeonAction(t, g, id)
+	}
+	for _, id := range []string{"sanctum-guardians", "twin-sigil-altar"} {
+		action := g.dungeonDefinition().Room(g.dungeon.RoomID).Action(id)
+		walkDungeonTo(t, g, action.Position)
+		if _, err := g.ProcessDungeon(DungeonRequest{Type: "interact", ActionID: id}); err == nil {
+			t.Fatalf("completed Shrine replayed %s", id)
+		}
+	}
+	if countEquipmentBase(g, "twin_sigil_amulet") != 1 {
+		t.Fatal("reentry duplicated the Twin-Sigil Amulet")
+	}
+}
+
+func levelDungeonParty(t *testing.T, g *Game, target int) {
+	t.Helper()
+	for _, member := range g.party {
+		class := g.gd.ClassByID(member.ClassID)
+		for member.Level < target {
+			member.XP = character.XPToNextLevel(member.Level, &g.gd.Stats.XPCurve)
+			if err := character.LevelUp(member, class, &g.gd.Stats, g.rng); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	g.inv.Consumables["potion"] = 12
+	g.inv.Consumables["ether"] = 4
+}
+
+func shrineCombatActions(state GameState) []MemberActionReq {
+	target := 0
+	for _, enemy := range state.Enemies {
+		if enemy.HP > 0 {
+			target = enemy.ID
+			break
+		}
+	}
+	lowest := -1
+	for i, member := range state.Party {
+		if member.HP <= 0 {
+			continue
+		}
+		if lowest < 0 || member.HP*state.Party[lowest].MaxHP < state.Party[lowest].HP*member.MaxHP {
+			lowest = i
+		}
+	}
+	potions, ethers := state.Potions, state.Ethers
+	actions := make([]MemberActionReq, 0, len(state.Party))
+	for i, member := range state.Party {
+		if member.HP <= 0 {
+			continue
+		}
+		action := MemberActionReq{Slot: i, Type: "attack", TargetID: target}
+		if lowest >= 0 && state.Party[lowest].HP*2 < state.Party[lowest].MaxHP && member.ClassID == "mender" {
+			for _, spell := range member.Spells {
+				if spell.ID == "cure" && spell.Castable && spell.MPCost <= member.MP {
+					action = MemberActionReq{Slot: i, Type: "spell", SpellID: "cure", TargetID: lowest, TargetMode: "single_ally"}
+					break
+				}
+			}
+		} else if lowest >= 0 && state.Party[lowest].HP*3 < state.Party[lowest].MaxHP && potions > 0 {
+			action = MemberActionReq{Slot: i, Type: "item", ItemID: "potion", TargetID: lowest}
+			potions--
+		} else if member.ClassID == "cinder" && member.MP < 3 && ethers > 0 {
+			action = MemberActionReq{Slot: i, Type: "item", ItemID: "ether", TargetID: i}
+			ethers--
+		} else {
+			for _, spell := range member.Spells {
+				if spell.ID == "spark" && spell.Castable && spell.MPCost <= member.MP {
+					action = MemberActionReq{Slot: i, Type: "spell", SpellID: "spark", TargetID: target}
+					break
+				}
+			}
+		}
+		actions = append(actions, action)
+	}
+	return actions
+}
+
+func TestForgottenShrineRouteBalance(t *testing.T) {
+	gd := newTownTestGame(t).gd
+	for _, size := range []int{2, 4} {
+		t.Run(fmt.Sprintf("party_%d", size), func(t *testing.T) {
+			wins, rounds := 0, 0
+			defeats := make(map[string]int)
+			for seed := 1; seed <= 10; seed++ {
+				party := []PartyMemberReq{{Name: "Hero", ClassID: "warrior"}, {Name: "Sparks", ClassID: "cinder"}}
+				if size == 4 {
+					party = append(party, PartyMemberReq{Name: "Mercy", ClassID: "mender"}, PartyMemberReq{Name: "Shade", ClassID: "rogue"})
+				}
+				g, err := NewGameManager(gd, "").CreateGame(NewGameRequest{TownName: "Willow Creek", Places: []string{"Shrine Road", "Pine Ridge"}, BigBuilding: "Hall", Party: party, Difficulty: "normal", RNGSeed: int64(seed)})
+				if err != nil {
+					t.Fatal(err)
+				}
+				levelDungeonParty(t, g, 6)
+				enterDungeonByID(t, g, "forgotten-shrine")
+				failed := false
+				for _, id := range completeShrineRoute {
+					state := useDungeonAction(t, g, id)
+					if state.Phase != "combat" {
+						continue
+					}
+					for round := 0; round < 80 && g.phase == "combat"; round++ {
+						next, err := g.ProcessAction(GameActionRequest{Type: "attack", Actions: shrineCombatActions(state)})
+						if err != nil {
+							t.Fatal(err)
+						}
+						state = *next
+						rounds++
+					}
+					if g.phase == "combat" {
+						t.Fatal("Shrine battle exceeded round limit")
+					}
+					if state.Dungeon != nil && state.Dungeon.RecoveredFromDefeat {
+						defeats[id]++
+						failed = true
+						break
+					}
+					if _, err := g.ProcessAction(GameActionRequest{Type: "advance"}); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if !failed && g.dungeons["forgotten-shrine"].PayoffClaimed {
+					wins++
+				}
+			}
+			t.Logf("level-6 authored Shrine route: %d/10 wins; %d total combat rounds; defeats=%v; 12 potions, 4 ethers, and Nave rest only", wins, rounds, defeats)
+			if wins < 8 {
+				t.Fatalf("only %d/10 level-6 parties completed the Shrine route", wins)
+			}
+		})
+	}
 }
 
 func TestDungeonFullRouteSaveShortcutAndRepeatSafety(t *testing.T) {
@@ -399,6 +740,7 @@ func TestDungeonEntryRequiresAuthoritativeHomeOrigin(t *testing.T) {
 		t.Fatal("missing origin accepted")
 	}
 	home := g.State().DungeonEntry.NodeID
+	g.location.Kind = LocationSettlement
 	g.location.WorldNodeID = "another-node"
 	if _, err := g.ProcessDungeon(DungeonRequest{Type: "enter", NodeID: home}); err == nil {
 		t.Fatal("entry from different authoritative node accepted")

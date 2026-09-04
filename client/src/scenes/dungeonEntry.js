@@ -2,49 +2,72 @@ import { dungeonAction } from "../api.js";
 import { isWorldInputLocked } from "../systems/modalLock.js";
 import { drawButton } from "../ui/panel.js";
 
-export function dungeonEntryVisible(scene) {
-  const entry = scene.gameState?.dungeon_entry;
+export function dungeonEntryForScene(scene) {
+  const entries = scene.gameState?.dungeon_entries?.length
+    ? scene.gameState.dungeon_entries
+    : scene.gameState?.dungeon_entry
+      ? [scene.gameState.dungeon_entry]
+      : [];
   if (
-    !entry?.node_id ||
+    entries.length === 0 ||
     ["combat", "defeat", "victory", "promotion"].includes(
       scene.gameState?.phase,
     )
   )
-    return false;
+    return null;
   const near = (x, y) =>
     Math.abs(scene.playerX - x) + Math.abs(scene.playerY - y) <= 3;
   if (scene.gameState.current_location?.kind === "settlement") {
-    if (scene.gameState.current_location.world_node_id !== entry.node_id)
-      return false;
-    return (
-      scene.model?.interactions?.some(
-        (object) =>
-          object.type === "exit" &&
-          near(
-            Math.floor(object.x / scene.model.tileWidth),
-            Math.floor(object.y / scene.model.tileHeight),
-          ),
-      ) || false
+    const entry = entries.find(
+      (candidate) =>
+        candidate.node_id === scene.gameState.current_location.world_node_id,
     );
+    if (!entry) return null;
+    return scene.model?.interactions?.some(
+      (object) =>
+        object.type === "exit" &&
+        near(
+          Math.floor(object.x / scene.model.tileWidth),
+          Math.floor(object.y / scene.model.tileHeight),
+        ),
+    )
+      ? entry
+      : null;
   }
   if (
     scene.gameState.current_location?.kind &&
     scene.gameState.current_location.kind !== "world"
   )
-    return false;
-  return (scene.spawns || []).some(
-    (spawn) => spawn.node_id === entry.node_id && near(spawn.x, spawn.y),
-  );
+    return null;
+  const matches = [];
+  for (const entry of entries) {
+    const spawn = (scene.spawns || []).find(
+      (candidate) => candidate.node_id === entry.node_id,
+    );
+    if (!spawn || !near(spawn.x, spawn.y)) continue;
+    matches.push({
+      entry,
+      distance:
+        Math.abs(scene.playerX - spawn.x) + Math.abs(scene.playerY - spawn.y),
+    });
+  }
+  matches.sort((a, b) => a.distance - b.distance);
+  return matches[0]?.entry || null;
+}
+
+export function dungeonEntryVisible(scene) {
+  return dungeonEntryForScene(scene) !== null;
 }
 
 export function updateDungeonEntry(scene) {
-  const visible = dungeonEntryVisible(scene);
-  if (!visible) {
+  const entry = dungeonEntryForScene(scene);
+  if (!entry) {
     scene.dungeonEntryButton?.destroy();
     scene.dungeonEntryButton = null;
+    scene.currentDungeonEntry = null;
     return;
   }
-  const entry = scene.gameState.dungeon_entry;
+  scene.currentDungeonEntry = entry;
   if (scene.dungeonEntryButton) {
     scene.dungeonEntryButton.setLabel(entry.label);
     return;
@@ -92,12 +115,13 @@ export function updateDungeonEntry(scene) {
 }
 
 async function enterDungeon(scene) {
-  if (isWorldInputLocked(scene) || !dungeonEntryVisible(scene)) return;
+  const entry = dungeonEntryForScene(scene);
+  if (isWorldInputLocked(scene) || !entry) return;
   scene.animating = true;
   try {
     const result = await dungeonAction(scene.gameState.id, {
       type: "enter",
-      node_id: scene.gameState.dungeon_entry.node_id,
+      node_id: entry.node_id,
     });
     if (!scene.scene.isActive()) return;
     if (result?.error || result?.current_location?.kind !== "dungeon") {

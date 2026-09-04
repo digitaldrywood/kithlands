@@ -59,7 +59,8 @@ func (g *Game) ToSaveState(name, userID string) (*save.SaveState, error) {
 	}
 
 	worldState := map[string]any{
-		"dungeon":                g.dungeon,
+		"active_dungeon_id":      g.activeDungeonID,
+		"dungeons":               g.dungeons,
 		"final_encounter":        g.finalEncounter,
 		"current_quest":          g.currentQ,
 		"phase":                  g.phase,
@@ -126,7 +127,11 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	}
 
 	var worldState struct {
-		FinalEncounter       *FinalEncounterProgress                `json:"final_encounter"`
+		FinalEncounter  *FinalEncounterProgress     `json:"final_encounter"`
+		ActiveDungeonID string                      `json:"active_dungeon_id"`
+		Dungeons        map[string]*DungeonProgress `json:"dungeons"`
+		// Dungeon is the pre-catalog save shape. It is migrated into
+		// Dungeons below and is no longer emitted by new saves.
 		Dungeon              *DungeonProgress                       `json:"dungeon"`
 		CurrentQ             int                                    `json:"current_quest"`
 		Phase                string                                 `json:"phase"`
@@ -179,6 +184,38 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		shopStocks = make(map[string]*ShopStock)
 	}
 
+	dungeons := worldState.Dungeons
+	if dungeons == nil {
+		dungeons = make(map[string]*DungeonProgress)
+	}
+	activeDungeonID := worldState.ActiveDungeonID
+	if legacy := worldState.Dungeon; legacy != nil {
+		legacyID := legacy.ID
+		if legacyID == "" && len(gd.Dungeons) > 0 {
+			legacyID = gd.Dungeons[0].ID
+			legacy.ID = legacyID
+		}
+		if legacyID != "" && dungeons[legacyID] == nil {
+			dungeons[legacyID] = legacy
+		}
+		if activeDungeonID == "" && legacy.Active {
+			activeDungeonID = legacyID
+		}
+	}
+	if activeDungeonID == "" {
+		for i := range gd.Dungeons {
+			id := gd.Dungeons[i].ID
+			if progress := dungeons[id]; progress != nil && progress.Active {
+				activeDungeonID = id
+				break
+			}
+		}
+	}
+	activeDungeon := dungeons[activeDungeonID]
+	if activeDungeon == nil {
+		activeDungeonID = ""
+	}
+
 	legacyTransport := worldState.Transport == nil
 	trans := worldState.Transport
 	if trans == nil {
@@ -187,7 +224,9 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 
 	game := &Game{
 		finalEncounter:       worldState.FinalEncounter,
-		dungeon:              worldState.Dungeon,
+		dungeon:              activeDungeon,
+		dungeons:             dungeons,
+		activeDungeonID:      activeDungeonID,
 		id:                   fmt.Sprintf("game_%d", time.Now().UnixNano()),
 		gd:                   gd,
 		rng:                  rng,

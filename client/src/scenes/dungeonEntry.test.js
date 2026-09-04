@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dungeonEntryVisible } from "./dungeonEntry.js";
+import { dungeonEntryForScene, dungeonEntryVisible } from "./dungeonEntry.js";
 
 describe("dungeon entrance presentation", () => {
   const scene = () => ({
@@ -47,5 +47,17 @@ describe("dungeon entrance presentation", () => {
     current.gameState.phase = "exploration";
     current.gameState.current_location.kind = "interior";
     expect(dungeonEntryVisible(current)).toBe(false);
+  });
+
+  it("selects the nearby authored adventure from the dungeon catalog", () => {
+    const current = scene();
+    current.gameState.dungeon_entries = [
+      { id: "old-mill", node_id: "home" },
+      { id: "forgotten-shrine", node_id: "other" },
+    ];
+    current.playerX = 20;
+    current.playerY = 19;
+
+    expect(dungeonEntryForScene(current)?.id).toBe("forgotten-shrine");
   });
 });

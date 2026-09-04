@@ -67,6 +67,7 @@ type Definition struct {
 	ID            string      `json:"id"`
 	Title         string      `json:"title"`
 	EntryLabel    string      `json:"entry_label"`
+	EntryRegion   string      `json:"entry_region,omitempty"`
 	Description   string      `json:"description"`
 	EntryRoom     string      `json:"entry_room"`
 	EntryPosition Point       `json:"entry_position"`
@@ -167,6 +168,9 @@ func (r *Room) Walkable(p Point) bool {
 func (d *Definition) Validate() error {
 	if d.Title == "" || d.EntryLabel == "" || d.Description == "" || len(d.Rooms) == 0 {
 		return fmt.Errorf("title, entry label, description and rooms required")
+	}
+	if d.EntryRegion != "" && d.EntryRegion != "home" && d.EntryRegion != "far" {
+		return fmt.Errorf("entry region must be home or far")
 	}
 	roomIDs, actionIDs, flags := map[string]bool{}, map[string]bool{}, map[string]bool{}
 	for i := range d.Rooms {

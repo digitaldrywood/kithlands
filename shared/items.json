@@ -246,6 +246,25 @@
       "sell_price": 9
     },
     {
+      "id": "twin_sigil_amulet",
+      "name": "Twin-Sigil Amulet",
+      "kind": "accessory",
+      "category": "amulet",
+      "tier": 3,
+      "required_level": 6,
+      "classes": [
+        "warrior",
+        "brawler",
+        "rogue",
+        "mender",
+        "cinder",
+        "wayfarer"
+      ],
+      "stats": { "magic_defense": 5, "vit": 3, "lck": 3 },
+      "buy_price": 420,
+      "sell_price": 210
+    },
+    {
       "id": "warrior_signet",
       "name": "Warrior's Signet",
       "kind": "accessory",

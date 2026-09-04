@@ -71,3 +71,22 @@ mobile crop, encounter, save or transition. The adventure PR's full browser proo
 and validation record are the authority for that end-to-end acceptance. The
 loft's clue is communicated by the action marker and narrative; its floorboard
 is not an independently readable painted text inscription.
+
+## Forgotten Shrine environment set
+
+The six `forgotten-threshold`, `echoing-nave`, `resonant-chapel`,
+`moonwater-archive`, `branching-reliquary`, and `inner-sanctum` PNGs form the
+second authored adventure. They were produced with the same built-in
+image-generation path, one original 3:2 request per room, with no API-key CLI
+or runtime dependency. `forgotten-shrine-prompt-set.json` records the tool,
+source output, shared art direction, and room briefs.
+
+The source candidates were inspected before being copied into this runtime
+directory. Each room then received a deliberate 24x16 Tiled JSON composition
+pass: visible water, pews, relic cases, guardian plinths, and altars have
+explicit collision footprints; entrances, branch aisles, encounter floors,
+switches, rest point, and reward altar remain reachable. The adventure's full
+route test walks to every action using authoritative collision, and
+`../forgotten-shrine-semantic-anchors.json` records the visible/action
+alignment for review. Current uniquely named in-game screenshots, not these
+source images alone, remain the final visual acceptance evidence.
