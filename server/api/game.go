@@ -117,6 +117,7 @@ type MemberActionReq struct {
 type GameState struct {
 	EquipmentBuilds     [4][]inventory.EquipmentBuild `json:"equipment_builds"`
 	EquipmentBuildLimit int                           `json:"equipment_build_limit"`
+	BattleRewards       *BattleRewardsState           `json:"battle_rewards,omitempty"`
 	FinalEncounter      *FinalEncounterState          `json:"final_encounter,omitempty"`
 	QuestVisitNodeID    string                        `json:"quest_visit_node_id,omitempty"`
 	Discovered          map[string]bool               `json:"discovered"` // monster IDs encountered in this save
@@ -637,6 +638,7 @@ type Game struct {
 	shopStocks               map[string]*ShopStock
 	lastRoundActions         []MemberActionReq
 	pendingChestClaim        *PendingChestClaim
+	battleRewards            *battleRewardsReceipt
 	// encounterStart records preemptive/ambush state for the current fight so
 	// the first call to ResolveTurn can skip one side's actions.
 	encounterStart combat.EncounterStart
@@ -698,6 +700,7 @@ func (g *Game) State() GameState {
 	state.PendingChestClaim = clonePendingChestClaimState(g.pendingChestClaim)
 	g.fillInventoryState(&state)
 	g.fillExtras(&state)
+	g.fillBattleRewardsState(&state)
 
 	for i, c := range g.party {
 		state.Party = append(state.Party, g.buildPartyMemberState(c, i))
@@ -955,6 +958,10 @@ func (g *Game) fillExtras(state *GameState) {
 }
 
 func (g *Game) snapshotVictoryXPProgress() {
+	// A receipt belongs to exactly one encounter. Owned inventory remains
+	// authoritative after Keep, but the next fight must not present old drops
+	// as newly earned.
+	g.battleRewards = nil
 	g.xpBefore = make([]int, len(g.party))
 	g.levelBefore = make([]int, len(g.party))
 	g.diedThisFight = make([]bool, len(g.party))
@@ -1110,6 +1117,7 @@ func (g *Game) stateUnlocked() GameState {
 	state.PendingChestClaim = clonePendingChestClaimState(g.pendingChestClaim)
 	g.fillInventoryState(&state)
 	g.fillExtras(&state)
+	g.fillBattleRewardsState(&state)
 	for i, c := range g.party {
 		state.Party = append(state.Party, g.buildPartyMemberState(c, i))
 	}

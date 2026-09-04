@@ -88,6 +88,7 @@ func (g *Game) ToSaveStateWithWorldPosition(name, userID string, position *World
 		"last_round_actions":         g.lastRoundActions,
 		"world_encounter_count":      g.worldEncounterCount,
 		"loot_roll_sequence":         g.lootRollSeq,
+		"battle_rewards":             g.battleRewards,
 		"shop_stocks":                g.shopStocks,
 		"world_checkpoint":           g.worldCheckpoint,
 	}
@@ -162,6 +163,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		LastRoundActions         []MemberActionReq                      `json:"last_round_actions"`
 		WorldEncounterCount      int                                    `json:"world_encounter_count"`
 		LootRollSequence         uint64                                 `json:"loot_roll_sequence"`
+		BattleRewards            *battleRewardsReceipt                  `json:"battle_rewards"`
 		ShopStocks               map[string]*ShopStock                  `json:"shop_stocks"`
 		WorldCheckpoint          json.RawMessage                        `json:"world_checkpoint"`
 	}
@@ -277,6 +279,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		naturalDiscoveryRevealed: naturalDiscoveryRevealed,
 		worldEncounterCount:      worldState.WorldEncounterCount,
 		lootRollSeq:              worldState.LootRollSequence,
+		battleRewards:            worldState.BattleRewards,
 		shopStocks:               shopStocks,
 		trans:                    trans,
 		lastRoundActions:         cloneMemberActionReqs(worldState.LastRoundActions),
