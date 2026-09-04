@@ -135,20 +135,16 @@ async function triggerSceneAction(page, viewport, sceneKey) {
   }
 }
 
-async function enterCadottShop(page, viewport) {
+async function enterCadottInterior(page, viewport, revisit = false) {
+  const approach = await page.evaluate(
+    (direction) => window.__kithlandsTest.movePlayer(direction, "World"),
+    revisit ? "down" : "up",
+  );
+  expect(approach.moved).toBe(true);
+  await page.waitForFunction(
+    () => !window.__kithlandsTest.sceneFlags("World").animating,
+  );
   await triggerSceneAction(page, viewport, "World");
-  await page.waitForTimeout(300);
-  if (
-    (await page.evaluate(() => window.__kithlandsTest.activeSceneKey())) ===
-    "World"
-  ) {
-    const approach = await page.evaluate(() =>
-      window.__kithlandsTest.movePlayer("up", "World"),
-    );
-    expect(approach.moved).toBe(true);
-    await page.waitForTimeout(250);
-    await triggerSceneAction(page, viewport, "World");
-  }
   await page.waitForFunction(
     () => window.__kithlandsTest.activeSceneKey() === "Settlement",
     null,
@@ -186,6 +182,10 @@ async function enterCadottShop(page, viewport) {
     },
   });
 
+  return interior;
+}
+
+async function openMerchant(page, interior) {
   const proprietor = interior.town.npcPositions[0];
   await page.waitForFunction(
     ({ x, y }) =>
@@ -198,6 +198,11 @@ async function enterCadottShop(page, viewport) {
       .visibleTexts("Town")
       .some((entry) => entry.text === "Leave Shop"),
   );
+}
+
+async function enterCadottShop(page, viewport, revisit = false) {
+  const interior = await enterCadottInterior(page, viewport, revisit);
+  await openMerchant(page, interior);
 }
 
 async function leaveShopForWorld(page) {
@@ -359,7 +364,7 @@ for (const viewport of VIEWPORTS) {
     await page.waitForFunction(
       () => window.__kithlandsTest.activeSceneKey() === "World",
     );
-    await enterCadottShop(page, viewport);
+    await enterCadottShop(page, viewport, true);
 
     const reloadedCatalog = await page.evaluate(() =>
       window.__kithlandsTest.shopItems("Town"),
@@ -378,3 +383,172 @@ for (const viewport of VIEWPORTS) {
     await capture(page, viewport, "stock-after-save-reload");
   });
 }
+
+test("merchant catalog failures recover without stale offers", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  const viewport = {
+    label: "800x600",
+    width: 800,
+    height: 600,
+    mobile: false,
+  };
+  await page.setViewportSize({
+    width: viewport.width,
+    height: viewport.height,
+  });
+  await startQuickGame(page);
+  const interior = await enterCadottInterior(page, viewport);
+
+  let failedShopGets = 1;
+  await page.route("**/api/game/*/shop/*", async (route) => {
+    if (route.request().method() === "GET" && failedShopGets > 0) {
+      failedShopGets -= 1;
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "temporary catalog outage" }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await openMerchant(page, interior);
+  await page.waitForFunction(() => {
+    const texts = window.__kithlandsTest
+      .visibleTexts("Town")
+      .map((entry) => entry.text);
+    return (
+      texts.some((text) => text.includes("Stock unavailable")) &&
+      texts.includes("Retry Stock") &&
+      !texts.includes("Wooden Club")
+    );
+  });
+  await page.evaluate(() =>
+    window.__kithlandsTest.clickInteractiveText("Retry Stock", "Town"),
+  );
+  await page.waitForFunction(
+    () =>
+      !window.__kithlandsTest
+        .visibleTexts("Town")
+        .some((entry) => entry.text === "Retry Stock"),
+  );
+  await page.evaluate(() =>
+    window.__kithlandsTest.clickInteractiveText("Weapons", "Town"),
+  );
+  await page.waitForFunction(() =>
+    window.__kithlandsTest
+      .visibleTexts("Town")
+      .some((entry) => entry.text === "Wooden Club"),
+  );
+
+  const catalog = await page.evaluate(() =>
+    window.__kithlandsTest.shopItems("Town"),
+  );
+  const rolledOffer = catalog.shop_items.find(
+    (item) => item.type === "equipment",
+  );
+  await page.evaluate(() =>
+    window.__kithlandsTest.clickInteractiveText("Armor", "Town"),
+  );
+  await page.evaluate(
+    (name) => window.__kithlandsTest.clickInteractiveText(name, "Town"),
+    rolledOffer.name,
+  );
+
+  failedShopGets = 1;
+  await page.evaluate(() =>
+    window.__kithlandsTest.clickInteractiveText("Buy", "Town"),
+  );
+  await page.waitForFunction(
+    (instanceID) =>
+      window.__kithlandsTest
+        .gameState("Town")
+        .items.some((item) => item.instance_id === instanceID),
+    rolledOffer.instance_id,
+  );
+  await page.waitForFunction(() =>
+    window.__kithlandsTest
+      .visibleTexts("Town")
+      .some((entry) => entry.text === "Retry Stock"),
+  );
+  expect(
+    await page.evaluate(
+      (name) =>
+        window.__kithlandsTest
+          .visibleTexts("Town")
+          .some((entry) => entry.text === name),
+      rolledOffer.name,
+    ),
+  ).toBe(false);
+
+  await page.evaluate(() =>
+    window.__kithlandsTest.clickInteractiveText("Retry Stock", "Town"),
+  );
+  await page.waitForFunction(
+    () =>
+      !window.__kithlandsTest
+        .visibleTexts("Town")
+        .some((entry) => entry.text === "Retry Stock"),
+  );
+  await page.evaluate(() =>
+    window.__kithlandsTest.clickInteractiveText("Weapons", "Town"),
+  );
+  await page.waitForFunction(() =>
+    window.__kithlandsTest
+      .visibleTexts("Town")
+      .some((entry) => entry.text === "Wooden Club"),
+  );
+  const recoveredCatalog = await page.evaluate(() =>
+    window.__kithlandsTest.shopItems("Town"),
+  );
+  expect(
+    recoveredCatalog.shop_items.some(
+      (item) => item.stock_id === rolledOffer.stock_id,
+    ),
+  ).toBe(false);
+
+  const reusableOffer = recoveredCatalog.shop_items.find(
+    (item) => item.name === "Wooden Club",
+  );
+  expect(reusableOffer).toBeTruthy();
+  await page.evaluate(() =>
+    window.__kithlandsTest.clickInteractiveText("Weapons", "Town"),
+  );
+  await page.evaluate(
+    (name) => window.__kithlandsTest.clickInteractiveText(name, "Town"),
+    reusableOffer.name,
+  );
+  const remotePurchase = await page.evaluate(
+    ({ nodeID, stockID }) =>
+      window.__kithlandsTest.buyShopOfferRemote(nodeID, stockID, "Town"),
+    {
+      nodeID: "cadott-general-store",
+      stockID: reusableOffer.stock_id,
+    },
+  );
+  expect(remotePurchase.error).toBeUndefined();
+
+  await page.evaluate(() =>
+    window.__kithlandsTest.clickInteractiveText("Buy", "Town"),
+  );
+  await page.waitForFunction(() =>
+    window.__kithlandsTest
+      .visibleTexts("Town")
+      .some(
+        (entry) =>
+          entry.text.includes("stale or already purchased") &&
+          entry.text.includes("Stock refreshed"),
+      ),
+  );
+  const refreshedCatalog = await page.evaluate(() =>
+    window.__kithlandsTest.shopItems("Town"),
+  );
+  const refreshedReusable = refreshedCatalog.shop_items.find(
+    (item) => item.id === reusableOffer.id,
+  );
+  expect(refreshedReusable.stock_id).not.toBe(reusableOffer.stock_id);
+  await capture(page, viewport, "catalog-recovered-after-stale-offer");
+});

@@ -1762,6 +1762,13 @@ export function installDevTestBridge(game) {
       return clone(result);
     },
 
+    async buyShopOfferRemote(nodeId, stockId, sceneKey = "Town") {
+      const scene = getScene(game, sceneKey);
+      const gameId = scene?.gameState?.id;
+      if (!gameId) throw new Error("Active scene has no game id");
+      return clone(await buyItem(gameId, nodeId, stockId));
+    },
+
     async forceEncounter(monsterIds, level = 1, sceneKey = "World") {
       const scene = getScene(game, sceneKey);
       const gameId = scene?.gameState?.id;

@@ -3,6 +3,7 @@ import { pauseWorldFor } from "../systems/modalLock.js";
 import {
   buildSpellLearnerChoices,
   groupShopItems,
+  resolveShopCatalog,
   shouldHandleShopEscape,
 } from "./world_shop.js";
 
@@ -93,5 +94,23 @@ describe("shouldHandleShopEscape", () => {
 
     pauseWorldFor(scene, "party_menu");
     expect(shouldHandleShopEscape(scene)).toBe(false);
+  });
+});
+
+describe("resolveShopCatalog", () => {
+  it("uses the server offers when refresh succeeds", () => {
+    const offer = { stock_id: "offer_current", name: "Current Wraps" };
+
+    expect(resolveShopCatalog({ shop_items: [offer] })).toEqual({
+      items: [offer],
+      error: "",
+    });
+  });
+
+  it("clears stale offers and exposes the server error", () => {
+    expect(resolveShopCatalog({ error: "temporary catalog outage" })).toEqual({
+      items: [],
+      error: "Stock unavailable: temporary catalog outage",
+    });
   });
 });

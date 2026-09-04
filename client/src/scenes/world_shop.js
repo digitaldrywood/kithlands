@@ -131,6 +131,24 @@ export function shouldHandleShopEscape(scene) {
   return topWorldLock(scene) === "shop";
 }
 
+export function resolveShopCatalog(shopData) {
+  if (shopData?.error) {
+    return {
+      items: [],
+      error: `Stock unavailable: ${shopData.error}`,
+    };
+  }
+  return {
+    items: Array.isArray(shopData?.shop_items) ? shopData.shop_items : [],
+    error: "",
+  };
+}
+
+function catalogFailure(error) {
+  const message = error instanceof Error ? error.message : String(error || "");
+  return `Stock unavailable: ${message || "please try again"}`;
+}
+
 function shopSelectionID(item) {
   return item?.stock_id || `${item?.type || "item"}:${item?.id || ""}`;
 }
@@ -140,18 +158,16 @@ export async function openShop(scene, spawn) {
   scene.animating = true;
 
   let items = [];
+  let catalogError = "";
   try {
     const shopData = await getShop(scene.gameState.id, spawn.node_id);
-    if (shopData?.error) throw new Error(shopData.error);
-    items = shopData.shop_items || [];
+    ({ items, error: catalogError } = resolveShopCatalog(shopData));
   } catch (e) {
     console.error("[World] shop fetch failed:", e);
-    scene.animating = false;
-    resumeWorldFor(scene, "shop");
-    return;
+    catalogError = catalogFailure(e);
   }
 
-  if (items.length === 0) {
+  if (!catalogError && items.length === 0) {
     scene.showMessage(`${spawn.name} has nothing for sale.`);
     scene.time.delayedCall(1500, () => {
       scene.hideMessage();
@@ -165,6 +181,7 @@ export async function openShop(scene, spawn) {
   const listGroup = [];
   const detailGroup = [];
   const pickerGroup = [];
+  const catalogErrorGroup = [];
   const tabButtons = [];
   const tabs = [
     { label: "Weapons", key: "weapons" },
@@ -221,10 +238,19 @@ export async function openShop(scene, spawn) {
   const refreshCatalog = async () => {
     try {
       const refreshed = await getShop(scene.gameState.id, spawn.node_id);
-      if (refreshed?.error) throw new Error(refreshed.error);
-      items = refreshed.shop_items || [];
+      const resolved = resolveShopCatalog(refreshed);
+      items = resolved.items;
+      catalogError = resolved.error;
+      if (catalogError) {
+        console.error("[Shop] refresh failed:", catalogError);
+        return false;
+      }
+      return true;
     } catch (e) {
       console.error("[Shop] refresh failed:", e);
+      items = [];
+      catalogError = catalogFailure(e);
+      return false;
     }
   };
 
@@ -493,17 +519,13 @@ export async function openShop(scene, spawn) {
         item.stock_id,
       );
       if (result?.error) {
-        showToast(result.error, 1500);
+        await recoverPurchaseError(result.error);
         return;
       }
       scene.gameState = result;
       updateGold();
       scene.updateHUD?.();
-      await refreshCatalog();
-      syncSelection();
-      renderList(itemsForTab(currentTab));
-      renderDetail();
-      showToast(`Bought: ${item.name}!`);
+      await refreshAfterPurchase(`Bought: ${item.name}!`);
       autosaveAfterPurchase(result);
     };
 
@@ -514,7 +536,7 @@ export async function openShop(scene, spawn) {
         item.stock_id,
       );
       if (purchase?.error) {
-        showToast(purchase.error, 1500);
+        await recoverPurchaseError(purchase.error);
         return;
       }
 
@@ -528,19 +550,11 @@ export async function openShop(scene, spawn) {
       scene.gameState = finalResult;
       updateGold();
       scene.updateHUD?.();
-      await refreshCatalog();
-      syncSelection();
-      renderList(itemsForTab(currentTab));
-      renderDetail();
-
-      if (equipResult?.error) {
-        showToast(
-          `Bought ${item.name}, but equip failed: ${equipResult.error}`,
-          1800,
-        );
-      } else {
-        showToast(`${member.name} equipped ${item.name}!`);
-      }
+      await refreshAfterPurchase(
+        equipResult?.error
+          ? `Bought ${item.name}, but equip failed: ${equipResult.error}`
+          : `${member.name} equipped ${item.name}!`,
+      );
       autosaveAfterPurchase(finalResult);
     };
 
@@ -680,17 +694,13 @@ export async function openShop(scene, spawn) {
             item.stock_id,
           );
           if (result?.error) {
-            showToast(result.error, 1500);
+            await recoverPurchaseError(result.error);
             return;
           }
           scene.gameState = result;
           updateGold();
           scene.updateHUD?.();
-          await refreshCatalog();
-          syncSelection();
-          renderList(itemsForTab(currentTab));
-          renderDetail();
-          showToast(`Bought: ${item.name}!`);
+          await refreshAfterPurchase(`Bought: ${item.name}!`);
           autosaveAfterPurchase(result);
         };
         rowBg.setInteractive({ useHandCursor: true });
@@ -711,17 +721,13 @@ export async function openShop(scene, spawn) {
             item.stock_id,
           );
           if (result?.error) {
-            showToast(result.error, 1500);
+            await recoverPurchaseError(result.error);
             return;
           }
           scene.gameState = result;
           updateGold();
           scene.updateHUD?.();
-          await refreshCatalog();
-          syncSelection();
-          renderList(itemsForTab(currentTab));
-          renderDetail();
-          showToast(`Bought: ${item.name}!`);
+          await refreshAfterPurchase(`Bought: ${item.name}!`);
           autosaveAfterPurchase(result);
         };
         const buyBtn = drawButton(
@@ -759,6 +765,83 @@ export async function openShop(scene, spawn) {
       listGroup.push(empty);
     }
   };
+
+  const renderCatalogError = () => {
+    destroyPicker();
+    destroyDetail();
+    destroyGroup(listGroup);
+    destroyGroup(catalogErrorGroup);
+    selectedItemId = null;
+
+    const message = scene.add
+      .text(400, 245, `${catalogError}\nNo stale offers are being shown.`, {
+        fontSize: "14px",
+        color: "#ffd2a8",
+        fontFamily: "Arial",
+        align: "center",
+        wordWrap: { width: 560 },
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(MAIN_PANEL.depth + 3);
+    catalogErrorGroup.push(message);
+
+    const retry = drawButton(
+      scene,
+      400,
+      320,
+      150,
+      34,
+      "Retry Stock",
+      async () => {
+        await refreshCatalog();
+        renderCatalogView();
+        if (!catalogError) showToast("Stock refreshed.");
+      },
+      {
+        depth: MAIN_PANEL.depth + 3,
+        fontSize: "12px",
+        fill: 0x1d4938,
+        fillHover: 0x2f6a50,
+        stroke: 0x9cdfb4,
+      },
+    );
+    catalogErrorGroup.push(retry);
+  };
+
+  function renderCatalogView() {
+    destroyGroup(catalogErrorGroup);
+    if (catalogError) {
+      renderCatalogError();
+      return;
+    }
+    syncSelection();
+    renderList(itemsForTab(currentTab));
+    renderDetail();
+    updateTabButtons();
+  }
+
+  async function recoverPurchaseError(message) {
+    const refreshed = await refreshCatalog();
+    renderCatalogView();
+    showToast(
+      refreshed
+        ? `${message} Stock refreshed.`
+        : `${message} Use Retry Stock to reload offers.`,
+      2400,
+    );
+  }
+
+  async function refreshAfterPurchase(successMessage) {
+    const refreshed = await refreshCatalog();
+    renderCatalogView();
+    showToast(
+      refreshed
+        ? successMessage
+        : `${successMessage} Stock refresh failed; use Retry Stock.`,
+      refreshed ? 1200 : 2600,
+    );
+  }
 
   const showSpellPicker = (item) => {
     destroyPicker();
@@ -803,18 +886,14 @@ export async function openShop(scene, spawn) {
           choice.name,
         );
         if (result?.error) {
-          showToast(result.error, 1500);
+          await recoverPurchaseError(result.error);
           return;
         }
         scene.gameState = result;
         updateGold();
         scene.updateHUD?.();
-        await refreshCatalog();
-        syncSelection();
-        renderList(itemsForTab(currentTab));
-        renderDetail();
+        await refreshAfterPurchase(`${choice.name} learned ${item.name}!`);
         destroyPicker();
-        showToast(`${choice.name} learned ${item.name}!`);
         autosaveAfterPurchase(result);
       };
 
@@ -942,10 +1021,7 @@ export async function openShop(scene, spawn) {
       tab.label,
       () => {
         currentTab = tab.key;
-        syncSelection();
-        updateTabButtons();
-        renderList(itemsForTab(currentTab));
-        renderDetail();
+        renderCatalogView();
       },
       {
         depth: MAIN_PANEL.depth + 1,
@@ -983,6 +1059,7 @@ export async function openShop(scene, spawn) {
     destroyPicker();
     destroyDetail();
     destroyGroup(listGroup);
+    destroyGroup(catalogErrorGroup);
     destroyGroup(overlay);
     if (escHandler) {
       scene.input.keyboard.off("keydown-ESC", escHandler);
@@ -1032,9 +1109,6 @@ export async function openShop(scene, spawn) {
     scene.events.off("postupdate", positionPortraitShop);
   });
 
-  syncSelection();
-  renderList(itemsForTab(currentTab));
-  renderDetail();
-  updateTabButtons();
+  renderCatalogView();
   positionPortraitShop();
 }
