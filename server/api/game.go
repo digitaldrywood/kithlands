@@ -7,7 +7,6 @@ import (
 	"math/rand/v2"
 	"runtime/debug"
 	"sort"
-	"strings"
 	"sync"
 
 	"github.com/digitaldrywood/kithlands/internal/balance"
@@ -891,17 +890,9 @@ func (g *Game) fillInventoryState(state *GameState) {
 			item.CombatUsable = c.CombatUsable
 			item.WorldUsable = c.WorldUsable
 		}
-		// Weapon/armor in inventory -- enrich with Power/Absorb so the
-		// client can compute equip-delta previews (issue #96).
-		if strings.HasPrefix(id, "wpn_") {
-			if base := g.gd.EquipmentBaseByID(strings.TrimPrefix(id, "wpn_")); base != nil {
-				baseState := baseItemState(base)
-				baseState.ID, baseState.Count = id, count
-				item = baseState
-			}
-		}
-		if strings.HasPrefix(id, "arm_") {
-			if base := g.gd.EquipmentBaseByID(strings.TrimPrefix(id, "arm_")); base != nil {
+		// Static legacy equipment shares the same metadata as rolled gear.
+		if baseID, ok := staticEquipmentBaseID(id); ok {
+			if base := g.gd.EquipmentBaseByID(baseID); base != nil {
 				baseState := baseItemState(base)
 				baseState.ID, baseState.Count = id, count
 				item = baseState

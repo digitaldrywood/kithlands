@@ -256,3 +256,28 @@ func defaultSlotForCategory(category string) string {
 func validEquipmentKind(kind string) bool {
 	return kind == "weapon" || kind == "armor" || kind == "accessory"
 }
+
+// EquipStaticAt places a catalog item without creating or rerolling an instance.
+// Callers own quantity and level validation; this validates slot and class rules.
+func (inv *Inventory) EquipStaticAt(partySlot int, loadoutSlot, baseID, classID string, gd *gamedata.GameData) (EquippedItemRef, error) {
+	if partySlot < 0 || partySlot >= len(inv.Equipment) {
+		return EquippedItemRef{}, fmt.Errorf("invalid party slot %d", partySlot)
+	}
+	base := gd.EquipmentBaseByID(baseID)
+	slot := gd.EquipmentSlotByID(loadoutSlot)
+	if base == nil || slot == nil {
+		return EquippedItemRef{}, fmt.Errorf("unknown equipment or slot")
+	}
+	if !slices.Contains(slot.Accepts, base.Category) || !slices.Contains(base.Classes, classID) {
+		return EquippedItemRef{}, fmt.Errorf("%s cannot equip %s in %s", classID, base.Name, slot.Name)
+	}
+	if base.Category == "weapon" && loadoutSlot != MainHandSlot {
+		return EquippedItemRef{}, fmt.Errorf("static weapons can only be equipped in %s", MainHandSlot)
+	}
+	previous := inv.Equipment[partySlot].Equipped(loadoutSlot)
+	inv.Equipment[partySlot].setEquipped(loadoutSlot, EquippedItemRef{ItemID: baseID})
+	return previous, nil
+}
+
+// DefaultEquipmentSlot retains the legacy no-slot equip request behavior.
+func DefaultEquipmentSlot(category string) string { return defaultSlotForCategory(category) }

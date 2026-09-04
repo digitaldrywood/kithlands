@@ -669,6 +669,9 @@ Status effects do not stack — a character is either poisoned or not. This is a
 
 ## 7.1 Equipment philosophy
 
+The current implemented stat and inactive-bonus contract is documented in
+[Effective equipment stats](EQUIPMENT_EFFECTIVE_STATS.md).
+
 The player should be able to look at a weapon and understand *why* it's better than the previous one. No hidden modifiers, no opaque stats. A bigger number is a bigger sword.
 
 The expanded character loadout, comparison flow, socket/transmutation return

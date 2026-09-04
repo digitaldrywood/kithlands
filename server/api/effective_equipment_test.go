@@ -164,7 +164,7 @@ func TestInactiveGearDoesNotImproveRecommendation(t *testing.T) {
 	if err := g.UnequipItem(0, "ring_1"); err != nil {
 		t.Fatal(err)
 	}
-	for _, goal := range []string{"balanced", "offense", "defense", "magic"} {
+	for _, goal := range []string{"balanced", "offense", "defense"} {
 		plan, err := g.RecommendEquipment(0, goal)
 		if err != nil {
 			t.Fatal(err)
@@ -195,5 +195,117 @@ func TestEffectiveEquipmentCombatRoundsPreserveBase(t *testing.T) {
 		if !reflect.DeepEqual(got, base) {
 			t.Fatal("round synchronized effective stats into growth")
 		}
+	}
+}
+
+func TestLegacyStaticDefensesRetainOwnershipAcrossLoadoutOperations(t *testing.T) {
+	for _, slot := range []string{"off_hand", "head"} {
+		t.Run(slot, func(t *testing.T) {
+			g := equipmentGame(t, "warrior")
+			baseID := g.gd.Items.Shields[0].ID
+			if slot == "head" {
+				baseID = g.gd.Items.Helmets[0].ID
+				g.inv.Equipment[0].HelmetID = baseID
+			} else {
+				g.inv.Equipment[0].ShieldID = baseID
+			}
+			save, err := g.ToSaveState("legacy", "user")
+			if err != nil {
+				t.Fatal(err)
+			}
+			g, err = FromSaveState(save, g.gd, g.loc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			base := g.gd.EquipmentBaseByID(baseID)
+			key := equipmentStateID(base.Category, baseID)
+			if err = g.UnequipItem(0, slot); err != nil {
+				t.Fatal(err)
+			}
+			if g.inv.Consumables[key] != 1 {
+				t.Fatalf("unequip lost %s", baseID)
+			}
+			visible := false
+			for _, item := range g.State().Items {
+				if item.ID == key && item.Category == base.Category {
+					visible = true
+				}
+			}
+			if !visible {
+				t.Fatal("legacy item cannot be selected for re-equip")
+			}
+			if err = g.EquipItemAt(0, slot, baseID, base.Kind); err != nil {
+				t.Fatal(err)
+			}
+			if g.inv.Consumables[key] != 0 || g.inv.Equipment[0].Equipped(slot).ItemID != baseID {
+				t.Fatal("re-equip ownership wrong")
+			}
+			id, err := g.inv.AddInstance(inventory.EquipmentInstance{BaseID: baseID, Kind: base.Kind})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err = g.EquipItemAt(0, slot, id, base.Kind); err != nil {
+				t.Fatal(err)
+			}
+			if g.inv.Consumables[key] != 1 {
+				t.Fatal("instance replacement lost static gear")
+			}
+			if err = g.UnequipItem(0, slot); err != nil {
+				t.Fatal(err)
+			}
+			// Static and instance copies both survive; remove the instance only from
+			// this test fixture to exercise recommendation of the owned static copy.
+			delete(g.inv.Instances, id)
+			if err = g.ApplyRecommendedEquipment(0, "defense"); err != nil {
+				t.Fatal(err)
+			}
+			if g.inv.Equipment[0].Equipped(slot).ItemID != baseID || g.inv.Consumables[key] != 0 {
+				t.Fatal("recommendation lost static gear")
+			}
+			if err = g.UnequipItem(0, slot); err != nil {
+				t.Fatal(err)
+			}
+			save, err = g.ToSaveState("legacy-again", "user")
+			if err != nil {
+				t.Fatal(err)
+			}
+			g, err = FromSaveState(save, g.gd, g.loc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if g.inv.Consumables[key] != 1 {
+				t.Fatal("bag quantity changed on reload")
+			}
+		})
+	}
+}
+
+func TestAuthoredHeavyArmorReducesEvade(t *testing.T) {
+	g := equipmentGame(t, "warrior")
+	unarmored := g.makeCombatants()[0].Evade()
+	for _, id := range []string{"chain_mail", "plate_mail", "aegis_plate", "sunforged_cuirass"} {
+		base := g.gd.EquipmentBaseByID(id)
+		if base.Stats["evade_penalty"] <= 0 {
+			t.Fatalf("%s penalty is not a cost", id)
+		}
+		g.inv.Equipment[0] = inventory.EquipmentSlots{ArmorID: id}
+		if got := g.makeCombatants()[0].Evade(); got >= unarmored {
+			t.Fatalf("%s evade=%d unarmored=%d", id, got, unarmored)
+		}
+	}
+}
+
+func TestArmorFamilyReplacementReturnsOnlyDisplacedSlot(t *testing.T) {
+	g := equipmentGame(t, "warrior")
+	g.inv.Equipment[0] = inventory.EquipmentSlots{ArmorID: "cloth_robe"}
+	id, err := g.inv.AddInstance(inventory.EquipmentInstance{BaseID: "leather_gloves", Kind: "armor"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = g.EquipItemAt(0, "hands", id, "armor"); err != nil {
+		t.Fatal(err)
+	}
+	if g.inv.Consumables["arm_cloth_robe"] != 0 {
+		t.Fatal("equipping gloves duplicated body armor")
 	}
 }

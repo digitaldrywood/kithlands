@@ -78,6 +78,9 @@ var equipmentRecommendationWeights = map[string]map[string]int{
 
 func normalizeRecommendationGoal(goal string) (string, error) {
 	goal = strings.ToLower(strings.TrimSpace(goal))
+	if goal == "magic" {
+		return "", fmt.Errorf("magic equipment bonuses are inactive")
+	}
 	if goal == "" {
 		goal = "balanced"
 	}
@@ -151,12 +154,7 @@ func returnRecommendedStaticToInventory(inv *inventory.Inventory, previous inven
 	if base == nil {
 		return
 	}
-	switch base.Category {
-	case "weapon":
-		inv.Consumables["wpn_"+base.ID]++
-	case "armor":
-		inv.Consumables["arm_"+base.ID]++
-	}
+	inv.Consumables[equipmentStateID(base.Category, base.ID)]++
 }
 
 func (g *Game) recommendEquipmentLocked(partySlot int, goal string) (equipmentRecommendationPlan, error) {
@@ -332,8 +330,7 @@ func (g *Game) recommendationCandidateFits(candidate recommendationCandidate, sl
 		return false
 	}
 	if candidate.inventoryKey != "" {
-		return (candidate.category == "weapon" && slot.ID == inventory.MainHandSlot) ||
-			(candidate.category == "armor" && slot.ID == inventory.BodySlot)
+		return candidate.category != "weapon" || slot.ID == inventory.MainHandSlot
 	}
 	return true
 }
@@ -369,6 +366,8 @@ func staticEquipmentBaseID(key string) (string, bool) {
 	switch {
 	case strings.HasPrefix(key, "wpn_"):
 		return strings.TrimPrefix(key, "wpn_"), true
+	case strings.HasPrefix(key, "eqp_"):
+		return strings.TrimPrefix(key, "eqp_"), true
 	case strings.HasPrefix(key, "arm_"):
 		return strings.TrimPrefix(key, "arm_"), true
 	default:
@@ -380,32 +379,12 @@ func equipRecommendedStatic(inv *inventory.Inventory, partySlot int, equipmentSl
 	if candidate.inventoryKey == "" || inv.Consumables[candidate.inventoryKey] <= 0 {
 		return fmt.Errorf("equipment %q is not available", candidate.itemID)
 	}
-	previous := inv.Equipment[partySlot]
-	var prior string
-	var err error
-	switch candidate.category {
-	case "weapon":
-		if equipmentSlot != inventory.MainHandSlot {
-			return fmt.Errorf("static weapons can only be equipped in %s", inventory.MainHandSlot)
-		}
-		prior, err = inv.EquipWeapon(partySlot, candidate.itemID, classID, gd)
-		if err == nil && prior != "" && previous.WeaponInstanceID == "" {
-			inv.Consumables["wpn_"+prior]++
-		}
-	case "armor":
-		if equipmentSlot != inventory.BodySlot {
-			return fmt.Errorf("static armor can only be equipped in %s", inventory.BodySlot)
-		}
-		prior, err = inv.EquipArmor(partySlot, candidate.itemID, classID, gd)
-		if err == nil && prior != "" && previous.ArmorInstanceID == "" {
-			inv.Consumables["arm_"+prior]++
-		}
-	default:
-		return fmt.Errorf("static %s equipment is unsupported", candidate.category)
-	}
+	previous, err := inv.EquipStaticAt(partySlot, equipmentSlot, candidate.itemID, classID, gd)
 	if err != nil {
 		return err
 	}
+	returnRecommendedStaticToInventory(inv, previous, gd)
+
 	inv.Consumables[candidate.inventoryKey]--
 	if inv.Consumables[candidate.inventoryKey] == 0 {
 		delete(inv.Consumables, candidate.inventoryKey)

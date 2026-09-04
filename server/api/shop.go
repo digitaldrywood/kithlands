@@ -353,77 +353,36 @@ func (g *Game) EquipItemAt(slot int, equipmentSlot, itemID, itemType string) err
 		return fmt.Errorf("invalid slot")
 	}
 
-	classID := g.party[slot].ClassID
+	member := g.party[slot]
 	if instance := g.inv.Instance(itemID); instance != nil {
 		if instance.Kind != itemType {
 			return fmt.Errorf("equipment %q is not %s", itemID, itemType)
 		}
-		var previous inventory.EquipmentSlots
-		var err error
 		if equipmentSlot == "" {
-			previous, err = g.inv.EquipInstance(slot, itemID, classID, g.party[slot].Level, g.gd)
-		} else {
-			previous, err = g.inv.EquipInstanceAt(slot, equipmentSlot, itemID, classID, g.party[slot].Level, g.gd)
+			base := g.gd.EquipmentBaseByID(instance.BaseID)
+			if base == nil {
+				return fmt.Errorf("invalid equipment base")
+			}
+			equipmentSlot = inventory.DefaultEquipmentSlot(base.Category)
 		}
-		if err != nil {
+		previous := g.inv.Equipment[slot].Equipped(equipmentSlot)
+		if _, err := g.inv.EquipInstanceAt(slot, equipmentSlot, itemID, member.ClassID, member.Level, g.gd); err != nil {
 			return err
 		}
-		if itemType == "weapon" && previous.WeaponID != "" && previous.WeaponInstanceID == "" {
-			g.inv.Consumables["wpn_"+previous.WeaponID]++
-		}
-		if itemType == "armor" && previous.ArmorID != "" && previous.ArmorInstanceID == "" {
-			g.inv.Consumables["arm_"+previous.ArmorID]++
-		}
+		returnRecommendedStaticToInventory(g.inv, previous, g.gd)
 		return nil
 	}
-
-	switch itemType {
-	case "weapon":
-		if equipmentSlot != "" && equipmentSlot != inventory.MainHandSlot {
-			return fmt.Errorf("static weapons can only be equipped in %s", inventory.MainHandSlot)
-		}
-		key := "wpn_" + itemID
-		if g.inv.Consumables[key] <= 0 {
-			return fmt.Errorf("weapon %q not owned", itemID)
-		}
-		previous := g.inv.Equipment[slot]
-		prev, err := g.inv.EquipWeapon(slot, itemID, classID, g.gd)
-		if err != nil {
-			return err
-		}
-		// Put previous weapon back in inventory
-		if prev != "" && previous.WeaponInstanceID == "" {
-			g.inv.Consumables["wpn_"+prev]++
-		}
-		// Remove new weapon from inventory
-		g.inv.Consumables[key]--
-		if g.inv.Consumables[key] == 0 {
-			delete(g.inv.Consumables, key)
-		}
-		return nil
-	case "armor":
-		if equipmentSlot != "" && equipmentSlot != inventory.BodySlot {
-			return fmt.Errorf("static armor can only be equipped in %s", inventory.BodySlot)
-		}
-		key := "arm_" + itemID
-		if g.inv.Consumables[key] <= 0 {
-			return fmt.Errorf("armor %q not owned", itemID)
-		}
-		previous := g.inv.Equipment[slot]
-		prev, err := g.inv.EquipArmor(slot, itemID, classID, g.gd)
-		if err != nil {
-			return err
-		}
-		if prev != "" && previous.ArmorInstanceID == "" {
-			g.inv.Consumables["arm_"+prev]++
-		}
-		g.inv.Consumables[key]--
-		if g.inv.Consumables[key] == 0 {
-			delete(g.inv.Consumables, key)
-		}
-		return nil
+	base := g.gd.EquipmentBaseByID(itemID)
+	if base == nil || base.Kind != itemType {
+		return fmt.Errorf("unknown equip type or item: %s", itemID)
 	}
-	return fmt.Errorf("unknown equip type: %s", itemType)
+	if member.Level < base.RequiredLevel {
+		return fmt.Errorf("level %d required to equip this item", base.RequiredLevel)
+	}
+	if equipmentSlot == "" {
+		equipmentSlot = inventory.DefaultEquipmentSlot(base.Category)
+	}
+	return equipRecommendedStatic(g.inv, slot, equipmentSlot, recommendationCandidate{itemID: base.ID, category: base.Category, inventoryKey: equipmentStateID(base.Category, base.ID)}, member.ClassID, g.gd)
 }
 
 // UnequipItem returns a slot's static item to the legacy inventory map or
@@ -444,17 +403,7 @@ func (g *Game) UnequipItem(slot int, equipmentSlot string) error {
 	if err != nil {
 		return err
 	}
-	if ref.InstanceID != "" {
-		return nil
-	}
-	if base := g.gd.EquipmentBaseByID(ref.ItemID); base != nil {
-		switch base.Category {
-		case "weapon":
-			g.inv.Consumables["wpn_"+base.ID]++
-		case "armor":
-			g.inv.Consumables["arm_"+base.ID]++
-		}
-	}
+	returnRecommendedStaticToInventory(g.inv, ref, g.gd)
 	return nil
 }
 
