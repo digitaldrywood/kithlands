@@ -91,15 +91,13 @@ describe("showInteractPrompt", () => {
   it("shows Rest for house tags", () => {
     const scene = makeScene();
     showInteractPrompt(scene, { name: "Home", tags: ["house"] });
-    expect(scene.interactPrompt.text).toContain("Rest");
-    expect(scene.interactPrompt.text).not.toContain("Home");
+    expect(scene.interactPrompt.text).toBe("[ ENTER ] Rest — Home");
   });
 
   it("shows Rest for safehouse tags", () => {
     const scene = makeScene();
     showInteractPrompt(scene, { name: "Hideout", tags: ["safehouse"] });
-    expect(scene.interactPrompt.text).toContain("Rest");
-    expect(scene.interactPrompt.text).not.toContain("Hideout");
+    expect(scene.interactPrompt.text).toBe("[ ENTER ] Rest — Hideout");
   });
 
   it("prefers Rest over Shop for inn-style commerce tags", () => {
@@ -108,8 +106,7 @@ describe("showInteractPrompt", () => {
       name: "The Wayward Inn",
       tags: ["commerce", "rest"],
     });
-    expect(scene.interactPrompt.text).toContain("Rest");
-    expect(scene.interactPrompt.text).not.toContain("The Wayward Inn");
+    expect(scene.interactPrompt.text).toBe("[ ENTER ] Rest — The Wayward Inn");
   });
 
   it("uses the server-authored natural prompt and Enter only", () => {
@@ -117,8 +114,14 @@ describe("showInteractPrompt", () => {
     scene.gameState.natural_discoveries = [
       { node_id: "grove", prompt: "Examine the old stones" },
     ];
-    showInteractPrompt(scene, { kind: "natural", node_id: "grove" });
-    expect(scene.interactPrompt.text).toBe("[ ENTER ] Examine the old stones");
+    showInteractPrompt(scene, {
+      kind: "natural",
+      node_id: "grove",
+      name: "Whispering Grove",
+    });
+    expect(scene.interactPrompt.text).toBe(
+      "[ ENTER ] Examine the old stones — Whispering Grove",
+    );
     expect(scene.interactPrompt.text).not.toContain("SPACE");
   });
 
@@ -126,8 +129,14 @@ describe("showInteractPrompt", () => {
     inputMocks.isTouchDevice.mockReturnValue(true);
     const scene = makeScene();
     scene.gameplayLayout = { portrait: true };
-    showInteractPrompt(scene, { kind: "natural", node_id: "grove" });
-    expect(scene.interactPrompt.text).toBe("[ TAP A ] Explore");
+    showInteractPrompt(scene, {
+      kind: "natural",
+      node_id: "grove",
+      name: "Whispering Grove",
+    });
+    expect(scene.interactPrompt.text).toBe(
+      "[ TAP A ] Explore — Whispering Grove",
+    );
     expect(scene.interactPrompt.style.fontSize).toBe("24px");
     expect(scene.interactPrompt.y).toBe(scene.player.y - 72);
   });

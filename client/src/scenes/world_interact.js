@@ -445,6 +445,9 @@ export function showInteractPrompt(scene, spawn) {
   hideInteractPrompt(scene);
   const tags = spawn.tags || [];
   const portrait = scene.gameplayLayout?.portrait === true;
+  const destination =
+    String(spawn.name || "").trim() ||
+    String(spawn.node_id || "Destination").trim();
   let action = "Enter";
   if (isNaturalSpawn(spawn)) {
     action =
@@ -458,7 +461,7 @@ export function showInteractPrompt(scene, spawn) {
     .text(
       scene.player.x,
       scene.player.y - (portrait ? 72 : 54),
-      `${isTouchDevice() ? "[ TAP A ]" : "[ ENTER ]"} ${action}`,
+      `${isTouchDevice() ? "[ TAP A ]" : "[ ENTER ]"} ${action} — ${destination}`,
       {
         fontSize: portrait ? "24px" : "10px",
         color: "#ffff44",

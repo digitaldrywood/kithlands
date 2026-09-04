@@ -67,6 +67,7 @@ import {
   worldPositionForGame,
   worldTileMapForGame,
 } from "./worldMapCache.js";
+import { renderWorldLandmarks } from "./worldLandmarkRenderer.js";
 
 const ENEMY_SPRITES = {
   Slime: "monster_slime",
@@ -162,231 +163,6 @@ function isStructureTile(tile) {
   return tile === TILE_IDS.building || tile === TILE_IDS.door;
 }
 
-function hashCode(str) {
-  let h = 5381;
-  for (let i = 0; i < str.length; i++) {
-    h = (h * 33 + str.charCodeAt(i)) | 0;
-  }
-  return h >>> 0;
-}
-
-function isSettlementSpawn(spawn) {
-  const kind = (spawn?.kind || "").toLowerCase();
-  const type = (spawn?.building_type || "").toLowerCase();
-  return (
-    kind === "place" ||
-    kind === "business" ||
-    kind === "landmark" ||
-    type === "inn" ||
-    type === "shop" ||
-    type === "temple"
-  );
-}
-
-function drawIconHouse(graphics, x, y, size, roofColor, tall = false) {
-  const w = size;
-  const h = tall ? Math.round(size * 1.08) : Math.round(size * 0.78);
-  const roofH = Math.round(size * 0.36);
-  const bodyY = y + roofH;
-
-  graphics.fillStyle(0x10200f, 1);
-  graphics.fillTriangle(
-    x - 2,
-    bodyY + 2,
-    x + w / 2,
-    y - 2,
-    x + w + 2,
-    bodyY + 2,
-  );
-  graphics.fillRect(x - 1, bodyY, w + 2, h + 2);
-  graphics.fillStyle(roofColor, 1);
-  graphics.fillTriangle(x, bodyY, x + w / 2, y, x + w, bodyY);
-  graphics.fillRect(x + 2, bodyY - 2, w - 4, 4);
-  graphics.fillStyle(0xf1f1e7, 1);
-  graphics.fillRect(x + 2, bodyY + 2, w - 4, h - 2);
-  graphics.fillStyle(0xb9b9ad, 1);
-  graphics.fillRect(x + 3, bodyY + h - 5, w - 6, 3);
-  graphics.fillStyle(0x252018, 1);
-  graphics.fillRect(x + Math.floor(w / 2) - 2, bodyY + h - 9, 4, 9);
-  graphics.fillRect(x + 4, bodyY + 5, 3, 4);
-  if (w > 18) graphics.fillRect(x + w - 7, bodyY + 5, 3, 4);
-}
-
-function drawIconKeep(graphics, x, y, w, h) {
-  graphics.fillStyle(0x10200f, 1);
-  graphics.fillRect(x - 2, y + 8, w + 4, h + 2);
-  graphics.fillStyle(0xf0f0e8, 1);
-  graphics.fillRect(x, y + 8, w, h);
-  graphics.fillStyle(0xb9b9ad, 1);
-  graphics.fillRect(x + 3, y + h, w - 6, 5);
-  graphics.fillStyle(0x10200f, 1);
-  graphics.fillRect(x + Math.floor(w / 2) - 3, y + h - 8, 6, 13);
-  graphics.fillStyle(0xf0f0e8, 1);
-  graphics.fillRect(x, y + 4, 5, 6);
-  graphics.fillRect(x + w / 2 - 3, y, 6, 10);
-  graphics.fillRect(x + w - 5, y + 4, 5, 6);
-}
-
-function drawOverworldCastleIcon(graphics, cx, cy, seed) {
-  const baseW = 72 + (seed % 2) * 8;
-  const baseH = 54;
-  const left = cx - baseW / 2;
-  const top = cy - baseH / 2 - 6;
-
-  graphics.fillStyle(0x0d570d, 1);
-  graphics.fillRect(left - 7, top + 18, baseW + 14, baseH - 10);
-  graphics.fillStyle(0x101510, 1);
-  graphics.fillRect(left + 10, top + 38, baseW - 20, 5);
-  drawIconHouse(graphics, left + 2, top + 32, 19, 0xc9c9c0);
-  drawIconHouse(graphics, left + baseW - 21, top + 32, 19, 0xc9c9c0);
-  drawIconKeep(graphics, cx - 16, top + 4, 32, 42);
-  if (seed % 3 === 0) {
-    drawIconKeep(graphics, left + 16, top + 18, 18, 30);
-    drawIconKeep(graphics, left + baseW - 34, top + 18, 18, 30);
-  }
-}
-
-function drawOverworldTownIcon(graphics, cx, cy, seed) {
-  const variant = seed % 4;
-  const roofA = variant === 1 ? 0xd6d6cd : 0xf0f0e6;
-  const roofB = variant === 2 ? 0xbdbdb4 : 0xe4e4da;
-  const left = cx - 39;
-  const top = cy - 35;
-
-  graphics.fillStyle(0x0d610e, 1);
-  if (variant === 0) graphics.fillRect(left + 8, top + 11, 62, 50);
-  else if (variant === 1) graphics.fillRect(left + 2, top + 24, 74, 31);
-  else graphics.fillEllipse(cx, cy - 1, 76, 48);
-
-  const positions =
-    variant === 1
-      ? [
-          [left + 7, top + 23, 19, roofB, false],
-          [left + 29, top + 14, 22, roofA, true],
-          [left + 53, top + 23, 19, roofB, false],
-        ]
-      : [
-          [left + 30, top + 5, 22, roofA, true],
-          [left + 8, top + 28, 19, roofB, false],
-          [left + 52, top + 28, 19, roofB, false],
-          [left + 28, top + 43, 18, roofA, false],
-        ];
-
-  for (const [x, y, size, roof, tall] of positions) {
-    drawIconHouse(graphics, x, y, size, roof, tall);
-  }
-}
-
-function drawOverworldTempleIcon(graphics, cx, cy, seed) {
-  const left = cx - 34;
-  const top = cy - 40;
-  graphics.fillStyle(0x0d560d, 1);
-  graphics.fillEllipse(cx, cy, 80, 54);
-  graphics.fillStyle(0x111611, 1);
-  graphics.fillTriangle(cx - 25, top + 32, cx, top + 2, cx + 25, top + 32);
-  graphics.fillRect(cx - 24, top + 31, 48, 31);
-  graphics.fillStyle(seed % 2 === 0 ? 0xe9e9dd : 0xd2d2c8, 1);
-  graphics.fillTriangle(cx - 22, top + 31, cx, top + 5, cx + 22, top + 31);
-  graphics.fillStyle(0xf3f3eb, 1);
-  graphics.fillRect(cx - 20, top + 31, 40, 28);
-  graphics.fillStyle(0xb8b8ae, 1);
-  graphics.fillRect(cx - 24, top + 58, 48, 5);
-  graphics.fillStyle(0x202018, 1);
-  graphics.fillRect(cx - 4, top + 44, 8, 19);
-  if (seed % 3 === 0) {
-    drawIconHouse(graphics, left + 2, top + 38, 16, 0xe4e4d8);
-    drawIconHouse(graphics, left + 50, top + 38, 16, 0xe4e4d8);
-  }
-}
-
-function drawOverworldPointIcon(graphics, cx, cy, seed) {
-  const isCave = seed % 3 === 0;
-  graphics.fillStyle(0x0b4c0d, 1);
-  graphics.fillEllipse(cx, cy + 6, 54, 36);
-  if (isCave) {
-    graphics.fillStyle(0x8f8f85, 1);
-    graphics.fillTriangle(cx - 24, cy + 15, cx, cy - 25, cx + 24, cy + 15);
-    graphics.fillStyle(0x222018, 1);
-    graphics.fillEllipse(cx, cy + 7, 20, 21);
-    return;
-  }
-  drawIconHouse(graphics, cx - 15, cy - 25, 30, 0xe8e8df, true);
-}
-
-function drawOverworldNaturalIcon(graphics, cx, cy, seed) {
-  const leafColor = seed % 2 === 0 ? 0x3f7d48 : 0x4d8552;
-  graphics.fillStyle(0x0a2b17, 0.75);
-  graphics.fillEllipse(cx, cy + 14, 50, 14);
-  graphics.fillStyle(0x665d4b, 1);
-  graphics.fillEllipse(cx - 12, cy + 9, 15, 9);
-  graphics.fillEllipse(cx + 11, cy + 10, 17, 10);
-  graphics.fillStyle(0xa89c79, 1);
-  graphics.fillEllipse(cx, cy + 7, 18, 11);
-  graphics.fillStyle(0x4e3824, 1);
-  graphics.fillRect(cx - 3, cy - 19, 6, 24);
-  graphics.fillStyle(leafColor, 1);
-  graphics.fillCircle(cx - 9, cy - 20, 12);
-  graphics.fillCircle(cx + 9, cy - 19, 13);
-  graphics.fillCircle(cx, cy - 30, 14);
-  graphics.fillStyle(0x85aa69, 0.9);
-  graphics.fillCircle(cx - 3, cy - 30, 6);
-}
-
-function drawWorldLocationMarker(graphics, spawn) {
-  if (!spawn) return;
-  const seed = hashCode(
-    `${spawn.node_id || spawn.name || ""}:${spawn.x}:${spawn.y}`,
-  );
-  const cx = (spawn.x ?? 0) * RENDERED_TILE + RENDERED_TILE / 2;
-  const cy = (spawn.y ?? 0) * RENDERED_TILE + RENDERED_TILE / 2;
-  const type = (spawn.building_type || "").toLowerCase();
-  const kind = (spawn.kind || "").toLowerCase();
-
-  graphics.fillStyle(0x071007, 0.32);
-  graphics.fillEllipse(cx, cy + 17, 76, 20);
-
-  if (kind === "natural") {
-    drawOverworldNaturalIcon(graphics, cx, cy, seed);
-  } else if (kind === "landmark" || type === "castle") {
-    drawOverworldCastleIcon(graphics, cx, cy, seed);
-  } else if (type === "temple") {
-    drawOverworldTempleIcon(graphics, cx, cy, seed);
-  } else if (isSettlementSpawn(spawn)) {
-    drawOverworldTownIcon(graphics, cx, cy, seed);
-  } else {
-    drawOverworldPointIcon(graphics, cx, cy, seed);
-  }
-}
-
-function drawWorldLocationMarkers(graphics, spawns = []) {
-  for (const spawn of spawns) {
-    drawWorldLocationMarker(graphics, spawn);
-  }
-}
-
-function drawWorldNaturalLabels(scene, spawns = []) {
-  const labels = scene.add.container(0, 0).setDepth(3);
-  const portrait = scene.gameplayLayout?.portrait === true;
-  for (const spawn of spawns) {
-    if ((spawn?.kind || "").toLowerCase() !== "natural") continue;
-    const cx = spawn.x * RENDERED_TILE + RENDERED_TILE / 2;
-    const cy = spawn.y * RENDERED_TILE + RENDERED_TILE / 2;
-    labels.add(
-      scene.add
-        .text(cx, cy + (portrait ? 30 : 24), spawn.name, {
-          fontSize: portrait ? "20px" : "9px",
-          color: "#eaf5d8",
-          fontFamily: "Trebuchet MS, Arial, sans-serif",
-          backgroundColor: "#07150dcc",
-          padding: portrait ? { x: 8, y: 5 } : { x: 4, y: 2 },
-          align: "center",
-          wordWrap: { width: portrait ? 224 : 112 },
-        })
-        .setOrigin(0.5, 0),
-    );
-  }
-  return labels;
-}
 let cachedLeaderIndex = 0;
 let cachedGameID = null;
 
@@ -1164,16 +940,8 @@ export class WorldScene extends Phaser.Scene {
     if (this.tileSprites) {
       this.tileSprites.destroy(true);
     }
-    if (this.locationGraphics) {
-      this.locationGraphics.destroy();
-    }
-    if (this.locationLabels) {
-      this.locationLabels.destroy(true);
-    }
     this.tileSprites = this.add.container(0, 0);
     this.tileSprites.setDepth(0);
-    this.locationGraphics = this.add.graphics();
-    this.locationGraphics.setDepth(2);
 
     for (let y = 0; y < this.mapH; y++) {
       for (let x = 0; x < this.mapW; x++) {
@@ -1210,10 +978,9 @@ export class WorldScene extends Phaser.Scene {
         }
       }
     }
-    // On the overland map, settlements and points of interest are destination
-    // markers. The full cluster of custom buildings belongs inside Town.
-    drawWorldLocationMarkers(this.locationGraphics, this.spawns);
-    this.locationLabels = drawWorldNaturalLabels(this, this.spawns);
+    // The overland uses authored, content-classified destination markers.
+    // Collision and interactions remain driven by the original spawn data.
+    renderWorldLandmarks(this, this.spawns, this.gameState);
   }
 
   drawMinimap() {

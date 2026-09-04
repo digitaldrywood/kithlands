@@ -11,6 +11,7 @@ import {
   battleOffHandAssets,
   battleWeaponAssets,
 } from "../data/battleCharacters.js";
+import { worldLandmarkAssets } from "../data/worldLandmarks.js";
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -83,6 +84,11 @@ export class BootScene extends Phaser.Scene {
       this.load.image(asset.key, asset.path);
     }
     for (const asset of battleOffHandAssets()) {
+      this.load.image(asset.key, asset.path);
+    }
+
+    // Content-driven overland destinations and attached adventure badges.
+    for (const asset of worldLandmarkAssets()) {
       this.load.image(asset.key, asset.path);
     }
 

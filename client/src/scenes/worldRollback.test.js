@@ -164,7 +164,7 @@ describe("rejected world step rollback", () => {
     expect([scene.playerX, scene.playerY]).toEqual([2, 3]);
     expect(scene.currentNaturalSpawn).toBe(natural);
     expect(scene.currentDoorSpawn).toBeNull();
-    expect(scene.interactPrompt.text).toBe("[ ENTER ] Inspect");
+    expect(scene.interactPrompt.text).toBe("[ ENTER ] Inspect — Willow Grove");
 
     apiMocks.transitionLocation.mockResolvedValue({
       ...scene.gameState,

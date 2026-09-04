@@ -1433,6 +1433,19 @@ export function installDevTestBridge(game) {
       });
     },
 
+    worldLandmarkSnapshot() {
+      return clone(getScene(game, "World")?.landmarkMarkerModels || []);
+    },
+
+    redrawWorldMap() {
+      const scene = getScene(game, "World");
+      if (!scene || typeof scene.drawMap !== "function") {
+        throw new Error("World scene cannot redraw its map");
+      }
+      scene.drawMap();
+      return clone(scene.landmarkMarkerModels || []);
+    },
+
     townNavigationSnapshot() {
       const scene = getScene(game, "Town");
       return clone({
