@@ -117,7 +117,7 @@ export async function openDialogue(scene, spawn, providedDialogue = null) {
 
   // Advance prompt
   const promptText = scene.add
-    .text(704, boxY + boxH - (portrait ? 28 : 18), "Enter", {
+    .text(704, boxY + boxH - (portrait ? 28 : 18), portrait ? "Tap" : "Enter", {
       fontSize: portrait ? "24px" : "10px",
       color: "#b9c7dd",
       fontFamily: portrait ? "Arial, sans-serif" : "monospace",

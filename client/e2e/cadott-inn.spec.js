@@ -42,7 +42,9 @@ async function dialogueOpen(page) {
   await page.waitForFunction(() =>
     window.__kithlandsTest
       .visibleTexts("Town")
-      .some(({ text }) => text === "Enter" || text === "Close"),
+      .some(
+        ({ text }) => text === "Enter" || text === "Tap" || text === "Close",
+      ),
   );
 }
 async function closeDialogue(page, mobile) {
@@ -50,7 +52,9 @@ async function closeDialogue(page, mobile) {
     const open = await page.evaluate(() =>
       window.__kithlandsTest
         .visibleTexts("Town")
-        .some(({ text }) => text === "Enter" || text === "Close"),
+        .some(
+          ({ text }) => text === "Enter" || text === "Tap" || text === "Close",
+        ),
     );
     if (!open) return;
     if (mobile) {
