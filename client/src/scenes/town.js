@@ -1057,63 +1057,77 @@ export class TownScene extends Phaser.Scene {
     const innerWidth = Math.max(FRAME_TILE, width - FRAME_TILE * 2);
     const innerHeight = Math.max(FRAME_TILE, height - FRAME_TILE * 2);
 
-    const frame = [
-      this.add
-        .tileSprite(x + FRAME_TILE, y, innerWidth, FRAME_TILE, "border_t")
-        .setOrigin(0, 0)
-        .setScale(1)
-        .setDepth(depth),
-      this.add
-        .tileSprite(
-          x + FRAME_TILE,
-          y + height - FRAME_TILE,
-          innerWidth,
-          FRAME_TILE,
-          "border_b",
+    const authored = this.hasAuthoredInteriorBackground();
+    const frame = authored
+      ? Object.values(
+          drawPanel(
+            this,
+            this.gameplayLayout.centerX,
+            y + height / 2,
+            width,
+            height,
+            { fill: 0x101b24, stroke: 0xc6a76a, interactive: false, depth },
+          ),
         )
-        .setOrigin(0, 0)
-        .setScale(1)
-        .setDepth(depth),
-      this.add
-        .tileSprite(x, y + FRAME_TILE, FRAME_TILE, innerHeight, "border_l")
-        .setOrigin(0, 0)
-        .setScale(1)
-        .setDepth(depth),
-      this.add
-        .tileSprite(
-          x + width - FRAME_TILE,
-          y + FRAME_TILE,
-          FRAME_TILE,
-          innerHeight,
-          "border_r",
-        )
-        .setOrigin(0, 0)
-        .setScale(1)
-        .setDepth(depth),
-      this.add
-        .tileSprite(
-          x + FRAME_TILE,
-          y + FRAME_TILE,
-          innerWidth,
-          innerHeight,
-          "border_fill",
-        )
-        .setOrigin(0, 0)
-        .setScale(1)
-        .setDepth(depth - 1),
-    ];
-    const corners = [
-      ["border_tl", x, y],
-      ["border_tr", x + width - FRAME_TILE, y],
-      ["border_bl", x, y + height - FRAME_TILE],
-      ["border_br", x + width - FRAME_TILE, y + height - FRAME_TILE],
-    ].map(([key, px, py]) =>
-      this.add
-        .image(px, py, key)
-        .setOrigin(0, 0)
-        .setScale(FRAME_SCALE)
-        .setDepth(depth),
-    );
+      : [
+          this.add
+            .tileSprite(x + FRAME_TILE, y, innerWidth, FRAME_TILE, "border_t")
+            .setOrigin(0, 0)
+            .setScale(1)
+            .setDepth(depth),
+          this.add
+            .tileSprite(
+              x + FRAME_TILE,
+              y + height - FRAME_TILE,
+              innerWidth,
+              FRAME_TILE,
+              "border_b",
+            )
+            .setOrigin(0, 0)
+            .setScale(1)
+            .setDepth(depth),
+          this.add
+            .tileSprite(x, y + FRAME_TILE, FRAME_TILE, innerHeight, "border_l")
+            .setOrigin(0, 0)
+            .setScale(1)
+            .setDepth(depth),
+          this.add
+            .tileSprite(
+              x + width - FRAME_TILE,
+              y + FRAME_TILE,
+              FRAME_TILE,
+              innerHeight,
+              "border_r",
+            )
+            .setOrigin(0, 0)
+            .setScale(1)
+            .setDepth(depth),
+          this.add
+            .tileSprite(
+              x + FRAME_TILE,
+              y + FRAME_TILE,
+              innerWidth,
+              innerHeight,
+              "border_fill",
+            )
+            .setOrigin(0, 0)
+            .setScale(1)
+            .setDepth(depth - 1),
+        ];
+    const corners = authored
+      ? []
+      : [
+          ["border_tl", x, y],
+          ["border_tr", x + width - FRAME_TILE, y],
+          ["border_bl", x, y + height - FRAME_TILE],
+          ["border_br", x + width - FRAME_TILE, y + height - FRAME_TILE],
+        ].map(([key, px, py]) =>
+          this.add
+            .image(px, py, key)
+            .setOrigin(0, 0)
+            .setScale(FRAME_SCALE)
+            .setDepth(depth),
+        );
     const accent = this.add
       .rectangle(x + 14, y + height / 2, 6, height - 18, 0xd7b45c, 1)
       .setOrigin(0, 0.5)
@@ -1126,7 +1140,7 @@ export class TownScene extends Phaser.Scene {
         {
           fontSize: portrait ? "28px" : "15px",
           color: "#f5efe0",
-          fontFamily: portrait ? "Arial, sans-serif" : "monospace",
+          fontFamily: portrait || authored ? "Arial, sans-serif" : "monospace",
           fontStyle: "bold",
         },
       )
@@ -1144,7 +1158,8 @@ export class TownScene extends Phaser.Scene {
             {
               fontSize: portrait ? "24px" : "10px",
               color: "#e8d8a8",
-              fontFamily: portrait ? "Arial, sans-serif" : "monospace",
+              fontFamily:
+                portrait || authored ? "Arial, sans-serif" : "monospace",
             },
           )
           .setOrigin(0.5)

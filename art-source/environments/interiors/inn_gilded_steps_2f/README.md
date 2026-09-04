@@ -47,7 +47,10 @@ rewards survive loading and revisiting the inn.
 
 `client/e2e/cadott-inn.spec.js` exercises the real town doorway, both floors,
 keyboard/touch dialogue, free rest, guest conversation, chest open/empty states,
-save and walking out to town at 800×600, 1440×900 and 390×844. Unique screenshots
+save, walking out to town and exiting a second visit at 800×600, 1440×900 and
+390×844. Unique screenshots
 and before/rested/claimed/returned state records are written under
 `client/tmp/cadott-inn-<run-id>/`. Visual acceptance is recorded in the PR after
-opening those screenshots; automated success alone is not acceptance.
+opening those screenshots; automated success alone is not acceptance. The final
+commands, inspected screenshots and cross-task commit provenance are recorded in
+`VERIFICATION.md`.

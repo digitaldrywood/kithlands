@@ -194,7 +194,9 @@ for (const viewport of [
       1,
     );
     // Walk behind reception and around the dining group to the stair landing.
-    await move(page, "Town", ["right", "right", "up", "right", "right", "up"]);
+    await move(page, "Town", ["right", "right"]);
+    await capture("behind-counter");
+    await move(page, "Town", ["up", "right", "right", "up"]);
     await page.waitForFunction(
       () => window.__kithlandsTest.townSnapshot().floorIndex === 1,
     );
@@ -273,6 +275,23 @@ for (const viewport of [
     expect(persistent(returned)).toEqual(persistent(claimed));
     await move(page, "Settlement", ["down"]);
     await capture("town-return");
+    // Phaser reuses Town. A completed exit must not lock the next inn visit.
+    await move(page, "Settlement", ["up", "left", "up"]);
+    await page.keyboard.press("Enter");
+    await ready(page, "Town");
+    await move(page, "Town", ["down"]);
+    await ready(page, "Settlement");
+    expect(
+      await page.evaluate(() => window.__kithlandsTest.settlementSnapshot()),
+    ).toMatchObject({ playerX: 6, playerY: 9 });
+    expect(
+      persistent(
+        await page.evaluate(() =>
+          window.__kithlandsTest.gameState("Settlement"),
+        ),
+      ),
+    ).toEqual(persistent(claimed));
+    await capture("town-repeat-return");
     writeFileSync(
       `${proofDir}/${label}-state.json`,
       JSON.stringify(
