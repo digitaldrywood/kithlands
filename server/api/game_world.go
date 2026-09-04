@@ -101,7 +101,7 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 			g.message = fmt.Sprintf("%s is saved! Your adventure is complete.", g.loc.Name)
 		} else {
 			q := &g.quests[g.currentQ]
-			if q.TemplateID == g.gd.FinalEncounter.QuestTemplateID && !q.IsPromotion {
+			if q.TemplateID == g.gd.FinalEncounter.QuestTemplateID && !q.IsPromotion && !q.IsSideQuest {
 				return g.advanceFinalEncounter(q, req.NodeID)
 			}
 			// Promotion quests walk a three-stage story gate (seek giver,

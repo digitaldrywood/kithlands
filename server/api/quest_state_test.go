@@ -54,11 +54,12 @@ func TestNewGame_QuestLogFields(t *testing.T) {
 		if q["reward"] == nil {
 			t.Errorf("quest[%d] missing reward", i)
 		}
-		if b, _ := q["is_promotion"].(bool); b {
+		isPromotion, _ := q["is_promotion"].(bool)
+		isSideQuest, _ := q["is_side_quest"].(bool)
+		if isPromotion {
 			promoCount++
 		}
-		// boss templates use Act 3 and a name starting with "Defeat"
-		if name, _ := q["name"].(string); name != "" && len(name) >= 6 && name[:6] == "Defeat" {
+		if templateID, _ := q["template_id"].(string); templateID == "Q12" && !isPromotion && !isSideQuest {
 			bossCount++
 		}
 	}
@@ -72,9 +73,10 @@ func TestNewGame_QuestLogFields(t *testing.T) {
 
 	// Boss must be the last quest.
 	last := quests[len(quests)-1].(map[string]any)
-	lastName, _ := last["name"].(string)
-	if len(lastName) < 6 || lastName[:6] != "Defeat" {
-		t.Errorf("expected last quest to be boss (name starts with 'Defeat'), got %q", lastName)
+	lastTemplate, _ := last["template_id"].(string)
+	lastSideQuest, _ := last["is_side_quest"].(bool)
+	if lastTemplate != "Q12" || lastSideQuest {
+		t.Errorf("expected last quest to use boss template Q12, got %q", lastTemplate)
 	}
 }
 

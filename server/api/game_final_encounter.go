@@ -33,7 +33,7 @@ type FinalEncounterState struct {
 func (g *Game) finalQuest() *generator.Quest {
 	for i := range g.quests {
 		q := &g.quests[i]
-		if q.TemplateID == g.gd.FinalEncounter.QuestTemplateID && !q.IsPromotion {
+		if q.TemplateID == g.gd.FinalEncounter.QuestTemplateID && !q.IsPromotion && !q.IsSideQuest {
 			return q
 		}
 	}

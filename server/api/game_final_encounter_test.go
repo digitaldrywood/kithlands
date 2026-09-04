@@ -10,6 +10,7 @@ import (
 
 	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
+	"github.com/digitaldrywood/kithlands/internal/generator"
 	"github.com/digitaldrywood/kithlands/internal/locality"
 	"github.com/digitaldrywood/kithlands/internal/save"
 )
@@ -129,6 +130,36 @@ func TestFinalEncounterBalance(t *testing.T) {
 				t.Fatalf("prepared natural party only won %d/50", wins)
 			}
 		})
+	}
+}
+
+func TestFinalEncounterIgnoresQ12SideQuest(t *testing.T) {
+	g := finalCheckpoint(t, 1)
+	finalID := g.finalQuest().ID
+	side := generator.Quest{
+		ID:           "side-q12",
+		TemplateID:   g.gd.FinalEncounter.QuestTemplateID,
+		Name:         "The Final Push",
+		IsSideQuest:  true,
+		TargetNodeID: g.finalQuest().TargetNodeID,
+	}
+	g.quests = append([]generator.Quest{side}, g.quests...)
+
+	if got := g.finalQuest(); got == nil || got.ID != finalID {
+		t.Fatalf("final quest lookup selected Q12 side quest: %+v", got)
+	}
+	g.prepareFinalQuest()
+	if g.quests[0].Name != side.Name {
+		t.Fatalf("Q12 side quest was rewritten as finale: %q", g.quests[0].Name)
+	}
+
+	g.currentQ = 0
+	s, err := g.ProcessAction(GameActionRequest{Type: "quest_advance", NodeID: side.TargetNodeID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Phase == "combat" || g.finalEncounter != nil {
+		t.Fatalf("Q12 side quest dispatched finale: phase=%q progress=%+v", s.Phase, g.finalEncounter)
 	}
 }
 func TestFinalEncounterArrivalAndSave(t *testing.T) {
