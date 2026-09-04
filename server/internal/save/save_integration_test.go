@@ -31,8 +31,14 @@ func TestServiceCreateAndLoad(t *testing.T) {
 		Party:        json.RawMessage(`[{"class":"warrior"}]`),
 		Inventory:    json.RawMessage(`{"gold":10}`),
 		QuestState:   json.RawMessage(`{"active":["q1"]}`),
-		WorldState:   json.RawMessage(`{"cleared":[]}`),
-		RNGSeed:      42,
+		WorldState: json.RawMessage(`{
+			"shop_stocks":{"cadott-general-store":{"entries":[
+				{"item_id":"potion","type":"consumable","price":20,"version":2,"reusable":true},
+				{"item_id":"patched_mantle","type":"equipment","price":10,"version":1,"sold":true,
+				 "instance":{"id":"gear_shop_abc","base_id":"patched_mantle","kind":"armor","category":"shoulders","item_level":1,"required_level":1,"rarity_id":"common"}}
+			]}}
+		}`),
+		RNGSeed: 42,
 	}
 
 	if err := service.Create(ctx, state); err != nil {
@@ -53,6 +59,7 @@ func TestServiceCreateAndLoad(t *testing.T) {
 	}
 	assertJSONEqual(t, loaded.Party, state.Party)
 	assertJSONEqual(t, loaded.Inventory, state.Inventory)
+	assertJSONEqual(t, loaded.WorldState, state.WorldState)
 	if loaded.RNGSeed != state.RNGSeed {
 		t.Fatalf("RNGSeed = %d, want %d", loaded.RNGSeed, state.RNGSeed)
 	}
