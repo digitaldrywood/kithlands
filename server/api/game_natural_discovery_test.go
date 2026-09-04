@@ -165,12 +165,21 @@ func TestNaturalDiscoveryVisitRevealsMatchingSoftPrerequisiteWithoutCoin(t *test
 
 func TestNaturalDiscoveriesDoNotRepeatAcrossExtraNodes(t *testing.T) {
 	game := newFormationTestGame(t, []PartyMemberReq{{Name: "Ayla", ClassID: "warrior"}})
-	game.loc.Nodes = append(game.loc.Nodes,
-		locality.Node{ID: "natural_two", Kind: locality.NodeNatural, Name: "Willow Marsh"},
-		locality.Node{ID: "natural_three", Kind: locality.NodeNatural, Name: "Granite Bluff"},
-		locality.Node{ID: "natural_four", Kind: locality.NodeNatural, Name: "Pine Hollow"},
-		locality.Node{ID: "natural_five", Kind: locality.NodeNatural, Name: "Fox Meadow"},
-	)
+	extraNodes := []locality.Node{
+		{ID: "natural_two", Kind: locality.NodeNatural, Name: "Willow Marsh"},
+		{ID: "natural_three", Kind: locality.NodeNatural, Name: "Granite Bluff"},
+		{ID: "natural_four", Kind: locality.NodeNatural, Name: "Pine Hollow"},
+		{ID: "natural_five", Kind: locality.NodeNatural, Name: "Fox Meadow"},
+	}
+	game.loc.Nodes = append(game.loc.Nodes, extraNodes...)
+	for _, node := range extraNodes {
+		game.loc.Edges = append(game.loc.Edges, locality.Edge{
+			From: game.walk.Spawn.ID,
+			To:   node.ID,
+			Kind: locality.EdgeProximity,
+		})
+	}
+	game.walk = locality.Walk(game.loc, game.walk.Spawn.ID)
 
 	state := game.State()
 	if len(state.NaturalDiscoveries) != 3 {
@@ -190,6 +199,29 @@ func TestNaturalDiscoveriesDoNotRepeatAcrossExtraNodes(t *testing.T) {
 	}
 	if seenDiscoveries["strange_coin_passage"] != 1 {
 		t.Fatalf("Strange Coin passage assignments = %d, want one", seenDiscoveries["strange_coin_passage"])
+	}
+}
+
+func TestNaturalDiscoveriesExcludeUnreachableNaturalNodes(t *testing.T) {
+	game := newFormationTestGame(t, []PartyMemberReq{{Name: "Ayla", ClassID: "warrior"}})
+	game.loc.Nodes = append(game.loc.Nodes, locality.Node{
+		ID:   "disconnected_natural",
+		Kind: locality.NodeNatural,
+		Name: "Distant Copse",
+	})
+	game.walk = locality.Walk(game.loc, game.walk.Spawn.ID)
+
+	if _, reachable := game.walk.DistanceMap["disconnected_natural"]; reachable {
+		t.Fatal("disconnected Natural node unexpectedly reachable")
+	}
+	state := game.State()
+	if len(state.NaturalDiscoveries) != len(game.gd.NaturalDiscoveries) {
+		t.Fatalf("reachable assignments = %d, want %d", len(state.NaturalDiscoveries), len(game.gd.NaturalDiscoveries))
+	}
+	for _, discovery := range state.NaturalDiscoveries {
+		if discovery.NodeID == "disconnected_natural" {
+			t.Fatalf("discovery assigned to unreachable Natural node: %+v", discovery)
+		}
 	}
 }
 
