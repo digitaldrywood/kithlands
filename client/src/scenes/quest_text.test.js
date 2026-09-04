@@ -1,6 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { questObjectiveText, questCustodyText } from "./quest_text.js";
-import { nearbyQuestObjective } from "./town_objectives.js";
+import {
+  nearbyQuestObjective,
+  syncTownObjectiveVisibility,
+} from "./town_objectives.js";
 
 const quest = {
   id: "delivery",
@@ -43,5 +46,15 @@ describe("staged quest presentation", () => {
     ]) {
       expect(nearbyQuestObjective({ ...scene, ...change })).toBeNull();
     }
+  });
+  it("hides the objective banner while an overlay owns the scene", () => {
+    const setVisible = vi.fn();
+    const scene = { objectiveText: { setVisible }, menuOpen: false };
+    expect(syncTownObjectiveVisibility(scene)).toBe(true);
+    scene._modalLocks = new Set(["party_menu"]);
+    expect(syncTownObjectiveVisibility(scene)).toBe(false);
+    scene._modalLocks.clear();
+    expect(syncTownObjectiveVisibility(scene)).toBe(true);
+    expect(setVisible.mock.calls).toEqual([[true], [false], [true]]);
   });
 });

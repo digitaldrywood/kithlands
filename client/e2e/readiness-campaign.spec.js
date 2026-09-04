@@ -12,6 +12,9 @@ const previous = resume?.journalFile
   : null;
 const journal = previous?.journal || [];
 const legs = [];
+const objectiveProof = process.env.READINESS_OBJECTIVES_ONLY === "1";
+const objectiveTypes = new Set(previous?.objectiveTypes || []);
+const resumedObjectives = new Set(previous?.resumedObjectives || []);
 const email = resume?.email || `readiness-${Date.now()}@test.dev`;
 
 async function checkpoint(page, reason) {
@@ -31,7 +34,19 @@ async function checkpoint(page, reason) {
   );
   writeFileSync(
     journalFile,
-    JSON.stringify({ battles, itemUsed, spellUsed, journal, legs }, null, 2),
+    JSON.stringify(
+      {
+        battles,
+        itemUsed,
+        spellUsed,
+        journal,
+        legs,
+        objectiveTypes: [...objectiveTypes],
+        resumedObjectives: [...resumedObjectives],
+      },
+      null,
+      2,
+    ),
   );
   writeFileSync(
     path.join(proofDir, "checkpoint.json"),
@@ -253,7 +268,7 @@ async function travel(page, nodeId) {
   throw new Error(`Travel exceeded 600 steps to ${nodeId}`);
 }
 
-async function talkToProprietor(page) {
+async function talkToProprietor(page, beforeInteract = null, interact = true) {
   for (let steps = 0; steps < 100; steps++) {
     await page.waitForFunction(
       () => !window.__kithlandsTest.townNavigationSnapshot().animating,
@@ -262,6 +277,8 @@ async function talkToProprietor(page) {
       window.__kithlandsTest.townNavigationSnapshot(),
     );
     if (nav.nearNpcIndex === 0) {
+      if (!interact) return;
+      if (beforeInteract) await beforeInteract();
       await page.evaluate(() => window.__kithlandsTest.interact("Town"));
       return;
     }
@@ -301,6 +318,80 @@ async function talkToProprietor(page) {
     );
   }
   throw new Error("Could not reach proprietor");
+}
+
+async function captureObjective(page, name) {
+  if (!objectiveProof) return;
+  // Layout is chosen when the scene is created. Re-enter the actual door for
+  // each viewport; merely resizing an existing scene scales the old layout.
+  if (name.endsWith("-prompt")) {
+    const q = (await state(page)).quests[(await state(page)).current_quest];
+    for (const [label, width, height] of [
+      ["default", 800, 600],
+      ["desktop", 1440, 900],
+      ["phone", 390, 844],
+    ]) {
+      await page.setViewportSize({ width, height });
+      await leaveTown(page);
+      await travel(page, q.target_node_id);
+      await page.keyboard.press("Enter");
+      await page.waitForFunction(() =>
+        window.__kithlandsTest.sceneIsActive("Town"),
+      );
+      await page.evaluate(() =>
+        window.__kithlandsTest.waitForSceneReady("Town"),
+      );
+      await talkToProprietor(page, null, false);
+      expect(
+        (await state(page)).quests.find((entry) => entry.id === q.id).objectives
+          .step,
+      ).toBe(q.objectives.step);
+      await capture(page, `${name}-${label}`);
+    }
+    return;
+  }
+  const label = page.viewportSize().width === 390 ? "phone" : "desktop";
+  await capture(page, `${name}-${label}`);
+}
+
+async function performNormalObjective(page) {
+  const before = await state(page);
+  const q = before.quests[before.current_quest];
+  const step = q?.objectives?.step;
+  if (step == null || q.actions?.[step]?.type === "goto") return;
+  const name = `${q.template_id}-${q.id}-step-${step + 1}`;
+  await talkToProprietor(page, () => captureObjective(page, `${name}-prompt`));
+  const after = await state(page);
+  const updated = after.quests[before.current_quest];
+  expect(updated.objectives.step).toBe(step + 1);
+  journal.push({
+    kind: "objective",
+    quest: q.id,
+    template: q.template_id,
+    step,
+    before,
+    after,
+  });
+  if (updated.completed) objectiveTypes.add(q.template_id);
+  await captureObjective(page, `${name}-result`);
+  if (objectiveProof && step === 1 && !resumedObjectives.has(q.template_id)) {
+    const saveName = `Objective custody ${name} ${Date.now()}`;
+    expect(
+      await page.evaluate(
+        (label) => window.__kithlandsTest.saveGame(label),
+        saveName,
+      ),
+    ).toMatchObject({ status: "saved" });
+    const saves = await page.evaluate(() => window.__kithlandsTest.listSaves());
+    const saved = saves.saves.find((entry) => entry.name === saveName);
+    expect(saved).toBeTruthy();
+    await page.evaluate((id) => window.__kithlandsTest.loadSave(id), saved.id);
+    expect((await state(page)).quests[before.current_quest].objectives).toEqual(
+      updated.objectives,
+    );
+    resumedObjectives.add(q.template_id);
+    await captureObjective(page, `${name}-resumed`);
+  }
 }
 
 async function visitService(page, nodeId) {
@@ -422,7 +513,7 @@ test("fresh save walks the fallback campaign through its story milestones", asyn
       prefs.setWalkSpeed(3);
       prefs.setMessageSpeed(6);
     });
-    if (!resume) {
+    if (!resume && !objectiveProof) {
       await visitService(page, "shop");
       await page.waitForFunction(() =>
         window.__kithlandsTest
@@ -493,7 +584,8 @@ test("fresh save walks the fallback campaign through its story milestones", asyn
       await checkpoint(page, "services and save/reload complete");
     }
     let promoted = (await state(page)).party.every((member) => member.promoted);
-    for (let visits = 0; visits < 60; visits++) {
+    for (let visits = 0; visits < 100; visits++) {
+      if (objectiveProof && objectiveTypes.size === 3) break;
       const gs = await state(page);
       if (gs.phase === "victory") break;
       expect(gs.phase).not.toBe("defeat");
@@ -549,7 +641,14 @@ test("fresh save walks the fallback campaign through its story milestones", asyn
         expect(["world", "quest_complete"]).toContain(
           (await state(page)).phase,
         );
-        await page.evaluate(() => window.__kithlandsTest.exitTown("Town"));
+        await performNormalObjective(page);
+        if (
+          await page.evaluate(() =>
+            window.__kithlandsTest.sceneIsActive("Town"),
+          )
+        ) {
+          await page.evaluate(() => window.__kithlandsTest.exitTown("Town"));
+        }
       } else if (scene === "Settlement") {
         await page.keyboard.press("Enter");
       }
@@ -559,6 +658,14 @@ test("fresh save walks the fallback campaign through its story milestones", asyn
       await checkpoint(page, `quest visit ${visits}`);
     }
     const final = await state(page);
+    if (objectiveProof) {
+      expect([...objectiveTypes].sort()).toEqual(["Q01", "Q02", "Q03"]);
+      expect([...resumedObjectives].sort()).toEqual(["Q01", "Q02", "Q03"]);
+      expect(forbidden).toEqual([]);
+      expect(errors).toEqual([]);
+      await capture(page, "three-objective-types-complete");
+      return;
+    }
     expect(final.phase).toBe("victory");
     expect(final.quests.every((quest) => quest.completed)).toBe(true);
     expect(promoted).toBe(true);
@@ -587,6 +694,8 @@ test("fresh save walks the fallback campaign through its story milestones", asyn
           journal,
           legs,
           resume,
+          objectiveTypes: [...objectiveTypes],
+          resumedObjectives: [...resumedObjectives],
         },
         null,
         2,

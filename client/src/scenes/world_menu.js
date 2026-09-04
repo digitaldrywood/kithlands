@@ -1,3 +1,4 @@
+import { showObjectiveQuestLog } from "./objective_quest_log.js";
 import { saveGame, equipItem } from "../api.js";
 import { playSFX } from "../systems/audio.js";
 import { getAutosaveEnabled, setAutosaveEnabled } from "../systems/prefs.js";
@@ -1335,7 +1336,6 @@ export async function showEquipPicker(scene, slot, type, opts = {}) {
 export function showQuestLog(scene) {
   // Close the party menu first so the overlay sits cleanly on its own.
   closeMenu(scene);
-  pauseWorldFor(scene, "quest_log");
 
   const gs = scene.gameState;
   const quests = Array.isArray(gs.quests) ? gs.quests : [];
@@ -1343,6 +1343,11 @@ export function showQuestLog(scene) {
     ? gs.building_side_quests
     : [];
   const currentIdx = gs.current_quest ?? 0;
+  if (quests[currentIdx]?.objectives) {
+    showObjectiveQuestLog(scene);
+    return;
+  }
+  pauseWorldFor(scene, "quest_log");
   const overlay = [];
 
   const bg = drawPanel(scene, 400, 300, 720, 520, {

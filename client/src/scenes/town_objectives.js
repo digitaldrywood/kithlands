@@ -1,7 +1,11 @@
 import { gameAction, autosaveGame } from "../api.js";
 import { openDialogue } from "./town_dialogue.js";
 import { questObjectiveText, questCustodyText } from "./quest_text.js";
-import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
+import {
+  activeWorldLocks,
+  pauseWorldFor,
+  resumeWorldFor,
+} from "../systems/modalLock.js";
 
 export function currentObjective(scene) {
   const q = scene.gameState?.quests?.[scene.gameState?.current_quest];
@@ -49,6 +53,13 @@ export function drawTownObjective(scene) {
     .setOrigin(0.5, 0)
     .setScrollFactor(0)
     .setDepth(1402);
+  syncTownObjectiveVisibility(scene);
+}
+
+export function syncTownObjectiveVisibility(scene) {
+  const visible = activeWorldLocks(scene).length === 0 && !scene.menuOpen;
+  scene.objectiveText?.setVisible(visible);
+  return visible;
 }
 
 export async function performQuestObjective(scene) {

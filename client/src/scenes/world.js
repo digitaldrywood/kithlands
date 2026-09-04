@@ -1178,7 +1178,10 @@ export class WorldScene extends Phaser.Scene {
       const lines = [title, detail].filter(Boolean);
       this.questText.setText(lines.join("\n"));
       const bounds = this.questText.getBounds();
-      const width = Math.max(230, Math.min(290, bounds.width + 28));
+      const width = Math.max(
+        this.gameplayLayout?.portrait ? 320 : 230,
+        Math.min(this.gameplayLayout?.portrait ? 560 : 290, bounds.width + 28),
+      );
       const height = Math.max(48, bounds.height + 22);
       this.questCard.clear();
       this.questCard.fillStyle(0x06100c, 0.78);

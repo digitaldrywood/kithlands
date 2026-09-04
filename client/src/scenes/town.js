@@ -11,6 +11,7 @@ import {
   drawTownObjective,
   nearbyQuestObjective,
   performQuestObjective,
+  syncTownObjectiveVisibility,
 } from "./town_objectives.js";
 import { openDialogue } from "./town_dialogue.js";
 import {
@@ -1211,6 +1212,7 @@ export class TownScene extends Phaser.Scene {
   }
 
   update(time) {
+    syncTownObjectiveVisibility(this);
     if (isWorldInputLocked(this)) return;
     if (this.animating) return;
     if (time - this.lastMoveTime < this.moveCooldown) return;
