@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/digitaldrywood/kithlands/internal/balance"
+	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/combat"
 	"github.com/digitaldrywood/kithlands/internal/dungeon"
 	"github.com/digitaldrywood/kithlands/internal/inventory"
@@ -119,7 +120,7 @@ func (g *Game) fillDungeonState(s *GameState) {
 	if r == nil {
 		return
 	}
-	s.Dungeon = &DungeonState{ID: def.ID, Title: g.dungeonText(def.Title), LocalityName: g.dungeonText("{locality}"), RoomID: r.ID, RoomName: r.Name, Description: g.dungeonText(r.Description), Map: r.Map, Position: p.Position, Visited: slices.Clone(p.Visited), Journal: slices.Clone(p.Journal), Complete: p.Flags[def.CompleteFlag]}
+	s.Dungeon = &DungeonState{ID: def.ID, Title: g.dungeonText(def.Title), LocalityName: g.dungeonText("{locality}"), RoomID: r.ID, RoomName: r.Name, Description: g.dungeonText(r.Description), Map: r.Presentation(p.Flags), Position: p.Position, Visited: slices.Clone(p.Visited), Journal: slices.Clone(p.Journal), Complete: p.Flags[def.CompleteFlag]}
 	for _, o := range def.Objectives {
 		if o.Until == "" || !p.Flags[o.Until] {
 			s.Dungeon.Objective = g.dungeonText(o.Text)
@@ -157,7 +158,7 @@ func (g *Game) ProcessDungeon(req DungeonRequest) (GameState, error) {
 		if g.inDungeon() || (g.location.Kind != LocationWorld && g.location.Kind != LocationSettlement) {
 			return GameState{}, fmt.Errorf("follow the trail from town")
 		}
-		if req.NodeID != "" && (g.walk == nil || req.NodeID != g.walk.Spawn.ID) {
+		if req.NodeID == "" || g.walk == nil || req.NodeID != g.walk.Spawn.ID || g.location.WorldNodeID != req.NodeID {
 			return GameState{}, fmt.Errorf("this trail belongs to your home locality")
 		}
 		if g.dungeon == nil {
@@ -182,7 +183,8 @@ func (g *Game) ProcessDungeon(req DungeonRequest) (GameState, error) {
 	}
 	switch req.Type {
 	case "move":
-		if !((req.DX == -1 || req.DX == 1) && req.DY == 0 || (req.DY == -1 || req.DY == 1) && req.DX == 0) {
+		cardinal := (req.DX == -1 || req.DX == 1) && req.DY == 0 || (req.DY == -1 || req.DY == 1) && req.DX == 0
+		if !cardinal {
 			return GameState{}, fmt.Errorf("move one tile at a time")
 		}
 		next := dungeon.Point{X: p.Position.X + req.DX, Y: p.Position.Y + req.DY}
@@ -378,7 +380,11 @@ func (g *Game) recoverDungeonDefeat() bool {
 		return false
 	}
 	g.dungeon.EncounterID = ""
-	g.restParty()
+	for _, c := range g.party {
+		c.CurrentHP = c.MaxHP
+		c.CurrentMP = c.MaxMP
+		c.Status = character.StatusNone
+	}
 	g.enemies = nil
 	g.phase = "world"
 	g.enterDungeonRoom(def.EntryRoom, def.EntryPosition)
@@ -435,7 +441,11 @@ func (s *Server) handleDungeonArt(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, def := range s.gd.Dungeons {
 		for _, room := range def.Rooms {
-			for _, layer := range room.Map.Layers {
+			images := append([]settlements.Layer(nil), room.Map.Layers...)
+			for _, variant := range room.VisualVariants {
+				images = append(images, settlements.Layer{Image: variant.Image})
+			}
+			for _, layer := range images {
 				if layer.Image == "/api/data/dungeons/art/"+file {
 					w.Header().Set("X-Content-Type-Options", "nosniff")
 					http.ServeFile(w, r, filepath.Join(s.games.sharedDir, "dungeons", "art", file))

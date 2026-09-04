@@ -581,7 +581,15 @@ export class DungeonScene extends Phaser.Scene {
         .setStrokeStyle(2, action.completed ? 0x80b09a : 0xe4c981)
         .setDepth(13)
         .setInteractive({ useHandCursor: true });
-      marker.on("pointerdown", () => this.selectAction(action));
+      marker.on("pointerdown", (pointer) => {
+        if (
+          pointer.x >= 16 &&
+          pointer.x <= width - 16 &&
+          pointer.y >= this.layout.top &&
+          pointer.y <= this.layout.bottom
+        )
+          this.selectAction(action);
+      });
       const glyph = action.completed
         ? "✓"
         : ["exit", "transition", "door"].includes(action.kind)

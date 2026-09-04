@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -10,7 +11,7 @@ import (
 
 func enterTestDungeon(t *testing.T, g *Game) GameState {
 	t.Helper()
-	s, err := g.ProcessDungeon(DungeonRequest{Type: "enter"})
+	s, err := g.ProcessDungeon(DungeonRequest{Type: "enter", NodeID: g.State().DungeonEntry.NodeID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +71,6 @@ func useDungeonAction(t *testing.T, g *Game, id string) GameState {
 }
 func TestDungeonEntranceRoomExitAndSave(t *testing.T) {
 	g := newTownTestGame(t)
-	original := g.State()
 	if _, err := g.ProcessDungeon(DungeonRequest{Type: "interact", ActionID: "ledger"}); err == nil {
 		t.Fatal("remote interaction accepted")
 	}
@@ -83,6 +83,8 @@ func TestDungeonEntranceRoomExitAndSave(t *testing.T) {
 			t.Fatalf("forged input accepted: %+v", req)
 		}
 	}
+	useDungeonAction(t, g, "trail-bats")
+	finishDungeonFixtureFight(t, g)
 	useDungeonAction(t, g, "mill-door")
 	useDungeonAction(t, g, "ledger")
 	before := g.State()
@@ -105,7 +107,7 @@ func TestDungeonEntranceRoomExitAndSave(t *testing.T) {
 	if loaded.inDungeon() || loaded.State().CurrentLocation.Kind != LocationWorld {
 		t.Fatal("failed to leave dungeon")
 	}
-	if loaded.State().Gold != original.Gold {
+	if loaded.State().Gold != before.Gold {
 		t.Fatal("unearned completion payoff")
 	}
 	enterTestDungeon(t, loaded)
@@ -174,5 +176,248 @@ func TestDungeonRejectsOtherWorldRewards(t *testing.T) {
 	}
 	if _, err := g.ProcessLocationTransition(LocationTransitionRequest{TransitionID: "enter-settlement"}); err == nil {
 		t.Fatal("forged location transition accepted")
+	}
+}
+
+// Deliberately forced victory fixture: proves flags/loot/navigation and save
+// isolation, not combat balance or play duration. The seeded route simulation
+// below exercises real combat separately.
+func finishDungeonFixtureFight(t *testing.T, g *Game) {
+	t.Helper()
+	if g.phase != "combat" {
+		t.Fatal("expected encounter")
+	}
+	for _, e := range g.enemies {
+		e.CurrentHP = 0
+	}
+	if _, err := g.ProcessAction(GameActionRequest{Type: "attack"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := g.ProcessAction(GameActionRequest{Type: "advance"}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+var completeMillRoute = []string{
+	"trail-bats", "mill-door", "ledger", "grain-door", "grain-spider", "spare-handle", "grain-loft", "loft-beetle", "loft-grain", "grain-return",
+	"drying-door", "drying-beetle", "supply-potions", "supply-ethers", "drying-wheel", "wheel-slime", "wheel-handle", "wheel-gallery", "gallery-bats", "sluice-lever", "gallery-roots", "root-spider", "roots-tailrace", "tailrace-bar", "tailrace-workshop", "workshop-rest", "maintenance-shortcut", "tailrace-trail", "heron-trail", "heron-secret", "heron-cache", "pool-return", "trail-shortcut", "tailrace-roots", "roots-gallery", "gallery-loft", "loft-secret", "loft-gallery", "gallery-roots", "roots-heart", "warden", "miller-keepsake", "heart-return", "roots-tailrace", "tailrace-trail", "trail-home",
+}
+
+func TestDungeonFullRouteSaveShortcutAndRepeatSafety(t *testing.T) {
+	g := newTownTestGame(t)
+	enterTestDungeon(t, g)
+	for _, id := range completeMillRoute {
+		before := g.State()
+		s := useDungeonAction(t, g, id)
+		if s.Phase == "combat" {
+			if _, err := g.ToSaveState("midcombat", "test"); err == nil {
+				t.Fatal("combat checkpoint accepted")
+			}
+			if _, err := g.ProcessDungeon(DungeonRequest{Type: "retreat"}); err == nil {
+				t.Fatal("combat retreat bypass accepted")
+			}
+			finishDungeonFixtureFight(t, g)
+		}
+		if id == "wheel-handle" || id == "tailrace-bar" || id == "miller-keepsake" {
+			ss, err := g.ToSaveState("midmill", "test")
+			if err != nil {
+				t.Fatal(err)
+			}
+			restored, err := FromSaveState(ss, g.gd, g.loc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			g = restored
+			if _, err := g.ProcessDungeon(DungeonRequest{Type: "interact", ActionID: id}); err == nil {
+				t.Fatalf("save replay accepted %s", id)
+			}
+		}
+		if id == "trail-home" && g.State().Gold != before.Gold+80 {
+			t.Fatal("return payoff missing")
+		}
+	}
+	if !g.dungeon.PayoffClaimed || len(g.dungeon.Visited) != 12 {
+		t.Fatalf("incomplete expedition: %+v", g.dungeon)
+	}
+	if g.inv.Gems["ward_gem"] != 1 || g.inv.Gems["ember_gem"] != 1 {
+		t.Fatalf("missing gem rewards: %+v", g.inv.Gems)
+	}
+	gold := g.inv.Gold
+	enterTestDungeon(t, g)
+	for _, id := range []string{"trail-shortcut", "tailrace-roots", "roots-heart"} {
+		useDungeonAction(t, g, id)
+	}
+	for _, id := range []string{"warden", "miller-keepsake"} {
+		a := g.dungeonDefinition().Room(g.dungeon.RoomID).Action(id)
+		walkDungeonTo(t, g, a.Position)
+		if _, err := g.ProcessDungeon(DungeonRequest{Type: "interact", ActionID: id}); err == nil {
+			t.Fatalf("reentry replay accepted %s", id)
+		}
+	}
+	if _, err := g.ProcessDungeon(DungeonRequest{Type: "retreat"}); err != nil {
+		t.Fatal(err)
+	}
+	if g.inv.Gold != gold || g.inv.Gems["ember_gem"] != 1 {
+		t.Fatal("repeat entry duplicated rewards")
+	}
+}
+
+func TestDungeonDefeatAndFleeKeepEncounterUncleared(t *testing.T) {
+	g := newTownTestGame(t)
+	enterTestDungeon(t, g)
+	useDungeonAction(t, g, "trail-bats")
+	for _, c := range g.party {
+		c.CurrentHP = 0
+	}
+	state, err := g.ProcessAction(GameActionRequest{Type: "attack"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Phase != "world" || g.dungeon.RoomID != g.dungeonDefinition().EntryRoom || g.dungeon.Flags["trail-bats-cleared"] {
+		t.Fatal("defeat did not restore safe uncleared entry")
+	}
+	for _, c := range g.party {
+		if !c.IsAlive() {
+			t.Fatal("defeat recovery left dead party")
+		}
+	}
+	useDungeonAction(t, g, "trail-bats")
+	for i := 0; i < 100 && g.phase == "combat"; i++ {
+		// Keep failure attempts harmless while exercising the real flee branch.
+		for _, e := range g.enemies {
+			e.STR = 0
+		}
+		if _, err := g.ProcessAction(GameActionRequest{Type: "flee"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if g.phase == "combat" || g.dungeon.Flags["trail-bats-cleared"] || g.dungeon.EncounterID != "" {
+		t.Fatal("flee incorrectly clears encounter")
+	}
+}
+
+func dungeonCombatActions(s GameState) []MemberActionReq {
+	target := s.Enemies[0].ID
+	potions, ethers := s.Potions, s.Ethers
+	var actions []MemberActionReq
+	for i, p := range s.Party {
+		if p.HP <= 0 {
+			continue
+		}
+		a := MemberActionReq{Slot: i, Type: "attack", TargetID: target}
+		lowest := i
+		for j, other := range s.Party {
+			if other.HP > 0 && other.HP*s.Party[lowest].MaxHP < s.Party[lowest].HP*other.MaxHP {
+				lowest = j
+			}
+		}
+		if s.Party[lowest].HP*3 < s.Party[lowest].MaxHP && potions > 0 {
+			a.Type = "item"
+			a.ItemID = "potion"
+			a.TargetID = lowest
+			potions--
+		} else if p.ClassID == "cinder" && p.MP < 3 && ethers > 0 {
+			a.Type = "item"
+			a.ItemID = "ether"
+			a.TargetID = i
+			ethers--
+		} else {
+			for _, spell := range p.Spells {
+				if spell.ID == "spark" && spell.Castable && spell.MPCost <= p.MP {
+					a.Type = "spell"
+					a.SpellID = spell.ID
+					break
+				}
+			}
+		}
+		actions = append(actions, a)
+	}
+	return actions
+}
+func TestDungeonAuthoredRouteWithRealCombat(t *testing.T) {
+	gd := newTownTestGame(t).gd
+	for _, size := range []int{2, 4} {
+		t.Run(fmt.Sprintf("party_%d", size), func(t *testing.T) {
+			rounds, wins := 0, 0
+			for seed := 1; seed <= 10; seed++ {
+				party := []PartyMemberReq{{Name: "Hero", ClassID: "warrior"}, {Name: "Sparks", ClassID: "cinder"}}
+				if size == 4 {
+					party = append(party, PartyMemberReq{Name: "Mercy", ClassID: "mender"}, PartyMemberReq{Name: "Shade", ClassID: "rogue"})
+				}
+				g, err := NewGameManager(gd, "").CreateGame(NewGameRequest{TownName: "Willow Creek", Places: []string{"Mill", "Inn"}, BigBuilding: "Hall", Party: party, Difficulty: "normal", RNGSeed: int64(seed)})
+				if err != nil {
+					t.Fatal(err)
+				}
+				enterTestDungeon(t, g)
+				failed := false
+				for _, id := range completeMillRoute {
+					s := useDungeonAction(t, g, id)
+					if s.Phase != "combat" {
+						continue
+					}
+					for round := 0; round < 60 && g.phase == "combat"; round++ {
+						next, err := g.ProcessAction(GameActionRequest{Type: "attack", Actions: dungeonCombatActions(s)})
+						if err != nil {
+							t.Fatal(err)
+						}
+						s = *next
+						rounds++
+					}
+					if g.phase == "combat" {
+						t.Fatal("battle exceeded round limit")
+					}
+					if g.dungeon.RoomID == gd.Dungeons[0].EntryRoom && !g.dungeon.Flags["trail-bats-cleared"] || g.message == g.dungeonText(gd.Dungeons[0].DefeatText) {
+						failed = true
+						break
+					}
+					if _, err := g.ProcessAction(GameActionRequest{Type: "advance"}); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if !failed && g.dungeon.PayoffClaimed {
+					wins++
+				}
+			}
+			t.Logf("actual authored route: %d/10 wins; %d total combat rounds, no debug grants, rest only at authored workshop", wins, rounds)
+			if wins < 8 {
+				t.Fatalf("only %d/10 starter parties completed the authored outing", wins)
+			}
+		})
+	}
+}
+
+func TestDungeonEntryRequiresAuthoritativeHomeOrigin(t *testing.T) {
+	g := newTownTestGame(t)
+	if _, err := g.ProcessDungeon(DungeonRequest{Type: "enter"}); err == nil {
+		t.Fatal("missing origin accepted")
+	}
+	home := g.State().DungeonEntry.NodeID
+	g.location.WorldNodeID = "another-node"
+	if _, err := g.ProcessDungeon(DungeonRequest{Type: "enter", NodeID: home}); err == nil {
+		t.Fatal("entry from different authoritative node accepted")
+	}
+}
+func TestDungeonTopLevelItemTurnRecoversDefeat(t *testing.T) {
+	g := newTownTestGame(t)
+	enterTestDungeon(t, g)
+	useDungeonAction(t, g, "trail-bats")
+	g.inv.Consumables["antidote"] = 100
+	for i, c := range g.party {
+		c.CurrentHP = 0
+		if i == 0 {
+			c.CurrentHP = 1
+		}
+	}
+	for _, e := range g.enemies {
+		e.STR = 1000
+		e.HitPct = 1000
+	}
+	for i := 0; i < 20 && g.phase == "combat"; i++ {
+		if _, err := g.ProcessAction(GameActionRequest{Type: "item", ItemID: "antidote", TargetID: 0}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if g.phase != "world" || !g.party[0].IsAlive() || g.dungeon.Flags["trail-bats-cleared"] {
+		t.Fatal("item defeat stranded party or cleared encounter")
 	}
 }

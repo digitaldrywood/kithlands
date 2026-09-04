@@ -725,7 +725,8 @@ func (g *Game) ProcessAction(req GameActionRequest) (result *GameState, err erro
 		}
 	}()
 
-	if g.inDungeon() && (g.phase == "world" || g.phase == "quest_complete") && req.Type != "item" && req.Type != "spell" && !(g.phase == "quest_complete" && req.Type == "advance") {
+	allowedDungeonFieldAction := req.Type == "item" || req.Type == "spell" || g.phase == "quest_complete" && req.Type == "advance"
+	if g.inDungeon() && (g.phase == "world" || g.phase == "quest_complete") && !allowedDungeonFieldAction {
 		return nil, fmt.Errorf("use exploration actions inside the adventure")
 	}
 	g.combatLog = nil

@@ -44,13 +44,19 @@ type Action struct {
 	Reward      *Reward    `json:"reward,omitempty"`
 	Encounter   *Encounter `json:"encounter,omitempty"`
 }
+type VisualVariant struct {
+	Requires string `json:"requires"`
+	Image    string `json:"image"`
+}
+
 type Room struct {
-	ID          string           `json:"id"`
-	Name        string           `json:"name"`
-	Description string           `json:"description"`
-	MapFile     string           `json:"map_file"`
-	Map         *settlements.Map `json:"-"`
-	Actions     []Action         `json:"actions"`
+	VisualVariants []VisualVariant  `json:"visual_variants,omitempty"`
+	ID             string           `json:"id"`
+	Name           string           `json:"name"`
+	Description    string           `json:"description"`
+	MapFile        string           `json:"map_file"`
+	Map            *settlements.Map `json:"-"`
+	Actions        []Action         `json:"actions"`
 }
 type Objective struct {
 	Until string `json:"until"`
@@ -117,6 +123,22 @@ func (d *Definition) Room(id string) *Room {
 	}
 	return nil
 }
+
+// Presentation selects art from authoritative persistent flags. It never
+// mutates the shared base map or changes navigation geometry.
+func (r *Room) Presentation(flags map[string]bool) *settlements.Map {
+	for i := len(r.VisualVariants) - 1; i >= 0; i-- {
+		v := r.VisualVariants[i]
+		if flags[v.Requires] {
+			result := *r.Map
+			result.Layers = append([]settlements.Layer(nil), r.Map.Layers...)
+			result.Layer("ground").Image = v.Image
+			return &result
+		}
+	}
+	return r.Map
+}
+
 func (r *Room) Action(id string) *Action {
 	for i := range r.Actions {
 		if r.Actions[i].ID == id {
@@ -176,6 +198,10 @@ func (d *Definition) Validate() error {
 			if !r.Walkable(a.Position) {
 				return fmt.Errorf("room %s action %s is blocked", r.ID, a.ID)
 			}
+			if (a.Kind == "treasure" || a.Kind == "encounter") && a.Repeatable {
+				return fmt.Errorf("reward action %s cannot repeat", a.ID)
+			}
+
 			switch a.Kind {
 			case "door", "exit", "hint", "switch", "treasure", "rest", "encounter":
 			default:
@@ -206,6 +232,11 @@ func (d *Definition) Validate() error {
 		return fmt.Errorf("invalid adventure entry")
 	}
 	for i := range d.Rooms {
+		for _, v := range d.Rooms[i].VisualVariants {
+			if !flags[v.Requires] || !strings.HasPrefix(v.Image, "/api/data/dungeons/art/") || filepath.Base(v.Image) == "." {
+				return fmt.Errorf("room %s invalid visual variant", d.Rooms[i].ID)
+			}
+		}
 		for _, a := range d.Rooms[i].Actions {
 			if a.Kind == "door" {
 				dest := d.Room(a.Destination)

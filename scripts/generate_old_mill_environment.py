@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Author original Old Mill SVG backgrounds and their matching Tiled maps.
+"""Author original Old Mill SVG composition blueprints and their Tiled maps.
 
-SVG sources are the production assets, not an image-model conversion. Geometry,
-prop footprints and the navigable routes are authored together here. The default
-output is a candidate directory; review rendered candidates before installing.
+Geometry, prop footprints and navigable routes are authored together here. The
+SVGs are composition blueprints for the reviewed painterly PNG assets. Output
+belongs in a candidate directory; never install unreviewed vector prototypes.
 """
 
 import argparse
@@ -230,7 +230,7 @@ class Scene:
         for i,name in enumerate(LAYERS):
             layer=dict(id=i+1,name=name,type='imagelayer' if name=='ground' else 'objectgroup',opacity=1,visible=name!='collision',x=0,y=0)
             if name=='ground':
-                layer['image']=f'/api/data/dungeons/art/{self.key}.svg'
+                layer['image']=f'/api/data/dungeons/art/{self.key}.png'
             else:
                 layer['objects']=[]
                 layer['draworder']='topdown'

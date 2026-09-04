@@ -1,0 +1,334 @@
+{
+  "type": "map",
+  "orientation": "orthogonal",
+  "renderorder": "right-down",
+  "width": 24,
+  "height": 16,
+  "tilewidth": 32,
+  "tileheight": 32,
+  "infinite": false,
+  "tiledversion": "1.11.2",
+  "version": "1.10",
+  "properties": [
+    {
+      "name": "id",
+      "type": "string",
+      "value": "tailrace"
+    },
+    {
+      "name": "kind",
+      "type": "string",
+      "value": "dungeon"
+    }
+  ],
+  "layers": [
+    {
+      "id": 1,
+      "name": "ground",
+      "type": "imagelayer",
+      "opacity": 1,
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "image": "/api/data/dungeons/art/tailrace.png"
+    },
+    {
+      "id": 2,
+      "name": "terrain-detail",
+      "type": "objectgroup",
+      "opacity": 1,
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "objects": [],
+      "draworder": "topdown"
+    },
+    {
+      "id": 3,
+      "name": "roads-and-water",
+      "type": "objectgroup",
+      "opacity": 1,
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "objects": [],
+      "draworder": "topdown"
+    },
+    {
+      "id": 4,
+      "name": "structures",
+      "type": "objectgroup",
+      "opacity": 1,
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "objects": [],
+      "draworder": "topdown"
+    },
+    {
+      "id": 5,
+      "name": "props-below-player",
+      "type": "objectgroup",
+      "opacity": 1,
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "objects": [],
+      "draworder": "topdown"
+    },
+    {
+      "id": 6,
+      "name": "collision",
+      "type": "objectgroup",
+      "opacity": 1,
+      "visible": false,
+      "x": 0,
+      "y": 0,
+      "objects": [
+        {
+          "id": 1,
+          "name": "river-bank-30",
+          "type": "solid",
+          "x": 544,
+          "y": 30,
+          "width": 128,
+          "height": 192
+        },
+        {
+          "id": 2,
+          "name": "river-bank-322",
+          "type": "solid",
+          "x": 544,
+          "y": 322,
+          "width": 128,
+          "height": 155
+        },
+        {
+          "id": 3,
+          "name": "north-boundary",
+          "type": "solid",
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 32
+        },
+        {
+          "id": 4,
+          "name": "west-boundary",
+          "type": "solid",
+          "x": 0,
+          "y": 0,
+          "width": 32,
+          "height": 512
+        },
+        {
+          "id": 5,
+          "name": "east-boundary",
+          "type": "solid",
+          "x": 736,
+          "y": 0,
+          "width": 32,
+          "height": 512
+        },
+        {
+          "id": 6,
+          "name": "south-boundary",
+          "type": "solid",
+          "x": 0,
+          "y": 480,
+          "width": 768,
+          "height": 32
+        },
+        {
+          "id": 7,
+          "name": "heron-pool",
+          "type": "solid",
+          "x": 64,
+          "y": 320,
+          "width": 224,
+          "height": 96
+        },
+        {
+          "id": 8,
+          "name": "heron-stone",
+          "type": "solid",
+          "x": 112,
+          "y": 64,
+          "width": 64,
+          "height": 64
+        },
+        {
+          "id": 9,
+          "name": "keeper-cache",
+          "type": "solid",
+          "x": 480,
+          "y": 352,
+          "width": 32,
+          "height": 32
+        },
+        {
+          "id": 10,
+          "name": "woodland-34",
+          "type": "solid",
+          "x": 32,
+          "y": 107,
+          "width": 48,
+          "height": 64
+        },
+        {
+          "id": 11,
+          "name": "woodland-42",
+          "type": "solid",
+          "x": 32,
+          "y": 377,
+          "width": 48,
+          "height": 64
+        },
+        {
+          "id": 12,
+          "name": "woodland-270",
+          "type": "solid",
+          "x": 246,
+          "y": 375,
+          "width": 48,
+          "height": 64
+        },
+        {
+          "id": 13,
+          "name": "woodland-700",
+          "type": "solid",
+          "x": 676,
+          "y": 362,
+          "width": 48,
+          "height": 64
+        },
+        {
+          "id": 14,
+          "name": "woodland-732",
+          "type": "solid",
+          "x": 708,
+          "y": 77,
+          "width": 48,
+          "height": 64
+        },
+        {
+          "id": 15,
+          "name": "woodland-274",
+          "type": "solid",
+          "x": 250,
+          "y": 50,
+          "width": 48,
+          "height": 64
+        },
+        {
+          "id": 16,
+          "name": "woodland-508",
+          "type": "solid",
+          "x": 484,
+          "y": 373,
+          "width": 48,
+          "height": 64
+        },
+        {
+          "id": 17,
+          "name": "woodland-475",
+          "type": "solid",
+          "x": 451,
+          "y": 148,
+          "width": 48,
+          "height": 64
+        },
+        {
+          "id": 18,
+          "name": "retired-millstone",
+          "type": "solid",
+          "x": 96,
+          "y": 160,
+          "width": 64,
+          "height": 64
+        },
+        {
+          "id": 19,
+          "name": "causeway-rail",
+          "type": "solid",
+          "x": 320,
+          "y": 192,
+          "width": 160,
+          "height": 32
+        }
+      ],
+      "draworder": "topdown"
+    },
+    {
+      "id": 7,
+      "name": "interactions",
+      "type": "objectgroup",
+      "opacity": 1,
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "objects": [],
+      "draworder": "topdown"
+    },
+    {
+      "id": 8,
+      "name": "npc-spawns",
+      "type": "objectgroup",
+      "opacity": 1,
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "objects": [],
+      "draworder": "topdown"
+    },
+    {
+      "id": 9,
+      "name": "player-spawns",
+      "type": "objectgroup",
+      "opacity": 1,
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "objects": [
+        {
+          "id": 500,
+          "name": "entrance",
+          "type": "spawn",
+          "point": true,
+          "x": 400,
+          "y": 400,
+          "properties": [
+            {
+              "name": "direction",
+              "type": "string",
+              "value": "up"
+            }
+          ]
+        }
+      ],
+      "draworder": "topdown"
+    },
+    {
+      "id": 10,
+      "name": "foreground",
+      "type": "objectgroup",
+      "opacity": 1,
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "objects": [],
+      "draworder": "topdown"
+    },
+    {
+      "id": 11,
+      "name": "lighting-and-atmosphere",
+      "type": "objectgroup",
+      "opacity": 1,
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "objects": [],
+      "draworder": "topdown"
+    }
+  ]
+}
