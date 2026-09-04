@@ -11,6 +11,13 @@ const viewports = [
 ];
 test.use({ hasTouch: true });
 
+function itemNameFromID(itemID) {
+  return itemID
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 async function start(page, email) {
   await page.goto("/?noEncounters=1");
   await page.waitForFunction(() =>
@@ -55,6 +62,7 @@ async function openCodex(page, mobile = false) {
 }
 
 async function capture(page, size, stage) {
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: path.join(proofDir, `${size.width}x${size.height}-${stage}.png`),
   });
@@ -82,6 +90,27 @@ for (const size of viewports) {
       "You have not encountered this creature",
     );
     await expect(page.locator(".bestiary-detail img")).toHaveCount(0);
+    const hiddenMonster = catalog[0];
+    const dialogText = await page
+      .getByRole("dialog", { name: "Field codex" })
+      .textContent();
+    const ariaTree = await page
+      .getByRole("dialog", { name: "Field codex" })
+      .ariaSnapshot();
+    for (const hiddenValue of [
+      hiddenMonster.name,
+      hiddenMonster.field_note,
+      ...hiddenMonster.habitats,
+      hiddenMonster.tactics,
+      ...hiddenMonster.drops.flatMap((drop) => [
+        drop.item_id,
+        itemNameFromID(drop.item_id),
+      ]),
+    ]) {
+      expect(dialogText).not.toContain(hiddenValue);
+      expect(ariaTree).not.toContain(hiddenValue);
+    }
+    await expect(page.getByRole("table")).toHaveCount(0);
     await capture(page, size, "unknown");
     const layout = await page.locator(".kith-codex").evaluate((root) => {
       const box = root.getBoundingClientRect();
@@ -147,6 +176,29 @@ for (const size of viewports) {
       "complete",
       true,
     );
+    await expect(page.locator(".bestiary-field-note")).toContainText(
+      known.field_note,
+    );
+    await expect(page.locator(".bestiary-field-guide")).toContainText(
+      known.habitats[0],
+    );
+    await expect(page.locator(".bestiary-field-guide")).toContainText(
+      known.tactics,
+    );
+    if (known.drops.length) {
+      const dropTable = page.getByRole("table", {
+        name: `${known.name} drop table`,
+      });
+      await expect(dropTable).toBeVisible();
+      await expect(dropTable.locator("tbody tr")).toHaveCount(
+        known.drops.length,
+      );
+      await expect(dropTable).toContainText(`${known.drops[0].chance_pct}%`);
+    } else {
+      await expect(page.locator(".bestiary-detail")).toContainText(
+        "No recorded drops.",
+      );
+    }
     await expect(
       page
         .locator(".bestiary-stats > div")
@@ -158,7 +210,9 @@ for (const size of viewports) {
         .filter({ has: page.getByText("XP", { exact: true }) }),
     ).toContainText(String(known.xp_reward));
     await capture(page, size, "discovered");
-    await page.locator(".bestiary-scaling").scrollIntoViewIfNeeded();
+    await page
+      .locator(".bestiary-detail")
+      .evaluate((detail) => (detail.scrollTop = detail.scrollHeight));
     await capture(page, size, "base-stats");
     await expect(page.locator(".bestiary-detail")).toContainText(
       "Base stats & rewards",
@@ -226,6 +280,43 @@ for (const size of viewports) {
     await openCodex(page);
     await page.keyboard.press("h");
     await expect(page.getByRole("dialog")).toHaveCount(0);
+    const expandedBattle = await page.evaluate(() =>
+      window.__kithlandsTest.forceEncounter(
+        ["bramblehog", "mire_toad", "frosthorn", "ridge_rook"],
+        3,
+        "World",
+      ),
+    );
+    expect(expandedBattle.enemies.map((enemy) => enemy.monster_id)).toEqual([
+      "bramblehog",
+      "mire_toad",
+      "frosthorn",
+      "ridge_rook",
+    ]);
+    const battleSnapshot = await page.evaluate(() =>
+      window.__kithlandsTest.battleVisibilitySnapshot(),
+    );
+    expect(
+      battleSnapshot.enemyMembers.map((enemy) => enemy.textureKey).sort(),
+    ).toEqual(
+      [
+        "monster_bramblehog",
+        "monster_frosthorn",
+        "monster_mire_toad",
+        "monster_ridge_rook",
+      ].sort(),
+    );
+    expect(
+      battleSnapshot.enemyMembers.every(
+        (enemy) =>
+          enemy.spriteBounds &&
+          enemy.spriteBounds.left >= 0 &&
+          enemy.spriteBounds.top >= 0 &&
+          enemy.spriteBounds.right <= 800 &&
+          enemy.spriteBounds.bottom <= 600,
+      ),
+    ).toBe(true);
+    await capture(page, size, "expanded-monster-battle");
     expect(errors).toEqual([]);
   });
 }

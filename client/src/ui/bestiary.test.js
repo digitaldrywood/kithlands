@@ -1,6 +1,11 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { bestiaryEntries, affinityLabel, monsterArt } from "./bestiary.js";
+import {
+  bestiaryEntries,
+  affinityLabel,
+  dropItemName,
+  monsterArt,
+} from "./bestiary.js";
 
 const catalog = JSON.parse(
   readFileSync(
@@ -31,6 +36,9 @@ describe("bestiary catalog projection", () => {
       expect(entry.name).toBe(catalog[index].name);
       expect(monsterArt(entry.name)).toMatch(/^\/sprites\/monsters\/.+\.png$/);
       expect(monsterArt(entry.monster)).toBe(monsterArt(entry.name));
+      expect(entry.monster.field_note).toBeTruthy();
+      expect(entry.monster.habitats.length).toBeGreaterThan(0);
+      expect(entry.monster.tactics).toBeTruthy();
     });
   });
 
@@ -80,5 +88,11 @@ describe("bestiary catalog projection", () => {
     expect(affinityLabel([])).toBe("None");
     expect(affinityLabel(["fire", "holy"])).toBe("Fire, Holy");
     expect(affinityLabel(["dark"])).toBe("Dark");
+  });
+
+  it("renders shared drop item names with a readable fallback", () => {
+    expect(dropItemName("potion")).toBe("Potion");
+    expect(dropItemName("phoenix_down")).toBe("Phoenix Down");
+    expect(dropItemName("future_relic")).toBe("Future Relic");
   });
 });

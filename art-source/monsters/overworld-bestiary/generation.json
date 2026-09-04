@@ -1,0 +1,24 @@
+{
+  "generator": "OpenAI built-in image_gen (model version not exposed)",
+  "created": "2026-09-04",
+  "references": [],
+  "seed": null,
+  "assets": [
+    {
+      "id": "bramblehog",
+      "prompt": "Use case: stylized-concept. Asset type: static enemy sprite for a browser JRPG. Primary request: an original creature called Bramblehog, a compact forest boar with a low sturdy stance, layered leaf-green and russet thorn-quills, small amber eyes, and two short pale tusks. Style/medium: polished 16-bit-inspired pixel art matching a modern retro JRPG bestiary; crisp clustered pixels, dark navy outline, selective highlights, readable silhouette. Composition/framing: single full-body creature in side-facing three-quarter battle pose, centered with generous transparent padding, entire silhouette visible. Color palette: moss green, fern green, warm russet, pale ivory accents. Constraints: genuinely transparent background; exactly one creature; no ground shadow; no scenery; no text; no logo; no watermark; original design only; kid-safe; suitable for downscaling to 256x256."
+    },
+    {
+      "id": "mire_toad",
+      "prompt": "Use case: stylized-concept. Asset type: static enemy sprite for a browser JRPG. Primary request: an original creature called Mire Toad, a broad squat marsh amphibian with teal-green mottled skin, a reed-like crest, gold throat pouch, mud-brown webbed feet, and alert round eyes. Style/medium: polished 16-bit-inspired pixel art matching a modern retro JRPG bestiary; crisp clustered pixels, dark navy outline, selective wet highlights, readable silhouette. Composition/framing: single full-body creature in side-facing three-quarter battle pose, centered with generous transparent padding, entire silhouette visible. Color palette: deep teal, marsh green, ochre gold, mud brown. Constraints: genuinely transparent background; exactly one creature; no ground shadow; no scenery; no text; no logo; no watermark; original design only; kid-safe; suitable for downscaling to 256x256."
+    },
+    {
+      "id": "frosthorn",
+      "prompt": "Use case: stylized-concept. Asset type: static enemy sprite for a browser JRPG. Primary request: an original creature called Frosthorn, a sure-footed snow ram with shaggy white and pale blue wool, one sweeping translucent ice-blue horn on each side, slate hooves, and calm violet eyes. Style/medium: polished 16-bit-inspired pixel art matching a modern retro JRPG bestiary; crisp clustered pixels, dark navy outline, selective icy highlights, readable silhouette. Composition/framing: single full-body creature in side-facing three-quarter battle pose, centered with generous transparent padding, entire silhouette visible. Color palette: snowy white, glacier blue, pale cyan, slate, tiny violet accents. Constraints: genuinely transparent background; exactly one creature; no ground shadow; no snow particles or scenery; no text; no logo; no watermark; original design only; kid-safe; suitable for downscaling to 256x256."
+    },
+    {
+      "id": "ridge_rook",
+      "prompt": "Use case: stylized-concept. Asset type: static enemy sprite for a browser JRPG. Primary request: an original creature called Ridge Rook, a large hill-dwelling corvid with angular charcoal feathers, stone-gray wing plates, copper-red tail tips, stout talons, and a sharp golden eye. Style/medium: polished 16-bit-inspired pixel art matching a modern retro JRPG bestiary; crisp clustered pixels, dark navy outline, selective metallic highlights, readable silhouette. Composition/framing: single full-body creature with wings partly spread in a side-facing three-quarter battle pose, centered with generous transparent padding, entire silhouette visible. Color palette: charcoal, slate gray, muted copper, small gold accents. Constraints: genuinely transparent background; exactly one creature; no ground shadow; no scenery; no text; no logo; no watermark; original design only; kid-safe; suitable for downscaling to 256x256."
+    }
+  ]
+}

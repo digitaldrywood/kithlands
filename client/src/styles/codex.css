@@ -178,6 +178,31 @@
   color: var(--codex-muted);
   font-size: 14px;
 }
+.bestiary-field-note {
+  margin: 8px 0 12px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--codex-gold);
+  background: #173553;
+}
+.bestiary-field-note h3 {
+  margin-top: 0;
+}
+.bestiary-field-note p {
+  margin: 0;
+}
+.bestiary-field-guide {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 7px 16px;
+  margin: 0 0 12px;
+}
+.bestiary-field-guide dt {
+  color: var(--codex-gold);
+  font-weight: 600;
+}
+.bestiary-field-guide dd {
+  overflow-wrap: anywhere;
+}
 .bestiary-portrait {
   height: 145px;
   display: grid;
@@ -204,6 +229,29 @@
 }
 .bestiary-affinities dd {
   overflow-wrap: anywhere;
+}
+.bestiary-drops {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.bestiary-drops th,
+.bestiary-drops td {
+  padding: 6px 9px;
+  border-bottom: 1px solid #42658a;
+  text-align: left;
+}
+.bestiary-drops th {
+  color: var(--codex-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+}
+.bestiary-drops th:last-child,
+.bestiary-drops td:last-child {
+  width: 5.5rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 .bestiary-stats {
   display: grid;
@@ -302,6 +350,13 @@
   }
   .bestiary-detail {
     padding: 14px;
+  }
+  .bestiary-field-guide {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .bestiary-field-guide dd + dt {
+    margin-top: 8px;
   }
   .bestiary-portrait {
     height: 110px;

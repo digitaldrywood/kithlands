@@ -2,6 +2,9 @@
   {
     "id": "slime",
     "name": "Slime",
+    "field_note": "A wobbling knot of marsh-light that gathers wherever rainwater lingers.",
+    "habitats": ["Grasslands", "Marsh edges", "Sandy hollows"],
+    "tactics": "Fire breaks its gel quickly; otherwise focus one slime at a time before the group surrounds the party.",
     "tier": 1,
     "size": "small",
     "stats": {
@@ -30,6 +33,9 @@
   {
     "id": "goblin",
     "name": "Goblin",
+    "field_note": "A sharp-eyed scavenger that patrols paths for dropped tools, unattended packs, and easy meals.",
+    "habitats": ["Roadsides", "Grasslands", "Dry scrub"],
+    "tactics": "Goblin scouts have no elemental defense, so remove them early before their numbers wear down the front row.",
     "tier": 1,
     "size": "small",
     "stats": {
@@ -60,6 +66,9 @@
   {
     "id": "wolf",
     "name": "Wolf",
+    "field_note": "These gray hunters use brush and uneven ground to close on travelers as a coordinated pack.",
+    "habitats": ["Forests", "Dark grass", "Hills"],
+    "tactics": "Fire is reliable, while ice is blunted by the wolf's winter coat; protect slower allies from its quick attacks.",
     "tier": 2,
     "size": "medium",
     "stats": {
@@ -89,6 +98,9 @@
   {
     "id": "skeleton",
     "name": "Skeleton",
+    "field_note": "Old armor and older grudges hold these restless bones together long after their banners faded.",
+    "habitats": ["Hills", "Ruins", "Dark grass"],
+    "tactics": "Fire and holy magic exploit its dry, undead frame; ice and dark magic are poor choices.",
     "tier": 2,
     "size": "medium",
     "is_undead": true,
@@ -120,6 +132,9 @@
   {
     "id": "dark_knight",
     "name": "Dark Knight",
+    "field_note": "A fallen commander sealed inside blackened plate, still guarding roads that no longer exist.",
+    "habitats": ["Fortress ruins", "Battlefields"],
+    "tactics": "Holy magic pierces its dark defenses; expect a long fight and keep healing ahead of its heavy strikes.",
     "tier": 3,
     "size": "boss",
     "is_boss": true,
@@ -149,6 +164,9 @@
   {
     "id": "giant_rat",
     "name": "Giant Rat",
+    "field_note": "Bold roadside foragers that have learned the sound of a loose buckle and an unguarded lunch tin.",
+    "habitats": ["Roadsides", "Grasslands", "Cellars"],
+    "tactics": "A quick fire spell clears a scurry, but ordinary attacks are enough if the party focuses the fastest rat first.",
     "tier": 1,
     "size": "small",
     "stats": {
@@ -177,6 +195,9 @@
   {
     "id": "bandit",
     "name": "Bandit",
+    "field_note": "A roaming opportunist who prefers a toll demanded from cover to a fair fight in the open.",
+    "habitats": ["Roadsides", "Foothills", "Wilderness camps"],
+    "tactics": "Bandits have no elemental weakness; steady physical pressure and front-row defense are the safest answer.",
     "tier": 2,
     "size": "medium",
     "stats": {
@@ -205,6 +226,9 @@
   {
     "id": "armored_knight",
     "name": "Armored Knight",
+    "field_note": "An oathbound sentry whose layered plate turns aside blows long after its watch should have ended.",
+    "habitats": ["Fortresses", "Old roads", "Siege camps"],
+    "tactics": "Lightning conducts through its plate; physical parties should improve accuracy and expect strong armor.",
     "tier": 3,
     "size": "medium",
     "stats": {
@@ -234,6 +258,9 @@
   {
     "id": "gargoyle",
     "name": "Gargoyle",
+    "field_note": "Wind and lichen polish these cliff sentries until they are almost impossible to distinguish from stone.",
+    "habitats": ["Rocky hills", "Ruined towers", "High ledges"],
+    "tactics": "Lightning cracks its stony shell; both fire and ice lose force against the dense body.",
     "tier": 3,
     "size": "medium",
     "stats": {
@@ -251,9 +278,7 @@
     "weaknesses": ["lightning"],
     "resistances": ["fire", "ice"],
     "absorbs": [],
-    "drops": [
-      { "item_id": "soft", "chance_pct": 10 }
-    ],
+    "drops": [{ "item_id": "soft", "chance_pct": 10 }],
     "encounter_weight": 10,
     "min_group": 1,
     "max_group": 2
@@ -261,20 +286,23 @@
   {
     "id": "wyvern",
     "name": "Wyvern",
+    "field_note": "A broad-winged ridge hunter that circles warm updrafts before diving on isolated prey.",
+    "habitats": ["High hills", "Snowy ridges", "Mountain passes"],
+    "tactics": "Ice grounds the wyvern quickly, while fire is resisted; keep fragile allies behind a sturdy front row.",
     "tier": 4,
     "size": "large",
     "stats": {
-      "str": 45,
-      "agi": 18,
-      "int": 6,
-      "vit": 22,
-      "lck": 8,
-      "hit_pct": 20
+      "str": 20,
+      "agi": 12,
+      "int": 4,
+      "vit": 12,
+      "lck": 6,
+      "hit_pct": 12
     },
-    "hp": 180,
-    "armor_absorb": 12,
-    "xp_reward": 490,
-    "gold_reward": 150,
+    "hp": 90,
+    "armor_absorb": 8,
+    "xp_reward": 60,
+    "gold_reward": 40,
     "weaknesses": ["ice"],
     "resistances": ["fire"],
     "absorbs": [],
@@ -290,6 +318,9 @@
   {
     "id": "iron_golem",
     "name": "Iron Golem",
+    "field_note": "A walking forge relic driven by a patient ember sealed deep inside riveted iron.",
+    "habitats": ["Abandoned forges", "Fortresses", "Deep ruins"],
+    "tactics": "Lightning disrupts its frame; fire and ice barely mark the plates, and physical blows face exceptional armor.",
     "tier": 4,
     "size": "large",
     "stats": {
@@ -318,6 +349,9 @@
   {
     "id": "shadow_wraith",
     "name": "Shadow Wraith",
+    "field_note": "A cold silhouette that gathers around forgotten promises and follows torchlight without casting a shadow.",
+    "habitats": ["Moonlit ruins", "Frozen wastes", "Deep forests"],
+    "tactics": "Holy magic is essential; dark magic is absorbed and ice is resisted, so preserve the caster's MP.",
     "tier": 5,
     "size": "medium",
     "stats": {
@@ -348,20 +382,23 @@
   {
     "id": "war_hydra",
     "name": "War Hydra",
+    "field_note": "A many-necked marsh siege beast bred to keep fighting while even one head can still see the foe.",
+    "habitats": ["Deep marshes", "Flooded ruins", "Siege trenches"],
+    "tactics": "Ice slows every neck at once; fire is resisted, and sustained healing helps outlast its repeated attacks.",
     "tier": 5,
     "size": "large",
     "stats": {
-      "str": 62,
-      "agi": 12,
-      "int": 8,
-      "vit": 28,
-      "lck": 6,
-      "hit_pct": 22
+      "str": 24,
+      "agi": 8,
+      "int": 6,
+      "vit": 16,
+      "lck": 5,
+      "hit_pct": 14
     },
-    "hp": 350,
-    "armor_absorb": 18,
-    "xp_reward": 910,
-    "gold_reward": 250,
+    "hp": 140,
+    "armor_absorb": 10,
+    "xp_reward": 80,
+    "gold_reward": 55,
     "weaknesses": ["ice"],
     "resistances": ["fire"],
     "absorbs": [],
@@ -376,6 +413,9 @@
   {
     "id": "elder_dragon",
     "name": "Elder Dragon",
+    "field_note": "An ancient sky ruler whose scales carry the heat and scars of a hundred defended lairs.",
+    "habitats": ["Volcanic peaks", "Ancient vaults", "Remote highlands"],
+    "tactics": "Ice is the clearest opening; fire and lightning are resisted, so plan for a durable, high-damage battle.",
     "tier": 6,
     "size": "large",
     "stats": {
@@ -406,6 +446,9 @@
   {
     "id": "siege_commander",
     "name": "Siege Commander",
+    "field_note": "A tireless strategist bound to a ruined standard and the final order it was given.",
+    "habitats": ["Siege camps", "Fortress gates", "Battlefield ruins"],
+    "tactics": "Holy magic cuts through its dark ward; maintain defenses rather than racing its powerful counteroffensive.",
     "tier": 6,
     "size": "boss",
     "is_boss": true,
@@ -435,6 +478,9 @@
   {
     "id": "dragon_lord",
     "name": "Dragon Lord",
+    "field_note": "The crowned tyrant of the old heights, carrying a furnace glow behind armor-dark scales.",
+    "habitats": ["Cinder citadels", "Dragon peaks"],
+    "tactics": "Holy attacks offer the best opening; fire and dark magic are resisted, so arrive with recovery supplies.",
     "tier": 7,
     "size": "boss",
     "is_boss": true,
@@ -465,6 +511,9 @@
   {
     "id": "trial_guardian",
     "name": "Trial Guardian",
+    "field_note": "A solemn ward shaped to test resolve, not cruelty, before opening the road to greater callings.",
+    "habitats": ["Sacred trials", "Sealed sanctums"],
+    "tactics": "Holy magic reveals the guardian's seams; defend through its measured blows and avoid wasting turns.",
     "tier": 2,
     "size": "boss",
     "is_boss": true,
@@ -491,6 +540,9 @@
   {
     "id": "mill_bat",
     "name": "Mill Bat",
+    "field_note": "A tiny rafter-dweller startled into noisy loops when old gears begin to turn below.",
+    "habitats": ["Old Mill rafters", "Dry lofts"],
+    "tactics": "Ice slows its darting flight; accurate attacks are more useful than heavy but unreliable swings.",
     "tier": 1,
     "size": "small",
     "stats": {
@@ -505,9 +557,7 @@
     "armor_absorb": 0,
     "xp_reward": 12,
     "gold_reward": 4,
-    "weaknesses": [
-      "ice"
-    ],
+    "weaknesses": ["ice"],
     "resistances": [],
     "absorbs": [],
     "drops": [
@@ -523,6 +573,9 @@
   {
     "id": "briar_spider",
     "name": "Briar Spider",
+    "field_note": "A patient web-maker that knots thorny silk between beams, roots, and abandoned machinery.",
+    "habitats": ["Briar thickets", "Old Mill rooms"],
+    "tactics": "Fire clears its dry webbing; defeat it before attrition and poison pressure can build.",
     "tier": 2,
     "size": "medium",
     "stats": {
@@ -537,9 +590,7 @@
     "armor_absorb": 2,
     "xp_reward": 28,
     "gold_reward": 8,
-    "weaknesses": [
-      "fire"
-    ],
+    "weaknesses": ["fire"],
     "resistances": [],
     "absorbs": [],
     "drops": [
@@ -555,6 +606,9 @@
   {
     "id": "rust_beetle",
     "name": "Rust Beetle",
+    "field_note": "This copper-backed beetle eats corrosion from old tools and leaves bright metal tracks behind.",
+    "habitats": ["Old machinery", "Damp workshops"],
+    "tactics": "Lightning slips through its shell, while ice is resisted; magic avoids the worst of its armor.",
     "tier": 2,
     "size": "medium",
     "stats": {
@@ -569,12 +623,8 @@
     "armor_absorb": 9,
     "xp_reward": 30,
     "gold_reward": 8,
-    "weaknesses": [
-      "lightning"
-    ],
-    "resistances": [
-      "ice"
-    ],
+    "weaknesses": ["lightning"],
+    "resistances": ["ice"],
     "absorbs": [],
     "drops": [
       {
@@ -589,6 +639,9 @@
   {
     "id": "moss_slime",
     "name": "Moss Slime",
+    "field_note": "A cool green slime that carries seeds and fern spores through the quiet rooms it explores.",
+    "habitats": ["Damp stone", "Old Mill channels"],
+    "tactics": "Fire dries the mossy gel, while ice is resisted; a focused burst prevents a drawn-out fight.",
     "tier": 2,
     "size": "small",
     "stats": {
@@ -603,12 +656,8 @@
     "armor_absorb": 1,
     "xp_reward": 24,
     "gold_reward": 6,
-    "weaknesses": [
-      "fire"
-    ],
-    "resistances": [
-      "ice"
-    ],
+    "weaknesses": ["fire"],
+    "resistances": ["ice"],
     "absorbs": [],
     "drops": [
       {
@@ -623,6 +672,9 @@
   {
     "id": "millroot_warden",
     "name": "Millroot Warden",
+    "field_note": "The Old Mill's living heart, tangled by stopped water but still protective of every root and beam.",
+    "habitats": ["Old Mill heart"],
+    "tactics": "Restore the mill before confronting it, then use fire carefully; ice is resisted by its water-fed roots.",
     "tier": 3,
     "size": "boss",
     "is_boss": true,
@@ -638,12 +690,8 @@
     "armor_absorb": 5,
     "xp_reward": 110,
     "gold_reward": 35,
-    "weaknesses": [
-      "fire"
-    ],
-    "resistances": [
-      "ice"
-    ],
+    "weaknesses": ["fire"],
+    "resistances": ["ice"],
     "absorbs": [],
     "drops": [
       {
@@ -658,6 +706,9 @@
   {
     "id": "bellbound_regent",
     "name": "Bellbound Regent",
+    "field_note": "A ruler fused to the stolen bell's resonance, commanding every peal as if it were a royal decree.",
+    "habitats": ["Bell sanctum", "Final fortress"],
+    "tactics": "Ice tempers its heated resonance; fire is resisted, and survival depends on deliberate healing cycles.",
     "tier": 20,
     "size": "boss",
     "is_boss": true,
@@ -673,12 +724,8 @@
     "armor_absorb": 18,
     "xp_reward": 900,
     "gold_reward": 220,
-    "weaknesses": [
-      "ice"
-    ],
-    "resistances": [
-      "fire"
-    ],
+    "weaknesses": ["ice"],
+    "resistances": ["fire"],
     "absorbs": [],
     "drops": [],
     "encounter_weight": 0,
@@ -688,6 +735,9 @@
   {
     "id": "bell_sentinel",
     "name": "Bell Sentinel",
+    "field_note": "A plated attendant animated by the bell's echo and stationed wherever escape would be easiest.",
+    "habitats": ["Bell sanctum", "Fortress halls"],
+    "tactics": "Lightning conducts through its armor; remove sentinels before concentrating on their commander.",
     "tier": 3,
     "size": "medium",
     "stats": {
@@ -702,9 +752,7 @@
     "armor_absorb": 18,
     "xp_reward": 210,
     "gold_reward": 60,
-    "weaknesses": [
-      "lightning"
-    ],
+    "weaknesses": ["lightning"],
     "resistances": [],
     "absorbs": [],
     "drops": [],
@@ -712,5 +760,129 @@
     "min_group": 1,
     "max_group": 2,
     "is_boss": false
+  },
+  {
+    "id": "bramblehog",
+    "name": "Bramblehog",
+    "field_note": "A sturdy forest forager whose leaf-covered quills scatter seeds wherever it roots for bulbs.",
+    "habitats": ["Forests", "Dark grass", "Woodland margins"],
+    "tactics": "Fire catches its dry quills; focused attacks prevent a rooting herd from controlling the field.",
+    "tier": 1,
+    "size": "small",
+    "stats": {
+      "str": 6,
+      "agi": 3,
+      "int": 1,
+      "vit": 4,
+      "lck": 2,
+      "hit_pct": 3
+    },
+    "hp": 21,
+    "armor_absorb": 1,
+    "xp_reward": 14,
+    "gold_reward": 6,
+    "weaknesses": ["fire"],
+    "resistances": [],
+    "absorbs": [],
+    "drops": [
+      { "item_id": "potion", "chance_pct": 12 },
+      { "item_id": "antidote", "chance_pct": 8 }
+    ],
+    "encounter_weight": 22,
+    "min_group": 1,
+    "max_group": 3
+  },
+  {
+    "id": "mire_toad",
+    "name": "Mire Toad",
+    "field_note": "Its booming call marks safe hummocks in the marsh, though a startled toad defends that ground fiercely.",
+    "habitats": ["Marshes", "Reed beds", "Floodplain pools"],
+    "tactics": "Lightning travels through its wet hide; ice is resisted, so avoid spending cold magic on a long exchange.",
+    "tier": 1,
+    "size": "medium",
+    "stats": {
+      "str": 7,
+      "agi": 2,
+      "int": 4,
+      "vit": 5,
+      "lck": 3,
+      "hit_pct": 4
+    },
+    "hp": 24,
+    "armor_absorb": 1,
+    "xp_reward": 18,
+    "gold_reward": 7,
+    "weaknesses": ["lightning"],
+    "resistances": ["ice"],
+    "absorbs": [],
+    "drops": [
+      { "item_id": "antidote", "chance_pct": 18 },
+      { "item_id": "ether", "chance_pct": 5 }
+    ],
+    "encounter_weight": 20,
+    "min_group": 1,
+    "max_group": 3
+  },
+  {
+    "id": "frosthorn",
+    "name": "Frosthorn",
+    "field_note": "A sure-footed snow ram whose translucent horns ring softly when the cold wind changes.",
+    "habitats": ["Snowfields", "Icy ridges", "High passes"],
+    "tactics": "Fire melts the frost around its wool, while ice is resisted; guard before its deliberate charge.",
+    "tier": 2,
+    "size": "medium",
+    "stats": {
+      "str": 13,
+      "agi": 6,
+      "int": 3,
+      "vit": 8,
+      "lck": 3,
+      "hit_pct": 8
+    },
+    "hp": 44,
+    "armor_absorb": 4,
+    "xp_reward": 46,
+    "gold_reward": 15,
+    "weaknesses": ["fire"],
+    "resistances": ["ice"],
+    "absorbs": [],
+    "drops": [
+      { "item_id": "potion", "chance_pct": 15 },
+      { "item_id": "trail_boots", "chance_pct": 6 }
+    ],
+    "encounter_weight": 12,
+    "min_group": 1,
+    "max_group": 2
+  },
+  {
+    "id": "ridge_rook",
+    "name": "Ridge Rook",
+    "field_note": "A clever corvid that lines its nest with bright stones and rides the lift above exposed ridges.",
+    "habitats": ["Rocky hills", "Snowy ridges", "Cliff paths"],
+    "tactics": "Lightning disrupts its stone-gray wing plates; accurate attacks help against its quick aerial feints.",
+    "tier": 1,
+    "size": "small",
+    "stats": {
+      "str": 8,
+      "agi": 12,
+      "int": 2,
+      "vit": 4,
+      "lck": 5,
+      "hit_pct": 7
+    },
+    "hp": 25,
+    "armor_absorb": 2,
+    "xp_reward": 22,
+    "gold_reward": 9,
+    "weaknesses": ["lightning"],
+    "resistances": [],
+    "absorbs": [],
+    "drops": [
+      { "item_id": "antidote", "chance_pct": 12 },
+      { "item_id": "copper_ring", "chance_pct": 5 }
+    ],
+    "encounter_weight": 14,
+    "min_group": 1,
+    "max_group": 3
   }
 ]

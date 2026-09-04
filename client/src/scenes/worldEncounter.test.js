@@ -3,6 +3,7 @@ import {
   encounterChanceForStep,
   encounterRateMultiplierForTile,
 } from "./worldEncounter.js";
+import { TILE_IDS } from "./tileConstants.js";
 
 describe("encounterRateMultiplierForTile", () => {
   it("uses reduced rates for safer open tiles", () => {
@@ -12,10 +13,11 @@ describe("encounterRateMultiplierForTile", () => {
   });
 
   it("uses higher rates for dangerous terrain", () => {
-    expect(encounterRateMultiplierForTile(9)).toBe(1.0);
-    expect(encounterRateMultiplierForTile(10)).toBe(1.5);
-    expect(encounterRateMultiplierForTile(11)).toBe(1.2);
-    expect(encounterRateMultiplierForTile(13)).toBe(1.3);
+    expect(encounterRateMultiplierForTile(TILE_IDS.darkGrass)).toBe(1.0);
+    expect(encounterRateMultiplierForTile(TILE_IDS.forest)).toBe(1.5);
+    expect(encounterRateMultiplierForTile(TILE_IDS.hill)).toBe(1.2);
+    expect(encounterRateMultiplierForTile(TILE_IDS.marsh)).toBe(1.3);
+    expect(encounterRateMultiplierForTile(TILE_IDS.snow)).toBe(0.9);
   });
 
   it("returns 0 for safe or indoor tiles", () => {
@@ -46,7 +48,18 @@ describe("encounterChanceForStep", () => {
 
   it("returns 0 for tiles that should never trigger encounters", () => {
     expect(
-      encounterChanceForStep({ tile: 2, stepCount: 20, transportMult: 1 }),
+      encounterChanceForStep({
+        tile: TILE_IDS.water,
+        stepCount: 20,
+        transportMult: 1,
+      }),
+    ).toBe(0);
+    expect(
+      encounterChanceForStep({
+        tile: TILE_IDS.mountain,
+        stepCount: 20,
+        transportMult: 1,
+      }),
     ).toBe(0);
     expect(
       encounterChanceForStep({ tile: 9, stepCount: 20, transportMult: 0 }),

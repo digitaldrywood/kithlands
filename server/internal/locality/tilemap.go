@@ -761,9 +761,13 @@ func carveHiddenPath(tiles [][]int, nodePositions []nodePos, walk *WalkResult, m
 	// Carve: replace dense blockers along the path with dark grass.
 	carved := make([][2]int, 0, len(path))
 	for _, p := range path {
-		t := TileType(tiles[p[1]][p[0]])
+		x, y := p[0], p[1]
+		if x < 0 || x >= mapW || y < 0 || y >= mapH {
+			continue
+		}
+		t := TileType(tiles[y][x])
 		if t == TileTree || t == TileForest || t == TileBush || t == TileHill || t == TileMountain || t == TileSnow {
-			tiles[p[1]][p[0]] = int(TileDarkGrass)
+			tiles[y][x] = int(TileDarkGrass)
 			carved = append(carved, p)
 		}
 	}

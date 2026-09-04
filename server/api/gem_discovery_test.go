@@ -233,6 +233,25 @@ func TestGemSocketPreviewResolvesAccessoriesWithoutMutation(t *testing.T) {
 func TestOrdinaryCombatLootDiscoversFamilyRecipe(t *testing.T) {
 	t.Parallel()
 	gd := gamedata.Load("../../shared")
+	// This test owns the ordinary victory -> drop -> recipe-discovery path, not
+	// global formation weighting. Pin both boundaries so adding valid overworld
+	// formations cannot silently change which drop seed 3 happens to roll.
+	gd.MonsterByID("goblin").Drops = []gamedata.Drop{
+		{ItemID: "ward_shard", ChancePct: 100},
+	}
+	gd.Formations = []gamedata.Formation{
+		{
+			ID:                "recipe_discovery_goblin",
+			Weight:            1,
+			MinEncounterLevel: 1,
+			StarterSafe:       true,
+			TerrainTags:       []string{"any"},
+			Layout:            "line",
+			Slots: []gamedata.FormationSlot{
+				{MonsterID: "goblin", Min: 1, Max: 1},
+			},
+		},
+	}
 	g, err := NewGameManager(gd, "../../shared").CreateGame(NewGameRequest{TownName: "Gem Town", Places: []string{"Square"}, BigBuilding: "Hall", Difficulty: "normal", RNGSeed: 3, Party: []PartyMemberReq{{Name: "Ayla", ClassID: "warrior"}, {Name: "Mira", ClassID: "mender"}}})
 	if err != nil {
 		t.Fatal(err)

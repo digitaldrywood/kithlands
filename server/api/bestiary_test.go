@@ -82,3 +82,56 @@ func TestBestiaryRealEncounterDiscoverySurvivesSaveLoad(t *testing.T) {
 		t.Fatal("legacy save must not fabricate discoveries")
 	}
 }
+
+func TestBestiaryExpansionDiscoveriesPersistPerIdentity(t *testing.T) {
+	monsterIDs := []string{
+		"giant_rat",
+		"bandit",
+		"war_hydra",
+		"wyvern",
+		"bramblehog",
+		"mire_toad",
+		"frosthorn",
+		"ridge_rook",
+	}
+
+	for _, monsterID := range monsterIDs {
+		t.Run(monsterID, func(t *testing.T) {
+			game := newFormationTestGame(t, []PartyMemberReq{{Name: "Hero", ClassID: "warrior"}})
+			game.gd.Formations = []gamedata.Formation{
+				{
+					ID:                "discover_" + monsterID,
+					Weight:            1,
+					MinEncounterLevel: 1,
+					TutorialOnly:      true,
+					StarterSafe:       true,
+					TerrainTags:       []string{"any"},
+					Layout:            "line",
+					Slots: []gamedata.FormationSlot{
+						{MonsterID: monsterID, Min: 1, Max: 1},
+					},
+				},
+			}
+
+			state, err := game.ProcessAction(GameActionRequest{Type: "encounter"})
+			if err != nil {
+				t.Fatalf("encounter: %v", err)
+			}
+			if !state.Discovered[monsterID] {
+				t.Fatalf("%q was not discovered by its encounter", monsterID)
+			}
+
+			saved, err := game.ToSaveState("bestiary-"+monsterID, "test-user")
+			if err != nil {
+				t.Fatalf("save: %v", err)
+			}
+			loaded, err := FromSaveState(saved, game.gd, game.loc)
+			if err != nil {
+				t.Fatalf("load: %v", err)
+			}
+			if !loaded.State().Discovered[monsterID] {
+				t.Fatalf("%q discovery did not survive save/load", monsterID)
+			}
+		})
+	}
+}

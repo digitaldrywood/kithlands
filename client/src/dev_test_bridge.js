@@ -1094,6 +1094,7 @@ function visibleBattleFxSnapshot(scene) {
       y: entry?.y ?? null,
       spriteX: entry?.sprite?.x ?? null,
       spriteY: entry?.sprite?.y ?? null,
+      textureKey: entry?.sprite?.texture?.key ?? null,
       spriteBounds: objectBounds(entry?.sprite),
       hpBarBounds: objectBounds(entry?.hpBar?.bg),
       currentHP: entry?.hpBar?.currentHP ?? null,

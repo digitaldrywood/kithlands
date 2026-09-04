@@ -1,6 +1,7 @@
 package gamedata_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
@@ -240,6 +241,68 @@ func TestMonsterSizesValid(t *testing.T) {
 	for _, m := range gd.Monsters {
 		if !validSizes[m.Size] {
 			t.Errorf("monster %q has invalid size: %q", m.ID, m.Size)
+		}
+	}
+}
+
+func TestMonsterFieldGuideMetadataIsComplete(t *testing.T) {
+	gd := gamedata.Load("../../../shared")
+	for _, monster := range gd.Monsters {
+		if monster.FieldNote == "" {
+			t.Errorf("monster %q has no field note", monster.ID)
+		}
+		if len(monster.Habitats) == 0 {
+			t.Errorf("monster %q has no habitats", monster.ID)
+		}
+		if monster.Tactics == "" {
+			t.Errorf("monster %q has no tactics", monster.ID)
+		}
+	}
+}
+
+func TestOverworldBestiaryExpansionIsReachableAndElemental(t *testing.T) {
+	gd := gamedata.Load("../../../shared")
+	targets := map[string]struct {
+		weak   string
+		resist string
+	}{
+		"giant_rat":  {weak: "fire"},
+		"bandit":     {},
+		"war_hydra":  {weak: "ice", resist: "fire"},
+		"wyvern":     {weak: "ice", resist: "fire"},
+		"bramblehog": {weak: "fire"},
+		"mire_toad":  {weak: "lightning", resist: "ice"},
+		"frosthorn":  {weak: "fire", resist: "ice"},
+		"ridge_rook": {weak: "lightning"},
+	}
+	reachable := make(map[string]bool, len(targets))
+	for _, formation := range gd.Formations {
+		if formation.Weight <= 0 {
+			continue
+		}
+		for _, slot := range formation.Slots {
+			if _, ok := targets[slot.MonsterID]; ok {
+				reachable[slot.MonsterID] = true
+			}
+		}
+	}
+
+	for id, want := range targets {
+		monster := gd.MonsterByID(id)
+		if monster == nil {
+			t.Fatalf("monster %q is missing", id)
+		}
+		if !reachable[id] {
+			t.Errorf("monster %q has no positive-weight overworld formation", id)
+		}
+		if len(monster.Drops) == 0 {
+			t.Errorf("monster %q has no drop table", id)
+		}
+		if want.weak != "" && !slices.Contains(monster.Weaknesses, want.weak) {
+			t.Errorf("monster %q weaknesses %v do not include %q", id, monster.Weaknesses, want.weak)
+		}
+		if want.resist != "" && !slices.Contains(monster.Resistances, want.resist) {
+			t.Errorf("monster %q resistances %v do not include %q", id, monster.Resistances, want.resist)
 		}
 	}
 }
