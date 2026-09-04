@@ -18,11 +18,12 @@ function installCheckpoint(email) {
   const user = randomUUID(),
     locality = randomUUID(),
     save = randomUUID();
+  const finalQuest = fixture.quest_state.at(-1);
   const query = `BEGIN;
 INSERT INTO users(id,email) VALUES(${sql(user)},${sql(email)});
 INSERT INTO localities(id,user_id,source,name,graph) VALUES(${sql(locality)},${sql(user)},'wizard',${sql(fixture.locality.name)},${sql(JSON.stringify(fixture.locality))});
 INSERT INTO saves(id,user_id,locality_id,name,flavor,difficulty,spawn_node_id,party,inventory,quest_state,world_state,rng_seed)
-VALUES(${sql(save)},${sql(user)},${sql(locality)},'Natural pre-Q12 checkpoint','conquest',${sql(fixture.difficulty)},${sql(fixture.spawn_node_id)},${sql(JSON.stringify(fixture.party))},${sql(JSON.stringify(fixture.inventory))},${sql(JSON.stringify(fixture.quest_state))},${sql(JSON.stringify(fixture.world_state))},${fixture.rng_seed}); COMMIT;`;
+VALUES(${sql(save)},${sql(user)},${sql(locality)},'Natural pre-Q12 checkpoint','conquest',${sql(fixture.difficulty)},${sql(finalQuest.target_node_id)},${sql(JSON.stringify(fixture.party))},${sql(JSON.stringify(fixture.inventory))},${sql(JSON.stringify(fixture.quest_state))},${sql(JSON.stringify(fixture.world_state))},${fixture.rng_seed}); COMMIT;`;
   execFileSync("psql", ["-d", database, "-v", "ON_ERROR_STOP=1", "-q"], {
     input: query,
     stdio: ["pipe", "pipe", "pipe"],

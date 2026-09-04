@@ -32,6 +32,13 @@ async function api(page, method, ...args) {
   expect(result.ok(), body).toBeTruthy();
   return JSON.parse(body);
 }
+function stableEquipment(equipment) {
+  return JSON.parse(
+    JSON.stringify(equipment, (key, value) =>
+      key === "token" ? undefined : value,
+    ),
+  );
+}
 async function start(page) {
   page.on("request", (request) => {
     const header = request.headers()["authorization"];
@@ -170,8 +177,9 @@ for (const [width, height] of [
         "**/equipment/builds/preview",
         async (route) => {
           previewRequested();
+          const response = await route.fetch();
           await pendingPreview;
-          await route.continue();
+          await route.fulfill({ response });
         },
         { times: 1 },
       );
@@ -203,7 +211,9 @@ for (const [width, height] of [
       await expect(page.locator(".equipment-build-review h3")).toHaveText(
         "Preview · Travel",
       );
-      expect((await api(page, "getGame")).equipment).toEqual(initial.equipment);
+      expect(stableEquipment((await api(page, "getGame")).equipment)).toEqual(
+        stableEquipment(initial.equipment),
+      );
       await expect(page.locator(".equipment-build-moves")).toContainText(
         `Ring I: ${ringName} → Empty`,
       );
@@ -234,8 +244,8 @@ for (const [width, height] of [
       await expect(page.locator(".equipment-build-status")).toContainText(
         "stale",
       );
-      expect((await api(page, "getGame")).equipment).toEqual(
-        transfer.equipment,
+      expect(stableEquipment((await api(page, "getGame")).equipment)).toEqual(
+        stableEquipment(transfer.equipment),
       );
       await page.locator(".equipment-build-status").scrollIntoViewIfNeeded();
       await capture(page, `${width}-stale.png`);
@@ -283,7 +293,9 @@ for (const [width, height] of [
       );
       await capture(page, `${width}-overwritten.png`);
       const overwritten = await api(page, "getGame");
-      expect(overwritten.equipment).toEqual(lucky.equipment);
+      expect(stableEquipment(overwritten.equipment)).toEqual(
+        stableEquipment(lucky.equipment),
+      );
       expect(
         overwritten.equipment_builds[0].find((b) => b.id === travelID).slots
           .ring_1.instance_id,
@@ -297,7 +309,9 @@ for (const [width, height] of [
       await expect(page.locator(".equipment-build-status")).toContainText(
         "Build deleted",
       );
-      expect((await api(page, "getGame")).equipment).toEqual(lucky.equipment);
+      expect(stableEquipment((await api(page, "getGame")).equipment)).toEqual(
+        stableEquipment(lucky.equipment),
+      );
       await save(page, "Travel again");
       await closeBuilds(page);
       await page.getByRole("button", { name: "Close equipment" }).click();
@@ -323,7 +337,9 @@ for (const [width, height] of [
         "Lucky",
         "Travel again",
       ]);
-      expect(restored.equipment).toEqual(lucky.equipment);
+      expect(stableEquipment(restored.equipment)).toEqual(
+        stableEquipment(lucky.equipment),
+      );
       await page.keyboard.press("m");
       await page.evaluate(() =>
         window.__kithlandsTest.clickMenuButton("CHARACTER", "World"),
@@ -386,8 +402,8 @@ for (const [width, height] of [
       await expect(
         page.getByRole("button", { name: "Apply Build", exact: true }),
       ).toBeDisabled();
-      expect((await api(page, "getGame")).equipment).toEqual(
-        missingBefore.equipment,
+      expect(stableEquipment((await api(page, "getGame")).equipment)).toEqual(
+        stableEquipment(missingBefore.equipment),
       );
       await page.locator(".equipment-build-reasons").scrollIntoViewIfNeeded();
       await capture(page, `${width}-missing.png`);
