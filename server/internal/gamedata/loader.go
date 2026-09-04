@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/digitaldrywood/kithlands/internal/dungeon"
 	"github.com/digitaldrywood/kithlands/internal/transport"
 )
 
@@ -42,6 +43,7 @@ type DialoguePool struct {
 
 // GameData holds all loaded game data from shared/.
 type GameData struct {
+	Dungeons         []dungeon.Definition
 	Classes          []Class
 	Stats            StatsConfig
 	Items            ItemsData
@@ -101,6 +103,12 @@ func Load(sharedDir string) *GameData {
 
 	gd.buildIndexes()
 	gd.validate()
+	var err error
+	gd.Dungeons, err = dungeon.Load(sharedDir)
+	if err != nil {
+		panic(fmt.Sprintf("gamedata: %v", err))
+	}
+	gd.validateDungeons()
 
 	return gd
 }

@@ -39,6 +39,7 @@ func (s *Server) GetGameManager() *GameManager {
 
 func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	// Public
+	mux.HandleFunc("GET /api/data/dungeons/art/{file}", s.handleDungeonArt)
 	mux.HandleFunc("POST /api/auth/login", s.handleLogin)
 	mux.HandleFunc("GET /api/data/classes", s.handleGetClasses)
 	mux.HandleFunc("GET /api/data/stats", s.handleGetStats)
@@ -70,6 +71,8 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/game/{id}/town/collect", s.auth.Middleware(http.HandlerFunc(s.handleTownCollect)))
 	mux.Handle("POST /api/game/{id}/chest/open", s.auth.Middleware(http.HandlerFunc(s.handleChestOpen)))
 	mux.Handle("POST /api/game/{id}/chest/claim", s.auth.Middleware(http.HandlerFunc(s.handleChestClaim)))
+
+	mux.Handle("POST /api/game/{id}/dungeon", s.auth.Middleware(http.HandlerFunc(s.handleDungeon)))
 
 	// Save/Load
 	mux.Handle("POST /api/game/{id}/save", s.auth.Middleware(http.HandlerFunc(s.handleSaveGame)))

@@ -1,0 +1,999 @@
+[
+  {
+    "id": "old-mill",
+    "title": "The Old Mill of {locality}",
+    "entry_label": "Old Mill trail",
+    "description": "The millrace has fallen quiet. Follow the split oak and the kingfisher bend to the old mill above {locality}. You can retreat or save at any safe moment.",
+    "entry_room": "approach",
+    "entry_position": {
+      "x": 12,
+      "y": 12
+    },
+    "complete_flag": "mill-reward",
+    "return_text": "The millrace sings again. The people of {locality} thank you with 80 gold. Your Ember Gem can be fitted to a socketed weapon or armor from the Party menu; the restored trail remains open.",
+    "retreat_text": "You return to {locality}. Your discoveries and opened routes are remembered.",
+    "defeat_text": "The trail keeper brings your party back to the split oak. Rested and safe, you can try again; your discoveries remain.",
+    "payoff": {
+      "gold": 80
+    },
+    "objectives": [
+      {
+        "until": "trail-bats-cleared",
+        "text": "Follow the split oak and kingfisher bend. Clear the bats at the wagon road."
+      },
+      {
+        "until": "handle-found",
+        "text": "Read the ledger. Search the grain store for the spare wheel handle."
+      },
+      {
+        "until": "wheel-restored",
+        "text": "Fit the spare handle in the wheel house. The drying room holds supplies."
+      },
+      {
+        "until": "sluice-open",
+        "text": "Clear the gallery and open the sluice. Look for a way back along the tailrace."
+      },
+      {
+        "until": "warden-cleared",
+        "text": "Rest at the keeper\u2019s bench. With water flowing, calm the Millroot Warden in the mill heart."
+      },
+      {
+        "until": "mill-reward",
+        "text": "Claim the miller\u2019s keepsake beside the mill heart."
+      },
+      {
+        "until": "",
+        "text": "Return to town with the good news. The tailrace shortcut leads home."
+      }
+    ],
+    "rooms": [
+      {
+        "id": "approach",
+        "name": "The Kingfisher Trail",
+        "description": "A split oak marks the old wagon road. Beyond the kingfisher bend, a roof peeks out of the riverside trees.",
+        "map_file": "approach.json",
+        "actions": [
+          {
+            "id": "split-oak",
+            "label": "Read the trail carving",
+            "kind": "hint",
+            "position": {
+              "x": 2,
+              "y": 8
+            },
+            "text": "The split oak bears a wheel carving: follow the broad path north for the mill. The thin western trail was the miller's quiet fishing spot.",
+            "flag": "oak-read"
+          },
+          {
+            "id": "kingfisher-bend",
+            "label": "Listen at the river bend",
+            "kind": "hint",
+            "position": {
+              "x": 20,
+              "y": 8
+            },
+            "text": "A kingfisher waits on a branch. The water is still: the mill's sluice must be closed.",
+            "flag": "river-read"
+          },
+          {
+            "id": "trail-bats",
+            "label": "Clear the roosting bats",
+            "kind": "encounter",
+            "position": {
+              "x": 12,
+              "y": 8
+            },
+            "flag": "trail-bats-cleared",
+            "text": "Clear the roosting bats. Choose attacks, spells and items to help your party.",
+            "encounter": {
+              "monsters": [
+                "mill_bat"
+              ],
+              "level": 1,
+              "full_party": [
+                "mill_bat",
+                "mill_bat"
+              ]
+            }
+          },
+          {
+            "id": "heron-trail",
+            "label": "Follow the narrow fishing trail",
+            "kind": "door",
+            "position": {
+              "x": 6,
+              "y": 4
+            },
+            "destination": "heron-pool",
+            "arrival": {
+              "x": 12,
+              "y": 13
+            }
+          },
+          {
+            "id": "mill-door",
+            "label": "Enter the Old Mill",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 2
+            },
+            "destination": "receiving",
+            "arrival": {
+              "x": 12,
+              "y": 12
+            },
+            "text": "The timber doorway opens into the receiving room.",
+            "requires": [
+              "trail-bats-cleared"
+            ],
+            "reason": "The bats crowd the wagon doorway. Clear their roost on the road first."
+          },
+          {
+            "id": "trail-home",
+            "label": "Return to town",
+            "kind": "exit",
+            "position": {
+              "x": 12,
+              "y": 13
+            }
+          },
+          {
+            "id": "trail-shortcut",
+            "label": "Take the open tailrace shortcut",
+            "kind": "door",
+            "position": {
+              "x": 21,
+              "y": 8
+            },
+            "destination": "tailrace",
+            "arrival": {
+              "x": 21,
+              "y": 8
+            },
+            "requires": [
+              "shortcut-open"
+            ],
+            "reason": "A barred gate blocks this route. It opens from inside the mill."
+          }
+        ],
+        "battle_background": "bg_forest_1"
+      },
+      {
+        "id": "receiving",
+        "name": "Receiving Room",
+        "description": "Wagon tracks end at a worn weighing scale. A ledger lies beside dry sacks and a keeper's resting bench.",
+        "map_file": "receiving.json",
+        "actions": [
+          {
+            "id": "grain-door",
+            "label": "Enter the grain store",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 2
+            },
+            "destination": "grain-store",
+            "arrival": {
+              "x": 12,
+              "y": 13
+            }
+          },
+          {
+            "id": "drying-door",
+            "label": "Enter the drying room",
+            "kind": "door",
+            "position": {
+              "x": 21,
+              "y": 8
+            },
+            "destination": "drying-room",
+            "arrival": {
+              "x": 2,
+              "y": 8
+            }
+          },
+          {
+            "id": "receiving-exit",
+            "label": "Leave by the wagon door",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 13
+            },
+            "destination": "approach",
+            "arrival": {
+              "x": 12,
+              "y": 3
+            },
+            "text": "You step back onto the Kingfisher Trail."
+          },
+          {
+            "id": "ledger",
+            "label": "Read the miller's ledger",
+            "kind": "hint",
+            "position": {
+              "x": 6,
+              "y": 8
+            },
+            "flag": "ledger-read",
+            "text": "The last entry reads: 'Store the spare handle with the grain. Fit it at the wheel, then open the sluice. Never force the root-choked heart while the race is dry.'"
+          },
+          {
+            "id": "keeper-bench",
+            "label": "Rest at the freight desk",
+            "kind": "rest",
+            "position": {
+              "x": 3,
+              "y": 8
+            },
+            "repeatable": true,
+            "text": "Your party rests at the sheltered freight desk. HP, MP and conditions are restored."
+          }
+        ],
+        "battle_background": "bg_interior_3"
+      },
+      {
+        "id": "heron-pool",
+        "name": "The Heron Pool",
+        "description": "Reeds shelter a still pool off the busy wagon road. The miller left a small cache beside a stone heron.",
+        "map_file": "heron-pool.json",
+        "actions": [
+          {
+            "id": "pool-return",
+            "label": "Back to the split oak",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 13
+            },
+            "destination": "approach",
+            "arrival": {
+              "x": 6,
+              "y": 4
+            }
+          },
+          {
+            "id": "heron-secret",
+            "label": "Inspect the carved heron",
+            "kind": "hint",
+            "position": {
+              "x": 6,
+              "y": 4
+            },
+            "text": "A reed-shaped mark points to a loose floorboard in the mill loft. The miller hid a blue ward there for someone patient enough to notice.",
+            "flag": "heron-secret-read"
+          },
+          {
+            "id": "heron-cache",
+            "label": "Open the fishing satchel",
+            "kind": "treasure",
+            "position": {
+              "x": 5,
+              "y": 5
+            },
+            "flag": "heron-cache-open",
+            "reward": {
+              "item_id": "antidote",
+              "count": 2,
+              "level": 1
+            },
+            "text": "Two Antidotes remain dry in the fishing satchel. Cure poison from the Party menu or during battle."
+          }
+        ],
+        "battle_background": "bg_forest_1"
+      },
+      {
+        "id": "grain-store",
+        "name": "Grain Store",
+        "description": "Ropes suspend empty grain hoppers. A spare brass wheel handle rests behind a webbed tool shelf.",
+        "map_file": "grain-store.json",
+        "actions": [
+          {
+            "id": "grain-return",
+            "label": "Back to receiving",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 13
+            },
+            "destination": "receiving",
+            "arrival": {
+              "x": 12,
+              "y": 2
+            }
+          },
+          {
+            "id": "grain-spider",
+            "label": "Clear the briar web",
+            "kind": "encounter",
+            "position": {
+              "x": 12,
+              "y": 8
+            },
+            "flag": "grain-spider-cleared",
+            "text": "Clear the briar web. Choose attacks, spells and items to help your party.",
+            "encounter": {
+              "monsters": [
+                "briar_spider"
+              ],
+              "level": 1
+            }
+          },
+          {
+            "id": "spare-handle",
+            "label": "Take the spare wheel handle",
+            "kind": "switch",
+            "position": {
+              "x": 4,
+              "y": 4
+            },
+            "requires": [
+              "grain-spider-cleared"
+            ],
+            "reason": "The web still covers the tool shelf.",
+            "flag": "handle-found",
+            "text": "You recover the brass handle. Its square socket belongs to the wheel-house mechanism."
+          },
+          {
+            "id": "grain-loft",
+            "label": "Climb to the mill loft",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 2
+            },
+            "destination": "loft",
+            "arrival": {
+              "x": 12,
+              "y": 13
+            }
+          }
+        ],
+        "battle_background": "bg_interior_3"
+      },
+      {
+        "id": "drying-room",
+        "name": "Drying Room",
+        "description": "A warm brick flue divides the timber drying racks. Under a tarpaulin, the keeper stored a travelling supply chest.",
+        "map_file": "drying-room.json",
+        "actions": [
+          {
+            "id": "drying-return",
+            "label": "Back to receiving",
+            "kind": "door",
+            "position": {
+              "x": 2,
+              "y": 8
+            },
+            "destination": "receiving",
+            "arrival": {
+              "x": 21,
+              "y": 8
+            }
+          },
+          {
+            "id": "drying-beetle",
+            "label": "Clear the rust beetle",
+            "kind": "encounter",
+            "position": {
+              "x": 12,
+              "y": 8
+            },
+            "flag": "drying-beetle-cleared",
+            "text": "Clear the rust beetle. Choose attacks, spells and items to help your party.",
+            "encounter": {
+              "monsters": [
+                "rust_beetle"
+              ],
+              "level": 1
+            }
+          },
+          {
+            "id": "supply-potions",
+            "label": "Unpack the red supply box",
+            "kind": "treasure",
+            "position": {
+              "x": 6,
+              "y": 5
+            },
+            "flag": "potions-taken",
+            "reward": {
+              "item_id": "potion",
+              "count": 4,
+              "level": 1
+            },
+            "requires": [
+              "drying-beetle-cleared"
+            ],
+            "reason": "The beetle guards the supplies.",
+            "text": "Four Potions added. Healing is useful between battles too: open Party, then Items."
+          },
+          {
+            "id": "supply-ethers",
+            "label": "Unpack the blue supply box",
+            "kind": "treasure",
+            "position": {
+              "x": 17,
+              "y": 4
+            },
+            "flag": "ethers-taken",
+            "reward": {
+              "item_id": "ether",
+              "count": 2,
+              "level": 1
+            },
+            "requires": [
+              "drying-beetle-cleared"
+            ],
+            "reason": "The beetle guards the supplies.",
+            "text": "Two Ethers added. Save some magic for creatures that resist ordinary attacks."
+          },
+          {
+            "id": "drying-wheel",
+            "label": "Continue to the wheel house",
+            "kind": "door",
+            "position": {
+              "x": 21,
+              "y": 8
+            },
+            "destination": "wheel-house",
+            "arrival": {
+              "x": 2,
+              "y": 8
+            }
+          }
+        ],
+        "battle_background": "bg_interior_3"
+      },
+      {
+        "id": "wheel-house",
+        "name": "Wheel House",
+        "description": "A massive waterwheel spans the race. Brass shafts lead to its control spindle, and a service bridge reaches the north gallery.",
+        "map_file": "wheel-house.json",
+        "actions": [
+          {
+            "id": "wheel-return",
+            "label": "Back to the drying room",
+            "kind": "door",
+            "position": {
+              "x": 2,
+              "y": 8
+            },
+            "destination": "drying-room",
+            "arrival": {
+              "x": 21,
+              "y": 8
+            }
+          },
+          {
+            "id": "wheel-slime",
+            "label": "Clear moss from the wheel",
+            "kind": "encounter",
+            "position": {
+              "x": 12,
+              "y": 8
+            },
+            "flag": "wheel-slime-cleared",
+            "text": "Clear moss from the wheel. Choose attacks, spells and items to help your party.",
+            "encounter": {
+              "monsters": [
+                "moss_slime"
+              ],
+              "level": 2
+            }
+          },
+          {
+            "id": "wheel-handle",
+            "label": "Fit and turn the brass handle",
+            "kind": "switch",
+            "position": {
+              "x": 7,
+              "y": 6
+            },
+            "flag": "wheel-restored",
+            "requires": [
+              "handle-found",
+              "wheel-slime-cleared"
+            ],
+            "reason": "Recover the spare handle from the grain store and clear the moss slime first.",
+            "text": "The brass handle fits. The wheel turns, lifting the service bridge to the sluice gallery."
+          },
+          {
+            "id": "wheel-gallery",
+            "label": "Cross the lifted service bridge",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 2
+            },
+            "destination": "sluice-gallery",
+            "arrival": {
+              "x": 12,
+              "y": 13
+            },
+            "requires": [
+              "wheel-restored"
+            ],
+            "reason": "The service bridge rises only when the wheel turns."
+          },
+          {
+            "id": "wheel-maintenance",
+            "label": "Enter the keeper\u2019s workshop",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 13
+            },
+            "destination": "maintenance",
+            "arrival": {
+              "x": 12,
+              "y": 2
+            }
+          }
+        ],
+        "visual_variants": [
+          {
+            "requires": "wheel-restored",
+            "image": "/api/data/dungeons/art/wheel-house-active.png"
+          }
+        ],
+        "battle_background": "bg_interior_1"
+      },
+      {
+        "id": "maintenance",
+        "name": "Keeper\u2019s Workshop",
+        "description": "A lantern burns beside folded blankets and careful repair diagrams. A barred tailrace gate could make a shorter journey home.",
+        "map_file": "maintenance.json",
+        "actions": [
+          {
+            "id": "maintenance-return",
+            "label": "Back to the wheel house",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 2
+            },
+            "destination": "wheel-house",
+            "arrival": {
+              "x": 12,
+              "y": 13
+            }
+          },
+          {
+            "id": "workshop-rest",
+            "label": "Rest at the sheltered bench",
+            "kind": "rest",
+            "position": {
+              "x": 6,
+              "y": 4
+            },
+            "repeatable": true,
+            "text": "Your party rests by the lantern. HP, MP and conditions are restored."
+          },
+          {
+            "id": "maintenance-note",
+            "label": "Read the tailrace diagram",
+            "kind": "hint",
+            "position": {
+              "x": 18,
+              "y": 7
+            },
+            "text": "The tailrace gate can only be unbarred from the far side. Follow the sluice gallery through the root cellar to reach it.",
+            "flag": "maintenance-note-read"
+          },
+          {
+            "id": "maintenance-shortcut",
+            "label": "Use the unbarred tailrace gate",
+            "kind": "door",
+            "position": {
+              "x": 21,
+              "y": 8
+            },
+            "destination": "tailrace",
+            "arrival": {
+              "x": 2,
+              "y": 8
+            },
+            "requires": [
+              "shortcut-open"
+            ],
+            "reason": "The gate is barred from the tailrace side. Reach it through the root cellar."
+          }
+        ],
+        "battle_background": "bg_interior_3"
+      },
+      {
+        "id": "sluice-gallery",
+        "name": "Sluice Gallery",
+        "description": "A narrow gallery follows the dark race. Brass controls stand beside the sluice pools; stone walkways connect the mill loft and root cellar.",
+        "map_file": "sluice-gallery.json",
+        "actions": [
+          {
+            "id": "gallery-return",
+            "label": "Back across the service bridge",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 13
+            },
+            "destination": "wheel-house",
+            "arrival": {
+              "x": 12,
+              "y": 2
+            }
+          },
+          {
+            "id": "gallery-bats",
+            "label": "Clear the hanging bat roost",
+            "kind": "encounter",
+            "position": {
+              "x": 12,
+              "y": 8
+            },
+            "flag": "gallery-bats-cleared",
+            "text": "Clear the hanging bat roost. Choose attacks, spells and items to help your party.",
+            "encounter": {
+              "monsters": [
+                "mill_bat",
+                "mill_bat"
+              ],
+              "level": 2,
+              "full_party": [
+                "mill_bat",
+                "mill_bat",
+                "mill_bat"
+              ]
+            }
+          },
+          {
+            "id": "sluice-lever",
+            "label": "Open the river sluice",
+            "kind": "switch",
+            "position": {
+              "x": 8,
+              "y": 6
+            },
+            "flag": "sluice-open",
+            "requires": [
+              "wheel-restored",
+              "gallery-bats-cleared"
+            ],
+            "reason": "Turn the wheel and clear the bat roost before reaching the lever.",
+            "text": "Water rolls through the race. A stepping bridge settles into place beneath the roots. The mill\u2019s heart can finally be reached safely."
+          },
+          {
+            "id": "gallery-roots",
+            "label": "Follow the race to the root cellar",
+            "kind": "door",
+            "position": {
+              "x": 2,
+              "y": 8
+            },
+            "destination": "root-cellar",
+            "arrival": {
+              "x": 21,
+              "y": 8
+            },
+            "requires": [
+              "sluice-open"
+            ],
+            "reason": "Open the sluice to lower the stepping bridge."
+          },
+          {
+            "id": "gallery-loft",
+            "label": "Climb the gallery ladder",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 2
+            },
+            "destination": "loft",
+            "arrival": {
+              "x": 21,
+              "y": 8
+            }
+          }
+        ],
+        "battle_background": "bg_interior_1"
+      },
+      {
+        "id": "loft",
+        "name": "The Miller\u2019s Loft",
+        "description": "Sunlight catches dust above the grain chutes. A carved reed is barely visible on one floorboard.",
+        "map_file": "loft.json",
+        "actions": [
+          {
+            "id": "loft-grain",
+            "label": "Down to the grain store",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 13
+            },
+            "destination": "grain-store",
+            "arrival": {
+              "x": 12,
+              "y": 2
+            }
+          },
+          {
+            "id": "loft-gallery",
+            "label": "Down to the sluice gallery",
+            "kind": "door",
+            "position": {
+              "x": 21,
+              "y": 8
+            },
+            "destination": "sluice-gallery",
+            "arrival": {
+              "x": 12,
+              "y": 2
+            },
+            "requires": [
+              "wheel-restored"
+            ],
+            "reason": "The gallery ladder is inaccessible while the service bridge is lowered."
+          },
+          {
+            "id": "loft-beetle",
+            "label": "Clear the beetle from the loft",
+            "kind": "encounter",
+            "position": {
+              "x": 12,
+              "y": 8
+            },
+            "flag": "loft-beetle-cleared",
+            "text": "Clear the beetle from the loft. Choose attacks, spells and items to help your party.",
+            "encounter": {
+              "monsters": [
+                "rust_beetle"
+              ],
+              "level": 2
+            }
+          },
+          {
+            "id": "loft-secret",
+            "label": "Inspect the reed-marked floorboard",
+            "kind": "treasure",
+            "position": {
+              "x": 6,
+              "y": 4
+            },
+            "flag": "secret-found",
+            "reward": {
+              "item_id": "ward_gem",
+              "count": 1,
+              "level": 1
+            },
+            "requires": [
+              "heron-secret-read",
+              "loft-beetle-cleared"
+            ],
+            "reason": "A clue at the quiet fishing pool may explain the floorboard mark. Clear the beetle too.",
+            "text": "The floorboard lifts to reveal a Ward Gem. Socket it into armor for a useful defense bonus."
+          }
+        ],
+        "battle_background": "bg_interior_3"
+      },
+      {
+        "id": "root-cellar",
+        "name": "Root Cellar",
+        "description": "River roots curl between the old foundation stones. One passage leads deeper; the other catches daylight from the tailrace.",
+        "map_file": "root-cellar.json",
+        "actions": [
+          {
+            "id": "roots-gallery",
+            "label": "Back to the sluice gallery",
+            "kind": "door",
+            "position": {
+              "x": 21,
+              "y": 8
+            },
+            "destination": "sluice-gallery",
+            "arrival": {
+              "x": 2,
+              "y": 8
+            }
+          },
+          {
+            "id": "root-spider",
+            "label": "Clear the tangled roots",
+            "kind": "encounter",
+            "position": {
+              "x": 12,
+              "y": 8
+            },
+            "flag": "root-spider-cleared",
+            "text": "Clear the tangled roots. Choose attacks, spells and items to help your party.",
+            "encounter": {
+              "monsters": [
+                "briar_spider"
+              ],
+              "level": 2,
+              "full_party": [
+                "briar_spider",
+                "moss_slime"
+              ]
+            }
+          },
+          {
+            "id": "roots-heart",
+            "label": "Enter the mill heart",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 2
+            },
+            "destination": "mill-heart",
+            "arrival": {
+              "x": 12,
+              "y": 13
+            },
+            "requires": [
+              "root-spider-cleared"
+            ],
+            "reason": "The briar web blocks the way to the heart."
+          },
+          {
+            "id": "roots-tailrace",
+            "label": "Follow daylight to the tailrace",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 13
+            },
+            "destination": "tailrace",
+            "arrival": {
+              "x": 12,
+              "y": 2
+            }
+          },
+          {
+            "id": "roots-warning",
+            "label": "Read the keeper\u2019s warning",
+            "kind": "hint",
+            "position": {
+              "x": 6,
+              "y": 4
+            },
+            "text": "The Warden is tangled and frightened. Flowing water loosens its roots; fire magic can help. Open the tailrace gate and rest in the workshop before the final encounter.",
+            "flag": "roots-warning-read"
+          }
+        ],
+        "battle_background": "bg_interior_1"
+      },
+      {
+        "id": "mill-heart",
+        "name": "The Mill Heart",
+        "description": "The oldest foundation circles a living knot of roots. Fresh water glimmers under the stones; the Millroot Warden guards the last quiet chamber.",
+        "map_file": "mill-heart.json",
+        "actions": [
+          {
+            "id": "heart-return",
+            "label": "Back to the root cellar",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 13
+            },
+            "destination": "root-cellar",
+            "arrival": {
+              "x": 12,
+              "y": 2
+            }
+          },
+          {
+            "id": "warden",
+            "label": "Calm the Millroot Warden",
+            "kind": "encounter",
+            "position": {
+              "x": 12,
+              "y": 8
+            },
+            "flag": "warden-cleared",
+            "text": "Calm the Millroot Warden. Choose attacks, spells and items to help your party.",
+            "encounter": {
+              "monsters": [
+                "millroot_warden"
+              ],
+              "level": 3,
+              "boss": true
+            }
+          },
+          {
+            "id": "miller-keepsake",
+            "label": "Claim the miller\u2019s keepsake",
+            "kind": "treasure",
+            "position": {
+              "x": 4,
+              "y": 4
+            },
+            "flag": "mill-reward",
+            "reward": {
+              "item_id": "ember_gem",
+              "count": 1,
+              "level": 1
+            },
+            "requires": [
+              "warden-cleared"
+            ],
+            "reason": "Calm the Warden before approaching the keepsake.",
+            "text": "The Warden uncurls and the race runs clear. An Ember Gem rests in the miller\u2019s keepsake box. Bring the good news back to {locality}."
+          }
+        ],
+        "battle_background": "bg_interior_1"
+      },
+      {
+        "id": "tailrace",
+        "name": "The Open Tailrace",
+        "description": "The river runs bright beside a stone landing. A long bar fastens the keeper\u2019s gate; beyond it lies a short path back to the wagon road.",
+        "map_file": "tailrace.json",
+        "actions": [
+          {
+            "id": "tailrace-roots",
+            "label": "Back to the root cellar",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 2
+            },
+            "destination": "root-cellar",
+            "arrival": {
+              "x": 12,
+              "y": 13
+            }
+          },
+          {
+            "id": "tailrace-bar",
+            "label": "Unbar the keeper\u2019s gate",
+            "kind": "switch",
+            "position": {
+              "x": 12,
+              "y": 6
+            },
+            "flag": "shortcut-open",
+            "text": "The heavy bar lifts. The tailrace now connects the workshop to the wagon road: a permanent shortcut for resting or returning to town."
+          },
+          {
+            "id": "tailrace-workshop",
+            "label": "Through the keeper\u2019s gate",
+            "kind": "door",
+            "position": {
+              "x": 2,
+              "y": 8
+            },
+            "destination": "maintenance",
+            "arrival": {
+              "x": 21,
+              "y": 8
+            },
+            "requires": [
+              "shortcut-open"
+            ],
+            "reason": "Lift the bar first."
+          },
+          {
+            "id": "tailrace-trail",
+            "label": "Take the shortcut to the trail",
+            "kind": "door",
+            "position": {
+              "x": 21,
+              "y": 8
+            },
+            "destination": "approach",
+            "arrival": {
+              "x": 21,
+              "y": 8
+            },
+            "requires": [
+              "shortcut-open"
+            ],
+            "reason": "Lift the bar first."
+          }
+        ],
+        "battle_background": "bg_forest_1"
+      }
+    ]
+  }
+]

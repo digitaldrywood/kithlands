@@ -39,6 +39,10 @@ func (g *Game) ToSaveState(name, userID string) (*save.SaveState, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
+	if g.inDungeon() && g.phase == "combat" {
+		return nil, fmt.Errorf("finish or flee the encounter before saving")
+	}
+
 	partyJSON, err := json.Marshal(g.party)
 	if err != nil {
 		return nil, fmt.Errorf("marshaling party: %w", err)
@@ -55,6 +59,7 @@ func (g *Game) ToSaveState(name, userID string) (*save.SaveState, error) {
 	}
 
 	worldState := map[string]any{
+		"dungeon":                g.dungeon,
 		"current_quest":          g.currentQ,
 		"phase":                  g.phase,
 		"discovered":             g.discovered,
@@ -118,6 +123,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	}
 
 	var worldState struct {
+		Dungeon              *DungeonProgress                       `json:"dungeon"`
 		CurrentQ             int                                    `json:"current_quest"`
 		Phase                string                                 `json:"phase"`
 		Discovered           map[string]bool                        `json:"discovered"`
@@ -169,6 +175,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	}
 
 	game := &Game{
+		dungeon:              worldState.Dungeon,
 		id:                   fmt.Sprintf("game_%d", time.Now().UnixNano()),
 		gd:                   gd,
 		rng:                  rng,
@@ -204,6 +211,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		game.checkTransportUnlocks()
 	}
 
+	game.restoreDungeon()
 	return game, nil
 }
 

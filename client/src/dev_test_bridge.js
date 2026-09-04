@@ -350,6 +350,7 @@ function describeObject(entry, index) {
   const target = entry?.bg || entry;
   return {
     index,
+    interactive: target?.input?.enabled === true,
     label:
       (typeof entry?.label?.text === "string" && entry.label.text) ||
       (typeof target?.text === "string" && target.text) ||
@@ -597,6 +598,7 @@ function partyMenuSummary(scene) {
       kind: entry.partyMenuActionMeta.kind,
       key: entry.partyMenuActionMeta.key || null,
       bounds: entry.bounds,
+      interactive: entry.interactive,
     }));
 
   const resourceChips = entries
@@ -1450,6 +1452,8 @@ export function installDevTestBridge(game) {
       const scene = getScene(game, sceneKey);
       return {
         menuOpen: !!scene?.menuOpen,
+        modalLocks: [...(scene?._modalLocks || [])],
+        animating: !!scene?.animating,
         characterDetailOpen:
           !!scene?.characterDetailGroup || !!scene?.equipmentScreenState,
         equipmentScreenOpen: !!scene?.equipmentScreenState,
@@ -1773,7 +1777,11 @@ export function installDevTestBridge(game) {
         applySceneGameState(game, scene, result);
         if (scene?.scene?.key === "Battle" && result.phase !== "combat") {
           const destination =
-            scene.returnScene?.sceneKey === "Town" ? "Town" : "World";
+            result.current_location?.kind === "dungeon"
+              ? "Dungeon"
+              : scene.returnScene?.sceneKey === "Town"
+                ? "Town"
+                : "World";
           await this.waitForSceneReady(destination);
         }
       }
@@ -1795,8 +1803,10 @@ export function installDevTestBridge(game) {
       const source = activeScene(game);
       const result = await loadSaveApi(saveId);
       if (!result?.error) {
-        source.scene.start("World", { gameState: result });
-        await this.waitForSceneReady("World");
+        const destination =
+          result.current_location?.kind === "dungeon" ? "Dungeon" : "World";
+        source.scene.start(destination, { gameState: result });
+        await this.waitForSceneReady(destination);
       }
       return clone(result);
     },
@@ -1843,6 +1853,10 @@ export function installDevTestBridge(game) {
       const scene = getScene(game, sceneKey);
       if (!scene || scene.scene?.key !== "Battle") {
         throw new Error("Battle scene is not active");
+      }
+      if (mode === "wait") {
+        void scene.submitWaitAction();
+        return [];
       }
       const enemyId = (scene.gameState?.enemies || []).find(
         (enemy) => (enemy.current_hp ?? enemy.hp ?? 0) > 0,

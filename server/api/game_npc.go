@@ -76,6 +76,9 @@ func (g *Game) GetNPCDialogue(nodeID string) *NPCDialogueResponse {
 func (g *Game) InteractWithNPC(nodeID string) *NPCInteractResponse {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if g.inDungeon() {
+		return nil
+	}
 
 	dialogue := g.getNPCDialogueUnlocked(nodeID)
 	if dialogue == nil {

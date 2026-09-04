@@ -1,0 +1,177 @@
+import { describe, expect, it, vi } from "vitest";
+import { showWorldMap } from "./world_interact.js";
+import { toggleMenu } from "./world_menu.js";
+import {
+  activeWorldLocks,
+  isWorldInputLocked,
+  pauseWorldFor,
+} from "../systems/modalLock.js";
+
+function makeScene(overrides = {}) {
+  const objects = [];
+  const keyboardHandlers = {};
+  function addObject(kind, text) {
+    const object = {
+      kind,
+      text,
+      handlers: {},
+      interactive: false,
+      destroyed: false,
+      on(event, callback) {
+        this.handlers[event] = callback;
+        return this;
+      },
+      setInteractive() {
+        this.interactive = true;
+        return this;
+      },
+      disableInteractive() {
+        this.interactive = false;
+        return this;
+      },
+      destroy() {
+        this.destroyed = true;
+      },
+    };
+    for (const method of [
+      "setOrigin",
+      "setScrollFactor",
+      "setDepth",
+      "setStrokeStyle",
+      "setFillStyle",
+      "setColor",
+      "setAlpha",
+      "fillStyle",
+      "fillRect",
+      "lineStyle",
+      "fillRoundedRect",
+      "strokeRoundedRect",
+    ]) {
+      object[method] = vi.fn().mockReturnValue(object);
+    }
+    objects.push(object);
+    return object;
+  }
+  return {
+    mapW: 2,
+    mapH: 2,
+    tileData: [
+      [0, 1],
+      [1, 0],
+    ],
+    spawns: [{ kind: "building", name: "Home", x: 1, y: 1, node_id: "home" }],
+    playerX: 0,
+    playerY: 1,
+    gameState: {
+      party: [],
+      current_quest: 0,
+      quests: [{ target_node_id: "home" }],
+    },
+    objects,
+    keyboardHandlers,
+    add: {
+      rectangle: vi.fn(() => addObject("rectangle")),
+      graphics: vi.fn(() => addObject("graphics")),
+      circle: vi.fn(() => addObject("circle")),
+      text: vi.fn((_x, _y, text) => addObject("text", text)),
+    },
+    input: {
+      keyboard: {
+        once: vi.fn((event, callback) => {
+          keyboardHandlers[event] = callback;
+        }),
+      },
+    },
+    events: { once: vi.fn() },
+    textures: { exists: () => false },
+    scale: { gameSize: { width: 800, height: 600 }, setGameSize: vi.fn() },
+    ...overrides,
+  };
+}
+
+function worldMapButton(scene) {
+  return scene.menuGroup.find(
+    (object) => object.bg?.__kithlandsPartyMenuAction?.label === "WORLD MAP",
+  );
+}
+
+describe("world map scene capability", () => {
+  it.each([
+    ["dungeon without world spawns", { spawns: undefined }],
+    ["missing terrain", { tileData: undefined }],
+    ["missing terrain row", { tileData: [[0, 1]] }],
+    ["incomplete terrain row", { tileData: [[0, 1], [0]] }],
+    ["invalid width", { mapW: 0 }],
+    ["invalid height", { mapH: NaN }],
+    ["missing player position", { playerX: undefined }],
+  ])("does not lock or draw for %s", (_name, overrides) => {
+    const scene = makeScene(overrides);
+    pauseWorldFor(scene, "party_menu");
+
+    expect(() => showWorldMap(scene)).not.toThrow();
+
+    expect(activeWorldLocks(scene)).toEqual(["party_menu"]);
+    expect(scene.objects).toEqual([]);
+    expect(scene.input.keyboard.once).not.toHaveBeenCalled();
+  });
+
+  it("disables the Dungeon party menu map action without disturbing the menu", () => {
+    const scene = makeScene({ spawns: undefined });
+    toggleMenu(scene);
+    const button = worldMapButton(scene);
+    const objectCount = scene.objects.length;
+
+    expect(button.isEnabled()).toBe(false);
+    expect(button.bg.interactive).toBe(false);
+    expect(button.label.interactive).toBe(false);
+    button.bg.handlers.pointerdown();
+    button.bg.handlers.pointerup();
+
+    expect(scene.menuOpen).toBe(true);
+    expect(activeWorldLocks(scene)).toEqual(["party_menu"]);
+    expect(scene.objects).toHaveLength(objectCount);
+    expect(scene.objects.every((object) => !object.destroyed)).toBe(true);
+  });
+
+  it("opens a supported World map from the party menu and closes with Escape", () => {
+    const scene = makeScene();
+    toggleMenu(scene);
+    const button = worldMapButton(scene);
+    const menuObjects = [...scene.objects];
+
+    expect(button.isEnabled()).toBe(true);
+    button.bg.handlers.pointerdown();
+    button.bg.handlers.pointerup();
+
+    expect(scene.menuOpen).toBe(false);
+    expect(activeWorldLocks(scene)).toEqual(["world_map"]);
+    expect(isWorldInputLocked(scene)).toBe(true);
+    expect(menuObjects.every((object) => object.destroyed)).toBe(true);
+    const mapObjects = scene.objects.slice(menuObjects.length);
+    expect(mapObjects.some((object) => object.text === "Home")).toBe(true);
+    expect(mapObjects.some((object) => object.text === "★")).toBe(true);
+    expect(
+      mapObjects.find((object) => object.kind === "graphics").fillRect,
+    ).toHaveBeenCalledTimes(5);
+
+    scene.keyboardHandlers["keydown-ESC"]();
+
+    expect(mapObjects.every((object) => object.destroyed)).toBe(true);
+    expect(activeWorldLocks(scene)).toEqual([]);
+    expect(isWorldInputLocked(scene)).toBe(false);
+  });
+
+  it("closes a supported map by pointer without releasing another modal lock", () => {
+    const scene = makeScene({ spawns: [] });
+    pauseWorldFor(scene, "another_overlay");
+    showWorldMap(scene);
+
+    const close = scene.objects.find(
+      (object) => object.text === "[ CLOSE (ESC) ]",
+    );
+    close.handlers.pointerdown();
+
+    expect(scene.objects.every((object) => object.destroyed)).toBe(true);
+    expect(activeWorldLocks(scene)).toEqual(["another_overlay"]);
+  });
+});

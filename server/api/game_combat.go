@@ -161,6 +161,9 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 		if g.rng.IntN(100) < 40 {
 			g.phase = "world"
 			g.message = "Got away safely!"
+			if g.inDungeon() {
+				g.dungeon.EncounterID = ""
+			}
 			g.enemies = nil
 			g.formation = ""
 			g.spellBuffs = nil
@@ -181,7 +184,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 	// "wait" is submitted by the client when the party is stunned for a
 	// round (e.g. the first round of an ambush). The party contributes no
 	// actions; enemies act normally.
-	skipParty := req.Type == "wait"
+	skipParty := req.Type == "wait" || req.Type == "flee"
 
 	combatants := g.makeCombatants()
 
@@ -528,6 +531,15 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 		}
 	}
 
+	g.resolveCombatOutcome(combatants)
+
+	state := g.stateUnlocked()
+	return &state, nil
+}
+
+// resolveCombatOutcome is shared by full party rounds and legacy item turns,
+// so every supported combat input completes flags, rewards, and recovery.
+func (g *Game) resolveCombatOutcome(combatants []*combat.Combatant) {
 	if combat.CheckVictory(g.enemies) {
 		totalXP, totalGold := 0, 0
 		type dropRoll struct {
@@ -602,6 +614,8 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 		g.enemies = nil
 		g.spellBuffs = nil
 
+		g.completeDungeonEncounter()
+
 		if g.scriptedBoss {
 			// Scripted quest encounter (today: the promotion trial
 			// guardian). Drop the proof item, advance promo_stage, and
@@ -624,13 +638,12 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 	} else if combat.CheckDefeat(combatants) {
 		g.phase = "defeat"
 		g.message = "Your party has fallen. Game over."
+		g.recoverDungeonDefeat()
 		g.spellBuffs = nil
 		g.clearPendingChestClaimUnlocked()
 		g.resetEncounterStartState()
 	}
 
-	state := g.stateUnlocked()
-	return &state, nil
 }
 
 func (g *Game) logResolvedCombatAction(
@@ -1154,6 +1167,8 @@ func (g *Game) processCombatItem(req GameActionRequest) (*GameState, error) {
 			g.party[i].Status = pc.Status
 		}
 	}
+
+	g.resolveCombatOutcome(combatants)
 
 	state := g.stateUnlocked()
 	return &state, nil

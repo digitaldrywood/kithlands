@@ -532,6 +532,7 @@ export class BattleScene extends Phaser.Scene {
       const log = result.combat_log || [];
       const actions = result.combat_actions || [];
       await this.animateCombatLog(log, actions);
+      if (this.returnFromDungeonDefeat(result)) return;
       await this.reconcileEnemySprites(result.enemies || []);
       this.gameState = result;
       if (
@@ -840,7 +841,9 @@ export class BattleScene extends Phaser.Scene {
       this.buildingType ?? "",
       enemyFingerprint,
     ].join("|");
-    const key = pickBackgroundKey(theme.motif, seedParts, this.buildingType);
+    const key =
+      gs.dungeon?.battle_background ||
+      pickBackgroundKey(theme.motif, seedParts, this.buildingType);
     if (key && this.textures.exists(key)) {
       const bg = this.add
         .image(400, 300, key)
@@ -3197,6 +3200,7 @@ export class BattleScene extends Phaser.Scene {
       const log = result.combat_log || [];
       const actions = result.combat_actions || [];
       await this.animateCombatLog(log, actions);
+      if (this.returnFromDungeonDefeat(result)) return;
 
       // Reconcile enemy sprites with the authoritative server state BEFORE
       // we restart the scene. The server only sends living enemies in
@@ -3309,7 +3313,23 @@ export class BattleScene extends Phaser.Scene {
     return result;
   }
 
+  returnFromDungeonDefeat(gs) {
+    if (gs?.dungeon?.recovered_from_defeat !== true) return false;
+    this.gameState = gs;
+    this.autoMode = false;
+    this.animating = false;
+    this.returnFromBattle(gs);
+    return true;
+  }
+
   returnFromBattle(gs) {
+    if (
+      gs.current_location?.kind === "dungeon" &&
+      !["defeat", "victory", "promotion"].includes(gs.phase)
+    ) {
+      this.scene.start("Dungeon", { gameState: gs });
+      return;
+    }
     if (this.returnScene?.sceneKey === "Town") {
       this.scene.start("Town", {
         gameState: gs,
@@ -4542,6 +4562,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   showVictoryResults(gs) {
+    if (this.returnFromDungeonDefeat(gs)) return;
     const mobileVictory = this.hudLayout?.mode === "mobile";
     const screenHeight = mobileVictory ? 1600 : 600;
     if (this.scale.gameSize.height !== screenHeight) {

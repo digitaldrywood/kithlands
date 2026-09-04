@@ -112,13 +112,14 @@ type MemberActionReq struct {
 
 // GameState is the full state sent to the client.
 type GameState struct {
-	Discovered map[string]bool `json:"discovered"` // monster IDs encountered in this save
-
-	ID           string  `json:"id"`
-	Phase        string  `json:"phase"`                   // world, combat, quest_complete, victory, defeat
-	XPBefore     []int   `json:"xp_before,omitempty"`     // XP values before combat for victory animation
-	LevelBefore  []int   `json:"level_before,omitempty"`  // levels before combat for victory animation
-	XPThresholds [][]int `json:"xp_thresholds,omitempty"` // per-character XP thresholds at each level crossed
+	Discovered   map[string]bool    `json:"discovered"` // monster IDs encountered in this save
+	Dungeon      *DungeonState      `json:"dungeon,omitempty"`
+	DungeonEntry *DungeonEntryState `json:"dungeon_entry,omitempty"`
+	ID           string             `json:"id"`
+	Phase        string             `json:"phase"`                   // world, combat, quest_complete, victory, defeat
+	XPBefore     []int              `json:"xp_before,omitempty"`     // XP values before combat for victory animation
+	LevelBefore  []int              `json:"level_before,omitempty"`  // levels before combat for victory animation
+	XPThresholds [][]int            `json:"xp_thresholds,omitempty"` // per-character XP thresholds at each level crossed
 	// DiedThisFight[i] is true for any party member whose IsAlive() was false
 	// at the moment victory-XP was distributed. Survives restParty() so the
 	// client can render the victory screen correctly. Reset at encounter start.
@@ -525,6 +526,7 @@ type QuestRewardState struct {
 
 // Game holds the live state of one game session.
 type Game struct {
+	dungeon             *DungeonProgress
 	id                  string
 	gd                  *gamedata.GameData
 	rng                 *rand.Rand
@@ -723,6 +725,10 @@ func (g *Game) ProcessAction(req GameActionRequest) (result *GameState, err erro
 		}
 	}()
 
+	allowedDungeonFieldAction := req.Type == "item" || req.Type == "spell" || g.phase == "quest_complete" && req.Type == "advance"
+	if g.inDungeon() && (g.phase == "world" || g.phase == "quest_complete") && !allowedDungeonFieldAction {
+		return nil, fmt.Errorf("use exploration actions inside the adventure")
+	}
 	g.combatLog = nil
 	g.combatActions = nil
 	g.message = ""

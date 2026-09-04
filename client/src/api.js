@@ -119,6 +119,10 @@ export async function gameAction(gameId, action) {
   return apiCall("POST", `/game/${gameId}/action`, action);
 }
 
+export async function dungeonAction(gameId, action) {
+  return apiCall("POST", `/game/${gameId}/dungeon`, action);
+}
+
 export async function transitionLocation(
   gameId,
   transitionId,
