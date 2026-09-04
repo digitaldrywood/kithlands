@@ -21,6 +21,7 @@ import {
   showWorldMap,
   showInteractPrompt,
   hideInteractPrompt,
+  syncWorldArrival,
 } from "./world_interact.js";
 import { shouldStartBattle } from "./encounterFlow.js";
 import { initTouchControls } from "../systems/input.js";
@@ -832,7 +833,11 @@ export class WorldScene extends Phaser.Scene {
     this.animating = true;
     this.walkFrameAudit = [];
     const finishStepAnimation = playStepAnimation(this, stepMs, () => {
-      this.animating = false;
+      void syncWorldArrival(this)
+        .catch(() => null)
+        .finally(() => {
+          this.animating = false;
+        });
     });
     this.tweens.add({
       targets: this.player,

@@ -10,6 +10,7 @@ import (
 
 	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/dungeon"
+	"github.com/digitaldrywood/kithlands/internal/locality"
 )
 
 func enterTestDungeon(t *testing.T, g *Game) GameState {
@@ -35,11 +36,51 @@ func dungeonEntryByID(t *testing.T, g *Game, id string) DungeonEntryState {
 func enterDungeonByID(t *testing.T, g *Game, id string) GameState {
 	t.Helper()
 	entry := dungeonEntryByID(t, g, id)
+	arriveAtWorldNode(t, g, entry.NodeID)
 	state, err := g.ProcessDungeon(DungeonRequest{Type: "enter", NodeID: entry.NodeID})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return state
+}
+
+func arriveAtWorldNode(t *testing.T, g *Game, target string) {
+	t.Helper()
+	start := g.location.WorldNodeID
+	if start == target {
+		return
+	}
+	previous := map[string]string{start: start}
+	queue := []string{start}
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+		if current == target {
+			break
+		}
+		for _, neighbor := range g.loc.Neighbors(current) {
+			if _, seen := previous[neighbor]; seen {
+				continue
+			}
+			previous[neighbor] = current
+			queue = append(queue, neighbor)
+		}
+	}
+	if _, ok := previous[target]; !ok {
+		t.Fatalf("no locality route from %s to %s", start, target)
+	}
+	var reverse []string
+	for node := target; node != start; node = previous[node] {
+		reverse = append(reverse, node)
+	}
+	for i := len(reverse) - 1; i >= 0; i-- {
+		if _, err := g.ProcessLocationTransition(LocationTransitionRequest{
+			TransitionID: "arrive-world-node",
+			WorldNodeID:  reverse[i],
+		}); err != nil {
+			t.Fatalf("arrive at world node %s: %v", reverse[i], err)
+		}
+	}
 }
 
 // Walk through real cardinal server inputs, including collision checks.
@@ -154,12 +195,60 @@ func TestDungeonCatalogRoutesByWorldNode(t *testing.T) {
 	if shrine.NodeID == oldMill.NodeID || g.walk.DistanceMap[shrine.NodeID] <= g.walk.DistanceMap[oldMill.NodeID] {
 		t.Fatalf("Shrine is not bound to a farther world node: old=%+v shrine=%+v", oldMill, shrine)
 	}
+	if len(shrine.RouteNodeIDs) == 0 || shrine.RouteNodeIDs[len(shrine.RouteNodeIDs)-1] != shrine.NodeID {
+		t.Fatalf("Shrine route does not reach its entry: %+v", shrine)
+	}
 	if _, err := g.ProcessDungeon(DungeonRequest{Type: "enter", NodeID: "forged-node"}); err == nil {
 		t.Fatal("invalid-node dungeon entry accepted")
+	}
+	if _, err := g.ProcessDungeon(DungeonRequest{Type: "enter", NodeID: shrine.NodeID}); err == nil {
+		t.Fatal("remote Shrine entry accepted before authoritative arrival")
+	}
+	if _, err := g.ProcessLocationTransition(LocationTransitionRequest{
+		TransitionID: "arrive-world-node",
+		WorldNodeID:  shrine.NodeID,
+	}); err == nil {
+		t.Fatal("non-adjacent world arrival accepted")
 	}
 	entered := enterDungeonByID(t, g, "forgotten-shrine")
 	if entered.ActiveDungeonID != "forgotten-shrine" || entered.Dungeon == nil || entered.Dungeon.ID != "forgotten-shrine" {
 		t.Fatalf("wrong active adventure: %+v", entered)
+	}
+}
+
+func TestFarDungeonEntryUsesFarthestNonBossNode(t *testing.T) {
+	g := newTownTestGame(t)
+	def := g.dungeonDefinitionByID("forgotten-shrine")
+	spawn := &locality.Node{ID: "spawn"}
+	closeNode := &locality.Node{ID: "close"}
+	mediumNear := &locality.Node{ID: "medium-near"}
+	mediumFar := &locality.Node{ID: "medium-far"}
+	bigBad := &locality.Node{ID: "boss"}
+	g.walk = &locality.WalkResult{
+		Spawn:       spawn,
+		Close:       []*locality.Node{closeNode},
+		Medium:      []*locality.Node{mediumNear, mediumFar, bigBad},
+		BigBad:      bigBad,
+		DistanceMap: map[string]int{"spawn": 0, "close": 1, "medium-near": 3, "medium-far": 4, "boss": 4},
+	}
+	if got := g.dungeonEntryNode(def); got == nil || got.ID != mediumFar.ID {
+		t.Fatalf("no-Far entry = %+v, want farthest non-boss medium node", got)
+	}
+
+	g.walk = &locality.WalkResult{
+		Spawn:       spawn,
+		Close:       []*locality.Node{bigBad},
+		BigBad:      bigBad,
+		DistanceMap: map[string]int{"spawn": 0, "boss": 1},
+	}
+	if got := g.dungeonEntryNode(def); got != nil {
+		t.Fatalf("small graph placed Shrine on reserved node: %+v", got)
+	}
+	state := g.State()
+	if slices.ContainsFunc(state.DungeonEntries, func(entry DungeonEntryState) bool {
+		return entry.ID == "forgotten-shrine"
+	}) {
+		t.Fatal("unavailable Shrine was published without a safe entry node")
 	}
 }
 

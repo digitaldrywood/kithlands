@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { interactWithDoor, showInteractPrompt } from "./world_interact.js";
+import {
+  interactWithDoor,
+  nearbyWorldArrival,
+  showInteractPrompt,
+} from "./world_interact.js";
 
 describe("quest door transitions", () => {
   it.each(["combat", "promotion", "victory", "defeat"])(
@@ -73,5 +77,24 @@ describe("showInteractPrompt", () => {
     });
     expect(scene.interactPrompt.text).toContain("Rest");
     expect(scene.interactPrompt.text).not.toContain("The Wayward Inn");
+  });
+});
+
+describe("nearbyWorldArrival", () => {
+  it("selects a reached node only after leaving the current arrival", () => {
+    const scene = {
+      gameState: {
+        current_location: { kind: "world", world_node_id: "home" },
+      },
+      playerX: 20,
+      playerY: 19,
+      spawns: [
+        { node_id: "home", x: 8, y: 8 },
+        { node_id: "ridge", x: 20, y: 20 },
+      ],
+    };
+    expect(nearbyWorldArrival(scene)?.node_id).toBe("ridge");
+    scene.gameState.current_location.world_node_id = "ridge";
+    expect(nearbyWorldArrival(scene)).toBeNull();
   });
 });

@@ -5,7 +5,7 @@ describe("dungeon entrance presentation", () => {
   const scene = () => ({
     gameState: {
       phase: "exploration",
-      current_location: { kind: "world" },
+      current_location: { kind: "world", world_node_id: "home" },
       dungeon_entry: { node_id: "home" },
     },
     spawns: [
@@ -21,6 +21,12 @@ describe("dungeon entrance presentation", () => {
     expect(dungeonEntryVisible(current)).toBe(true);
     current.playerX = 20;
     current.playerY = 20;
+    expect(dungeonEntryVisible(current)).toBe(false);
+  });
+
+  it("requires the server-authorized world node even when locally nearby", () => {
+    const current = scene();
+    current.gameState.current_location.world_node_id = "other";
     expect(dungeonEntryVisible(current)).toBe(false);
   });
 
@@ -55,6 +61,7 @@ describe("dungeon entrance presentation", () => {
       { id: "old-mill", node_id: "home" },
       { id: "forgotten-shrine", node_id: "other" },
     ];
+    current.gameState.current_location.world_node_id = "other";
     current.playerX = 20;
     current.playerY = 19;
 

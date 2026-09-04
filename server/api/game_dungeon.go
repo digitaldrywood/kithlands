@@ -36,12 +36,13 @@ type DungeonProgress struct {
 }
 
 type DungeonEntryState struct {
-	ID          string `json:"id"`
-	Title       string `json:"title"`
-	Label       string `json:"label"`
-	Description string `json:"description"`
-	NodeID      string `json:"node_id"`
-	Completed   bool   `json:"completed"`
+	ID           string   `json:"id"`
+	Title        string   `json:"title"`
+	Label        string   `json:"label"`
+	Description  string   `json:"description"`
+	NodeID       string   `json:"node_id"`
+	RouteNodeIDs []string `json:"route_node_ids,omitempty"`
+	Completed    bool     `json:"completed"`
 }
 type DungeonActionState struct {
 	ID        string `json:"id"`
@@ -117,18 +118,25 @@ func (g *Game) dungeonEntryNode(def *dungeon.Definition) *locality.Node {
 		return nil
 	}
 	if def.EntryRegion == "far" {
-		for _, node := range g.walk.Far {
-			if node != nil && node != g.walk.BigBad {
-				return node
+		var best *locality.Node
+		bestDistance := -1
+		candidates := append([]*locality.Node(nil), g.walk.Far...)
+		candidates = append(candidates, g.walk.Medium...)
+		candidates = append(candidates, g.walk.Close...)
+		for _, node := range candidates {
+			if node == nil || g.walk.Spawn != nil && node.ID == g.walk.Spawn.ID || g.walk.BigBad != nil && node.ID == g.walk.BigBad.ID {
+				continue
+			}
+			distance, reachable := g.walk.DistanceMap[node.ID]
+			if !reachable {
+				continue
+			}
+			if distance > bestDistance || distance == bestDistance && best != nil && node.ID < best.ID {
+				best = node
+				bestDistance = distance
 			}
 		}
-		if len(g.walk.Far) > 0 {
-			return g.walk.Far[0]
-		}
-		if g.walk.BigBad != nil && g.walk.BigBad != g.walk.Spawn {
-			return g.walk.BigBad
-		}
-		return nil
+		return best
 	}
 	return g.walk.Spawn
 }
@@ -144,6 +152,47 @@ func (g *Game) dungeonDefinitionAtNode(nodeID string) *dungeon.Definition {
 		}
 	}
 	return nil
+}
+
+func (g *Game) worldNodeRoute(target string) []string {
+	if g.loc == nil || target == "" {
+		return nil
+	}
+	start := g.location.WorldNodeID
+	if start == "" && g.walk != nil && g.walk.Spawn != nil {
+		start = g.walk.Spawn.ID
+	}
+	if start == "" || start == target {
+		return nil
+	}
+	previous := map[string]string{start: start}
+	queue := []string{start}
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+		if current == target {
+			break
+		}
+		for _, neighbor := range g.loc.Neighbors(current) {
+			if _, seen := previous[neighbor]; seen {
+				continue
+			}
+			previous[neighbor] = current
+			queue = append(queue, neighbor)
+		}
+	}
+	if _, ok := previous[target]; !ok {
+		return nil
+	}
+	reverse := []string{}
+	for node := target; node != start; node = previous[node] {
+		reverse = append(reverse, node)
+	}
+	route := make([]string, len(reverse))
+	for i := range reverse {
+		route[len(reverse)-1-i] = reverse[i]
+	}
+	return route
 }
 
 func (g *Game) dungeonProgress(id string) *DungeonProgress {
@@ -194,7 +243,7 @@ func (g *Game) fillDungeonState(s *GameState) {
 		if node == nil {
 			continue
 		}
-		entry := DungeonEntryState{ID: def.ID, Title: g.dungeonText(def.Title), Label: def.EntryLabel, Description: g.dungeonText(def.Description), NodeID: node.ID}
+		entry := DungeonEntryState{ID: def.ID, Title: g.dungeonText(def.Title), Label: def.EntryLabel, Description: g.dungeonText(def.Description), NodeID: node.ID, RouteNodeIDs: g.worldNodeRoute(node.ID)}
 		if progress := g.dungeonProgress(def.ID); progress != nil {
 			entry.Completed = progress.PayoffClaimed
 		}
@@ -255,14 +304,11 @@ func (g *Game) ProcessDungeon(req DungeonRequest) (GameState, error) {
 		if def == nil {
 			return GameState{}, fmt.Errorf("no authored adventure is bound to that world node")
 		}
-		if g.location.Kind == LocationSettlement && g.location.WorldNodeID != req.NodeID {
-			return GameState{}, fmt.Errorf("this trail belongs to another world node")
+		if g.location.WorldNodeID != req.NodeID {
+			return GameState{}, fmt.Errorf("reach this trail from its world node first")
 		}
 		p := g.activateDungeon(def)
 		origin := g.location
-		if origin.Kind == LocationWorld {
-			origin.WorldNodeID = req.NodeID
-		}
 		p.Origin = origin
 		p.Active = true
 		p.EncounterID = ""

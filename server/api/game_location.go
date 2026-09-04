@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 
 	"github.com/digitaldrywood/kithlands/internal/locality"
 	"github.com/digitaldrywood/kithlands/internal/settlements"
@@ -43,7 +44,11 @@ func (g *Game) ProcessLocationTransition(req LocationTransitionRequest) (GameSta
 	var err error
 	switch g.location.Kind {
 	case LocationWorld:
-		err = g.enterSettlementLocked(req)
+		if req.TransitionID == "arrive-world-node" {
+			err = g.arriveWorldNodeLocked(req.WorldNodeID)
+		} else {
+			err = g.enterSettlementLocked(req)
+		}
 	case LocationSettlement:
 		err = g.followSettlementTransitionLocked(req.TransitionID)
 	case LocationInterior:
@@ -56,6 +61,31 @@ func (g *Game) ProcessLocationTransition(req LocationTransitionRequest) (GameSta
 		return GameState{}, err
 	}
 	return g.State(), nil
+}
+
+// arriveWorldNodeLocked records physical progress through the locality graph.
+// The client may name only the node it has reached; it cannot jump past the
+// server-owned current node because each arrival must follow an authored edge.
+func (g *Game) arriveWorldNodeLocked(nodeID string) error {
+	if g.loc == nil || g.walk == nil || g.walk.Spawn == nil {
+		return fmt.Errorf("world navigation is unavailable")
+	}
+	if nodeID == "" || g.loc.NodeByID(nodeID) == nil {
+		return fmt.Errorf("unknown world node")
+	}
+	current := g.location.WorldNodeID
+	if current == "" {
+		current = g.walk.Spawn.ID
+	}
+	if nodeID == current {
+		g.location.WorldNodeID = current
+		return nil
+	}
+	if !slices.Contains(g.loc.Neighbors(current), nodeID) {
+		return fmt.Errorf("world node %q is not adjacent to the current arrival", nodeID)
+	}
+	g.location.WorldNodeID = nodeID
+	return nil
 }
 
 func (g *Game) enterSettlementLocked(req LocationTransitionRequest) error {

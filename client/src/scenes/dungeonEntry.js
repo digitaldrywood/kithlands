@@ -39,8 +39,10 @@ export function dungeonEntryForScene(scene) {
     scene.gameState.current_location.kind !== "world"
   )
     return null;
+  const currentNodeID = scene.gameState.current_location?.world_node_id;
   const matches = [];
   for (const entry of entries) {
+    if (entry.node_id !== currentNodeID) continue;
     const spawn = (scene.spawns || []).find(
       (candidate) => candidate.node_id === entry.node_id,
     );

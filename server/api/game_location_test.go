@@ -127,6 +127,45 @@ func TestLocationTransitionsRespectNavigablePhases(t *testing.T) {
 	})
 }
 
+func TestWorldArrivalRequiresAdjacentAuthoredNode(t *testing.T) {
+	game := newTownTestGame(t)
+	start := game.State().CurrentLocation.WorldNodeID
+	neighbors := game.loc.Neighbors(start)
+	if len(neighbors) == 0 {
+		t.Fatal("test locality has no adjacent node")
+	}
+	state, err := game.ProcessLocationTransition(LocationTransitionRequest{
+		TransitionID: "arrive-world-node",
+		WorldNodeID:  neighbors[0],
+	})
+	if err != nil {
+		t.Fatalf("adjacent on-foot arrival: %v", err)
+	}
+	if state.CurrentLocation.WorldNodeID != neighbors[0] {
+		t.Fatalf("arrival node = %q, want %q", state.CurrentLocation.WorldNodeID, neighbors[0])
+	}
+
+	var remote string
+	for _, node := range game.loc.Nodes {
+		if node.ID != neighbors[0] && !slices.Contains(game.loc.Neighbors(neighbors[0]), node.ID) {
+			remote = node.ID
+			break
+		}
+	}
+	if remote == "" {
+		t.Fatal("test locality has no non-adjacent node")
+	}
+	if _, err := game.ProcessLocationTransition(LocationTransitionRequest{
+		TransitionID: "arrive-world-node",
+		WorldNodeID:  remote,
+	}); err == nil {
+		t.Fatal("non-adjacent world arrival accepted")
+	}
+	if got := game.State().CurrentLocation.WorldNodeID; got != neighbors[0] {
+		t.Fatalf("rejected arrival mutated node to %q", got)
+	}
+}
+
 func hasItem(items []ItemState, id string, count int) bool {
 	for _, item := range items {
 		if item.ID == id && item.Count == count {
