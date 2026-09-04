@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="384" viewBox="0 0 512 384" shape-rendering="crispEdges">
+  <!-- settlement-hearth -->
+  <g transform="translate(0 0)">
+    <ellipse cx="64" cy="104" rx="50" ry="12" fill="#13211b" opacity=".58"/>
+    <path d="M16 76h34v28H16zM78 72h34v32H78zM38 50h48v54H38z" fill="#1a211d"/>
+    <path d="M18 78h30v24H18zM80 74h30v28H80zM40 52h44v50H40z" fill="#c9a66b"/>
+    <path d="m14 78 19-18 19 18zm62-4 19-18 19 18zM34 54l28-24 28 24z" fill="#1a211d"/>
+    <path d="m18 76 15-14 15 14zm62-4 15-14 15 14zM38 52l24-20 24 20z" fill="#277a78"/>
+    <path d="M56 72h12v30H56zM24 84h8v8h-8zm64-2h8v8h-8z" fill="#3a281f"/>
+    <path d="M46 62h8v8h-8zm24 0h8v8h-8zM25 84h6v5h-6zm64-2h6v5h-6z" fill="#f0bd55"/>
+    <path d="M58 86h8v16h-8z" fill="#6b3f2a"/>
+    <path d="M58 108h8v8h-8zM50 112h24v4H50z" fill="#c3a46e"/>
+  </g>
+  <!-- settlement-bell -->
+  <g transform="translate(128 0)">
+    <ellipse cx="64" cy="104" rx="49" ry="12" fill="#13211b" opacity=".58"/>
+    <path d="M18 72h30v32H18zM80 76h30v28H80zM42 52h44v52H42zM54 30h20v24H54z" fill="#1a211d"/>
+    <path d="M20 74h26v28H20zM82 78h26v24H82zM44 54h40v48H44zM56 32h16v22H56z" fill="#d6c7a5"/>
+    <path d="m16 74 17-16 17 16zm62 4 17-16 17 16zM38 56l26-20 26 20zM52 34l12-12 12 12z" fill="#1a211d"/>
+    <path d="m20 72 13-12 13 12zm62 4 13-12 13 12zM42 54l22-16 22 16zM56 32l8-8 8 8z" fill="#9b5338"/>
+    <path d="M58 72h12v30H58zM27 82h8v8h-8zm62 4h8v8h-8z" fill="#3b2b25"/>
+    <path d="M60 40h8v8h-8z" fill="#e6ad43"/>
+    <path d="M58 108h12v8H58zM48 112h32v4H48z" fill="#bba779"/>
+  </g>
+  <!-- temple-sun -->
+  <g transform="translate(256 0)">
+    <ellipse cx="64" cy="105" rx="42" ry="11" fill="#13211b" opacity=".58"/>
+    <path d="M30 58h68v48H30zM42 42h44v22H42zM58 20h12v24H58z" fill="#1a211d"/>
+    <path d="M34 60h60v42H34zM46 44h36v18H46zM61 22h6v22h-6z" fill="#e5d6b2"/>
+    <path d="m26 60 38-28 38 28z" fill="#1a211d"/>
+    <path d="m32 58 32-22 32 22z" fill="#2d7674"/>
+    <path d="M56 72h16v30H56z" fill="#4b3428"/>
+    <path d="M44 70h8v12h-8zm32 0h8v12h-8z" fill="#77b9bb"/>
+    <path d="M60 12h8v8h-8zm-8 4h24v4H52zm10-12h4v24h-4z" fill="#e4ad3b"/>
+    <path d="M50 108h28v8H50z" fill="#b9a372"/>
+  </g>
+  <!-- temple-moon -->
+  <g transform="translate(384 0)">
+    <ellipse cx="64" cy="105" rx="42" ry="11" fill="#13211b" opacity=".58"/>
+    <path d="M28 62h72v44H28zM40 44h48v22H40zM54 24h20v22H54z" fill="#19201f"/>
+    <path d="M32 64h64v38H32zM44 46h40v18H44zM58 26h12v20H58z" fill="#aeb5b0"/>
+    <path d="m24 64 40-30 40 30z" fill="#19201f"/>
+    <path d="m30 62 34-24 34 24z" fill="#4a5d8a"/>
+    <path d="M56 74h16v28H56z" fill="#302b3f"/>
+    <path d="M42 72h8v10h-8zm36 0h8v10h-8z" fill="#8dd0c0"/>
+    <path d="M58 30a10 10 0 1 0 12 10 8 8 0 0 1-12-10z" fill="#e5c871"/>
+    <path d="M50 108h28v8H50z" fill="#8f8772"/>
+  </g>
+  <!-- dungeon-ruins -->
+  <g transform="translate(0 128)">
+    <ellipse cx="64" cy="104" rx="45" ry="12" fill="#13211b" opacity=".62"/>
+    <path d="M22 96V48h18v20h12V38h20v20h16V44h18v60H22z" fill="#19201d"/>
+    <path d="M26 94V52h10v22h20V42h12v20h24V48h10v50H26z" fill="#8d8d75"/>
+    <path d="M42 98V76c0-16 10-24 22-24s22 8 22 24v22z" fill="#18201c"/>
+    <path d="M50 98V78c0-11 6-17 14-17s14 6 14 17v20z" fill="#29261f"/>
+    <path d="M28 62h8v6h-8zm36-14h8v8h-8zm28 14h10v6H92zM30 82h8v8h-8zm60 4h12v8H90z" fill="#b5ad86"/>
+    <path d="M24 90c14-2 12-14 22-16M88 54c-10 8-4 24-14 30" fill="none" stroke="#3f6a3e" stroke-width="6"/>
+    <path d="M46 108h36v8H46z" fill="#655e47"/>
+  </g>
+  <!-- dungeon-cave -->
+  <g transform="translate(128 128)">
+    <ellipse cx="64" cy="104" rx="47" ry="12" fill="#13211b" opacity=".62"/>
+    <path d="m14 98 10-34 18-26 24-16 28 18 16 28 6 30z" fill="#18201d"/>
+    <path d="m20 94 10-28 16-22 20-14 24 16 14 24 6 24z" fill="#777b70"/>
+    <path d="M42 96V76c0-20 9-32 24-32s24 12 24 32v20z" fill="#17201e"/>
+    <path d="M50 96V78c0-15 6-24 16-24s16 9 16 24v18z" fill="#28241f"/>
+    <path d="m28 70 10-14 10 8-8 12zm54-20 10 10-4 10-12-12zm12 28 10 4-4 10-10-4z" fill="#a29a79"/>
+    <path d="M34 90h6v12h-6zm56 0h6v12h-6z" fill="#70482c"/>
+    <path d="M30 84h14v8H30zm56 0h14v8H86z" fill="#e6a33a"/>
+    <path d="M46 108h40v8H46z" fill="#625c48"/>
+  </g>
+  <!-- isolated-cottage -->
+  <g transform="translate(256 128)">
+    <ellipse cx="64" cy="104" rx="38" ry="10" fill="#13211b" opacity=".58"/>
+    <path d="M30 60h68v46H30z" fill="#18201c"/>
+    <path d="M34 64h60v38H34z" fill="#b88758"/>
+    <path d="m24 64 40-34 40 34z" fill="#18201c"/>
+    <path d="m30 62 34-28 34 28z" fill="#8f4435"/>
+    <path d="M72 36h12v18H72z" fill="#5d5549"/>
+    <path d="M56 76h16v26H56z" fill="#513225"/>
+    <path d="M40 74h10v10H40zm38 0h10v10H78z" fill="#f0b750"/>
+    <path d="M26 96h18v6H26zm58 0h18v6H84z" fill="#477043"/>
+    <path d="M52 108h24v8H52z" fill="#aa8d61"/>
+  </g>
+  <!-- isolated-watchhouse -->
+  <g transform="translate(384 128)">
+    <ellipse cx="64" cy="104" rx="36" ry="10" fill="#13211b" opacity=".58"/>
+    <path d="M36 48h56v58H36zM44 30h40v24H44z" fill="#19201e"/>
+    <path d="M40 52h48v50H40zM48 34h32v18H48z" fill="#aca487"/>
+    <path d="m32 50 32-26 32 26z" fill="#19201e"/>
+    <path d="m38 48 26-20 26 20z" fill="#536c69"/>
+    <path d="M56 76h16v26H56z" fill="#433328"/>
+    <path d="M46 62h8v10h-8zm28 0h8v10h-8z" fill="#e5b650"/>
+    <path d="M46 86h8v6h-8zm28 0h8v6h-8z" fill="#736c5b"/>
+    <path d="M52 108h24v8H52z" fill="#9a8864"/>
+  </g>
+  <!-- natural-grove -->
+  <g transform="translate(0 256)">
+    <ellipse cx="64" cy="105" rx="45" ry="11" fill="#13211b" opacity=".55"/>
+    <path d="M58 48h14v52H58z" fill="#38291f"/>
+    <path d="m64 64-20-18 5-6 17 14 15-20 7 6-18 24z" fill="#4d3322"/>
+    <path d="M24 54a22 22 0 0 1 26-22 24 24 0 0 1 45 4 22 22 0 1 1 2 40H34A22 22 0 0 1 24 54z" fill="#17231a"/>
+    <path d="M28 52a18 18 0 0 1 24-16 20 20 0 0 1 39 3 18 18 0 1 1 4 33H36A18 18 0 0 1 28 52z" fill="#3d7347"/>
+    <path d="M38 42h18v12H38zm30-12h16v12H68zm16 24h14v10H84z" fill="#66935a"/>
+    <path d="M28 96h16l4-10 10 12 12-10 10 10 12-10 10 10v8H28z" fill="#7d806a"/>
+    <path d="M34 98h10l4-7 8 9 14-7 8 7 12-7 6 7H34z" fill="#b2a882"/>
+    <path d="M42 108h44v8H42z" fill="#48643f"/>
+  </g>
+  <!-- natural-spring -->
+  <g transform="translate(128 256)">
+    <ellipse cx="64" cy="105" rx="46" ry="11" fill="#13211b" opacity=".55"/>
+    <path d="M28 54h10v44H28zm62 2h10v42H90z" fill="#47301f"/>
+    <path d="M14 50a20 20 0 0 1 26-19 20 20 0 1 1 10 37H26A18 18 0 0 1 14 50zm62 4a20 20 0 0 1 25-20 19 19 0 1 1 8 36H86A16 16 0 0 1 76 54z" fill="#18231a"/>
+    <path d="M18 48a16 16 0 0 1 23-13 16 16 0 1 1 7 29H27A14 14 0 0 1 18 48zm62 4a16 16 0 0 1 22-14 15 15 0 1 1 5 28H87A13 13 0 0 1 80 52z" fill="#46794b"/>
+    <path d="M30 86c12-10 52-10 68 0l-8 18H38z" fill="#1b2723"/>
+    <path d="M36 87c14-8 42-8 56 0l-6 13H42z" fill="#3f8f91"/>
+    <path d="M48 88h26v4H48zm12 8h22v3H60z" fill="#8bc9b7"/>
+    <path d="M42 108h44v8H42z" fill="#48643f"/>
+  </g>
+  <!-- badge-old-mill -->
+  <g transform="translate(256 256)">
+    <path d="M20 32h88v72H20z" fill="#18201d"/>
+    <path d="M24 36h80v64H24z" fill="#b66a35"/>
+    <path d="M30 42h68v52H30z" fill="#e2b557"/>
+    <circle cx="64" cy="68" r="24" fill="#1a211d"/>
+    <circle cx="64" cy="68" r="18" fill="#8b5434"/>
+    <path d="M60 42h8v52h-8zM38 64h52v8H38zM45 49l38 38-6 6-38-38zm38 0 6 6-38 38-6-6z" fill="#e5c274"/>
+    <circle cx="64" cy="68" r="8" fill="#3d3025"/>
+  </g>
+  <!-- badge-forgotten-shrine -->
+  <g transform="translate(384 256)">
+    <path d="M20 32h88v72H20z" fill="#18201d"/>
+    <path d="M24 36h80v64H24z" fill="#4e4b82"/>
+    <path d="M30 42h68v52H30z" fill="#786ca2"/>
+    <path d="M40 90V66c0-20 10-32 24-32s24 12 24 32v24h-12V68c0-10-5-16-12-16s-12 6-12 16v22z" fill="#ded0a0"/>
+    <path d="M60 58a15 15 0 1 0 18 15 12 12 0 0 1-18-15z" fill="#8fd0bf"/>
+    <path d="M36 88h56v8H36z" fill="#2f304e"/>
+  </g>
+</svg>
