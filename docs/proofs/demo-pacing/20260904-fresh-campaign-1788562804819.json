@@ -15,16 +15,16 @@
     "quest_boss_11"
   ],
   "requiredTemplateIDs": [
-    "Q04",
     "Q02",
-    "Q02",
-    "promotion",
-    "Q02",
-    "Q04",
-    "Q05",
     "Q01",
+    "Q04",
+    "promotion",
+    "Q05",
     "Q03",
     "Q03",
+    "Q03",
+    "Q03",
+    "Q04",
     "Q04",
     "Q12"
   ],

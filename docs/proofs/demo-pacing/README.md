@@ -31,29 +31,33 @@ wipes are 0–8%, promotion is 12.74–12.91, and final leader levels are
 21.84–23.32. Its final-level lead over main-only is 1.18–1.83 levels, and its
 Q12 win-rate advantage is at most 18.2 percentage points.
 
-Every generated run had exactly 12 required quests. Main-path completion
-matched victory, and Q12 remained the earned terminal encounter.
+Every generated run had exactly 12 required quests and all 600 runs reached a
+terminal victory or defeat, with zero simulator errors or timeouts. Main-path
+completion matched victory, and Q12 remained the earned terminal encounter.
 
 ## Browser proof
 
 The focused fresh-campaign browser test passed and produced a compact
-[authoritative state snapshot](20260904-fresh-campaign-1788557198788.json).
-The [desktop quest log](20260904-quest-log-desktop-1788557198788.png) visibly
-shows `0 complete` and `12 main objectives remain`; the
-[phone capture](20260904-quest-log-phone-1788557198788.png) verifies the same
-server-owned count at the mobile viewport.
+[authoritative state snapshot](20260904-fresh-campaign-1788562804819.json).
+The [desktop quest log](20260904-quest-log-desktop-1788562804819.png) visibly
+shows the fresh Act 1 state, current objective, ordered steps, and upcoming
+required beats; the
+[phone capture](20260904-quest-log-phone-1788562804819.png) verifies the same
+content at the mobile viewport. The state snapshot records all 12 required
+quest IDs and Q12 as the final entry.
 
 The existing final-encounter proof passed at desktop and phone after an
 ordinary failed attempt, recovery, equipment preparation, winning retry,
 ending save, title return, and completed-save reload. Its fixture is an older
 earned checkpoint, so its quest total intentionally demonstrates save
 compatibility rather than the new-campaign count. The reviewed ending captures
-are [desktop](20260904-q12-ending-desktop-1788556465486.png) and
-[phone](20260904-q12-ending-phone-1788556465486.png).
+are [desktop](20260904-q12-ending-desktop-1788564539562.png) and
+[phone](20260904-q12-ending-phone-1788564743877.png).
 
 Commands:
 
 ```sh
 ./scripts/run_playwright_local.sh e2e/demo-pacing.spec.js
-./scripts/run_playwright_local.sh e2e/final-encounter.spec.js
+./scripts/run_playwright_local.sh e2e/final-encounter.spec.js --grep 'desktop:'
+./scripts/run_playwright_local.sh e2e/final-encounter.spec.js --grep 'phone:'
 ```

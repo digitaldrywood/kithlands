@@ -54,24 +54,23 @@ test("fresh campaign exposes twelve required beats with Q12 last", async ({
   await page.evaluate(() =>
     window.__kithlandsTest.clickMenuButton("QUEST LOG", "World"),
   );
-  await page.waitForFunction(() =>
-    window.__kithlandsTest
-      .visibleTexts("World")
-      .some((entry) => entry.text.includes("12 main objectives remain")),
-  );
+  const questLog = page.getByRole("dialog", { name: "Quest Log" });
+  await expect(questLog).toBeVisible();
+  await expect(questLog.getByText("Act 1 · 0 quests complete")).toBeVisible();
+  await expect(
+    questLog.getByRole("heading", { name: state.quests[0].name }),
+  ).toBeVisible();
+  await expect(
+    questLog.getByRole("heading", { name: "Up next" }),
+  ).toBeVisible();
   await page.screenshot({
     path: path.join(PROOF_DIR, `quest-log-desktop-${RUN_ID}.png`),
     fullPage: true,
   });
 
   await page.setViewportSize({ width: 390, height: 844 });
-  expect(
-    await page.evaluate(() =>
-      window.__kithlandsTest
-        .visibleTexts("World")
-        .some((entry) => entry.text.includes("12 main objectives remain")),
-    ),
-  ).toBe(true);
+  await expect(questLog).toBeVisible();
+  await expect(questLog.getByText("Act 1 · 0 quests complete")).toBeVisible();
   await page.screenshot({
     path: path.join(PROOF_DIR, `quest-log-phone-${RUN_ID}.png`),
     fullPage: true,
