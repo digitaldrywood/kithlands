@@ -10,7 +10,7 @@ import { renderEquipmentBuilds } from "./equipment_builds.js";
 import { showGemWorkshop } from "./gem_workshop.js";
 
 const LOCK_NAME = "equipment_screen";
-const INACTIVE_STATS = new Set(["int", "vit", "magic_defense"]);
+const INACTIVE_STATS = new Set(["vit", "magic_defense"]);
 const DETAIL_TABS = [
   ["summary", "Summary"],
   ["spells", "Spells"],
@@ -29,6 +29,7 @@ const STAT_ORDER = [
   "lck",
   "hit_pct",
   "crit_pct",
+  "spell_damage_pct",
   "magic_defense",
   "evade_penalty",
 ];
@@ -45,6 +46,7 @@ const STAT_LABELS = {
   lck: "Luck",
   hit_pct: "Hit",
   crit_pct: "Crit",
+  spell_damage_pct: "Spell damage (%)",
   magic_defense: "Magic Defense",
   evade_penalty: "Evade penalty",
 };
@@ -442,11 +444,10 @@ function renderHeader(state, model) {
     ["balanced", "Balanced"],
     ["offense", "Offense"],
     ["defense", "Defense"],
-    ["magic", "Magic (inactive)"],
+    ["magic", "Magic"],
   ]) {
     const option = document.createElement("option");
     option.value = value;
-    option.disabled = value === "magic";
     option.textContent = label;
     option.selected = state.goal === value;
     goal.append(option);
@@ -631,6 +632,7 @@ function renderSummaryTab(panel, model) {
     "attacks_per_turn",
     "crit_pct",
     "evade",
+    "spell_damage_pct",
   ]) {
     const label = statLabel(stat);
     const base = model.base[stat] || 0;
@@ -650,13 +652,20 @@ function renderSummaryTab(panel, model) {
     stats.append(term, value);
   }
   combat.append(stats);
+  combat.append(
+    element(
+      "p",
+      "equipment-magic-note",
+      "Intellect adds the same percentage to spell damage and healing. Spell damage bonus affects offense only.",
+    ),
+  );
   const inactive = [...INACTIVE_STATS].filter((stat) => model.gearTotals[stat]);
   if (inactive.length)
     combat.append(
       element(
         "p",
         "equipment-inactive-note",
-        `${inactive.map((stat) => `${statLabel(stat)} ${formatSigned(model.gearTotals[stat])}`).join(", ")}: gear bonuses are inactive. They do not change spells, HP growth, or protection.`,
+        `${inactive.map((stat) => `${statLabel(stat)} ${formatSigned(model.gearTotals[stat])}`).join(", ")}: gear bonuses are inactive. They do not change HP growth, status resistance, or protection.`,
       ),
     );
 
@@ -1075,7 +1084,7 @@ function renderItemTooltip(label, item, footer = "") {
       element(
         "span",
         "tooltip-copy",
-        "Intellect, Vitality, and Magic Defense gear bonuses are inactive. They do not change spells, HP growth, or protection.",
+        "Vitality and Magic Defense gear bonuses are inactive. They do not change HP growth, status resistance, or protection.",
       ),
     );
   }

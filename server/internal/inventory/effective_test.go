@@ -129,3 +129,34 @@ func TestEveryLootEffectChangesAuthoritativeEffectiveStats(t *testing.T) {
 		}
 	}
 }
+
+func TestEffectiveIntIncludesBaseAffixAndSocketWhileStaffBonusStaysStructural(t *testing.T) {
+	gd := gamedata.Load("../../../shared")
+	cinder := character.New("Cato", "cinder", gd.ClassByID("cinder"))
+	gem := gd.GemByID("ember_shard")
+	gem.Effects = append(gem.Effects, gamedata.GemEffect{Kind: "weapon", Stat: "int", Value: 3})
+	gd.LootAffixByID("keen").Modifier.Stat = "int"
+
+	inv := New()
+	id, err := inv.AddInstance(EquipmentInstance{
+		BaseID:  "arcane_staff",
+		Kind:    "weapon",
+		Affixes: []AffixRoll{{AffixID: "keen", Value: 2}},
+		Sockets: []ItemSocket{{GemID: "ember_shard"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	inv.Equipment[0].setEquipped(MainHandSlot, EquippedItemRef{ItemID: "arcane_staff", InstanceID: id})
+
+	stats := inv.ResolveEffectiveStats(cinder, 0, gd)
+	if stats.INT != cinder.INT+5 {
+		t.Fatalf("effective INT = %d, want %d", stats.INT, cinder.INT+5)
+	}
+	if stats.SpellDamagePct != 10 {
+		t.Fatalf("staff spell damage = %d, want 10", stats.SpellDamagePct)
+	}
+	if got := inv.LoadoutStats(0, gd)["spell_damage_pct"]; got != 10 {
+		t.Fatalf("loadout spell damage = %d, want 10", got)
+	}
+}

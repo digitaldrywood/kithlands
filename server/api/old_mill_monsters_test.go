@@ -120,8 +120,8 @@ func TestOldMillElementalMatchups(t *testing.T) {
 				if spell.Effect != "damage" {
 					continue
 				}
-				neutral := magic.ResolveSpellDamage(&spell, &magic.SpellTarget{}, rand.New(rand.NewPCG(42, 0)))
-				damage := magic.ResolveSpellDamage(&spell, target, rand.New(rand.NewPCG(42, 0)))
+				neutral := magic.ResolveSpellDamage(&spell, magic.CasterPower{}, &magic.SpellTarget{}, rand.New(rand.NewPCG(42, 0)))
+				damage := magic.ResolveSpellDamage(&spell, magic.CasterPower{}, target, rand.New(rand.NewPCG(42, 0)))
 				if slices.Contains(monster.Weaknesses, spell.Element) && damage <= neutral {
 					t.Errorf("%s weakness to %s did not increase damage", id, spell.Element)
 				}

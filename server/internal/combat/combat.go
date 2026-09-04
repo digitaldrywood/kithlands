@@ -24,6 +24,7 @@ type Combatant struct {
 	LongRange             bool
 	ArmorAbsorb           int
 	EvadePenalty, CritPct int
+	SpellDamagePct        int
 
 	// Bare-hand damage for Brawlers: base + (level * STR/2)
 	BareHandDamage int

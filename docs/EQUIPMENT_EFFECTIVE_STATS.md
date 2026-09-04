@@ -15,19 +15,23 @@ change the next snapshot without accumulating bonuses.
 | `hit_pct` | Added to saved HIT before existing spell buffs; improves accuracy and grants one additional attack per 32 HIT. |
 | `lck` | Added to saved LCK before the existing one critical percentage point per four Luck calculation. |
 | `crit_pct` | Added directly to critical chance, capped at 100%. |
+| `int` | Added to saved INT. Every effective INT point adds one percent to rolled spell damage and healing. |
+| `spell_damage_pct` | Staff-only percentage added to offensive spell scaling. It does not increase healing. |
 | `absorb` | Sum from every equipped slot, before existing Aegis/Protect buffs. |
 | `evade_penalty` | A nonnegative base-item cost: evasion is `max(0, 2 * effective AGI - total penalty)`. Smaller is better. |
-| `int`, `vit`, `magic_defense` | Equipment bonuses are inactive. They do not change spells, HP growth, status resistance, or protection. They receive no recommendation score. |
+| `vit`, `magic_defense` | Equipment bonuses are inactive. They do not change HP growth, status resistance, or protection. They receive no recommendation score. |
 
-Saved HIT progression, spell formulas, current/max HP and MP, promotion, and
-level-up growth are unchanged. Base VIT still serves existing character growth;
-equipment VIT never compounds into it. Magic recommendations are unavailable
-until magical equipment has an approved gameplay rule.
+Offensive spell output rolls the authored spell range first, then applies
+`floor(roll * (100 + effective INT + staff spell-damage bonus) / 100)`.
+Healing applies `floor(roll * (100 + effective INT) / 100)`, so an offensive
+staff property cannot masquerade as a healing bonus. Saved HIT progression,
+current/max HP and MP, promotion, and level-up growth are unchanged. Base VIT
+still serves existing character growth; equipment VIT never compounds into it.
 
 Existing physical formation rules, main-hand range, spell buffs, focus,
 inspire, counter, and backstab consume the effective physical snapshot. This
-repair does not introduce a separate off-hand attack, new spell scaling, or
-incoming enemy spell mechanics.
+repair does not introduce a separate off-hand attack, incoming enemy spell
+mechanics, or Magic Defense.
 
 ## Resolution and ownership
 
@@ -61,4 +65,4 @@ Equipment preview runs the actual equip validation on an inventory clone and
 returns current/proposed effective values, deltas, and proposed party totals
 (including an instance's donor). The browser does not infer derived stats from
 item numbers. Recommendation previews use the same resolver. Their weighted
-physical preference score is a heuristic, not a predicted damage total.
+goal score is a heuristic, not a predicted damage total.

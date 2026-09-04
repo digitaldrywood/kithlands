@@ -48,7 +48,7 @@ func (g *Game) processWorldSpell(req GameActionRequest) (*GameState, error) {
 		return &state, err
 	}
 
-	g.message = g.applyWorldSpell(caster, spell, req.TargetID)
+	g.message = g.applyWorldSpell(req.SlotIdx, caster, spell, req.TargetID)
 	state := g.stateUnlocked()
 	return &state, nil
 }
@@ -188,10 +188,11 @@ func worldSpellCuresStatus(spell *gamedata.Spell, target *character.Character) b
 	return target.Status == character.Status(spell.CuresStatus)
 }
 
-func (g *Game) applyWorldSpell(caster *character.Character, spell *gamedata.Spell, targetIdx int) string {
+func (g *Game) applyWorldSpell(casterSlot int, caster *character.Character, spell *gamedata.Spell, targetIdx int) string {
 	switch spell.Effect {
 	case "heal":
-		amount := magic.ResolveHealSpell(spell, g.rng)
+		effective := g.inv.ResolveEffectiveStats(caster, casterSlot, g.gd)
+		amount := magic.ResolveHealSpell(spell, magic.CasterPower{Intellect: effective.INT}, g.rng)
 		if spell.Target == "all_allies" {
 			for _, c := range g.party {
 				if c == nil || !c.IsAlive() {

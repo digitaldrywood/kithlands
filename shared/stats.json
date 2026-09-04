@@ -2,7 +2,7 @@
   "core_stats": [
     { "id": "str", "name": "Strength",  "description": "Physical damage, carry capacity" },
     { "id": "agi", "name": "Agility",   "description": "Turn order and evasion (+2 evade per AGI)" },
-    { "id": "int", "name": "Intellect", "description": "No battle effect yet; equipment Intellect bonuses are inactive" },
+    { "id": "int", "name": "Intellect", "description": "Adds 1% to spell damage and healing per effective point" },
     { "id": "vit", "name": "Vitality",  "description": "Base Vitality affects HP gains and status resistance; equipment bonuses are inactive" },
     { "id": "lck", "name": "Luck",      "description": "Critical hit chance (+1% per 4 Luck)" },
     { "id": "hit_pct", "name": "Hit %",  "description": "Accuracy, extra attack every 32 HIT" }

@@ -320,7 +320,10 @@ func (gd *GameData) buildEquipmentIndex() {
 			ID: item.ID, Name: item.Name, IconKey: item.IconKey, Kind: "weapon", Category: "weapon", Tier: item.Tier,
 			RequiredLevel: 1, Classes: item.Classes,
 			BuyPrice: item.BuyPrice, SellPrice: item.SellPrice,
-			Stats: map[string]int{"power": item.Power, "hit_pct": item.HitPct, "crit_pct": item.CritPct},
+			Stats: map[string]int{
+				"power": item.Power, "hit_pct": item.HitPct, "crit_pct": item.CritPct,
+				"spell_damage_pct": item.SpellDamagePct,
+			},
 		})
 	}
 	for _, item := range gd.Items.Armor {
@@ -426,6 +429,7 @@ func (gd *GameData) validate() {
 		if w.Power < 0 {
 			panic(fmt.Sprintf("gamedata: weapon %q has negative power", w.ID))
 		}
+		validateWeaponSpellDamage(w)
 		if (w.VisualID == "") != (w.AnimationSet == "") {
 			panic(fmt.Sprintf("gamedata: weapon %q must define visual_id and animation_set together", w.ID))
 		}
@@ -659,6 +663,18 @@ func (gd *GameData) validate() {
 
 	gd.validateBattleCharacters(classIDs)
 	gd.validateShowcase(classIDs)
+}
+
+func validateWeaponSpellDamage(weapon Weapon) {
+	if weapon.SpellDamagePct < 0 || weapon.SpellDamagePct > 100 {
+		panic(fmt.Sprintf("gamedata: weapon %q spell_damage_pct must be between 0 and 100", weapon.ID))
+	}
+	if weapon.SpellDamagePct > 0 && weapon.Type != "staff" {
+		panic(fmt.Sprintf("gamedata: weapon %q spell_damage_pct requires staff type", weapon.ID))
+	}
+	if strings.Contains(strings.ToLower(weapon.Special), "spell damage") {
+		panic(fmt.Sprintf("gamedata: weapon %q must author spell damage with spell_damage_pct, not special text", weapon.ID))
+	}
 }
 
 func (gd *GameData) validateBattleCharacters(baseClassIDs map[string]bool) {
