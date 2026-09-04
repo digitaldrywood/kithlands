@@ -429,6 +429,84 @@ for (const [width, height] of [
   });
 }
 
+for (const [width, height] of [
+  [1440, 900],
+  [390, 844],
+]) {
+  test.describe(`same-stat gem delta viewport ${width}x${height}`, () => {
+    test.use({ hasTouch: width === 390 });
+    test(`same-stat replacement labels show the authoritative net delta at ${width}x${height}`, async ({
+      page,
+    }) => {
+      test.setTimeout(90_000);
+      await page.setViewportSize({ width, height });
+      const touch = width === 390;
+      const activate = (locator) => (touch ? locator.tap() : locator.click());
+      await start(page);
+      const granted = await page.evaluate(() =>
+        window.__kithlandsTest.debugGiveItem("ember_gem", 1, "World"),
+      );
+      expect(granted.error).toBeUndefined();
+      await open(page);
+      const preview = page.getByRole("region", { name: "Socket preview" });
+      await activate(page.locator('[data-gem-id="ember_shard"]'));
+      await activate(preview.locator(".gem-confirm"));
+      await expect(page.getByRole("status")).toContainText(
+        "Ember Shard socketed",
+      );
+
+      const upgrade = page.locator('[data-gem-id="ember_gem"]');
+      await expect(upgrade).toContainText(
+        "Replace Ember Shard · +2 Power · 10 gold",
+      );
+      await upgrade.scrollIntoViewIfNeeded();
+      await capture(page, `${width}x${height}-same-stat-upgrade-net-delta`);
+      await activate(upgrade);
+      await activate(preview.locator(".gem-confirm"));
+      await expect(page.getByRole("status")).toContainText(
+        "Ember Shard replaced with Ember Gem",
+      );
+
+      const downgrade = page.locator('[data-gem-id="ember_shard"]');
+      await expect(downgrade).toContainText(
+        "Replace Ember Gem · -2 Power · 10 gold",
+      );
+      await downgrade.scrollIntoViewIfNeeded();
+      await capture(page, `${width}x${height}-same-stat-downgrade-net-delta`);
+      await fits(page);
+    });
+  });
+}
+
+test("blocked low-gold recovery keeps its reason without fabricated zero stats", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await start(page);
+  const funded = await page.evaluate(() =>
+    window.__kithlandsTest.setGold(10, "World"),
+  );
+  expect(funded.error).toBeUndefined();
+  await open(page);
+  const preview = page.getByRole("region", { name: "Socket preview" });
+  await page.locator('[data-gem-id="ember_shard"]').click();
+  await preview.locator(".gem-confirm").click();
+  await expect(page.getByRole("status")).toContainText("Ember Shard socketed");
+
+  const recovery = preview.locator(".gem-recovery");
+  await expect(recovery).toContainText(
+    "need 25 gold for this gem service, have 10",
+  );
+  await expect(
+    recovery.getByRole("button", { name: "Recover Ember Shard · 25 gold" }),
+  ).toBeDisabled();
+  await expect(recovery.locator(".gem-stat-changes")).toHaveCount(0);
+  await recovery.scrollIntoViewIfNeeded();
+  await capture(page, "390x844-low-gold-recovery-blocked");
+  await fits(page);
+});
+
 test("acquired Ward loot unlocks conversion in the Workshop", async ({
   page,
 }) => {

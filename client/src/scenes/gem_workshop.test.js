@@ -16,6 +16,7 @@ import {
   recommendedRecipes,
   socketableGear,
   socketPreview,
+  statDeltaSummary,
   workshopGear,
 } from "./gem_workshop.js";
 
@@ -274,6 +275,14 @@ describe("Gem Workshop selectors", () => {
     expect(recommendedGems(state, item, 0).map(({ gem }) => gem.id)).toEqual([
       "sapphire",
     ]);
+  });
+
+  it("summarizes authoritative same-stat replacement upgrades and downgrades", () => {
+    expect(statDeltaSummary({ power: 7 }, { power: 9 })).toBe("+2 Power");
+    expect(statDeltaSummary({ power: 9 }, { power: 7 })).toBe("-2 Power");
+    expect(
+      statDeltaSummary({ power: 7, hit_pct: 1 }, { power: 6, hit_pct: 3 }),
+    ).toBe("+2 Hit chance, -1 Power");
   });
 
   it("shows recipe readiness and the output improvement before crafting", () => {

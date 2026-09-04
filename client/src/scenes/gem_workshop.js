@@ -299,6 +299,20 @@ function changedStats(parent, title, before = {}, after = {}) {
   parent.append(section);
 }
 
+export function statDeltaSummary(before = {}, after = {}) {
+  return [...new Set([...Object.keys(before), ...Object.keys(after)])]
+    .map((stat) => ({
+      stat,
+      delta: (after[stat] ?? 0) - (before[stat] ?? 0),
+    }))
+    .filter(({ delta }) => delta !== 0)
+    .sort((a, b) => statName(a.stat).localeCompare(statName(b.stat)))
+    .map(
+      ({ stat, delta }) => `${delta > 0 ? "+" : ""}${delta} ${statName(stat)}`,
+    )
+    .join(", ");
+}
+
 export function showGemWorkshop(
   scene,
   { onClose, preselectedInstanceID = "", initialMode = "socket" } = {},
@@ -730,12 +744,12 @@ export function showGemWorkshop(
       choices,
       gems.map((g) => {
         const option = gemChangePreview(item, selectedSocket, g);
-        const effect = gemEffectForItem(g, item);
+        const delta = statDeltaSummary(option?.before, option?.after);
         return {
           ...g,
           name: `${g.name} × ${g.count}`,
           detail: option?.allowed
-            ? `${option.action === "replace" ? `Replace ${option.installed_gem_name} · ` : ""}+${effect?.value || 0} ${statName(effect?.stat)} · ${option.gold_cost} gold`
+            ? `${option.action === "replace" ? `Replace ${option.installed_gem_name} · ` : ""}${delta || "No stat change"} · ${option.gold_cost} gold`
             : option?.block_reason ||
               (socket?.gem_id === g.id
                 ? "Already installed in this socket"
@@ -902,18 +916,20 @@ export function showGemWorkshop(
               : recovery.block_reason,
           ),
         );
-        changedStats(
-          recover,
-          "Equipment after recovery",
-          recovery.before,
-          recovery.after,
-        );
-        changedStats(
-          recover,
-          `${item.equipped_by || "Character"} · effective after recovery`,
-          recovery.character_before,
-          recovery.character_after,
-        );
+        if (recovery.allowed) {
+          changedStats(
+            recover,
+            "Equipment after recovery",
+            recovery.before,
+            recovery.after,
+          );
+          changedStats(
+            recover,
+            `${item.equipped_by || "Character"} · effective after recovery`,
+            recovery.character_before,
+            recovery.character_after,
+          );
+        }
         const recoverButton = button(
           busy
             ? "Recovering…"
