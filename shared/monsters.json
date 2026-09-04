@@ -487,5 +487,172 @@
     "encounter_weight": 0,
     "min_group": 1,
     "max_group": 1
+  },
+  {
+    "id": "mill_bat",
+    "name": "Mill Bat",
+    "tier": 1,
+    "size": "small",
+    "stats": {
+      "str": 5,
+      "agi": 15,
+      "int": 2,
+      "vit": 3,
+      "lck": 4,
+      "hit_pct": 6
+    },
+    "hp": 14,
+    "armor_absorb": 0,
+    "xp_reward": 12,
+    "gold_reward": 4,
+    "weaknesses": [
+      "ice"
+    ],
+    "resistances": [],
+    "absorbs": [],
+    "drops": [
+      {
+        "item_id": "potion",
+        "chance_pct": 20
+      }
+    ],
+    "encounter_weight": 0,
+    "min_group": 2,
+    "max_group": 3
+  },
+  {
+    "id": "briar_spider",
+    "name": "Briar Spider",
+    "tier": 2,
+    "size": "medium",
+    "stats": {
+      "str": 11,
+      "agi": 8,
+      "int": 2,
+      "vit": 6,
+      "lck": 3,
+      "hit_pct": 8
+    },
+    "hp": 38,
+    "armor_absorb": 2,
+    "xp_reward": 28,
+    "gold_reward": 8,
+    "weaknesses": [
+      "fire"
+    ],
+    "resistances": [],
+    "absorbs": [],
+    "drops": [
+      {
+        "item_id": "potion",
+        "chance_pct": 20
+      }
+    ],
+    "encounter_weight": 0,
+    "min_group": 1,
+    "max_group": 2
+  },
+  {
+    "id": "rust_beetle",
+    "name": "Rust Beetle",
+    "tier": 2,
+    "size": "medium",
+    "stats": {
+      "str": 8,
+      "agi": 3,
+      "int": 1,
+      "vit": 10,
+      "lck": 2,
+      "hit_pct": 6
+    },
+    "hp": 40,
+    "armor_absorb": 9,
+    "xp_reward": 30,
+    "gold_reward": 8,
+    "weaknesses": [
+      "lightning"
+    ],
+    "resistances": [
+      "ice"
+    ],
+    "absorbs": [],
+    "drops": [
+      {
+        "item_id": "ward_shard",
+        "chance_pct": 20
+      }
+    ],
+    "encounter_weight": 0,
+    "min_group": 1,
+    "max_group": 2
+  },
+  {
+    "id": "moss_slime",
+    "name": "Moss Slime",
+    "tier": 2,
+    "size": "small",
+    "stats": {
+      "str": 7,
+      "agi": 2,
+      "int": 5,
+      "vit": 5,
+      "lck": 2,
+      "hit_pct": 5
+    },
+    "hp": 34,
+    "armor_absorb": 1,
+    "xp_reward": 24,
+    "gold_reward": 6,
+    "weaknesses": [
+      "fire"
+    ],
+    "resistances": [
+      "ice"
+    ],
+    "absorbs": [],
+    "drops": [
+      {
+        "item_id": "ether",
+        "chance_pct": 20
+      }
+    ],
+    "encounter_weight": 0,
+    "min_group": 1,
+    "max_group": 2
+  },
+  {
+    "id": "millroot_warden",
+    "name": "Millroot Warden",
+    "tier": 3,
+    "size": "boss",
+    "is_boss": true,
+    "stats": {
+      "str": 13,
+      "agi": 5,
+      "int": 5,
+      "vit": 14,
+      "lck": 4,
+      "hit_pct": 10
+    },
+    "hp": 160,
+    "armor_absorb": 5,
+    "xp_reward": 110,
+    "gold_reward": 35,
+    "weaknesses": [
+      "fire"
+    ],
+    "resistances": [
+      "ice"
+    ],
+    "absorbs": [],
+    "drops": [
+      {
+        "item_id": "ember_shard",
+        "chance_pct": 100
+      }
+    ],
+    "encounter_weight": 0,
+    "min_group": 1,
+    "max_group": 1
   }
 ]

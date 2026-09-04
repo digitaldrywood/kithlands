@@ -1,0 +1,14 @@
+{
+  "description": "Isolated Old Mill balance and rendering proof. Not loaded into world formations; the adventure owns live encounter wiring.",
+  "encounters": [
+    { "id": "entrance", "level": 1, "monster_ids": ["mill_bat"], "four_member_monster_ids": ["mill_bat", "mill_bat"] },
+    { "id": "grain_store", "level": 1, "monster_ids": ["briar_spider"], "four_member_monster_ids": ["briar_spider"] },
+    { "id": "drying_room", "level": 1, "monster_ids": ["rust_beetle"], "four_member_monster_ids": ["rust_beetle"] },
+    { "id": "wheel_house", "level": 2, "monster_ids": ["moss_slime"], "four_member_monster_ids": ["moss_slime"] },
+    { "id": "sluice_gallery", "level": 2, "monster_ids": ["mill_bat", "mill_bat"], "four_member_monster_ids": ["mill_bat", "mill_bat", "mill_bat"] },
+    { "id": "root_cellar", "level": 2, "monster_ids": ["briar_spider"], "four_member_monster_ids": ["briar_spider", "moss_slime"] },
+    { "id": "loft", "level": 2, "monster_ids": ["rust_beetle"], "four_member_monster_ids": ["rust_beetle"] },
+    { "id": "mill_heart", "level": 3, "rest_before": true, "monster_ids": ["millroot_warden"], "four_member_monster_ids": ["millroot_warden"] }
+  ],
+  "render_encounter": { "level": 3, "monster_ids": ["mill_bat", "briar_spider", "rust_beetle", "moss_slime", "millroot_warden"] }
+}

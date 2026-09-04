@@ -23,6 +23,11 @@ export const MONSTER_SPRITE_LOAD = [
   { key: "monster_bat", path: "/sprites/monsters/bat.png" },
   { key: "monster_orc", path: "/sprites/monsters/orc.png" },
   { key: "monster_spider", path: "/sprites/monsters/spider.png" },
+  { key: "monster_mill_bat", path: "/sprites/monsters/mill_bat.png" },
+  { key: "monster_briar_spider", path: "/sprites/monsters/briar_spider.png" },
+  { key: "monster_rust_beetle", path: "/sprites/monsters/rust_beetle.png" },
+  { key: "monster_moss_slime", path: "/sprites/monsters/moss_slime.png" },
+  { key: "monster_millroot_warden", path: "/sprites/monsters/millroot_warden.png" },
 ];
 
 export const ENEMY_SPRITES = {
@@ -43,4 +48,9 @@ export const ENEMY_SPRITES = {
   "Siege Commander": "monster_lich",
   "Dragon Lord": "monster_dragon",
   "Trial Guardian": "monster_dark_knight",
+  "Mill Bat": "monster_mill_bat",
+  "Briar Spider": "monster_briar_spider",
+  "Rust Beetle": "monster_rust_beetle",
+  "Moss Slime": "monster_moss_slime",
+  "Millroot Warden": "monster_millroot_warden",
 };
