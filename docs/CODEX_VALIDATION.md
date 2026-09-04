@@ -140,6 +140,20 @@ Key flags:
 - `-max-wipe-rate`, `-min-wipe-rate`, `-min-victory-rate`
 - `-capture-seed`, `-capture-turn`, `-capture-out` for per-turn snapshots
 
+The CLI and `make simulate` share regression defaults: promotion level 10 ± 3
+and maximum wipe rate 0.45. These preserve the #121 XP retuning and #156
+persistent-KO baseline; the older CLI expectation of 3.5 ± 1.5 was stale.
+Promotion remains a story event after Act 1, not a level requirement.
+The reported promotion mean samples the leader's level in runs that reach
+promotion, not every party member or runs that wipe before it.
+
+Use explicit `-seed` values when comparing runs. JSON reports include the base
+seed, strategy names, turn cap, and encounter-roll policy. Each strategy uses
+the same consecutive seeds. The policy injects eight encounter requests per
+quest and submits quest-node actions without walking the map; it does not
+simulate shopping, rest trips, or human travel time. Keep its pacing results
+separate from a browser playthrough.
+
 Useful examples:
 
 ```sh

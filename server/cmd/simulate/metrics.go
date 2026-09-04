@@ -11,7 +11,7 @@ type RunResult struct {
 	LevelAtPromotion int `json:"level_at_promotion,omitempty"`
 	GoldAtBoss       int `json:"gold_at_boss,omitempty"`
 
-	// LevelsAtQuestComplete[i] is the average party level at the moment quest i
+	// LevelsAtQuestComplete[i] is the leader's level at the moment quest i
 	// completed (0 means the run ended before quest i was reached).
 	LevelsAtQuestComplete []int `json:"levels_at_quest_complete,omitempty"`
 

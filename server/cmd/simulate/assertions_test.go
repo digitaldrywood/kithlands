@@ -4,6 +4,34 @@ import (
 	"testing"
 )
 
+func TestDefaultCampaignRegressionBands(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		level       float64
+		wipeRate    float64
+		wantFailure string
+	}{
+		{"current pacing", 12.2, 0.3, ""},
+		{"legacy pacing", 3.5, 0.3, "promotion_level"},
+		{"late promotion", 14, 0.3, "promotion_level"},
+		{"excess attrition", 10, 0.5, "wipe_rate"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			failures := CheckAssertions(map[string]Aggregated{"test": {
+				Runs: 100, PromotionCount: 70, VictoryRate: 0.7,
+				MeanPromotionLevel: tc.level, WipeRate: tc.wipeRate,
+			}}, DefaultAssertionConfig())
+			if tc.wantFailure == "" {
+				if len(failures) != 0 {
+					t.Fatalf("unexpected failures: %v", failures)
+				}
+			} else if len(failures) != 1 || failures[0].Kind != tc.wantFailure {
+				t.Fatalf("got %v, want %s failure", failures, tc.wantFailure)
+			}
+		})
+	}
+}
+
 func TestAssertWipeRateBelowThreshold_Pass(t *testing.T) {
 	agg := Aggregated{
 		Strategy:           "aggressive",

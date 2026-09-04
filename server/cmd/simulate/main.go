@@ -18,22 +18,20 @@ import (
 )
 
 func main() {
+	defaults := DefaultAssertionConfig()
 	var (
-		runs         = flag.Int("runs", 100, "total playthroughs PER strategy")
-		seed         = flag.Int64("seed", 1, "base RNG seed (each run uses seed+i)")
-		sharedDir    = flag.String("shared", "../shared", "path to shared/ game data directory")
-		outPath      = flag.String("out", "", "optional JSON output path")
-		strategiesCS = flag.String("strategies", "aggressive,cautious,healer_heavy", "comma-separated strategy list")
-		maxTurns     = flag.Int("max-turns", 3000, "per-run turn cap")
-		encPerQuest  = flag.Int("encounter-rolls-per-quest", 8, "encounter actions injected between each strategy quest_advance (-1 to disable)")
-		// TODO(#115): retune these once balance/progression work lands. They
-		// are intentionally loose right now so real encounters don't trip the
-		// Monte Carlo assertion suite before tuning exists.
-		wipeThresh    = flag.Float64("max-wipe-rate", 0.80, "fail if any strategy wipes more often than this")
+		runs          = flag.Int("runs", 100, "total playthroughs PER strategy")
+		seed          = flag.Int64("seed", 1, "base RNG seed (each run uses seed+i)")
+		sharedDir     = flag.String("shared", "../shared", "path to shared/ game data directory")
+		outPath       = flag.String("out", "", "optional JSON output path")
+		strategiesCS  = flag.String("strategies", "aggressive,cautious,healer_heavy", "comma-separated strategy list")
+		maxTurns      = flag.Int("max-turns", 3000, "per-run turn cap")
+		encPerQuest   = flag.Int("encounter-rolls-per-quest", 8, "encounter actions injected between each strategy quest_advance (-1 to disable)")
+		wipeThresh    = flag.Float64("max-wipe-rate", defaults.MaxWipeRate, "fail if any strategy wipes more often than this")
 		minWipeThresh = flag.Float64("min-wipe-rate", 0.0, "fail if any strategy wipes less often than this (combat too easy); 0 disables")
-		victoryMin    = flag.Float64("min-victory-rate", 0.05, "fail if any strategy wins fewer runs than this")
-		expectedLvl   = flag.Float64("expected-promo-level", 3.5, "expected mean party level at promotion")
-		lvlTolerance  = flag.Float64("promo-level-tolerance", 1.5, "allowed |mean - expected| promotion level")
+		victoryMin    = flag.Float64("min-victory-rate", defaults.MinVictoryRate, "fail if any strategy wins fewer runs than this")
+		expectedLvl   = flag.Float64("expected-promo-level", defaults.ExpectedPromoLvl, "expected mean leader level at promotion across promoted runs")
+		lvlTolerance  = flag.Float64("promo-level-tolerance", defaults.PromoLvlTolerance, "allowed |mean - expected| promotion level")
 		captureSeed   = flag.Int64("capture-seed", 0, "seed to capture per-turn snapshots from (0 disables capture)")
 		captureTurn   = flag.Int("capture-turn", -1, "turn index to capture (-1 = every turn of -capture-seed)")
 		captureOut    = flag.String("capture-out", "", "directory for TurnSnapshot JSON artifacts (requires -capture-seed)")
@@ -101,6 +99,14 @@ func main() {
 
 	if *outPath != "" {
 		report := map[string]any{
+			"run_options": map[string]any{
+				"base_seed":                 *seed,
+				"runs_per_strategy":         *runs,
+				"strategies":                splitCSV(*strategiesCS),
+				"max_turns":                 *maxTurns,
+				"encounter_rolls_per_quest": *encPerQuest,
+				"difficulty":                "normal",
+			},
 			"summaries": summaries,
 			"runs":      allResults,
 			"failures":  fails,

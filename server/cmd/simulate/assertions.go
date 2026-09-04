@@ -6,8 +6,8 @@ import (
 )
 
 // AssertionConfig drives the statistical checks run against the aggregated
-// per-strategy summaries. All thresholds come from issue #110's acceptance
-// criteria plus a small amount of GDD-derived slack.
+// per-strategy summaries. These are regression bands for the simulator policy,
+// not level gates for the story-triggered promotion event.
 type AssertionConfig struct {
 	// MaxWipeRate is the upper bound on party-wipe frequency per strategy.
 	// Issue #110 suggests 0.15 (15%).
@@ -21,10 +21,22 @@ type AssertionConfig struct {
 	// Catches "strategy is broken, dies by Act 2" regressions.
 	MinVictoryRate float64
 
-	// ExpectedPromoLvl is the GDD-expected mean party level at promotion.
+	// ExpectedPromoLvl is the expected mean leader level across promoted runs.
 	// PromoLvlTolerance is the allowed |mean − expected| swing.
 	ExpectedPromoLvl  float64
 	PromoLvlTolerance float64
+}
+
+// DefaultAssertionConfig is shared by the CLI and make simulate. The promotion
+// band matches the XP/encounter retuning in #121 (10 +/- 3); #156's persistent
+// KO behavior established the 45% wipe ceiling for the aggressive policy.
+func DefaultAssertionConfig() AssertionConfig {
+	return AssertionConfig{
+		MaxWipeRate:       0.45,
+		MinVictoryRate:    0.05,
+		ExpectedPromoLvl:  10,
+		PromoLvlTolerance: 3,
+	}
 }
 
 // AssertionFailure is a single assertion violation for one strategy.
