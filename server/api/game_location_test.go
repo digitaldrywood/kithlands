@@ -49,7 +49,10 @@ func TestCadottWorldShopRoundTripPreservesGameState(t *testing.T) {
 		t.Fatal("store did not reuse the existing interior template system")
 	}
 
-	shopItems := game.GetShopItems(interior.NodeID)
+	shopItems, err := game.GetShopItems(interior.NodeID)
+	if err != nil {
+		t.Fatalf("get shop items: %v", err)
+	}
 	var starter *ShopItemState
 	for i := range shopItems {
 		if shopItems[i].ID == "wooden_club" {
@@ -60,7 +63,7 @@ func TestCadottWorldShopRoundTripPreservesGameState(t *testing.T) {
 	if starter == nil || !slices.Contains(starter.ClassIDs, "warrior") {
 		t.Fatalf("shop is missing a warrior-compatible Wooden Club: %+v", starter)
 	}
-	if err := game.BuyItem(starter.ID, starter.Type); err != nil {
+	if err := game.BuyItem(interior.NodeID, starter.StockID); err != nil {
 		t.Fatalf("buy starter item: %v", err)
 	}
 	afterPurchase := game.State()

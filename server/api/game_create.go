@@ -191,6 +191,7 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 		discovered:           make(map[string]bool),
 		collectedHiddenItems: make(map[string]bool),
 		triggeredFlags:       make(map[string]bool),
+		shopStocks:           make(map[string]*ShopStock),
 		trans:                transport.NewState(),
 	}
 	if err := game.grantStarterLoot(); err != nil {

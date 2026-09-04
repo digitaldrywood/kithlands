@@ -135,7 +135,7 @@ func TestStartingShopSellsExpandedClassGearAsRolledInventory(t *testing.T) {
 	gd := gamedata.Load("../../shared")
 	manager := api.NewGameManager(gd, "../../shared")
 	game, err := manager.CreateGame(api.NewGameRequest{
-		TownName: "Test", Places: []string{"Square"}, BigBuilding: "Hall",
+		TownName: "Cadott", Places: []string{"Square"}, BigBuilding: "Hall",
 		Party:      []api.PartyMemberReq{{Name: "Bram", ClassID: "brawler"}},
 		Difficulty: "normal", RNGSeed: 99,
 	})
@@ -143,17 +143,20 @@ func TestStartingShopSellsExpandedClassGearAsRolledInventory(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	nodeID, shopItems := enterCadottShop(t, game)
 	found := false
-	for _, item := range game.GetShopItems("") {
+	var offerID string
+	for _, item := range shopItems {
 		if item.ID == "training_wraps" {
 			found = item.Type == "equipment" && item.Category == "gloves" && item.IconKey != "" && item.Stats["power"] == 2
+			offerID = item.StockID
 		}
 	}
 	if !found {
 		t.Fatal("starting shop missing Hearthbound Wraps equipment metadata")
 	}
 	before := game.State().Gold
-	if err := game.BuyItem("training_wraps", "equipment"); err != nil {
+	if err := game.BuyItem(nodeID, offerID); err != nil {
 		t.Fatal(err)
 	}
 	after := game.State()

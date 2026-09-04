@@ -22,6 +22,15 @@ func newShopSpellGame(t *testing.T, party []PartyMemberReq) *Game {
 	if err != nil {
 		t.Fatalf("create game: %v", err)
 	}
+	entryNodeID := game.State().SettlementEntryNodeID
+	if _, err := game.ProcessLocationTransition(LocationTransitionRequest{
+		TransitionID: "enter-settlement", WorldNodeID: entryNodeID,
+	}); err != nil {
+		t.Fatalf("enter settlement: %v", err)
+	}
+	if _, err := game.ProcessLocationTransition(LocationTransitionRequest{TransitionID: "general-store-door"}); err != nil {
+		t.Fatalf("enter shop: %v", err)
+	}
 	return game
 }
 
@@ -56,13 +65,32 @@ func findShopSpell(items []ShopItemState, id string) *ShopItemState {
 	return nil
 }
 
+func shopTestOffer(t *testing.T, game *Game, itemID string) ShopItemState {
+	t.Helper()
+	nodeID := game.State().CurrentLocation.MapID
+	items, err := game.GetShopItems(nodeID)
+	if err != nil {
+		t.Fatalf("get shop items: %v", err)
+	}
+	for _, item := range items {
+		if item.ID == itemID {
+			return item
+		}
+	}
+	t.Fatalf("shop offer %q not found", itemID)
+	return ShopItemState{}
+}
+
 func TestLearnSpellRejectsPartyMemberBelowRequiredLevel(t *testing.T) {
 	game := newShopSpellGame(t, []PartyMemberReq{
+		{Name: "Bruno", ClassID: "warrior"},
 		{Name: "Nia", ClassID: "mender"},
 	})
+	setPartyLevel(t, game, 0, 7)
 	setGold(t, game, 500)
 
-	err := game.LearnSpell("Nia", "heal")
+	heal := shopTestOffer(t, game, "heal")
+	err := game.LearnSpell("cadott-general-store", heal.StockID, "Nia")
 	if err == nil {
 		t.Fatal("expected level gate error, got nil")
 	}
@@ -84,7 +112,11 @@ func TestGetShopItemsIncludesSpellLearnerReasons(t *testing.T) {
 	setPartyLevel(t, game, 3, 4)
 	TeachSpellForTest(game, 2, "heal", 2)
 
-	heal := findShopSpell(game.GetShopItems("shop"), "heal")
+	items, err := game.GetShopItems("cadott-general-store")
+	if err != nil {
+		t.Fatalf("get shop items: %v", err)
+	}
+	heal := findShopSpell(items, "heal")
 	if heal == nil {
 		t.Fatal("shop missing heal")
 	}
@@ -118,7 +150,10 @@ func TestGetShopItemsIncludesEquipmentCompareStats(t *testing.T) {
 		{Name: "Mira", ClassID: "mender"},
 	})
 
-	items := game.GetShopItems("shop")
+	items, err := game.GetShopItems("cadott-general-store")
+	if err != nil {
+		t.Fatalf("get shop items: %v", err)
+	}
 	var weapon *ShopItemState
 	var armor *ShopItemState
 	for i := range items {

@@ -10,6 +10,7 @@ import {
   debugSetPartyVitals,
   debugWarpQuest,
   gameAction,
+  getShop,
   listSaves as listSavesApi,
   loadSave as loadSaveApi,
   newGame,
@@ -1724,11 +1725,48 @@ export function installDevTestBridge(game) {
       const scene = getScene(game, sceneKey);
       const gameId = scene?.gameState?.id;
       if (!gameId) throw new Error("Active scene has no game id");
-      const result = await buyItem(gameId, itemId, itemType);
+      const nodeId =
+        scene?.spawn?.node_id || scene?.gameState?.current_location?.map_id;
+      if (!nodeId) return { error: "Active scene is not inside a shop" };
+      const catalog = await getShop(gameId, nodeId);
+      if (catalog?.error) return clone(catalog);
+      const offer = (catalog?.shop_items || []).find(
+        (item) => item.id === itemId && item.type === itemType,
+      );
+      if (!offer) return { error: `Shop offer not found: ${itemId}` };
+      const result = await buyItem(gameId, nodeId, offer.stock_id);
       if (!result?.error) {
         applySceneGameState(game, scene, result);
       }
       return clone(result);
+    },
+
+    async shopItems(sceneKey = "Town") {
+      const scene = getScene(game, sceneKey);
+      const gameId = scene?.gameState?.id;
+      if (!gameId) throw new Error("Active scene has no game id");
+      const nodeId =
+        scene?.spawn?.node_id || scene?.gameState?.current_location?.map_id;
+      if (!nodeId) return { error: "Active scene is not inside a shop" };
+      return clone(await getShop(gameId, nodeId));
+    },
+
+    async buyShopOffer(nodeId, stockId, sceneKey = "Town") {
+      const scene = getScene(game, sceneKey);
+      const gameId = scene?.gameState?.id;
+      if (!gameId) throw new Error("Active scene has no game id");
+      const result = await buyItem(gameId, nodeId, stockId);
+      if (!result?.error) {
+        applySceneGameState(game, scene, result);
+      }
+      return clone(result);
+    },
+
+    async buyShopOfferRemote(nodeId, stockId, sceneKey = "Town") {
+      const scene = getScene(game, sceneKey);
+      const gameId = scene?.gameState?.id;
+      if (!gameId) throw new Error("Active scene has no game id");
+      return clone(await buyItem(gameId, nodeId, stockId));
     },
 
     async forceEncounter(monsterIds, level = 1, sceneKey = "World") {
@@ -2588,6 +2626,37 @@ export function installDevTestBridge(game) {
         scene,
         beforeX !== scene.playerX || beforeY !== scene.playerY,
       );
+    },
+
+    approachWorldSpawn(nodeId, sceneKey = "World") {
+      const scene = getScene(game, sceneKey);
+      if (!scene?.player || scene.scene?.key !== "World") {
+        throw new Error("World scene is not active");
+      }
+      const spawn = (scene.spawns || []).find(
+        (entry) => entry.node_id === nodeId,
+      );
+      if (!spawn) throw new Error(`World spawn not found: ${nodeId}`);
+      const candidates = [
+        [spawn.x, spawn.y + 1],
+        [spawn.x, spawn.y - 1],
+        [spawn.x + 1, spawn.y],
+        [spawn.x - 1, spawn.y],
+      ];
+      const destination = candidates.find(([x, y]) => {
+        const tile = scene.tileData?.[y]?.[x];
+        return Number.isInteger(tile) && scene.canWalkTile?.(tile);
+      });
+      if (!destination) {
+        throw new Error(`No walkable approach for world spawn: ${nodeId}`);
+      }
+      setPlayerTile(scene, destination[0], destination[1]);
+      scene.currentDoorSpawn = spawn;
+      return {
+        nodeId: spawn.node_id,
+        x: scene.playerX,
+        y: scene.playerY,
+      };
     },
 
     async sampleMovePlayer(dir, sceneKey) {

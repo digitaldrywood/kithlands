@@ -335,26 +335,33 @@ type EquipSlotState struct {
 }
 
 type ShopItemState struct {
-	ID           string              `json:"id"`
-	Name         string              `json:"name"`
-	IconKey      string              `json:"icon_key,omitempty"`
-	Type         string              `json:"type"` // weapon, armor, consumable, spell
-	Category     string              `json:"category,omitempty"`
-	Stats        map[string]int      `json:"stats,omitempty"`
-	Price        int                 `json:"price"`
-	Power        int                 `json:"power,omitempty"`
-	Absorb       int                 `json:"absorb,omitempty"`
-	HitPct       int                 `json:"hit_pct,omitempty"`
-	CritPct      int                 `json:"crit_pct,omitempty"`
-	MagicDefense int                 `json:"magic_defense,omitempty"`
-	EvadePenalty int                 `json:"evade_penalty,omitempty"`
-	Element      string              `json:"element,omitempty"`
-	Classes      string              `json:"classes,omitempty"`
-	ClassIDs     []string            `json:"class_ids,omitempty"`
-	Owned        bool                `json:"owned,omitempty"`
-	School       string              `json:"school,omitempty"`
-	SpellLevel   int                 `json:"spell_level,omitempty"`
-	Learners     []SpellLearnerState `json:"learners,omitempty"`
+	StockID       string              `json:"stock_id"`
+	ID            string              `json:"id"`
+	InstanceID    string              `json:"instance_id,omitempty"`
+	Name          string              `json:"name"`
+	IconKey       string              `json:"icon_key,omitempty"`
+	Type          string              `json:"type"` // weapon, armor, consumable, spell
+	Category      string              `json:"category,omitempty"`
+	Stats         map[string]int      `json:"stats,omitempty"`
+	Rarity        string              `json:"rarity,omitempty"`
+	ItemLevel     int                 `json:"item_level,omitempty"`
+	RequiredLevel int                 `json:"required_level,omitempty"`
+	Affixes       []ItemAffixState    `json:"affixes,omitempty"`
+	Sockets       []ItemSocketState   `json:"sockets,omitempty"`
+	Price         int                 `json:"price"`
+	Power         int                 `json:"power,omitempty"`
+	Absorb        int                 `json:"absorb,omitempty"`
+	HitPct        int                 `json:"hit_pct,omitempty"`
+	CritPct       int                 `json:"crit_pct,omitempty"`
+	MagicDefense  int                 `json:"magic_defense,omitempty"`
+	EvadePenalty  int                 `json:"evade_penalty,omitempty"`
+	Element       string              `json:"element,omitempty"`
+	Classes       string              `json:"classes,omitempty"`
+	ClassIDs      []string            `json:"class_ids,omitempty"`
+	Owned         bool                `json:"owned,omitempty"`
+	School        string              `json:"school,omitempty"`
+	SpellLevel    int                 `json:"spell_level,omitempty"`
+	Learners      []SpellLearnerState `json:"learners,omitempty"`
 }
 
 type SpellLearnerState struct {
@@ -580,6 +587,7 @@ type Game struct {
 	formation            string          // current encounter layout type
 	worldEncounterCount  int             // successful overworld encounters started on this save
 	lootRollSeq          uint64          // persisted sequence for isolated deterministic loot rolls
+	shopStocks           map[string]*ShopStock
 	lastRoundActions     []MemberActionReq
 	pendingChestClaim    *PendingChestClaim
 	// encounterStart records preemptive/ambush state for the current fight so

@@ -9,7 +9,7 @@ import (
 
 func dungeonServiceSnapshot(t *testing.T, g *Game) string {
 	t.Helper()
-	data, err := json.Marshal([]any{g.inv, g.party, g.spellBooks, g.buildingSideQuests, g.dungeon, g.phase, g.location, g.message})
+	data, err := json.Marshal([]any{g.inv, g.party, g.spellBooks, g.buildingSideQuests, g.dungeon, g.phase, g.location, g.message, g.shopStocks})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,14 +23,23 @@ func TestDungeonRejectsRemotePurchasesAndSpellLearning(t *testing.T) {
 	if _, _, _, err := g.validateSpellLearningLocked("Nia", "heal"); err != nil {
 		t.Fatalf("spell must otherwise be learnable: %v", err)
 	}
+	nodeID := g.State().CurrentLocation.MapID
+	potion := shopTestOffer(t, g, "potion")
+	heal := shopTestOffer(t, g, "heal")
+	if _, err := g.ProcessLocationTransition(LocationTransitionRequest{TransitionID: "exit-interior"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := g.ProcessLocationTransition(LocationTransitionRequest{TransitionID: "south-exit"}); err != nil {
+		t.Fatal(err)
+	}
 	enterTestDungeon(t, g)
 	before := dungeonServiceSnapshot(t, g)
 	for _, attempt := range []struct {
 		name string
 		run  func() error
 	}{
-		{"buy supplies", func() error { return g.BuyItem("potion", "consumable") }},
-		{"learn spell", func() error { return g.LearnSpell("Nia", "heal") }},
+		{"buy supplies", func() error { return g.BuyItem(nodeID, potion.StockID) }},
+		{"learn spell", func() error { return g.LearnSpell(nodeID, heal.StockID, "Nia") }},
 	} {
 		t.Run(attempt.name, func(t *testing.T) {
 			if err := attempt.run(); err == nil {
@@ -44,10 +53,17 @@ func TestDungeonRejectsRemotePurchasesAndSpellLearning(t *testing.T) {
 	if _, err := g.ProcessDungeon(DungeonRequest{Type: "retreat"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := g.BuyItem("potion", "consumable"); err != nil {
+	entryNodeID := g.State().SettlementEntryNodeID
+	if _, err := g.ProcessLocationTransition(LocationTransitionRequest{TransitionID: "enter-settlement", WorldNodeID: entryNodeID}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := g.ProcessLocationTransition(LocationTransitionRequest{TransitionID: "general-store-door"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.BuyItem(nodeID, potion.StockID); err != nil {
 		t.Fatalf("town purchase after retreat: %v", err)
 	}
-	if err := g.LearnSpell("Nia", "heal"); err != nil {
+	if err := g.LearnSpell(nodeID, heal.StockID, "Nia"); err != nil {
 		t.Fatalf("town spell learning after retreat: %v", err)
 	}
 }

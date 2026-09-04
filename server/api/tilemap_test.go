@@ -173,22 +173,21 @@ func TestTargetedPotionInCombat(t *testing.T) {
 }
 
 func TestPhoenixDownRevive(t *testing.T) {
-	_, ts := testServer(t)
+	srv, ts := testServer(t)
 	defer ts.Close()
 
 	gs := post(t, ts.URL+"/api/game/new", api.NewGameRequest{
-		TownName: "Test", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
+		TownName: "Cadott", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
 		Places: []string{"X"}, BigBuilding: "Hall",
 		Party:      []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}, {Name: "Mage", ClassID: "cinder"}},
 		Difficulty: "normal",
 	})
 	gameID := gs["id"].(string)
+	nodeID, offers := enterCadottShop(t, srv.GetGameManager().GetGame(gameID))
 
 	// Need 500g for phoenix down -- buy potions to verify gold works, then test with enough gold
 	// First just buy a potion to confirm the flow
-	gs = post(t, ts.URL+"/api/game/"+gameID+"/buy", map[string]string{
-		"item_id": "potion", "type": "consumable",
-	})
+	gs = postShopBuy(t, ts.URL, gameID, nodeID, offers, "potion")
 	if gs["error"] != nil {
 		t.Fatalf("buy potion: %v", gs["error"])
 	}
@@ -203,9 +202,7 @@ func TestPhoenixDownRevive(t *testing.T) {
 	}
 
 	// Phoenix Down costs 500g -- verify we get rejected with 80g
-	gs = post(t, ts.URL+"/api/game/"+gameID+"/buy", map[string]string{
-		"item_id": "phoenix_down", "type": "consumable",
-	})
+	gs = postShopBuy(t, ts.URL, gameID, nodeID, offers, "phoenix_down")
 	if gs["error"] == nil {
 		t.Error("expected error buying 500g item with 80g")
 	} else {
@@ -219,7 +216,7 @@ func TestShopReturnsItems(t *testing.T) {
 	_ = srv
 
 	gs := post(t, ts.URL+"/api/game/new", api.NewGameRequest{
-		TownName: "Test", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
+		TownName: "Cadott", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
 		Places: []string{"X"}, BigBuilding: "Hall",
 		Party:      []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
 		Difficulty: "normal",
@@ -232,7 +229,7 @@ func TestShopReturnsItems(t *testing.T) {
 		t.Fatal("game not found")
 	}
 
-	items := game.GetShopItems("shop")
+	_, items := enterCadottShop(t, game)
 	if len(items) == 0 {
 		t.Fatal("shop returned no items")
 	}
@@ -265,16 +262,17 @@ func TestShopReturnsItems(t *testing.T) {
 }
 
 func TestBuyEquipFullFlow(t *testing.T) {
-	_, ts := testServer(t)
+	srv, ts := testServer(t)
 	defer ts.Close()
 
 	gs := post(t, ts.URL+"/api/game/new", api.NewGameRequest{
-		TownName: "Test", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
+		TownName: "Cadott", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
 		Places: []string{"X"}, BigBuilding: "Hall",
 		Party:      []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
 		Difficulty: "normal",
 	})
 	gameID := gs["id"].(string)
+	game := srv.GetGameManager().GetGame(gameID)
 
 	// Check starting weapon
 	eq := gs["equipment"].([]any)
@@ -282,10 +280,11 @@ func TestBuyEquipFullFlow(t *testing.T) {
 	startWeapon := eq0["weapon_name"]
 	t.Logf("Starting weapon: %v", startWeapon)
 
-	// Buy iron sword
-	gs = post(t, ts.URL+"/api/game/"+gameID+"/buy", map[string]string{
-		"item_id": "iron_sword", "type": "weapon",
-	})
+	if err := game.DebugSetPartyLevels([]api.DebugPartyLevelUpdate{{Slot: 0, Level: 4}}); err != nil {
+		t.Fatal(err)
+	}
+	nodeID, offers := enterCadottShop(t, game)
+	gs = postShopBuy(t, ts.URL, gameID, nodeID, offers, "iron_sword")
 	t.Logf("After buy - gold: %v", gs["gold"])
 
 	// Equip it

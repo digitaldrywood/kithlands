@@ -72,6 +72,7 @@ func (g *Game) ToSaveState(name, userID string) (*save.SaveState, error) {
 		"last_round_actions":     g.lastRoundActions,
 		"world_encounter_count":  g.worldEncounterCount,
 		"loot_roll_sequence":     g.lootRollSeq,
+		"shop_stocks":            g.shopStocks,
 	}
 	worldJSON, err := json.Marshal(worldState)
 	if err != nil {
@@ -138,6 +139,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		LastRoundActions     []MemberActionReq                      `json:"last_round_actions"`
 		WorldEncounterCount  int                                    `json:"world_encounter_count"`
 		LootRollSequence     uint64                                 `json:"loot_roll_sequence"`
+		ShopStocks           map[string]*ShopStock                  `json:"shop_stocks"`
 	}
 	if err := json.Unmarshal(ss.WorldState, &worldState); err != nil {
 		return nil, fmt.Errorf("unmarshaling world state: %w", err)
@@ -172,6 +174,10 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	if buildingSideQuests == nil {
 		buildingSideQuests = make(map[string]generator.BuildingSideQuest)
 	}
+	shopStocks := worldState.ShopStocks
+	if shopStocks == nil {
+		shopStocks = make(map[string]*ShopStock)
+	}
 
 	legacyTransport := worldState.Transport == nil
 	trans := worldState.Transport
@@ -202,6 +208,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		triggeredFlags:       triggeredFlags,
 		worldEncounterCount:  worldState.WorldEncounterCount,
 		lootRollSeq:          worldState.LootRollSequence,
+		shopStocks:           shopStocks,
 		trans:                trans,
 		lastRoundActions:     cloneMemberActionReqs(worldState.LastRoundActions),
 		location: LocationState{
