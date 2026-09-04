@@ -165,3 +165,31 @@ describe("dungeon defeat presentation", () => {
     expect(scene.recoverFromCombatError).not.toHaveBeenCalled();
   });
 });
+
+describe("final encounter defeat presentation", () => {
+  it("returns to preparation after the knockout animation without a false victory", async () => {
+    const scene = makeScene();
+    scene.gameState = {
+      ...combatState(),
+      current_location: { kind: "world" },
+      dungeon: null,
+      final_encounter: { active: true },
+    };
+    scene.returnScene = null;
+    const recovered = {
+      ...recoveredState(),
+      current_location: { kind: "world" },
+      dungeon: null,
+      final_encounter: { active: false, recovery: "defeat" },
+    };
+    api.gameAction.mockResolvedValue(recovered);
+    scene.showVictoryResults = vi.fn();
+    await scene.submitAllActions();
+    expect(scene.scene.start).toHaveBeenCalledExactlyOnceWith("World", {
+      gameState: recovered,
+    });
+    expect(scene.reconcileEnemySprites).not.toHaveBeenCalled();
+    expect(scene.playPartyVictoryBeat).not.toHaveBeenCalled();
+    expect(scene.showVictoryResults).not.toHaveBeenCalled();
+  });
+});

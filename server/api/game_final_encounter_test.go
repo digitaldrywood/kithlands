@@ -258,3 +258,34 @@ func TestFinalEncounterMissingContentDoesNotComplete(t *testing.T) {
 		t.Fatal("failed setup did not preserve unfinished finale")
 	}
 }
+
+func TestFinalEncounterLegacyOutcomePaths(t *testing.T) {
+	for _, input := range []string{"spell", "item"} {
+		t.Run(input, func(t *testing.T) {
+			g := finalCheckpoint(t, 1)
+			startFinal(t, g)
+			// Isolate the final hit rather than relying on a particular random fight.
+			for i, e := range g.enemies {
+				e.CurrentHP = 0
+				if i == 0 {
+					e.CurrentHP = 1
+					e.Status = character.StatusPoison
+				}
+			}
+			var s *GameState
+			var err error
+			if input == "spell" {
+				s, err = g.processCombatSpell(GameActionRequest{SpellID: "frost", TargetID: 100})
+			} else {
+				g.party[0].CurrentHP--
+				s, err = g.ProcessAction(GameActionRequest{Type: "item", ItemID: "potion", TargetID: 0})
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if s.Phase != "victory" || !g.finalQuest().Completed || g.finalEncounterActive() {
+				t.Fatalf("legacy %s skipped final outcome: %s", input, s.Phase)
+			}
+		})
+	}
+}
