@@ -143,6 +143,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		return nil, fmt.Errorf("unmarshaling world state: %w", err)
 	}
 
+	generator.PrepareObjectives(quests, loc, loc.Nodes[0].ID, gd.QuestObjectives)
 	walk := locality.Walk(loc, loc.Nodes[0].ID)
 	tileMap := locality.GenerateTileMap(loc, loc.Nodes[0].ID, walk)
 

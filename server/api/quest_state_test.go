@@ -173,14 +173,11 @@ func TestQuestAdvanceIgnoresWrongNode(t *testing.T) {
 
 // TestQuestAdvanceCompletesAtTargetNode is the green test for issue #63 bug 1:
 // entering the correct target building must still complete the current quest.
-func TestQuestAdvanceCompletesAtTargetNode(t *testing.T) {
+func TestQuestCompletesThroughTargetActions(t *testing.T) {
 	gs, ts, gameID, targetNodeID := newQuestTestGame(t)
 	startQuest := int(gs["current_quest"].(float64))
 
-	gs = post(t, ts.URL+"/api/game/"+gameID+"/action", api.GameActionRequest{
-		Type:   "quest_advance",
-		NodeID: targetNodeID,
-	})
+	gs = completeMapQuest(t, gs, ts.URL+"/api/game/"+gameID+"/action")
 
 	endQuest := int(gs["current_quest"].(float64))
 	if endQuest != startQuest+1 {

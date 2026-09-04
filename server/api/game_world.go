@@ -36,6 +36,8 @@ func (g *Game) tickOverworldPoisonAndCheckDefeat() bool {
 
 func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 	switch req.Type {
+	case "quest_action":
+		return g.processQuestObjective(req)
 	case "item":
 		return g.processWorldItem(req)
 	case "spell":
@@ -60,6 +62,11 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 		}
 
 	case "quest_advance":
+		if g.validQuestVisit(req.NodeID) {
+			g.questVisitNodeID = req.NodeID
+		} else {
+			g.questVisitNodeID = ""
+		}
 		// Track node visit for soft prerequisites and Strange Coin
 		if req.NodeID != "" {
 			if g.visitedNodes == nil {
@@ -104,6 +111,10 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 			if q.TemplateID == g.gd.FinalEncounter.QuestTemplateID && !q.IsPromotion && !q.IsSideQuest {
 				return g.advanceFinalEncounter(q, req.NodeID)
 			}
+			if g.advanceObjectiveArrival(q, req.NodeID) {
+				state := g.stateUnlocked()
+				return &state, nil
+			}
 			// Promotion quests walk a three-stage story gate (seek giver,
 			// find proof, return to giver). The handler mutates q in place
 			// and reports whether it handled this quest_advance entirely.
@@ -133,29 +144,7 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 				state := g.stateUnlocked()
 				return &state, nil
 			}
-			q.Completed = true
-			completedCopy := *q // capture for maybeTriggerPromotion below
-			g.message = fmt.Sprintf("Quest complete: %s\n%s\n+%d XP, +%d gold",
-				q.Name, q.Completion, q.Reward.XP, q.Reward.Gold)
-			g.inv.Gold += q.Reward.Gold
-			for _, c := range g.party {
-				if c.IsAlive() {
-					c.XP += q.Reward.XP
-				}
-			}
-			g.checkLevelUps()
-			g.restParty()
-			g.currentQ++
-			if tierName := g.checkTransportUnlocks(); tierName != "" {
-				g.message += fmt.Sprintf("\nTransport upgraded: %s!", tierName)
-			}
-			if g.currentQ >= len(g.quests) {
-				g.phase = "victory"
-				g.message = fmt.Sprintf("%s is saved! Your adventure is complete.", g.loc.Name)
-			} else {
-				g.phase = "quest_complete"
-				g.maybeTriggerPromotion(&completedCopy)
-			}
+			g.completeOrdinaryQuest(q)
 		}
 
 	default:

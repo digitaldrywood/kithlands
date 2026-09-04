@@ -88,6 +88,9 @@ type PartyMemberReq struct {
 }
 
 type GameActionRequest struct {
+	QuestID        string `json:"quest_id,omitempty"`
+	ObjectiveIndex int    `json:"objective_index,omitempty"`
+
 	Type       string            `json:"type"` // attack, spell, item, flee, encounter, quest_advance
 	TargetID   int               `json:"target_id,omitempty"`
 	SpellID    string            `json:"spell_id,omitempty"`
@@ -114,15 +117,15 @@ type GameState struct {
 	EquipmentBuilds     [4][]inventory.EquipmentBuild `json:"equipment_builds"`
 	EquipmentBuildLimit int                           `json:"equipment_build_limit"`
 	FinalEncounter      *FinalEncounterState          `json:"final_encounter,omitempty"`
-
-	Discovered   map[string]bool    `json:"discovered"` // monster IDs encountered in this save
-	Dungeon      *DungeonState      `json:"dungeon,omitempty"`
-	DungeonEntry *DungeonEntryState `json:"dungeon_entry,omitempty"`
-	ID           string             `json:"id"`
-	Phase        string             `json:"phase"`                   // world, combat, quest_complete, victory, defeat
-	XPBefore     []int              `json:"xp_before,omitempty"`     // XP values before combat for victory animation
-	LevelBefore  []int              `json:"level_before,omitempty"`  // levels before combat for victory animation
-	XPThresholds [][]int            `json:"xp_thresholds,omitempty"` // per-character XP thresholds at each level crossed
+	QuestVisitNodeID    string                        `json:"quest_visit_node_id,omitempty"`
+	Discovered          map[string]bool               `json:"discovered"` // monster IDs encountered in this save
+	Dungeon             *DungeonState                 `json:"dungeon,omitempty"`
+	DungeonEntry        *DungeonEntryState            `json:"dungeon_entry,omitempty"`
+	ID                  string                        `json:"id"`
+	Phase               string                        `json:"phase"`                   // world, combat, quest_complete, victory, defeat
+	XPBefore            []int                         `json:"xp_before,omitempty"`     // XP values before combat for victory animation
+	LevelBefore         []int                         `json:"level_before,omitempty"`  // levels before combat for victory animation
+	XPThresholds        [][]int                       `json:"xp_thresholds,omitempty"` // per-character XP thresholds at each level crossed
 	// DiedThisFight[i] is true for any party member whose IsAlive() was false
 	// at the moment victory-XP was distributed. Survives restParty() so the
 	// client can render the victory screen correctly. Reset at encounter start.
@@ -487,6 +490,9 @@ type CombatHitEntry struct {
 }
 
 type QuestState struct {
+	Objectives *generator.ObjectiveProgress `json:"objectives,omitempty"`
+	Actions    []generator.QuestAction      `json:"actions,omitempty"`
+
 	ID           string `json:"id"`
 	TemplateID   string `json:"template_id,omitempty"`
 	Name         string `json:"name"`
@@ -550,6 +556,7 @@ type Game struct {
 	party               []*character.Character
 	spellBooks          map[string]*magic.SpellBook
 	inv                 *inventory.Inventory
+	questVisitNodeID    string
 	quests              []generator.Quest
 	buildingSideQuests  map[string]generator.BuildingSideQuest
 	currentQ            int
@@ -676,7 +683,13 @@ func cloneMemberActionReqs(in []MemberActionReq) []MemberActionReq {
 // preserving all promotion-quest metadata so the client HUD can drive the
 // three-stage flow without inspecting server internals.
 func questToState(q *generator.Quest) QuestState {
-	return QuestState{
+	var progress *generator.ObjectiveProgress
+	if q.Objectives != nil {
+		copy := *q.Objectives
+		progress = &copy
+	}
+	state := QuestState{
+		Objectives:    progress,
 		ID:            q.ID,
 		TemplateID:    q.TemplateID,
 		Name:          q.Name,
@@ -697,6 +710,14 @@ func questToState(q *generator.Quest) QuestState {
 		PromoStage:    q.PromoStage,
 		Reward:        QuestRewardState{XP: q.Reward.XP, Gold: q.Reward.Gold},
 	}
+	if progress != nil {
+		state.Actions = append([]generator.QuestAction(nil), q.Actions...)
+		if progress.Step >= 0 && progress.Step < len(q.Actions) && !q.Completed {
+			action := q.Actions[progress.Step]
+			state.TargetNodeID, state.TargetName = action.Location, action.Detail
+		}
+	}
+	return state
 }
 
 func buildingSideQuestToState(q *generator.BuildingSideQuest) BuildingSideQuestState {
@@ -849,6 +870,7 @@ func (g *Game) buildPartyMemberState(c *character.Character, slot int) PartyMemb
 }
 
 func (g *Game) fillExtras(state *GameState) {
+	state.QuestVisitNodeID = g.questVisitNodeID
 	state.Discovered = cloneBoolMap(g.discovered)
 	// XP/level before combat (for victory animation)
 	if len(g.xpBefore) > 0 {

@@ -155,6 +155,7 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 		}
 	}
 	quests := generator.GenerateCampaign(loc, spawnID, rng, gm.sidePool)
+	generator.PrepareObjectives(quests, loc, spawnID, gm.gd.QuestObjectives)
 	walk := locality.Walk(loc, spawnID)
 	tileMap := locality.GenerateTileMap(loc, spawnID, walk)
 	gm.applyInteriorTemplates(tileMap)

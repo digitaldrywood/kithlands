@@ -152,13 +152,7 @@ func TestPromotionDoesNotFireUntilProofItemTurnedIn(t *testing.T) {
 		if state.Phase == "promotion" {
 			t.Fatalf("promotion fired early at step %d (promoIdx=%d)", i, promoIdx)
 		}
-		target := state.Quests[i].TargetNodeID
-		if _, err := game.ProcessAction(api.GameActionRequest{
-			Type:   "quest_advance",
-			NodeID: target,
-		}); err != nil {
-			t.Fatalf("quest_advance[%d]: %v", i, err)
-		}
+		completeNormalQuest(t, game)
 	}
 	// Ack the final quest_complete screen.
 	if game.State().Phase == "quest_complete" {

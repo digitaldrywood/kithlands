@@ -21,10 +21,15 @@ type QuestAction struct {
 	Target   string     `json:"target"`   // node ID or item name
 	Location string     `json:"location"` // node ID
 	Detail   string     `json:"detail"`   // extra info for LLM
+	Text     string     `json:"text,omitempty"`
+	Prompt   string     `json:"prompt,omitempty"`
+	Result   string     `json:"result,omitempty"`
 }
 
 // Quest is a generated quest instance.
 type Quest struct {
+	Objectives *ObjectiveProgress `json:"objectives,omitempty"`
+
 	ID           string        `json:"id"`
 	TemplateID   string        `json:"template_id"`
 	Name         string        `json:"name"`
@@ -43,11 +48,11 @@ type Quest struct {
 	Hidden       bool          `json:"hidden,omitempty"`
 	SoftPrereq   string        `json:"soft_prereq,omitempty"` // node ID that reveals this quest
 	// FF1/DQ3-style promotion quest fields. Populated only when IsPromotion.
-	ProofItemID    string `json:"proof_item_id,omitempty"`     // key item dropped by the trial guardian
-	BossMonsterID  string `json:"boss_monster_id,omitempty"`   // scripted guardian spawned at DungeonNodeID
-	DungeonNodeID  string `json:"dungeon_node_id,omitempty"`   // node where the trial guardian waits
-	DungeonName    string `json:"dungeon_name,omitempty"`      // display name for the trial dungeon
-	PromoStage     int    `json:"promo_stage,omitempty"`       // 0=seek giver, 1=clear trial, 2=turn in
+	ProofItemID   string `json:"proof_item_id,omitempty"`   // key item dropped by the trial guardian
+	BossMonsterID string `json:"boss_monster_id,omitempty"` // scripted guardian spawned at DungeonNodeID
+	DungeonNodeID string `json:"dungeon_node_id,omitempty"` // node where the trial guardian waits
+	DungeonName   string `json:"dungeon_name,omitempty"`    // display name for the trial dungeon
+	PromoStage    int    `json:"promo_stage,omitempty"`     // 0=seek giver, 1=clear trial, 2=turn in
 }
 
 type QuestReward struct {

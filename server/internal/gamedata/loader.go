@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/digitaldrywood/kithlands/internal/dungeon"
+	"github.com/digitaldrywood/kithlands/internal/generator"
 	"github.com/digitaldrywood/kithlands/internal/transport"
 )
 
@@ -45,6 +46,7 @@ type DialoguePool struct {
 type GameData struct {
 	FinalEncounter   FinalEncounter
 	Dungeons         []dungeon.Definition
+	QuestObjectives  map[string]generator.ObjectiveDefinition
 	Classes          []Class
 	Stats            StatsConfig
 	Items            ItemsData
@@ -85,6 +87,10 @@ type GameData struct {
 // with a clear error, not produce a broken game."
 func Load(sharedDir string) *GameData {
 	gd := &GameData{}
+	gd.QuestObjectives = loadJSON[map[string]generator.ObjectiveDefinition](sharedDir, "quest_objectives.json")
+	if err := generator.ValidateObjectiveDefinitions(gd.QuestObjectives); err != nil {
+		panic(err)
+	}
 
 	gd.Classes = loadJSON[[]Class](sharedDir, "classes.json")
 	gd.Stats = loadJSON[StatsConfig](sharedDir, "stats.json")

@@ -116,6 +116,9 @@ func defaultWorldAction(gs *api.GameState) api.GameActionRequest {
 		return api.GameActionRequest{Type: "advance"}
 	}
 	if gs.Phase == "world" {
+		if action, ok := objectiveWorldAction(gs); ok {
+			return action
+		}
 		return api.GameActionRequest{Type: "quest_advance", NodeID: nextQuestNodeID(gs)}
 	}
 	return api.GameActionRequest{}
