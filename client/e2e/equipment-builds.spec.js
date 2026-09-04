@@ -145,6 +145,7 @@ for (const [width, height] of [
         await expect(page.locator(".equipment-status")).toContainText(
           "equipped in",
         );
+        await page.getByRole("button", { name: "Close gear drawer" }).click();
       }
       await openBuilds(page);
       await save(page, "Lucky");
@@ -187,6 +188,7 @@ for (const [width, height] of [
       await expect(page.locator(".equipment-build-dialog")).toBeFocused();
       await page.keyboard.press("Escape");
       await expect(page.locator(".equipment-build-dialog")).toBeVisible();
+      await capture(page, `${width}-pending.png`);
       releasePreview();
       await expect(page.locator(".equipment-build-dialog")).toHaveAttribute(
         "aria-busy",
@@ -279,6 +281,7 @@ for (const [width, height] of [
       await expect(page.locator(".equipment-build-status")).toContainText(
         "overwritten with current gear. Gear unchanged.",
       );
+      await capture(page, `${width}-overwritten.png`);
       const overwritten = await api(page, "getGame");
       expect(overwritten.equipment).toEqual(lucky.equipment);
       expect(
