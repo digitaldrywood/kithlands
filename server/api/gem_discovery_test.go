@@ -228,3 +228,47 @@ func TestGemSocketPreviewResolvesAccessoriesWithoutMutation(t *testing.T) {
 		t.Fatal("preview disagrees with mutation")
 	}
 }
+
+func TestOrdinaryCombatLootDiscoversFamilyRecipe(t *testing.T) {
+	t.Parallel()
+	gd := gamedata.Load("../../shared")
+	g, err := NewGameManager(gd, "../../shared").CreateGame(NewGameRequest{TownName: "Gem Town", Places: []string{"Square"}, BigBuilding: "Hall", Difficulty: "normal", RNGSeed: 3, Party: []PartyMemberReq{{Name: "Ayla", ClassID: "warrior"}, {Name: "Mira", ClassID: "mender"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for battle := 0; battle < 2; battle++ {
+		state, err := g.ProcessAction(GameActionRequest{Type: "encounter"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for round := 0; round < 30 && state.Phase == "combat"; round++ {
+			state, err = g.ProcessAction(GameActionRequest{Type: "attack"})
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		if state.Phase != "quest_complete" {
+			t.Fatalf("ordinary fight did not end in victory: %s", state.Phase)
+		}
+		if _, err := g.ProcessAction(GameActionRequest{Type: "advance"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if g.inv.Gems["ward_shard"] < 1 || !g.inv.KnownGemRecipes["convert_ember_to_ward"] {
+		t.Fatalf("ordinary drop did not discover family recipe: %+v", g.inv.Gems)
+	}
+	if err := g.CraftGem(CraftGemRequest{RecipeID: "convert_ember_to_ward"}); err != nil {
+		t.Fatal(err)
+	}
+	saved, err := g.ToSaveState("earned discovery", "player")
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := FromSaveState(saved, g.gd, g.loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !restored.inv.KnownGemRecipes["convert_ember_to_ward"] {
+		t.Fatal("earned discovery lost")
+	}
+}

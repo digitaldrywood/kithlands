@@ -205,14 +205,10 @@ test("manages the full loadout, previews recommendations, and returns from socke
     fullPage: true,
   });
   await page.getByRole("button", { name: "Socket" }).click();
-  await page.waitForFunction(() =>
-    window.__kithlandsTest
-      .visibleTexts("World")
-      .some((entry) => entry.text === "GEM WORKSHOP"),
-  );
-  await page.evaluate(() =>
-    window.__kithlandsTest.clickInteractiveText("CLOSE", "World"),
-  );
+  await expect(
+    page.getByRole("dialog", { name: "Gem Workshop" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "Character" })).toBeVisible();
   await expect(page.locator('[data-slot-id="main_hand"]')).toBeFocused();
 

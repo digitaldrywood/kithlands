@@ -12,11 +12,11 @@ function headers() {
   return h;
 }
 
-async function apiCall(method, path, body) {
+async function apiCall(method, path, body, options = {}) {
   const url = `${BASE_URL}${path}`;
   console.log(`[API] ${method} ${path}`, body || "");
 
-  const opts = { method, headers: headers() };
+  const opts = { method, headers: headers(), signal: options.signal };
   if (body) opts.body = JSON.stringify(body);
 
   const res = await fetch(url, opts);
@@ -111,8 +111,8 @@ export async function newGame(data) {
   return apiCall("POST", "/game/new", data);
 }
 
-export async function getGame(id) {
-  return apiCall("GET", `/game/${id}`);
+export async function getGame(id, options) {
+  return apiCall("GET", `/game/${id}`, undefined, options);
 }
 
 export async function gameAction(gameId, action) {
@@ -202,18 +202,28 @@ export async function applyRecommendedEquipment(
   });
 }
 
-export async function socketGem(gameId, instanceId, socket, gemId) {
-  return apiCall("POST", `/game/${gameId}/socket`, {
-    instance_id: instanceId,
-    socket,
-    gem_id: gemId,
-  });
+export async function socketGem(gameId, instanceId, socket, gemId, options) {
+  return apiCall(
+    "POST",
+    `/game/${gameId}/socket`,
+    {
+      instance_id: instanceId,
+      socket,
+      gem_id: gemId,
+    },
+    options,
+  );
 }
 
-export async function craftGem(gameId, recipeId) {
-  return apiCall("POST", `/game/${gameId}/craft`, {
-    recipe_id: recipeId,
-  });
+export async function craftGem(gameId, recipeId, options) {
+  return apiCall(
+    "POST",
+    `/game/${gameId}/craft`,
+    {
+      recipe_id: recipeId,
+    },
+    options,
+  );
 }
 
 export async function updatePartyFormation(gameId, updates, reorder = null) {
