@@ -6,6 +6,7 @@ import { WorldScene } from "./scenes/world.js";
 import { BattleScene } from "./scenes/battle.js";
 import { TownScene } from "./scenes/town.js";
 import { SettlementScene } from "./scenes/settlement.js";
+import { DungeonScene } from "./scenes/dungeon.js";
 import "./styles/equipment-screen.css";
 
 const config = {
@@ -30,6 +31,7 @@ const config = {
     WizardScene,
     WorldScene,
     SettlementScene,
+    DungeonScene,
     BattleScene,
     TownScene,
   ],

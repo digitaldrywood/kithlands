@@ -1773,7 +1773,11 @@ export function installDevTestBridge(game) {
         applySceneGameState(game, scene, result);
         if (scene?.scene?.key === "Battle" && result.phase !== "combat") {
           const destination =
-            scene.returnScene?.sceneKey === "Town" ? "Town" : "World";
+            result.current_location?.kind === "dungeon"
+              ? "Dungeon"
+              : scene.returnScene?.sceneKey === "Town"
+                ? "Town"
+                : "World";
           await this.waitForSceneReady(destination);
         }
       }
@@ -1795,8 +1799,9 @@ export function installDevTestBridge(game) {
       const source = activeScene(game);
       const result = await loadSaveApi(saveId);
       if (!result?.error) {
-        source.scene.start("World", { gameState: result });
-        await this.waitForSceneReady("World");
+        const destination = result.current_location?.kind === "dungeon" ? "Dungeon" : "World";
+        source.scene.start(destination, { gameState: result });
+        await this.waitForSceneReady(destination);
       }
       return clone(result);
     },

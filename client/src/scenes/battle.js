@@ -3310,6 +3310,13 @@ export class BattleScene extends Phaser.Scene {
   }
 
   returnFromBattle(gs) {
+    if (
+      gs.current_location?.kind === "dungeon" &&
+      !["defeat", "victory", "promotion"].includes(gs.phase)
+    ) {
+      this.scene.start("Dungeon", { gameState: gs });
+      return;
+    }
     if (this.returnScene?.sceneKey === "Town") {
       this.scene.start("Town", {
         gameState: gs,

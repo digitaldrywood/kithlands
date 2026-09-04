@@ -107,6 +107,9 @@ func (s *Server) handleChestClaim(w http.ResponseWriter, r *http.Request) {
 func (g *Game) openChest(nodeID, chestID string) (*GameState, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if g.inDungeon() {
+		return nil, fmt.Errorf("use the adventure treasure interaction")
+	}
 
 	spawn, err := g.findSpawnUnlocked(nodeID)
 	if err != nil {
@@ -161,6 +164,9 @@ func (g *Game) openChest(nodeID, chestID string) (*GameState, error) {
 func (g *Game) claimChest(nodeID, chestID string) (*GameState, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if g.inDungeon() {
+		return nil, fmt.Errorf("use the adventure treasure interaction")
+	}
 
 	if g.pendingChestClaim == nil {
 		return nil, fmt.Errorf("no pending chest claim")

@@ -50,6 +50,7 @@ import {
 import { questObjectiveText, questKindLabel } from "./quest_text.js";
 import { walkAuditHUDText } from "./walkAuditMode.js";
 import { applyGameplayViewport } from "../systems/gameplayViewport.js";
+import { updateDungeonEntry } from "./dungeonEntry.js";
 
 const ENEMY_SPRITES = {
   Slime: "monster_slime",
@@ -404,6 +405,14 @@ export class WorldScene extends Phaser.Scene {
     playMusic("music_overworld");
 
     const gs = this.gameState;
+
+    if (
+      gs.current_location?.kind === "dungeon" &&
+      !["defeat", "victory", "promotion"].includes(gs.phase)
+    ) {
+      this.scene.start("Dungeon", { gameState: gs });
+      return;
+    }
 
     // Handle non-world phases
     if (gs.phase === "victory") {
@@ -1084,6 +1093,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   updateHUD() {
+    updateDungeonEntry(this);
     if (!this.hudText) return;
     const gs = this.gameState;
     if (import.meta.env?.DEV && gs.walk_audit) {

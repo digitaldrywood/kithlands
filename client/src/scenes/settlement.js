@@ -2,6 +2,7 @@ import { transitionLocation } from "../api.js";
 import { playMusic, playSFX } from "../systems/audio.js";
 import { initTouchControls, isTouchDevice } from "../systems/input.js";
 import { walkStepMs } from "../systems/prefs.js";
+import { updateDungeonEntry } from "./dungeonEntry.js";
 import { getLeaderIndex } from "./world.js";
 import {
   classPortraitFallbackScale,
@@ -261,6 +262,7 @@ export class SettlementScene extends Phaser.Scene {
 
     this.animating = false;
     this.updateInteractionTargets();
+    if (this.gameState.message) this.showMessage(this.gameState.message);
   }
 
   showLoadFailure(error) {
@@ -355,6 +357,7 @@ export class SettlementScene extends Phaser.Scene {
   }
 
   updateInteractionTargets() {
+    updateDungeonEntry(this);
     this.currentInteraction = interactionAt(
       this.model,
       this.playerX,

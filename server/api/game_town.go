@@ -79,6 +79,10 @@ func (g *Game) restAtTown(tags []string) (string, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
+	if g.inDungeon() {
+		return "", fmt.Errorf("use the adventure rest point")
+	}
+
 	tagSet := make(map[string]bool, len(tags))
 	for _, t := range tags {
 		tagSet[t] = true
@@ -97,6 +101,10 @@ func (g *Game) restAtTown(tags []string) (string, error) {
 func (g *Game) collectHiddenItem(itemKey string, tags []string) (string, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+
+	if g.inDungeon() {
+		return "", fmt.Errorf("use the adventure treasure interaction")
+	}
 
 	if g.collectedHiddenItems[itemKey] {
 		return "", fmt.Errorf("already collected")

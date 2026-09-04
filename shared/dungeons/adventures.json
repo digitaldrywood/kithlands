@@ -1,0 +1,35 @@
+[
+  {
+    "id": "old-mill",
+    "title": "The Old Mill of {locality}",
+    "entry_label": "Old Mill trail",
+    "description": "The millrace has fallen quiet. Follow the split oak and the kingfisher bend to the old mill above {locality}. You can retreat or save at any safe moment.",
+    "entry_room": "approach",
+    "entry_position": {"x": 12, "y": 12},
+    "complete_flag": "",
+    "return_text": "The millrace sings again. {locality} thanks you.",
+    "retreat_text": "You return to {locality}. Your discoveries and opened routes are remembered.",
+    "defeat_text": "The trail keeper brings your party back to the split oak. Rested and safe, you can try again; your discoveries remain.",
+    "payoff": {"gold": 80},
+    "objectives": [{"until": "", "text": "Follow the landmarks to the mill entrance. Read the miller's ledger inside."}],
+    "rooms": [
+      {
+        "id": "approach", "name": "The Kingfisher Trail", "description": "A split oak marks the old wagon road. Beyond the kingfisher bend, a roof peeks out of the riverside trees.", "map_file": "approach.json",
+        "actions": [
+          {"id": "split-oak", "label": "Read the trail carving", "kind": "hint", "position": {"x": 2,"y": 8}, "text": "The split oak bears a wheel carving: follow the broad path north for the mill. The thin western trail was the miller's quiet fishing spot.", "flag": "oak-read"},
+          {"id": "kingfisher-bend", "label": "Listen at the river bend", "kind": "hint", "position": {"x": 21,"y": 8}, "text": "A kingfisher waits on a branch. The water is still: the mill's sluice must be closed.", "flag": "river-read"},
+          {"id": "mill-door", "label": "Enter the Old Mill", "kind": "door", "position": {"x": 12,"y": 2}, "destination": "receiving", "arrival": {"x": 12,"y": 12}, "text": "The timber doorway opens into the receiving room."},
+          {"id": "trail-home", "label": "Return to town", "kind": "exit", "position": {"x": 12,"y": 13}}
+        ]
+      },
+      {
+        "id": "receiving", "name": "Receiving Room", "description": "Wagon tracks end at a worn weighing scale. A ledger lies beside dry sacks and a keeper's resting bench.", "map_file": "receiving.json",
+        "actions": [
+          {"id": "receiving-exit", "label": "Leave by the wagon door", "kind": "door", "position": {"x": 12,"y": 13}, "destination": "approach", "arrival": {"x": 12,"y": 3}, "text": "You step back onto the Kingfisher Trail."},
+          {"id": "ledger", "label": "Read the miller's ledger", "kind": "hint", "position": {"x": 12,"y": 8}, "flag": "ledger-read", "text": "The last entry reads: 'Store the spare handle with the grain. Fit it at the wheel, then open the sluice. Never force the root-choked heart while the race is dry.'"},
+          {"id": "keeper-bench", "label": "Rest at the keeper's bench", "kind": "rest", "position": {"x": 2,"y": 8}, "repeatable": true, "text": "At the sheltered bench, your party rests. HP, MP and conditions are restored."}
+        ]
+      }
+    ]
+  }
+]
