@@ -1,0 +1,137 @@
+{
+  "audit_date": "2026-09-04",
+  "runtime_commit": "37ef377b8f3e4c97a06e24525eba2ac7fc1ec78b",
+  "equivalent_merged_main_commit": "308dcd566840d13a90b8a24e074df39ab6c5ffc6",
+  "evidence_pr_base": "c9a12861837bdc0f656fefcbe2dbe37ba88361db",
+  "scope": "Existing fallback campaign; does not certify the later Old Mill/monster-pack changes.",
+  "creation": {
+    "server_rng_seed": 42,
+    "difficulty": "normal",
+    "osm_enabled": false,
+    "party_classes": ["warrior", "cinder", "rogue", "mender"]
+  },
+  "execution": {
+    "travel": "Real keyboard movement along shortest legal tile paths; encounters enabled.",
+    "combat": "Ordinary scene combat-round submission and server rules.",
+    "settings": {
+      "battle_speed": 1,
+      "message_speed": 6,
+      "walk_speed": 3
+    },
+    "debug_requests": [],
+    "page_errors": [],
+    "saved_resume_count": 2,
+    "final_continuation_reported_minutes": 24.0,
+    "timing_scope": "Final uninterrupted continuation only; excludes earlier audit segments, paused implementation, and reviews. Not a manual-play estimate."
+  },
+  "result": {
+    "phase": "victory",
+    "completed_quests": 24,
+    "total_quests": 24,
+    "gold": 4585,
+    "party": [
+      {
+        "name": "Ayla",
+        "class": "Knight",
+        "level": 22,
+        "promoted": true,
+        "hp": 900,
+        "max_hp": 900
+      },
+      {
+        "name": "Cato",
+        "class": "Pyromancer",
+        "level": 22,
+        "promoted": true,
+        "hp": 499,
+        "max_hp": 499
+      },
+      {
+        "name": "Nia",
+        "class": "Shadow",
+        "level": 22,
+        "promoted": true,
+        "hp": 648,
+        "max_hp": 648
+      },
+      {
+        "name": "Mira",
+        "class": "Sage",
+        "level": 22,
+        "promoted": true,
+        "hp": 684,
+        "max_hp": 684
+      }
+    ]
+  },
+  "promotion": {
+    "quest_number": 9,
+    "level_at_trial_start": 11,
+    "level_after_guardian": 14,
+    "levels_at_promotion_prompt": [15, 15, 15, 15]
+  },
+  "combined_combat": {
+    "completed_battles": 143,
+    "completed_rounds": 270,
+    "attempt_counter": 144,
+    "attempt_counter_note": "Counter includes interrupted attempt 38; count completed battles from terminal round states.",
+    "potion_used": true,
+    "spell_used": true,
+    "timed_rounds": 196,
+    "mean_timed_round_seconds": 3.63,
+    "max_timed_round_seconds": 7.58,
+    "timing_scope": "196 rounds from continuations; initial 74 rounds have no timer samples.",
+    "derivation": {
+      "source": "client/tmp/readiness/campaign-1788535559978/journal.json",
+      "round_records": 270,
+      "round_outcomes": {
+        "combat": 127,
+        "quest_complete": 142,
+        "world": 1
+      },
+      "completed_battle_formula": "142 quest_complete outcomes + 1 world outcome = 143 completed battles",
+      "explicit_battle_records": 106,
+      "explicit_battle_number_range": [39, 144],
+      "explicit_battle_records_note": "The initial segment recorded rounds but no explicit battle entries. Its 37 completed battles plus 106 continuation battle entries also total 143."
+    }
+  },
+  "final_continuation_travel": {
+    "legs": 21,
+    "actual_tiles": 1133,
+    "summed_shortest_tiles": 1133,
+    "travel_encounters": 68,
+    "guardian_battles": 1,
+    "one_tile_legs": 12,
+    "late_transport": {
+      "current_tier": "T5",
+      "name": "Airship",
+      "encounter_rate_mult": 0
+    }
+  },
+  "evidence_boundaries": [
+    "Same fresh save continued through two ordinary saved resumes; normal load returns to the overworld spawn.",
+    "Initial service tour was about 331 tiles versus 75 directly to the first objective.",
+    "Many later quests share Old Ruins and complete on re-entry.",
+    "Final quest completes on arrival; this is not proof of separate final-boss combat.",
+    "Phone promotion/menu text remains small."
+  ],
+  "local_raw_artifacts": [
+    "client/tmp/readiness/campaign-1788533712475",
+    "client/tmp/readiness/campaign-1788534572964/checkpoint-frozen.json",
+    "client/tmp/readiness/campaign-1788535559978"
+  ],
+  "images": [
+    {
+      "file": "20260904-1788535559978-promotion-desktop.png",
+      "sha256": "4c2bc75636b585cbe436cef716331a2444356f629bb4aa0986e66db6d2d616c1"
+    },
+    {
+      "file": "20260904-1788535559978-promotion-phone.png",
+      "sha256": "73f2deddaf49dc6d45360ea9710fcb976f9b3958451368370cb93f94077c33d5"
+    },
+    {
+      "file": "20260904-1788535559978-campaign-victory.png",
+      "sha256": "6c8e4c8e18607ea67654d25bd58471923d6b4c424cdcdf3a4dd8f8dd9f0f269f"
+    }
+  ]
+}
