@@ -97,9 +97,13 @@ func TestActionResponseKeepsQuestTargetFields(t *testing.T) {
 	// Fire any action — the response must still carry target_name and
 	// target_node_id for the active quest so the HUD can render "Go to: X"
 	// and the minimap can highlight the target spawn.
+	wrongNode := currentLocationWorldNodeID(t, gs)
+	if wrongNode == targetNodeID {
+		t.Fatal("fixture starts at the current quest target")
+	}
 	resp := post(t, ts.URL+"/api/game/"+gameID+"/action", api.GameActionRequest{
 		Type:   "quest_advance",
-		NodeID: targetNodeID + "_not_it", // wrong node, so quest does NOT advance
+		NodeID: wrongNode, // authorized location, but not the active quest target
 	})
 	quests := resp["quests"].([]any)
 	q := quests[startQuest].(map[string]any)
@@ -177,6 +181,9 @@ func TestPromotionDoesNotFireUntilProofItemTurnedIn(t *testing.T) {
 	}
 
 	// Stage 0 → 1: visit the giver. Promotion must not fire.
+	if err := api.ArriveAtWorldNodeForTest(game, promo.GiverNodeID); err != nil {
+		t.Fatalf("arrive at giver: %v", err)
+	}
 	if _, err := game.ProcessAction(api.GameActionRequest{Type: "quest_advance", NodeID: promo.GiverNodeID}); err != nil {
 		t.Fatalf("quest_advance giver: %v", err)
 	}
@@ -192,6 +199,9 @@ func TestPromotionDoesNotFireUntilProofItemTurnedIn(t *testing.T) {
 	}
 
 	// Stage 1: enter the dungeon → scripted guardian fight.
+	if err := api.ArriveAtWorldNodeForTest(game, promo.DungeonNodeID); err != nil {
+		t.Fatalf("arrive at dungeon: %v", err)
+	}
 	if _, err := game.ProcessAction(api.GameActionRequest{Type: "quest_advance", NodeID: promo.DungeonNodeID}); err != nil {
 		t.Fatalf("quest_advance dungeon: %v", err)
 	}
@@ -220,6 +230,9 @@ func TestPromotionDoesNotFireUntilProofItemTurnedIn(t *testing.T) {
 	}
 
 	// Stage 2: turn in → promotion fires.
+	if err := api.ArriveAtWorldNodeForTest(game, promo.GiverNodeID); err != nil {
+		t.Fatalf("return to giver: %v", err)
+	}
 	if _, err := game.ProcessAction(api.GameActionRequest{Type: "quest_advance", NodeID: promo.GiverNodeID}); err != nil {
 		t.Fatalf("quest_advance turn-in: %v", err)
 	}

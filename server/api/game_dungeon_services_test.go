@@ -87,6 +87,7 @@ func TestDungeonRejectsRemoteProprietorQuestTurnIn(t *testing.T) {
 	if quest.Status != generator.BuildingQuestAccepted {
 		t.Fatalf("quest status after acceptance = %s", quest.Status)
 	}
+	arriveAtWorldNode(t, g, quest.TargetNodeID)
 	if _, err := g.ProcessAction(GameActionRequest{Type: "quest_advance", NodeID: quest.TargetNodeID}); err != nil {
 		t.Fatal(err)
 	}

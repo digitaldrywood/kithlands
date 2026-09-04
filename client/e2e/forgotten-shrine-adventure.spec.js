@@ -2,6 +2,8 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
 
+test.use({ hasTouch: true });
+
 const runID = Date.now();
 const proofDir = path.resolve(`tmp/forgotten-shrine-${runID}`);
 mkdirSync(proofDir, { recursive: true });
@@ -27,6 +29,78 @@ async function capture(page, viewport, label) {
     ),
     fullPage: true,
   });
+}
+
+async function enableSlowTouchWalking(page) {
+  await page.evaluate(async () => {
+    const { setWalkSpeed } = await import("/src/systems/prefs.js");
+    setWalkSpeed(1);
+  });
+  const canvas = await page.locator("canvas").boundingBox();
+  if (!canvas) throw new Error("Game canvas is not visible");
+  await page.touchscreen.tap(canvas.x + 4, canvas.y + 4);
+}
+
+async function walkWithHeldDpad(page, direction, steps) {
+  const start = await page.evaluate(() => ({
+    nav: window.__kithlandsTest.worldNavigationSnapshot(),
+    layout: window.__kithlandsTest.gameplayViewportSnapshot("World"),
+  }));
+  const deltas = {
+    up: { dx: 0, dy: -1, buttonX: 0, buttonY: -1 },
+    down: { dx: 0, dy: 1, buttonX: 0, buttonY: 1 },
+    left: { dx: -1, dy: 0, buttonX: -1, buttonY: 0 },
+    right: { dx: 1, dy: 0, buttonX: 1, buttonY: 0 },
+  };
+  const delta = deltas[direction];
+  const target = {
+    x: start.nav.x + delta.dx * steps,
+    y: start.nav.y + delta.dy * steps,
+  };
+  const canvas = await page.locator("canvas").boundingBox();
+  if (!canvas) throw new Error("Game canvas is not visible");
+  const dpad = start.layout.dpad;
+  const logicalX = dpad.x + delta.buttonX * dpad.offset;
+  const logicalY = dpad.y + delta.buttonY * dpad.offset;
+  await page.mouse.move(
+    canvas.x + (logicalX / start.layout.width) * canvas.width,
+    canvas.y + (logicalY / start.layout.height) * canvas.height,
+  );
+  await page.mouse.down();
+  try {
+    await page.waitForFunction((destination) => {
+      const nav = window.__kithlandsTest.worldNavigationSnapshot();
+      return nav.x === destination.x && nav.y === destination.y;
+    }, target);
+  } finally {
+    await page.mouse.up();
+  }
+  await page.waitForFunction(
+    () => !window.__kithlandsTest.worldNavigationSnapshot().animating,
+  );
+}
+
+async function walkWorldRoute(page, route, heldTouch) {
+  if (!heldTouch) {
+    for (const direction of route) {
+      await page.evaluate(
+        (name) => window.__kithlandsTest.movePlayer(name, "World"),
+        direction,
+      );
+      await page.waitForFunction(
+        () => !window.__kithlandsTest.worldNavigationSnapshot().animating,
+      );
+    }
+    return;
+  }
+
+  for (let index = 0; index < route.length; ) {
+    const direction = route[index];
+    let end = index + 1;
+    while (end < route.length && route[end] === direction) end += 1;
+    await walkWithHeldDpad(page, direction, end - index);
+    index = end;
+  }
 }
 
 async function waitForRoom(page, roomID) {
@@ -103,7 +177,7 @@ async function act(page, actionID) {
   return result;
 }
 
-async function positionAtDungeonEntry(page, dungeonID) {
+async function positionAtDungeonEntry(page, dungeonID, heldTouch = false) {
   const navigation = await page.evaluate((id) => {
     const gameState = window.__kithlandsTest.gameState("World");
     const entry = gameState.dungeon_entries.find(
@@ -163,15 +237,7 @@ async function positionAtDungeonEntry(page, dungeonID) {
       point = step.point;
     }
     route.reverse();
-    for (const direction of route) {
-      await page.evaluate(
-        (name) => window.__kithlandsTest.movePlayer(name, "World"),
-        direction,
-      );
-      await page.waitForFunction(
-        () => !window.__kithlandsTest.worldNavigationSnapshot().animating,
-      );
-    }
+    await walkWorldRoute(page, route, heldTouch);
     await page.waitForFunction(
       (nodeID) =>
         window.__kithlandsTest.gameState("World").current_location
@@ -199,8 +265,8 @@ async function positionAtDungeonEntry(page, dungeonID) {
   return entry;
 }
 
-async function enterDungeon(page, dungeonID) {
-  const entry = await positionAtDungeonEntry(page, dungeonID);
+async function enterDungeon(page, dungeonID, heldTouch = false) {
+  const entry = await positionAtDungeonEntry(page, dungeonID, heldTouch);
   const responsePromise = page.waitForResponse(
     (response) =>
       response.url().endsWith("/dungeon") &&
@@ -370,8 +436,15 @@ for (const viewport of viewports) {
     await page.waitForFunction(
       () => window.__kithlandsTest.activeSceneKey() === "World",
     );
+    if (viewport.width === 390) {
+      await enableSlowTouchWalking(page);
+    }
 
-    const entry = await positionAtDungeonEntry(page, "forgotten-shrine");
+    const entry = await positionAtDungeonEntry(
+      page,
+      "forgotten-shrine",
+      viewport.width === 390,
+    );
     expect(entry.id).toBe("forgotten-shrine");
     await capture(page, viewport, "01-far-world-entry");
     await enterDungeon(page, "forgotten-shrine");

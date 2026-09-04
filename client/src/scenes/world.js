@@ -802,12 +802,16 @@ export class WorldScene extends Phaser.Scene {
   }
 
   tryMove(dx, dy) {
+    // Touch repeat and tap-to-walk callbacks run independently of update().
+    // Keep one tile step (including its authoritative arrival sync) in flight
+    // at a time so held input cannot skip graph waypoints.
+    if (this.animating || isWorldInputLocked(this)) return false;
     const nx = this.playerX + dx;
     const ny = this.playerY + dy;
-    if (nx < 0 || nx >= this.mapW || ny < 0 || ny >= this.mapH) return;
+    if (nx < 0 || nx >= this.mapW || ny < 0 || ny >= this.mapH) return false;
 
     const tile = this.tileData[ny][nx];
-    if (!this.canWalkTile(tile)) return;
+    if (!this.canWalkTile(tile)) return false;
 
     this.playerX = nx;
     this.playerY = ny;
@@ -898,6 +902,7 @@ export class WorldScene extends Phaser.Scene {
 
     this.updateHUD();
     this.updateMinimap();
+    return true;
   }
 
   async triggerRandomEncounter(tile) {

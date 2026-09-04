@@ -8,9 +8,9 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/locality"
 )
 
-// validQuestVisit checks graph membership, not client tile proximity. Ordinary
-// world movement remains client-rendered; a valid arrival records the current
-// locality interaction context, never item ownership or quest completion.
+// validQuestVisit requires the server-held world arrival established by the
+// adjacent-node transition. Client-submitted node IDs alone never establish
+// interaction context, item ownership, or quest completion.
 func (g *Game) validQuestVisit(nodeID string) bool {
 	if nodeID == "" || g.loc == nil || g.walk == nil || g.location.Kind != LocationWorld {
 		return false
@@ -20,7 +20,7 @@ func (g *Game) validQuestVisit(nodeID string) bool {
 		return false
 	}
 	_, reachable := g.walk.DistanceMap[nodeID]
-	return reachable
+	return reachable && g.location.WorldNodeID == nodeID
 }
 
 func (g *Game) advanceObjectiveArrival(q *generator.Quest, nodeID string) bool {

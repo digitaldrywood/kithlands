@@ -40,6 +40,7 @@ func TestQuestObjectivesActionsAndSaveResume(t *testing.T) {
 			if _, err := g.ProcessAction(future); err == nil {
 				t.Fatal("accepted future handoff")
 			}
+			arriveAtWorldNode(t, g, first)
 			for i := 0; i < 3; i++ {
 				if _, err := g.ProcessAction(GameActionRequest{Type: "quest_advance", NodeID: first}); err != nil {
 					t.Fatal(err)
@@ -93,6 +94,7 @@ func TestQuestObjectivesActionsAndSaveResume(t *testing.T) {
 				t.Fatal("load retained stale interior visit")
 			}
 			destination := q.Actions[2].Location
+			arriveAtWorldNode(t, g, destination)
 			if _, err := g.ProcessAction(GameActionRequest{Type: "quest_advance", NodeID: destination}); err != nil {
 				t.Fatal(err)
 			}
@@ -141,8 +143,8 @@ func TestQuestObjectivesIsolationAndInvalidVisits(t *testing.T) {
 	g := objectiveTestGame(t, "Q01")
 	q := &g.quests[0]
 	for _, id := range []string{"", "fabricated_npc", q.TargetNodeID + "_npc999"} {
-		if _, err := g.ProcessAction(GameActionRequest{Type: "quest_advance", NodeID: id}); err != nil {
-			t.Fatal(err)
+		if _, err := g.ProcessAction(GameActionRequest{Type: "quest_advance", NodeID: id}); err == nil {
+			t.Fatalf("accepted invalid visit %q", id)
 		}
 		if q.Objectives.Step != 0 {
 			t.Fatal("invalid visit advanced objectives")
@@ -182,6 +184,7 @@ func TestQuestObjectivesCustomSpawnSaveAndLegacyResume(t *testing.T) {
 		t.Fatal("fixture requires staged first quest")
 	}
 	node := q.Actions[0].Location
+	arriveAtWorldNode(t, g, node)
 	if _, err := g.ProcessAction(GameActionRequest{Type: "quest_advance", NodeID: node}); err != nil {
 		t.Fatal(err)
 	}
@@ -203,6 +206,7 @@ func TestQuestObjectivesCustomSpawnSaveAndLegacyResume(t *testing.T) {
 			if restored.walk.Spawn.ID != "person_1" {
 				t.Fatalf("restored unreachable component %q", restored.walk.Spawn.ID)
 			}
+			arriveAtWorldNode(t, restored, node)
 			if _, err := restored.ProcessAction(GameActionRequest{Type: "quest_advance", NodeID: node}); err != nil {
 				t.Fatal(err)
 			}
@@ -213,6 +217,45 @@ func TestQuestObjectivesCustomSpawnSaveAndLegacyResume(t *testing.T) {
 				t.Fatal("collection lost custody")
 			}
 		})
+	}
+}
+
+func TestCustomSpawnSavePreservesForgottenShrineBinding(t *testing.T) {
+	base := newTownTestGame(t)
+	gm := NewGameManager(base.gd, "../../shared")
+	g, err := gm.CreateGame(NewGameRequest{
+		TownName:    "Reviewtown",
+		BigBuilding: "Hall",
+		People:      []WizardPersonReq{{Name: "A", Relation: "friendly"}, {Name: "B", Relation: "friendly"}},
+		Places:      []string{"Archive", "Market", "Garden"},
+		SpawnNodeID: "person_1",
+		Party:       []PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
+		Difficulty:  "normal",
+		RNGSeed:     3,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	shrineNodeID := dungeonEntryByID(t, g, "forgotten-shrine").NodeID
+	if shrineNodeID == "" || shrineNodeID == g.walk.Spawn.ID || shrineNodeID == g.walk.BigBad.ID {
+		t.Fatalf("invalid Forgotten Shrine binding %q", shrineNodeID)
+	}
+	ss, err := g.ToSaveState("custom shrine", "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ss.SpawnNodeID != "person_1" {
+		t.Fatalf("saved wrong custom spawn %q", ss.SpawnNodeID)
+	}
+	restored, err := FromSaveState(ss, g.gd, g.loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restored.walk.Spawn.ID != "person_1" {
+		t.Fatalf("restored wrong custom spawn %q", restored.walk.Spawn.ID)
+	}
+	if got := dungeonEntryByID(t, restored, "forgotten-shrine").NodeID; got != shrineNodeID {
+		t.Fatalf("Forgotten Shrine binding changed across save: got %q, want %q", got, shrineNodeID)
 	}
 }
 
@@ -232,6 +275,7 @@ func TestQuestObjectivesPreserveExplorationNotifications(t *testing.T) {
 	if result := g.InteractWithNPC(giver); result == nil {
 		t.Fatal("could not accept side quest")
 	}
+	arriveAtWorldNode(t, g, side.TargetNodeID)
 	state, err := g.ProcessAction(GameActionRequest{Type: "quest_advance", NodeID: side.TargetNodeID})
 	if err != nil {
 		t.Fatal(err)
@@ -244,5 +288,26 @@ func TestQuestObjectivesPreserveExplorationNotifications(t *testing.T) {
 	}
 	if strings.Count(state.Message, g.quests[0].Actions[0].Text) != 1 {
 		t.Fatal("objective prompt duplicated")
+	}
+}
+
+func TestQuestVisitRequiresAuthoritativeWorldArrival(t *testing.T) {
+	g := objectiveTestGame(t, "Q01")
+	target := g.quests[0].Actions[0].Location
+	if target == g.location.WorldNodeID {
+		t.Fatal("fixture objective unexpectedly starts at the current node")
+	}
+	if _, err := g.ProcessAction(GameActionRequest{Type: "quest_advance", NodeID: target}); err == nil {
+		t.Fatal("remote quest visit accepted")
+	}
+	if g.questVisitNodeID != "" || g.visitedNodes[target] || g.quests[0].Objectives.Step != 0 {
+		t.Fatal("rejected remote visit mutated objective or visit state")
+	}
+	arriveAtWorldNode(t, g, target)
+	if _, err := g.ProcessAction(GameActionRequest{Type: "quest_advance", NodeID: target}); err != nil {
+		t.Fatalf("arrived quest visit: %v", err)
+	}
+	if g.questVisitNodeID != target || !g.visitedNodes[target] || g.quests[0].Objectives.Step != 1 {
+		t.Fatal("authoritative arrival did not advance the visit objective")
 	}
 }

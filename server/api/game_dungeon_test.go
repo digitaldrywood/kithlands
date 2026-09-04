@@ -15,7 +15,9 @@ import (
 
 func enterTestDungeon(t *testing.T, g *Game) GameState {
 	t.Helper()
-	s, err := g.ProcessDungeon(DungeonRequest{Type: "enter", NodeID: g.State().DungeonEntry.NodeID})
+	entry := g.State().DungeonEntry
+	arriveAtWorldNode(t, g, entry.NodeID)
+	s, err := g.ProcessDungeon(DungeonRequest{Type: "enter", NodeID: entry.NodeID})
 	if err != nil {
 		t.Fatal(err)
 	}

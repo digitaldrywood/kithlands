@@ -62,11 +62,11 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 		}
 
 	case "quest_advance":
-		if g.validQuestVisit(req.NodeID) {
-			g.questVisitNodeID = req.NodeID
-		} else {
+		if !g.validQuestVisit(req.NodeID) {
 			g.questVisitNodeID = ""
+			return nil, fmt.Errorf("reach the quest location before interacting")
 		}
+		g.questVisitNodeID = req.NodeID
 		// Track node visit for soft prerequisites and Strange Coin
 		if req.NodeID != "" {
 			if g.visitedNodes == nil {
