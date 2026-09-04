@@ -53,15 +53,25 @@ func (r RunResult) Wiped() bool {
 	return r.FinalPhase == "defeat"
 }
 
+// Terminal reports whether a playthrough reached an authored campaign ending.
+func (r RunResult) Terminal() bool {
+	return r.FinalPhase == "victory" || r.FinalPhase == "defeat"
+}
+
 // Aggregated is the summary of many runs of a single strategy.
 type Aggregated struct {
-	Strategy    string  `json:"strategy"`
-	Route       string  `json:"route"`
-	Runs        int     `json:"runs"`
-	Wipes       int     `json:"wipes"`
-	WipeRate    float64 `json:"wipe_rate"`
-	Victories   int     `json:"victories"`
-	VictoryRate float64 `json:"victory_rate"`
+	Strategy        string  `json:"strategy"`
+	Route           string  `json:"route"`
+	Runs            int     `json:"runs"`
+	Wipes           int     `json:"wipes"`
+	WipeRate        float64 `json:"wipe_rate"`
+	Victories       int     `json:"victories"`
+	VictoryRate     float64 `json:"victory_rate"`
+	TerminalRuns    int     `json:"terminal_runs"`
+	TerminalRate    float64 `json:"terminal_rate"`
+	NonTerminalRuns int     `json:"nonterminal_runs"`
+	ErrorRuns       int     `json:"error_runs"`
+	TimeoutRuns     int     `json:"timeout_runs"`
 
 	MeanTurns                float64 `json:"mean_turns"`
 	MeanFinalLevel           float64 `json:"mean_final_level"`
@@ -116,11 +126,20 @@ func Aggregate(runs []RunResult) Aggregated {
 	var totalFled int
 
 	for _, r := range runs {
-		if r.Wiped() {
-			agg.Wipes++
+		if r.Terminal() {
+			agg.TerminalRuns++
+		} else {
+			agg.NonTerminalRuns++
 		}
-		if r.FinalPhase == "victory" {
+		switch r.FinalPhase {
+		case "victory":
 			agg.Victories++
+		case "defeat":
+			agg.Wipes++
+		case "error":
+			agg.ErrorRuns++
+		case "timeout":
+			agg.TimeoutRuns++
 		}
 		totalTurns += r.TurnsElapsed
 		totalFinalLevel += r.FinalLevel
@@ -157,6 +176,7 @@ func Aggregate(runs []RunResult) Aggregated {
 
 	agg.WipeRate = float64(agg.Wipes) / float64(agg.Runs)
 	agg.VictoryRate = float64(agg.Victories) / float64(agg.Runs)
+	agg.TerminalRate = float64(agg.TerminalRuns) / float64(agg.Runs)
 	agg.MeanTurns = float64(totalTurns) / float64(agg.Runs)
 	agg.MeanFinalLevel = float64(totalFinalLevel) / float64(agg.Runs)
 	agg.MeanMainQuestsCompleted = float64(totalMainCompleted) / float64(agg.Runs)

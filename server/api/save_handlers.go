@@ -171,6 +171,11 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		return nil, fmt.Errorf("unmarshaling world state: %w", err)
 	}
 	quests, worldState.CurrentQ = migrateRequiredCampaign(quests, worldState.CurrentQ)
+	worldState.FinalEncounter = migrateFinalEncounterProgress(
+		worldState.FinalEncounter,
+		quests,
+		gd.FinalEncounter.QuestTemplateID,
+	)
 
 	spawnID := savedQuestSpawn(ss.SpawnNodeID, loc, quests, worldState.CurrentQ)
 	generator.PrepareObjectives(quests, loc, spawnID, gd.QuestObjectives)
@@ -384,6 +389,21 @@ func migrateRequiredCampaign(quests []generator.Quest, current int) ([]generator
 		mainBeforeCurrent = len(mainQuests)
 	}
 	return mainQuests, mainBeforeCurrent
+}
+
+// migrateFinalEncounterProgress drops finale state created by a retired
+// linear side quest. Only progress whose quest ID belongs to the retained,
+// authored final quest may survive migration.
+func migrateFinalEncounterProgress(progress *FinalEncounterProgress, quests []generator.Quest, finalTemplateID string) *FinalEncounterProgress {
+	if progress == nil {
+		return nil
+	}
+	for _, quest := range quests {
+		if quest.ID == progress.QuestID && quest.TemplateID == finalTemplateID && !quest.IsPromotion && !quest.IsSideQuest {
+			return progress
+		}
+	}
+	return nil
 }
 
 // Save API handlers

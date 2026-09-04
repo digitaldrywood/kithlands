@@ -36,6 +36,9 @@ func TestAggregateBasicStats(t *testing.T) {
 	if math.Abs(agg.VictoryRate-0.75) > 1e-9 {
 		t.Errorf("VictoryRate: got %v, want 0.75", agg.VictoryRate)
 	}
+	if agg.TerminalRuns != 4 || agg.NonTerminalRuns != 0 || agg.TerminalRate != 1 {
+		t.Errorf("terminal outcomes: got terminal=%d nonterminal=%d rate=%v", agg.TerminalRuns, agg.NonTerminalRuns, agg.TerminalRate)
+	}
 	wantMeanTurns := (100.0 + 200 + 80 + 150) / 4
 	if math.Abs(agg.MeanTurns-wantMeanTurns) > 1e-9 {
 		t.Errorf("MeanTurns: got %v, want %v", agg.MeanTurns, wantMeanTurns)
@@ -44,6 +47,22 @@ func TestAggregateBasicStats(t *testing.T) {
 	wantMeanPromoLvl := (8.0 + 10 + 6 + 9) / 4
 	if math.Abs(agg.MeanPromotionLevel-wantMeanPromoLvl) > 1e-9 {
 		t.Errorf("MeanPromotionLevel: got %v, want %v", agg.MeanPromotionLevel, wantMeanPromoLvl)
+	}
+}
+
+func TestAggregateCountsNonTerminalOutcomes(t *testing.T) {
+	agg := Aggregate([]RunResult{
+		{FinalPhase: "victory"},
+		{FinalPhase: "defeat"},
+		{FinalPhase: "error"},
+		{FinalPhase: "timeout"},
+		{FinalPhase: "world"},
+	})
+	if agg.TerminalRuns != 2 || agg.NonTerminalRuns != 3 || agg.ErrorRuns != 1 || agg.TimeoutRuns != 1 {
+		t.Fatalf("nonterminal outcome counts = %+v", agg)
+	}
+	if math.Abs(agg.TerminalRate-0.4) > 1e-9 {
+		t.Fatalf("TerminalRate: got %v, want 0.4", agg.TerminalRate)
 	}
 }
 

@@ -122,7 +122,7 @@ func TestOptionalBuildingQuestDoesNotGateCampaignProgression(t *testing.T) {
 		}
 		switch state.Phase {
 		case "world":
-			if _, err := game.ProcessAction(nextCampaignAction(state)); err != nil {
+			if _, err := processCampaignAction(t, game, nextCampaignAction(state)); err != nil {
 				t.Fatal(err)
 			}
 		case "combat":

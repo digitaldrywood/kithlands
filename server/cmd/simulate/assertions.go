@@ -71,6 +71,22 @@ func CheckAssertions(summaries map[string]Aggregated, cfg AssertionConfig) []Ass
 		if agg.Runs == 0 {
 			continue
 		}
+		hasIncompleteRuns := agg.TerminalRuns != agg.Runs || agg.NonTerminalRuns > 0 ||
+			agg.ErrorRuns > 0 || agg.TimeoutRuns > 0
+		if hasIncompleteRuns {
+			other := agg.NonTerminalRuns - agg.ErrorRuns - agg.TimeoutRuns
+			if other < 0 {
+				other = 0
+			}
+			fails = append(fails, AssertionFailure{
+				Strategy: agg.Strategy,
+				Route:    agg.Route,
+				Kind:     "terminal_outcomes",
+				Message: fmt.Sprintf(
+					"%d of %d runs reached victory or defeat (%d errors, %d timeouts, %d other incomplete)",
+					agg.TerminalRuns, agg.Runs, agg.ErrorRuns, agg.TimeoutRuns, other),
+			})
+		}
 		if agg.WipeRate > cfg.MaxWipeRate {
 			fails = append(fails, AssertionFailure{
 				Strategy: agg.Strategy,

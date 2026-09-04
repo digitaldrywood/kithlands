@@ -183,6 +183,9 @@ func runAll(gd *gamedata.GameData, sharedDir string, baseSeed int64, runs int, s
 			jobOpts.Route = jb.route
 			res, err := RunOne(gd, sharedDir, jb.seed, jb.strategy, jobOpts)
 			if err != nil {
+				res.Seed = jb.seed
+				res.Strategy = jb.strategy.Name()
+				res.Route = jb.route.Name
 				res.FinalPhase = "error"
 			}
 			results[idx] = res
@@ -199,12 +202,12 @@ func printSummary(summaries map[string]Aggregated) {
 	}
 	sort.Strings(names)
 
-	fmt.Printf("\n%-10s %-16s %6s %8s %8s %8s %8s %8s %8s %8s %8s %8s\n",
-		"route", "strategy", "runs", "victory", "wipe", "turns", "routeQ", "battles", "promoLv", "finalLv", "sideDone", "bossWin")
+	fmt.Printf("\n%-10s %-16s %6s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s\n",
+		"route", "strategy", "runs", "terminal", "victory", "wipe", "turns", "routeQ", "battles", "promoLv", "finalLv", "sideDone", "bossWin")
 	for _, n := range names {
 		a := summaries[n]
-		fmt.Printf("%-10s %-16s %6d %7.1f%% %7.1f%% %8.1f %8.1f %8.1f %8.2f %8.2f %7.1f%% %7.1f%%\n",
-			a.Route, a.Strategy, a.Runs, a.VictoryRate*100, a.WipeRate*100,
+		fmt.Printf("%-10s %-16s %6d %7.1f%% %7.1f%% %7.1f%% %8.1f %8.1f %8.1f %8.2f %8.2f %7.1f%% %7.1f%%\n",
+			a.Route, a.Strategy, a.Runs, a.TerminalRate*100, a.VictoryRate*100, a.WipeRate*100,
 			a.MeanTurns, a.MeanRouteQuestsCompleted, a.MeanEncountersPerRun, a.MeanPromotionLevel,
 			a.MeanFinalLevel, a.OptionalCompletionRate*100, a.BossVictoryRate*100)
 	}

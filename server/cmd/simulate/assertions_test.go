@@ -18,7 +18,7 @@ func TestDefaultCampaignRegressionBands(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			failures := CheckAssertions(map[string]Aggregated{"test": {
-				Runs: 100, PromotionCount: 70, VictoryRate: 0.7,
+				Runs: 100, TerminalRuns: 100, PromotionCount: 70, VictoryRate: 0.7,
 				MeanPromotionLevel: tc.level, WipeRate: tc.wipeRate,
 			}}, DefaultAssertionConfig())
 			if tc.wantFailure == "" {
@@ -36,6 +36,7 @@ func TestAssertWipeRateBelowThreshold_Pass(t *testing.T) {
 	agg := Aggregated{
 		Strategy:           "aggressive",
 		Runs:               100,
+		TerminalRuns:       100,
 		Wipes:              10,
 		WipeRate:           0.10,
 		Victories:          90,
@@ -56,7 +57,7 @@ func TestAssertWipeRateBelowThreshold_Pass(t *testing.T) {
 
 func TestAssertWipeRateBelowThreshold_Fail(t *testing.T) {
 	agg := Aggregated{
-		Strategy: "aggressive", Runs: 100, Wipes: 30, WipeRate: 0.30,
+		Strategy: "aggressive", Runs: 100, TerminalRuns: 100, Wipes: 30, WipeRate: 0.30,
 		VictoryRate: 0.70, MeanPromotionLevel: 8, PromotionCount: 100,
 	}
 	fails := CheckAssertions(map[string]Aggregated{"aggressive": agg}, AssertionConfig{
@@ -81,7 +82,7 @@ func TestAssertWipeRateBelowThreshold_Fail(t *testing.T) {
 
 func TestAssertVictoryRate_Fail(t *testing.T) {
 	agg := Aggregated{
-		Strategy: "cautious", Runs: 100, WipeRate: 0.05, VictoryRate: 0.50,
+		Strategy: "cautious", Runs: 100, TerminalRuns: 100, WipeRate: 0.05, VictoryRate: 0.50,
 		MeanPromotionLevel: 8, PromotionCount: 50,
 	}
 	fails := CheckAssertions(map[string]Aggregated{"cautious": agg}, AssertionConfig{
@@ -103,7 +104,7 @@ func TestAssertVictoryRate_Fail(t *testing.T) {
 
 func TestAssertPromotionLevelOutOfBand(t *testing.T) {
 	agg := Aggregated{
-		Strategy: "aggressive", Runs: 100, WipeRate: 0.05, VictoryRate: 0.90,
+		Strategy: "aggressive", Runs: 100, TerminalRuns: 100, WipeRate: 0.05, VictoryRate: 0.90,
 		MeanPromotionLevel: 15, PromotionCount: 100,
 	}
 	fails := CheckAssertions(map[string]Aggregated{"aggressive": agg}, AssertionConfig{
@@ -125,7 +126,7 @@ func TestAssertPromotionLevelOutOfBand(t *testing.T) {
 
 func TestAssertPromotionNeverFired(t *testing.T) {
 	agg := Aggregated{
-		Strategy: "broken", Runs: 100, WipeRate: 0.05, VictoryRate: 0.90,
+		Strategy: "broken", Runs: 100, TerminalRuns: 100, WipeRate: 0.05, VictoryRate: 0.90,
 		MeanPromotionLevel: 0, PromotionCount: 0,
 	}
 	fails := CheckAssertions(map[string]Aggregated{"broken": agg}, AssertionConfig{
@@ -149,7 +150,7 @@ func TestAssertQuestOrderMonotonic(t *testing.T) {
 	// Quest order assertion lives per-run, not per-aggregate: if any RunResult
 	// reported QuestOrderBroken=true, it surfaces as an aggregated failure.
 	agg := Aggregated{
-		Strategy: "aggressive", Runs: 100, WipeRate: 0.05, VictoryRate: 0.90,
+		Strategy: "aggressive", Runs: 100, TerminalRuns: 100, WipeRate: 0.05, VictoryRate: 0.90,
 		MeanPromotionLevel: 8, PromotionCount: 100, QuestOrderBrokenCount: 3,
 	}
 	fails := CheckAssertions(map[string]Aggregated{"aggressive": agg}, AssertionConfig{
@@ -172,7 +173,7 @@ func TestAssertQuestOrderMonotonic(t *testing.T) {
 func TestMinWipeRateFiresBelowThreshold(t *testing.T) {
 	// Combat is too easy: only 5% wipes when we expected at least 15%.
 	agg := Aggregated{
-		Strategy: "aggressive", Runs: 100, Wipes: 5, WipeRate: 0.05,
+		Strategy: "aggressive", Runs: 100, TerminalRuns: 100, Wipes: 5, WipeRate: 0.05,
 		Victories: 95, VictoryRate: 0.95,
 		MeanPromotionLevel: 8, PromotionCount: 100,
 	}
@@ -197,7 +198,7 @@ func TestMinWipeRateFiresBelowThreshold(t *testing.T) {
 func TestMinWipeRateSilentAtZero(t *testing.T) {
 	// MinWipeRate=0 disables the check — a 0% wipe rate must not fire.
 	agg := Aggregated{
-		Strategy: "aggressive", Runs: 100, Wipes: 0, WipeRate: 0.0,
+		Strategy: "aggressive", Runs: 100, TerminalRuns: 100, Wipes: 0, WipeRate: 0.0,
 		Victories: 100, VictoryRate: 1.0,
 		MeanPromotionLevel: 8, PromotionCount: 100,
 	}
@@ -212,6 +213,25 @@ func TestMinWipeRateSilentAtZero(t *testing.T) {
 		if f.Kind == "wipe_rate" {
 			t.Errorf("MinWipeRate=0 should not fire, got: %v", f)
 		}
+	}
+}
+
+func TestAssertionsRejectNonTerminalRuns(t *testing.T) {
+	runs := make([]RunResult, 100)
+	for i := range runs {
+		runs[i].FinalPhase = "victory"
+		runs[i].LevelAtPromotion = 12
+		if i >= 65 && i < 85 {
+			runs[i].FinalPhase = "error"
+		}
+		if i >= 85 {
+			runs[i].FinalPhase = "timeout"
+		}
+	}
+
+	failures := CheckAssertions(map[string]Aggregated{"broken": Aggregate(runs)}, DefaultAssertionConfig())
+	if len(failures) != 1 || failures[0].Kind != "terminal_outcomes" {
+		t.Fatalf("65 victories plus 35 incomplete runs should fail terminal outcomes: %+v", failures)
 	}
 }
 
@@ -244,7 +264,7 @@ func TestRouteAssertionsSeparateRequiredAndOptionalCompletion(t *testing.T) {
 	cfg := DefaultAssertionConfig()
 	summaries := map[string]Aggregated{
 		"main/aggressive": {
-			Route: RouteMain, Strategy: "aggressive", Runs: 100,
+			Route: RouteMain, Strategy: "aggressive", Runs: 100, TerminalRuns: 100,
 			Victories: 80, VictoryRate: 0.80, Wipes: 20, WipeRate: 0.20,
 			MainPathCompletions: 80, MainPathCompletionRate: 0.80,
 			PromotionCount: 90, MeanPromotionLevel: 11,
@@ -252,7 +272,7 @@ func TestRouteAssertionsSeparateRequiredAndOptionalCompletion(t *testing.T) {
 			MeanEncountersPerRun: 40, BossAttempts: 82, BossVictories: 80, BossVictoryRate: 80.0 / 82.0,
 		},
 		"optional/aggressive": {
-			Route: RouteOptional, Strategy: "aggressive", Runs: 100,
+			Route: RouteOptional, Strategy: "aggressive", Runs: 100, TerminalRuns: 100,
 			Victories: 85, VictoryRate: 0.85, Wipes: 15, WipeRate: 0.15,
 			MainPathCompletions: 85, MainPathCompletionRate: 0.85,
 			PromotionCount: 92, MeanPromotionLevel: 12,
@@ -292,7 +312,7 @@ func TestDefaultAssertionConfigEnforcesRouteContracts(t *testing.T) {
 
 func TestRouteAssertionsRejectOptionalOverlevel(t *testing.T) {
 	cfg := DefaultAssertionConfig()
-	main := Aggregated{Route: RouteMain, Strategy: "cautious", Runs: 10, VictoryRate: 1, MainPathCompletionRate: 1, PromotionCount: 10, MeanPromotionLevel: 9, MeanRouteQuestsCompleted: 12, MeanFinalLevel: 10, BossAttempts: 10, BossVictories: 8, BossVictoryRate: 0.8}
+	main := Aggregated{Route: RouteMain, Strategy: "cautious", Runs: 10, TerminalRuns: 10, VictoryRate: 1, MainPathCompletionRate: 1, PromotionCount: 10, MeanPromotionLevel: 9, MeanRouteQuestsCompleted: 12, MeanFinalLevel: 10, BossAttempts: 10, BossVictories: 8, BossVictoryRate: 0.8}
 	optional := main
 	optional.Route = RouteOptional
 	optional.OptionalQuestsAttempted = 30
