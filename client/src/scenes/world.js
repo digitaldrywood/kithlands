@@ -1,4 +1,5 @@
 import { gameAction, autosaveGame } from "../api.js";
+import { showCampaignEnding, showFinalRecovery } from "./campaignEnding.js";
 import {
   initAudio,
   playMusic,
@@ -418,7 +419,7 @@ export class WorldScene extends Phaser.Scene {
     // Handle non-world phases
     if (gs.phase === "victory") {
       this.gameOver = true;
-      this.showEndScreen("VICTORY!", `${gs.location} is saved!`, "#ffff44", gs);
+      showCampaignEnding(this, gs);
       return;
     }
     if (gs.phase === "defeat") {
@@ -650,6 +651,10 @@ export class WorldScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(30)
       .setVisible(false);
+
+    if (gs.final_encounter?.recovery && gs.message) {
+      showFinalRecovery(this, gs);
+    }
 
     // Show any pending message from last action (quest complete, level up, etc.)
     if (gs.message) {
@@ -935,6 +940,12 @@ export class WorldScene extends Phaser.Scene {
   }
 
   async triggerQuestAdvance(locationName, nodeId) {
+    if (
+      this.gameState.final_encounter &&
+      !this.gameState.final_encounter.defeated
+    ) {
+      await this.triggerAutosave("pre_combat");
+    }
     console.log("[World] quest advance at:", locationName, nodeId);
     try {
       const result = await gameAction(this.gameState.id, {

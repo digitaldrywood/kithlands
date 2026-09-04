@@ -145,6 +145,7 @@ func cloneMapSpawn(spawn *locality.MapSpawn) *locality.MapSpawn {
 
 func (g *Game) fillLocationState(state *GameState) {
 	g.fillDungeonState(state)
+	g.fillFinalEncounterState(state)
 	location := g.location
 	location.Interior = cloneMapSpawn(g.location.Interior)
 	state.CurrentLocation = location

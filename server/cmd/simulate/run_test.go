@@ -88,7 +88,7 @@ func TestRunOneGeneratesRandomEncounters(t *testing.T) {
 //
 // Note: the #119 promotion quest introduced a scripted trial-guardian boss
 // fight that fires regardless of the walking-encounter injection setting,
-// so a disabled run still produces exactly one encounter (the boss).
+// so a disabled run still produces up to two encounters (promotion and final boss).
 func TestRunOneRespectsEncounterRollsPerQuestDisable(t *testing.T) {
 	gd := gamedata.Load("../../../shared")
 	strategy := &AggressiveStrategy{}
@@ -99,9 +99,9 @@ func TestRunOneRespectsEncounterRollsPerQuestDisable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RunOne: %v", err)
 	}
-	// The scripted promotion-quest boss fight is the only encounter that
+	// The scripted promotion and final boss fights are the only encounters that
 	// should fire when walking encounters are disabled.
-	if res.EncountersTriggered > 1 {
-		t.Errorf("disabled path triggered %d encounters, expected ≤1 (scripted boss only)", res.EncountersTriggered)
+	if res.EncountersTriggered > 2 {
+		t.Errorf("disabled path triggered %d encounters, expected ≤2 (promotion and final boss only)", res.EncountersTriggered)
 	}
 }

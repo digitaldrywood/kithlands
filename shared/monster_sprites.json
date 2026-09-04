@@ -91,6 +91,10 @@
     {
       "key": "monster_millroot_warden",
       "path": "/sprites/monsters/millroot_warden.png"
+    },
+    {
+      "key": "monster_bellbound_regent",
+      "path": "/sprites/monsters/bellbound_regent.png"
     }
   ],
   "monster_keys": {
@@ -115,6 +119,7 @@
     "briar_spider": "monster_briar_spider",
     "rust_beetle": "monster_rust_beetle",
     "moss_slime": "monster_moss_slime",
-    "millroot_warden": "monster_millroot_warden"
+    "millroot_warden": "monster_millroot_warden",
+    "bellbound_regent": "monster_bellbound_regent"
   }
 }

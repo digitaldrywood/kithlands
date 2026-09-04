@@ -134,6 +134,12 @@ func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strategy Strate
 	for turn := 0; turn < opts.MaxTurns; turn++ {
 		result.TurnsElapsed = turn + 1
 
+		// A simulation measures the first attempt; a human can regroup after a finale loss.
+		if finalEncounterFailed(state) {
+			result.FinalPhase = "defeat"
+			break
+		}
+
 		// Terminal phases.
 		if state.Phase == "victory" || state.Phase == "defeat" {
 			result.FinalPhase = state.Phase

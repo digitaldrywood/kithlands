@@ -842,6 +842,7 @@ export class BattleScene extends Phaser.Scene {
       enemyFingerprint,
     ].join("|");
     const key =
+      (gs.final_encounter?.active && gs.final_encounter.battle_background) ||
       gs.dungeon?.battle_background ||
       pickBackgroundKey(theme.motif, seedParts, this.buildingType);
     if (key && this.textures.exists(key)) {
@@ -3314,7 +3315,11 @@ export class BattleScene extends Phaser.Scene {
   }
 
   returnFromDungeonDefeat(gs) {
-    if (gs?.dungeon?.recovered_from_defeat !== true) return false;
+    const finalDefeat =
+      this.gameState?.final_encounter?.active &&
+      gs?.final_encounter?.recovery === "defeat";
+    if (gs?.dungeon?.recovered_from_defeat !== true && !finalDefeat)
+      return false;
     this.gameState = gs;
     this.autoMode = false;
     this.animating = false;

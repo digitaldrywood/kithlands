@@ -1,0 +1,30 @@
+{
+  "id": "bellbound_regent",
+  "quest_template_id": "Q12",
+  "title": "The Last Bell",
+  "quest_name": "Silence the Bellbound Regent",
+  "description": "The Bellbound Regent has bound every road to its command. Reach {destination} and break its hold on {locality}.",
+  "objective": "Defeat the Bellbound Regent and its Armored Knights. Clear the knights first to reduce incoming attacks. Use ice against the Regent; it resists fire. Keep healing in reserve.",
+  "arrival": "The Bellbound Regent rings out from {destination}. Its Armored Knights close ranks. Break the guard, then cool the blazing core with ice!",
+  "defeat": "Your companions carry you back from the last bell. The party recovers, and your earned progress is safe. Supplies spent in the attempt remain spent. Prepare equipment and items, then return to {destination} when ready.",
+  "flee": "You escape the last bell. The Regent remains undefeated. Heal, prepare equipment and supplies, then return to {destination} to try again.",
+  "conclusion": "The final bell falls silent. The Regent's crown dims, and the roads of {locality} belong to its people again. Neighbors step outside, lanterns rise, and your companions walk home together. You brought them through. This adventure is complete.",
+  "ending_title": "The roads are yours again",
+  "level": 20,
+  "monsters": [
+    "bellbound_regent",
+    "armored_knight"
+  ],
+  "full_party_monsters": [
+    "bellbound_regent",
+    "armored_knight",
+    "armored_knight"
+  ],
+  "formation": "boss_minions",
+  "battle_background": "bg_interior_1",
+  "reward": {
+    "xp": 500,
+    "gold": 300
+  },
+  "guard_level": 12
+}

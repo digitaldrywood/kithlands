@@ -43,6 +43,7 @@ type DialoguePool struct {
 
 // GameData holds all loaded game data from shared/.
 type GameData struct {
+	FinalEncounter   FinalEncounter
 	Dungeons         []dungeon.Definition
 	Classes          []Class
 	Stats            StatsConfig
@@ -93,6 +94,7 @@ func Load(sharedDir string) *GameData {
 	gd.Chests = loadJSON[ChestCatalog](sharedDir, "chests.json")
 	gd.Spells = loadJSON[SpellsData](sharedDir, "spells.json")
 	gd.Monsters = loadJSON[[]Monster](sharedDir, "monsters.json")
+	gd.FinalEncounter = loadJSON[FinalEncounter](sharedDir, "final_encounter.json")
 	gd.Formations = loadJSON[[]Formation](sharedDir, "formations.json")
 	gd.Transport = loadJSON[TransportData](sharedDir, "transport.json")
 	gd.Palettes = loadJSON[Palettes](sharedDir, "palettes.json")
@@ -109,6 +111,7 @@ func Load(sharedDir string) *GameData {
 		panic(fmt.Sprintf("gamedata: %v", err))
 	}
 	gd.validateDungeons()
+	gd.validateFinalEncounter()
 
 	return gd
 }
