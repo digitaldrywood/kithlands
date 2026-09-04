@@ -103,6 +103,65 @@ func TestTransportUpgradeThroughFullGame(t *testing.T) {
 	}
 }
 
+func TestOptionalBuildingQuestDoesNotGateCampaignProgression(t *testing.T) {
+	game := newGameWithParty(t, []api.PartyMemberReq{
+		{Name: "Hero", ClassID: "warrior"},
+		{Name: "Sparks", ClassID: "cinder"},
+	})
+	accepted := game.InteractWithNPC("inn")
+	if accepted == nil || accepted.GameState == nil || len(accepted.GameState.BuildingSideQuests) == 0 {
+		t.Fatal("fixture did not accept an optional building quest")
+	}
+	optionalID := accepted.GameState.BuildingSideQuests[0].ID
+	promotionSeen := false
+
+	for i := 0; i < 200; i++ {
+		state := game.State()
+		if state.Phase == "victory" {
+			break
+		}
+		switch state.Phase {
+		case "world":
+			if _, err := game.ProcessAction(nextCampaignAction(state)); err != nil {
+				t.Fatal(err)
+			}
+		case "combat":
+			api.ForceVictoryForTest(game)
+		case "quest_complete":
+			if _, err := game.ProcessAction(api.GameActionRequest{Type: "advance"}); err != nil {
+				t.Fatal(err)
+			}
+		case "promotion":
+			promotionSeen = true
+			if state.Transport.CurrentTier != "T4" {
+				t.Fatalf("promotion transport = %s, want T4", state.Transport.CurrentTier)
+			}
+			if _, err := game.Promote(true); err != nil {
+				t.Fatal(err)
+			}
+		default:
+			t.Fatalf("unexpected phase %q", state.Phase)
+		}
+	}
+
+	final := game.State()
+	if final.Phase != "victory" || final.CurrentQ != len(final.Quests) {
+		t.Fatalf("required route did not reach victory: phase=%s current=%d quests=%d", final.Phase, final.CurrentQ, len(final.Quests))
+	}
+	if !promotionSeen || final.Transport.CurrentTier != "T5" {
+		t.Fatalf("story gates did not fire: promotion=%v transport=%s", promotionSeen, final.Transport.CurrentTier)
+	}
+	for _, side := range final.BuildingSideQuests {
+		if side.ID == optionalID {
+			if side.Completed {
+				t.Fatalf("optional quest changed while completing main route: %+v", side)
+			}
+			return
+		}
+	}
+	t.Fatalf("accepted optional quest %q disappeared", optionalID)
+}
+
 func TestTransportSpriteFromConquestSkins(t *testing.T) {
 	game := newGameWithParty(t, []api.PartyMemberReq{
 		{Name: "Hero", ClassID: "warrior"},

@@ -170,6 +170,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	if err := json.Unmarshal(ss.WorldState, &worldState); err != nil {
 		return nil, fmt.Errorf("unmarshaling world state: %w", err)
 	}
+	quests, worldState.CurrentQ = migrateRequiredCampaign(quests, worldState.CurrentQ)
 
 	spawnID := savedQuestSpawn(ss.SpawnNodeID, loc, quests, worldState.CurrentQ)
 	generator.PrepareObjectives(quests, loc, spawnID, gd.QuestObjectives)
@@ -361,6 +362,28 @@ func migrateLegacyRows(party []*character.Character, gd *gamedata.GameData) {
 		}
 		c.Row = character.DefaultRow(gd.ClassByID(c.ClassID))
 	}
+}
+
+// migrateRequiredCampaign removes the old generated side quests that were
+// inserted into the linear currentQ route. Their rewards, if already earned,
+// remain on the saved party and inventory; unfinished entries are retired so
+// loading an older save cannot make optional content a prerequisite for Q12.
+func migrateRequiredCampaign(quests []generator.Quest, current int) ([]generator.Quest, int) {
+	mainQuests := make([]generator.Quest, 0, len(quests))
+	mainBeforeCurrent := 0
+	for i, quest := range quests {
+		if quest.IsSideQuest {
+			continue
+		}
+		mainQuests = append(mainQuests, quest)
+		if i < current {
+			mainBeforeCurrent++
+		}
+	}
+	if mainBeforeCurrent > len(mainQuests) {
+		mainBeforeCurrent = len(mainQuests)
+	}
+	return mainQuests, mainBeforeCurrent
 }
 
 // Save API handlers

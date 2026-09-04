@@ -164,7 +164,8 @@ func equipCrystalArmorBrawler(t *testing.T, g *Game, partySlot int) (inventory.E
 	class := g.gd.ClassByID("brawler")
 	member := character.New("Bram", class.ID, class)
 	levelRNG := rand.New(rand.NewPCG(20260904, 20))
-	for member.Level < g.gd.FinalEncounter.Level {
+	targetLevel := max(g.gd.FinalEncounter.Level, g.gd.GemByID("ember_crystal").RequiredLevel)
+	for member.Level < targetLevel {
 		member.XP = 999999
 		if err := character.LevelUp(member, class, &g.gd.Stats, levelRNG); err != nil {
 			t.Fatal(err)

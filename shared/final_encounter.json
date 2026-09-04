@@ -10,7 +10,7 @@
   "flee": "You escape the last bell. The Regent remains undefeated. Heal, prepare equipment and supplies, then return to {destination} to try again.",
   "conclusion": "The final bell falls silent. The Regent's crown dims, and the roads of {locality} belong to its people again. Neighbors step outside, lanterns rise, and your companions walk home together. You brought them through. This adventure is complete.",
   "ending_title": "The roads are yours again",
-  "level": 20,
+  "level": 18,
   "monsters": [
     "bellbound_regent",
     "bell_sentinel"
@@ -26,5 +26,5 @@
     "xp": 500,
     "gold": 300
   },
-  "guard_level": 12
+  "guard_level": 11
 }

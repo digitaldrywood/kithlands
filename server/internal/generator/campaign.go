@@ -7,22 +7,21 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/locality"
 )
 
-// GenerateCampaign produces a full 3-act quest sequence per GDD Section 10.4.
-// Per-act quest budgets were widened in issue #123 to push mean run length
-// from ~444 turns into the 800-1500 target band:
+const RequiredCampaignQuestCount = 12
+
+// GenerateCampaign produces the required 3-act quest sequence per GDD Section
+// 10.4. The demo campaign deliberately contains twelve story beats:
 //
-//	Act 1   — 5-8 quests within 2 edges of spawn
+//	Act 1   — 3 quests within 2 edges of spawn
 //	Promotion (fixed story beat)
-//	Act 2   — 7-10 quests at distance 3-4
-//	Act 3   — 4-6 quests at distance 4-6
+//	Act 2   — 4 quests at distance 3-4
+//	Act 3   — 3 quests at distance 4-6
 //	Boss    — final encounter
 //
-// A `sidePool` may be supplied to sprinkle surprise side quests per Section 16.
-// Pass nil to skip side quests (tests or stripped builds).
-//
-// The total main-quest count lands in 18-26; side quests are trimmed so the
-// total campaign size never exceeds `maxQuestsPerCampaign` (26 per issue #123).
-func GenerateCampaign(loc *locality.Locality, spawnID string, rng *rand.Rand, sidePool []SideQuestEntry) []Quest {
+// Optional content has its own state machines and must never be inserted into
+// this ordered slice: currentQ, promotion, transport, and Q12 all describe the
+// required route only.
+func GenerateCampaign(loc *locality.Locality, spawnID string, rng *rand.Rand, config CampaignConfig) []Quest {
 	walk := locality.Walk(loc, spawnID)
 	if walk.Spawn == nil {
 		return nil
@@ -31,36 +30,36 @@ func GenerateCampaign(loc *locality.Locality, spawnID string, rng *rand.Rand, si
 	var quests []Quest
 	idx := 0
 
-	// Act 1: 5-8 close quests
-	act1Count := 5 + rng.IntN(4)
+	// Act 1: three close quests.
+	act1 := config.Act(1)
 	act1Templates := templatesForAct(1)
-	for i := 0; i < act1Count; i++ {
+	for i := 0; i < act1.QuestCount; i++ {
 		if len(act1Templates) == 0 {
 			break
 		}
 		tmpl := act1Templates[rng.IntN(len(act1Templates))]
-		quests = append(quests, instantiateQuest(tmpl, walk, loc, 1, idx, rng))
+		quests = append(quests, instantiateQuest(tmpl, walk, loc, 1, idx, rng, act1.Reward))
 		idx++
 	}
 
 	// Promotion quest (fixed story beat)
-	quests = append(quests, instantiatePromotionQuest(walk, loc, idx, rng))
+	quests = append(quests, instantiatePromotionQuest(walk, loc, idx, rng, config.PromotionReward))
 	idx++
 
-	// Act 2: 7-10 medium quests
-	act2Count := 7 + rng.IntN(4)
+	// Act 2: four medium quests.
+	act2 := config.Act(2)
 	act2Templates := templatesForAct(2)
-	for i := 0; i < act2Count; i++ {
+	for i := 0; i < act2.QuestCount; i++ {
 		if len(act2Templates) == 0 {
 			break
 		}
 		tmpl := act2Templates[rng.IntN(len(act2Templates))]
-		quests = append(quests, instantiateQuest(tmpl, walk, loc, 2, idx, rng))
+		quests = append(quests, instantiateQuest(tmpl, walk, loc, 2, idx, rng, act2.Reward))
 		idx++
 	}
 
-	// Act 3: 4-6 far quests
-	act3Count := 4 + rng.IntN(3)
+	// Act 3: three far quests.
+	act3 := config.Act(3)
 	act3Templates := templatesForAct(3)
 	// Drop Q12 from Act 3 template picks — boss is appended separately.
 	filtered := make([]QuestTemplate, 0, len(act3Templates))
@@ -69,85 +68,22 @@ func GenerateCampaign(loc *locality.Locality, spawnID string, rng *rand.Rand, si
 			filtered = append(filtered, t)
 		}
 	}
-	for i := 0; i < act3Count; i++ {
+	for i := 0; i < act3.QuestCount; i++ {
 		if len(filtered) == 0 {
 			break
 		}
 		tmpl := filtered[rng.IntN(len(filtered))]
-		quests = append(quests, instantiateQuest(tmpl, walk, loc, 3, idx, rng))
+		quests = append(quests, instantiateQuest(tmpl, walk, loc, 3, idx, rng, act3.Reward))
 		idx++
-	}
-
-	// Hard cap the main quest count before the boss. The act ranges above can
-	// produce up to 8+1+10+6 = 25 quests; adding the boss makes 26. Issue #123
-	// widened these bands so simulator mean turns lands in the 800-1500 band.
-	// Trim Act 2 (the fattest bucket) first, then Act 3, to keep room for boss.
-	const maxQuestsPerCampaign = 26
-	for len(quests)+1 > maxQuestsPerCampaign {
-		// Drop the last Act 2 quest; fall back to last Act 3 if none.
-		trimmed := false
-		for i := len(quests) - 1; i >= 0; i-- {
-			if quests[i].Act == 2 && !quests[i].IsPromotion {
-				quests = append(quests[:i], quests[i+1:]...)
-				trimmed = true
-				break
-			}
-		}
-		if !trimmed {
-			for i := len(quests) - 1; i >= 0; i-- {
-				if quests[i].Act == 3 {
-					quests = append(quests[:i], quests[i+1:]...)
-					trimmed = true
-					break
-				}
-			}
-		}
-		if !trimmed {
-			break
-		}
 	}
 
 	// Boss
 	quests = append(quests, instantiateBossQuest(walk, loc, idx, rng))
 
-	// Side quests (surprise pool) — inserted before the boss so the boss stays last.
-	if len(sidePool) > 0 {
-		bossIdx := len(quests) - 1
-		mainCount := len(quests)
-		budget := maxQuestsPerCampaign - mainCount
-		if budget > 0 {
-			// Distribute: up to 1 side quest per act, capped by budget.
-			sideQuests := make([]Quest, 0, budget)
-			for _, act := range []int{1, 2, 3} {
-				if len(sideQuests) >= budget {
-					break
-				}
-				picks := selectSideQuests(sidePool, act, 1, rng)
-				for _, p := range picks {
-					if len(sideQuests) >= budget {
-						break
-					}
-					q := instantiateSideQuest(p, walk, loc, idx, rng)
-					if q.ID == "" {
-						continue
-					}
-					sideQuests = append(sideQuests, q)
-					idx++
-				}
-			}
-			// Splice: keep main quests in order, insert side quests before boss.
-			result := make([]Quest, 0, mainCount+len(sideQuests))
-			result = append(result, quests[:bossIdx]...)
-			result = append(result, sideQuests...)
-			result = append(result, quests[bossIdx])
-			quests = result
-		}
-	}
-
 	return quests
 }
 
-func instantiateQuest(template QuestTemplate, walk *locality.WalkResult, loc *locality.Locality, act, idx int, rng *rand.Rand) Quest {
+func instantiateQuest(template QuestTemplate, walk *locality.WalkResult, loc *locality.Locality, act, idx int, rng *rand.Rand, reward QuestReward) Quest {
 	targetNode := pickTargetNode(walk, act, rng)
 	giverNode := pickGiverNode(walk)
 
@@ -171,9 +107,6 @@ func instantiateQuest(template QuestTemplate, walk *locality.WalkResult, loc *lo
 
 	desc, completion := fallbackDialogue(template.ID, giverName, targetName, itemHint, rng)
 
-	xpReward := 50 * act
-	goldReward := 30 * act
-
 	return Quest{
 		ID:           fmt.Sprintf("quest_%d", idx),
 		TemplateID:   template.ID,
@@ -185,7 +118,7 @@ func instantiateQuest(template QuestTemplate, walk *locality.WalkResult, loc *lo
 		TargetNodeID: targetID,
 		TargetName:   targetName,
 		Actions:      actions,
-		Reward:       QuestReward{XP: xpReward, Gold: goldReward},
+		Reward:       reward,
 		Act:          act,
 	}
 }
@@ -195,7 +128,7 @@ func instantiateQuest(template QuestTemplate, walk *locality.WalkResult, loc *lo
 // drops a proof item that must be turned in to the giver before the promotion
 // offer fires. Quest progression is driven by three `promo_stage` values,
 // see server/api/game_world.go for the stage machine.
-func instantiatePromotionQuest(walk *locality.WalkResult, loc *locality.Locality, idx int, rng *rand.Rand) Quest {
+func instantiatePromotionQuest(walk *locality.WalkResult, loc *locality.Locality, idx int, rng *rand.Rand, reward QuestReward) Quest {
 	dungeon := pickDungeonNode(walk, rng)
 
 	dungeonName := "the ancient trial grounds"
@@ -240,7 +173,7 @@ func instantiatePromotionQuest(walk *locality.WalkResult, loc *locality.Locality
 		BossMonsterID: "trial_guardian",
 		PromoStage:    0,
 		Actions:       actions,
-		Reward:        QuestReward{XP: 200, Gold: 100},
+		Reward:        reward,
 		Act:           1,
 		IsPromotion:   true,
 	}

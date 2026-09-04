@@ -6,6 +6,7 @@ import (
 
 	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
+	"github.com/digitaldrywood/kithlands/internal/generator"
 )
 
 // TestMigrateLegacyMP verifies that characters loaded from pre-MP saves
@@ -163,5 +164,51 @@ func TestFromSaveStateMigratesLegacyCasterMP(t *testing.T) {
 	}
 	if got := state.Party[1].MP; got != wantMP {
 		t.Fatalf("state MP = %d, want %d", got, wantMP)
+	}
+}
+
+func TestMigrateRequiredCampaignRetiresLinearSideQuests(t *testing.T) {
+	quests := []generator.Quest{
+		{ID: "main-0", Completed: true},
+		{ID: "side-complete", IsSideQuest: true, Completed: true},
+		{ID: "main-1"},
+		{ID: "side-pending", IsSideQuest: true},
+		{ID: "boss", TemplateID: "Q12"},
+	}
+
+	got, current := migrateRequiredCampaign(quests, 2)
+	if current != 1 {
+		t.Fatalf("current quest = %d, want 1 after removing a completed side quest", current)
+	}
+	wantIDs := []string{"main-0", "main-1", "boss"}
+	if len(got) != len(wantIDs) {
+		t.Fatalf("required campaign length = %d, want %d", len(got), len(wantIDs))
+	}
+	for i, want := range wantIDs {
+		if got[i].ID != want || got[i].IsSideQuest {
+			t.Errorf("required quest %d = %+v, want %q", i, got[i], want)
+		}
+	}
+}
+
+func TestFromSaveStateRetiresLinearSideQuests(t *testing.T) {
+	game := newXPProgressTestGame(t, []PartyMemberReq{{Name: "Hero", ClassID: "warrior"}})
+	game.quests = []generator.Quest{
+		{ID: "main-0", TemplateID: "Q04", Completed: true},
+		{ID: "legacy-side", TemplateID: "Q01", IsSideQuest: true},
+		{ID: "boss", TemplateID: "Q12"},
+	}
+	game.currentQ = 1
+
+	saved, err := game.ToSaveState("legacy-linear-side", "test-user")
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := FromSaveState(saved, game.gd, game.loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.currentQ != 1 || len(loaded.quests) != 2 || loaded.quests[1].TemplateID != "Q12" {
+		t.Fatalf("legacy route was not migrated: current=%d quests=%+v", loaded.currentQ, loaded.quests)
 	}
 }

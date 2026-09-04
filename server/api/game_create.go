@@ -25,7 +25,6 @@ import (
 type GameManager struct {
 	gd                *gamedata.GameData
 	sharedDir         string
-	sidePool          []generator.SideQuestEntry
 	buildingQuestPool []generator.BuildingSideQuestEntry
 	interiorTemplates *interiors.Registry
 	settlementMaps    *settlements.Registry
@@ -36,9 +35,6 @@ type GameManager struct {
 func NewGameManager(gd *gamedata.GameData, sharedDir string) *GameManager {
 	gm := &GameManager{gd: gd, sharedDir: sharedDir, games: make(map[string]*Game)}
 	if sharedDir != "" {
-		if pool, err := generator.LoadSideQuestPool(sharedDir); err == nil {
-			gm.sidePool = pool
-		}
 		if pool, err := generator.LoadBuildingSideQuestPool(sharedDir); err == nil {
 			gm.buildingQuestPool = pool
 		}
@@ -154,7 +150,7 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 			spawnID = req.SpawnNodeID
 		}
 	}
-	quests := generator.GenerateCampaign(loc, spawnID, rng, gm.sidePool)
+	quests := generator.GenerateCampaign(loc, spawnID, rng, gm.gd.Campaign)
 	generator.PrepareObjectives(quests, loc, spawnID, gm.gd.QuestObjectives)
 	walk := locality.Walk(loc, spawnID)
 	tileMap := locality.GenerateTileMap(loc, spawnID, walk)

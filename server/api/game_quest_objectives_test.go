@@ -179,10 +179,21 @@ func TestQuestObjectivesCustomSpawnSaveAndLegacyResume(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	q := g.quests[0]
-	if q.Objectives == nil {
-		t.Fatal("fixture requires staged first quest")
+	questIdx := -1
+	for i := range g.quests {
+		if g.quests[i].Objectives != nil {
+			questIdx = i
+			break
+		}
 	}
+	if questIdx < 0 {
+		t.Fatal("fixture requires a staged quest")
+	}
+	for i := 0; i < questIdx; i++ {
+		g.quests[i].Completed = true
+	}
+	g.currentQ = questIdx
+	q := g.quests[questIdx]
 	node := q.Actions[0].Location
 	arriveAtWorldNode(t, g, node)
 	if _, err := g.ProcessAction(GameActionRequest{Type: "quest_advance", NodeID: node}); err != nil {
@@ -213,7 +224,8 @@ func TestQuestObjectivesCustomSpawnSaveAndLegacyResume(t *testing.T) {
 			if _, err := restored.ProcessAction(objectiveAction(restored)); err != nil {
 				t.Fatalf("objective became unreachable after load: %v", err)
 			}
-			if restored.quests[0].Objectives.Item == "" {
+			progress := restored.quests[questIdx].Objectives
+			if progress.Item == "" && progress.Clue == "" {
 				t.Fatal("collection lost custody")
 			}
 		})
