@@ -100,6 +100,9 @@ func TestRareRollsUseFunctionallyDistinctAffixes(t *testing.T) {
 		if first.Modifier.Stat == second.Modifier.Stat {
 			t.Fatalf("%s rolled duplicate %s modifiers: %+v", baseID, first.Modifier.Stat, item.Affixes)
 		}
+		if first.Position == second.Position {
+			t.Fatalf("%s rolled duplicate %s positions: %+v", baseID, first.Position, item.Affixes)
+		}
 		if item.RequiredLevel != 12 {
 			t.Fatalf("%s rare required level = %d, want 12", baseID, item.RequiredLevel)
 		}
@@ -128,13 +131,19 @@ func TestRollEquipmentDistributionCoversCatalog(t *testing.T) {
 			}
 			rarityCounts[item.RarityID]++
 			seenStats := make(map[string]bool)
+			seenPositions := make(map[string]bool)
 			for _, roll := range item.Affixes {
 				seenAffixes[roll.AffixID]++
-				stat := gd.LootAffixByID(roll.AffixID).Modifier.Stat
+				affix := gd.LootAffixByID(roll.AffixID)
+				stat := affix.Modifier.Stat
 				if seenStats[stat] {
 					t.Fatalf("%s sequence %d repeated functional affix %q", kind, sequence, stat)
 				}
 				seenStats[stat] = true
+				if seenPositions[affix.Position] {
+					t.Fatalf("%s sequence %d repeated affix position %q", kind, sequence, affix.Position)
+				}
+				seenPositions[affix.Position] = true
 			}
 		}
 		for rarity, bounds := range map[string][2]int{

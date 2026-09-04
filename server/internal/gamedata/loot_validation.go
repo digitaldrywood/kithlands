@@ -60,31 +60,29 @@ func (gd *GameData) validateLoot() {
 		}
 	}
 	for _, kind := range lootKinds {
-		eligible, stats := 0, make(map[string]bool)
+		var eligible []LootAffix
 		for _, affix := range gd.Loot.Affixes {
 			if affix.MinItemLevel <= peakAffixLevel && slices.Contains(affix.Kinds, kind) {
-				eligible++
-				stats[affix.Modifier.Stat] = true
+				eligible = append(eligible, affix)
 			}
 		}
-		if eligible < 4 {
-			panic(fmt.Sprintf("gamedata: loot kind %q has %d affixes eligible at item level %d, want at least 4", kind, eligible, peakAffixLevel))
+		if len(eligible) < 4 {
+			panic(fmt.Sprintf("gamedata: loot kind %q has %d affixes eligible at item level %d, want at least 4", kind, len(eligible), peakAffixLevel))
 		}
-		if len(stats) < peakAffixCount {
-			panic(fmt.Sprintf("gamedata: loot kind %q cannot roll %d functionally distinct affixes at item level %d", kind, peakAffixCount, peakAffixLevel))
+		if distinctLootAffixCapacity(eligible) < peakAffixCount {
+			panic(fmt.Sprintf("gamedata: loot kind %q cannot roll %d functionally distinct affixes in distinct positions at item level %d", kind, peakAffixCount, peakAffixLevel))
 		}
 	}
 	for _, rarity := range gd.Loot.Rarities {
 		for _, kind := range lootKinds {
-			eligible, stats := 0, make(map[string]bool)
+			var eligible []LootAffix
 			for _, affix := range gd.Loot.Affixes {
 				if affix.MinItemLevel <= rarity.MinItemLevel && slices.Contains(affix.Kinds, kind) {
-					eligible++
-					stats[affix.Modifier.Stat] = true
+					eligible = append(eligible, affix)
 				}
 			}
-			if eligible < rarity.Affixes.Max || len(stats) < rarity.Affixes.Max {
-				panic(fmt.Sprintf("gamedata: rarity %q cannot roll %d functionally distinct %s affixes at item level %d", rarity.ID, rarity.Affixes.Max, kind, rarity.MinItemLevel))
+			if distinctLootAffixCapacity(eligible) < rarity.Affixes.Max {
+				panic(fmt.Sprintf("gamedata: rarity %q cannot roll %d functionally distinct %s affixes in distinct positions at item level %d", rarity.ID, rarity.Affixes.Max, kind, rarity.MinItemLevel))
 			}
 		}
 	}
@@ -120,10 +118,18 @@ func (gd *GameData) validateLoot() {
 			}
 		}
 	}
-	for _, kind := range lootKinds {
-		ember, ward := gemRoles["ember"][kind], gemRoles["ward"][kind]
-		if ember == "" || ward == "" || ember == ward {
-			panic(fmt.Sprintf("gamedata: ember and ward gems need distinct active %s roles", kind))
+	families := make([]string, 0, len(gemRoles))
+	for family := range gemRoles {
+		families = append(families, family)
+	}
+	slices.Sort(families)
+	for i, first := range families {
+		for _, second := range families[i+1:] {
+			for _, kind := range lootKinds {
+				if gemRoles[first][kind] == gemRoles[second][kind] {
+					panic(fmt.Sprintf("gamedata: gem families %q and %q need distinct active %s roles", first, second, kind))
+				}
+			}
 		}
 	}
 	for _, recipe := range gd.Loot.Recipes {
@@ -203,6 +209,31 @@ func validateLootRange(label string, value IntRange) {
 	if value.Min < 0 || value.Max < value.Min {
 		panic(fmt.Sprintf("gamedata: %s has invalid range", label))
 	}
+}
+
+func distinctLootAffixCapacity(affixes []LootAffix) int {
+	best := 0
+	var visit func(int, int, map[string]bool, map[string]bool)
+	visit = func(index, selected int, stats, positions map[string]bool) {
+		if selected > best {
+			best = selected
+		}
+		if index >= len(affixes) {
+			return
+		}
+		visit(index+1, selected, stats, positions)
+		affix := affixes[index]
+		if stats[affix.Modifier.Stat] || positions[affix.Position] {
+			return
+		}
+		stats[affix.Modifier.Stat] = true
+		positions[affix.Position] = true
+		visit(index+1, selected+1, stats, positions)
+		delete(stats, affix.Modifier.Stat)
+		delete(positions, affix.Position)
+	}
+	visit(0, 0, make(map[string]bool), make(map[string]bool))
+	return best
 }
 
 func validLootKind(kind string) bool {

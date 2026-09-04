@@ -43,6 +43,17 @@ func TestLootValidationRejectsInactiveOrNonDistinctBuildEffects(t *testing.T) {
 			},
 		},
 		{
+			name: "rare pool has one weapon name position",
+			want: "distinct positions",
+			mutate: func(gd *GameData) {
+				for i := range gd.Loot.Affixes {
+					if gd.Loot.Affixes[i].Kinds[0] == "weapon" {
+						gd.Loot.Affixes[i].Position = "prefix"
+					}
+				}
+			},
+		},
+		{
 			name: "gem omits an equipment kind",
 			want: "has no accessory effect",
 			mutate: func(gd *GameData) {
@@ -50,7 +61,7 @@ func TestLootValidationRejectsInactiveOrNonDistinctBuildEffects(t *testing.T) {
 			},
 		},
 		{
-			name: "ember and ward repeat a weapon role",
+			name: "gem families repeat a weapon role",
 			want: "need distinct active weapon roles",
 			mutate: func(gd *GameData) {
 				for gemIndex := range gd.Loot.Gems {
@@ -80,4 +91,18 @@ func TestLootValidationRejectsInactiveOrNonDistinctBuildEffects(t *testing.T) {
 			gd.validateLoot()
 		})
 	}
+}
+
+func TestLootValidationAllowsCoherentFamilyRenames(t *testing.T) {
+	gd := Load("../../../shared")
+	renames := map[string]string{"ember": "flame", "ward": "guard"}
+	for i := range gd.Loot.Gems {
+		gd.Loot.Gems[i].Family = renames[gd.Loot.Gems[i].Family]
+	}
+	for i := range gd.Loot.Recipes {
+		if gd.Loot.Recipes[i].Discovery != nil {
+			gd.Loot.Recipes[i].Discovery.Family = renames[gd.Loot.Recipes[i].Discovery.Family]
+		}
+	}
+	gd.validateLoot()
 }

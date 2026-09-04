@@ -49,12 +49,13 @@ func RollEquipment(gd *gamedata.GameData, baseID string, itemLevel, minSockets i
 		item.Affixes = append(item.Affixes, inventory.AffixRoll{AffixID: affix.ID, Value: value})
 		item.RequiredLevel = max(item.RequiredLevel, affix.RequiredLevel)
 
-		// A rare should offer two different build choices, not two labels that
-		// add the same effective stat. Remove the selected affix and every
-		// functionally equivalent modifier before drawing the next one.
+		// A rare should offer two different build choices with a readable name,
+		// not two labels that add the same stat or occupy the same name position.
+		// Remove all functionally equivalent and same-position affixes before
+		// drawing the next one.
 		remaining := affixPool[:0]
 		for candidateIndex, candidate := range affixPool {
-			if candidateIndex != idx && candidate.Modifier.Stat != affix.Modifier.Stat {
+			if candidateIndex != idx && candidate.Modifier.Stat != affix.Modifier.Stat && candidate.Position != affix.Position {
 				remaining = append(remaining, candidate)
 			}
 		}
