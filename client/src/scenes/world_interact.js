@@ -32,14 +32,26 @@ export async function syncWorldArrival(scene) {
 
   scene.worldArrivalPending = arrival.node_id;
   try {
-    const result = await transitionLocation(
-      scene.gameState.id,
-      "arrive-world-node",
-      arrival.node_id,
-    );
-    if (!result?.error && scene.scene?.isActive()) {
-      scene.gameState = result;
-      scene.updateHUD?.();
+    let result = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        result = await transitionLocation(
+          scene.gameState.id,
+          "arrive-world-node",
+          arrival.node_id,
+        );
+      } catch (error) {
+        result = {
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+      if (!result?.error) {
+        if (scene.scene?.isActive()) {
+          scene.gameState = result;
+          scene.updateHUD?.();
+        }
+        return result;
+      }
     }
     return result;
   } finally {

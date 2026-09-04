@@ -784,6 +784,7 @@ export class WorldScene extends Phaser.Scene {
 
   update(time) {
     if (isWorldInputLocked(this)) return;
+    if (this.dungeonRouteRunning) return;
     if (!this.hudText || !this.player) return; // scene destroyed
     if (this.animating) return;
     if (time - this.lastMoveTime < this.moveCooldown) return;
@@ -801,13 +802,23 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  tryMove(dx, dy) {
+  tryMove(dx, dy, options = {}) {
     // Touch repeat and tap-to-walk callbacks run independently of update().
     // Keep one tile step (including its authoritative arrival sync) in flight
     // at a time so held input cannot skip graph waypoints.
-    if (this.animating || isWorldInputLocked(this)) return false;
-    const nx = this.playerX + dx;
-    const ny = this.playerY + dy;
+    if (
+      this.animating ||
+      isWorldInputLocked(this) ||
+      (this.dungeonRouteRunning && !options.route)
+    )
+      return false;
+    const origin = {
+      x: this.playerX,
+      y: this.playerY,
+      door: this.currentDoorSpawn || null,
+    };
+    const nx = origin.x + dx;
+    const ny = origin.y + dy;
     if (nx < 0 || nx >= this.mapW || ny < 0 || ny >= this.mapH) return false;
 
     const tile = this.tileData[ny][nx];
@@ -836,11 +847,32 @@ export class WorldScene extends Phaser.Scene {
     const stepMs = walkStepMs();
     this.animating = true;
     this.walkFrameAudit = [];
+    let finishWorldStep;
+    this.worldStepDone = new Promise((resolve) => {
+      finishWorldStep = resolve;
+    });
     const finishStepAnimation = playStepAnimation(this, stepMs, () => {
+      let accepted = true;
       void syncWorldArrival(this)
-        .catch(() => null)
+        .then((result) => {
+          if (result?.error && this.scene?.isActive()) {
+            accepted = false;
+            this.restoreRejectedWorldStep(origin, result.error);
+          }
+        })
+        .catch((error) => {
+          if (this.scene?.isActive()) {
+            accepted = false;
+            this.restoreRejectedWorldStep(
+              origin,
+              error instanceof Error ? error.message : String(error),
+            );
+          }
+        })
         .finally(() => {
           this.animating = false;
+          this.updateHUD();
+          finishWorldStep(accepted);
         });
     });
     this.tweens.add({
@@ -903,6 +935,30 @@ export class WorldScene extends Phaser.Scene {
     this.updateHUD();
     this.updateMinimap();
     return true;
+  }
+
+  restoreRejectedWorldStep(origin, reason) {
+    this.playerX = origin.x;
+    this.playerY = origin.y;
+    cachedPlayerX = origin.x;
+    cachedPlayerY = origin.y;
+    const position = walkSpritePosition(origin.x, origin.y, RENDERED_TILE);
+    this.player.setPosition(position.x, position.y);
+    setPlayerWalkFrame(this, WALK_IDLE_FRAME);
+    if (this.vehicleIndicator) {
+      this.vehicleIndicator.setPosition(
+        origin.x * RENDERED_TILE + RENDERED_TILE / 2,
+        origin.y * RENDERED_TILE + RENDERED_TILE / 2,
+      );
+    }
+    this.currentDoorSpawn = origin.door;
+    if (origin.door) showInteractPrompt(this, origin.door);
+    else hideInteractPrompt(this);
+    this.updateHUD();
+    this.updateMinimap();
+    this.showMessage(
+      `Travel paused: ${reason || "the route could not be confirmed"}. Returned to the last safe step; try again.`,
+    );
   }
 
   async triggerRandomEncounter(tile) {

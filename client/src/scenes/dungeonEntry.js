@@ -1,6 +1,7 @@
 import { dungeonAction } from "../api.js";
 import { isWorldInputLocked } from "../systems/modalLock.js";
 import { drawButton } from "../ui/panel.js";
+import { dungeonRouteForScene, followDungeonRoute } from "./dungeonRoute.js";
 
 export function dungeonEntryForScene(scene) {
   const entries = scene.gameState?.dungeon_entries?.length
@@ -62,18 +63,57 @@ export function dungeonEntryVisible(scene) {
 }
 
 export function updateDungeonEntry(scene) {
-  const entry = dungeonEntryForScene(scene);
+  // Arrival state can update just before the final movement promise settles.
+  // Do not present a trail button until that authoritative step is actually
+  // usable; otherwise a quick click looks accepted but is ignored by the
+  // world input lock.
+  const entry =
+    scene.animating || scene.dungeonRouteRunning
+      ? null
+      : dungeonEntryForScene(scene);
   if (!entry) {
     scene.dungeonEntryButton?.destroy();
     scene.dungeonEntryButton = null;
     scene.currentDungeonEntry = null;
+  } else {
+    scene.currentDungeonEntry = entry;
+    if (scene.dungeonEntryButton) {
+      scene.dungeonEntryButton.setLabel(entry.label);
+    } else {
+      scene.dungeonEntryButton = createTrailButton(
+        scene,
+        entry.label,
+        () => enterDungeon(scene),
+        false,
+      );
+    }
+  }
+
+  const route = dungeonRouteForScene(scene);
+  if (!route) {
+    scene.dungeonRouteButton?.destroy();
+    scene.dungeonRouteButton = null;
     return;
   }
-  scene.currentDungeonEntry = entry;
-  if (scene.dungeonEntryButton) {
-    scene.dungeonEntryButton.setLabel(entry.label);
+  const label = scene.dungeonRouteRunning
+    ? `Following path to ${route.title}…`
+    : `Follow path to ${route.title}`;
+  const routeEnabled = !scene.dungeonRouteRunning && !scene.animating;
+  if (scene.dungeonRouteButton) {
+    scene.dungeonRouteButton.setLabel(label);
+    scene.dungeonRouteButton.setEnabled(routeEnabled);
     return;
   }
+  scene.dungeonRouteButton = createTrailButton(
+    scene,
+    label,
+    () => void followDungeonRoute(scene, dungeonRouteForScene(scene)),
+    true,
+  );
+  scene.dungeonRouteButton.setEnabled(routeEnabled);
+}
+
+function createTrailButton(scene, label, onClick, route) {
   const portrait = scene.gameplayLayout?.portrait;
   const settlement = scene.gameState.current_location?.kind === "settlement";
   const y = settlement
@@ -81,22 +121,24 @@ export function updateDungeonEntry(scene) {
       ? 66
       : 29
     : portrait
-      ? scene.gameplayLayout.height - 572
-      : 528;
+      ? scene.gameplayLayout.height - (route ? 670 : 572)
+      : route
+        ? 478
+        : 528;
   const button = drawButton(
     scene,
     400,
     y,
     portrait ? 664 : 352,
     portrait ? 88 : 42,
-    entry.label,
-    () => enterDungeon(scene),
+    label,
+    onClick,
     {
       depth: settlement ? 1003 : 25,
       fontSize: portrait ? "28px" : "16px",
       fontFamily: "Trebuchet MS, Arial, sans-serif",
-      fill: 0x173b3a,
-      fillHover: 0x315653,
+      fill: route ? 0x29412e : 0x173b3a,
+      fillHover: route ? 0x49613f : 0x315653,
       fillPress: 0x102a2b,
       stroke: 0xd6c18a,
       textColor: "#fff0c2",
@@ -104,16 +146,17 @@ export function updateDungeonEntry(scene) {
     },
   );
   button.label.setWordWrapWidth(portrait ? 630 : 328).setAlign("center");
-  // The global tap-to-walk handler must not also receive a trail-button tap.
   for (const object of [button.bg, button.label]) {
     object.on("pointerdown", (_pointer, _x, _y, event) =>
       event?.stopPropagation(),
     );
   }
-  scene.dungeonEntryButton = button;
   scene.events.once("shutdown", () => {
-    scene.dungeonEntryButton = null;
+    button.destroy();
+    if (route) scene.dungeonRouteButton = null;
+    else scene.dungeonEntryButton = null;
   });
+  return button;
 }
 
 async function enterDungeon(scene) {

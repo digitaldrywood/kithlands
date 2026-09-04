@@ -110,41 +110,68 @@ function startAutoWalk(scene, path) {
       .setDepth(8),
   );
 
-  let idx = 0;
-  const timer = scene.time.addEvent({
-    delay: 160,
-    loop: true,
-    callback: () => {
-      if (idx >= path.length || isWorldInputLocked(scene)) {
+  const controller = { cancelled: false, preview };
+  scene._autoWalk = controller;
+  controller.done = (async () => {
+    for (let idx = 0; idx < path.length; idx += 1) {
+      if (controller.cancelled || scene._autoWalk !== controller) return false;
+      if (isWorldInputLocked(scene)) {
         cancelAutoWalk(scene);
-        return;
+        return false;
       }
       const step = path[idx];
       const dx = step.x - scene.playerX;
       const dy = step.y - scene.playerY;
       if (Math.abs(dx) + Math.abs(dy) !== 1) {
         cancelAutoWalk(scene);
-        return;
+        return false;
       }
-      const beforeX = scene.playerX;
-      const beforeY = scene.playerY;
-      scene.tryMove(dx, dy);
-      if (scene.playerX === beforeX && scene.playerY === beforeY) return;
+      const priorWorldStep = scene.worldStepDone;
+      const requested = scene.tryMove(dx, dy);
+      if (requested === false) {
+        cancelAutoWalk(scene);
+        return false;
+      }
+      let accepted = true;
+      if (scene.worldStepDone && scene.worldStepDone !== priorWorldStep) {
+        accepted = await scene.worldStepDone;
+      } else if (scene.animating) {
+        await new Promise((resolve) => {
+          const waitForAnimation = () => {
+            if (!scene.animating) {
+              resolve();
+              return;
+            }
+            scene.time.delayedCall(16, waitForAnimation);
+          };
+          waitForAnimation();
+        });
+      }
+      if (
+        !accepted ||
+        controller.cancelled ||
+        scene._autoWalk !== controller ||
+        scene.playerX !== step.x ||
+        scene.playerY !== step.y
+      ) {
+        cancelAutoWalk(scene);
+        return false;
+      }
       if (preview[idx]) {
         preview[idx].destroy();
         preview[idx] = null;
       }
-      idx++;
-      if (idx >= path.length) cancelAutoWalk(scene);
-    },
-  });
-
-  scene._autoWalk = { timer, preview };
+    }
+    cancelAutoWalk(scene);
+    return true;
+  })();
+  return controller.done;
 }
 
 function cancelAutoWalk(scene) {
   if (!scene._autoWalk) return;
-  scene._autoWalk.timer.remove();
+  scene._autoWalk.cancelled = true;
+  scene._autoWalk.timer?.remove?.();
   scene._autoWalk.preview.forEach((el) => {
     if (el) el.destroy();
   });

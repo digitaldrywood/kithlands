@@ -80,27 +80,43 @@ async function walkWithHeldDpad(page, direction, steps) {
   );
 }
 
-async function walkWorldRoute(page, route, heldTouch) {
-  if (!heldTouch) {
-    for (const direction of route) {
-      await page.evaluate(
-        (name) => window.__kithlandsTest.movePlayer(name, "World"),
-        direction,
-      );
-      await page.waitForFunction(
-        () => !window.__kithlandsTest.worldNavigationSnapshot().animating,
-      );
+async function holdSafeWorldSteps(page, requestedSteps = 3) {
+  const run = await page.evaluate((maxSteps) => {
+    const nav = window.__kithlandsTest.worldNavigationSnapshot();
+    const state = window.__kithlandsTest.gameState("World");
+    const currentNodeID = state.current_location?.world_node_id;
+    const directions = [
+      { name: "up", dx: 0, dy: -1 },
+      { name: "right", dx: 1, dy: 0 },
+      { name: "down", dx: 0, dy: 1 },
+      { name: "left", dx: -1, dy: 0 },
+    ];
+    for (const direction of directions) {
+      for (let steps = maxSteps; steps >= 2; steps -= 1) {
+        const points = Array.from({ length: steps }, (_, index) => ({
+          x: nav.x + direction.dx * (index + 1),
+          y: nav.y + direction.dy * (index + 1),
+        }));
+        if (
+          points.every(
+            (point) =>
+              nav.walkable[point.y]?.[point.x] &&
+              nav.spawns
+                .filter((spawn) => spawn.node_id !== currentNodeID)
+                .every(
+                  (spawn) =>
+                    Math.abs(point.x - spawn.x) + Math.abs(point.y - spawn.y) >
+                    3,
+                ),
+          )
+        ) {
+          return { direction: direction.name, steps };
+        }
+      }
     }
-    return;
-  }
-
-  for (let index = 0; index < route.length; ) {
-    const direction = route[index];
-    let end = index + 1;
-    while (end < route.length && route[end] === direction) end += 1;
-    await walkWithHeldDpad(page, direction, end - index);
-    index = end;
-  }
+    throw new Error("No safe straight held-input path near the world spawn");
+  }, requestedSteps);
+  await walkWithHeldDpad(page, run.direction, run.steps);
 }
 
 async function waitForRoom(page, roomID) {
@@ -177,96 +193,78 @@ async function act(page, actionID) {
   return result;
 }
 
-async function positionAtDungeonEntry(page, dungeonID, heldTouch = false) {
-  const navigation = await page.evaluate((id) => {
+async function dungeonEntry(page, dungeonID) {
+  return page.evaluate((id) => {
     const gameState = window.__kithlandsTest.gameState("World");
     const entry = gameState.dungeon_entries.find(
       (candidate) => candidate.id === id,
     );
     if (!entry) throw new Error(`Missing dungeon entry ${id}`);
-
-    return { entry, nav: window.__kithlandsTest.worldNavigationSnapshot() };
+    return entry;
   }, dungeonID);
+}
 
-  const { entry } = navigation;
-  const key = ({ x, y }) => `${x},${y}`;
-  const directions = [
-    { name: "up", dx: 0, dy: -1 },
-    { name: "down", dx: 0, dy: 1 },
-    { name: "left", dx: -1, dy: 0 },
-    { name: "right", dx: 1, dy: 0 },
-  ];
-
-  for (const waypointID of entry.route_node_ids || []) {
-    const nav = await page.evaluate(() =>
-      window.__kithlandsTest.worldNavigationSnapshot(),
-    );
-    const spawn = nav.spawns.find(
-      (candidate) => candidate.node_id === waypointID,
-    );
-    if (!spawn) throw new Error(`Missing world waypoint ${waypointID}`);
-    const start = { x: nav.x, y: nav.y };
-    const previous = new Map([[key(start), null]]);
-    const queue = [start];
-    let destination = null;
-
-    while (queue.length > 0) {
-      const current = queue.shift();
-      if (Math.abs(current.x - spawn.x) + Math.abs(current.y - spawn.y) <= 2) {
-        destination = current;
-        break;
-      }
-      for (const direction of directions) {
-        const next = {
-          x: current.x + direction.dx,
-          y: current.y + direction.dy,
-        };
-        if (!nav.walkable[next.y]?.[next.x] || previous.has(key(next))) {
-          continue;
-        }
-        previous.set(key(next), { point: current, direction: direction.name });
-        queue.push(next);
-      }
-    }
-    if (!destination) throw new Error(`No on-foot route to ${waypointID}`);
-
-    const route = [];
-    for (let point = destination; key(point) !== key(start); ) {
-      const step = previous.get(key(point));
-      route.push(step.direction);
-      point = step.point;
-    }
-    route.reverse();
-    await walkWorldRoute(page, route, heldTouch);
-    await page.waitForFunction(
-      (nodeID) =>
-        window.__kithlandsTest.gameState("World").current_location
-          ?.world_node_id === nodeID,
-      waypointID,
-    );
-  }
-
+async function clickVisibleDungeonPath(page, dungeonID) {
+  const entry = await dungeonEntry(page, dungeonID);
+  const label = `Follow path to ${entry.title}`;
   await page.waitForFunction(
-    (nodeID) =>
-      window.__kithlandsTest.gameState("World").current_location
-        ?.world_node_id === nodeID,
-    entry.node_id,
-  );
-  await page.evaluate(() =>
-    window.__kithlandsTest.centerCameraOnPlayer("World"),
-  );
-  await page.waitForFunction(
-    (label) =>
+    (text) =>
       window.__kithlandsTest
         .visibleTexts("World")
-        .some((entry) => entry.interactive && entry.text === label),
-    entry.label,
+        .some((candidate) => candidate.interactive && candidate.text === text),
+    label,
+  );
+  await page.evaluate(
+    (text) => window.__kithlandsTest.clickInteractiveText(text, "World"),
+    label,
   );
   return entry;
 }
 
-async function enterDungeon(page, dungeonID, heldTouch = false) {
-  const entry = await positionAtDungeonEntry(page, dungeonID, heldTouch);
+async function waitForVisibleDungeonEntry(page, entry) {
+  await page.waitForFunction(
+    ({ nodeID, label }) => {
+      const state = window.__kithlandsTest.gameState("World");
+      return (
+        state.current_location?.world_node_id === nodeID &&
+        window.__kithlandsTest
+          .visibleTexts("World")
+          .some(
+            (candidate) => candidate.interactive && candidate.text === label,
+          )
+      );
+    },
+    { nodeID: entry.node_id, label: entry.label },
+    { timeout: 120_000 },
+  );
+  await page.evaluate(() =>
+    window.__kithlandsTest.centerCameraOnPlayer("World"),
+  );
+}
+
+async function followVisibleDungeonPath(page, dungeonID) {
+  const entry = await clickVisibleDungeonPath(page, dungeonID);
+  await waitForVisibleDungeonEntry(page, entry);
+  return entry;
+}
+
+async function enterDungeon(page, dungeonID) {
+  const entry = await dungeonEntry(page, dungeonID);
+  const atEntry = await page.evaluate(
+    ({ nodeID, label }) => {
+      const state = window.__kithlandsTest.gameState("World");
+      return (
+        state.current_location?.world_node_id === nodeID &&
+        window.__kithlandsTest
+          .visibleTexts("World")
+          .some(
+            (candidate) => candidate.interactive && candidate.text === label,
+          )
+      );
+    },
+    { nodeID: entry.node_id, label: entry.label },
+  );
+  if (!atEntry) await followVisibleDungeonPath(page, dungeonID);
   const responsePromise = page.waitForResponse(
     (response) =>
       response.url().endsWith("/dungeon") &&
@@ -416,6 +414,76 @@ async function defeatAtSanctum(page, viewport) {
   await capture(page, viewport, "10-defeat-recovered-at-threshold");
 }
 
+test("rejected world arrival rolls back and recovers Shrine entry", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  page.setDefaultTimeout(30_000);
+  await page.setViewportSize({ width: 800, height: 600 });
+  let rejectedArrivalRequests = 0;
+  await page.route("**/api/game/*/transition", async (route) => {
+    const body = route.request().postDataJSON();
+    if (
+      body?.transition_id === "arrive-world-node" &&
+      rejectedArrivalRequests < 2
+    ) {
+      rejectedArrivalRequests += 1;
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Injected arrival failure" }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto("/?noEncounters=1");
+  await page.waitForFunction(
+    () => window.__kithlandsTest?.sceneIsActive("Title"),
+    undefined,
+    { timeout: 60_000 },
+  );
+  await page.evaluate(() => window.__kithlandsTest.startQuickGame());
+  await page.waitForFunction(
+    () => window.__kithlandsTest.activeSceneKey() === "World",
+  );
+
+  const entry = await clickVisibleDungeonPath(page, "forgotten-shrine");
+  await page.waitForFunction(
+    () =>
+      window.__kithlandsTest
+        .messageState("World")
+        .text.includes("Returned to the last safe step"),
+    undefined,
+    { timeout: 120_000 },
+  );
+  expect(rejectedArrivalRequests).toBe(2);
+  const message = await page.evaluate(() =>
+    window.__kithlandsTest.messageState("World"),
+  );
+  expect(message.visible).toBe(true);
+  expect(message.text).toContain("Returned to the last safe step");
+
+  await clickVisibleDungeonPath(page, "forgotten-shrine");
+  await waitForVisibleDungeonEntry(page, entry);
+
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/dungeon") &&
+      response.request().method() === "POST" &&
+      response.request().postDataJSON()?.type === "enter",
+  );
+  await page.evaluate(
+    (label) => window.__kithlandsTest.clickInteractiveText(label, "World"),
+    entry.label,
+  );
+  const result = await (await responsePromise).json();
+  expect(result.error).toBeUndefined();
+  expect(result.active_dungeon_id).toBe("forgotten-shrine");
+  await waitForRoom(page, "forgotten-threshold");
+});
+
 for (const viewport of viewports) {
   test(`Forgotten Shrine full route, defeat and retry ${viewport.width}x${viewport.height}`, async ({
     page,
@@ -438,13 +506,10 @@ for (const viewport of viewports) {
     );
     if (viewport.width === 390) {
       await enableSlowTouchWalking(page);
+      await holdSafeWorldSteps(page);
     }
 
-    const entry = await positionAtDungeonEntry(
-      page,
-      "forgotten-shrine",
-      viewport.width === 390,
-    );
+    const entry = await followVisibleDungeonPath(page, "forgotten-shrine");
     expect(entry.id).toBe("forgotten-shrine");
     await capture(page, viewport, "01-far-world-entry");
     await enterDungeon(page, "forgotten-shrine");

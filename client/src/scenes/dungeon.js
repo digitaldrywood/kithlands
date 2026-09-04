@@ -513,22 +513,30 @@ export class DungeonScene extends Phaser.Scene {
     add(
       this.text(24, portrait ? 20 : 10, d.title, portrait ? 24 : 13, "#bccea9"),
     );
-    add(
+    const roomTitle = add(
       this.text(
         24,
         portrait ? 56 : 30,
         d.room_name,
         portrait ? 37 : 24,
         "#fff1c8",
-      ),
+      ).setOrigin(0, 0),
     );
+    const titleWidth = width - 48;
+    if (roomTitle.width > titleWidth) {
+      const preferredSize = portrait ? 37 : 24;
+      const minimumSize = portrait ? 25 : 17;
+      roomTitle.setFontSize(
+        Math.max(
+          minimumSize,
+          Math.floor((preferredSize * titleWidth) / roomTitle.width),
+        ),
+      );
+    }
     add(
-      this.text(
-        24,
-        portrait ? 110 : 61,
-        d.description,
-        portrait ? 28 : 14,
-      ).setWordWrapWidth(width - 48),
+      this.text(24, portrait ? 110 : 61, d.description, portrait ? 28 : 14)
+        .setOrigin(0, 0)
+        .setWordWrapWidth(width - 48),
     );
     const footerTop = portrait ? height - 542 : height - 133;
     add(
