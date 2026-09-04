@@ -1,0 +1,52 @@
+[
+  {
+    "id": "weathered_trail_clue",
+    "kind": "clue",
+    "title": "Weathered Trail Marker",
+    "prompt": "Inspect the weathered marker",
+    "success_message": "Carved arrows point toward the oldest road. Someone wanted careful travelers to notice.",
+    "exhausted_message": "The old carving has nothing more to tell you.",
+    "quest_reveal_message": "A hidden quest has been revealed: {quest_name}",
+    "rewards": []
+  },
+  {
+    "id": "hidden_supply_cache",
+    "kind": "supply_cache",
+    "title": "Hidden Supply Cache",
+    "prompt": "Search the tangled brush",
+    "success_message": "Beneath a canvas wrap, you find two Potions and 40 gold left for travelers.",
+    "exhausted_message": "The empty canvas wrap is tucked safely back beneath the brush.",
+    "quest_reveal_message": "A hidden quest has been revealed: {quest_name}",
+    "rewards": [
+      {
+        "kind": "consumable",
+        "item_id": "potion",
+        "amount": 2
+      },
+      {
+        "kind": "gold",
+        "amount": 40
+      }
+    ]
+  },
+  {
+    "id": "strange_coin_passage",
+    "kind": "hidden_passage",
+    "title": "Sealed Stone Passage",
+    "prompt": "Examine the sealed stones",
+    "success_message": "The Strange Coin vibrates... A hidden passage opens!\nFound: Ancient Ring of Power!",
+    "locked_message": "A coin-shaped hollow marks the sealed stones. Whatever opens this passage is still missing.",
+    "exhausted_message": "The hidden passage stands open and silent. Nothing else remains inside.",
+    "requires_key_item": "strange_coin",
+    "consume_key_item": true,
+    "reveal_hidden_quest": true,
+    "quest_reveal_message": "A hidden quest has been revealed: {quest_name}",
+    "rewards": [
+      {
+        "kind": "key_item",
+        "item_id": "ancient_ring",
+        "amount": 1
+      }
+    ]
+  }
+]

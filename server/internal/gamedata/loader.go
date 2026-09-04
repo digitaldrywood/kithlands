@@ -44,23 +44,24 @@ type DialoguePool struct {
 
 // GameData holds all loaded game data from shared/.
 type GameData struct {
-	FinalEncounter   FinalEncounter
-	Dungeons         []dungeon.Definition
-	QuestObjectives  map[string]generator.ObjectiveDefinition
-	Classes          []Class
-	Stats            StatsConfig
-	Items            ItemsData
-	Loot             LootData
-	Abilities        []Ability
-	Chests           ChestCatalog
-	Spells           SpellsData
-	Monsters         []Monster
-	Formations       []Formation
-	Transport        TransportData
-	Palettes         Palettes
-	Dialogue         DialoguePool
-	Showcase         ShowcaseData
-	BattleCharacters BattleCharactersData
+	FinalEncounter     FinalEncounter
+	Dungeons           []dungeon.Definition
+	QuestObjectives    map[string]generator.ObjectiveDefinition
+	Classes            []Class
+	Stats              StatsConfig
+	Items              ItemsData
+	Loot               LootData
+	Abilities          []Ability
+	Chests             ChestCatalog
+	Spells             SpellsData
+	Monsters           []Monster
+	Formations         []Formation
+	Transport          TransportData
+	Palettes           Palettes
+	Dialogue           DialoguePool
+	NaturalDiscoveries []NaturalDiscovery
+	Showcase           ShowcaseData
+	BattleCharacters   BattleCharactersData
 
 	classByID           map[string]*Class
 	weaponByID          map[string]*Weapon
@@ -105,6 +106,7 @@ func Load(sharedDir string) *GameData {
 	gd.Transport = loadJSON[TransportData](sharedDir, "transport.json")
 	gd.Palettes = loadJSON[Palettes](sharedDir, "palettes.json")
 	gd.Dialogue = loadJSON[DialoguePool](sharedDir, "dialogue.json")
+	gd.NaturalDiscoveries = loadJSON[[]NaturalDiscovery](sharedDir, "natural_discoveries.json")
 	gd.Showcase = loadJSON[ShowcaseData](sharedDir, "showcase.json")
 	gd.BattleCharacters = loadJSON[BattleCharactersData](sharedDir, "battle_characters.json")
 	gd.expandBattleCharacterStates()
@@ -195,6 +197,14 @@ func (gd *GameData) SpellByID(id string) *Spell         { return gd.spellByID[id
 func (gd *GameData) MonsterByID(id string) *Monster     { return gd.monsterByID[id] }
 func (gd *GameData) FormationByID(id string) *Formation { return gd.formationByID[id] }
 func (gd *GameData) KeyItemByID(id string) *KeyItem     { return gd.keyItemByID[id] }
+func (gd *GameData) ConsumableByID(id string) *Consumable {
+	for i := range gd.Items.Consumables {
+		if gd.Items.Consumables[i].ID == id {
+			return &gd.Items.Consumables[i]
+		}
+	}
+	return nil
+}
 func (gd *GameData) LootRarityByID(id string) *LootRarity {
 	return gd.lootRarityByID[id]
 }
@@ -366,6 +376,7 @@ func cloneIntMap(source map[string]int) map[string]int {
 
 func (gd *GameData) validate() {
 	gd.validateLoot()
+	gd.validateNaturalDiscoveries()
 
 	if len(gd.Classes) == 0 {
 		panic("gamedata: classes.json is empty")
@@ -688,6 +699,69 @@ func validateWeaponSpellDamage(weapon Weapon) {
 	}
 	if strings.Contains(strings.ToLower(weapon.Special), "spell damage") {
 		panic(fmt.Sprintf("gamedata: weapon %q must author spell damage with spell_damage_pct, not special text", weapon.ID))
+	}
+}
+
+func (gd *GameData) validateNaturalDiscoveries() {
+	if len(gd.NaturalDiscoveries) == 0 {
+		panic("gamedata: natural_discoveries.json is empty")
+	}
+
+	ids := make(map[string]bool, len(gd.NaturalDiscoveries))
+	validKinds := map[string]bool{"clue": true, "supply_cache": true, "hidden_passage": true}
+	for _, discovery := range gd.NaturalDiscoveries {
+		if strings.TrimSpace(discovery.ID) == "" {
+			panic("gamedata: natural discovery with empty id")
+		}
+		if ids[discovery.ID] {
+			panic(fmt.Sprintf("gamedata: duplicate natural discovery id %q", discovery.ID))
+		}
+		ids[discovery.ID] = true
+		if !validKinds[discovery.Kind] {
+			panic(fmt.Sprintf("gamedata: natural discovery %q has invalid kind %q", discovery.ID, discovery.Kind))
+		}
+		if strings.TrimSpace(discovery.Title) == "" || strings.TrimSpace(discovery.Prompt) == "" ||
+			strings.TrimSpace(discovery.SuccessMessage) == "" || strings.TrimSpace(discovery.ExhaustedMessage) == "" {
+			panic(fmt.Sprintf("gamedata: natural discovery %q has incomplete presentation copy", discovery.ID))
+		}
+		if discovery.RequiresKeyItem != "" {
+			if gd.KeyItemByID(discovery.RequiresKeyItem) == nil {
+				panic(fmt.Sprintf("gamedata: natural discovery %q requires unknown key item %q", discovery.ID, discovery.RequiresKeyItem))
+			}
+			if strings.TrimSpace(discovery.LockedMessage) == "" {
+				panic(fmt.Sprintf("gamedata: natural discovery %q requires locked_message", discovery.ID))
+			}
+		} else if discovery.ConsumeKeyItem {
+			panic(fmt.Sprintf("gamedata: natural discovery %q consumes no required key item", discovery.ID))
+		}
+		if strings.TrimSpace(discovery.QuestRevealMessage) == "" || !strings.Contains(discovery.QuestRevealMessage, "{quest_name}") {
+			panic(fmt.Sprintf("gamedata: natural discovery %q requires quest_reveal_message", discovery.ID))
+		}
+		for i, reward := range discovery.Rewards {
+			label := fmt.Sprintf("natural discovery %q reward %d", discovery.ID, i)
+			if reward.Amount <= 0 {
+				panic(fmt.Sprintf("gamedata: %s amount must be positive", label))
+			}
+			switch reward.Kind {
+			case "gold":
+				if reward.ItemID != "" {
+					panic(fmt.Sprintf("gamedata: %s gold reward cannot set item_id", label))
+				}
+			case "consumable":
+				if gd.ConsumableByID(reward.ItemID) == nil {
+					panic(fmt.Sprintf("gamedata: %s references unknown consumable %q", label, reward.ItemID))
+				}
+			case "key_item":
+				if gd.KeyItemByID(reward.ItemID) == nil {
+					panic(fmt.Sprintf("gamedata: %s references unknown key item %q", label, reward.ItemID))
+				}
+				if reward.Amount != 1 {
+					panic(fmt.Sprintf("gamedata: %s key-item amount must be 1", label))
+				}
+			default:
+				panic(fmt.Sprintf("gamedata: %s has invalid kind %q", label, reward.Kind))
+			}
+		}
 	}
 }
 

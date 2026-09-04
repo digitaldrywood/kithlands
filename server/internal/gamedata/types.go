@@ -326,6 +326,32 @@ type KeyItem struct {
 	SellPrice   int    `json:"sell_price"`
 }
 
+// NaturalDiscovery defines one server-authored, one-shot outcome available at
+// a natural locality node. Assignment to concrete locality nodes is
+// deterministic and save-specific state is stored by node/discovery pair.
+type NaturalDiscovery struct {
+	ID                 string                   `json:"id"`
+	Kind               string                   `json:"kind"`
+	Title              string                   `json:"title"`
+	Prompt             string                   `json:"prompt"`
+	SuccessMessage     string                   `json:"success_message"`
+	LockedMessage      string                   `json:"locked_message,omitempty"`
+	ExhaustedMessage   string                   `json:"exhausted_message"`
+	RequiresKeyItem    string                   `json:"requires_key_item,omitempty"`
+	ConsumeKeyItem     bool                     `json:"consume_key_item,omitempty"`
+	RevealHiddenQuest  bool                     `json:"reveal_hidden_quest,omitempty"`
+	QuestRevealMessage string                   `json:"quest_reveal_message,omitempty"`
+	Rewards            []NaturalDiscoveryReward `json:"rewards"`
+}
+
+// NaturalDiscoveryReward is a small, validated inventory mutation. Content
+// chooses the reward while Go remains authoritative over applying it.
+type NaturalDiscoveryReward struct {
+	Kind   string `json:"kind"`
+	ItemID string `json:"item_id,omitempty"`
+	Amount int    `json:"amount"`
+}
+
 type Weapon struct {
 	ID             string   `json:"id"`
 	Name           string   `json:"name"`
