@@ -63,6 +63,10 @@ func (slots EquipmentSlots) Equipped(slotID string) EquippedItemRef {
 		return EquippedItemRef{ItemID: slots.WeaponID, InstanceID: slots.WeaponInstanceID}
 	case BodySlot:
 		return EquippedItemRef{ItemID: slots.ArmorID, InstanceID: slots.ArmorInstanceID}
+	case "off_hand":
+		return EquippedItemRef{ItemID: slots.ShieldID}
+	case "head":
+		return EquippedItemRef{ItemID: slots.HelmetID}
 	default:
 		return EquippedItemRef{}
 	}
@@ -82,6 +86,10 @@ func (slots *EquipmentSlots) setEquipped(slotID string, ref EquippedItemRef) {
 		slots.WeaponID, slots.WeaponInstanceID = ref.ItemID, ref.InstanceID
 	case BodySlot:
 		slots.ArmorID, slots.ArmorInstanceID = ref.ItemID, ref.InstanceID
+	case "off_hand":
+		slots.ShieldID = ref.ItemID
+	case "head":
+		slots.HelmetID = ref.ItemID
 	}
 }
 
@@ -154,34 +162,7 @@ func (inv *Inventory) EquipArmor(slot int, armorID string, classID string, gd *g
 
 // TotalAbsorb returns the combined armor absorb for a party slot.
 func (inv *Inventory) TotalAbsorb(slot int, gd *gamedata.GameData) int {
-	if id := inv.Equipment[slot].ArmorInstanceID; id != "" {
-		if resolved, err := ResolveInstance(inv.Instance(id), gd); err == nil {
-			return resolved.Absorb
-		}
-	}
-	total := 0
-	if id := inv.Equipment[slot].ArmorID; id != "" {
-		if a := gd.ArmorByID(id); a != nil {
-			total += a.Absorb
-		}
-	}
-	if id := inv.Equipment[slot].ShieldID; id != "" {
-		for _, s := range gd.Items.Shields {
-			if s.ID == id {
-				total += s.Absorb
-				break
-			}
-		}
-	}
-	if id := inv.Equipment[slot].HelmetID; id != "" {
-		for _, h := range gd.Items.Helmets {
-			if h.ID == id {
-				total += h.Absorb
-				break
-			}
-		}
-	}
-	return total
+	return inv.LoadoutStats(slot, gd)["absorb"]
 }
 
 // WeaponPower returns the equipped weapon's power for a party slot.
@@ -219,40 +200,41 @@ func (inv *Inventory) WeaponLongRange(slot int, gd *gamedata.GameData) bool {
 	return false
 }
 
-// LoadoutStats resolves the complete equipped stat contribution for inventory
-// comparisons. Combat continues using its legacy weapon/armor accessors until
-// the expanded stat model is deliberately integrated there.
+// LoadoutStats resolves every authored slot once. Legacy fields are fallbacks;
+// canonical references win and a physical instance cannot contribute twice.
 func (inv *Inventory) LoadoutStats(slot int, gd *gamedata.GameData) map[string]int {
 	totals := make(map[string]int)
-	if slot < 0 || slot >= len(inv.Equipment) {
+	if inv == nil || slot < 0 || slot >= len(inv.Equipment) {
 		return totals
 	}
-	refs := make(map[string]EquippedItemRef, len(inv.Equipment[slot].Loadout)+2)
-	for slotID, ref := range inv.Equipment[slot].Loadout {
-		refs[slotID] = ref
+	seen := make(map[string]bool)
+	slotIDs := []string{MainHandSlot, BodySlot, "off_hand", "head"}
+	for _, def := range gd.Items.EquipmentSlots {
+		slotIDs = append(slotIDs, def.ID)
 	}
-	if _, ok := refs[MainHandSlot]; !ok {
-		refs[MainHandSlot] = inv.Equipment[slot].Equipped(MainHandSlot)
-	}
-	if _, ok := refs[BodySlot]; !ok {
-		refs[BodySlot] = inv.Equipment[slot].Equipped(BodySlot)
-	}
-	for _, ref := range refs {
-		if ref.ItemID == "" {
+	slotsSeen := make(map[string]bool)
+	for _, slotID := range slotIDs {
+		if slotsSeen[slotID] {
 			continue
 		}
+		slotsSeen[slotID] = true
+		ref := inv.Equipment[slot].Equipped(slotID)
+		var stats map[string]int
 		if ref.InstanceID != "" {
-			if resolved, err := ResolveInstance(inv.Instance(ref.InstanceID), gd); err == nil {
-				for stat, value := range resolved.Stats {
-					totals[stat] += value
-				}
+			if seen[ref.InstanceID] {
+				continue
 			}
-			continue
+			seen[ref.InstanceID] = true
+			resolved, err := ResolveInstance(inv.Instance(ref.InstanceID), gd)
+			if err != nil {
+				continue
+			}
+			stats = resolved.Stats
+		} else if base := gd.EquipmentBaseByID(ref.ItemID); base != nil {
+			stats = base.Stats
 		}
-		if base := gd.EquipmentBaseByID(ref.ItemID); base != nil {
-			for stat, value := range base.Stats {
-				totals[stat] += value
-			}
+		for stat, value := range stats {
+			totals[stat] += value
 		}
 	}
 	return totals

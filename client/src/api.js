@@ -172,6 +172,21 @@ export async function unequipItem(gameId, slot, equipmentSlot) {
   });
 }
 
+export async function previewEquipment(
+  gameId,
+  slot,
+  equipmentSlot,
+  itemId,
+  type,
+) {
+  return apiCall("POST", `/game/${gameId}/equipment/preview`, {
+    slot,
+    equipment_slot: equipmentSlot,
+    item_id: itemId,
+    type,
+  });
+}
+
 export async function recommendEquipment(gameId, slot, goal = "balanced") {
   return apiCall("POST", `/game/${gameId}/equipment/recommend`, { slot, goal });
 }

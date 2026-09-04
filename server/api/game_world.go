@@ -399,22 +399,7 @@ func (g *Game) processAdvance(req GameActionRequest) (*GameState, error) {
 func (g *Game) makeCombatants() []*combat.Combatant {
 	var result []*combat.Combatant
 	for i, c := range g.party {
-		cls := g.gd.ClassByID(c.ClassID)
-		bareHand := 0
-		if cls.BareHand != nil {
-			bareHand = cls.BareHand.BaseDamage + c.Level*c.STR/2
-		}
-		cb := &combat.Combatant{
-			ID: i, Name: c.Name, IsPlayer: true,
-			STR: c.STR, AGI: c.AGI, INT: c.INT, VIT: c.VIT, LCK: c.LCK,
-			HitPct: c.HitPct, MaxHP: c.MaxHP, CurrentHP: c.CurrentHP,
-			Status:         c.Status,
-			Row:            string(c.Row),
-			WeaponPower:    g.inv.WeaponPower(i, g.gd),
-			LongRange:      g.inv.WeaponLongRange(i, g.gd),
-			ArmorAbsorb:    g.inv.TotalAbsorb(i, g.gd),
-			BareHandDamage: bareHand,
-		}
+		cb := combat.NewPlayer(i, c, g.inv, g.gd)
 		if buffs, ok := g.spellBuffs[i]; ok {
 			cb.Buffs = append(cb.Buffs, buffs...)
 		}

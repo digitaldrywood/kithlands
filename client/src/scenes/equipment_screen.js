@@ -1,6 +1,7 @@
 import {
   applyRecommendedEquipment,
   equipItem,
+  previewEquipment,
   recommendEquipment,
   unequipItem,
 } from "../api.js";
@@ -8,13 +9,16 @@ import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 import { showGemWorkshop } from "./gem_workshop.js";
 
 const LOCK_NAME = "equipment_screen";
-const CORE_STATS = ["str", "agi", "int", "vit", "lck"];
+const INACTIVE_STATS = new Set(["int", "vit", "magic_defense"]);
 const DETAIL_TABS = [
   ["summary", "Summary"],
   ["spells", "Spells"],
   ["special", "Special"],
 ];
 const STAT_ORDER = [
+  "attack",
+  "evade",
+  "attacks_per_turn",
   "power",
   "absorb",
   "str",
@@ -28,6 +32,9 @@ const STAT_ORDER = [
   "evade_penalty",
 ];
 const STAT_LABELS = {
+  attack: "Attack",
+  evade: "Evasion",
+  attacks_per_turn: "Attacks",
   power: "Power",
   absorb: "Absorb",
   str: "Strength",
@@ -38,7 +45,7 @@ const STAT_LABELS = {
   hit_pct: "Hit",
   crit_pct: "Crit",
   magic_defense: "Magic Defense",
-  evade_penalty: "Evade",
+  evade_penalty: "Evade penalty",
 };
 const SLOT_GLYPHS = {
   main_hand: "W",
@@ -143,6 +150,8 @@ export function buildEquipmentScreenModel(gameState, partyIndex) {
     equipment,
     slots,
     gearTotals: normalizeStats(equipment.bonuses),
+    effective: normalizeStats(equipment.effective),
+    base: normalizeStats(equipment.base),
   };
 }
 
@@ -231,29 +240,19 @@ export function buildEquipmentComparison(
   partyIndex,
   slotID,
   candidate,
+  preview = null,
 ) {
   const model = buildEquipmentScreenModel(gameState, partyIndex);
-  const slot = model.slots.find((entry) => entry.id === slotID);
-  const current = slot?.item || null;
-  const before = normalizeStats(model.gearTotals);
-  const after = {};
-  const candidateKey = itemKey(candidate);
-
-  for (const loadoutSlot of model.slots) {
-    let item = loadoutSlot.item;
-    if (loadoutSlot.id === slotID) item = candidate || null;
-    else if (candidateKey && itemKey(item) === candidateKey) item = null;
-    addStats(after, itemStats(item));
-  }
-
-  const deltas = statDeltas(before, after);
   return {
-    current,
+    current: model.slots.find((slot) => slot.id === slotID)?.item || null,
     candidate: candidate || null,
-    before,
-    after,
-    deltas,
-    character: characterImpact(model.member, before, after),
+    before: preview?.before || model.effective,
+    after: preview?.after || model.effective,
+    deltas: preview?.deltas || {},
+    character: preview
+      ? ["Before temporary battle buffs and formation effects."]
+      : [],
+    ready: !!preview,
   };
 }
 
@@ -299,6 +298,8 @@ export function itemStats(item) {
 
 function renderEquipmentScreen(state) {
   const { scene, root } = state;
+  const focused = document.activeElement;
+  const focusKey = root.contains(focused) ? equipmentFocusKey(focused) : null;
   const model = buildEquipmentScreenModel(scene.gameState, state.partyIndex);
   if (!model.member) {
     closeEquipmentScreen(scene);
@@ -332,6 +333,11 @@ function renderEquipmentScreen(state) {
     state.partyIndex,
     state.selectedSlotID,
     selectedCandidate?.item,
+    state.previewGameState === scene.gameState &&
+      state.previewKey ===
+        `${state.partyIndex}:${state.selectedSlotID}:${selectedCandidate?.key}`
+      ? state.comparisonPreview
+      : null,
   );
 
   root.replaceChildren();
@@ -348,6 +354,21 @@ function renderEquipmentScreen(state) {
     renderStatus(state),
   );
   if (state.recommendation) root.append(renderRecommendation(state));
+  if (focusKey !== null) {
+    const control = [
+      ...root.querySelectorAll("button, select, [tabindex]"),
+    ].find((entry) => equipmentFocusKey(entry) === focusKey);
+    (control || root).focus();
+  }
+}
+
+function equipmentFocusKey(control) {
+  return (
+    control.dataset.testid ||
+    control.dataset.focusKey ||
+    control.getAttribute("aria-label") ||
+    control.id
+  );
 }
 
 function renderHeader(state, model) {
@@ -402,10 +423,11 @@ function renderHeader(state, model) {
     ["balanced", "Balanced"],
     ["offense", "Offense"],
     ["defense", "Defense"],
-    ["magic", "Magic"],
+    ["magic", "Magic (inactive)"],
   ]) {
     const option = document.createElement("option");
     option.value = value;
+    option.disabled = value === "magic";
     option.textContent = label;
     option.selected = state.goal === value;
     goal.append(option);
@@ -556,57 +578,26 @@ function renderSummaryTab(panel, model) {
   vitals.append(bars);
   panel.append(vitals);
 
-  const hero = {
-    str: Number(member.str) || 0,
-    agi: Number(member.agi) || 0,
-    int: Number(member.int_stat) || 0,
-    vit: Number(member.vit) || 0,
-    lck: Number(member.lck) || 0,
-  };
-  const attack =
-    hero.str + (model.gearTotals.str || 0) + (model.gearTotals.power || 0);
   const combat = element("section", "character-summary-group");
   combat.append(element("h3", "character-summary-label", "Combat"));
   const stats = element("dl", "character-stat-grid");
-  for (const [label, base, bonus, total] of [
-    [
-      "Attack",
-      hero.str,
-      (model.gearTotals.str || 0) + (model.gearTotals.power || 0),
-      attack,
-    ],
-    [
-      "Strength",
-      hero.str,
-      model.gearTotals.str || 0,
-      hero.str + (model.gearTotals.str || 0),
-    ],
-    [
-      "Agility",
-      hero.agi,
-      model.gearTotals.agi || 0,
-      hero.agi + (model.gearTotals.agi || 0),
-    ],
-    [
-      "Intellect",
-      hero.int,
-      model.gearTotals.int || 0,
-      hero.int + (model.gearTotals.int || 0),
-    ],
-    [
-      "Vitality",
-      hero.vit,
-      model.gearTotals.vit || 0,
-      hero.vit + (model.gearTotals.vit || 0),
-    ],
-    [
-      "Luck",
-      hero.lck,
-      model.gearTotals.lck || 0,
-      hero.lck + (model.gearTotals.lck || 0),
-    ],
-    ["Absorb", 0, model.gearTotals.absorb || 0, model.gearTotals.absorb || 0],
+  for (const stat of [
+    "attack",
+    "str",
+    "agi",
+    "int",
+    "vit",
+    "lck",
+    "absorb",
+    "hit_pct",
+    "attacks_per_turn",
+    "crit_pct",
+    "evade",
   ]) {
+    const label = statLabel(stat);
+    const base = model.base[stat] || 0;
+    const total = model.effective[stat] ?? base;
+    const bonus = total - base;
     const term = element("dt", "", label);
     const value = element("dd");
     value.append(element("strong", "", String(total)));
@@ -621,6 +612,16 @@ function renderSummaryTab(panel, model) {
     stats.append(term, value);
   }
   combat.append(stats);
+  const inactive = [...INACTIVE_STATS].filter((stat) => model.gearTotals[stat]);
+  if (inactive.length)
+    combat.append(
+      element(
+        "p",
+        "equipment-inactive-note",
+        `${inactive.map((stat) => `${statLabel(stat)} ${formatSigned(model.gearTotals[stat])}`).join(", ")}: gear bonuses are inactive. They do not change spells, HP growth, or protection.`,
+      ),
+    );
+
   panel.append(combat);
 
   const condition = element("section", "character-summary-group");
@@ -776,6 +777,7 @@ function renderEquipmentDrawer(
         state.selectedSlotID = "";
         state.selectedCandidateKey = "";
         renderEquipmentScreen(state);
+        state.root.querySelector(`[data-slot-id="${slot.id}"]`)?.focus();
       },
       "Close gear drawer",
     ),
@@ -847,11 +849,9 @@ function renderEquipmentDrawer(
 
 function renderCandidate(state, slot, candidate, selected) {
   const item = candidate.item;
-  const row = button("", "equipment-item-row", () => {
-    state.selectedCandidateKey = candidate.key;
-    state.recommendation = null;
-    renderEquipmentScreen(state);
-  });
+  const row = button("", "equipment-item-row", () =>
+    selectEquipmentCandidate(state, slot, candidate),
+  );
   row.dataset.itemKey = candidate.key;
   row.dataset.testid = `equipment-item-${candidate.key}`;
   row.classList.toggle("is-selected", selected);
@@ -879,12 +879,6 @@ function renderCandidate(state, slot, candidate, selected) {
     copy.append(
       element("span", "equipment-lock-reason", candidate.disabledReason),
     );
-  const comparison = buildEquipmentComparison(
-    state.scene.gameState,
-    state.partyIndex,
-    slot.id,
-    item,
-  );
   const tooltip = renderItemTooltip(
     candidate.disabledReason ||
       `Compare with ${slot.item?.name || "empty slot"}`,
@@ -894,19 +888,9 @@ function renderCandidate(state, slot, candidate, selected) {
       : "Cannot equip this item",
   );
   tooltip.classList.add("candidate-tooltip");
-  const deltas = element("div", "tooltip-deltas");
-  for (const [stat, value] of significantStatEntries(comparison.deltas)) {
-    deltas.append(
-      element(
-        "span",
-        `delta ${deltaTone(stat, value)}`,
-        `${statLabel(stat)} ${formatSigned(value)}`,
-      ),
-    );
-  }
-  if (deltas.childElementCount === 0)
-    deltas.append(element("span", "delta neutral", "No stat change"));
-  tooltip.append(deltas);
+  tooltip.append(
+    element("span", "delta neutral", "Select for exact character comparison."),
+  );
   tooltip.id = `equipment-candidate-tip-${candidate.key.replace(/[^a-z0-9_-]/gi, "-")}`;
   row.setAttribute("aria-describedby", tooltip.id);
   row.append(icon, copy, element("span", "equipment-row-arrow", "›"), tooltip);
@@ -922,14 +906,31 @@ function renderComparison(state, model, slot, selectedCandidate, comparison) {
   region.append(
     element("h3", "section-title", `Equip ${selectedCandidate.item.name}?`),
   );
+  if (!comparison.ready) {
+    region.append(
+      element(
+        "p",
+        "character-impact-line",
+        state.comparisonError || "Checking character totals…",
+      ),
+    );
+    if (state.comparisonError) {
+      region.append(
+        button("Retry comparison", "equipment-action secondary", () =>
+          selectEquipmentCandidate(state, slot, selectedCandidate),
+        ),
+      );
+    }
+    return region;
+  }
   const comparisonTable = element("div", "comparison-table");
   comparisonTable.setAttribute(
     "aria-label",
-    "Current and preview loadout stats",
+    "Current and preview character stats",
   );
   const tableHead = element("div", "comparison-table-head");
   tableHead.append(
-    element("span", "comparison-stat", "Loadout stat"),
+    element("span", "comparison-stat", "Character stat"),
     element("span", "comparison-current", "Current"),
     element("span", "comparison-arrow", ""),
     element("span", "comparison-preview", "Preview"),
@@ -1027,6 +1028,19 @@ function renderItemTooltip(label, item, footer = "") {
   }
   tooltip.append(stats);
 
+  if (
+    Object.keys(itemStats(item)).some(
+      (stat) => INACTIVE_STATS.has(stat) && itemStats(item)[stat],
+    )
+  ) {
+    tooltip.append(
+      element(
+        "span",
+        "tooltip-copy",
+        "Intellect, Vitality, and Magic Defense gear bonuses are inactive. They do not change spells, HP growth, or protection.",
+      ),
+    );
+  }
   const sources = element("span", "tooltip-sources");
   for (const affix of item.affixes || []) {
     const row = element("span", "tooltip-source-row is-affix");
@@ -1223,6 +1237,48 @@ function renderRecommendation(state) {
   panel.append(actions);
   overlay.append(panel);
   return overlay;
+}
+
+async function selectEquipmentCandidate(state, slot, candidate) {
+  state.selectedCandidateKey = candidate.key;
+  state.recommendation = null;
+  state.comparisonPreview = null;
+  state.comparisonError = "";
+  const key = `${state.partyIndex}:${slot.id}:${candidate.key}`;
+  state.previewKey = key;
+  const request = {};
+  state.previewRequest = request;
+  const gameState = state.scene.gameState;
+  state.previewGameState = gameState;
+  renderEquipmentScreen(state);
+  const focusCandidate = () =>
+    state.root.querySelector(`[data-item-key="${candidate.key}"]`)?.focus();
+  focusCandidate();
+  const item = candidate.item;
+  let result;
+  try {
+    result = await previewEquipment(
+      gameState.id,
+      state.partyIndex,
+      slot.id,
+      item.instance_id || staticBaseID(item.id),
+      item.kind || inferredKind(item),
+    );
+  } catch {
+    result = { error: "Could not load character totals. Please try again." };
+  }
+  if (
+    state.scene.equipmentScreenState !== state ||
+    state.previewRequest !== request ||
+    state.previewKey !== key ||
+    state.selectedSlotID !== slot.id ||
+    state.selectedCandidateKey !== candidate.key ||
+    state.scene.gameState !== gameState
+  )
+    return;
+  state.comparisonError = result.error || "";
+  state.comparisonPreview = result.error ? null : result;
+  renderEquipmentScreen(state);
 }
 
 async function performEquip(state, slot, candidate) {
@@ -1440,32 +1496,6 @@ function equipmentDisabledReason(item, member, slot) {
   return "";
 }
 
-function characterImpact(member, before, after) {
-  if (!member) return [];
-  const hero = {
-    str: Number(member.str) || 0,
-    agi: Number(member.agi) || 0,
-    int: Number(member.int_stat) || 0,
-    vit: Number(member.vit) || 0,
-    lck: Number(member.lck) || 0,
-  };
-  const lines = [];
-  for (const stat of CORE_STATS) {
-    const current = hero[stat] + (before[stat] || 0);
-    const proposed = hero[stat] + (after[stat] || 0);
-    if (current !== proposed) {
-      lines.push(
-        `${statLabel(stat)} ${current} → ${proposed} (Hero ${hero[stat]} + Gear ${after[stat] || 0})`,
-      );
-    }
-  }
-  const attackBefore = hero.str + (before.str || 0) + (before.power || 0);
-  const attackAfter = hero.str + (after.str || 0) + (after.power || 0);
-  lines.unshift(`Attack ${attackBefore} → ${attackAfter}`);
-  lines.push(`Absorb ${before.absorb || 0} → ${after.absorb || 0}`);
-  return lines.slice(0, 5);
-}
-
 function isEquipmentItem(item) {
   return (
     !!item &&
@@ -1509,24 +1539,9 @@ function normalizeStats(stats) {
   return normalized;
 }
 
-function addStats(target, stats) {
-  for (const [key, value] of Object.entries(stats || {}))
-    target[key] = (target[key] || 0) + value;
-}
-
-function statDeltas(before, after) {
-  const deltas = {};
-  for (const key of new Set([
-    ...Object.keys(before || {}),
-    ...Object.keys(after || {}),
-  ])) {
-    deltas[key] = (after?.[key] || 0) - (before?.[key] || 0);
-  }
-  return deltas;
-}
-
 function simpleItemScore(item) {
   return Object.entries(itemStats(item)).reduce((total, [stat, value]) => {
+    if (INACTIVE_STATS.has(stat)) return total;
     if (stat === "evade_penalty") return total - value;
     return total + value;
   }, 0);
@@ -1545,7 +1560,12 @@ function significantStatEntries(stats) {
 function formatTopStats(item) {
   const entries = significantStatEntries(itemStats(item)).slice(0, 3);
   return entries.length
-    ? entries.map(([stat, value]) => `${statLabel(stat)} ${value}`).join(" · ")
+    ? entries
+        .map(
+          ([stat, value]) =>
+            `${statLabel(stat)} ${value}${INACTIVE_STATS.has(stat) ? " (inactive)" : ""}`,
+        )
+        .join(" · ")
     : "No stat bonus";
 }
 
@@ -1635,6 +1655,7 @@ function formatSigned(value) {
 }
 
 function deltaTone(stat, value) {
+  if (INACTIVE_STATS.has(stat)) return "neutral";
   if (value === 0) return "neutral";
   const improves = stat === "evade_penalty" ? value < 0 : value > 0;
   return improves ? "positive" : "negative";
@@ -1667,6 +1688,7 @@ function button(label, className, onClick, ariaLabel = "") {
   const control = document.createElement("button");
   control.type = "button";
   control.className = className;
+  control.dataset.focusKey = ariaLabel || label;
   if (label) control.textContent = label;
   if (ariaLabel) control.setAttribute("aria-label", ariaLabel);
   control.addEventListener("click", onClick);

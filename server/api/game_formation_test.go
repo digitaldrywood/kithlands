@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
+	"github.com/digitaldrywood/kithlands/internal/inventory"
 )
 
 func newFormationTestGame(t *testing.T, party []PartyMemberReq) *Game {
@@ -144,9 +145,9 @@ func TestUpdateFormationReordersPartyAndEquipmentRoundTrip(t *testing.T) {
 		{Name: "Mira", ClassID: "mender"},
 		{Name: "Cato", ClassID: "cinder"},
 	})
-	game.inv.Equipment[0].WeaponID = "short_sword"
-	game.inv.Equipment[1].WeaponID = "wooden_staff"
-	game.inv.Equipment[2].WeaponID = "wooden_club"
+	game.inv.Equipment[0] = inventory.EquipmentSlots{WeaponID: "short_sword"}
+	game.inv.Equipment[1] = inventory.EquipmentSlots{WeaponID: "wooden_staff"}
+	game.inv.Equipment[2] = inventory.EquipmentSlots{WeaponID: "wooden_club"}
 
 	state, err := game.UpdateFormation(
 		[]FormationUpdate{
@@ -213,9 +214,9 @@ func TestUpdateFormationRejectsInvalidReorderAtomically(t *testing.T) {
 		{Name: "Mira", ClassID: "mender"},
 		{Name: "Cato", ClassID: "cinder"},
 	})
-	game.inv.Equipment[0].WeaponID = "short_sword"
-	game.inv.Equipment[1].WeaponID = "wooden_staff"
-	game.inv.Equipment[2].WeaponID = "wooden_club"
+	game.inv.Equipment[0] = inventory.EquipmentSlots{WeaponID: "short_sword"}
+	game.inv.Equipment[1] = inventory.EquipmentSlots{WeaponID: "wooden_staff"}
+	game.inv.Equipment[2] = inventory.EquipmentSlots{WeaponID: "wooden_club"}
 
 	if _, err := game.UpdateFormation(nil, []int{2, 2, 0}); err == nil {
 		t.Fatal("UpdateFormation unexpectedly accepted a duplicate reorder slot")

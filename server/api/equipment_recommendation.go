@@ -78,6 +78,9 @@ var equipmentRecommendationWeights = map[string]map[string]int{
 
 func normalizeRecommendationGoal(goal string) (string, error) {
 	goal = strings.ToLower(strings.TrimSpace(goal))
+	if goal == "magic" {
+		return "", fmt.Errorf("magic equipment bonuses are inactive")
+	}
 	if goal == "" {
 		goal = "balanced"
 	}
@@ -101,6 +104,9 @@ func (g *Game) RecommendEquipment(partySlot int, goal string) (EquipmentRecommen
 func (g *Game) ApplyRecommendedEquipment(partySlot int, goal string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if err := g.checkEquipmentMutationLocked(); err != nil {
+		return err
+	}
 
 	plan, err := g.recommendEquipmentLocked(partySlot, goal)
 	if err != nil {
@@ -148,12 +154,7 @@ func returnRecommendedStaticToInventory(inv *inventory.Inventory, previous inven
 	if base == nil {
 		return
 	}
-	switch base.Category {
-	case "weapon":
-		inv.Consumables["wpn_"+base.ID]++
-	case "armor":
-		inv.Consumables["arm_"+base.ID]++
-	}
+	inv.Consumables[equipmentStateID(base.Category, base.ID)]++
 }
 
 func (g *Game) recommendEquipmentLocked(partySlot int, goal string) (equipmentRecommendationPlan, error) {
@@ -244,8 +245,8 @@ func (g *Game) recommendEquipmentLocked(partySlot int, goal string) (equipmentRe
 			if candidate.sourceSlot != "" && candidate.sourceSlot != slot.ID {
 				continue
 			}
-			if best == nil || candidate.score > best.score ||
-				(candidate.score == best.score && candidate.sourceSlot == slot.ID && best.sourceSlot != slot.ID) {
+			if (best == nil && candidate.score > 0) || (best != nil && candidate.score > best.score) ||
+				(best != nil && candidate.score == best.score && candidate.sourceSlot == slot.ID && best.sourceSlot != slot.ID) {
 				copy := *candidate
 				best = &copy
 			}
@@ -256,7 +257,7 @@ func (g *Game) recommendEquipmentLocked(partySlot int, goal string) (equipmentRe
 		}
 	}
 
-	before := g.inv.LoadoutStats(partySlot, g.gd)
+	before := g.inv.ResolveEffectiveStats(member, partySlot, g.gd).Values()
 	after := make(map[string]int)
 	plan := equipmentRecommendationPlan{state: EquipmentRecommendationState{
 		PartySlot: partySlot, CharacterName: member.Name, Goal: goal,
@@ -281,6 +282,7 @@ func (g *Game) recommendEquipmentLocked(partySlot int, goal string) (equipmentRe
 		plan.state.Changes = append(plan.state.Changes, change)
 		plan.changes = append(plan.changes, recommendationChangePlan{public: change, candidate: *selected})
 	}
+	after = inventory.ResolveStats(member, after, g.gd.ClassByID(member.ClassID)).Values()
 	plan.state.After = after
 	plan.state.Deltas = statDeltas(before, after)
 	plan.state.ScoreBefore = equipmentScore(before, goal)
@@ -328,8 +330,7 @@ func (g *Game) recommendationCandidateFits(candidate recommendationCandidate, sl
 		return false
 	}
 	if candidate.inventoryKey != "" {
-		return (candidate.category == "weapon" && slot.ID == inventory.MainHandSlot) ||
-			(candidate.category == "armor" && slot.ID == inventory.BodySlot)
+		return candidate.category != "weapon" || slot.ID == inventory.MainHandSlot
 	}
 	return true
 }
@@ -338,6 +339,9 @@ func equipmentScore(stats map[string]int, goal string) int {
 	weights := equipmentRecommendationWeights[goal]
 	total := 0
 	for stat, value := range stats {
+		if stat == "int" || stat == "vit" || stat == "magic_defense" {
+			continue
+		}
 		total += value * weights[stat]
 	}
 	return total
@@ -362,6 +366,8 @@ func staticEquipmentBaseID(key string) (string, bool) {
 	switch {
 	case strings.HasPrefix(key, "wpn_"):
 		return strings.TrimPrefix(key, "wpn_"), true
+	case strings.HasPrefix(key, "eqp_"):
+		return strings.TrimPrefix(key, "eqp_"), true
 	case strings.HasPrefix(key, "arm_"):
 		return strings.TrimPrefix(key, "arm_"), true
 	default:
@@ -373,32 +379,12 @@ func equipRecommendedStatic(inv *inventory.Inventory, partySlot int, equipmentSl
 	if candidate.inventoryKey == "" || inv.Consumables[candidate.inventoryKey] <= 0 {
 		return fmt.Errorf("equipment %q is not available", candidate.itemID)
 	}
-	previous := inv.Equipment[partySlot]
-	var prior string
-	var err error
-	switch candidate.category {
-	case "weapon":
-		if equipmentSlot != inventory.MainHandSlot {
-			return fmt.Errorf("static weapons can only be equipped in %s", inventory.MainHandSlot)
-		}
-		prior, err = inv.EquipWeapon(partySlot, candidate.itemID, classID, gd)
-		if err == nil && prior != "" && previous.WeaponInstanceID == "" {
-			inv.Consumables["wpn_"+prior]++
-		}
-	case "armor":
-		if equipmentSlot != inventory.BodySlot {
-			return fmt.Errorf("static armor can only be equipped in %s", inventory.BodySlot)
-		}
-		prior, err = inv.EquipArmor(partySlot, candidate.itemID, classID, gd)
-		if err == nil && prior != "" && previous.ArmorInstanceID == "" {
-			inv.Consumables["arm_"+prior]++
-		}
-	default:
-		return fmt.Errorf("static %s equipment is unsupported", candidate.category)
-	}
+	previous, err := inv.EquipStaticAt(partySlot, equipmentSlot, candidate.itemID, classID, gd)
 	if err != nil {
 		return err
 	}
+	returnRecommendedStaticToInventory(inv, previous, gd)
+
 	inv.Consumables[candidate.inventoryKey]--
 	if inv.Consumables[candidate.inventoryKey] == 0 {
 		delete(inv.Consumables, candidate.inventoryKey)

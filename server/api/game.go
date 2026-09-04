@@ -7,7 +7,6 @@ import (
 	"math/rand/v2"
 	"runtime/debug"
 	"sort"
-	"strings"
 	"sync"
 
 	"github.com/digitaldrywood/kithlands/internal/balance"
@@ -305,6 +304,8 @@ type EquipState struct {
 	ArmorEvadePenalty int              `json:"armor_evade_penalty,omitempty"`
 	ArmorElement      string           `json:"armor_element,omitempty"`
 	ArmorItem         *ItemState       `json:"armor_item,omitempty"`
+	Effective         map[string]int   `json:"effective"`
+	Base              map[string]int   `json:"base"`
 	Bonuses           map[string]int   `json:"bonuses,omitempty"`
 	Loadout           []EquipSlotState `json:"loadout"`
 }
@@ -889,17 +890,9 @@ func (g *Game) fillInventoryState(state *GameState) {
 			item.CombatUsable = c.CombatUsable
 			item.WorldUsable = c.WorldUsable
 		}
-		// Weapon/armor in inventory -- enrich with Power/Absorb so the
-		// client can compute equip-delta previews (issue #96).
-		if strings.HasPrefix(id, "wpn_") {
-			if base := g.gd.EquipmentBaseByID(strings.TrimPrefix(id, "wpn_")); base != nil {
-				baseState := baseItemState(base)
-				baseState.ID, baseState.Count = id, count
-				item = baseState
-			}
-		}
-		if strings.HasPrefix(id, "arm_") {
-			if base := g.gd.EquipmentBaseByID(strings.TrimPrefix(id, "arm_")); base != nil {
+		// Static legacy equipment shares the same metadata as rolled gear.
+		if baseID, ok := staticEquipmentBaseID(id); ok {
+			if base := g.gd.EquipmentBaseByID(baseID); base != nil {
 				baseState := baseItemState(base)
 				baseState.ID, baseState.Count = id, count
 				item = baseState
@@ -925,7 +918,9 @@ func (g *Game) fillInventoryState(state *GameState) {
 		es := EquipState{
 			WeaponID: eq.WeaponID, WeaponInstanceID: eq.WeaponInstanceID,
 			ArmorID: eq.ArmorID, ArmorInstanceID: eq.ArmorInstanceID,
-			Bonuses: g.inv.LoadoutStats(i, g.gd),
+			Bonuses:   g.inv.LoadoutStats(i, g.gd),
+			Effective: g.inv.ResolveEffectiveStats(g.party[i], i, g.gd).Values(),
+			Base:      inventory.ResolveStats(g.party[i], nil, g.gd.ClassByID(g.party[i].ClassID)).Values(),
 		}
 		if w := g.gd.WeaponByID(eq.WeaponID); w != nil {
 			es.WeaponName = w.Name
@@ -1111,9 +1106,9 @@ func cloneBoolMap(in map[string]bool) map[string]bool {
 func (g *Game) rollEncounterStartForNewFight() {
 	g.combatRound = 0
 	partyAGIs := make([]int, 0, len(g.party))
-	for _, c := range g.party {
+	for i, c := range g.party {
 		if c != nil && c.CurrentHP > 0 {
-			partyAGIs = append(partyAGIs, c.AGI)
+			partyAGIs = append(partyAGIs, g.inv.ResolveEffectiveStats(c, i, g.gd).AGI)
 		}
 	}
 	enemyAGIs := make([]int, 0, len(g.enemies))

@@ -378,29 +378,7 @@ func equipStartingGear(slot int, classID string, inv *inventory.Inventory, gd *g
 func makeCombatants(party []*character.Character, inv *inventory.Inventory, gd *gamedata.GameData) []*combat.Combatant {
 	var combatants []*combat.Combatant
 	for i, c := range party {
-		bareHand := 0
-		cls := gd.ClassByID(c.ClassID)
-		if cls.BareHand != nil {
-			bareHand = cls.BareHand.BaseDamage + c.Level*c.STR/2
-		}
-
-		combatants = append(combatants, &combat.Combatant{
-			ID:             i,
-			Name:           c.Name,
-			IsPlayer:       true,
-			STR:            c.STR,
-			AGI:            c.AGI,
-			INT:            c.INT,
-			VIT:            c.VIT,
-			LCK:            c.LCK,
-			HitPct:         c.HitPct,
-			MaxHP:          c.MaxHP,
-			CurrentHP:      c.CurrentHP,
-			Status:         c.Status,
-			WeaponPower:    inv.WeaponPower(i, gd),
-			ArmorAbsorb:    inv.TotalAbsorb(i, gd),
-			BareHandDamage: bareHand,
-		})
+		combatants = append(combatants, combat.NewPlayer(i, c, inv, gd))
 	}
 	return combatants
 }

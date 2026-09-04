@@ -296,6 +296,9 @@ func (gd *GameData) buildIndexes() {
 func (gd *GameData) buildEquipmentIndex() {
 	gd.equipmentByID = make(map[string]*EquipmentBase)
 	add := func(base EquipmentBase) {
+		if base.Stats["evade_penalty"] < 0 {
+			panic(fmt.Sprintf("gamedata: equipment %q evade_penalty must be a nonnegative cost", base.ID))
+		}
 		if prior := gd.equipmentByID[base.ID]; prior != nil {
 			panic(fmt.Sprintf("gamedata: duplicate equipment base id %q", base.ID))
 		}
