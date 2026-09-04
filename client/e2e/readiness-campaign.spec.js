@@ -25,7 +25,10 @@ async function checkpoint(page, reason) {
   const saved = await page.evaluate(() => window.__kithlandsTest.listSaves());
   const saveId = saved.saves.find((entry) => entry.name === name)?.id;
   expect(saveId).toBeTruthy();
-  const journalFile = path.resolve(proofDir, "journal.json");
+  const journalFile = path.resolve(
+    proofDir,
+    `checkpoint-journal-${saveId}.json`,
+  );
   writeFileSync(
     journalFile,
     JSON.stringify({ battles, itemUsed, spellUsed, journal, legs }, null, 2),
@@ -189,6 +192,7 @@ async function travel(page, nodeId) {
         ? 0
         : pathToDoor(first, first.spawns, nodeId).length,
     steps: 0,
+    keyPresses: 0,
     battlesBefore: battles,
     started: Date.now(),
   };
@@ -232,12 +236,19 @@ async function travel(page, nodeId) {
     }
     const direction = pathToDoor(nav, nav.spawns, nodeId)[0];
     await page.keyboard.down(direction);
-    await page.waitForFunction(({ x, y }) => {
-      const pos = window.__kithlandsTest.worldNavigationSnapshot();
-      return pos.x !== x || pos.y !== y;
-    }, nav);
+    await page.waitForFunction(
+      ({ x, y }) => {
+        const pos = window.__kithlandsTest.worldNavigationSnapshot();
+        return pos.x !== x || pos.y !== y;
+      },
+      { x: nav.x, y: nav.y },
+    );
     await page.keyboard.up(direction);
-    leg.steps++;
+    const after = await page.evaluate(() =>
+      window.__kithlandsTest.worldNavigationSnapshot(),
+    );
+    leg.steps += Math.abs(after.x - nav.x) + Math.abs(after.y - nav.y);
+    leg.keyPresses++;
   }
   throw new Error(`Travel exceeded 600 steps to ${nodeId}`);
 }
@@ -352,6 +363,7 @@ test("fresh save walks the fallback campaign through its story milestones", asyn
         (saveId) => window.__kithlandsTest.loadSave(saveId),
         resume.saveId,
       );
+      await expect(page.locator('input[type="email"]')).toHaveCount(0);
       await capture(page, "resumed-checkpoint");
     } else {
       await page.evaluate(
