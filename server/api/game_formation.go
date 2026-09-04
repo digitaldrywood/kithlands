@@ -118,6 +118,10 @@ func (g *Game) UpdateFormation(updates []FormationUpdate, reorder []int) (*GameS
 		g.party = reorderParty(g.party, reorder)
 		if g.inv != nil {
 			g.inv.Equipment = reorderEquipment(g.inv.Equipment, reorder)
+			builds := g.inv.EquipmentBuilds
+			for slot, source := range reorder {
+				g.inv.EquipmentBuilds[slot] = builds[source]
+			}
 		}
 	}
 

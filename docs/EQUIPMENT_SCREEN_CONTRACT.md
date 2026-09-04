@@ -244,3 +244,38 @@ These references support interaction patterns, not visual copying:
   <https://www.w3.org/WAI/ARIA/apg/patterns/button/>
   <https://www.w3.org/WAI/ARIA/apg/patterns/grid/>
   <https://www.w3.org/WAI/ARIA/apg/patterns/tooltip/>
+
+## 9. Saved builds
+
+A character can save **three** named builds (1–32 plain-text characters) from
+current equipment. Names are unique within that character. Builds follow their
+character when party formation changes. They persist inside inventory JSON;
+saves without `equipment_builds` start with none. No database migration is needed.
+
+Each build stores only slot IDs and item references. Empty positions are
+intentional, and Ring I and Ring II remain distinct. Instance IDs refer to the
+same owned item after socket or recipe changes; builds contain no copied items,
+gems, resolved stats, or inventory snapshots. Saving, overwriting, or deleting a
+build changes only that build.
+
+**Preview** resolves current items and lists the intended loadout plus every
+changed slot for each affected party member. **Apply Build** is a separate action.
+Transfers from another character require an explicit checkbox naming that the
+reviewed transfers are accepted. A server fingerprint binds Apply to the reviewed
+inventory, eligibility, build, phase, and resolved item views. Changes require a
+fresh preview. No preview mutates inventory.
+
+Application is all-or-nothing. Missing/sold items, duplicated instance references,
+changed class/level eligibility, and unsupported positions return actionable
+reasons. Nothing is substituted. Legacy static weapons/body armor use quantities
+in the bag plus the selected character's currently equipped copies; other
+characters' static gear is not borrowed. Instance transfers are named explicitly.
+Displaced gear stays owned. Operations are allowed only in `world` and
+`quest_complete`, not combat or terminal phases.
+
+The additive authenticated API uses `POST /api/game/{id}/equipment/builds/{action}`
+with actions `save`, `preview`, `apply`, and `delete`. Requests use `slot` and
+`build_id`; save adds `name` (an omitted ID creates a build; an existing ID
+replaces it with current gear); apply adds `token` and `confirm_transfer`.
+Preview returns `slots`, `changes`, `reasons`, `requires_transfer`, and a token
+only when the whole plan is valid. Other actions return authoritative game state.
