@@ -484,6 +484,170 @@ test("rejected world arrival rolls back and recovers Shrine entry", async ({
   await waitForRoom(page, "forgotten-threshold");
 });
 
+test("fresh load inside the Shrine restores its world checkpoint", async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+  page.setDefaultTimeout(30_000);
+  await page.setViewportSize({ width: 800, height: 600 });
+  const email = `shrine_reload_${runID}@kithlands.dev`;
+  const pageErrors = [];
+  page.on("pageerror", (error) => pageErrors.push(String(error)));
+
+  await page.goto("/?noEncounters=1");
+  await page.waitForFunction(
+    () => window.__kithlandsTest?.sceneIsActive("Title"),
+    undefined,
+    { timeout: 60_000 },
+  );
+  await page.evaluate(
+    (account) => window.__kithlandsTest.startQuickGame(account),
+    email,
+  );
+  await page.waitForFunction(
+    () => window.__kithlandsTest.activeSceneKey() === "World",
+  );
+  const shrineEntry = await followVisibleDungeonPath(page, "forgotten-shrine");
+  await enterDungeon(page, "forgotten-shrine");
+
+  const saveName = `Fresh Shrine checkpoint ${runID}`;
+  await page.evaluate(
+    (name) => window.__kithlandsTest.saveGame(name, "Dungeon"),
+    saveName,
+  );
+  const saves = await page.evaluate(() => window.__kithlandsTest.listSaves());
+  const saved = saves.saves.find((candidate) => candidate.name === saveName);
+  expect(saved).toBeTruthy();
+
+  // Discard every module-level coordinate before loading the server save.
+  await page.reload();
+  await page.waitForFunction(() =>
+    window.__kithlandsTest?.sceneIsActive("Title"),
+  );
+  await page.evaluate(async (account) => {
+    const api = await import("/src/api.js");
+    const auth = await api.login(account);
+    api.setToken(auth.token);
+  }, email);
+  const loaded = await page.evaluate(
+    (saveID) => window.__kithlandsTest.loadSave(saveID),
+    saved.id,
+  );
+  expect(loaded.active_dungeon_id).toBe("forgotten-shrine");
+  await waitForRoom(page, "forgotten-threshold");
+
+  await page.evaluate(() =>
+    window.__kithlandsTest.clickInteractiveText("Retreat", "Dungeon"),
+  );
+  await page.waitForFunction(
+    () => window.__kithlandsTest.activeSceneKey() === "World",
+  );
+  await page.evaluate(
+    () =>
+      new Promise((resolve) =>
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => requestAnimationFrame(resolve)),
+        ),
+      ),
+  );
+  expect(pageErrors).toEqual([]);
+
+  const restored = await page.evaluate((entry) => {
+    const gameState = window.__kithlandsTest.gameState("World");
+    const nav = window.__kithlandsTest.worldNavigationSnapshot();
+    const spawn = nav.spawns.find(
+      (candidate) => candidate.node_id === entry.node_id,
+    );
+    return {
+      currentNodeID: gameState.current_location?.world_node_id,
+      distance: spawn
+        ? Math.abs(nav.x - spawn.x) + Math.abs(nav.y - spawn.y)
+        : null,
+      entranceVisible: window.__kithlandsTest
+        .visibleTexts("World")
+        .some(
+          (candidate) =>
+            candidate.interactive && candidate.text === entry.label,
+        ),
+    };
+  }, shrineEntry);
+  expect(restored.currentNodeID).toBe(shrineEntry.node_id);
+  expect(restored.distance).toBeLessThanOrEqual(3);
+  expect(restored.entranceVisible).toBe(true);
+
+  const oldMillEntry = await followVisibleDungeonPath(page, "old-mill");
+  expect(oldMillEntry.id).toBe("old-mill");
+});
+
+test("an overworld encounter cancels and unlocks a marked route", async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+  page.setDefaultTimeout(30_000);
+  await page.setViewportSize({ width: 800, height: 600 });
+
+  // Deliberately leave encounters enabled for the interrupted route.
+  await page.goto("/");
+  await page.waitForFunction(
+    () => window.__kithlandsTest?.sceneIsActive("Title"),
+    undefined,
+    { timeout: 60_000 },
+  );
+  await page.evaluate(() => window.__kithlandsTest.startQuickGame());
+  await page.waitForFunction(
+    () => window.__kithlandsTest.activeSceneKey() === "World",
+  );
+  const entry = await clickVisibleDungeonPath(page, "forgotten-shrine");
+  await page.waitForFunction(() => {
+    const nav = window.__kithlandsTest.worldNavigationSnapshot();
+    return (
+      nav.animating &&
+      window.__kithlandsTest
+        .visibleTexts("World")
+        .some((candidate) => candidate.text.includes("Following path to"))
+    );
+  });
+
+  const encounter = await page.evaluate(() =>
+    window.__kithlandsTest.forceEncounter(["slime"], 1, "World"),
+  );
+  expect(encounter.phase).toBe("combat");
+  await page.waitForFunction(
+    () => window.__kithlandsTest.activeSceneKey() === "Battle",
+  );
+  await page.evaluate(() => window.__kithlandsTest.forceVictory("Battle"));
+  await page.evaluate(() => window.__kithlandsTest.pressKey("Space", "Battle"));
+  await page.waitForFunction(() =>
+    window.__kithlandsTest
+      .visibleTexts("Battle")
+      .some(
+        (candidate) =>
+          candidate.interactive && candidate.text.trim() === "Continue",
+      ),
+  );
+  await page.evaluate(() =>
+    window.__kithlandsTest.clickInteractiveText("Continue", "Battle"),
+  );
+  await page.waitForFunction(
+    () => window.__kithlandsTest.activeSceneKey() === "World",
+  );
+  await page.waitForFunction(() => {
+    const flags = window.__kithlandsTest.sceneFlags("World");
+    return (
+      !flags.animating &&
+      !window.__kithlandsTest
+        .visibleTexts("World")
+        .some((candidate) => candidate.text.includes("Following path to"))
+    );
+  });
+
+  // The control can be used again after combat; suppress a second random
+  // battle so this assertion stays focused on lifecycle recovery.
+  await page.evaluate(() => window.__kithlandsTest.setNoEncounters(true));
+  await clickVisibleDungeonPath(page, "forgotten-shrine");
+  await waitForVisibleDungeonEntry(page, entry);
+});
+
 for (const viewport of viewports) {
   test(`Forgotten Shrine full route, defeat and retry ${viewport.width}x${viewport.height}`, async ({
     page,

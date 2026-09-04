@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
+  cancelDungeonRoute,
   dungeonRouteForScene,
   planDungeonWaypointPath,
 } from "./dungeonRoute.js";
@@ -64,6 +65,25 @@ describe("Forgotten Shrine world route", () => {
         canWalk: () => true,
       }),
     ).toBeNull();
+  });
+
+  it("cancels an interrupted route and clears its guide", () => {
+    const marker = { destroy: vi.fn() };
+    const token = { cancelled: false };
+    const scene = {
+      dungeonRouteToken: token,
+      dungeonRouteRunning: true,
+      currentDungeonRouteID: "forgotten-shrine",
+      dungeonRouteGuide: [marker],
+    };
+
+    cancelDungeonRoute(scene);
+
+    expect(token.cancelled).toBe(true);
+    expect(scene.dungeonRouteRunning).toBe(false);
+    expect(scene.currentDungeonRouteID).toBeNull();
+    expect(scene.dungeonRouteGuide).toEqual([]);
+    expect(marker.destroy).toHaveBeenCalledOnce();
   });
 });
 

@@ -104,6 +104,13 @@ function clearRouteGuide(scene) {
   scene.dungeonRouteGuide = [];
 }
 
+export function cancelDungeonRoute(scene) {
+  if (scene.dungeonRouteToken) scene.dungeonRouteToken.cancelled = true;
+  scene.dungeonRouteRunning = false;
+  scene.currentDungeonRouteID = null;
+  clearRouteGuide(scene);
+}
+
 function drawRouteGuide(scene, entry) {
   clearRouteGuide(scene);
   scene.dungeonRouteGuide = (entry.route_node_ids || []).flatMap(
@@ -186,10 +193,8 @@ export async function followDungeonRoute(scene, entry) {
   } finally {
     if (scene.dungeonRouteToken === token) {
       scene.dungeonRouteToken = null;
-      scene.dungeonRouteRunning = false;
-      scene.currentDungeonRouteID = null;
-      clearRouteGuide(scene);
-      scene.updateHUD?.();
+      cancelDungeonRoute(scene);
+      if (scene.scene?.isActive()) scene.updateHUD?.();
     }
   }
 }
