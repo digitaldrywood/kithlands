@@ -263,11 +263,17 @@ export function showGemWorkshop(
   scene,
   { onClose, preselectedInstanceID = "", initialMode = "socket" } = {},
 ) {
-  scene.gemWorkshopState?.close();
+  if (scene.gemWorkshopState) {
+    scene.gemWorkshopState.close();
+    if (scene.gemWorkshopState) return scene.gemWorkshopState;
+  }
   pauseWorldFor(scene, "gem_workshop");
   const previousFocus = document.activeElement;
   const previousInput = scene.input?.enabled;
+  const previousKeyboard = scene.input?.keyboard?.enabled;
+  scene.input?.keyboard?.resetKeys();
   if (scene.input) scene.input.enabled = false;
+  if (scene.input?.keyboard) scene.input.keyboard.enabled = false;
   const root = element("section", "kith-gem-workshop");
   root.setAttribute("role", "dialog");
   root.setAttribute("aria-modal", "true");
@@ -293,9 +299,13 @@ export function showGemWorkshop(
     if (closed || (callOnClose && busy)) return;
     closed = true;
     pendingController?.abort();
+    window.removeEventListener("keydown", keydown, true);
     root.remove();
     scene.events?.off("shutdown", shutdown);
     scene.gemWorkshopState = null;
+    scene.input?.keyboard?.resetKeys();
+    if (scene.input?.keyboard && previousKeyboard != null)
+      scene.input.keyboard.enabled = previousKeyboard;
     if (scene.input && previousInput != null)
       scene.input.enabled = previousInput;
     resumeWorldFor(scene, "gem_workshop");
@@ -304,10 +314,10 @@ export function showGemWorkshop(
   }
   scene.gemWorkshopState = { root, close };
   scene.events?.once("shutdown", shutdown);
-  for (const event of ["pointerdown", "pointerup", "click"])
+  for (const event of ["pointerdown", "pointerup", "click", "wheel"])
     root.addEventListener(event, (e) => e.stopPropagation());
-  root.addEventListener("keydown", (event) => {
-    event.stopPropagation();
+  const keydown = (event) => {
+    event.stopImmediatePropagation();
     if (event.key === "Escape") {
       event.preventDefault();
       close();
@@ -332,7 +342,8 @@ export function showGemWorkshop(
       event.preventDefault();
       first?.focus();
     }
-  });
+  };
+  window.addEventListener("keydown", keydown, true);
 
   async function runAction(action, success, onSuccess, refreshing = false) {
     if (busy || (needsRefresh && !refreshing)) return;
