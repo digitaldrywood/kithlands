@@ -37,7 +37,6 @@ async function state(page) {
 async function capture(page, name) {
   await page.screenshot({
     path: path.join(proof, `${name}-${run}.png`),
-    fullPage: true,
   });
   writeFileSync(
     path.join(proof, `${name}-${run}.json`),
