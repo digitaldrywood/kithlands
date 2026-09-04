@@ -13,18 +13,20 @@ type naturalDiscoveryAssignment struct {
 	discovery *gamedata.NaturalDiscovery
 }
 
-// naturalDiscoveryAssignments assigns every authored definition exactly once.
-// When a locality has fewer natural nodes than definitions, nodes repeat so the
+// naturalDiscoveryAssignments assigns every authored definition exactly once
+// across Natural nodes reachable from the server-owned spawn. When a locality
+// has fewer reachable Natural nodes than definitions, nodes repeat so the
 // wizard's single wilderness landmark can still host the full sequence. Extra
-// natural nodes remain scenery rather than duplicating one-shot discoveries.
+// reachable Natural nodes remain scenery rather than duplicating discoveries.
 func (g *Game) naturalDiscoveryAssignments() []naturalDiscoveryAssignment {
-	if g == nil || g.gd == nil || g.loc == nil || len(g.gd.NaturalDiscoveries) == 0 {
+	if g == nil || g.gd == nil || g.loc == nil || g.walk == nil || len(g.gd.NaturalDiscoveries) == 0 {
 		return nil
 	}
 
 	var nodes []*locality.Node
 	for i := range g.loc.Nodes {
-		if g.loc.Nodes[i].Kind == locality.NodeNatural {
+		_, reachable := g.walk.DistanceMap[g.loc.Nodes[i].ID]
+		if g.loc.Nodes[i].Kind == locality.NodeNatural && reachable {
 			nodes = append(nodes, &g.loc.Nodes[i])
 		}
 	}
