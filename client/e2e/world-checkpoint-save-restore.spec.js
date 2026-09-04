@@ -119,10 +119,13 @@ async function followShrineRoute(page) {
   );
   await page.waitForFunction(
     ({ nodeID, entryLabel }) => {
-      const state = window.__kithlandsTest.gameState("World");
+      const bridge = window.__kithlandsTest;
+      if (!bridge) return false;
+      const state = bridge.gameState("World");
+      if (!state) return false;
       return (
         state.current_location?.world_node_id === nodeID &&
-        window.__kithlandsTest
+        bridge
           .visibleTexts("World")
           .some(
             (candidate) =>

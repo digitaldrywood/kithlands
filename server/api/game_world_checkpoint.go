@@ -158,7 +158,7 @@ func worldSpawn(tileMap *locality.TileMap, nodeID string) *locality.MapSpawn {
 	return nil
 }
 
-func resolveWorldCheckpoint(saved *WorldCheckpoint, tileMap *locality.TileMap, loc *locality.Locality, traversal worldTraversal, campaignSpawnID string) *WorldCheckpoint {
+func resolveWorldCheckpoint(saved *WorldCheckpoint, tileMap *locality.TileMap, loc *locality.Locality, traversal worldTraversal, campaignSpawnID string, recoveryNodeIDs ...string) *WorldCheckpoint {
 	if tileMap == nil || loc == nil {
 		return nil
 	}
@@ -177,6 +177,14 @@ func resolveWorldCheckpoint(saved *WorldCheckpoint, tileMap *locality.TileMap, l
 
 	if saved != nil && loc != nil && loc.NodeByID(saved.WorldNodeID) != nil {
 		if recovered := recoverWorldCheckpointNearNode(tileMap, loc, traversal, saved.WorldNodeID, signature); recovered != nil {
+			return recovered
+		}
+	}
+	for _, nodeID := range recoveryNodeIDs {
+		if nodeID == "" || nodeID == campaignSpawnID || saved != nil && nodeID == saved.WorldNodeID {
+			continue
+		}
+		if recovered := recoverWorldCheckpointNearNode(tileMap, loc, traversal, nodeID, signature); recovered != nil {
 			return recovered
 		}
 	}

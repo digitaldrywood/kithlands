@@ -61,11 +61,18 @@ export function buildPartyMemberScanContext(member = {}) {
   };
 }
 
+export async function saveFromPartyMenu(scene, saveName) {
+  const position =
+    scene?.scene?.key === "World" ? await checkpointWorldPosition(scene) : null;
+  return saveGame(scene.gameState.id, saveName, position);
+}
+
 export function toggleMenu(scene) {
   if (scene.menuOpen) {
     closeMenu(scene);
     return;
   }
+  if (scene.encounterPending) return;
 
   scene.menuOpen = true;
   pauseWorldFor(scene, "party_menu");
@@ -344,8 +351,7 @@ export function toggleMenu(scene) {
         const gss = scene.gameState;
         const saveName = `${gss.location} - ${gss.party.map((pp) => pp.name).join(", ")}`;
         try {
-          const position = await checkpointWorldPosition(scene);
-          const result = await saveGame(gss.id, saveName, position);
+          const result = await saveFromPartyMenu(scene, saveName);
           if (result.error) {
             scene.showMessage(`Save failed: ${result.error}`);
           } else {

@@ -298,6 +298,62 @@ func TestRemoteDungeonSaveRestoreExitAndMoveKeepsWorldCheckpoint(t *testing.T) {
 	}
 }
 
+func TestRemoteDungeonRecoveryKeepsOriginAlignedWithWorldCheckpoint(t *testing.T) {
+	game := newTownTestGame(t)
+	entry := dungeonEntryByID(t, game, "forgotten-shrine")
+	arriveAtWorldNode(t, game, entry.NodeID)
+	position := findWorldArrivalPosition(t, game, entry.NodeID, nil)
+	if _, err := game.ProcessDungeon(DungeonRequest{Type: "enter", NodeID: entry.NodeID, WorldPosition: &position}); err != nil {
+		t.Fatalf("enter remote dungeon: %v", err)
+	}
+	saved, err := game.ToSaveState("forgotten shrine recovery", "test-user")
+	if err != nil {
+		t.Fatalf("save remote dungeon: %v", err)
+	}
+
+	tests := []struct {
+		name       string
+		raw        string
+		origin     *LocationState
+		wantNodeID string
+	}{
+		{name: "legacy missing checkpoint", raw: "", wantNodeID: entry.NodeID},
+		{name: "malformed checkpoint", raw: `"not-an-object"`, wantNodeID: entry.NodeID},
+		{name: "stale unknown checkpoint", raw: checkpointJSON(t, WorldCheckpoint{X: -10, Y: -10, WorldNodeID: "missing", MapSignature: "stale"}), wantNodeID: entry.NodeID},
+		{name: "invalid dungeon origin", raw: "", origin: &LocationState{Kind: LocationWorld, WorldNodeID: "missing"}, wantNodeID: entry.NodeID},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			candidate := copySaveWithCheckpoint(t, saved, test.raw)
+			if test.origin != nil {
+				candidate = copySaveWithDungeonOrigin(t, candidate, "forgotten-shrine", *test.origin)
+			}
+			loaded, err := FromSaveState(candidate, game.gd, game.loc)
+			if err != nil {
+				t.Fatalf("load remote dungeon: %v", err)
+			}
+			checkpoint := cloneWorldCheckpoint(loaded.State().WorldCheckpoint)
+			if checkpoint == nil || checkpoint.WorldNodeID != test.wantNodeID {
+				t.Fatalf("recovered checkpoint = %+v, want node %q", checkpoint, test.wantNodeID)
+			}
+			if loaded.State().CurrentLocation.Kind != LocationDungeon || loaded.State().CurrentLocation.WorldNodeID != checkpoint.WorldNodeID {
+				t.Fatalf("loaded location = %+v, checkpoint = %+v", loaded.State().CurrentLocation, checkpoint)
+			}
+			if loaded.dungeon.Origin.Kind != LocationWorld || loaded.dungeon.Origin.WorldNodeID != checkpoint.WorldNodeID {
+				t.Fatalf("reconciled origin = %+v, checkpoint = %+v", loaded.dungeon.Origin, checkpoint)
+			}
+
+			state, err := loaded.ProcessDungeon(DungeonRequest{Type: "retreat"})
+			if err != nil {
+				t.Fatalf("retreat recovered dungeon: %v", err)
+			}
+			if state.CurrentLocation.Kind != LocationWorld || state.CurrentLocation.WorldNodeID != checkpoint.WorldNodeID || !reflect.DeepEqual(state.WorldCheckpoint, checkpoint) {
+				t.Fatalf("retreat state = location %+v checkpoint %+v, want %+v", state.CurrentLocation, state.WorldCheckpoint, checkpoint)
+			}
+		})
+	}
+}
+
 func TestWorldCheckpointSurvivesInnAutosave(t *testing.T) {
 	game := newTownTestGame(t)
 	checkpoint := cloneWorldCheckpoint(game.worldCheckpoint)
@@ -447,6 +503,35 @@ func copySaveWithCheckpoint(t *testing.T, saved *savepkg.SaveState, raw string) 
 	} else {
 		world["world_checkpoint"] = json.RawMessage(raw)
 	}
+	encoded, err := json.Marshal(world)
+	if err != nil {
+		t.Fatalf("marshal saved world state: %v", err)
+	}
+	clone.WorldState = encoded
+	return &clone
+}
+
+func copySaveWithDungeonOrigin(t *testing.T, saved *savepkg.SaveState, dungeonID string, origin LocationState) *savepkg.SaveState {
+	t.Helper()
+	clone := *saved
+	var world map[string]json.RawMessage
+	if err := json.Unmarshal(saved.WorldState, &world); err != nil {
+		t.Fatalf("unmarshal saved world state: %v", err)
+	}
+	var dungeons map[string]*DungeonProgress
+	if err := json.Unmarshal(world["dungeons"], &dungeons); err != nil {
+		t.Fatalf("unmarshal saved dungeons: %v", err)
+	}
+	progress := dungeons[dungeonID]
+	if progress == nil {
+		t.Fatalf("saved dungeon %q is missing", dungeonID)
+	}
+	progress.Origin = origin
+	dungeonsJSON, err := json.Marshal(dungeons)
+	if err != nil {
+		t.Fatalf("marshal saved dungeons: %v", err)
+	}
+	world["dungeons"] = dungeonsJSON
 	encoded, err := json.Marshal(world)
 	if err != nil {
 		t.Fatalf("marshal saved world state: %v", err)

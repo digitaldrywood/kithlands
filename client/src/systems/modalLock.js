@@ -52,6 +52,6 @@ export function resumeWorldFor(scene, name) {
 
 export function isWorldInputLocked(scene) {
   if (scene._modalLocks && scene._modalLocks.size > 0) return true;
-  if (scene.gameOver || scene.animating) return true;
+  if (scene.gameOver || scene.animating || scene.encounterPending) return true;
   return false;
 }

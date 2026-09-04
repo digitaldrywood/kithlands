@@ -462,12 +462,14 @@ export class WorldScene extends Phaser.Scene {
   create() {
     this.stepCount = 0;
     this.animating = false;
+    this.encounterPending = false;
     this.gameOver = false;
     this.events.once("shutdown", () => {
       cancelDungeonRoute(this);
       this.settleWorldStep?.(false);
       this.settleWorldStep = null;
       this.worldStepDone = null;
+      this.encounterPending = false;
     });
 
     initAudio(this);
@@ -941,14 +943,18 @@ export class WorldScene extends Phaser.Scene {
     this.walkFrameAudit = [];
     let finishWorldStep;
     let worldStepSettled = false;
-    this.worldStepDone = new Promise((resolve) => {
+    const worldStepDone = new Promise((resolve) => {
       finishWorldStep = resolve;
     });
+    this.worldStepDone = worldStepDone;
     const settleWorldStep = (accepted) => {
       if (worldStepSettled) return;
       worldStepSettled = true;
       if (this.settleWorldStep === settleWorldStep) {
         this.settleWorldStep = null;
+      }
+      if (this.worldStepDone === worldStepDone) {
+        this.worldStepDone = null;
       }
       finishWorldStep(accepted);
     };
@@ -1028,6 +1034,10 @@ export class WorldScene extends Phaser.Scene {
   }
 
   restoreRejectedWorldStep(origin, reason) {
+    // The rejected movement is finished. Keep the resolved false promise from
+    // poisoning later interactions and manual saves while the avatar remains
+    // on this restored safe tile.
+    this.worldStepDone = null;
     this.playerX = origin.x;
     this.playerY = origin.y;
     rememberWorldPosition(
@@ -1053,6 +1063,8 @@ export class WorldScene extends Phaser.Scene {
   }
 
   async triggerRandomEncounter(tile) {
+    if (this.encounterPending) return;
+    this.encounterPending = true;
     this.animating = true;
     // Save position before transitioning to battle
     rememberWorldPosition(
@@ -1086,16 +1098,19 @@ export class WorldScene extends Phaser.Scene {
         playSFX("sfx_encounter");
         this.cameras.main.flash(300, 255, 255, 255);
         this.time.delayedCall(400, () => {
+          this.encounterPending = false;
           this.scene.start("Battle", {
             gameState: result,
             encounterTileType: tile,
           });
         });
       } else {
+        this.encounterPending = false;
         this.animating = false;
       }
     } catch (e) {
       console.error("[World] encounter failed:", e);
+      this.encounterPending = false;
       this.animating = false;
     }
   }

@@ -300,9 +300,26 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 			savedCheckpoint = &checkpoint
 		}
 	}
-	game.worldCheckpoint = resolveWorldCheckpoint(savedCheckpoint, tileMap, loc, game.worldTraversal(), spawnID)
+	dungeonOriginNodeID := ""
+	if activeDungeon != nil && activeDungeon.Active {
+		if def := game.dungeonDefinitionByID(activeDungeon.ID); def != nil {
+			if entry := game.dungeonEntryNode(def); entry != nil {
+				dungeonOriginNodeID = entry.ID
+			}
+		}
+	}
+	game.worldCheckpoint = resolveWorldCheckpoint(savedCheckpoint, tileMap, loc, game.worldTraversal(), spawnID, dungeonOriginNodeID)
 	if game.worldCheckpoint != nil {
 		game.location.WorldNodeID = game.worldCheckpoint.WorldNodeID
+		if activeDungeon != nil && activeDungeon.Active {
+			if activeDungeon.Origin.WorldNodeID != game.worldCheckpoint.WorldNodeID ||
+				(activeDungeon.Origin.Kind != LocationWorld && activeDungeon.Origin.Kind != LocationSettlement) {
+				activeDungeon.Origin = LocationState{
+					Kind:        LocationWorld,
+					WorldNodeID: game.worldCheckpoint.WorldNodeID,
+				}
+			}
+		}
 	}
 
 	game.restoreDungeon()

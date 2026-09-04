@@ -1,8 +1,18 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const apiMocks = vi.hoisted(() => ({ saveGame: vi.fn() }));
+vi.mock("../api.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  saveGame: apiMocks.saveGame,
+}));
+
 import {
   buildLegacyQuestLogModel,
   buildPartyMemberScanContext,
+  saveFromPartyMenu,
 } from "./world_menu.js";
+
+beforeEach(() => vi.clearAllMocks());
 
 describe("party menu scan context", () => {
   it("reports remaining experience and suppresses normal status", () => {
@@ -75,4 +85,35 @@ describe("legacy quest log hidden objectives", () => {
       "The Forgotten Shrine",
     ]);
   });
+});
+
+describe("party menu save location", () => {
+  it.each([
+    ["town", "settlement"],
+    ["direct town", "world"],
+    ["inn", "interior"],
+    ["dungeon", "dungeon"],
+  ])(
+    "saves from %s without submitting room coordinates",
+    async (sceneKey, kind) => {
+      apiMocks.saveGame.mockResolvedValue({ status: "saved" });
+      const scene = {
+        scene: { key: sceneKey === "dungeon" ? "Dungeon" : "Town" },
+        playerX: 5,
+        playerY: 7,
+        gameState: { id: "game-1", current_location: { kind } },
+      };
+
+      await expect(
+        saveFromPartyMenu(scene, `${sceneKey} save`),
+      ).resolves.toEqual({
+        status: "saved",
+      });
+      expect(apiMocks.saveGame).toHaveBeenCalledWith(
+        "game-1",
+        `${sceneKey} save`,
+        null,
+      );
+    },
+  );
 });
