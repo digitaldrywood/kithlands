@@ -1,0 +1,1330 @@
+{
+  "type": "map",
+  "orientation": "orthogonal",
+  "renderorder": "right-down",
+  "version": "1.10",
+  "tiledversion": "1.11.2",
+  "infinite": false,
+  "tilewidth": 32,
+  "tileheight": 32,
+  "width": 18,
+  "height": 10,
+  "layers": [
+    {
+      "id": 1,
+      "name": "ground",
+      "opacity": 1,
+      "visible": true,
+      "x": 0,
+      "y": 0,
+      "type": "imagelayer",
+      "image": "../../../../client/public/interiors/inn/gilded-steps-guest.png"
+    },
+    {
+      "id": 2,
+      "name": "terrain-detail",
+      "opacity": 1,
+      "visible": false,
+      "x": 0,
+      "y": 0,
+      "type": "objectgroup",
+      "draworder": "topdown",
+      "objects": []
+    },
+    {
+      "id": 3,
+      "name": "roads-and-water",
+      "opacity": 1,
+      "visible": false,
+      "x": 0,
+      "y": 0,
+      "type": "objectgroup",
+      "draworder": "topdown",
+      "objects": []
+    },
+    {
+      "id": 4,
+      "name": "structures",
+      "opacity": 1,
+      "visible": false,
+      "x": 0,
+      "y": 0,
+      "type": "objectgroup",
+      "draworder": "topdown",
+      "objects": []
+    },
+    {
+      "id": 5,
+      "name": "props-below-player",
+      "opacity": 1,
+      "visible": false,
+      "x": 0,
+      "y": 0,
+      "type": "objectgroup",
+      "draworder": "topdown",
+      "objects": []
+    },
+    {
+      "id": 6,
+      "name": "collision",
+      "opacity": 1,
+      "visible": false,
+      "x": 0,
+      "y": 0,
+      "type": "objectgroup",
+      "draworder": "topdown",
+      "objects": [
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 0,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "id": 1,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 32,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "id": 2,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 64,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "id": 3,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 96,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "id": 4,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 128,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "id": 5,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 160,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "id": 6,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 192,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "id": 7,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 224,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "id": 8,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 256,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "id": 9,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 288,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "id": 10,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 320,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "id": 11,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 352,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "id": 12,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 384,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "id": 13,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 416,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "id": 14,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 448,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "id": 15,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 480,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "id": 16,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 512,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "id": 17,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 544,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "id": 18,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 0,
+          "y": 32,
+          "width": 32,
+          "height": 32,
+          "id": 19,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "B",
+          "type": "solid",
+          "x": 32,
+          "y": 32,
+          "width": 32,
+          "height": 32,
+          "id": 20,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "B",
+          "type": "solid",
+          "x": 64,
+          "y": 32,
+          "width": 32,
+          "height": 32,
+          "id": 21,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "B",
+          "type": "solid",
+          "x": 96,
+          "y": 32,
+          "width": 32,
+          "height": 32,
+          "id": 22,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "B",
+          "type": "solid",
+          "x": 128,
+          "y": 32,
+          "width": 32,
+          "height": 32,
+          "id": 23,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 544,
+          "y": 32,
+          "width": 32,
+          "height": 32,
+          "id": 24,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 0,
+          "y": 64,
+          "width": 32,
+          "height": 32,
+          "id": 25,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "B",
+          "type": "solid",
+          "x": 32,
+          "y": 64,
+          "width": 32,
+          "height": 32,
+          "id": 26,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "B",
+          "type": "solid",
+          "x": 64,
+          "y": 64,
+          "width": 32,
+          "height": 32,
+          "id": 27,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "B",
+          "type": "solid",
+          "x": 96,
+          "y": 64,
+          "width": 32,
+          "height": 32,
+          "id": 28,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "B",
+          "type": "solid",
+          "x": 128,
+          "y": 64,
+          "width": 32,
+          "height": 32,
+          "id": 29,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 544,
+          "y": 64,
+          "width": 32,
+          "height": 32,
+          "id": 30,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 0,
+          "y": 96,
+          "width": 32,
+          "height": 32,
+          "id": 31,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "B",
+          "type": "solid",
+          "x": 32,
+          "y": 96,
+          "width": 32,
+          "height": 32,
+          "id": 32,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "B",
+          "type": "solid",
+          "x": 64,
+          "y": 96,
+          "width": 32,
+          "height": 32,
+          "id": 33,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "B",
+          "type": "solid",
+          "x": 96,
+          "y": 96,
+          "width": 32,
+          "height": 32,
+          "id": 34,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "B",
+          "type": "solid",
+          "x": 128,
+          "y": 96,
+          "width": 32,
+          "height": 32,
+          "id": 35,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 544,
+          "y": 96,
+          "width": 32,
+          "height": 32,
+          "id": 36,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 0,
+          "y": 128,
+          "width": 32,
+          "height": 32,
+          "id": 37,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "O",
+          "type": "solid",
+          "x": 32,
+          "y": 128,
+          "width": 32,
+          "height": 32,
+          "id": 38,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "H",
+          "type": "solid",
+          "x": 192,
+          "y": 128,
+          "width": 32,
+          "height": 32,
+          "id": 39,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "M",
+          "type": "solid",
+          "x": 224,
+          "y": 128,
+          "width": 32,
+          "height": 32,
+          "id": 40,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "M",
+          "type": "solid",
+          "x": 256,
+          "y": 128,
+          "width": 32,
+          "height": 32,
+          "id": 41,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "H",
+          "type": "solid",
+          "x": 288,
+          "y": 128,
+          "width": 32,
+          "height": 32,
+          "id": 42,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 544,
+          "y": 128,
+          "width": 32,
+          "height": 32,
+          "id": 43,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 0,
+          "y": 160,
+          "width": 32,
+          "height": 32,
+          "id": 44,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "O",
+          "type": "solid",
+          "x": 32,
+          "y": 160,
+          "width": 32,
+          "height": 32,
+          "id": 45,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 416,
+          "y": 160,
+          "width": 32,
+          "height": 32,
+          "id": 46,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 448,
+          "y": 160,
+          "width": 32,
+          "height": 32,
+          "id": 47,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 480,
+          "y": 160,
+          "width": 32,
+          "height": 32,
+          "id": 48,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 512,
+          "y": 160,
+          "width": 32,
+          "height": 32,
+          "id": 49,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 544,
+          "y": 160,
+          "width": 32,
+          "height": 32,
+          "id": 50,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 0,
+          "y": 192,
+          "width": 32,
+          "height": 32,
+          "id": 51,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "O",
+          "type": "solid",
+          "x": 32,
+          "y": 192,
+          "width": 32,
+          "height": 32,
+          "id": 52,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "B",
+          "type": "solid",
+          "x": 480,
+          "y": 192,
+          "width": 32,
+          "height": 32,
+          "id": 53,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "B",
+          "type": "solid",
+          "x": 512,
+          "y": 192,
+          "width": 32,
+          "height": 32,
+          "id": 54,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 544,
+          "y": 192,
+          "width": 32,
+          "height": 32,
+          "id": 55,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 0,
+          "y": 224,
+          "width": 32,
+          "height": 32,
+          "id": 56,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "O",
+          "type": "solid",
+          "x": 32,
+          "y": 224,
+          "width": 32,
+          "height": 32,
+          "id": 57,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "H",
+          "type": "solid",
+          "x": 416,
+          "y": 224,
+          "width": 32,
+          "height": 32,
+          "id": 58,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "B",
+          "type": "solid",
+          "x": 480,
+          "y": 224,
+          "width": 32,
+          "height": 32,
+          "id": 59,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "B",
+          "type": "solid",
+          "x": 512,
+          "y": 224,
+          "width": 32,
+          "height": 32,
+          "id": 60,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 544,
+          "y": 224,
+          "width": 32,
+          "height": 32,
+          "id": 61,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 0,
+          "y": 256,
+          "width": 32,
+          "height": 32,
+          "id": 62,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 32,
+          "y": 256,
+          "width": 32,
+          "height": 32,
+          "id": 63,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 64,
+          "y": 256,
+          "width": 32,
+          "height": 32,
+          "id": 64,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 96,
+          "y": 256,
+          "width": 32,
+          "height": 32,
+          "id": 65,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 128,
+          "y": 256,
+          "width": 32,
+          "height": 32,
+          "id": 66,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 160,
+          "y": 256,
+          "width": 32,
+          "height": 32,
+          "id": 67,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 192,
+          "y": 256,
+          "width": 32,
+          "height": 32,
+          "id": 68,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 288,
+          "y": 256,
+          "width": 32,
+          "height": 32,
+          "id": 69,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 320,
+          "y": 256,
+          "width": 32,
+          "height": 32,
+          "id": 70,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 352,
+          "y": 256,
+          "width": 32,
+          "height": 32,
+          "id": 71,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 384,
+          "y": 256,
+          "width": 32,
+          "height": 32,
+          "id": 72,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 416,
+          "y": 256,
+          "width": 32,
+          "height": 32,
+          "id": 73,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 448,
+          "y": 256,
+          "width": 32,
+          "height": 32,
+          "id": 74,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 480,
+          "y": 256,
+          "width": 32,
+          "height": 32,
+          "id": 75,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 512,
+          "y": 256,
+          "width": 32,
+          "height": 32,
+          "id": 76,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 544,
+          "y": 256,
+          "width": 32,
+          "height": 32,
+          "id": 77,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 0,
+          "y": 288,
+          "width": 32,
+          "height": 32,
+          "id": 78,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 32,
+          "y": 288,
+          "width": 32,
+          "height": 32,
+          "id": 79,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 64,
+          "y": 288,
+          "width": 32,
+          "height": 32,
+          "id": 80,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 96,
+          "y": 288,
+          "width": 32,
+          "height": 32,
+          "id": 81,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 128,
+          "y": 288,
+          "width": 32,
+          "height": 32,
+          "id": 82,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 160,
+          "y": 288,
+          "width": 32,
+          "height": 32,
+          "id": 83,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 192,
+          "y": 288,
+          "width": 32,
+          "height": 32,
+          "id": 84,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 224,
+          "y": 288,
+          "width": 32,
+          "height": 32,
+          "id": 85,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 256,
+          "y": 288,
+          "width": 32,
+          "height": 32,
+          "id": 86,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 288,
+          "y": 288,
+          "width": 32,
+          "height": 32,
+          "id": 87,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 320,
+          "y": 288,
+          "width": 32,
+          "height": 32,
+          "id": 88,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 352,
+          "y": 288,
+          "width": 32,
+          "height": 32,
+          "id": 89,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 384,
+          "y": 288,
+          "width": 32,
+          "height": 32,
+          "id": 90,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 416,
+          "y": 288,
+          "width": 32,
+          "height": 32,
+          "id": 91,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 448,
+          "y": 288,
+          "width": 32,
+          "height": 32,
+          "id": 92,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 480,
+          "y": 288,
+          "width": 32,
+          "height": 32,
+          "id": 93,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 512,
+          "y": 288,
+          "width": 32,
+          "height": 32,
+          "id": 94,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "W",
+          "type": "solid",
+          "x": 544,
+          "y": 288,
+          "width": 32,
+          "height": 32,
+          "id": 95,
+          "rotation": 0,
+          "visible": true
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "interactions",
+      "opacity": 1,
+      "visible": false,
+      "x": 0,
+      "y": 0,
+      "type": "objectgroup",
+      "draworder": "topdown",
+      "objects": [
+        {
+          "name": "stair",
+          "type": "stair",
+          "x": 224,
+          "y": 192,
+          "width": 32,
+          "height": 32,
+          "properties": [
+            {
+              "name": "to_floor",
+              "type": "int",
+              "value": 0
+            },
+            {
+              "name": "to_x",
+              "type": "int",
+              "value": 9
+            },
+            {
+              "name": "to_y",
+              "type": "int",
+              "value": 3
+            },
+            {
+              "name": "kind",
+              "type": "string",
+              "value": "down"
+            }
+          ],
+          "id": 96,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "gilded_guest_chest",
+          "type": "chest",
+          "x": 448,
+          "y": 64,
+          "width": 32,
+          "height": 32,
+          "properties": [
+            {
+              "name": "id",
+              "type": "string",
+              "value": "gilded_guest_chest"
+            }
+          ],
+          "id": 97,
+          "rotation": 0,
+          "visible": true
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "npc-spawns",
+      "opacity": 1,
+      "visible": false,
+      "x": 0,
+      "y": 0,
+      "type": "objectgroup",
+      "draworder": "topdown",
+      "objects": [
+        {
+          "name": "gossip",
+          "type": "npc",
+          "x": 368,
+          "y": 144,
+          "point": true,
+          "id": 98,
+          "rotation": 0,
+          "visible": true
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "player-spawns",
+      "opacity": 1,
+      "visible": false,
+      "x": 0,
+      "y": 0,
+      "type": "objectgroup",
+      "draworder": "topdown",
+      "objects": []
+    },
+    {
+      "id": 10,
+      "name": "foreground",
+      "opacity": 1,
+      "visible": false,
+      "x": 0,
+      "y": 0,
+      "type": "objectgroup",
+      "draworder": "topdown",
+      "objects": [
+        {
+          "name": "opaque-crop",
+          "type": "foreground",
+          "x": 64,
+          "y": 124,
+          "width": 108,
+          "height": 13,
+          "properties": [
+            {
+              "name": "depth_row",
+              "type": "int",
+              "value": 3
+            }
+          ],
+          "id": 99,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "opaque-crop",
+          "type": "foreground",
+          "x": 225,
+          "y": 143,
+          "width": 49,
+          "height": 30,
+          "properties": [
+            {
+              "name": "depth_row",
+              "type": "int",
+              "value": 4
+            }
+          ],
+          "id": 100,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "opaque-crop",
+          "type": "foreground",
+          "x": 407,
+          "y": 170,
+          "width": 68,
+          "height": 21,
+          "properties": [
+            {
+              "name": "depth_row",
+              "type": "int",
+              "value": 5
+            }
+          ],
+          "id": 101,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "name": "opaque-crop",
+          "type": "foreground",
+          "x": 485,
+          "y": 227,
+          "width": 41,
+          "height": 30,
+          "properties": [
+            {
+              "name": "depth_row",
+              "type": "int",
+              "value": 7
+            }
+          ],
+          "id": 102,
+          "rotation": 0,
+          "visible": true
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "lighting-and-atmosphere",
+      "opacity": 1,
+      "visible": false,
+      "x": 0,
+      "y": 0,
+      "type": "objectgroup",
+      "draworder": "topdown",
+      "objects": []
+    }
+  ],
+  "nextlayerid": 12,
+  "nextobjectid": 103,
+  "properties": [
+    {
+      "name": "runtime_template",
+      "type": "string",
+      "value": "inn_gilded_steps_2f"
+    },
+    {
+      "name": "floor_id",
+      "type": "int",
+      "value": 1
+    }
+  ]
+}

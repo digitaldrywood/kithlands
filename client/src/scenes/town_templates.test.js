@@ -55,6 +55,9 @@ describe("buildInteriorFromTemplate", () => {
       backgroundAsset: "/interiors/inn/hearthside.png",
       hideTileLayer: true,
       textureKey: "interior_background_inn_2floor_a_0",
+      foreground: [],
+      chestClosedAsset: null,
+      chestOpenAsset: null,
     });
     expect(TILE_WALKABLE[T_SECRET_WALL]).toBe(true);
   });

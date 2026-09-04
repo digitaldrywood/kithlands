@@ -8,6 +8,11 @@ import {
   transitionLocation,
 } from "../api.js";
 import { openDialogue } from "./town_dialogue.js";
+import {
+  drawInteriorForeground,
+  preloadInteriorChests,
+  interiorChestKey,
+} from "./town_presentation.js";
 import { toggleMenu } from "./world_menu.js";
 import { openShop } from "./world_shop.js";
 import { isTouchDevice, initTouchControls } from "../systems/input.js";
@@ -611,6 +616,7 @@ export class TownScene extends Phaser.Scene {
     ) {
       this.load.image(presentation.textureKey, presentation.backgroundAsset);
     }
+    preloadInteriorChests(this);
   }
 
   create() {
@@ -949,7 +955,9 @@ export class TownScene extends Phaser.Scene {
       y: anchor.y,
       role: anchor.role,
       isProprietor: index === 0,
-      sprite: npcSpriteForRole(anchor.role, buildingType, tags, seed, index),
+      sprite:
+        anchor.sprite ||
+        npcSpriteForRole(anchor.role, buildingType, tags, seed, index),
     }));
   }
 
@@ -1019,6 +1027,9 @@ export class TownScene extends Phaser.Scene {
         .setDisplaySize(roomPixelW, roomPixelH)
         .setDepth(DEPTH_BASE);
       this.backdropDrawables.push(background);
+      this.backdropDrawables.push(
+        ...drawInteriorForeground(this, (row) => depthForRow(row, DEPTH_PROP)),
+      );
     }
   }
 
@@ -1030,11 +1041,15 @@ export class TownScene extends Phaser.Scene {
   drawLabelBar() {
     this.labelBar?.forEach((entry) => entry.destroy());
     this.labelBar = [];
-    const width = Math.min(
-      420,
-      Math.max(300, this.spawn.name.length * 12 + 90),
-    );
-    const height = this.interiorTemplate?.floors?.length > 1 ? 56 : 40;
+    const portrait = this.gameplayLayout.portrait;
+    const width = portrait
+      ? 560
+      : Math.min(420, Math.max(300, this.spawn.name.length * 12 + 90));
+    const height = portrait
+      ? 104
+      : this.interiorTemplate?.floors?.length > 1
+        ? 56
+        : 40;
     const x = Math.floor((this.gameplayLayout.width - width) / 2);
     const y = 12;
     const depth = DEPTH_UI;
@@ -1103,12 +1118,17 @@ export class TownScene extends Phaser.Scene {
       .setOrigin(0, 0.5)
       .setDepth(depth + 1);
     const title = this.add
-      .text(this.gameplayLayout.centerX, y + 17, this.spawn.name, {
-        fontSize: "15px",
-        color: "#f5efe0",
-        fontFamily: "monospace",
-        fontStyle: "bold",
-      })
+      .text(
+        this.gameplayLayout.centerX,
+        y + (portrait ? 32 : 17),
+        this.spawn.name,
+        {
+          fontSize: portrait ? "28px" : "15px",
+          color: "#f5efe0",
+          fontFamily: portrait ? "Arial, sans-serif" : "monospace",
+          fontStyle: "bold",
+        },
+      )
       .setOrigin(0.5)
       .setDepth(depth + 2);
     this.labelBar.push(...frame, ...corners, accent, title);
@@ -1118,12 +1138,12 @@ export class TownScene extends Phaser.Scene {
         this.add
           .text(
             this.gameplayLayout.centerX,
-            y + 35,
+            y + (portrait ? 72 : 35),
             `Floor ${this.floorIndex + 1}`,
             {
-              fontSize: "10px",
+              fontSize: portrait ? "24px" : "10px",
               color: "#e8d8a8",
-              fontFamily: "monospace",
+              fontFamily: portrait ? "Arial, sans-serif" : "monospace",
             },
           )
           .setOrigin(0.5)
@@ -1417,7 +1437,7 @@ export class TownScene extends Phaser.Scene {
       : `[ ENTER / SPACE ] ${action}`;
     this.interactPrompt = this.add
       .text(this.player.x, this.player.y - 25, label, {
-        fontSize: "10px",
+        fontSize: this.gameplayLayout.portrait ? "24px" : "10px",
         color: "#ffff44",
         fontFamily: "monospace",
         backgroundColor: "#000000cc",
@@ -1537,7 +1557,7 @@ export class TownScene extends Phaser.Scene {
     this.chestSparkles = new Map();
 
     for (const chest of this.chests || []) {
-      const key = chest.opened ? "object_chest_open" : "object_chest_closed";
+      const key = interiorChestKey(this, chest.opened);
       const depth = depthForRow(chest.y, DEPTH_PROP + 1);
       const sprite = this.add
         .image(
@@ -1545,11 +1565,15 @@ export class TownScene extends Phaser.Scene {
           this.offsetY + chest.y * RENDERED_TILE + RENDERED_TILE / 2,
           key,
         )
-        .setScale(SCALE)
+        .setDisplaySize(RENDERED_TILE, RENDERED_TILE)
         .setDepth(depth);
       this.chestDrawables.push(sprite);
       this.chestSprites.set(chest.id, sprite);
-      if (!chest.opened && this.textures.exists("object_chest_sparkle")) {
+      if (
+        !chest.opened &&
+        !this.interiorPresentation?.chestClosedAsset &&
+        this.textures.exists("object_chest_sparkle")
+      ) {
         const sparkle = this.add
           .image(sprite.x + 8, sprite.y - 10, "object_chest_sparkle")
           .setScale(SCALE)
@@ -1575,7 +1599,7 @@ export class TownScene extends Phaser.Scene {
     if (!chest) return;
     chest.opened = true;
     this.syncChestTiles();
-    this.chestSprites?.get(chestId)?.setTexture("object_chest_open");
+    this.chestSprites?.get(chestId)?.setTexture(interiorChestKey(this, true));
     this.chestSparkles?.get(chestId)?.destroy();
   }
 

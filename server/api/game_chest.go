@@ -397,6 +397,12 @@ func (g *Game) startChestEncounterUnlocked(formationID string) error {
 }
 
 func (g *Game) findSpawnUnlocked(nodeID string) (*locality.MapSpawn, error) {
+	if spawn, ok := g.settlementInteriors[nodeID]; ok {
+		if g.location.Kind != LocationInterior || g.location.MapID != nodeID {
+			return nil, fmt.Errorf("enter this interior before opening its chest")
+		}
+		return &spawn, nil
+	}
 	if g.tileMap == nil {
 		return nil, fmt.Errorf("tilemap unavailable")
 	}

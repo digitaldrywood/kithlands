@@ -37,8 +37,21 @@ type Floor struct {
 // Rows, anchors, and the server-owned location state remain the gameplay
 // contract; the asset is presentation only.
 type FloorPresentation struct {
-	BackgroundAsset string `json:"background_asset"`
-	HideTileLayer   bool   `json:"hide_tile_layer,omitempty"`
+	BackgroundAsset  string             `json:"background_asset"`
+	HideTileLayer    bool               `json:"hide_tile_layer,omitempty"`
+	Foreground       []ForegroundRegion `json:"foreground,omitempty"`
+	ChestClosedAsset string             `json:"chest_closed_asset,omitempty"`
+	ChestOpenAsset   string             `json:"chest_open_asset,omitempty"`
+}
+
+// ForegroundRegion redraws an opaque part of the floor painting at a prop's
+// feet row. Coordinates are in the room's 32-pixel tile space, not source pixels.
+type ForegroundRegion struct {
+	X      int `json:"x"`
+	Y      int `json:"y"`
+	Width  int `json:"width"`
+	Height int `json:"height"`
+	Row    int `json:"row"`
 }
 
 type Entrance struct {
@@ -63,9 +76,10 @@ type ChestAnchor struct {
 }
 
 type NPCAnchor struct {
-	Role string `json:"role"`
-	X    int    `json:"x"`
-	Y    int    `json:"y"`
+	Role   string `json:"role"`
+	X      int    `json:"x"`
+	Y      int    `json:"y"`
+	Sprite string `json:"sprite,omitempty"`
 }
 
 func LoadDir(sharedDir string) (*Registry, error) {
@@ -178,6 +192,18 @@ func (t *Template) validate() error {
 			}
 			if !strings.HasPrefix(asset, "/") {
 				return fmt.Errorf("template %q floor %d background_asset must be an absolute public path", t.ID, floor.FloorID)
+			}
+			for _, region := range floor.Presentation.Foreground {
+				if region.X < 0 || region.Y < 0 || region.Width <= 0 || region.Height <= 0 ||
+					region.X+region.Width > floor.Width*32 || region.Y+region.Height > floor.Height*32 ||
+					region.Row < 0 || region.Row >= floor.Height {
+					return fmt.Errorf("template %q floor %d foreground region out of bounds", t.ID, floor.FloorID)
+				}
+			}
+			if floor.Presentation.ChestClosedAsset != "" || floor.Presentation.ChestOpenAsset != "" {
+				if !strings.HasPrefix(floor.Presentation.ChestClosedAsset, "/") || !strings.HasPrefix(floor.Presentation.ChestOpenAsset, "/") {
+					return fmt.Errorf("template %q floor %d requires both absolute chest asset paths", t.ID, floor.FloorID)
+				}
 			}
 		}
 
