@@ -22,6 +22,17 @@ export async function interactWithDoor(scene) {
     await scene.triggerQuestAdvance(spawn.name, spawn.node_id);
   }
 
+  // World.create routes story phases to the guardian battle, promotion
+  // prompt, or ending. Entering an interior here would hide that result.
+  if (
+    ["combat", "promotion", "victory", "defeat"].includes(
+      scene.gameState?.phase,
+    )
+  ) {
+    scene.scene.start("World", { gameState: scene.gameState });
+    return;
+  }
+
   const entersAuthoredSettlement =
     scene.gameState?.settlement_map &&
     scene.gameState?.settlement_entry_node_id === spawn.node_id;
