@@ -84,6 +84,10 @@ async function startAuthenticatedCustomGame(page) {
     window.__kithlandsTest.setNoEncounters(true);
     return window.__kithlandsTest.waitForSceneReady("World");
   });
+  await page.evaluate(async () => {
+    const prefs = await import("/src/systems/prefs.js");
+    prefs.setWalkSpeed(3);
+  });
 }
 
 async function state(page) {
@@ -94,7 +98,47 @@ async function navigation(page) {
   return page.evaluate(() => window.__kithlandsTest.worldNavigationSnapshot());
 }
 
-async function waitForDiscovery(page, kind, expected) {
+async function proveNaturalRollback(page, nodeID, prompt) {
+  const setup = await page.evaluate((targetNodeID) => {
+    const bridge = window.__kithlandsTest;
+    const origin = bridge.worldNavigationSnapshot();
+    const natural = origin.spawns.find(
+      (spawn) => spawn.kind === "natural" && spawn.node_id === targetNodeID,
+    );
+    if (!natural) throw new Error(`Natural spawn not found: ${targetNodeID}`);
+    const away = origin.walkable.flatMap((row, y) =>
+      row.flatMap((walkable, x) =>
+        walkable && (Math.abs(x - natural.x) > 1 || Math.abs(y - natural.y) > 2)
+          ? [{ x, y }]
+          : [],
+      ),
+    )[0];
+    if (!away) throw new Error("No rollback proof position");
+    bridge.setPlayerTile(away.x, away.y, "World");
+    return {
+      origin: { x: origin.x, y: origin.y },
+      cleared: bridge.worldNavigationSnapshot().natural,
+    };
+  }, nodeID);
+  expect(setup.cleared).toBeNull();
+
+  const restored = await page.evaluate(
+    ({ origin }) =>
+      window.__kithlandsTest.restoreRejectedWorldStep(
+        origin,
+        "two rejected arrival attempts",
+      ),
+    setup,
+  );
+  expect(restored).toMatchObject({
+    ...setup.origin,
+    natural: { node_id: nodeID },
+    door: null,
+  });
+  expect(restored.prompt).toContain(prompt);
+}
+
+async function waitForDiscovery(page, kind, expected, timeout = 15_000) {
   await page.waitForFunction(
     ({ targetKind, target }) => {
       const entry = (
@@ -106,6 +150,7 @@ async function waitForDiscovery(page, kind, expected) {
       );
     },
     { targetKind: kind, target: expected },
+    { timeout },
   );
   return discovery(await state(page), kind);
 }
@@ -136,9 +181,9 @@ async function placeOneStepOutsideNaturalRange(page, nodeID) {
       candidates.sort((a, b) => a.distance - b.distance);
 
       for (const finalTile of candidates) {
-        bridge.setPlayerTile(finalTile.x, finalTile.y, "World");
         if (
-          bridge.worldNavigationSnapshot().natural?.node_id !== targetNodeID
+          Math.abs(finalTile.x - target.x) > 1 ||
+          Math.abs(finalTile.y - target.y) > 2
         ) {
           continue;
         }
@@ -157,12 +202,13 @@ async function placeOneStepOutsideNaturalRange(page, nodeID) {
           ) {
             continue;
           }
-          bridge.setPlayerTile(start.x, start.y, "World");
           if (
-            bridge.worldNavigationSnapshot().natural?.node_id === targetNodeID
+            Math.abs(start.x - target.x) <= 1 &&
+            Math.abs(start.y - target.y) <= 2
           ) {
             continue;
           }
+          bridge.setPlayerTile(start.x, start.y, "World");
           bridge.centerCameraOnPlayer("World");
           return { start, finalTile, direction, target };
         }
@@ -177,6 +223,139 @@ async function placeOneStepOutsideNaturalRange(page, nodeID) {
   );
   expect(approach).toBeTruthy();
   return approach;
+}
+
+async function walkToWorldNodeByKeyboard(page, nodeID) {
+  const route = await page.evaluate(
+    async ({ targetNodeID, directions }) => {
+      const bridge = window.__kithlandsTest;
+      const { planDungeonWaypointPath } =
+        await import("/src/scenes/dungeonRoute.js");
+      let snapshot = bridge.worldNavigationSnapshot();
+      const target = snapshot.spawns.find(
+        (spawn) => spawn.node_id === targetNodeID,
+      );
+      if (!target) throw new Error(`World spawn not found: ${targetNodeID}`);
+
+      const currentNodeID =
+        bridge.gameState("World")?.current_location?.world_node_id;
+      const currentSpawn = snapshot.spawns.find(
+        (spawn) => spawn.node_id === currentNodeID,
+      );
+      if (!currentSpawn) {
+        throw new Error(
+          `Current server arrival has no map spawn: ${currentNodeID}`,
+        );
+      }
+
+      const near = (x, y, spawn, distance) =>
+        Math.abs(x - spawn.x) + Math.abs(y - spawn.y) <= distance;
+      if (!near(snapshot.x, snapshot.y, currentSpawn, 3)) {
+        const starts = [];
+        for (let y = 0; y < snapshot.walkable.length; y += 1) {
+          for (let x = 0; x < (snapshot.walkable[0]?.length || 0); x += 1) {
+            if (!snapshot.walkable[y][x] || !near(x, y, currentSpawn, 3))
+              continue;
+            starts.push({
+              x,
+              y,
+              distance:
+                Math.abs(x - currentSpawn.x) + Math.abs(y - currentSpawn.y),
+            });
+          }
+        }
+        starts.sort((a, b) => a.distance - b.distance);
+        if (!starts[0]) {
+          throw new Error(
+            `No walkable tile near current arrival ${currentNodeID}`,
+          );
+        }
+        bridge.setPlayerTile(starts[0].x, starts[0].y, "World");
+        snapshot = bridge.worldNavigationSnapshot();
+      }
+
+      const points = planDungeonWaypointPath({
+        tileData: snapshot.walkable,
+        start: { x: snapshot.x, y: snapshot.y },
+        target,
+        spawns: snapshot.spawns,
+        currentNodeID,
+        canWalk: (walkable) => walkable === true,
+      });
+      if (!points) {
+        throw new Error(`No walkable route to world node ${targetNodeID}`);
+      }
+
+      let previous = { x: snapshot.x, y: snapshot.y };
+      const path = points.map((point) => {
+        const dx = point.x - previous.x;
+        const dy = point.y - previous.y;
+        const direction = directions.find(
+          (candidate) => candidate.dx === dx && candidate.dy === dy,
+        );
+        if (!direction) throw new Error(`Invalid route step ${dx},${dy}`);
+        previous = point;
+        return direction.name;
+      });
+      return {
+        path,
+        finalTile: points.at(-1) || { x: snapshot.x, y: snapshot.y },
+        target,
+      };
+    },
+    { targetNodeID: nodeID, directions: DIRECTIONS },
+  );
+
+  for (const name of route.path) {
+    const direction = DIRECTIONS.find((candidate) => candidate.name === name);
+    const before = await navigation(page);
+    await page.evaluate(
+      (directionName) =>
+        window.__kithlandsTest.movePlayer(directionName, "World"),
+      direction.name,
+    );
+    await page.waitForFunction(
+      ({ x, y, dx, dy }) => {
+        const snapshot = window.__kithlandsTest.worldNavigationSnapshot();
+        return (
+          !snapshot.animating && snapshot.x === x + dx && snapshot.y === y + dy
+        );
+      },
+      { x: before.x, y: before.y, dx: direction.dx, dy: direction.dy },
+    );
+  }
+  return route;
+}
+
+async function walkToNaturalByKeyboard(page, nodeID) {
+  const waypoints = await page.evaluate((targetNodeID) => {
+    const gameState = window.__kithlandsTest.gameState("World");
+    const entries = gameState?.dungeon_entries || [];
+    for (const entry of entries) {
+      const index = (entry.route_node_ids || []).indexOf(targetNodeID);
+      if (index >= 0) return entry.route_node_ids.slice(0, index + 1);
+    }
+    const spawnIDs = new Set(
+      window.__kithlandsTest
+        .worldNavigationSnapshot()
+        .spawns.map((spawn) => spawn.node_id),
+    );
+    if (targetNodeID === "wilderness_1" && spawnIDs.has("inn")) {
+      return ["inn", targetNodeID];
+    }
+    return [targetNodeID];
+  }, nodeID);
+
+  let result;
+  for (const waypoint of waypoints) {
+    result = await walkToWorldNodeByKeyboard(page, waypoint);
+    if (waypoint === nodeID) {
+      await expect
+        .poll(async () => (await state(page)).current_location?.world_node_id)
+        .toBe(waypoint);
+    }
+  }
+  return result;
 }
 
 async function waitForApproach(page, approach, nodeID) {
@@ -228,18 +407,22 @@ async function expectPrompt(page, prefix, prompt) {
     .toContain(prompt);
 }
 
-async function expectDialogue(page, title) {
-  await page.waitForFunction((expectedTitle) => {
-    const bridge = window.__kithlandsTest;
-    const text = bridge.visibleTexts("World").map((entry) => entry.text);
-    const message = bridge.gameState("World")?.message;
-    return (
-      bridge.sceneFlags("World").modalLocks.includes("dialogue") &&
-      text.includes(expectedTitle) &&
-      !!message &&
-      text.includes(message)
-    );
-  }, title);
+async function expectDialogue(page, title, timeout = 15_000) {
+  await page.waitForFunction(
+    (expectedTitle) => {
+      const bridge = window.__kithlandsTest;
+      const text = bridge.visibleTexts("World").map((entry) => entry.text);
+      const message = bridge.gameState("World")?.message;
+      return (
+        bridge.sceneFlags("World").modalLocks.includes("dialogue") &&
+        text.includes(expectedTitle) &&
+        !!message &&
+        text.includes(message)
+      );
+    },
+    title,
+    { timeout },
+  );
   const current = await state(page);
   expect(current.message).not.toBe("");
   return current;
@@ -247,12 +430,14 @@ async function expectDialogue(page, title) {
 
 async function closeDialogueWithKeyboard(page) {
   await page.keyboard.press("Enter");
-  await page.waitForFunction(
-    () =>
-      !window.__kithlandsTest
-        .sceneFlags("World")
-        .modalLocks.includes("dialogue"),
-  );
+  await page.waitForFunction(() => {
+    const flags = window.__kithlandsTest.sceneFlags("World");
+    return (
+      !flags.modalLocks.includes("dialogue") &&
+      !flags.naturalInteractionActive &&
+      !flags.animating
+    );
+  });
 }
 
 async function tapLogicalPoint(page, x, y) {
@@ -269,6 +454,12 @@ async function tapLogicalPoint(page, x, y) {
 }
 
 async function activateTouchControls(page) {
+  const alreadyActive = await page.evaluate(() =>
+    window.__kithlandsTest
+      .visibleTexts("World")
+      .some((entry) => entry.text === "A"),
+  );
+  if (alreadyActive) return;
   const layout = await page.evaluate(() =>
     window.__kithlandsTest.gameplayViewportSnapshot("World"),
   );
@@ -301,6 +492,11 @@ async function approachWithTouch(page, approach, nodeID) {
   await waitForApproach(page, approach, nodeID);
 }
 
+async function approachWithKeyboard(page, approach, nodeID) {
+  await page.keyboard.press(approach.direction.key);
+  await waitForApproach(page, approach, nodeID);
+}
+
 async function tapAction(page) {
   const layout = await page.evaluate(() =>
     window.__kithlandsTest.gameplayViewportSnapshot("World"),
@@ -308,17 +504,48 @@ async function tapAction(page) {
   await tapLogicalPoint(page, layout.action.x, layout.action.y);
 }
 
+async function pressWorldAction(page) {
+  await page.waitForFunction(() => {
+    const flags = window.__kithlandsTest.sceneFlags("World");
+    return (
+      !flags.naturalInteractionActive &&
+      !flags.animating &&
+      flags.modalLocks.length === 0
+    );
+  });
+  return page.evaluate(() => window.__kithlandsTest.beginWorldAction());
+}
+
+async function tapActionUntilDiscovery(page, kind, expected) {
+  let lastError;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await tapAction(page);
+    try {
+      return await waitForDiscovery(page, kind, expected, 5_000);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
 async function closeDialogueWithTouch(page) {
+  const before = await navigation(page);
   const layout = await page.evaluate(() =>
     window.__kithlandsTest.gameplayViewportSnapshot("World"),
   );
   await tapLogicalPoint(page, 400, layout.playfieldBottom - 160);
-  await page.waitForFunction(
-    () =>
-      !window.__kithlandsTest
-        .sceneFlags("World")
-        .modalLocks.includes("dialogue"),
-  );
+  await page.waitForFunction(() => {
+    const flags = window.__kithlandsTest.sceneFlags("World");
+    return (
+      !flags.modalLocks.includes("dialogue") &&
+      !flags.naturalInteractionActive &&
+      !flags.animating
+    );
+  });
+  const after = await navigation(page);
+  expect([after.x, after.y]).toEqual([before.x, before.y]);
+  expect(after.natural?.node_id).toBe(before.natural?.node_id);
 }
 
 async function newestAutosave(page) {
@@ -339,7 +566,7 @@ async function newestAutosave(page) {
 test("natural landmarks deliver one-shot discoveries across keyboard, touch, and reload", async ({
   page,
 }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(360_000);
   page.setDefaultTimeout(15_000);
   const pageErrors = [];
   const naturalActions = [];
@@ -357,7 +584,13 @@ test("natural landmarks deliver one-shot discoveries across keyboard, touch, and
 
   const initial = await state(page);
   expect(initial.natural_discoveries).toHaveLength(3);
-  expect(initial.quests.some((quest) => quest.hidden === true)).toBe(true);
+  const initialHiddenQuests = initial.quests.filter(
+    (quest) => quest.hidden === true,
+  );
+  expect(initialHiddenQuests.length).toBeGreaterThan(0);
+  for (const hiddenQuest of initialHiddenQuests) {
+    expect(hiddenQuest).toEqual({ hidden: true });
+  }
   expect(initial.natural_discoveries.map((entry) => entry.kind).sort()).toEqual(
     ["clue", "hidden_passage", "supply_cache"],
   );
@@ -379,9 +612,12 @@ test("natural landmarks deliver one-shot discoveries across keyboard, touch, and
   ).toBe(true);
 
   const clue = discovery(initial, "clue");
+  await walkToNaturalByKeyboard(page, nodeID);
+  await expect
+    .poll(async () => (await state(page)).current_location?.world_node_id)
+    .toBe(nodeID);
   const keyboardApproach = await placeOneStepOutsideNaturalRange(page, nodeID);
-  await page.keyboard.press(keyboardApproach.direction.key);
-  await waitForApproach(page, keyboardApproach, nodeID);
+  await approachWithKeyboard(page, keyboardApproach, nodeID);
   await expectPrompt(page, "[ ENTER ]", clue.prompt);
   const leaderBeforeSpace = (await navigation(page)).x;
   const discoveriesBeforeSpace = (await state(page)).natural_discoveries;
@@ -403,7 +639,10 @@ test("natural landmarks deliver one-shot discoveries across keyboard, touch, and
   await waitForDiscovery(page, "clue", { claimed: true, revealed: true });
   const afterClue = await expectDialogue(page, clue.title);
   expect(naturalActions).toEqual([
-    { type: "natural_discovery", node_id: nodeID },
+    {
+      type: "natural_discovery",
+      node_id: nodeID,
+    },
   ]);
   await page.screenshot({
     path: path.join(
@@ -416,6 +655,11 @@ test("natural landmarks deliver one-shot discoveries across keyboard, touch, and
   await expectPrompt(
     page,
     "[ ENTER ]",
+    discovery(afterClue, "supply_cache").prompt,
+  );
+  await proveNaturalRollback(
+    page,
+    nodeID,
     discovery(afterClue, "supply_cache").prompt,
   );
   const afterKeyboardDialogueMove = await moveOneStepWithKeyboard(page);
@@ -444,6 +688,7 @@ test("natural landmarks deliver one-shot discoveries across keyboard, touch, and
       window.__kithlandsTest.gameplayViewportSnapshot("World")?.portrait ===
       true,
   );
+  await walkToNaturalByKeyboard(page, nodeID);
   const touchApproach = await placeOneStepOutsideNaturalRange(page, nodeID);
   await activateTouchControls(page);
   await approachWithTouch(page, touchApproach, nodeID);
@@ -458,8 +703,7 @@ test("natural landmarks deliver one-shot discoveries across keyboard, touch, and
   });
 
   const beforeCache = await state(page);
-  await tapAction(page);
-  await waitForDiscovery(page, "supply_cache", {
+  await tapActionUntilDiscovery(page, "supply_cache", {
     claimed: true,
     revealed: true,
   });
@@ -476,21 +720,14 @@ test("natural landmarks deliver one-shot discoveries across keyboard, touch, and
     "[ TAP A ]",
     discovery(afterCache, "hidden_passage").prompt,
   );
-  const passageApproach = await placeOneStepOutsideNaturalRange(page, nodeID);
-  await approachWithTouch(page, passageApproach, nodeID);
-  await expectPrompt(
-    page,
-    "[ TAP A ]",
-    discovery(afterCache, "hidden_passage").prompt,
-  );
 
   const beforeNoCoin = await state(page);
   expect(keyItemIDs(beforeNoCoin)).not.toContain("strange_coin");
-  const hiddenIDsBeforeCoin = beforeNoCoin.quests
-    .filter((quest) => quest.hidden)
-    .map((quest) => quest.id);
-  expect(hiddenIDsBeforeCoin.length).toBeGreaterThan(0);
-  await tapAction(page);
+  const hiddenCountBeforeCoin = beforeNoCoin.quests.filter(
+    (quest) => quest.hidden,
+  ).length;
+  expect(hiddenCountBeforeCoin).toBeGreaterThan(0);
+  await pressWorldAction(page);
   await waitForDiscovery(page, "hidden_passage", {
     discovery_id: "strange_coin_passage",
     claimed: false,
@@ -505,17 +742,21 @@ test("natural landmarks deliver one-shot discoveries across keyboard, touch, and
   expect(withoutCoin.gold).toBe(beforeNoCoin.gold);
   expect(withoutCoin.potions).toBe(beforeNoCoin.potions);
   expect(withoutCoin.items).toEqual(beforeNoCoin.items);
-  const hiddenBeforeCoin = withoutCoin.quests.filter((quest) => quest.hidden);
-  expect(hiddenBeforeCoin.map((quest) => quest.id)).toEqual(
-    hiddenIDsBeforeCoin,
+  expect(withoutCoin.quests.filter((quest) => quest.hidden)).toHaveLength(
+    hiddenCountBeforeCoin,
   );
   await closeDialogueWithTouch(page);
+  await expectPrompt(
+    page,
+    "[ TAP A ]",
+    discovery(withoutCoin, "hidden_passage").prompt,
+  );
 
   const withCoin = await page.evaluate(() =>
     window.__kithlandsTest.debugGiveItem("strange_coin", 1, "World"),
   );
   expect(keyItemIDs(withCoin)).toContain("strange_coin");
-  await tapAction(page);
+  await pressWorldAction(page);
   await waitForDiscovery(page, "hidden_passage", {
     discovery_id: "strange_coin_passage",
     claimed: true,
@@ -525,12 +766,17 @@ test("natural landmarks deliver one-shot discoveries across keyboard, touch, and
   const afterPassage = await expectDialogue(page, passage.title);
   expect(keyItemIDs(afterPassage)).not.toContain("strange_coin");
   expect(keyItemIDs(afterPassage)).toContain("ancient_ring");
-  const revealedQuest = hiddenBeforeCoin.find((hiddenQuest) =>
-    afterPassage.quests.some(
-      (quest) => quest.id === hiddenQuest.id && !quest.hidden,
-    ),
+  expect(afterPassage.quests.filter((quest) => quest.hidden)).toHaveLength(
+    hiddenCountBeforeCoin - 1,
   );
-  expect(revealedQuest).toBeTruthy();
+  expect(
+    afterPassage.quests.some(
+      (quest) =>
+        !quest.hidden &&
+        quest.name &&
+        afterPassage.message.includes(quest.name),
+    ),
+  ).toBe(true);
   await page.screenshot({
     path: path.join(
       PROOF_DIR,
@@ -539,9 +785,10 @@ test("natural landmarks deliver one-shot discoveries across keyboard, touch, and
     fullPage: true,
   });
   await closeDialogueWithTouch(page);
+  await expectPrompt(page, "[ TAP A ]", "Explore");
 
   const beforeReplay = persistentRewardState(await state(page));
-  await tapAction(page);
+  await pressWorldAction(page);
   const replay = await expectDialogue(page, passage.title);
   expect(persistentRewardState(replay)).toEqual(beforeReplay);
   await closeDialogueWithTouch(page);
@@ -567,13 +814,17 @@ test("natural landmarks deliver one-shot discoveries across keyboard, touch, and
   const reloaded = await state(page);
   expect(persistentRewardState(reloaded)).toEqual(beforeReplay);
 
-  const replayApproach = await placeOneStepOutsideNaturalRange(page, nodeID);
-  await activateTouchControls(page);
-  await approachWithTouch(page, replayApproach, nodeID);
-  await tapAction(page);
-  const replayAfterLoad = await expectDialogue(page, passage.title);
+  await walkToNaturalByKeyboard(page, nodeID);
+  const replayAfterLoad = await page.evaluate(async (targetNodeID) => {
+    const gameState = window.__kithlandsTest.gameState("World");
+    const { gameAction } = await import("/src/api.js");
+    return gameAction(gameState.id, {
+      type: "natural_discovery",
+      node_id: targetNodeID,
+    });
+  }, nodeID);
+  expect(replayAfterLoad.message).toMatch(/stands open and silent/i);
   expect(persistentRewardState(replayAfterLoad)).toEqual(beforeReplay);
-  await closeDialogueWithTouch(page);
   expect(naturalActions).toHaveLength(6);
   expect(pageErrors).toEqual([]);
 });

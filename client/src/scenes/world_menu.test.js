@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildPartyMemberScanContext } from "./world_menu.js";
+import {
+  buildLegacyQuestLogModel,
+  buildPartyMemberScanContext,
+} from "./world_menu.js";
 
 describe("party menu scan context", () => {
   it("reports remaining experience and suppresses normal status", () => {
@@ -40,5 +43,36 @@ describe("party menu scan context", () => {
         status: "poison",
       }),
     ).toEqual({ xpRemaining: 20, status: "KO" });
+  });
+});
+
+describe("legacy quest log hidden objectives", () => {
+  const currentQuest = {
+    template_id: "Q01",
+    name: "Find the old road",
+    description: "Search beyond the village.",
+  };
+
+  it("does not count or expose an opaque upcoming quest before reveal", () => {
+    const model = buildLegacyQuestLogModel([currentQuest, { hidden: true }], 0);
+
+    expect(model.remainingCount).toBe(1);
+    expect(model.upcoming).toEqual([]);
+    expect(model.upcoming.map((quest) => quest.name)).not.toContain(undefined);
+  });
+
+  it("includes the quest normally after the server reveals it", () => {
+    const revealedQuest = {
+      template_id: "Q02",
+      name: "The Forgotten Shrine",
+      description: "Follow the newly uncovered trail.",
+    };
+    const model = buildLegacyQuestLogModel([currentQuest, revealedQuest], 0);
+
+    expect(model.remainingCount).toBe(2);
+    expect(model.upcoming).toEqual([revealedQuest]);
+    expect(model.upcoming.map((quest) => quest.name)).toEqual([
+      "The Forgotten Shrine",
+    ]);
   });
 });

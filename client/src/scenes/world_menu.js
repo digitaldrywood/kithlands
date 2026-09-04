@@ -1333,6 +1333,23 @@ export async function showEquipPicker(scene, slot, type, opts = {}) {
   overlay.push(closeBtn);
 }
 
+export function buildLegacyQuestLogModel(quests, currentIdx) {
+  const questList = Array.isArray(quests) ? quests : [];
+  const safeCurrentIdx = Number.isInteger(currentIdx)
+    ? Math.max(0, currentIdx)
+    : 0;
+  const isVisible = (quest) => Boolean(quest && !quest.hidden);
+  const currentSlot = questList[safeCurrentIdx];
+
+  return {
+    completeCount: questList.slice(0, safeCurrentIdx).filter(isVisible).length,
+    remainingCount: questList.slice(safeCurrentIdx).filter(isVisible).length,
+    current: isVisible(currentSlot) ? currentSlot : null,
+    currentHidden: Boolean(currentSlot?.hidden),
+    upcoming: questList.slice(safeCurrentIdx + 1).filter(isVisible),
+  };
+}
+
 export function showQuestLog(scene) {
   // Close the party menu first so the overlay sits cleanly on its own.
   closeMenu(scene);
@@ -1347,6 +1364,7 @@ export function showQuestLog(scene) {
     showObjectiveQuestLog(scene);
     return;
   }
+  const questLog = buildLegacyQuestLogModel(quests, currentIdx);
   pauseWorldFor(scene, "quest_log");
   const overlay = [];
 
@@ -1377,7 +1395,7 @@ export function showQuestLog(scene) {
     .text(
       70,
       84,
-      `${Math.min(currentIdx, quests.length)} complete   ${Math.max(0, quests.length - currentIdx)} main objectives remain`,
+      `${questLog.completeCount} complete   ${questLog.remainingCount} main objectives remain`,
       { fontSize: "12px", color: "#cbd9f3", fontFamily: "Arial" },
     )
     .setScrollFactor(0)
@@ -1412,9 +1430,24 @@ export function showQuestLog(scene) {
       0xf4d881,
     );
 
-    if (currentIdx < quests.length) {
-      const q = quests[currentIdx];
-      y = renderQuestBlock(scene, overlay, q, 70, y, "current");
+    if (questLog.current) {
+      y = renderQuestBlock(scene, overlay, questLog.current, 70, y, "current");
+    } else if (questLog.currentHidden) {
+      const hiddenLine = scene.add
+        .text(
+          80,
+          y,
+          "No objective revealed. Explore to uncover a hidden path.",
+          {
+            fontSize: "13px",
+            color: "#cbd9f3",
+            fontFamily: "Arial",
+          },
+        )
+        .setScrollFactor(0)
+        .setDepth(51);
+      overlay.push(hiddenLine);
+      y += 20;
     } else {
       const doneLine = scene.add
         .text(80, y, "All quests complete!", {
@@ -1461,7 +1494,7 @@ export function showQuestLog(scene) {
 
     y = renderSectionHeader(scene, overlay, "Next", 70, y, 0x88aacc);
 
-    const upcoming = quests.slice(currentIdx + 1);
+    const upcoming = questLog.upcoming;
     if (upcoming.length === 0) {
       const none = scene.add
         .text(80, y, "No remaining main objectives.", {

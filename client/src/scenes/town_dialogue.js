@@ -171,7 +171,12 @@ export async function openDialogue(scene, spawn, providedDialogue = null) {
     scene.input.keyboard.on("keydown", keyHandler);
     scene.input.keyboard.on("keydown-ESC", escHandler);
 
-    // Also allow clicking the box to advance
-    bg.on("pointerdown", advanceHandler);
+    // Also allow clicking the box to advance. Consume the game-object event so
+    // this same touch cannot reach the world's tap-to-walk listener after the
+    // dialogue releases its modal lock.
+    bg.on("pointerdown", (_pointer, _localX, _localY, event) => {
+      event?.stopPropagation?.();
+      advanceHandler();
+    });
   });
 }

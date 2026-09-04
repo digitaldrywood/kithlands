@@ -173,6 +173,23 @@ describe("world map scene capability", () => {
     expect(isWorldInputLocked(scene)).toBe(false);
   });
 
+  it("does not reveal a hidden quest target on the World map", () => {
+    const scene = makeScene({
+      gameState: {
+        party: [],
+        current_quest: 0,
+        quests: [{ hidden: true, target_node_id: "home" }],
+      },
+    });
+
+    showWorldMap(scene);
+
+    expect(scene.objects.some((object) => object.text === "★")).toBe(false);
+    expect(
+      scene.objects.some((object) => object.text === "[ CLOSE (ESC) ]"),
+    ).toBe(true);
+  });
+
   it("closes a supported map by pointer without releasing another modal lock", () => {
     const scene = makeScene({ spawns: [] });
     pauseWorldFor(scene, "another_overlay");
