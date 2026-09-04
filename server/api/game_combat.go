@@ -184,7 +184,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 	// "wait" is submitted by the client when the party is stunned for a
 	// round (e.g. the first round of an ambush). The party contributes no
 	// actions; enemies act normally.
-	skipParty := req.Type == "wait"
+	skipParty := req.Type == "wait" || req.Type == "flee"
 
 	combatants := g.makeCombatants()
 
@@ -531,6 +531,15 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 		}
 	}
 
+	g.resolveCombatOutcome(combatants)
+
+	state := g.stateUnlocked()
+	return &state, nil
+}
+
+// resolveCombatOutcome is shared by full party rounds and legacy item turns,
+// so every supported combat input completes flags, rewards, and recovery.
+func (g *Game) resolveCombatOutcome(combatants []*combat.Combatant) {
 	if combat.CheckVictory(g.enemies) {
 		totalXP, totalGold := 0, 0
 		type dropRoll struct {
@@ -635,8 +644,6 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 		g.resetEncounterStartState()
 	}
 
-	state := g.stateUnlocked()
-	return &state, nil
 }
 
 func (g *Game) logResolvedCombatAction(
@@ -1160,6 +1167,8 @@ func (g *Game) processCombatItem(req GameActionRequest) (*GameState, error) {
 			g.party[i].Status = pc.Status
 		}
 	}
+
+	g.resolveCombatOutcome(combatants)
 
 	state := g.stateUnlocked()
 	return &state, nil
