@@ -421,7 +421,7 @@ test("fresh save walks the fallback campaign through its story milestones", asyn
   // Dedicated full-campaign diagnostic: the measured 1,931-tile itinerary
   // projects ~50 minutes from its first 38 encounters. Per-action watchdogs
   // still fail on stalls; the separate legacy regression retains its 120s cap.
-  test.setTimeout(60 * 60_000);
+  test.setTimeout((objectiveProof ? 2 * 60 : 60) * 60_000);
   const forbidden = [];
   const errors = [];
   page.setDefaultTimeout(15000);
