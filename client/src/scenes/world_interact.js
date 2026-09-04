@@ -10,6 +10,7 @@ import { gameAction, transitionLocation } from "../api.js";
 import { isRestBuilding } from "./building_type.js";
 import { TILE_COLORS } from "./tileConstants.js";
 import { openDialogue } from "./town_dialogue.js";
+import { rememberWorldPosition } from "./worldMapCache.js";
 
 function isNaturalSpawn(spawn) {
   return (spawn?.kind || "").toLowerCase() === "natural";
@@ -73,17 +74,22 @@ export function nearbyWorldArrival(scene) {
   return nearby[0]?.spawn || null;
 }
 
-// Keep the server's graph arrival in step with ordinary on-foot movement.
-// Calls are serialized so a fast held key cannot reorder adjacent arrivals.
-export async function syncWorldArrival(scene) {
-  const arrival = nearbyWorldArrival(scene);
-  if (!arrival) return null;
-  if (scene.worldArrivalPending) {
-    scene.worldArrivalQueued = true;
+export function currentWorldPosition(scene) {
+  if (!Number.isInteger(scene?.playerX) || !Number.isInteger(scene?.playerY)) {
     return null;
   }
+  return { x: scene.playerX, y: scene.playerY };
+}
 
-  scene.worldArrivalPending = arrival.node_id;
+async function performWorldArrival(scene, checkpoint) {
+  const arrival = nearbyWorldArrival(scene);
+  const nodeID =
+    arrival?.node_id ||
+    (checkpoint ? scene?.gameState?.current_location?.world_node_id || "" : "");
+  const position = currentWorldPosition(scene);
+  if (!nodeID || !position) return null;
+
+  scene.worldArrivalPending = nodeID;
   try {
     let result = null;
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -91,7 +97,8 @@ export async function syncWorldArrival(scene) {
         result = await transitionLocation(
           scene.gameState.id,
           "arrive-world-node",
-          arrival.node_id,
+          nodeID,
+          position,
         );
       } catch (error) {
         result = {
@@ -104,17 +111,41 @@ export async function syncWorldArrival(scene) {
           scene.updateHUD?.();
           scene.updateInteractionTarget?.();
         }
+        rememberWorldPosition(scene.gameState.id, position, scene.playerDir);
         return result;
       }
     }
     return result;
   } finally {
     scene.worldArrivalPending = null;
-    if (scene.worldArrivalQueued) {
-      scene.worldArrivalQueued = false;
-      void syncWorldArrival(scene);
-    }
   }
+}
+
+// Keep graph arrivals and exact tile checkpoints ordered. Saving chains onto
+// this same promise, so it cannot overtake an in-flight movement arrival.
+export function syncWorldArrival(scene, { checkpoint = false } = {}) {
+  const previous = scene.worldArrivalPromise || Promise.resolve(null);
+  const operation = previous
+    .catch(() => null)
+    .then(() => performWorldArrival(scene, checkpoint));
+  const settled = operation.finally(() => {
+    if (scene.worldArrivalPromise === settled) {
+      scene.worldArrivalPromise = null;
+    }
+  });
+  scene.worldArrivalPromise = settled;
+  return settled;
+}
+
+export async function checkpointWorldPosition(scene) {
+  if (scene?.worldStepDone) {
+    const accepted = await scene.worldStepDone;
+    if (accepted === false) throw new Error("the last world step was rejected");
+  }
+  if (scene?.worldArrivalPromise) await scene.worldArrivalPromise;
+  const result = await syncWorldArrival(scene, { checkpoint: true });
+  if (result?.error) throw new Error(result.error);
+  return currentWorldPosition(scene);
 }
 
 export async function interactWithDoor(scene) {
@@ -125,6 +156,16 @@ export async function interactWithDoor(scene) {
   hideInteractPrompt(scene);
   scene.currentDoorSpawn = null;
   scene.animating = true;
+
+  try {
+    await checkpointWorldPosition(scene);
+  } catch (error) {
+    scene.animating = false;
+    scene.showMessage?.(
+      `Travel paused: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return;
+  }
 
   // Quest advance when entering any building (await so gameState is fresh).
   // Server requires node_id to validate the player actually reached the quest
@@ -153,6 +194,7 @@ export async function interactWithDoor(scene) {
       scene.gameState.id,
       "enter-settlement",
       spawn.node_id,
+      currentWorldPosition(scene),
     );
     if (result?.error) {
       scene.animating = false;

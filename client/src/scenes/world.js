@@ -24,6 +24,7 @@ import {
   hideInteractPrompt,
   syncWorldArrival,
   updateWorldInteractionTarget,
+  checkpointWorldPosition,
 } from "./world_interact.js";
 import { shouldStartBattle } from "./encounterFlow.js";
 import { initTouchControls } from "../systems/input.js";
@@ -58,7 +59,14 @@ import { applyGameplayViewport } from "../systems/gameplayViewport.js";
 import { updateDungeonEntry } from "./dungeonEntry.js";
 import { cancelDungeonRoute } from "./dungeonRoute.js";
 import { resolveWorldStartPosition } from "./worldPosition.js";
-import { rememberWorldTileMap, worldTileMapForGame } from "./worldMapCache.js";
+import {
+  rememberWorldCheckpoint,
+  rememberWorldPosition,
+  rememberWorldTileMap,
+  worldDirectionForGame,
+  worldPositionForGame,
+  worldTileMapForGame,
+} from "./worldMapCache.js";
 
 const ENEMY_SPRITES = {
   Slime: "monster_slime",
@@ -379,11 +387,6 @@ function drawWorldNaturalLabels(scene, spawns = []) {
   }
   return labels;
 }
-
-// Cache player position across scene restarts.
-let cachedPlayerX = null;
-let cachedPlayerY = null;
-let cachedPlayerDir = "down";
 let cachedLeaderIndex = 0;
 let cachedGameID = null;
 
@@ -444,12 +447,10 @@ export class WorldScene extends Phaser.Scene {
     this.gameState = data.gameState;
     if (cachedGameID !== this.gameState?.id) {
       cachedGameID = this.gameState?.id || null;
-      cachedPlayerX = null;
-      cachedPlayerY = null;
-      cachedPlayerDir = "down";
       cachedLeaderIndex = 0;
     }
     rememberWorldTileMap(this.gameState);
+    rememberWorldCheckpoint(this.gameState);
     console.log(
       "[World] init, phase:",
       this.gameState?.phase,
@@ -530,23 +531,20 @@ export class WorldScene extends Phaser.Scene {
     this.mapW = tm.width;
     this.mapH = tm.height;
     this.spawns = tm.spawns || [];
+    const cachedPosition = worldPositionForGame(gs.id);
     const start = resolveWorldStartPosition({
       tileData: this.tileData,
       width: this.mapW,
       height: this.mapH,
       spawns: this.spawns,
       currentNodeID: gs.current_location?.world_node_id,
-      preferredPosition:
-        cachedPlayerX === null || cachedPlayerY === null
-          ? null
-          : { x: cachedPlayerX, y: cachedPlayerY },
+      preferredPosition: cachedPosition,
       defaultPosition: { x: tm.player_x, y: tm.player_y },
       canWalk: (tile) => this.canWalkTile(tile),
     });
     this.playerX = start?.x ?? tm.player_x;
     this.playerY = start?.y ?? tm.player_y;
-    cachedPlayerX = this.playerX;
-    cachedPlayerY = this.playerY;
+    rememberWorldPosition(gs.id, { x: this.playerX, y: this.playerY });
 
     // World bounds
     const worldW = this.mapW * RENDERED_TILE;
@@ -560,7 +558,7 @@ export class WorldScene extends Phaser.Scene {
     // Player sprite (directional, restore cached direction). Accepted walk
     // sheets animate; quarantined classes use their class portrait as a
     // temporary idle fallback instead of the old generic player art.
-    this.playerDir = cachedPlayerDir;
+    this.playerDir = worldDirectionForGame(gs.id);
     this.walkFrame = 0;
     // Validate cached leader index: clamp to party size and skip dead members
     if (cachedLeaderIndex >= (gs?.party?.length || 1)) cachedLeaderIndex = 0;
@@ -841,11 +839,12 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  async triggerAutosave(triggerEvent) {
+  async triggerAutosave(triggerEvent, position = null) {
     if (!getAutosaveEnabled()) return;
     if (!this.gameState?.id) return;
     try {
-      await autosaveGame(this.gameState.id, triggerEvent);
+      const checkpoint = position || (await checkpointWorldPosition(this));
+      await autosaveGame(this.gameState.id, triggerEvent, checkpoint);
       this.flashSaveIcon();
     } catch (e) {
       console.error("[World] autosave failed:", e);
@@ -930,9 +929,11 @@ export class WorldScene extends Phaser.Scene {
     setPlayerWalkFrame(this, WALK_IDLE_FRAME);
 
     // Cache position for scene transitions
-    cachedPlayerX = this.playerX;
-    cachedPlayerY = this.playerY;
-    cachedPlayerDir = this.playerDir;
+    rememberWorldPosition(
+      this.gameState.id,
+      { x: this.playerX, y: this.playerY },
+      this.playerDir,
+    );
 
     const dest = walkSpritePosition(nx, ny, RENDERED_TILE);
     const stepMs = walkStepMs();
@@ -1029,8 +1030,11 @@ export class WorldScene extends Phaser.Scene {
   restoreRejectedWorldStep(origin, reason) {
     this.playerX = origin.x;
     this.playerY = origin.y;
-    cachedPlayerX = origin.x;
-    cachedPlayerY = origin.y;
+    rememberWorldPosition(
+      this.gameState.id,
+      { x: origin.x, y: origin.y },
+      this.playerDir,
+    );
     const position = walkSpritePosition(origin.x, origin.y, RENDERED_TILE);
     this.player.setPosition(position.x, position.y);
     setPlayerWalkFrame(this, WALK_IDLE_FRAME);
@@ -1051,9 +1055,11 @@ export class WorldScene extends Phaser.Scene {
   async triggerRandomEncounter(tile) {
     this.animating = true;
     // Save position before transitioning to battle
-    cachedPlayerX = this.playerX;
-    cachedPlayerY = this.playerY;
-    cachedPlayerDir = this.playerDir;
+    rememberWorldPosition(
+      this.gameState.id,
+      { x: this.playerX, y: this.playerY },
+      this.playerDir,
+    );
     console.log(
       "[World] random encounter triggered at",
       this.playerX,
@@ -1061,8 +1067,10 @@ export class WorldScene extends Phaser.Scene {
     );
 
     try {
-      // Autosave before combat starts (await to avoid racing the encounter mutation)
-      await this.triggerAutosave("pre_combat");
+      // Commit the world tile even when autosave is disabled, then keep the
+      // optional save ordered before the encounter mutation.
+      const checkpoint = await checkpointWorldPosition(this);
+      await this.triggerAutosave("pre_combat", checkpoint);
 
       const result = await gameAction(this.gameState.id, {
         type: "encounter",

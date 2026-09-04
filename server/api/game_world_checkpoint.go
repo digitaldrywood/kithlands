@@ -49,13 +49,17 @@ func (g *Game) updateWorldCheckpointLocked(position WorldPosition, nodeID string
 	if err := validateWorldCheckpointPosition(g.tileMap, g.loc, g.worldTraversal(), position, nodeID); err != nil {
 		return err
 	}
+	g.setWorldCheckpointLocked(position, nodeID)
+	return nil
+}
+
+func (g *Game) setWorldCheckpointLocked(position WorldPosition, nodeID string) {
 	g.worldCheckpoint = &WorldCheckpoint{
 		X:            position.X,
 		Y:            position.Y,
 		WorldNodeID:  nodeID,
 		MapSignature: worldMapSignature(g.tileMap),
 	}
-	return nil
 }
 
 func (g *Game) worldTraversal() worldTraversal {
@@ -89,6 +93,17 @@ func validateWorldCheckpointPosition(tileMap *locality.TileMap, loc *locality.Lo
 	}
 	if nearby := nearestWorldSpawn(tileMap, position, 3); nearby != nil && nearby.NodeID != nodeID {
 		return fmt.Errorf("%w: tile belongs to world node %q", ErrInvalidWorldCheckpoint, nearby.NodeID)
+	}
+	return nil
+}
+
+func validateWorldArrivalPosition(tileMap *locality.TileMap, loc *locality.Locality, traversal worldTraversal, position WorldPosition, nodeID string) error {
+	if err := validateWorldCheckpointPosition(tileMap, loc, traversal, position, nodeID); err != nil {
+		return err
+	}
+	spawn := worldSpawn(tileMap, nodeID)
+	if spawn == nil || checkpointAbs(position.X-spawn.X)+checkpointAbs(position.Y-spawn.Y) > 3 {
+		return fmt.Errorf("%w: tile has not reached world node %q", ErrInvalidWorldCheckpoint, nodeID)
 	}
 	return nil
 }

@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"math/rand/v2"
 	"reflect"
 	"testing"
 
@@ -141,6 +142,162 @@ func TestWorldCheckpointUsesCurrentTransport(t *testing.T) {
 	}
 }
 
+func TestWorldArrivalUpdatesExactCheckpointAtomically(t *testing.T) {
+	game := newTownTestGame(t)
+	start := game.State().CurrentLocation.WorldNodeID
+	neighbors := game.loc.Neighbors(start)
+	if len(neighbors) == 0 {
+		t.Fatal("fixture has no adjacent world node")
+	}
+	target := neighbors[0]
+	position := findWorldArrivalPosition(t, game, target, nil)
+	initial := cloneWorldCheckpoint(game.worldCheckpoint)
+
+	invalid := WorldPosition{X: -1, Y: position.Y}
+	if _, err := game.ProcessLocationTransition(LocationTransitionRequest{
+		TransitionID:  "arrive-world-node",
+		WorldNodeID:   target,
+		WorldPosition: &invalid,
+	}); !errors.Is(err, ErrInvalidWorldCheckpoint) {
+		t.Fatalf("invalid arrival error = %v, want ErrInvalidWorldCheckpoint", err)
+	}
+	if game.location.WorldNodeID != start || !reflect.DeepEqual(game.worldCheckpoint, initial) {
+		t.Fatalf("invalid arrival mutated state: location=%+v checkpoint=%+v", game.location, game.worldCheckpoint)
+	}
+
+	state, err := game.ProcessLocationTransition(LocationTransitionRequest{
+		TransitionID:  "arrive-world-node",
+		WorldNodeID:   target,
+		WorldPosition: &position,
+	})
+	if err != nil {
+		t.Fatalf("exact adjacent arrival: %v", err)
+	}
+	if state.CurrentLocation.WorldNodeID != target || state.WorldCheckpoint.X != position.X || state.WorldCheckpoint.Y != position.Y || state.WorldCheckpoint.WorldNodeID != target {
+		t.Fatalf("exact arrival state = location %+v checkpoint %+v", state.CurrentLocation, state.WorldCheckpoint)
+	}
+
+	ordinary := findWorldCheckpointPosition(t, game, target, func(candidate WorldPosition, _ locality.TileType) bool {
+		return candidate != position
+	})
+	state, err = game.ProcessLocationTransition(LocationTransitionRequest{
+		TransitionID:  "arrive-world-node",
+		WorldNodeID:   target,
+		WorldPosition: &ordinary,
+	})
+	if err != nil {
+		t.Fatalf("same-node exact checkpoint: %v", err)
+	}
+	if state.WorldCheckpoint.X != ordinary.X || state.WorldCheckpoint.Y != ordinary.Y {
+		t.Fatalf("ordinary checkpoint = %+v, want %+v", state.WorldCheckpoint, ordinary)
+	}
+}
+
+func TestWorldCheckpointSettlementEntryAndInnSave(t *testing.T) {
+	game := newTownTestGame(t)
+	nodeID := game.State().SettlementEntryNodeID
+	position := findWorldArrivalPosition(t, game, nodeID, func(candidate WorldPosition, _ locality.TileType) bool {
+		return candidate.X != game.tileMap.PlayerX || candidate.Y != game.tileMap.PlayerY
+	})
+	state, err := game.ProcessLocationTransition(LocationTransitionRequest{
+		TransitionID:  "enter-settlement",
+		WorldNodeID:   nodeID,
+		WorldPosition: &position,
+	})
+	if err != nil {
+		t.Fatalf("enter settlement with checkpoint: %v", err)
+	}
+	want := cloneWorldCheckpoint(state.WorldCheckpoint)
+	if want.X != position.X || want.Y != position.Y || state.CurrentLocation.Kind != LocationSettlement {
+		t.Fatalf("settlement entry = location %+v checkpoint %+v", state.CurrentLocation, want)
+	}
+	if _, err := game.ProcessLocationTransition(LocationTransitionRequest{TransitionID: "inn-door"}); err != nil {
+		t.Fatalf("enter inn: %v", err)
+	}
+	saved, err := game.ToSaveState("inn", "test-user")
+	if err != nil {
+		t.Fatalf("inn save: %v", err)
+	}
+	loaded, err := FromSaveState(saved, game.gd, game.loc)
+	if err != nil {
+		t.Fatalf("load inn save: %v", err)
+	}
+	if got := loaded.State().WorldCheckpoint; !reflect.DeepEqual(got, want) {
+		t.Fatalf("loaded inn checkpoint = %+v, want %+v", got, want)
+	}
+}
+
+func TestWorldCheckpointSurvivesBattleReturn(t *testing.T) {
+	game := newTownTestGame(t)
+	nodeID := game.location.WorldNodeID
+	position := findWorldCheckpointPosition(t, game, nodeID, func(candidate WorldPosition, _ locality.TileType) bool {
+		return candidate.X != game.tileMap.PlayerX || candidate.Y != game.tileMap.PlayerY
+	})
+	if _, err := game.ProcessLocationTransition(LocationTransitionRequest{TransitionID: "arrive-world-node", WorldNodeID: nodeID, WorldPosition: &position}); err != nil {
+		t.Fatalf("checkpoint before battle: %v", err)
+	}
+	want := cloneWorldCheckpoint(game.worldCheckpoint)
+	if err := game.spawnScriptedBoss("slime"); err != nil {
+		t.Fatalf("start battle: %v", err)
+	}
+	game.enemies[0].STR = 0
+	game.rng = rand.New(rand.NewPCG(1, 0))
+	for attempt := 0; attempt < 100 && game.phase == "combat"; attempt++ {
+		if _, err := game.ProcessAction(GameActionRequest{Type: "flee"}); err != nil {
+			t.Fatalf("flee battle: %v", err)
+		}
+	}
+	if game.phase != "world" {
+		t.Fatal("battle fixture did not return to the world")
+	}
+	if got := game.State().WorldCheckpoint; !reflect.DeepEqual(got, want) {
+		t.Fatalf("battle return checkpoint = %+v, want %+v", got, want)
+	}
+}
+
+func TestRemoteDungeonSaveRestoreExitAndMoveKeepsWorldCheckpoint(t *testing.T) {
+	game := newTownTestGame(t)
+	entry := dungeonEntryByID(t, game, "forgotten-shrine")
+	arriveAtWorldNode(t, game, entry.NodeID)
+	position := findWorldArrivalPosition(t, game, entry.NodeID, nil)
+	state, err := game.ProcessDungeon(DungeonRequest{Type: "enter", NodeID: entry.NodeID, WorldPosition: &position})
+	if err != nil {
+		t.Fatalf("enter remote dungeon: %v", err)
+	}
+	want := cloneWorldCheckpoint(state.WorldCheckpoint)
+	if state.CurrentLocation.Kind != LocationDungeon || want.X != position.X || want.Y != position.Y {
+		t.Fatalf("remote dungeon entry = location %+v checkpoint %+v", state.CurrentLocation, want)
+	}
+	saved, err := game.ToSaveState("forgotten shrine", "test-user")
+	if err != nil {
+		t.Fatalf("save remote dungeon: %v", err)
+	}
+	loaded, err := FromSaveState(saved, game.gd, game.loc)
+	if err != nil {
+		t.Fatalf("load remote dungeon: %v", err)
+	}
+	if loaded.State().CurrentLocation.Kind != LocationDungeon || !reflect.DeepEqual(loaded.State().WorldCheckpoint, want) {
+		t.Fatalf("loaded remote dungeon = location %+v checkpoint %+v", loaded.State().CurrentLocation, loaded.State().WorldCheckpoint)
+	}
+	state, err = loaded.ProcessDungeon(DungeonRequest{Type: "retreat"})
+	if err != nil {
+		t.Fatalf("exit loaded remote dungeon: %v", err)
+	}
+	if state.CurrentLocation.Kind != LocationWorld || !reflect.DeepEqual(state.WorldCheckpoint, want) {
+		t.Fatalf("remote dungeon exit = location %+v checkpoint %+v", state.CurrentLocation, state.WorldCheckpoint)
+	}
+	next := findWorldCheckpointPosition(t, loaded, entry.NodeID, func(candidate WorldPosition, _ locality.TileType) bool {
+		return candidate.X != want.X || candidate.Y != want.Y
+	})
+	state, err = loaded.ProcessLocationTransition(LocationTransitionRequest{TransitionID: "arrive-world-node", WorldNodeID: entry.NodeID, WorldPosition: &next})
+	if err != nil {
+		t.Fatalf("move after loaded dungeon exit: %v", err)
+	}
+	if state.WorldCheckpoint.X != next.X || state.WorldCheckpoint.Y != next.Y {
+		t.Fatalf("post-exit checkpoint = %+v, want %+v", state.WorldCheckpoint, next)
+	}
+}
+
 func TestWorldCheckpointSurvivesInnAutosave(t *testing.T) {
 	game := newTownTestGame(t)
 	checkpoint := cloneWorldCheckpoint(game.worldCheckpoint)
@@ -245,6 +402,13 @@ func findWorldCheckpointPosition(t *testing.T, game *Game, nodeID string, match 
 	t.Helper()
 	return findWorldTile(t, game.tileMap, func(position WorldPosition, tile locality.TileType) bool {
 		return match(position, tile) && validateWorldCheckpointPosition(game.tileMap, game.loc, game.worldTraversal(), position, nodeID) == nil
+	})
+}
+
+func findWorldArrivalPosition(t *testing.T, game *Game, nodeID string, match func(WorldPosition, locality.TileType) bool) WorldPosition {
+	t.Helper()
+	return findWorldTile(t, game.tileMap, func(position WorldPosition, tile locality.TileType) bool {
+		return (match == nil || match(position, tile)) && validateWorldArrivalPosition(game.tileMap, game.loc, game.worldTraversal(), position, nodeID) == nil
 	})
 }
 

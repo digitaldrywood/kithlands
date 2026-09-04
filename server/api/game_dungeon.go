@@ -72,11 +72,12 @@ type DungeonState struct {
 	Complete            bool                 `json:"complete"`
 }
 type DungeonRequest struct {
-	Type     string `json:"type"`
-	DX       int    `json:"dx,omitempty"`
-	DY       int    `json:"dy,omitempty"`
-	ActionID string `json:"action_id,omitempty"`
-	NodeID   string `json:"node_id,omitempty"`
+	Type          string         `json:"type"`
+	DX            int            `json:"dx,omitempty"`
+	DY            int            `json:"dy,omitempty"`
+	ActionID      string         `json:"action_id,omitempty"`
+	NodeID        string         `json:"node_id,omitempty"`
+	WorldPosition *WorldPosition `json:"world_position,omitempty"`
 }
 
 func (g *Game) dungeonDefinition() *dungeon.Definition {
@@ -315,6 +316,15 @@ func (g *Game) ProcessDungeon(req DungeonRequest) (GameState, error) {
 		}
 		if g.location.WorldNodeID != req.NodeID {
 			return GameState{}, fmt.Errorf("reach this trail from its world node first")
+		}
+		if req.WorldPosition != nil {
+			if g.location.Kind != LocationWorld {
+				return GameState{}, fmt.Errorf("world position is unavailable outside the world")
+			}
+			if err := validateWorldArrivalPosition(g.tileMap, g.loc, g.worldTraversal(), *req.WorldPosition, req.NodeID); err != nil {
+				return GameState{}, err
+			}
+			g.setWorldCheckpointLocked(*req.WorldPosition, req.NodeID)
 		}
 		p := g.activateDungeon(def)
 		origin := g.location

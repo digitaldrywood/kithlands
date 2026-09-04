@@ -40,6 +40,7 @@ import {
   WALK_SHEET_CLASS_IDS,
 } from "./scenes/walkFrame.js";
 import { setLeaderIndex } from "./scenes/world.js";
+import { checkpointWorldPosition } from "./scenes/world_interact.js";
 import { encounterChanceForStep } from "./scenes/worldEncounter.js";
 import { walkStepMs } from "./systems/prefs.js";
 
@@ -1406,6 +1407,9 @@ export function installDevTestBridge(game) {
         natural: scene?.currentNaturalSpawn || null,
         spawns: scene?.spawns || [],
         stepCount: scene?.stepCount,
+        gameId: scene?.gameState?.id || null,
+        checkpoint: scene?.gameState?.world_checkpoint || null,
+        arrivalPending: scene?.worldArrivalPending || null,
         walkable: scene?.tileData?.map((row) =>
           row.map((tile) => scene.canWalkTile(tile)),
         ),
@@ -1854,7 +1858,11 @@ export function installDevTestBridge(game) {
       const scene = getScene(game, sceneKey);
       const gameId = scene?.gameState?.id;
       if (!gameId) throw new Error("Active scene has no game id");
-      return clone(await saveGameApi(gameId, name));
+      const position =
+        scene?.scene?.key === "World"
+          ? await checkpointWorldPosition(scene)
+          : null;
+      return clone(await saveGameApi(gameId, name, position));
     },
 
     async listSaves() {

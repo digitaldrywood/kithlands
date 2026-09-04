@@ -27,8 +27,9 @@ type LocationState struct {
 }
 
 type LocationTransitionRequest struct {
-	TransitionID string `json:"transition_id"`
-	WorldNodeID  string `json:"world_node_id,omitempty"`
+	TransitionID  string         `json:"transition_id"`
+	WorldNodeID   string         `json:"world_node_id,omitempty"`
+	WorldPosition *WorldPosition `json:"world_position,omitempty"`
 }
 
 // ProcessLocationTransition applies only transitions authored in the active
@@ -45,7 +46,7 @@ func (g *Game) ProcessLocationTransition(req LocationTransitionRequest) (GameSta
 	switch g.location.Kind {
 	case LocationWorld:
 		if req.TransitionID == "arrive-world-node" {
-			err = g.arriveWorldNodeLocked(req.WorldNodeID)
+			err = g.arriveWorldNodeLocked(req.WorldNodeID, req.WorldPosition)
 		} else {
 			err = g.enterSettlementLocked(req)
 		}
@@ -66,7 +67,7 @@ func (g *Game) ProcessLocationTransition(req LocationTransitionRequest) (GameSta
 // arriveWorldNodeLocked records physical progress through the locality graph.
 // The client may name only the node it has reached; it cannot jump past the
 // server-owned current node because each arrival must follow an authored edge.
-func (g *Game) arriveWorldNodeLocked(nodeID string) error {
+func (g *Game) arriveWorldNodeLocked(nodeID string, position *WorldPosition) error {
 	if g.loc == nil || g.walk == nil || g.walk.Spawn == nil {
 		return fmt.Errorf("world navigation is unavailable")
 	}
@@ -79,12 +80,25 @@ func (g *Game) arriveWorldNodeLocked(nodeID string) error {
 	}
 	if nodeID == current {
 		g.location.WorldNodeID = current
+		if position != nil {
+			return g.updateWorldCheckpointLocked(*position, current)
+		}
 		return nil
 	}
 	if !slices.Contains(g.loc.Neighbors(current), nodeID) {
 		return fmt.Errorf("world node %q is not adjacent to the current arrival", nodeID)
 	}
+	if position != nil {
+		if err := validateWorldArrivalPosition(g.tileMap, g.loc, g.worldTraversal(), *position, nodeID); err != nil {
+			return err
+		}
+	}
 	g.location.WorldNodeID = nodeID
+	if position != nil {
+		g.setWorldCheckpointLocked(*position, nodeID)
+	} else if recovered := recoverWorldCheckpointNearNode(g.tileMap, g.loc, g.worldTraversal(), nodeID, worldMapSignature(g.tileMap)); recovered != nil {
+		g.worldCheckpoint = recovered
+	}
 	return nil
 }
 
@@ -98,6 +112,11 @@ func (g *Game) enterSettlementLocked(req LocationTransitionRequest) error {
 	if g.walk == nil || req.WorldNodeID == "" || req.WorldNodeID != g.walk.Spawn.ID {
 		return fmt.Errorf("settlement entry must use the active world node")
 	}
+	if req.WorldPosition != nil {
+		if err := validateWorldArrivalPosition(g.tileMap, g.loc, g.worldTraversal(), *req.WorldPosition, req.WorldNodeID); err != nil {
+			return err
+		}
+	}
 	anchor, err := settlementWorldAnchor(g.settlementMap)
 	if err != nil {
 		return err
@@ -107,6 +126,9 @@ func (g *Game) enterSettlementLocked(req LocationTransitionRequest) error {
 		MapID:       g.settlementMap.Property("id"),
 		Anchor:      anchor,
 		WorldNodeID: req.WorldNodeID,
+	}
+	if req.WorldPosition != nil {
+		g.setWorldCheckpointLocked(*req.WorldPosition, req.WorldNodeID)
 	}
 	return nil
 }

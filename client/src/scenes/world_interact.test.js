@@ -3,6 +3,7 @@ import {
   interactWithDoor,
   interactWithNaturalNode,
   naturalDiscoveryDisplay,
+  checkpointWorldPosition,
   nearbyWorldArrival,
   nearbyWorldInteraction,
   pendingNaturalDiscovery,
@@ -357,6 +358,12 @@ describe("nearbyWorldArrival", () => {
     expect(apiMocks.transitionLocation.mock.calls[0]).toEqual(
       apiMocks.transitionLocation.mock.calls[1],
     );
+    expect(apiMocks.transitionLocation).toHaveBeenCalledWith(
+      "game",
+      "arrive-world-node",
+      "ridge",
+      { x: 20, y: 19 },
+    );
     expect(scene.gameState).toBe(accepted);
   });
 
@@ -381,5 +388,85 @@ describe("nearbyWorldArrival", () => {
     });
     expect(apiMocks.transitionLocation).toHaveBeenCalledTimes(2);
     expect(scene.gameState.current_location.world_node_id).toBe("home");
+  });
+
+  it("serializes a save checkpoint behind an in-flight arrival", async () => {
+    let acceptArrival;
+    const arrived = {
+      id: "game",
+      current_location: { kind: "world", world_node_id: "ridge" },
+    };
+    apiMocks.transitionLocation
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            acceptArrival = () => resolve(arrived);
+          }),
+      )
+      .mockResolvedValueOnce({
+        ...arrived,
+        world_checkpoint: { x: 21, y: 20, world_node_id: "ridge" },
+      });
+    const scene = {
+      gameState: {
+        id: "game",
+        current_location: { kind: "world", world_node_id: "home" },
+      },
+      playerX: 20,
+      playerY: 19,
+      playerDir: "down",
+      spawns: [
+        { node_id: "home", x: 8, y: 8 },
+        { node_id: "ridge", x: 20, y: 20 },
+      ],
+      scene: { isActive: () => true },
+    };
+
+    const arrival = syncWorldArrival(scene);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(apiMocks.transitionLocation).toHaveBeenCalledTimes(1);
+    scene.playerX = 21;
+    scene.playerY = 20;
+    const checkpoint = checkpointWorldPosition(scene);
+    expect(apiMocks.transitionLocation).toHaveBeenCalledTimes(1);
+
+    acceptArrival();
+    await arrival;
+    await expect(checkpoint).resolves.toEqual({ x: 21, y: 20 });
+    expect(apiMocks.transitionLocation.mock.calls[1]).toEqual([
+      "game",
+      "arrive-world-node",
+      "ridge",
+      { x: 21, y: 20 },
+    ]);
+  });
+
+  it("waits for the active tile step before checkpointing", async () => {
+    let finishStep;
+    const scene = {
+      gameState: {
+        id: "game",
+        current_location: { kind: "world", world_node_id: "home" },
+      },
+      playerX: 9,
+      playerY: 8,
+      spawns: [{ node_id: "home", x: 8, y: 8 }],
+      scene: { isActive: () => true },
+      worldStepDone: new Promise((resolve) => {
+        finishStep = resolve;
+      }),
+    };
+    apiMocks.transitionLocation.mockResolvedValue({
+      ...scene.gameState,
+      world_checkpoint: { x: 9, y: 8, world_node_id: "home" },
+    });
+
+    const checkpoint = checkpointWorldPosition(scene);
+    await Promise.resolve();
+    expect(apiMocks.transitionLocation).not.toHaveBeenCalled();
+    finishStep(true);
+    await expect(checkpoint).resolves.toEqual({ x: 9, y: 8 });
+    expect(apiMocks.transitionLocation).toHaveBeenCalledTimes(1);
   });
 });

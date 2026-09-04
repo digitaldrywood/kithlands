@@ -1100,6 +1100,7 @@ func (g *Game) stateUnlocked() GameState {
 	if g.loc != nil {
 		state.Location = g.loc.Name
 	}
+	state.WorldCheckpoint = cloneWorldCheckpoint(g.worldCheckpoint)
 	g.fillLocationState(&state)
 
 	state.Transport = g.buildTransportInfo()

@@ -2,6 +2,7 @@ import { dungeonAction } from "../api.js";
 import { isWorldInputLocked } from "../systems/modalLock.js";
 import { drawButton } from "../ui/panel.js";
 import { dungeonRouteForScene, followDungeonRoute } from "./dungeonRoute.js";
+import { checkpointWorldPosition } from "./world_interact.js";
 
 export function dungeonEntryForScene(scene) {
   const entries = scene.gameState?.dungeon_entries?.length
@@ -159,14 +160,19 @@ function createTrailButton(scene, label, onClick, route) {
   return button;
 }
 
-async function enterDungeon(scene) {
+export async function enterDungeon(scene) {
   const entry = dungeonEntryForScene(scene);
   if (isWorldInputLocked(scene) || !entry) return;
   scene.animating = true;
   try {
+    const worldPosition =
+      scene.gameState.current_location?.kind === "world"
+        ? await checkpointWorldPosition(scene)
+        : null;
     const result = await dungeonAction(scene.gameState.id, {
       type: "enter",
       node_id: entry.node_id,
+      ...(worldPosition ? { world_position: worldPosition } : {}),
     });
     if (!scene.scene.isActive()) return;
     if (result?.error || result?.current_location?.kind !== "dungeon") {
