@@ -24,14 +24,16 @@ export class TitleScene extends Phaser.Scene {
     this.showMainMenu();
   }
 
+  clearMenu() {
+    // DisplayList.removeAll(true) skips callbacks; it does not destroy objects.
+    // Destroy a snapshot so native DOM inputs are removed before the list changes.
+    this.children.list.slice().forEach((child) => child.destroy());
+  }
+
   showMainMenu() {
     initAudio(this);
     playMusic("music_title");
-    this.children.removeAll(true);
-    // Remove DOM elements
-    this.children.list
-      .filter((c) => c.type === "DOMElement")
-      .forEach((c) => c.destroy());
+    this.clearMenu();
 
     const cx = 400;
 
@@ -157,10 +159,7 @@ export class TitleScene extends Phaser.Scene {
   }
 
   async showLoadScreen() {
-    this.children.removeAll(true);
-    this.children.list
-      .filter((c) => c.type === "DOMElement")
-      .forEach((c) => c.destroy());
+    this.clearMenu();
 
     const cx = 400;
     this.add
@@ -183,7 +182,7 @@ export class TitleScene extends Phaser.Scene {
       const result = await listSaves();
       const saves = result.saves || [];
 
-      this.children.removeAll(true);
+      this.clearMenu();
 
       this.add
         .text(cx, 40, "LOAD GAME", {
