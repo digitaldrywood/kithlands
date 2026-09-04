@@ -866,6 +866,7 @@ function setPlayerTile(scene, x, y) {
     scene.player.x = pos.x;
     scene.player.y = pos.y;
   }
+  scene.updateInteractionTarget?.();
 }
 
 function frameHash(scene) {
@@ -1402,6 +1403,7 @@ export function installDevTestBridge(game) {
         y: scene?.playerY,
         animating: !!scene?.animating,
         door: scene?.currentDoorSpawn || null,
+        natural: scene?.currentNaturalSpawn || null,
         spawns: scene?.spawns || [],
         stepCount: scene?.stepCount,
         walkable: scene?.tileData?.map((row) =>
