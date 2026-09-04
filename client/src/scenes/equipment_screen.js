@@ -367,6 +367,11 @@ function renderEquipmentScreen(state) {
         () => closeBuildPanel(state),
       ),
     );
+    // Rerenders replace focused controls. Keep keyboard events inside the modal
+    // even while all mutation buttons are disabled awaiting the server.
+    root
+      .querySelector(".equipment-build-dialog")
+      ?.focus({ preventScroll: true });
   }
   if (focusKey !== null && !state.buildPanel) {
     const control = [
@@ -488,6 +493,7 @@ function renderMain(
       state.buildPanel = true;
       state.buildPreview = null;
       state.buildDeleteID = "";
+      state.buildOverwriteID = "";
       state.recommendation = null;
       state.status = "";
       renderEquipmentScreen(state);
@@ -1510,7 +1516,16 @@ function handleOverlayKeydown(state, event) {
       "button:not(:disabled), select:not(:disabled), input:not(:disabled), [tabindex='0']",
     ),
   ];
-  if (focusable.length === 0) return;
+  if (focusable.length === 0) {
+    event.preventDefault();
+    focusScope.focus();
+    return;
+  }
+  if (state.buildPanel && document.activeElement === focusScope) {
+    event.preventDefault();
+    (event.shiftKey ? focusable[focusable.length - 1] : focusable[0]).focus();
+    return;
+  }
   const first = focusable[0];
   const last = focusable[focusable.length - 1];
   if (event.shiftKey && document.activeElement === first) {

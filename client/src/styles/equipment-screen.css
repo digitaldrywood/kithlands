@@ -1611,7 +1611,7 @@
 }
 .equipment-build-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 8px;
   padding: 10px;
@@ -1703,5 +1703,14 @@
   }
   .equipment-build-slots {
     grid-template-columns: 80px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 599px) {
+  .equipment-build-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .equipment-build-row > strong {
+    grid-column: 1 / -1;
   }
 }

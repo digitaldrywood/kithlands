@@ -179,7 +179,7 @@ func (g *Game) planEquipmentBuildLocked(partySlot int, id string) (EquipmentBuil
 	}
 	slices.Sort(unknown)
 	for _, slot := range unknown {
-		preview.Reasons = append(preview.Reasons, fmt.Sprintf("slot %q no longer exists; overwrite this build with current gear", slot))
+		preview.Reasons = append(preview.Reasons, fmt.Sprintf("slot %q no longer exists; delete this build and save current gear", slot))
 	}
 	seen := make(map[string]bool)
 	candidates := make(map[string]recommendationCandidate)
@@ -194,11 +194,11 @@ func (g *Game) planEquipmentBuildLocked(partySlot int, id string) (EquipmentBuil
 		if ref.InstanceID != "" {
 			instance := g.inv.Instance(ref.InstanceID)
 			if seen[ref.InstanceID] {
-				reason = "the same item is referenced twice; overwrite the build"
+				reason = "the same item is referenced twice; delete this build and save current gear"
 			}
 			seen[ref.InstanceID] = true
 			if instance == nil {
-				reason = "item is missing or sold; recover it or overwrite the build"
+				reason = "item is missing or sold; recover it, or delete this build and save current gear"
 			} else {
 				// Instance identity wins over the saved base-ID display hint:
 				// an upgrade of this same instance follows the build.
@@ -213,7 +213,7 @@ func (g *Game) planEquipmentBuildLocked(partySlot int, id string) (EquipmentBuil
 			case "armor":
 				candidate.inventoryKey = "arm_" + ref.ItemID
 			default:
-				reason = "legacy equipment in this position cannot be restored; overwrite the build"
+				reason = "legacy equipment in this position cannot be restored; delete this build and save current gear"
 			}
 		}
 		if reason == "" && err != nil {
@@ -262,7 +262,7 @@ func (g *Game) planEquipmentBuildLocked(partySlot int, id string) (EquipmentBuil
 			err = equipRecommendedStatic(working, partySlot, slot.ID, candidate, member.ClassID, g.gd)
 		}
 		if err != nil {
-			preview.Reasons = append(preview.Reasons, fmt.Sprintf("%s · %s: %s; recover the item or overwrite this build", slot.Name, candidate.state.Name, err))
+			preview.Reasons = append(preview.Reasons, fmt.Sprintf("%s · %s: %s; recover the item, or delete this build and save current gear", slot.Name, candidate.state.Name, err))
 		}
 	}
 	if len(preview.Reasons) > 0 {

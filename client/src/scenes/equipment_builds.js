@@ -20,6 +20,8 @@ function el(tag, className, text) {
 export function renderEquipmentBuilds(state, render, close) {
   const backdrop = el("div", "equipment-build-backdrop");
   const panel = el("section", "equipment-build-dialog");
+  panel.tabIndex = -1;
+  panel.setAttribute("aria-busy", String(state.busy));
   panel.setAttribute("role", "dialog");
   panel.setAttribute("aria-modal", "true");
   panel.setAttribute("aria-labelledby", "equipment-build-title");
@@ -69,6 +71,7 @@ export function renderEquipmentBuilds(state, render, close) {
       state.scene.updateHUD?.();
       state.buildPreview = null;
       state.buildDeleteID = "";
+      state.buildOverwriteID = "";
       state.buildName = "";
       state.selectedCandidateKey = "";
     } else {
@@ -90,7 +93,7 @@ export function renderEquipmentBuilds(state, render, close) {
     el(
       "p",
       "equipment-build-note",
-      `${builds.length} / ${limit} builds. Save current gear, then preview a build before applying. Items and sockets stay with their original instances.`,
+      `${builds.length} / ${limit} builds. Save current gear, then preview a build before applying. Builds use your owned gear; gem changes follow the item.`,
     ),
   );
 
@@ -131,7 +134,7 @@ export function renderEquipmentBuilds(state, render, close) {
       el(
         "p",
         "equipment-build-note",
-        "Build limit reached. Delete a build to make room; its items remain yours.",
+        "Build limit reached. Overwrite a build, or delete one to make room; your gear stays yours.",
       ),
     );
   const list = el("div", "equipment-build-list");
@@ -151,15 +154,56 @@ export function renderEquipmentBuilds(state, render, close) {
         `preview-${build.id}`,
       ),
       action(
+        "Overwrite",
+        () => {
+          state.buildOverwriteID = build.id;
+          state.buildDeleteID = "";
+          render();
+          focus(`confirm-overwrite-${build.id}`);
+        },
+        `overwrite-${build.id}`,
+      ),
+      action(
         "Delete",
         () => {
           state.buildDeleteID = build.id;
+          state.buildOverwriteID = "";
           render();
           focus(`confirm-delete-${build.id}`);
         },
         `delete-${build.id}`,
       ),
     );
+    if (state.buildOverwriteID === build.id) {
+      const confirmation = el("div", "equipment-build-delete");
+      confirmation.append(
+        el(
+          "p",
+          "",
+          `Overwrite “${build.name}” with ${state.scene.gameState.party[party].name}’s current equipment? Your gear will not move.`,
+        ),
+        action(
+          "Confirm overwrite",
+          () =>
+            perform(
+              () => saveEquipmentBuild(gameId, party, build.name, build.id),
+              `“${build.name}” overwritten with current gear. Gear unchanged.`,
+              `preview-${build.id}`,
+            ),
+          `confirm-overwrite-${build.id}`,
+        ),
+        action(
+          "Keep build",
+          () => {
+            state.buildOverwriteID = "";
+            render();
+            focus(`overwrite-${build.id}`);
+          },
+          "keep",
+        ),
+      );
+      row.append(confirmation);
+    }
     if (state.buildDeleteID === build.id) {
       const confirmation = el("div", "equipment-build-delete");
       confirmation.append(

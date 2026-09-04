@@ -323,3 +323,25 @@ func TestEquipmentBuildFollowsChangedInstance(t *testing.T) {
 		t.Fatal("preview/apply rewrote saved intention")
 	}
 }
+
+func TestEquipmentBuildCanClearEverySlot(t *testing.T) {
+	t.Parallel()
+	g := buildTestGame(t)
+	current := g.inv.Equipment[0]
+	g.inv.Equipment[0] = inventory.EquipmentSlots{}
+	id := saveBuild(t, g, "Unarmed")
+	g.inv.Equipment[0] = current
+	owned := len(g.inv.Instances)
+	p := previewBuild(t, g, id)
+	if err := g.ApplyEquipmentBuild(0, id, p.Token, false); err != nil {
+		t.Fatal(err)
+	}
+	for _, slot := range g.gd.Items.EquipmentSlots {
+		if ref := g.inv.Equipment[0].Equipped(slot.ID); ref.ItemID != "" || ref.InstanceID != "" {
+			t.Fatalf("slot %s retained item %+v", slot.ID, ref)
+		}
+	}
+	if len(g.inv.Instances) != owned {
+		t.Fatal("clearing loadout changed item ownership")
+	}
+}
