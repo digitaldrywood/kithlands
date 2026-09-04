@@ -1792,9 +1792,10 @@ export function installDevTestBridge(game) {
     },
 
     async loadSave(saveId) {
+      const source = activeScene(game);
       const result = await loadSaveApi(saveId);
       if (!result?.error) {
-        game.scene.start("World", { gameState: result });
+        source.scene.start("World", { gameState: result });
         await this.waitForSceneReady("World");
       }
       return clone(result);
@@ -1819,13 +1820,13 @@ export function installDevTestBridge(game) {
       return visibleBattleFxSnapshot(scene);
     },
 
-    async playCombatRound(actions) {
+    playCombatRound(actions) {
       const scene = getScene(game, "Battle");
       if (scene?.gameState?.phase !== "combat" || scene.animating) {
         throw new Error("Battle is not ready for commands");
       }
       scene.memberActions = clone(actions);
-      await scene.submitAllActions();
+      void scene.submitAllActions();
     },
 
     captureBattleCanvas(sceneKey = "Battle") {
