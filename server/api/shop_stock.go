@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/digitaldrywood/kithlands/internal/inventory"
+	"github.com/digitaldrywood/kithlands/internal/loot"
 )
 
 // ShopStock is the save-owned inventory first rolled when a shop is visited.
@@ -70,4 +71,79 @@ func (g *Game) currentStockEntryLocked(nodeID, offerID string) (*ShopStockEntry,
 		}
 	}
 	return nil, fmt.Errorf("shop offer is stale or already purchased")
+}
+
+func (g *Game) ensureShopStockLocked(nodeID string) (*ShopStock, error) {
+	if stock := g.shopStocks[nodeID]; stock != nil {
+		return stock, nil
+	}
+	if g.shopStocks == nil {
+		g.shopStocks = make(map[string]*ShopStock)
+	}
+	avgLevel := 0
+	for _, member := range g.party {
+		avgLevel += member.Level
+	}
+	avgLevel /= max(len(g.party), 1)
+	maxTier := min(1+avgLevel/4, 3)
+	stock := &ShopStock{}
+	add := func(itemID, itemType string, price int, reusable bool) {
+		stock.Entries = append(stock.Entries, ShopStockEntry{
+			ItemID: itemID, Type: itemType, Price: price, Version: 1, Reusable: reusable,
+		})
+	}
+	for _, item := range g.gd.Items.Weapons {
+		if item.Tier <= maxTier {
+			add(item.ID, "weapon", item.BuyPrice, true)
+		}
+	}
+	for _, item := range g.gd.Items.Armor {
+		if item.Tier <= maxTier {
+			add(item.ID, "armor", item.BuyPrice, true)
+		}
+	}
+	for _, item := range g.gd.Items.Gear {
+		if item.Tier > maxTier {
+			continue
+		}
+		entryIndex := len(stock.Entries)
+		rolled, err := loot.RollEquipment(
+			g.gd, item.ID, g.maxPartyLevel(), 0,
+			loot.RNGFor(g.rngSeed, shopStockStream(nodeID, entryIndex, item.ID)),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("rolling shop equipment %q: %w", item.ID, err)
+		}
+		rolled.ID = shopInstanceID(g.rngSeed, nodeID, entryIndex, item.ID)
+		stock.Entries = append(stock.Entries, ShopStockEntry{
+			ItemID: item.ID, Type: "equipment", Price: item.BuyPrice, Version: 1, Instance: &rolled,
+		})
+	}
+	for _, item := range g.gd.Items.Consumables {
+		add(item.ID, "consumable", item.BuyPrice, true)
+	}
+	for _, item := range g.gd.Items.KeyItems {
+		if item.BuyPrice > 0 {
+			add(item.ID, "key_item", item.BuyPrice, false)
+		}
+	}
+	for _, spell := range g.gd.Spells.Spells {
+		if spell.SpellLevel <= maxTier {
+			add(spell.ID, "spell", spell.SpellLevel*100, true)
+		}
+	}
+	g.shopStocks[nodeID] = stock
+	return stock, nil
+}
+
+func shopStockStream(nodeID string, index int, itemID string) uint64 {
+	h := fnv.New64a()
+	_, _ = h.Write([]byte("shop-stock\x00" + nodeID + "\x00" + strconv.Itoa(index) + "\x00" + itemID))
+	return h.Sum64()
+}
+
+func shopInstanceID(saveSeed int64, nodeID string, index int, itemID string) string {
+	h := fnv.New64a()
+	_, _ = h.Write([]byte(strconv.FormatInt(saveSeed, 10) + "\x00" + nodeID + "\x00" + strconv.Itoa(index) + "\x00" + itemID))
+	return fmt.Sprintf("gear_shop_%016x", h.Sum64())
 }
