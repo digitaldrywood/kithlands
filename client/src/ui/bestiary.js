@@ -1,4 +1,7 @@
-import { ENEMY_SPRITES, MONSTER_SPRITE_LOAD } from "../data/monsterSprites.js";
+import {
+  monsterSpriteKey,
+  MONSTER_SPRITE_LOAD,
+} from "../data/monsterSprites.js";
 
 export function element(tag, className = "", text = "") {
   const node = document.createElement(tag);
@@ -28,9 +31,10 @@ export function bestiaryEntries(catalog, discovered = {}) {
   });
 }
 
-export function monsterArt(name) {
-  return MONSTER_SPRITE_LOAD.find(({ key }) => key === ENEMY_SPRITES[name])
-    ?.path;
+export function monsterArt(monster) {
+  return MONSTER_SPRITE_LOAD.find(
+    ({ key }) => key === monsterSpriteKey(monster),
+  )?.path;
 }
 
 export function affinityLabel(values) {
@@ -138,7 +142,7 @@ function renderDetail(detail, entry) {
   }
   const monster = entry.monster;
   const portrait = element("div", "bestiary-portrait");
-  const path = monsterArt(monster.name);
+  const path = monsterArt(monster);
   if (path) {
     const art = element("img");
     art.src = path;

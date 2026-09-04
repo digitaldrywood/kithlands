@@ -29,7 +29,7 @@ import { FloatingTextPool } from "../ui/floating_text.js";
 import { MessageWindow } from "../ui/message_window.js";
 import { TargetCursor } from "../ui/target_cursor.js";
 import { drawBattlePartyStatus } from "../ui/battle_party_status.js";
-import { ENEMY_SPRITES } from "../data/monsterSprites.js";
+import { monsterSpriteKey } from "../data/monsterSprites.js";
 import {
   battleSpeedMul,
   getLongCinematicMode,
@@ -1278,7 +1278,7 @@ export class BattleScene extends Phaser.Scene {
           : placement.spriteSize;
       this.addCombatShadow(x, y + sz / 2 + 22, sz + 30, 18, 0.28);
 
-      const key = ENEMY_SPRITES[e.name];
+      const key = monsterSpriteKey(e);
       let sprite;
       if (key && this.textures.exists(key)) {
         sprite = this.add.image(x, y, key);

@@ -57,6 +57,9 @@ for (const viewport of [
       );
       expect(response.phase).toBe("combat");
       expect(response.enemies.map((e) => e.name)).toEqual(expectedNames);
+      expect(response.enemies.map((e) => e.monster_id)).toEqual(
+        encounter.monster_ids,
+      );
       expect(new Set(response.enemies.map((e) => e.id)).size).toBe(
         expectedNames.length,
       );

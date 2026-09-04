@@ -83,6 +83,30 @@ func TestOldMillMonstersStayOutOfWorldPools(t *testing.T) {
 	}
 }
 
+func TestOldMillEnemyResponseRetainsStableIDAfterContentRename(t *testing.T) {
+	gd := gamedata.Load("../../shared")
+	gd.MonsterByID("mill_bat").Name = "Rafter Glider"
+	game, err := api.NewGameManager(gd, "").CreateGame(api.NewGameRequest{
+		TownName: "Cadott", Places: []string{"Mill", "Inn"}, BigBuilding: "Hall", Difficulty: "normal", RNGSeed: 42,
+		Party: []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := game.DebugForceEncounter([]string{"mill_bat", "mill_bat"}, 1); err != nil {
+		t.Fatal(err)
+	}
+	state := game.State()
+	if state.Enemies[0].ID == state.Enemies[1].ID {
+		t.Fatal("combatant IDs must remain unique")
+	}
+	for _, enemy := range state.Enemies {
+		if enemy.MonsterID != "mill_bat" || enemy.Name != "Rafter Glider" {
+			t.Fatalf("renamed enemy lost stable content ID: %#v", enemy)
+		}
+	}
+}
+
 func TestOldMillElementalMatchups(t *testing.T) {
 	gd := gamedata.Load("../../shared")
 	for _, encounter := range millProofPack(t) {
