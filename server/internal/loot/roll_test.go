@@ -40,7 +40,7 @@ func TestRollEquipment(t *testing.T) {
 		},
 		{
 			name:      "level three rare item unlocks two affixes",
-			itemLevel: 3, values: []int{90, 0, 1, 0, 2, 1},
+			itemLevel: 3, values: []int{90, 0, 1, 100, 2, 1},
 			wantRarity: "rare", wantAffixes: 2, wantSockets: 2,
 			wantRequired: 12, wantFirstRoll: 2,
 		},
@@ -69,16 +69,96 @@ func TestRollEquipment(t *testing.T) {
 func TestRollEquipmentIsDeterministicBySaveSequence(t *testing.T) {
 	t.Parallel()
 	gd := gamedata.Load("../../../shared")
-	first, err := loot.RollEquipment(gd, "leather_armor", 3, 0, loot.RNGFor(42, 7))
-	if err != nil {
-		t.Fatal(err)
+	for _, baseID := range []string{"short_sword", "leather_armor", "copper_ring"} {
+		first, err := loot.RollEquipment(gd, baseID, 3, 0, loot.RNGFor(42, 7))
+		if err != nil {
+			t.Fatal(err)
+		}
+		second, err := loot.RollEquipment(gd, baseID, 3, 0, loot.RNGFor(42, 7))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(first, second) {
+			t.Fatalf("%s: same seed and sequence produced different rolls: %#v != %#v", baseID, first, second)
+		}
 	}
-	second, err := loot.RollEquipment(gd, "leather_armor", 3, 0, loot.RNGFor(42, 7))
-	if err != nil {
-		t.Fatal(err)
+}
+
+func TestRareRollsUseFunctionallyDistinctAffixes(t *testing.T) {
+	t.Parallel()
+	gd := gamedata.Load("../../../shared")
+	for _, baseID := range []string{"short_sword", "leather_armor", "copper_ring"} {
+		item, err := loot.RollEquipment(gd, baseID, 3, 0, &sequenceRNG{values: []int{90, 0, 0, 100, 0, 0}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if item.RarityID != "rare" || len(item.Affixes) != 2 {
+			t.Fatalf("%s rare roll = %+v", baseID, item)
+		}
+		first := gd.LootAffixByID(item.Affixes[0].AffixID)
+		second := gd.LootAffixByID(item.Affixes[1].AffixID)
+		if first.Modifier.Stat == second.Modifier.Stat {
+			t.Fatalf("%s rolled duplicate %s modifiers: %+v", baseID, first.Modifier.Stat, item.Affixes)
+		}
+		if first.Position == second.Position {
+			t.Fatalf("%s rolled duplicate %s positions: %+v", baseID, first.Position, item.Affixes)
+		}
+		if item.RequiredLevel != 12 {
+			t.Fatalf("%s rare required level = %d, want 12", baseID, item.RequiredLevel)
+		}
 	}
-	if !reflect.DeepEqual(first, second) {
-		t.Fatalf("same seed and sequence produced different rolls: %#v != %#v", first, second)
+}
+
+func TestRollEquipmentDistributionCoversCatalog(t *testing.T) {
+	t.Parallel()
+	gd := gamedata.Load("../../../shared")
+	const rollsPerKind = 10000
+	bases := []struct {
+		kind, baseID string
+	}{
+		{kind: "weapon", baseID: "short_sword"},
+		{kind: "armor", baseID: "leather_armor"},
+		{kind: "accessory", baseID: "copper_ring"},
+	}
+	for _, base := range bases {
+		kind, baseID := base.kind, base.baseID
+		rarityCounts := make(map[string]int)
+		seenAffixes := make(map[string]int)
+		for sequence := 1; sequence <= rollsPerKind; sequence++ {
+			item, err := loot.RollEquipment(gd, baseID, 3, 0, loot.RNGFor(20260904, uint64(sequence)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			rarityCounts[item.RarityID]++
+			seenStats := make(map[string]bool)
+			seenPositions := make(map[string]bool)
+			for _, roll := range item.Affixes {
+				seenAffixes[roll.AffixID]++
+				affix := gd.LootAffixByID(roll.AffixID)
+				stat := affix.Modifier.Stat
+				if seenStats[stat] {
+					t.Fatalf("%s sequence %d repeated functional affix %q", kind, sequence, stat)
+				}
+				seenStats[stat] = true
+				if seenPositions[affix.Position] {
+					t.Fatalf("%s sequence %d repeated affix position %q", kind, sequence, affix.Position)
+				}
+				seenPositions[affix.Position] = true
+			}
+		}
+		for rarity, bounds := range map[string][2]int{
+			"common": {5500, 6500}, "magic": {2500, 3500}, "rare": {700, 1300},
+		} {
+			if got := rarityCounts[rarity]; got < bounds[0] || got > bounds[1] {
+				t.Fatalf("%s %s rolls = %d/%d, want within %v", kind, rarity, got, rollsPerKind, bounds)
+			}
+		}
+		for _, affix := range gd.Loot.Affixes {
+			if affix.MinItemLevel <= 3 && len(affix.Kinds) == 1 && affix.Kinds[0] == kind && seenAffixes[affix.ID] == 0 {
+				t.Errorf("%s affix %q never rolled in %d deterministic rolls", kind, affix.ID, rollsPerKind)
+			}
+		}
+		t.Logf("%s: %d rolls; rarities=%v; affixes=%v", kind, rollsPerKind, rarityCounts, seenAffixes)
 	}
 }
 

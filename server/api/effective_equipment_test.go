@@ -158,6 +158,70 @@ func TestBrawlerEquipmentAndBuffsApplyOnce(t *testing.T) {
 	}
 }
 
+func equipCrystalArmorBrawler(t *testing.T, g *Game, partySlot int) (inventory.EffectiveStats, inventory.EffectiveStats) {
+	t.Helper()
+	class := g.gd.ClassByID("brawler")
+	member := character.New("Bram", class.ID, class)
+	levelRNG := rand.New(rand.NewPCG(20260904, 20))
+	for member.Level < g.gd.FinalEncounter.Level {
+		member.XP = 999999
+		if err := character.LevelUp(member, class, &g.gd.Stats, levelRNG); err != nil {
+			t.Fatal(err)
+		}
+	}
+	member.Promote()
+	g.party[partySlot] = member
+	g.inv.Equipment[partySlot] = inventory.EquipmentSlots{}
+
+	loadout := []struct {
+		slot, baseID string
+	}{
+		{slot: "shoulders", baseID: "patched_mantle"},
+		{slot: "hands", baseID: "leather_gloves"},
+		{slot: "waist", baseID: "traveler_belt"},
+		{slot: "legs", baseID: "trail_pants"},
+		{slot: "feet", baseID: "trail_boots"},
+	}
+	instanceIDs := make([]string, 0, len(loadout))
+	for _, entry := range loadout {
+		id, err := g.inv.AddInstance(inventory.EquipmentInstance{
+			BaseID: entry.baseID, Kind: "armor", ItemLevel: member.Level,
+			RequiredLevel: member.Level, RarityID: "rare", Sockets: []inventory.ItemSocket{{}},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := g.inv.EquipInstanceAt(partySlot, entry.slot, id, class.ID, member.Level, g.gd); err != nil {
+			t.Fatal(err)
+		}
+		instanceIDs = append(instanceIDs, id)
+	}
+	before := g.inv.ResolveEffectiveStats(member, partySlot, g.gd)
+	g.inv.Gems["ember_crystal"] += len(instanceIDs)
+	for _, id := range instanceIDs {
+		if err := g.inv.SocketGem(id, 0, "ember_crystal", member.Level, g.gd); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return before, g.inv.ResolveEffectiveStats(member, partySlot, g.gd)
+}
+
+func TestBrawlerEmberArmorPowerIsFlatAcrossMultipleSlots(t *testing.T) {
+	g := equipmentGame(t, "brawler")
+	before, after := equipCrystalArmorBrawler(t, g, 0)
+	const sockets, powerPerCrystal = 5, 5
+	if after.STR != before.STR {
+		t.Fatalf("Ember armor changed Brawler STR from %d to %d", before.STR, after.STR)
+	}
+	if after.Power-before.Power != sockets*powerPerCrystal || after.Attack()-before.Attack() != sockets*powerPerCrystal {
+		t.Fatalf("five Ember armor crystals changed power/attack %d/%d -> %d/%d, want flat +%d", before.Power, before.Attack(), after.Power, after.Attack(), sockets*powerPerCrystal)
+	}
+	player := g.makeCombatants()[0]
+	if player.BareHandDamage+player.WeaponPower != after.Attack() {
+		t.Fatalf("combat Brawler attack = %d + %d, want %d", player.BareHandDamage, player.WeaponPower, after.Attack())
+	}
+}
+
 func TestInactiveGearDoesNotImproveRecommendation(t *testing.T) {
 	g := equipmentGame(t, "mender")
 	id := equipTestRing(t, g, map[string]int{"int": 200, "vit": 200, "magic_defense": 200})

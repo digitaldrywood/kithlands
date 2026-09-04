@@ -133,6 +133,31 @@ func TestFinalEncounterBalance(t *testing.T) {
 	}
 }
 
+func TestEmberArmorBrawlerFinalEncounterBalance(t *testing.T) {
+	wins, rounds := 0, 0
+	for seed := uint64(1); seed <= 25; seed++ {
+		g := finalCheckpoint(t, seed)
+		before, after := equipCrystalArmorBrawler(t, g, 0)
+		if after.Attack()-before.Attack() != 25 || after.STR != before.STR {
+			t.Fatalf("seed %d Brawler equipment is not bounded: before=%+v after=%+v", seed, before, after)
+		}
+		startFinal(t, g)
+		s, n := finishFinal(t, g, true)
+		rounds += n
+		if s.Phase == "victory" {
+			wins++
+		}
+	}
+	averageRounds := float64(rounds) / 25
+	t.Logf("level-20 Brawler with five Ember Crystal armor sockets, seeds=1..25, guards-first, healing=true: wins=%d/25 average_rounds=%.2f", wins, averageRounds)
+	if wins < 18 {
+		t.Fatalf("equipped Brawler party only won %d/25", wins)
+	}
+	if averageRounds < 3 || averageRounds > 20 {
+		t.Fatalf("equipped Brawler final-boss average rounds %.2f outside [3,20]", averageRounds)
+	}
+}
+
 func TestFinalEncounterIgnoresQ12SideQuest(t *testing.T) {
 	g := finalCheckpoint(t, 1)
 	finalID := g.finalQuest().ID

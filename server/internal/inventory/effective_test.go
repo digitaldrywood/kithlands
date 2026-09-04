@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
 )
 
@@ -81,5 +82,50 @@ func TestCanonicalLoadoutWinsOverLegacyMirrors(t *testing.T) {
 	}
 	if !reflect.DeepEqual(before, inv.LoadoutStats(0, gd)) {
 		t.Fatal("stats changed on normalize")
+	}
+}
+
+func TestEveryLootEffectChangesAuthoritativeEffectiveStats(t *testing.T) {
+	gd := gamedata.Load("../../../shared")
+	class := gd.ClassByID("warrior")
+	member := character.New("Ayla", class.ID, class)
+	baseIDs := map[string]string{
+		"weapon": "short_sword", "armor": "leather_armor", "accessory": "copper_ring",
+	}
+	values := func(item EquipmentInstance) map[string]int {
+		t.Helper()
+		resolved, err := ResolveInstance(&item, gd)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return ResolveStats(member, resolved.Stats, class).Values()
+	}
+
+	assertActive := func(label, stat string, before, after map[string]int) {
+		t.Helper()
+		beforeValue, exists := before[stat]
+		if !exists {
+			t.Fatalf("%s uses %q, which is absent from authoritative effective values", label, stat)
+		}
+		if after[stat] == beforeValue || reflect.DeepEqual(after, before) {
+			t.Fatalf("%s %s did not change authoritative effective values", label, stat)
+		}
+	}
+
+	for _, affix := range gd.Loot.Affixes {
+		for _, kind := range affix.Kinds {
+			base := EquipmentInstance{BaseID: baseIDs[kind], Kind: kind}
+			modified := base
+			modified.Affixes = []AffixRoll{{AffixID: affix.ID, Value: affix.Modifier.Min}}
+			assertActive("affix "+affix.ID+" on "+kind, affix.Modifier.Stat, values(base), values(modified))
+		}
+	}
+	for _, gem := range gd.Loot.Gems {
+		for _, effect := range gem.Effects {
+			base := EquipmentInstance{BaseID: baseIDs[effect.Kind], Kind: effect.Kind, Sockets: []ItemSocket{{}}}
+			modified := base
+			modified.Sockets = []ItemSocket{{GemID: gem.ID}}
+			assertActive("gem "+gem.ID+" on "+effect.Kind, effect.Stat, values(base), values(modified))
+		}
 	}
 }
