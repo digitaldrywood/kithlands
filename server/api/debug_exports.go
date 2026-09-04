@@ -138,6 +138,10 @@ func (g *Game) DebugGiveItem(itemID string, qty int) error {
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if g.gd.KeyItemByID(itemID) != nil {
+		g.inv.AddKeyItem(itemID)
+		return nil
+	}
 	for range qty {
 		if _, err := g.grantLoot(itemID, g.maxPartyLevel(), 0); err != nil {
 			return err
