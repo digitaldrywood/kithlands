@@ -244,3 +244,109 @@ func TestConcurrentShopPurchaseHasOneWinner(t *testing.T) {
 		t.Fatal("concurrent purchase did not commit exactly one item and price")
 	}
 }
+
+func newSeededStockGame(t *testing.T, seed int64) *Game {
+	t.Helper()
+	manager := NewGameManager(loadSharedForTest(t), "../../shared")
+	game, err := manager.CreateGame(NewGameRequest{
+		TownName: "Cadott", Places: []string{"Store"}, BigBuilding: "Town Hall",
+		Party:      []PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
+		Difficulty: "normal", RNGSeed: seed,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	enterStockTestShop(t, game)
+	return game
+}
+
+func TestShopStockDeterminismAndSaveRoundTrip(t *testing.T) {
+	first := newSeededStockGame(t, 4242)
+	second := newSeededStockGame(t, 4242)
+	firstItems, err := first.GetShopItems("cadott-general-store")
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondItems, err := second.GetShopItems("cadott-general-store")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(firstItems, secondItems) {
+		t.Fatal("same save seed and node generated different shop stock")
+	}
+	rolled := findStockTestOffer(t, firstItems, "patched_mantle")
+	if err := first.BuyItem("cadott-general-store", rolled.StockID); err != nil {
+		t.Fatal(err)
+	}
+	remaining, err := first.GetShopItems("cadott-general-store")
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved, err := first.ToSaveState("shop round trip", "user-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := FromSaveState(saved, first.gd, first.loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manager := NewGameManager(first.gd, "../../shared")
+	if err := manager.attachSettlementMap(loaded); err != nil {
+		t.Fatal(err)
+	}
+	enterStockTestShop(t, loaded)
+	loadedItems, err := loaded.GetShopItems("cadott-general-store")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(loadedItems, remaining) {
+		t.Fatalf("save round trip changed catalog\nbefore: %#v\nafter: %#v", remaining, loadedItems)
+	}
+	beforeStock, err := json.Marshal(first.shopStocks)
+	if err != nil {
+		t.Fatal(err)
+	}
+	afterStock, err := json.Marshal(loaded.shopStocks)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(afterStock) != string(beforeStock) {
+		t.Fatalf("save round trip changed stock\nbefore: %s\nafter: %s", beforeStock, afterStock)
+	}
+	if err := loaded.BuyItem("cadott-general-store", rolled.StockID); err == nil {
+		t.Fatal("loaded save resurrected a sold offer")
+	}
+}
+
+func TestLegacySaveWithoutShopStockLoadsAndGenerates(t *testing.T) {
+	game := newTownTestGame(t)
+	saved, err := game.ToSaveState("legacy", "user-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var world map[string]any
+	if err := json.Unmarshal(saved.WorldState, &world); err != nil {
+		t.Fatal(err)
+	}
+	delete(world, "shop_stocks")
+	saved.WorldState, err = json.Marshal(world)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := FromSaveState(saved, game.gd, game.loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(loaded.shopStocks) != 0 {
+		t.Fatal("legacy load unexpectedly contained stock")
+	}
+	manager := NewGameManager(game.gd, "../../shared")
+	if err := manager.attachSettlementMap(loaded); err != nil {
+		t.Fatal(err)
+	}
+	nodeID := enterStockTestShop(t, loaded)
+	items, err := loaded.GetShopItems(nodeID)
+	if err != nil || len(items) == 0 {
+		t.Fatalf("legacy shop generation = %d items, %v", len(items), err)
+	}
+}
