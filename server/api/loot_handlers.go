@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 )
 
@@ -23,8 +24,14 @@ func (s *Server) handleSocketGem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req SocketGemRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
 		httpError(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if decoder.Decode(&struct{}{}) != io.EOF {
+		httpError(w, "expected one request", http.StatusBadRequest)
 		return
 	}
 	if err := game.SocketGem(req); err != nil {
@@ -41,8 +48,14 @@ func (s *Server) handleCraftGem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req CraftGemRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
 		httpError(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if decoder.Decode(&struct{}{}) != io.EOF {
+		httpError(w, "expected one request", http.StatusBadRequest)
 		return
 	}
 	if err := game.CraftGem(req); err != nil {
@@ -55,6 +68,9 @@ func (s *Server) handleCraftGem(w http.ResponseWriter, r *http.Request) {
 func (g *Game) SocketGem(req SocketGemRequest) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if err := g.checkGemMutationLocked(); err != nil {
+		return err
+	}
 	if req.InstanceID == "" || req.GemID == "" {
 		return fmt.Errorf("instance_id and gem_id are required")
 	}
@@ -64,8 +80,18 @@ func (g *Game) SocketGem(req SocketGemRequest) error {
 func (g *Game) CraftGem(req CraftGemRequest) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if err := g.checkGemMutationLocked(); err != nil {
+		return err
+	}
 	if req.RecipeID == "" {
 		return fmt.Errorf("recipe_id is required")
 	}
 	return g.inv.CraftGem(req.RecipeID, g.maxPartyLevel(), g.gd)
+}
+
+func (g *Game) checkGemMutationLocked() error {
+	if err := g.checkEquipmentMutationLocked(); err != nil {
+		return fmt.Errorf("gems can only be changed outside battle")
+	}
+	return nil
 }

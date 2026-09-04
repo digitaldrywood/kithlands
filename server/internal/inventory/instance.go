@@ -2,6 +2,7 @@ package inventory
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
@@ -79,6 +80,7 @@ func (inv *Inventory) Clone() *Inventory {
 	copy.EquipmentBuilds = inv.EquipmentBuildsSnapshot()
 	copy.Consumables = cloneCounts(inv.Consumables)
 	copy.Gems = cloneCounts(inv.Gems)
+	copy.KnownGemRecipes = maps.Clone(inv.KnownGemRecipes)
 	copy.KeyItems = append([]string(nil), inv.KeyItems...)
 	copy.Instances = make(map[string]*EquipmentInstance, len(inv.Instances))
 	for id, item := range inv.Instances {

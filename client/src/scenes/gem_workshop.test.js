@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  allRecipes,
   craftableRecipeCount,
   firstOpenSocket,
   gemEffectForItem,
@@ -23,6 +24,20 @@ const state = {
       kind: "weapon",
       name: "Keen Sword",
       power: 5,
+      socket_previews: [
+        {
+          gem_id: "ruby",
+          allowed: true,
+          before: { power: 5 },
+          after: { power: 7 },
+        },
+        {
+          gem_id: "sapphire",
+          allowed: true,
+          before: { power: 5 },
+          after: { power: 6 },
+        },
+      ],
       sockets: [{ index: 0 }, { index: 1, gem_id: "ruby" }],
     },
     { instance_id: "gear_2", sockets: [{ index: 0, gem_id: "ruby" }] },
@@ -36,7 +51,17 @@ const state = {
         instance_id: "gear_equipped",
         kind: "weapon",
         name: "Equipped Sword",
-        power: 6,
+        power: 999, // The client must use the authoritative preview.
+        socket_previews: [
+          {
+            gem_id: "ruby",
+            allowed: true,
+            before: { power: 6 },
+            after: { power: 8 },
+            character_before: { attack: 16 },
+            character_after: { attack: 18 },
+          },
+        ],
         sockets: [{ index: 0 }],
       },
     },
@@ -161,9 +186,8 @@ describe("Gem Workshop selectors", () => {
       current: 6,
       after: 8,
       delta: 2,
-      characterLabel: "Ayla ATK",
-      characterCurrent: 16,
-      characterAfter: 18,
+      character_before: { attack: 16 },
+      character_after: { attack: 18 },
     });
   });
 
@@ -174,7 +198,25 @@ describe("Gem Workshop selectors", () => {
       "sapphire",
     ]);
 
-    const armor = { kind: "armor", absorb: 3, sockets: [{ index: 0 }] };
+    const armor = {
+      kind: "armor",
+      absorb: 3,
+      sockets: [{ index: 0 }],
+      socket_previews: [
+        {
+          gem_id: "ruby",
+          allowed: true,
+          before: { absorb: 3 },
+          after: { absorb: 4 },
+        },
+        {
+          gem_id: "sapphire",
+          allowed: true,
+          before: { absorb: 3 },
+          after: { absorb: 6 },
+        },
+      ],
+    };
     expect(recommendedGems(state, armor)[0].gem.id).toBe("sapphire");
   });
 
@@ -204,5 +246,73 @@ describe("Gem Workshop selectors", () => {
   it("enables the workshop for either gems or recipes", () => {
     expect(gemWorkshopEnabled(state)).toBe(true);
     expect(gemWorkshopEnabled({ gems: [], gem_recipes: [] })).toBe(false);
+  });
+});
+
+describe("Workshop complete catalogs and authoritative restrictions", () => {
+  it("includes equipped rings, gloves and every canonical slot", () => {
+    const loadout = Array.from({ length: 12 }, (_, index) => ({
+      id: `slot_${index}`,
+      name: `Slot ${index}`,
+      item: { instance_id: `gear_${index}`, kind: "accessory", sockets: [{}] },
+    }));
+    const gear = workshopGear({
+      party: [{ name: "Ayla" }],
+      equipment: [{ loadout }],
+    });
+    expect(gear).toHaveLength(12);
+    expect(gear[11]).toMatchObject({
+      instance_id: "gear_11",
+      equipped_by: "Ayla",
+      equipped_kind: "Slot 11",
+    });
+  });
+  it("keeps all recipes inspectable and distinguishes undiscovered from insufficient", () => {
+    const recipes = Array.from({ length: 10 }, (_, i) => ({
+      id: `recipe_${i}`,
+      name: `Recipe ${i}`,
+      known: i < 4,
+      craftable: i === 0,
+      discovery_hint: "Find a Ward gem",
+      inputs: [],
+    }));
+    expect(allRecipes({ gem_recipes: recipes })).toHaveLength(10);
+    expect(knownRecipes({ gem_recipes: recipes })).toHaveLength(4);
+    expect(recommendedRecipes({ gem_recipes: recipes })).toHaveLength(10);
+    expect(recipeReadiness(recipes[9])).toBe("Find a Ward gem");
+    expect(
+      recipeReadiness({ ...recipes[0], block_reason: "Need 2 Ember Shards" }),
+    ).toBe("Need 2 Ember Shards");
+  });
+  it("uses accessory stat names and never fabricates a blocked preview", () => {
+    const gem = {
+      id: "ember",
+      effects: [{ kind: "accessory", stat: "str", value: 2 }],
+    };
+    const item = {
+      kind: "accessory",
+      socket_previews: [
+        {
+          gem_id: "ember",
+          allowed: true,
+          before: { str: 4 },
+          after: { str: 6 },
+        },
+      ],
+    };
+    expect(socketPreview(item, gem)).toMatchObject({
+      stat: "Strength",
+      current: 4,
+      after: 6,
+    });
+    expect(
+      socketPreview(
+        { ...item, socket_previews: [{ gem_id: "ember", allowed: false }] },
+        gem,
+      ),
+    ).toBeNull();
+    expect(
+      socketPreview({ kind: "accessory", stats: { str: 4 } }, gem),
+    ).toBeNull();
   });
 });

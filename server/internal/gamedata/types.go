@@ -456,6 +456,8 @@ type LootModifier struct {
 }
 
 type Gem struct {
+	Family        string      `json:"family"`
+	MaterialValue int         `json:"material_value"`
 	ID            string      `json:"id"`
 	Name          string      `json:"name"`
 	Tier          int         `json:"tier"`
@@ -472,12 +474,22 @@ type GemEffect struct {
 	Value int    `json:"value"`
 }
 
+// GemRecipeDiscovery unlocks a recipe on acquiring any matching gem.
+// A nil discovery keeps the original upgrade recipes available to old saves.
+type GemRecipeDiscovery struct {
+	Family  string `json:"family"`
+	MinTier int    `json:"min_tier"`
+	Hint    string `json:"hint"`
+}
+
 type GemRecipe struct {
-	ID            string      `json:"id"`
-	Name          string      `json:"name"`
-	RequiredLevel int         `json:"required_level"`
-	Inputs        []GemAmount `json:"inputs"`
-	Output        GemAmount   `json:"output"`
+	Description   string              `json:"description"`
+	Discovery     *GemRecipeDiscovery `json:"discovery,omitempty"`
+	ID            string              `json:"id"`
+	Name          string              `json:"name"`
+	RequiredLevel int                 `json:"required_level"`
+	Inputs        []GemAmount         `json:"inputs"`
+	Output        GemAmount           `json:"output"`
 }
 
 type GemAmount struct {

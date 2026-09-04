@@ -206,20 +206,21 @@ type TransportInfo struct {
 }
 
 type ItemState struct {
-	ID             string            `json:"id"`
-	InstanceID     string            `json:"instance_id,omitempty"`
-	Kind           string            `json:"kind,omitempty"`
-	Category       string            `json:"category,omitempty"`
-	Name           string            `json:"name"`
-	IconKey        string            `json:"icon_key,omitempty"`
-	Count          int               `json:"count"`
-	Rarity         string            `json:"rarity,omitempty"`
-	ItemLevel      int               `json:"item_level,omitempty"`
-	RequiredLevel  int               `json:"required_level,omitempty"`
-	Affixes        []ItemAffixState  `json:"affixes,omitempty"`
-	Sockets        []ItemSocketState `json:"sockets,omitempty"`
-	AllowedClasses []string          `json:"allowed_classes,omitempty"`
-	Stats          map[string]int    `json:"stats,omitempty"`
+	SocketPreviews []GemSocketPreviewState `json:"socket_previews,omitempty"`
+	ID             string                  `json:"id"`
+	InstanceID     string                  `json:"instance_id,omitempty"`
+	Kind           string                  `json:"kind,omitempty"`
+	Category       string                  `json:"category,omitempty"`
+	Name           string                  `json:"name"`
+	IconKey        string                  `json:"icon_key,omitempty"`
+	Count          int                     `json:"count"`
+	Rarity         string                  `json:"rarity,omitempty"`
+	ItemLevel      int                     `json:"item_level,omitempty"`
+	RequiredLevel  int                     `json:"required_level,omitempty"`
+	Affixes        []ItemAffixState        `json:"affixes,omitempty"`
+	Sockets        []ItemSocketState       `json:"sockets,omitempty"`
+	AllowedClasses []string                `json:"allowed_classes,omitempty"`
+	Stats          map[string]int          `json:"stats,omitempty"`
 	// Power is set on weapon items (id starts with "wpn_") so the client
 	// can show equip-delta previews without shipping the weapon catalog.
 	Power int `json:"power,omitempty"`
@@ -270,6 +271,10 @@ type GemEffectState struct {
 }
 
 type GemRecipeState struct {
+	Known         bool             `json:"known"`
+	DiscoveryHint string           `json:"discovery_hint"`
+	Description   string           `json:"description"`
+	BlockReason   string           `json:"block_reason,omitempty"`
 	ID            string           `json:"id"`
 	Name          string           `json:"name"`
 	RequiredLevel int              `json:"required_level"`

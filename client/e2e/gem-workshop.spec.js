@@ -1,353 +1,552 @@
 import { test, expect } from "@playwright/test";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
 
-const RUN_ID = Date.now();
+const proof = path.resolve(`tmp/gem-discovery-${Date.now()}`);
+mkdirSync(proof, { recursive: true });
+const state = (page) =>
+  page.evaluate(() => window.__kithlandsTest.gameState("World"));
+const capture = (page, label) =>
+  page.screenshot({ path: path.join(proof, `${label}.png`), fullPage: true });
 
-test.use({
-  viewport: { width: 800, height: 600 },
-});
-
-async function startLevelOneGame(page) {
-  await page.goto("/");
-  await page.waitForFunction(() => !!window.__kithlandsTest);
-  await page.waitForFunction(
-    () => window.__kithlandsTest.activeSceneKey() === "Title",
+async function start(page, seed = 42) {
+  const email = `gems-${Date.now()}@test.dev`;
+  await page.goto("/?noEncounters=1");
+  await page.waitForFunction(() =>
+    window.__kithlandsTest?.sceneIsActive("Title"),
   );
-  await page.evaluate(() => window.__kithlandsTest.startQuickGame());
-  await page.waitForFunction(
-    () => window.__kithlandsTest.activeSceneKey() === "World",
+  await page.evaluate(
+    (email) => window.__kithlandsTest.startWizardFromTitle(email),
+    email,
   );
-  await page.evaluate(() =>
-    window.__kithlandsTest.startCustomGame({
-      town_name: "Cadott, WI",
-      people: [{ name: "Coach Bell", relation: "friendly" }],
-      places: ["General Store", "Library", "Fire Hall"],
-      big_building: "Town Hall",
-      difficulty: "normal",
-      party: [
-        { name: "Ayla", class_id: "warrior" },
-        { name: "Mira", class_id: "mender" },
-      ],
-    }),
+  await page.evaluate(
+    (seed) =>
+      window.__kithlandsTest.startCustomGame({
+        town_name: "Gem Town",
+        places: ["Square"],
+        big_building: "Hall",
+        difficulty: "normal",
+        rng_seed: seed,
+        party: [
+          { name: "Ayla", class_id: "warrior" },
+          { name: "Mira", class_id: "mender" },
+        ],
+      }),
+    seed,
   );
-  await page.waitForFunction(
-    () => window.__kithlandsTest.activeSceneKey() === "World",
-  );
+  await page.evaluate(() => window.__kithlandsTest.waitForSceneReady("World"));
+  return email;
 }
-
-async function openSocketWorkshopFromEquipment(page) {
+async function open(page) {
   await page.keyboard.press("m");
-  await page.waitForFunction(
-    () => window.__kithlandsTest.sceneFlags("World").menuOpen,
-  );
   await page.evaluate(() =>
     window.__kithlandsTest.clickMenuButton("CHARACTER", "World"),
   );
   await expect(page.getByRole("dialog", { name: "Character" })).toBeVisible();
   await page.locator('[data-slot-id="main_hand"]').click();
   await page.getByRole("button", { name: "Socket", exact: true }).click();
-  await page.waitForFunction(() =>
-    window.__kithlandsTest
-      .visibleTexts("World")
-      .some((entry) => entry.text === "GEM WORKSHOP"),
-  );
-}
-
-test("previews and sockets equipped gear from the character screen", async ({
-  page,
-}) => {
-  await startLevelOneGame(page);
-
-  const starter = await page.evaluate(() =>
-    window.__kithlandsTest.gameState("World"),
-  );
-  expect(starter.gems).toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({ id: "ember_shard", count: 3 }),
-    ]),
-  );
-  const starterItem = starter.equipment[0].weapon_item;
-  expect(starterItem?.instance_id).toBeTruthy();
-  expect(starterItem.sockets.some((socket) => !socket.gem_id)).toBe(true);
-
-  await page.keyboard.press("m");
-  await page.waitForFunction(
-    () => window.__kithlandsTest.sceneFlags("World").menuOpen,
-  );
-  await page.evaluate(() =>
-    window.__kithlandsTest.clickMenuButton("CHARACTER", "World"),
-  );
-  await expect(page.getByRole("dialog", { name: "Character" })).toBeVisible();
-  await page.locator('[data-slot-id="main_hand"]').click();
   await expect(
-    page.getByRole("button", { name: "Socket", exact: true }),
+    page.getByRole("dialog", { name: "Gem Workshop" }),
   ).toBeVisible();
-  await page.screenshot({
-    path: `tmp/character-equipped-socket-${RUN_ID}.png`,
-    fullPage: true,
-  });
-  await page.getByRole("button", { name: "Socket", exact: true }).click();
-  await page.waitForFunction(() =>
-    window.__kithlandsTest
-      .visibleTexts("World")
-      .some((entry) => entry.text === "GEM WORKSHOP"),
-  );
-
-  const texts = await page.evaluate(() =>
-    window.__kithlandsTest.visibleTexts("World").map((entry) => entry.text),
-  );
-  expect(texts).toEqual(
-    expect.arrayContaining([
-      "GEM WORKSHOP",
-      "SOCKET GEMS",
-      "TRANSMUTE  •  1 READY",
-      "1  CHOOSE EQUIPMENT",
-      "2  CHOOSE A GEM",
-      "3  REVIEW & CONFIRM",
-      "PREVIEW — NOT APPLIED",
-      "CONFIRM & SOCKET",
-    ]),
-  );
-  expect(texts.some((text) => text.includes("Power:"))).toBe(true);
-  expect(texts.some((text) => text.includes("Ayla ATK:"))).toBe(true);
-  expect(texts).toContain("★ BEST OWNED GEM FOR THIS ITEM");
-  expect(texts).toContain("⚠ Socketing is permanent for now.");
-
-  await page.screenshot({
-    path: `tmp/gem-workshop-equipped-preview-${RUN_ID}.png`,
-    fullPage: true,
-  });
-
-  await page.evaluate(() =>
-    window.__kithlandsTest.clickInteractiveText(
-      "TRANSMUTE  •  1 READY",
-      "World",
-    ),
-  );
-  await page.waitForFunction(() =>
-    window.__kithlandsTest
-      .visibleTexts("World")
-      .some((entry) => entry.text === "RECIPE PREVIEW"),
-  );
-  const recipeTexts = await page.evaluate(() =>
-    window.__kithlandsTest.visibleTexts("World").map((entry) => entry.text),
-  );
-  expect(recipeTexts).toContain("★ RECOMMENDED — READY NOW");
-  expect(recipeTexts.some((text) => text.includes("Weapon Power:"))).toBe(true);
-  expect(recipeTexts.some((text) => text.includes("Armor Absorb:"))).toBe(true);
-  expect(recipeTexts.some((text) => text.includes("owned 3"))).toBe(true);
-  expect(recipeTexts).toContain("TRANSMUTE GEM — THEN SOCKET");
+}
+async function selectRecipe(page, id) {
+  const button = page.locator(`[data-recipe-id="${id}"]`);
+  const pages = page.getByRole("navigation", { name: "Recipes pages" });
+  if ((await button.count()) === 0) {
+    const previous = pages.getByRole("button", { name: "Previous" });
+    if (await previous.isEnabled()) await previous.click();
+  }
+  if ((await button.count()) === 0)
+    await pages.getByRole("button", { name: "Next" }).click();
+  await button.click();
+}
+async function fits(page) {
+  const bounds = await page.locator(".kith-gem-workshop").evaluate((node) => ({
+    width: node.getBoundingClientRect().width,
+    right: node.getBoundingClientRect().right,
+    bottom: node.getBoundingClientRect().bottom,
+    innerWidth,
+    innerHeight,
+    scrollWidth: document.documentElement.scrollWidth,
+  }));
+  expect(bounds.right).toBeLessThanOrEqual(bounds.innerWidth);
+  expect(bounds.bottom).toBeLessThanOrEqual(bounds.innerHeight);
+  expect(bounds.scrollWidth).toBeLessThanOrEqual(bounds.innerWidth);
   expect(
-    recipeTexts.some((text) => text.includes("Step 1: Create the gem")),
-  ).toBe(true);
+    await page
+      .locator(".kith-gem-workshop")
+      .evaluate((n) => parseFloat(getComputedStyle(n).fontSize)),
+  ).toBeGreaterThanOrEqual(15);
+}
 
-  await page.screenshot({
-    path: `tmp/gem-workshop-recipe-preview-${RUN_ID}.png`,
-    fullPage: true,
+for (const [width, height] of [
+  [390, 844],
+  [375, 667],
+  [800, 600],
+  [1440, 900],
+]) {
+  test(`discover, preview, transmute and socket at ${width}x${height}`, async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ width, height });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    const email = await start(page);
+    const before = await state(page);
+    await open(page);
+    await fits(page);
+    const socketPreview = page.getByRole("region", { name: "Socket preview" });
+    await expect(socketPreview).toContainText("Equipment values");
+    await capture(page, `${width}x${height}-socket-preview`);
+    await page.getByRole("button", { name: /Transmute ·/ }).click();
+    await expect(
+      page.getByRole("navigation", { name: "Recipes pages" }),
+    ).toContainText("1 / 2");
+    await capture(page, `${width}x${height}-recipe-book`);
+    await selectRecipe(page, "recover_ward_gems");
+    const recipePreview = page.getByRole("region", { name: "Recipe preview" });
+    await expect(recipePreview).toContainText("Undiscovered.");
+    await expect(recipePreview.locator(".gem-confirm")).toBeDisabled();
+    await recipePreview.scrollIntoViewIfNeeded();
+    await capture(page, `${width}x${height}-locked-second-page`);
+    expect((await state(page)).gems).toEqual(before.gems);
+    await selectRecipe(page, "refine_ember_crystal");
+    await expect(recipePreview).toContainText("party level 20");
+    await expect(recipePreview.locator(".gem-confirm")).toBeDisabled();
+    await selectRecipe(page, "refine_ember_gem");
+    await expect(recipePreview).toContainText("3 owned / 3 needed");
+    await expect(recipePreview.locator(".gem-confirm")).toBeEnabled();
+    // A native keyboard activation confirms the preview exactly once.
+    await recipePreview.locator(".gem-confirm").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("status")).toContainText(
+      "Created 1 × Ember Gem",
+    );
+    const crafted = await state(page);
+    expect(
+      crafted.gem_recipes.find((r) => r.id === "recover_ember_shards").known,
+    ).toBe(true);
+    expect(crafted.gems).toEqual([
+      expect.objectContaining({ id: "ember_gem", count: 1 }),
+    ]);
+    expect(crafted.equipment[0].weapon_item.sockets[0].gem_id).toBeUndefined();
+    const effectivePreview =
+      crafted.equipment[0].weapon_item.socket_previews.find(
+        (preview) => preview.gem_id === "ember_gem",
+      );
+    expect(
+      effectivePreview.character_after.attack -
+        effectivePreview.character_before.attack,
+    ).toBe(3);
+    await page
+      .getByRole("button", { name: "Choose equipment to socket" })
+      .click();
+    const effectiveTable = socketPreview
+      .locator(".gem-stat-changes")
+      .filter({ hasText: "effective values" });
+    await expect(
+      effectiveTable.getByRole("row", { name: /Attack/ }),
+    ).toContainText(String(effectivePreview.character_before.attack));
+    await expect(
+      effectiveTable.getByRole("row", { name: /Attack/ }),
+    ).toContainText(String(effectivePreview.character_after.attack));
+    await expect(page.locator("#gem-equipment")).toHaveValue(
+      before.equipment[0].weapon_instance_id,
+    );
+    await socketPreview.locator(".gem-confirm").click();
+    await expect(page.getByRole("status")).toContainText("Ember Gem socketed");
+    await expect(socketPreview).toContainText("All sockets filled");
+    const applied = await state(page);
+    expect(applied.equipment[0].weapon_item.sockets[0].gem_id).toBe(
+      "ember_gem",
+    );
+    expect(applied.equipment[0].effective.attack).toBe(
+      effectivePreview.character_after.attack,
+    );
+    expect(applied.gems || []).toEqual([]);
+    await capture(page, `${width}x${height}-socketed`);
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog", { name: "Character" })).toBeVisible();
+    await expect(page.locator(".equipment-character")).toHaveText("Ayla");
+    await expect(page.locator('[data-slot-id="main_hand"]')).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(
+      page.locator('[data-slot-id="main_hand"] .equipment-sockets'),
+    ).toHaveAttribute("aria-label", /Ember Gem/);
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
+    const saved = await page.evaluate(() =>
+      window.__kithlandsTest.saveGame("Workshop discovery proof"),
+    );
+    expect(saved.error).toBeUndefined();
+    const list = await page.evaluate(() => window.__kithlandsTest.listSaves());
+    const save = list.saves.find((s) => s.name === "Workshop discovery proof");
+    expect(save).toBeTruthy();
+    // A full reload clears browser memory; login again, then load the database save.
+    await page.reload();
+    await page.waitForFunction(() =>
+      window.__kithlandsTest?.sceneIsActive("Title"),
+    );
+    await page.evaluate(
+      (email) => window.__kithlandsTest.startQuickGame(email),
+      email,
+    );
+    await page.evaluate((id) => window.__kithlandsTest.loadSave(id), save.id);
+    const restored = await state(page);
+    expect(
+      restored.gem_recipes.find((r) => r.id === "recover_ember_shards").known,
+    ).toBe(true);
+    expect(restored.gems || []).toEqual([]);
+    expect(restored.equipment[0].weapon_item.sockets[0].gem_id).toBe(
+      "ember_gem",
+    );
+    expect(restored.equipment[0].effective.attack).toBe(
+      effectivePreview.character_after.attack,
+    );
+    expect(errors).toEqual([]);
   });
+}
 
-  await page.evaluate(() =>
-    window.__kithlandsTest.clickInteractiveText(
-      "TRANSMUTE GEM — THEN SOCKET",
-      "World",
-    ),
-  );
-  await page.waitForFunction(() =>
-    window.__kithlandsTest
-      .visibleTexts("World")
-      .some((entry) => entry.text === "SOCKET EMBER GEM NOW"),
-  );
-  const craftedTexts = await page.evaluate(() =>
-    window.__kithlandsTest.visibleTexts("World").map((entry) => entry.text),
-  );
-  expect(craftedTexts).toContain("STEP 2 OF 2 — WEAPON STILL OPEN");
-  expect(craftedTexts.some((text) => text.includes("not socketed yet"))).toBe(
-    true,
-  );
-  await page.evaluate(() =>
-    window.__kithlandsTest.clickInteractiveText(
-      "SOCKET EMBER GEM NOW",
-      "World",
-    ),
-  );
-  await page.waitForFunction(() => {
-    const state = window.__kithlandsTest.gameState("World");
-    return state.equipment[0].weapon_item?.sockets?.some(
-      (socket) => socket.gem_id === "ember_gem",
+test("recovers from a server rejection without partial inputs or duplicate rewards", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await start(page);
+  await open(page);
+  await page.getByRole("button", { name: /Transmute ·/ }).click();
+  await selectRecipe(page, "refine_ember_gem");
+  // Simulate a second device spending the same ingredients, using the real API.
+  const other = await page.evaluate(async () => {
+    const api = await import("/src/api.js");
+    return api.craftGem(
+      window.__kithlandsTest.gameState("World").id,
+      "refine_ember_gem",
     );
   });
+  expect(other.error).toBeUndefined();
+  await page
+    .getByRole("region", { name: "Recipe preview" })
+    .locator(".gem-confirm")
+    .click();
+  await expect(page.getByRole("alert")).toContainText("have 0");
+  await capture(page, "390x844-server-rejection");
+  await page.getByRole("button", { name: "Refresh inventory" }).click();
+  await expect(page.getByRole("status")).toContainText("Inventory refreshed");
+  expect((await state(page)).gems).toEqual([
+    expect.objectContaining({ id: "ember_gem", count: 1 }),
+  ]);
+  await selectRecipe(page, "recover_ember_shards");
+  await page
+    .getByRole("region", { name: "Recipe preview" })
+    .locator(".gem-confirm")
+    .click();
+  await expect(page.getByRole("status")).toContainText(
+    "Created 2 × Ember Shard",
+  );
+  const recovered = await state(page);
+  expect(recovered.gems).toEqual([
+    expect.objectContaining({ id: "ember_shard", count: 2 }),
+  ]);
+  expect(
+    recovered.gem_recipes.find((r) => r.id === "recover_ember_shards").known,
+  ).toBe(true);
+  await selectRecipe(page, "refine_ember_gem");
+  await expect(
+    page.getByRole("region", { name: "Recipe preview" }),
+  ).toContainText("2 owned / 3 needed");
+  await expect(
+    page
+      .getByRole("region", { name: "Recipe preview" })
+      .locator(".gem-confirm"),
+  ).toBeDisabled();
+  await capture(page, "390x844-lossful-recovery");
+});
 
-  const socketed = await page.evaluate(() =>
-    window.__kithlandsTest.gameState("World"),
-  );
-  expect((socketed.gems || []).some((gem) => gem.id === "ember_gem")).toBe(
-    false,
-  );
-  expect((socketed.gems || []).some((gem) => gem.id === "ember_shard")).toBe(
-    false,
+test("earned Ward loot unlocks conversion through ordinary battles", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 800, height: 600 });
+  await start(page, 3);
+  expect(
+    (await state(page)).gem_recipes.find(
+      (r) => r.id === "convert_ember_to_ward",
+    ).known,
+  ).toBe(false);
+  for (let battle = 0; battle < 2; battle++) {
+    const result = await page.evaluate(() =>
+      window.__kithlandsTest.submitAction({ type: "encounter" }, "World"),
+    );
+    expect(result.error).toBeUndefined();
+    await page.waitForFunction(
+      () =>
+        window.__kithlandsTest.sceneIsActive("Battle") &&
+        window.__kithlandsTest.visibleTexts("Battle").length > 5,
+    );
+    for (let round = 0; round < 30; round++) {
+      if (
+        !(await page.evaluate(() =>
+          window.__kithlandsTest.sceneIsActive("Battle"),
+        ))
+      )
+        break;
+      const result = await page.evaluate(() =>
+        window.__kithlandsTest.submitAction({ type: "attack" }, "Battle"),
+      );
+      expect(result.error).toBeUndefined();
+      if (result.phase !== "combat") break;
+    }
+    await page.evaluate(() =>
+      window.__kithlandsTest.waitForSceneReady("World"),
+    );
+    expect((await state(page)).phase).not.toBe("defeat");
+    if (
+      (await state(page)).gem_recipes.find(
+        (r) => r.id === "convert_ember_to_ward",
+      ).known
+    )
+      break;
+    await page.evaluate(() =>
+      window.__kithlandsTest.submitAction({ type: "advance" }, "World"),
+    );
+  }
+  const earned = await state(page);
+  expect(earned.gems).toEqual(
+    expect.arrayContaining([expect.objectContaining({ id: "ward_shard" })]),
   );
   expect(
-    socketed.equipment[0].weapon_item?.sockets?.some(
-      (socket) => socket.gem_id === "ember_gem",
-    ),
+    earned.gem_recipes.find((r) => r.id === "convert_ember_to_ward").known,
   ).toBe(true);
-  const appliedTexts = await page.evaluate(() =>
-    window.__kithlandsTest.visibleTexts("World").map((entry) => entry.text),
+  await open(page);
+  await page.getByRole("button", { name: /Transmute ·/ }).click();
+  await selectRecipe(page, "convert_ember_to_ward");
+  const preview = page.getByRole("region", { name: "Recipe preview" });
+  await expect(preview).toContainText("One shard is lost");
+  await preview.locator(".gem-confirm").click();
+  await expect(page.getByRole("status")).toContainText(
+    "Created 1 × Ward Shard",
   );
-  expect(appliedTexts).toContain("✓ SOCKET APPLIED");
-  expect(appliedTexts).toContain("◆ Ember Gem   +3 Power");
-  expect(appliedTexts).toContain("SOCKET FILLED");
-  expect(appliedTexts.some((text) => text.includes("is now socketed"))).toBe(
-    true,
+  const converted = await state(page);
+  expect(converted.gems.find((g) => g.id === "ward_shard").count).toBe(
+    earned.gems.find((g) => g.id === "ward_shard").count + 1,
   );
+  await capture(page, "800x600-earned-family-conversion");
+});
 
-  await page.screenshot({
-    path: `tmp/gem-workshop-socketed-${RUN_ID}.png`,
-    fullPage: true,
+test("large catalog fixture keeps the twelfth equipment and gem selectable", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 375, height: 667 });
+  await start(page);
+  // A presentation fixture exercises a future catalog larger than today's six
+  // gems. No mutation is sent and no fake items are granted to the live game.
+  await page.evaluate(async () => {
+    const { showGemWorkshop } = await import("/src/scenes/gem_workshop.js");
+    const live = window.__kithlandsTest.gameState("World");
+    const item = live.equipment[0].weapon_item,
+      gem = live.gems[0];
+    const gems = Array.from({ length: 12 }, (_, i) => ({
+      ...gem,
+      id: `fixture_gem_${i}`,
+      name: `Catalog gem ${i + 1}`,
+    }));
+    const loadout = Array.from({ length: 12 }, (_, i) => ({
+      id: `slot_${i}`,
+      name: `Position ${i + 1}`,
+      item: {
+        ...item,
+        instance_id: `fixture_gear_${i}`,
+        name: `Catalog gear ${i + 1}`,
+        socket_previews: [],
+      },
+    }));
+    const scene = {
+      gameState: { ...live, gems, items: [], equipment: [{ loadout }] },
+      input: { enabled: true },
+    };
+    showGemWorkshop(scene, { preselectedInstanceID: "fixture_gear_11" });
   });
-
-  await page.evaluate(() =>
-    window.__kithlandsTest.clickInteractiveText("CLOSE", "World"),
-  );
-  const characterDialog = page.getByRole("dialog", { name: "Character" });
-  await expect(characterDialog).toBeVisible();
-  const mainHand = page.locator('[data-slot-id="main_hand"]');
-  await expect(mainHand).toHaveClass(/is-socketed/);
-  await expect(mainHand.locator(".equipment-sockets")).toHaveAttribute(
-    "aria-label",
-    /1\/1 sockets filled · Ember Gem/,
+  await expect(page.locator("#gem-equipment option")).toHaveCount(12);
+  await expect(page.locator("#gem-equipment")).toHaveValue("fixture_gear_11");
+  const pages = page.getByRole("navigation", { name: "Gems pages" });
+  await pages.getByRole("button", { name: "Next" }).click();
+  await pages.getByRole("button", { name: "Next" }).click();
+  await page.locator('[data-gem-id="fixture_gem_11"]').click();
+  await expect(page.locator('[data-gem-id="fixture_gem_11"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
   );
   await expect(
-    page.getByRole("button", { name: "Socket", exact: true }),
-  ).toHaveCount(0);
-  const equippedWeapon = socketed.equipment[0].weapon_item;
-  await mainHand.hover();
-  const weaponTooltip = mainHand.locator(".equipment-tooltip");
-  await expect(weaponTooltip).toBeVisible();
-  await expect(weaponTooltip).toContainText(equippedWeapon.name);
-  await expect(weaponTooltip).toContainText("Ember Gem");
-  await expect(weaponTooltip).toContainText("Power +3");
-  await page.screenshot({
-    path: `tmp/character-weapon-details-${RUN_ID}.png`,
-    fullPage: true,
-  });
-  await page.locator(".character-summary-panel").hover();
-  await expect(weaponTooltip).toBeHidden();
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.waitForTimeout(150);
-  await page.screenshot({
-    path: `tmp/character-details-desktop-1440x900-${RUN_ID}.png`,
-    fullPage: true,
-  });
-
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.waitForTimeout(150);
-  const mobileViewport = await page.evaluate(() => ({
-    innerWidth: window.innerWidth,
-    scrollWidth: document.documentElement.scrollWidth,
-  }));
-  expect(mobileViewport.scrollWidth).toBeLessThanOrEqual(
-    mobileViewport.innerWidth,
-  );
-  await page.screenshot({
-    path: `tmp/character-details-mobile-390x844-${RUN_ID}.png`,
-    fullPage: true,
-  });
+    page.getByRole("region", { name: "Socket preview" }),
+  ).toContainText("Catalog gear 12");
+  await fits(page);
+  await capture(page, "375x667-large-catalog-fixture-page-three");
 });
 
-test("keeps the comparison readable at desktop and mobile viewports", async ({
+test("equipment select receives native arrow keys inside Phaser", async ({
   page,
 }) => {
-  await startLevelOneGame(page);
-  await openSocketWorkshopFromEquipment(page);
-  await page.waitForFunction(() =>
-    window.__kithlandsTest
-      .visibleTexts("World")
-      .some((entry) => entry.text === "CONFIRM & SOCKET"),
-  );
-
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.waitForTimeout(150);
-  await page.screenshot({
-    path: `tmp/gem-workshop-desktop-1440x900-${RUN_ID}.png`,
-    fullPage: true,
-  });
-
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.waitForTimeout(150);
-  const viewport = await page.evaluate(() => ({
-    innerWidth: window.innerWidth,
-    scrollWidth: document.documentElement.scrollWidth,
-  }));
-  expect(viewport.scrollWidth).toBeLessThanOrEqual(viewport.innerWidth);
-  await page.screenshot({
-    path: `tmp/gem-workshop-mobile-390x844-${RUN_ID}.png`,
-    fullPage: true,
-  });
-});
-
-test("advertises a ready transmutation and recommends its stronger output", async ({
-  page,
-}) => {
-  await startLevelOneGame(page);
-  await page.keyboard.press("m");
-  await page.waitForFunction(
-    () => window.__kithlandsTest.sceneFlags("World").menuOpen,
-  );
-  expect(
-    await page.evaluate(() =>
-      window.__kithlandsTest.menuButtonEnabled("GEMS (1)", "World"),
-    ),
-  ).toBe(true);
-  await page.evaluate(() =>
-    window.__kithlandsTest.clickMenuButton("GEMS (1)", "World"),
-  );
-  await page.waitForFunction(() =>
-    window.__kithlandsTest
-      .visibleTexts("World")
-      .some((entry) => entry.text === "TRANSMUTE  •  1 READY"),
-  );
-  await page.evaluate(() =>
-    window.__kithlandsTest.clickInteractiveText(
-      "TRANSMUTE  •  1 READY",
-      "World",
-    ),
-  );
-  await page.waitForFunction(() =>
-    window.__kithlandsTest
-      .visibleTexts("World")
-      .some((entry) => entry.text === "TRANSMUTE GEM — THEN SOCKET"),
-  );
-  await page.evaluate(() =>
-    window.__kithlandsTest.clickInteractiveText(
-      "TRANSMUTE GEM — THEN SOCKET",
-      "World",
-    ),
-  );
-  await page.waitForFunction(() => {
-    const gems = window.__kithlandsTest.gameState("World").gems;
-    return (
-      gems.some((gem) => gem.id === "ember_gem" && gem.count === 1) &&
-      !gems.some((gem) => gem.id === "ember_shard")
+  await page.setViewportSize({ width: 800, height: 600 });
+  await start(page);
+  await open(page);
+  const equipmentSelect = page.locator("#gem-equipment");
+  await equipmentSelect.evaluate((select) => {
+    const root = document.querySelector(".kith-gem-workshop");
+    select.addEventListener(
+      "keydown",
+      (event) => {
+        root.dataset.keyboardEvent = `${event.target.id}:${event.defaultPrevented}`;
+      },
+      { once: true },
     );
   });
-
-  await page.waitForFunction(() =>
-    window.__kithlandsTest
-      .visibleTexts("World")
-      .some((entry) => entry.text.includes("+3 Power")),
+  await equipmentSelect.focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.locator(".kith-gem-workshop")).toHaveAttribute(
+    "data-keyboard-event",
+    "gem-equipment:false",
   );
-  const texts = await page.evaluate(() =>
-    window.__kithlandsTest.visibleTexts("World").map((entry) => entry.text),
-  );
-  expect(texts.some((text) => text.includes("Ember Gem"))).toBe(true);
-  expect(texts.some((text) => text.includes("(+3)"))).toBe(true);
-  expect(texts).toContain("★ BEST OWNED GEM FOR THIS ITEM");
-  expect(texts).toContain("STEP 2 OF 2 — WEAPON STILL OPEN");
-  expect(texts).toContain("SOCKET EMBER GEM NOW");
-  expect(texts.some((text) => text.includes("not socketed yet"))).toBe(true);
+});
 
-  await page.screenshot({
-    path: `tmp/gem-workshop-transmuted-recommendation-${RUN_ID}.png`,
-    fullPage: true,
+test("pending socket keeps focus and closes onto refreshed equipment", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await start(page);
+  await open(page);
+  let release;
+  const held = new Promise((resolve) => {
+    release = resolve;
   });
+  await page.route("**/socket", async (route) => {
+    const response = await route.fetch();
+    await held;
+    await route.fulfill({ response });
+  });
+  try {
+    await page
+      .getByRole("region", { name: "Socket preview" })
+      .locator(".gem-confirm")
+      .click();
+    const dialog = page.getByRole("dialog", { name: "Gem Workshop" });
+    await expect(page.getByRole("status")).toContainText("Applying gem change");
+    await expect(dialog).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(dialog).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(dialog).toBeFocused();
+    await expect(
+      page.getByRole("button", { name: "Close", exact: true }),
+    ).toBeDisabled();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeVisible();
+    await capture(page, "390x844-pending-focus");
+    release();
+    await expect(page.getByRole("status")).toContainText(
+      "Ember Shard socketed",
+    );
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "Character" })).toBeVisible();
+    await expect(
+      page.locator('[data-slot-id="main_hand"] .equipment-sockets'),
+    ).toHaveAttribute("aria-label", /Ember Shard/);
+  } finally {
+    release();
+  }
+});
+
+test("timed-out mutation requires authoritative inventory reconciliation", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 375, height: 667 });
+  await start(page);
+  await open(page);
+  await page.getByRole("button", { name: /Transmute ·/ }).click();
+  await selectRecipe(page, "refine_ember_gem");
+  let release;
+  const held = new Promise((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/craft", async (route) => {
+    const response = await route.fetch();
+    await held;
+    await route.fulfill({ response });
+  });
+  try {
+    await page
+      .getByRole("region", { name: "Recipe preview" })
+      .locator(".gem-confirm")
+      .click();
+    await expect(page.getByRole("alert")).toContainText("Request timed out", {
+      timeout: 20_000,
+    });
+    await expect(
+      page
+        .getByRole("region", { name: "Recipe preview" })
+        .locator(".gem-confirm"),
+    ).toBeDisabled();
+    await page.getByRole("button", { name: "Refresh inventory" }).click();
+    await expect(page.getByRole("status")).toContainText("Inventory refreshed");
+    expect((await state(page)).gems).toEqual([
+      expect.objectContaining({ id: "ember_gem", count: 1 }),
+    ]);
+    release();
+    await capture(page, "375x667-timeout-reconciled");
+  } finally {
+    release();
+  }
+});
+
+test("scene shutdown ignores a late socket response", async ({ page }) => {
+  test.setTimeout(60_000);
+  await start(page);
+  await open(page);
+  let release;
+  const held = new Promise((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/socket", async (route) => {
+    const response = await route.fetch();
+    await held;
+    await route.fulfill({ response });
+  });
+  try {
+    await page
+      .getByRole("region", { name: "Socket preview" })
+      .locator(".gem-confirm")
+      .click();
+    await expect(page.getByRole("status")).toContainText("Applying gem change");
+    const replacement = await page.evaluate(() =>
+      window.__kithlandsTest.startCustomGame({
+        town_name: "New game",
+        places: ["Square"],
+        big_building: "Hall",
+        difficulty: "normal",
+        rng_seed: 4,
+        party: [{ name: "New hero", class_id: "warrior" }],
+      }),
+    );
+    release();
+    await expect(
+      page.getByRole("dialog", { name: "Gem Workshop" }),
+    ).toHaveCount(0);
+    await expect(page.getByRole("dialog", { name: "Character" })).toHaveCount(
+      0,
+    );
+    const current = await state(page);
+    expect(current.id).toBe(replacement.id);
+    expect(current.gems).toEqual([
+      expect.objectContaining({ id: "ember_shard", count: 3 }),
+    ]);
+    expect(current.equipment[0].weapon_item.sockets[0].gem_id).toBeUndefined();
+  } finally {
+    release();
+  }
 });

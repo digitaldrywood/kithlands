@@ -23,6 +23,7 @@ func (g *Game) grantLoot(itemID string, itemLevel, minSockets int) (lootGrant, e
 	if gem := g.gd.GemByID(itemID); gem != nil {
 		g.inv.Normalize()
 		g.inv.Gems[itemID]++
+		g.inv.DiscoverGemRecipes(g.gd)
 		return lootGrant{Name: gem.Name}, nil
 	}
 	if g.gd.EquipmentBaseByID(itemID) == nil {
@@ -50,6 +51,7 @@ func (g *Game) grantStarterLoot() error {
 	if starter.GemID != "" && starter.GemCount > 0 {
 		g.inv.Normalize()
 		g.inv.Gems[starter.GemID] += starter.GemCount
+		g.inv.DiscoverGemRecipes(g.gd)
 	}
 	for partySlot, member := range g.party {
 		if member == nil {
@@ -135,6 +137,7 @@ func (g *Game) rolledItemState(id string, item *inventory.EquipmentInstance) (It
 		}
 		state.Sockets = append(state.Sockets, socketState)
 	}
+	state.SocketPreviews = g.gemSocketPreviews(item, resolved.Stats)
 	return state, nil
 }
 
@@ -184,14 +187,27 @@ func (g *Game) fillGemState(state *GameState) {
 	}
 	level := g.maxPartyLevel()
 	for _, recipe := range g.gd.Loot.Recipes {
-		craftable := level >= recipe.RequiredLevel
+		craftable := true
+		blockReason := ""
+		if err := g.inv.GemRecipeBlockReason(recipe, level, g.gd); err != nil {
+			craftable = false
+			blockReason = err.Error()
+		}
+		if err := g.checkGemMutationLocked(); err != nil {
+			craftable = false
+			blockReason = err.Error()
+		}
+		hint := "Available from the start."
+		if recipe.Discovery != nil {
+			hint = recipe.Discovery.Hint
+		}
 		inputs := make([]GemAmountState, 0, len(recipe.Inputs))
 		for _, input := range recipe.Inputs {
-			craftable = craftable && g.inv.Gems[input.GemID] >= input.Count
 			inputs = append(inputs, g.gemAmountState(input.GemID, input.Count))
 		}
 		state.GemRecipes = append(state.GemRecipes, GemRecipeState{
 			ID: recipe.ID, Name: recipe.Name, RequiredLevel: recipe.RequiredLevel,
+			Known: g.inv.KnowsGemRecipe(recipe), DiscoveryHint: hint, Description: recipe.Description, BlockReason: blockReason,
 			Inputs: inputs, Output: g.gemAmountState(recipe.Output.GemID, recipe.Output.Count), Craftable: craftable,
 		})
 	}
@@ -221,4 +237,61 @@ func gemEffectStates(effects []gamedata.GemEffect) []GemEffectState {
 		})
 	}
 	return states
+}
+
+// GemSocketPreviewState contains read-only values from the same inventory
+// transaction used by confirmation. The client never calculates stat rules.
+type GemSocketPreviewState struct {
+	GemID           string         `json:"gem_id"`
+	Socket          int            `json:"socket"`
+	Allowed         bool           `json:"allowed"`
+	BlockReason     string         `json:"block_reason,omitempty"`
+	Before          map[string]int `json:"before"`
+	After           map[string]int `json:"after,omitempty"`
+	GearBefore      map[string]int `json:"gear_before,omitempty"`
+	GearAfter       map[string]int `json:"gear_after,omitempty"`
+	CharacterBefore map[string]int `json:"character_before,omitempty"`
+	CharacterAfter  map[string]int `json:"character_after,omitempty"`
+}
+
+func (g *Game) gemSocketPreviews(item *inventory.EquipmentInstance, before map[string]int) []GemSocketPreviewState {
+	socketIndex := -1
+	for i, socket := range item.Sockets {
+		if socket.GemID == "" {
+			socketIndex = i
+			break
+		}
+	}
+	if socketIndex < 0 {
+		return nil
+	}
+	var previews []GemSocketPreviewState
+	for _, gem := range g.gd.Loot.Gems {
+		if g.inv.Gems[gem.ID] < 1 {
+			continue
+		}
+		preview := GemSocketPreviewState{GemID: gem.ID, Socket: socketIndex, Before: cloneStats(before)}
+		if err := g.checkGemMutationLocked(); err != nil {
+			preview.BlockReason = err.Error()
+			previews = append(previews, preview)
+			continue
+		}
+		working := g.inv.Clone()
+		if err := working.SocketGem(item.ID, socketIndex, gem.ID, g.maxPartyLevel(), g.gd); err != nil {
+			preview.BlockReason = err.Error()
+		} else if resolved, err := inventory.ResolveInstance(working.Instance(item.ID), g.gd); err != nil {
+			preview.BlockReason = err.Error()
+		} else {
+			preview.Allowed = true
+			preview.After = cloneStats(resolved.Stats)
+			if partySlot, _, equipped := g.inv.FindEquippedInstance(item.ID); equipped {
+				preview.GearBefore = g.inv.LoadoutStats(partySlot, g.gd)
+				preview.GearAfter = working.LoadoutStats(partySlot, g.gd)
+				preview.CharacterBefore = g.inv.ResolveEffectiveStats(g.party[partySlot], partySlot, g.gd).Values()
+				preview.CharacterAfter = working.ResolveEffectiveStats(g.party[partySlot], partySlot, g.gd).Values()
+			}
+		}
+		previews = append(previews, preview)
+	}
+	return previews
 }

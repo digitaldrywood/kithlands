@@ -1,19 +1,27 @@
-import { craftGem, socketGem } from "../api.js";
+import { craftGem, getGame, socketGem } from "../api.js";
 import { playSFX } from "../systems/audio.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
-import { drawButton, drawPanel } from "../ui/panel.js";
+import "../styles/gem-workshop.css";
 
-const DEPTH = 71;
-const PANEL = { x: 400, y: 300, width: 760, height: 540 };
-const COLORS = {
-  gold: "#fff1a8",
-  text: "#eef7ff",
-  muted: "#91a6c8",
-  active: "#8ed7ff",
-  good: "#8ff0a4",
-  bad: "#ef9696",
-  warning: "#ffd27d",
+const STAT_NAMES = {
+  power: "Power",
+  absorb: "Absorb",
+  str: "Strength",
+  agi: "Agility",
+  int: "Intellect",
+  vit: "Vitality",
+  lck: "Luck",
+  hit_pct: "Hit chance",
+  crit_pct: "Critical chance",
+  magic_defense: "Magic defense",
+  evade_penalty: "Evade penalty",
+  attack: "Attack",
+  evade: "Evade",
+  attacks_per_turn: "Attacks per turn",
 };
+const statName = (stat) => STAT_NAMES[stat] || stat;
+const inactiveStat = (stat) => ["int", "vit", "magic_defense"].includes(stat);
+const PAGE_SIZE = 5;
 
 function itemKind(item) {
   if (item?.kind) return item.kind;
@@ -22,29 +30,27 @@ function itemKind(item) {
 
 function equippedGear(gs) {
   const result = [];
-  for (let slot = 0; slot < (gs?.equipment || []).length; slot += 1) {
-    const equip = gs.equipment[slot] || {};
-    const owner = gs?.party?.[slot]?.name || `Party ${slot + 1}`;
-    if (
-      equip.weapon_item?.instance_id &&
-      Array.isArray(equip.weapon_item.sockets)
-    ) {
+  for (
+    let partySlot = 0;
+    partySlot < (gs?.equipment || []).length;
+    partySlot += 1
+  ) {
+    const equip = gs.equipment[partySlot] || {};
+    const owner = gs?.party?.[partySlot]?.name || `Party ${partySlot + 1}`;
+    const slots = equip.loadout?.length
+      ? equip.loadout
+      : [
+          { name: "Weapon", item: equip.weapon_item },
+          { name: "Armor", item: equip.armor_item },
+        ];
+    for (const slot of slots) {
+      if (!slot.item?.instance_id || !Array.isArray(slot.item.sockets))
+        continue;
       result.push({
-        ...equip.weapon_item,
-        equipped_slot: slot,
+        ...slot.item,
+        equipped_slot: partySlot,
         equipped_by: owner,
-        equipped_kind: "Weapon",
-      });
-    }
-    if (
-      equip.armor_item?.instance_id &&
-      Array.isArray(equip.armor_item.sockets)
-    ) {
-      result.push({
-        ...equip.armor_item,
-        equipped_slot: slot,
-        equipped_by: owner,
-        equipped_kind: "Armor",
+        equipped_kind: slot.name,
       });
     }
   }
@@ -73,9 +79,13 @@ export function ownedGems(gs) {
   return gs.gems.filter((gem) => gem?.id && gem.count > 0);
 }
 
-export function knownRecipes(gs) {
+export function allRecipes(gs) {
   if (!Array.isArray(gs?.gem_recipes)) return [];
   return gs.gem_recipes.filter((recipe) => recipe?.id);
+}
+
+export function knownRecipes(gs) {
+  return allRecipes(gs).filter((recipe) => recipe.known !== false);
 }
 
 export function craftableRecipeCount(gs) {
@@ -107,36 +117,19 @@ export function gemEffectForItem(gem, item) {
   return (gem?.effects || []).find((effect) => effect.kind === kind) || null;
 }
 
-export function socketPreview(item, gem, gs = {}) {
+export function socketPreview(item, gem) {
   const effect = gemEffectForItem(gem, item);
-  if (!item || !gem || !effect) return null;
-  const kind = itemKind(item);
-  const current = kind === "armor" ? item.absorb || 0 : item.power || 0;
-  const after = current + effect.value;
-  const stat = kind === "armor" ? "Absorb" : "Power";
-  const owner = item.equipped_by || "";
-  const member = Number.isInteger(item.equipped_slot)
-    ? gs?.party?.[item.equipped_slot]
-    : null;
-  const characterCurrent =
-    kind === "weapon" && member ? (member.str || 0) + current : current;
-  const characterAfter = characterCurrent + effect.value;
+  const resolved = item?.socket_previews?.find(
+    (preview) => preview.gem_id === gem?.id,
+  );
+  if (!effect || !resolved?.allowed) return null;
   return {
-    kind,
-    stat,
-    current,
-    after,
-    delta: effect.value,
-    owner,
-    characterLabel:
-      owner && kind === "weapon"
-        ? `${owner} ATK`
-        : owner
-          ? `${owner} Absorb`
-          : "",
-    characterCurrent,
-    characterAfter,
-    better: effect.value > 0,
+    ...resolved,
+    stat: statName(effect.stat),
+    current: resolved.before[effect.stat] || 0,
+    after: resolved.after[effect.stat] || 0,
+    delta:
+      (resolved.after[effect.stat] || 0) - (resolved.before[effect.stat] || 0),
   };
 }
 
@@ -183,6 +176,9 @@ export function recipeUpgradePreview(recipe) {
 }
 
 export function recipeReadiness(recipe, gs = {}) {
+  if (recipe?.block_reason) return recipe.block_reason;
+  if (recipe?.known === false)
+    return recipe.discovery_hint || "Recipe not discovered yet";
   const level = maxPartyLevel(gs);
   if (level < (recipe?.required_level || 1)) {
     return `Requires party level ${recipe.required_level}`;
@@ -199,7 +195,7 @@ export function recipeReadiness(recipe, gs = {}) {
 
 export function recommendedRecipes(gs) {
   const level = maxPartyLevel(gs);
-  return knownRecipes(gs)
+  return allRecipes(gs)
     .map((recipe) => ({
       recipe,
       levelReady: (recipe.required_level || 1) <= level,
@@ -218,716 +214,641 @@ export function recommendedRecipes(gs) {
     );
 }
 
-function addText(scene, group, x, y, text, style = {}) {
-  const node = scene.add
-    .text(x, y, text, {
-      fontSize: "11px",
-      color: COLORS.text,
-      fontFamily: "Trebuchet MS",
-      ...style,
-    })
-    .setScrollFactor(0)
-    .setDepth(DEPTH);
-  group.push(node);
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text != null) node.textContent = text;
   return node;
 }
 
-function addPanel(scene, group, x, y, width, height) {
-  const panel = scene.add
-    .rectangle(x + width / 2, y + height / 2, width, height, 0x102442, 0.9)
-    .setStrokeStyle(1, 0x638fc5)
-    .setScrollFactor(0)
-    .setDepth(DEPTH - 1);
-  group.push(panel);
-  return panel;
+function button(label, action, key, disabled = false) {
+  const node = element("button", "", label);
+  node.type = "button";
+  node.dataset.focusKey = key;
+  node.disabled = disabled;
+  node.addEventListener("click", action);
+  return node;
 }
 
-function drawWorkshopFrame(scene, overlay, onClose) {
-  const panel = drawPanel(scene, PANEL.x, PANEL.y, PANEL.width, PANEL.height, {
-    depth: DEPTH - 3,
-    interactive: true,
-    variant: "ff6",
-  });
-  overlay.push(panel.bg);
-  addText(scene, overlay, 50, 48, "GEM WORKSHOP", {
-    fontSize: "22px",
-    fontStyle: "bold",
-    fontFamily: "Georgia",
-    color: COLORS.gold,
-  });
-  const subtitle = addText(
-    scene,
-    overlay,
-    50,
-    76,
-    "Choose first. Review the exact result. Confirm only when it looks right.",
-    { color: COLORS.muted },
-  );
-  const close = drawButton(scene, 684, 544, 136, 32, "CLOSE", onClose, {
-    depth: DEPTH,
-    fontSize: "11px",
-    fontStyle: "bold",
-    fill: 0x1b3660,
-    fillHover: 0x27538a,
-    stroke: 0xb6d2ff,
-    strokeWidth: 2,
-  });
-  overlay.push(close);
-  return { subtitle };
-}
-
-function drawChoiceRow(
-  scene,
-  group,
-  x,
-  y,
-  width,
-  height,
-  label,
-  { selected = false, muted = false, onClick, meta } = {},
-) {
-  const fill = selected ? 0x2d5a93 : muted ? 0x11182b : 0x172f55;
-  const stroke = selected ? 0xf4d881 : muted ? 0x3e536f : 0x6b9bd5;
-  const bg = scene.add
-    .rectangle(x + width / 2, y + height / 2, width, height, fill, 0.98)
-    .setStrokeStyle(1, stroke)
-    .setScrollFactor(0)
-    .setDepth(DEPTH);
-  bg.gemWorkshopMeta = meta || null;
-  const text = addText(scene, group, x + 10, y + height / 2, label, {
-    fontSize: "10px",
-    color: muted ? COLORS.muted : COLORS.text,
-    wordWrap: { width: width - 18 },
-  }).setOrigin(0, 0.5);
-  group.push(bg);
-  if (onClick) {
-    bg.setInteractive({ useHandCursor: true });
-    bg.on("pointerover", () => bg.setFillStyle(0x21406e, 0.98));
-    bg.on("pointerout", () =>
-      bg.setFillStyle(selected ? 0x2d5a93 : muted ? 0x11182b : 0x172f55, 0.98),
+function changedStats(parent, title, before = {}, after = {}) {
+  const rows = [
+    ...new Set([...Object.keys(before), ...Object.keys(after)]),
+  ].filter((key) => (before[key] || 0) !== (after[key] || 0));
+  if (!rows.length) return;
+  const section = element("section", "gem-stat-changes");
+  section.append(element("h3", "", title));
+  const table = element("table");
+  const head = element("tr");
+  for (const label of ["Stat", "Current", "Proposed"])
+    head.append(element("th", "", label));
+  const thead = element("thead");
+  thead.append(head);
+  table.append(thead);
+  const body = element("tbody");
+  for (const key of rows) {
+    const row = element("tr");
+    row.append(
+      element("th", "", statName(key)),
+      element("td", "", before[key] || 0),
+      element("td", "", after[key] || 0),
     );
-    bg.on("pointerup", onClick);
+    body.append(row);
   }
-  return bg;
-}
-
-function clearGroup(group) {
-  for (const object of group.splice(0)) object.destroy();
-}
-
-function addTabs(scene, group, mode, gs, setMode) {
-  const ready = craftableRecipeCount(gs);
-  const socketTab = drawButton(
-    scene,
-    264,
-    112,
-    210,
-    34,
-    "SOCKET GEMS",
-    () => setMode("socket"),
-    { depth: DEPTH, fontStyle: "bold" },
-  );
-  socketTab.setActive(mode === "socket");
-  const transmuteTab = drawButton(
-    scene,
-    500,
-    112,
-    242,
-    34,
-    ready > 0 ? `TRANSMUTE  •  ${ready} READY` : "TRANSMUTE RECIPES",
-    () => setMode("transmute"),
-    { depth: DEPTH, fontStyle: "bold" },
-  );
-  transmuteTab.setActive(mode === "transmute");
-  group.push(socketTab, transmuteTab);
-}
-
-function renderSocketMode(scene, group, state) {
-  const { gs, selectedGearID, selectedGemID, selectGear, selectGem, confirm } =
-    state;
-  const gear = workshopGear(gs);
-  const gems = ownedGems(gs);
-  const selectedItem = gear.find((item) => item.instance_id === selectedGearID);
-  const selectedGem = gems.find((gem) => gem.id === selectedGemID);
-  const selectedSocket = firstOpenSocket(selectedItem);
-  const recommendations =
-    selectedSocket >= 0 ? recommendedGems(gs, selectedItem) : [];
-  const bestGemID = recommendations[0]?.gem?.id || "";
-  const justCrafted =
-    !!selectedGem && selectedGem.id === state.justCraftedGemID;
-
-  addText(scene, group, 48, 148, "1  CHOOSE EQUIPMENT", {
-    fontSize: "12px",
-    fontStyle: "bold",
-    color: COLORS.gold,
-  });
-  addPanel(scene, group, 46, 168, 244, 330);
-  if (gear.length === 0) {
-    addText(scene, group, 60, 190, "No equipment has an open socket.", {
-      color: COLORS.muted,
-      wordWrap: { width: 215 },
-    });
-  }
-  gear.slice(0, 7).forEach((item, index) => {
-    const open = item.sockets.filter((socket) => !socket.gem_id).length;
-    const owner = item.equipped_by ? ` • ${item.equipped_by}` : " • Inventory";
-    const socketStatus = open > 0 ? `${open} OPEN` : "SOCKETED";
-    drawChoiceRow(
-      scene,
-      group,
-      56,
-      180 + index * 42,
-      224,
-      36,
-      `${item.name}\n${socketStatus}${owner}`,
-      {
-        selected: item.instance_id === selectedGearID,
-        onClick: () => selectGear(item.instance_id),
-        meta: { role: "gear", id: item.instance_id },
-      },
-    );
-  });
-
-  addText(scene, group, 306, 148, "2  CHOOSE A GEM", {
-    fontSize: "12px",
-    fontStyle: "bold",
-    color: COLORS.gold,
-  });
-  addPanel(scene, group, 304, 168, 186, 330);
-  if (gems.length === 0) {
-    addText(scene, group, 318, 190, "No gems owned yet.", {
-      color: COLORS.muted,
-    });
-  }
-  gems.slice(0, 7).forEach((gem, index) => {
-    const preview = socketPreview(selectedItem, gem, gs);
-    const levelLocked = (gem.required_level || 1) > maxPartyLevel(gs);
-    const socketFilled = selectedItem && selectedSocket < 0;
-    const best = gem.id === bestGemID;
-    const delta = !selectedItem
-      ? "Choose equipment"
-      : socketFilled
-        ? "Socket already filled"
-        : preview
-          ? `+${preview.delta} ${preview.stat}`
-          : "Not compatible";
-    drawChoiceRow(
-      scene,
-      group,
-      314,
-      180 + index * 42,
-      166,
-      36,
-      `${best ? "★ " : ""}${gem.name}  x${gem.count}\n${levelLocked ? `Lv.${gem.required_level} required` : delta}`,
-      {
-        selected: gem.id === selectedGemID,
-        muted: !selectedItem || socketFilled || !preview || levelLocked,
-        onClick:
-          !socketFilled && preview && !levelLocked
-            ? () => selectGem(gem.id)
-            : null,
-        meta: { role: "gem", id: gem.id },
-      },
-    );
-  });
-
-  addText(scene, group, 506, 148, "3  REVIEW & CONFIRM", {
-    fontSize: "12px",
-    fontStyle: "bold",
-    color: COLORS.gold,
-  });
-  addPanel(scene, group, 504, 168, 248, 330);
-  renderSocketPreview(
-    scene,
-    group,
-    gs,
-    selectedItem,
-    selectedGem,
-    bestGemID,
-    justCrafted,
-  );
-  const preview =
-    selectedSocket >= 0 ? socketPreview(selectedItem, selectedGem, gs) : null;
-  const confirmButton = drawButton(
-    scene,
-    628,
-    476,
-    214,
-    38,
-    state.busy
-      ? "WORKING..."
-      : selectedItem && selectedSocket < 0
-        ? "SOCKET FILLED"
-        : justCrafted
-          ? `SOCKET ${selectedGem.name.toUpperCase()} NOW`
-          : "CONFIRM & SOCKET",
-    confirm,
-    {
-      depth: DEPTH,
-      fontStyle: "bold",
-      fill: 0x1f5d48,
-      fillHover: 0x2b7d62,
-      stroke: 0xa5f0c8,
-    },
-  );
-  confirmButton.setEnabled(!!preview && !state.busy);
-  group.push(confirmButton);
-}
-
-function renderSocketPreview(
-  scene,
-  group,
-  gs,
-  item,
-  gem,
-  bestGemID,
-  justCrafted,
-) {
-  if (!item) {
-    addText(scene, group, 520, 190, "Choose equipment to see its sockets.", {
-      color: COLORS.muted,
-      wordWrap: { width: 215 },
-    });
-    return;
-  }
-  addText(scene, group, 520, 186, item.name, {
-    fontSize: "14px",
-    fontStyle: "bold",
-    color: COLORS.text,
-    wordWrap: { width: 215 },
-  });
-  addText(
-    scene,
-    group,
-    520,
-    218,
-    item.equipped_by
-      ? `Equipped by ${item.equipped_by} • ${item.equipped_kind}`
-      : "Currently in inventory",
-    { fontSize: "10px", color: COLORS.active },
-  );
-  addText(
-    scene,
-    group,
-    520,
-    240,
-    `Current: ${item.sockets.map((socket) => (socket.gem_id ? "◆" : "◇")).join("  ")}  ${firstOpenSocket(item) >= 0 ? "OPEN" : "SOCKETED"}`,
-    { fontSize: "14px", color: COLORS.gold },
-  );
-  if (firstOpenSocket(item) < 0) {
-    const filled = item.sockets.filter((socket) => socket.gem_id);
-    addText(scene, group, 520, 282, "✓ SOCKET APPLIED", {
-      fontSize: "11px",
-      fontStyle: "bold",
-      color: COLORS.good,
-    });
-    filled.forEach((socket, index) => {
-      const stat = socket.stat === "absorb" ? "Absorb" : "Power";
-      addText(
-        scene,
-        group,
-        520,
-        310 + index * 25,
-        `◆ ${socket.gem_name}   +${socket.value} ${stat}`,
-        { fontSize: "12px", fontStyle: "bold", color: COLORS.good },
-      );
-    });
-    addText(
-      scene,
-      group,
-      520,
-      372,
-      "This equipment has no open sockets remaining.",
-      { fontSize: "10px", color: COLORS.muted, wordWrap: { width: 215 } },
-    );
-    return;
-  }
-  if (!gem) {
-    addText(
-      scene,
-      group,
-      520,
-      284,
-      "Now choose a gem. The best compatible option is marked ★.",
-      {
-        color: COLORS.muted,
-        wordWrap: { width: 215 },
-      },
-    );
-    return;
-  }
-  const preview = socketPreview(item, gem, gs);
-  if (!preview) return;
-  addText(
-    scene,
-    group,
-    520,
-    266,
-    justCrafted ? "STEP 2 OF 2 — WEAPON STILL OPEN" : "PREVIEW — NOT APPLIED",
-    {
-      fontSize: "9px",
-      fontStyle: "bold",
-      color: COLORS.warning,
-    },
-  );
-  addText(scene, group, 520, 288, gem.name, {
-    fontSize: "13px",
-    fontStyle: "bold",
-    color: gem.id === bestGemID ? COLORS.good : COLORS.text,
-  });
-  if (gem.id === bestGemID) {
-    addText(scene, group, 520, 308, "★ BEST OWNED GEM FOR THIS ITEM", {
-      fontSize: "9px",
-      color: COLORS.good,
-    });
-  }
-  addText(
-    scene,
-    group,
-    520,
-    332,
-    `${preview.stat}:  ${preview.current}  →  ${preview.after}   (+${preview.delta})`,
-    { fontSize: "14px", fontStyle: "bold", color: COLORS.good },
-  );
-  if (preview.characterLabel) {
-    addText(
-      scene,
-      group,
-      520,
-      356,
-      `${preview.characterLabel}:  ${preview.characterCurrent}  →  ${preview.characterAfter}`,
-      { color: COLORS.active },
-    );
-  }
-  addText(scene, group, 520, 380, gem.description || "", {
-    fontSize: "10px",
-    color: COLORS.muted,
-    wordWrap: { width: 215 },
-  });
-  addText(scene, group, 520, 404, `After confirm: ◆ ${gem.name}`, {
-    fontSize: "10px",
-    color: COLORS.good,
-  });
-  addText(scene, group, 520, 426, "⚠ Socketing is permanent for now.", {
-    fontSize: "10px",
-    color: COLORS.warning,
-  });
-}
-
-function renderTransmuteMode(scene, group, state) {
-  const recipes = recommendedRecipes(state.gs);
-  const selected = recipes.find(
-    ({ recipe }) => recipe.id === state.selectedRecipeID,
-  )?.recipe;
-  const recommendedID = recipes.find(({ recipe }) => recipe.craftable)?.recipe
-    ?.id;
-
-  addText(scene, group, 48, 148, "KNOWN RECIPES", {
-    fontSize: "12px",
-    fontStyle: "bold",
-    color: COLORS.gold,
-  });
-  addPanel(scene, group, 46, 168, 320, 330);
-  recipes.slice(0, 7).forEach(({ recipe }, index) => {
-    const ready = recipe.craftable;
-    const recommendation = recipe.id === recommendedID;
-    drawChoiceRow(
-      scene,
-      group,
-      56,
-      180 + index * 52,
-      300,
-      44,
-      `${recommendation ? "★ " : ""}${recipe.name}\n${recipeReadiness(recipe, state.gs)}`,
-      {
-        selected: recipe.id === state.selectedRecipeID,
-        muted: !ready,
-        onClick: () => state.selectRecipe(recipe.id),
-        meta: { role: "recipe", id: recipe.id },
-      },
-    );
-  });
-
-  addText(scene, group, 382, 148, "RECIPE PREVIEW", {
-    fontSize: "12px",
-    fontStyle: "bold",
-    color: COLORS.gold,
-  });
-  addPanel(scene, group, 380, 168, 372, 330);
-  renderRecipePreview(scene, group, selected, state.gs, recommendedID);
-  const craftButton = drawButton(
-    scene,
-    566,
-    476,
-    260,
-    38,
-    state.busy ? "WORKING..." : "TRANSMUTE GEM — THEN SOCKET",
-    state.confirmRecipe,
-    {
-      depth: DEPTH,
-      fontStyle: "bold",
-      fill: 0x1f5d48,
-      fillHover: 0x2b7d62,
-      stroke: 0xa5f0c8,
-    },
-  );
-  craftButton.setEnabled(!!selected?.craftable && !state.busy);
-  group.push(craftButton);
-}
-
-function renderRecipePreview(scene, group, recipe, gs, recommendedID) {
-  if (!recipe) {
-    addText(
-      scene,
-      group,
-      396,
-      190,
-      "Select any recipe—even a locked one—to inspect its cost and result.",
-      {
-        color: COLORS.muted,
-        wordWrap: { width: 340 },
-      },
-    );
-    return;
-  }
-  addText(scene, group, 396, 184, recipe.output.gem_name, {
-    fontSize: "16px",
-    fontStyle: "bold",
-    color: COLORS.text,
-  });
-  if (recipe.id === recommendedID) {
-    addText(scene, group, 396, 208, "★ RECOMMENDED — READY NOW", {
-      fontSize: "10px",
-      color: COLORS.good,
-    });
-  }
-  addText(scene, group, 396, 236, "COST", {
-    fontSize: "10px",
-    fontStyle: "bold",
-    color: COLORS.gold,
-  });
-  (recipe.inputs || []).forEach((input, index) => {
-    const owned = input.owned ?? 0;
-    const enough = owned >= input.count;
-    addText(
-      scene,
-      group,
-      396,
-      256 + index * 22,
-      `${input.count} ${input.gem_name}   •   owned ${owned}`,
-      { color: enough ? COLORS.good : COLORS.bad },
-    );
-  });
-  addText(scene, group, 396, 294, "RESULTING SOCKET BONUS", {
-    fontSize: "10px",
-    fontStyle: "bold",
-    color: COLORS.gold,
-  });
-  recipeUpgradePreview(recipe).forEach((row, index) => {
-    addText(
-      scene,
-      group,
-      396,
-      316 + index * 25,
-      `${row.stat}:  +${row.before}  →  +${row.after}   (${row.delta >= 0 ? "+" : ""}${row.delta})`,
-      {
-        fontSize: "13px",
-        fontStyle: "bold",
-        color: row.delta >= 0 ? COLORS.good : COLORS.bad,
-      },
-    );
-  });
-  addText(scene, group, 396, 374, recipe.output.description || "", {
-    fontSize: "10px",
-    color: COLORS.muted,
-    wordWrap: { width: 340 },
-  });
-  addText(scene, group, 396, 398, recipeReadiness(recipe, gs), {
-    fontSize: "11px",
-    fontStyle: "bold",
-    color: recipe.craftable ? COLORS.good : COLORS.warning,
-  });
-  addText(
-    scene,
-    group,
-    396,
-    420,
-    "Step 1: Create the gem. Step 2: Socket it on the next screen.",
-    { fontSize: "9px", color: COLORS.muted },
-  );
+  table.append(body);
+  section.append(table);
+  parent.append(section);
 }
 
 export function showGemWorkshop(
   scene,
   { onClose, preselectedInstanceID = "", initialMode = "socket" } = {},
 ) {
+  if (scene.gemWorkshopState) {
+    scene.gemWorkshopState.close();
+    if (scene.gemWorkshopState) return scene.gemWorkshopState;
+  }
   pauseWorldFor(scene, "gem_workshop");
-  const overlay = [];
-  const content = [];
+  const previousFocus = document.activeElement;
+  const previousInput = scene.input?.enabled;
+  const previousKeyboard = scene.input?.keyboard?.enabled;
+  const previousGlobalCapture = scene.input?.keyboard?.manager?.preventDefault;
+  scene.input?.keyboard?.resetKeys();
+  scene.input?.keyboard?.disableGlobalCapture();
+  if (scene.input) scene.input.enabled = false;
+  if (scene.input?.keyboard) scene.input.keyboard.enabled = false;
+  const root = element("section", "kith-gem-workshop");
+  root.setAttribute("role", "dialog");
+  root.setAttribute("aria-modal", "true");
+  root.setAttribute("aria-labelledby", "gem-workshop-title");
+  root.tabIndex = -1;
+  (document.querySelector("#game-ui") || document.body).append(root);
   let mode = initialMode;
-  let busy = false;
   let selectedGearID = preselectedInstanceID;
   let selectedGemID = "";
   let selectedRecipeID = "";
+  let recipePage = 0;
+  let gemPage = 0;
+  let busy = false;
+  let needsRefresh = false;
+  let pendingController = null;
+  let closed = false;
   let notice = "";
   let noticeIsError = false;
-  let justCraftedGemID = "";
+  let crafted = false;
 
-  const close = () => {
-    clearGroup(content);
-    clearGroup(overlay);
-    if (scene.gemWorkshopEscHandler) {
-      scene.input.keyboard.off("keydown-ESC", scene.gemWorkshopEscHandler);
-      scene.gemWorkshopEscHandler = null;
-    }
+  const shutdown = () => close(false);
+  function close(callOnClose = true) {
+    if (closed || (callOnClose && busy)) return;
+    closed = true;
+    pendingController?.abort();
+    window.removeEventListener("keydown", keydown, true);
+    root.remove();
+    scene.events?.off("shutdown", shutdown);
+    scene.gemWorkshopState = null;
+    scene.input?.keyboard?.resetKeys();
+    if (scene.input?.keyboard && previousKeyboard != null)
+      scene.input.keyboard.enabled = previousKeyboard;
+    if (previousGlobalCapture === true)
+      scene.input?.keyboard?.enableGlobalCapture();
+    else if (previousGlobalCapture === false)
+      scene.input?.keyboard?.disableGlobalCapture();
+    if (scene.input && previousInput != null)
+      scene.input.enabled = previousInput;
     resumeWorldFor(scene, "gem_workshop");
-    if (onClose) onClose();
+    if (previousFocus?.isConnected) previousFocus.focus();
+    if (callOnClose) onClose?.();
+  }
+  scene.gemWorkshopState = { root, close };
+  scene.events?.once("shutdown", shutdown);
+  for (const event of ["pointerdown", "pointerup", "click", "wheel"])
+    root.addEventListener(event, (e) => e.stopPropagation());
+  const keydown = (event) => {
+    if (!root.contains(event.target)) {
+      event.stopImmediatePropagation();
+      root.focus({ preventScroll: true });
+    }
+    if (event.key === "Escape") {
+      event.stopImmediatePropagation();
+      event.preventDefault();
+      close();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const controls = [
+      ...root.querySelectorAll("button:not(:disabled), select:not(:disabled)"),
+    ];
+    const first = controls[0],
+      last = controls.at(-1);
+    if (
+      event.shiftKey &&
+      (document.activeElement === first || document.activeElement === root)
+    ) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      last?.focus();
+    } else if (
+      !event.shiftKey &&
+      (document.activeElement === last || document.activeElement === root)
+    ) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      first?.focus();
+    }
   };
-  const frame = drawWorkshopFrame(scene, overlay, close);
+  window.addEventListener("keydown", keydown, true);
 
-  const escHandler = () => close();
-  scene.input.keyboard.once("keydown-ESC", escHandler);
-  scene.gemWorkshopEscHandler = escHandler;
-
-  const runAction = async (action, successMessage, onSuccess) => {
-    if (busy) return;
+  async function runAction(action, success, onSuccess, refreshing = false) {
+    if (busy || (needsRefresh && !refreshing)) return;
+    const gameID = scene.gameState.id;
+    const controller = new AbortController();
+    pendingController = controller;
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    const actionFocus = document.activeElement?.dataset.focusKey;
     busy = true;
-    notice = "";
+    notice = refreshing ? "Refreshing inventory…" : "Applying gem change…";
+    noticeIsError = false;
     render();
+    root.focus({ preventScroll: true });
     let result;
     try {
-      result = await action();
+      result = await action(controller.signal);
     } catch (error) {
-      result = { error: error?.message || "Action failed" };
+      result = {
+        error:
+          error?.name === "AbortError"
+            ? "Request timed out. Refresh inventory to check whether the change completed."
+            : error?.message ||
+              "Connection interrupted. Refresh inventory before trying again.",
+      };
+    }
+    clearTimeout(timeout);
+    pendingController = null;
+    if (closed) return;
+    if (scene.gameState?.id !== gameID) {
+      close(false);
+      return;
     }
     busy = false;
     if (!result || result.error) {
-      notice = result?.error || "Action failed";
+      notice = result?.error || "Connection interrupted. Try again.";
       noticeIsError = true;
-      render();
-      return;
-    }
-    scene.gameState = result;
-    notice = successMessage;
-    noticeIsError = false;
-    if (onSuccess) onSuccess(result);
-    if (typeof scene.updateHUD === "function") scene.updateHUD();
-    playSFX("sfx_equip");
-    render();
-  };
-
-  const selectGear = (instanceID) => {
-    selectedGearID = instanceID;
-    selectedGemID =
-      recommendedGems(
-        scene.gameState,
-        workshopGear(scene.gameState).find(
-          (item) => item.instance_id === instanceID,
-        ),
-      )[0]?.gem?.id || "";
-    notice = "";
-    render();
-  };
-
-  const confirmSocket = async () => {
-    const item = workshopGear(scene.gameState).find(
-      (candidate) => candidate.instance_id === selectedGearID,
-    );
-    const gem = ownedGems(scene.gameState).find(
-      (candidate) => candidate.id === selectedGemID,
-    );
-    const socket = firstOpenSocket(item);
-    if (!item || !gem || socket < 0) return;
-    await runAction(
-      () => socketGem(scene.gameState.id, selectedGearID, socket, gem.id),
-      `✓ ${gem.name} socketed. ${item.name} is now socketed.`,
-      () => {
-        justCraftedGemID = "";
-      },
-    );
-  };
-
-  const confirmRecipe = async () => {
-    const recipe = knownRecipes(scene.gameState).find(
-      (candidate) => candidate.id === selectedRecipeID,
-    );
-    if (!recipe?.craftable) return;
-    await runAction(
-      () => craftGem(scene.gameState.id, recipe.id),
-      `✓ ${recipe.output.gem_name} transmuted — not socketed yet. Review and confirm above.`,
-      () => {
-        mode = "socket";
-        selectedGemID = recipe.output.gem_id;
-        justCraftedGemID = recipe.output.gem_id;
-      },
-    );
-  };
-
-  function render() {
-    clearGroup(content);
-    const gs = scene.gameState;
-    const gear = workshopGear(gs);
-    if (!gear.some((item) => item.instance_id === selectedGearID)) {
-      selectedGearID = gear[0]?.instance_id || "";
-    }
-    const selectedItem = gear.find(
-      (item) => item.instance_id === selectedGearID,
-    );
-    const gems = recommendedGems(gs, selectedItem);
-    if (!gems.some(({ gem }) => gem.id === selectedGemID)) {
-      selectedGemID = gems[0]?.gem?.id || "";
-    }
-    const recipes = recommendedRecipes(gs);
-    if (!recipes.some(({ recipe }) => recipe.id === selectedRecipeID)) {
-      selectedRecipeID = recipes[0]?.recipe?.id || "";
-    }
-
-    addTabs(scene, content, mode, gs, (nextMode) => {
-      mode = nextMode;
-      render();
-    });
-    if (mode === "transmute") {
-      renderTransmuteMode(scene, content, {
-        gs,
-        busy,
-        selectedRecipeID,
-        selectRecipe: (recipeID) => {
-          selectedRecipeID = recipeID;
-          render();
-        },
-        confirmRecipe,
-      });
+      needsRefresh = true;
     } else {
-      renderSocketMode(scene, content, {
-        gs,
-        busy,
-        selectedGearID,
-        selectedGemID,
-        justCraftedGemID,
-        selectGear,
-        selectGem: (gemID) => {
-          selectedGemID = gemID;
-          render();
-        },
-        confirm: confirmSocket,
-      });
+      needsRefresh = false;
+      scene.gameState = result;
+      scene.updateHUD?.();
+      notice = success;
+      noticeIsError = false;
+      onSuccess?.();
+      playSFX("sfx_equip");
     }
-    frame.subtitle.setText(
-      notice ||
-        "Choose first. Review the exact result. Confirm only when it looks right.",
-    );
-    frame.subtitle.setColor(
-      notice ? (noticeIsError ? COLORS.bad : COLORS.warning) : COLORS.muted,
-    );
-    if (notice) {
-      addText(scene, content, 50, 510, notice, {
-        fontSize: "10px",
-        fontStyle: "bold",
-        color: noticeIsError ? COLORS.bad : COLORS.good,
-        wordWrap: { width: 545 },
-      });
+    render();
+    if (!closed) {
+      const control = [...root.querySelectorAll("[data-focus-key]")].find(
+        (node) => node.dataset.focusKey === actionFocus && !node.disabled,
+      );
+      (control || root).focus({ preventScroll: true });
     }
   }
 
+  function pagedChoices(
+    parent,
+    entries,
+    page,
+    selected,
+    role,
+    choose,
+    setPage,
+    label,
+  ) {
+    const pages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
+    page = Math.min(page, pages - 1);
+    const nav = element("nav", "gem-pages");
+    nav.setAttribute("aria-label", `${label} pages`);
+    nav.append(
+      button(
+        "Previous",
+        () => setPage(page - 1),
+        `${role}-previous`,
+        busy || page === 0,
+      ),
+      element(
+        "span",
+        "",
+        `${page + 1} / ${pages} · ${entries.length} ${label.toLowerCase()}`,
+      ),
+      button(
+        "Next",
+        () => setPage(page + 1),
+        `${role}-next`,
+        busy || page + 1 === pages,
+      ),
+    );
+    parent.append(nav);
+    const list = element("div", "gem-choice-list");
+    list.dataset.list = role;
+    for (const entry of entries.slice(
+      page * PAGE_SIZE,
+      (page + 1) * PAGE_SIZE,
+    )) {
+      const row = button(
+        "",
+        () => choose(entry.id),
+        `${role}-${entry.id}`,
+        busy,
+      );
+      row.dataset[role + "Id"] = entry.id;
+      row.setAttribute("aria-pressed", String(entry.id === selected));
+      row.className = "gem-choice";
+      row.append(
+        element("strong", "", entry.name),
+        element("span", entry.muted ? "gem-muted" : "gem-ready", entry.detail),
+      );
+      list.append(row);
+    }
+    if (!entries.length)
+      list.append(
+        element("p", "gem-muted", `No ${label.toLowerCase()} available.`),
+      );
+    parent.append(list);
+  }
+
+  function renderRecipe(gs, body) {
+    const recipes = recommendedRecipes(gs).map(({ recipe }) => recipe);
+    if (!recipes.some((r) => r.id === selectedRecipeID))
+      selectedRecipeID = recipes[0]?.id || "";
+    const selected = recipes.find((r) => r.id === selectedRecipeID);
+    const choices = element("section", "gem-choices");
+    choices.append(
+      element("h2", "", "Recipe book"),
+      element(
+        "p",
+        "gem-muted",
+        `${knownRecipes(gs).length} of ${recipes.length} discovered. Inspect any recipe to learn how to unlock it.`,
+      ),
+    );
+    pagedChoices(
+      choices,
+      recipes.map((r) => ({
+        ...r,
+        detail:
+          r.known === false
+            ? "Undiscovered · inspect for hint"
+            : recipeReadiness(r, gs),
+        muted: !r.craftable,
+      })),
+      recipePage,
+      selectedRecipeID,
+      "recipe",
+      (id) => {
+        selectedRecipeID = id;
+        crafted = false;
+        render();
+      },
+      (page) => {
+        recipePage = page;
+        render();
+      },
+      "Recipes",
+    );
+    const preview = element("section", "gem-preview");
+    preview.setAttribute("aria-label", "Recipe preview");
+    if (selected) {
+      preview.append(
+        element(
+          "p",
+          "gem-eyebrow",
+          "Preview · ingredients are only spent on confirmation",
+        ),
+        element("h2", "", selected.name),
+      );
+      preview.append(
+        element(
+          "p",
+          selected.known === false ? "gem-lock" : "gem-muted",
+          selected.known === false
+            ? `Undiscovered. ${selected.discovery_hint}`
+            : `Discovered · Party level ${selected.required_level || 1} required`,
+        ),
+      );
+      const costs = element("section", "gem-costs");
+      costs.append(element("h3", "", "Consumes from your loose gems"));
+      for (const input of selected.inputs || []) {
+        costs.append(
+          element(
+            "p",
+            (input.owned || 0) >= input.count ? "gem-ready" : "gem-lock",
+            `${input.gem_name}: ${input.owned || 0} owned / ${input.count} needed`,
+          ),
+        );
+      }
+      preview.append(costs);
+      preview.append(
+        element("h3", "", "Creates"),
+        element(
+          "p",
+          "gem-output",
+          `${selected.output.count} × ${selected.output.gem_name}`,
+        ),
+        element("p", "gem-muted", selected.description),
+      );
+      preview.append(element("h3", "", "Socket effect per output gem"));
+      for (const effect of selected.output.effects || [])
+        preview.append(
+          element(
+            "p",
+            "gem-effect",
+            `${effect.kind}: +${effect.value} ${statName(effect.stat)}${inactiveStat(effect.stat) ? " · no battle effect yet" : ""}`,
+          ),
+        );
+      preview.append(
+        element(
+          "p",
+          "gem-muted",
+          "The output stays in your bag. Socketing is a separate action.",
+        ),
+      );
+      const reason = recipeReadiness(selected, gs);
+      preview.append(
+        element("p", selected.craftable ? "gem-ready" : "gem-lock", reason),
+      );
+      const confirm = button(
+        busy
+          ? "Transmuting…"
+          : `Transmute ${selected.output.count} × ${selected.output.gem_name}`,
+        () =>
+          runAction(
+            (signal) => craftGem(scene.gameState.id, selected.id, { signal }),
+            `Created ${selected.output.count} × ${selected.output.gem_name}. Ingredients consumed; nothing socketed.`,
+            () => {
+              selectedGemID = selected.output.gem_id;
+              crafted = true;
+            },
+          ),
+        "confirm-recipe",
+        busy || needsRefresh || !selected.craftable,
+      );
+      confirm.className = "gem-confirm";
+      preview.append(confirm);
+      if (crafted)
+        preview.append(
+          button(
+            "Choose equipment to socket",
+            () => {
+              mode = "socket";
+              render();
+            },
+            "socket-crafted",
+          ),
+        );
+    }
+    body.append(choices, preview);
+  }
+
+  function renderSocket(gs, body) {
+    const gear = workshopGear(gs);
+    if (!gear.some((i) => i.instance_id === selectedGearID))
+      selectedGearID = gear[0]?.instance_id || "";
+    const item = gear.find((i) => i.instance_id === selectedGearID);
+    const gems = ownedGems(gs);
+    if (!gems.some((g) => g.id === selectedGemID))
+      selectedGemID = recommendedGems(gs, item)[0]?.gem.id || gems[0]?.id || "";
+    const gem = gems.find((g) => g.id === selectedGemID);
+    const choices = element("section", "gem-choices");
+    choices.append(element("h2", "", "1. Choose equipment"));
+    const label = element("label", "gem-muted", "Equipment and equipped owner");
+    label.htmlFor = "gem-equipment";
+    const select = element("select");
+    select.id = "gem-equipment";
+    select.dataset.focusKey = "equipment";
+    select.disabled = busy || !gear.length;
+    for (const candidate of gear) {
+      const option = element(
+        "option",
+        "",
+        `${candidate.name} · ${candidate.equipped_by ? `${candidate.equipped_by}, ${candidate.equipped_kind}` : "In bag"} · ${candidate.sockets.filter((s) => !s.gem_id).length} open`,
+      );
+      option.value = candidate.instance_id;
+      option.selected = candidate.instance_id === selectedGearID;
+      select.append(option);
+    }
+    select.addEventListener("change", () => {
+      selectedGearID = select.value;
+      selectedGemID = "";
+      gemPage = 0;
+      notice = "";
+      render();
+    });
+    choices.append(label, select, element("h2", "", "2. Choose a loose gem"));
+    pagedChoices(
+      choices,
+      gems.map((g) => {
+        const option = item?.socket_previews?.find((p) => p.gem_id === g.id);
+        const effect = gemEffectForItem(g, item);
+        return {
+          ...g,
+          name: `${g.name} × ${g.count}`,
+          detail: option?.allowed
+            ? `+${effect?.value || 0} ${statName(effect?.stat)}`
+            : option?.block_reason ||
+              (firstOpenSocket(item) < 0
+                ? "No open socket"
+                : "Choose compatible equipment"),
+          muted: !option?.allowed,
+        };
+      }),
+      gemPage,
+      selectedGemID,
+      "gem",
+      (id) => {
+        selectedGemID = id;
+        render();
+      },
+      (page) => {
+        gemPage = page;
+        render();
+      },
+      "Gems",
+    );
+    const preview = element("section", "gem-preview");
+    preview.setAttribute("aria-label", "Socket preview");
+    preview.append(
+      element("p", "gem-eyebrow", "3. Review · select first, confirm below"),
+    );
+    if (!item) {
+      preview.append(
+        element("h2", "", "No socketed equipment yet"),
+        element(
+          "p",
+          "gem-muted",
+          "Find equipment with an open socket, then return here.",
+        ),
+      );
+    } else {
+      preview.append(
+        element("h2", "", item.name),
+        element(
+          "p",
+          "gem-muted",
+          item.equipped_by
+            ? `${item.equipped_by} · ${item.equipped_kind}`
+            : "In your bag",
+        ),
+      );
+      preview.append(element("h3", "", "Current sockets"));
+      for (const [index, socket] of item.sockets.entries())
+        preview.append(
+          element(
+            "p",
+            "gem-effect",
+            `Socket ${index + 1}: ${socket.gem_id ? `${socket.gem_name} · +${socket.value} ${statName(socket.stat)}` : "Open"}`,
+          ),
+        );
+      const resolved = item.socket_previews?.find(
+        (p) => p.gem_id === selectedGemID,
+      );
+      if (gem && resolved?.allowed) {
+        preview.append(
+          element("h3", "", `Proposed: ${gem.name}`),
+          element(
+            "p",
+            "gem-muted",
+            `Consumes 1 loose ${gem.name} (${gem.count} owned). Fills socket ${resolved.socket + 1}.`,
+          ),
+        );
+        changedStats(
+          preview,
+          "Equipment values",
+          resolved.before,
+          resolved.after,
+        );
+        changedStats(
+          preview,
+          `${item.equipped_by || "Character"} · total from gear`,
+          resolved.gear_before,
+          resolved.gear_after,
+        );
+        changedStats(
+          preview,
+          `${item.equipped_by || "Character"} · effective values`,
+          resolved.character_before,
+          resolved.character_after,
+        );
+        preview.append(
+          element(
+            "p",
+            "gem-lock",
+            "Socketing is permanent. This gem cannot be removed or recovered.",
+          ),
+        );
+      } else
+        preview.append(
+          element(
+            "p",
+            "gem-lock",
+            firstOpenSocket(item) < 0
+              ? "All sockets filled. Choose another item."
+              : resolved?.block_reason ||
+                  "Choose an owned, compatible gem to preview its effect.",
+          ),
+        );
+      const confirm = button(
+        busy ? "Socketing…" : `Socket ${gem?.name || "gem"} into ${item.name}`,
+        () => {
+          if (!resolved?.allowed || !gem) return;
+          runAction(
+            (signal) =>
+              socketGem(
+                scene.gameState.id,
+                item.instance_id,
+                resolved.socket,
+                gem.id,
+                { signal },
+              ),
+            `${gem.name} socketed into ${item.name}.`,
+            () => {
+              crafted = false;
+            },
+          );
+        },
+        "confirm-socket",
+        busy || needsRefresh || !resolved?.allowed,
+      );
+      confirm.className = "gem-confirm";
+      preview.append(confirm);
+    }
+    body.append(choices, preview);
+  }
+
+  function render() {
+    if (closed) return;
+    const focusKey = root.contains(document.activeElement)
+      ? document.activeElement.dataset.focusKey
+      : "";
+    const scroll = root.querySelector(".gem-body")?.scrollTop || 0;
+    const gs = scene.gameState;
+    root.replaceChildren();
+    const header = element("header", "gem-header");
+    const title = element("h1", "", "Gem Workshop");
+    title.id = "gem-workshop-title";
+    header.append(title, button("Close", close, "close", busy));
+    root.append(header);
+    const tabs = element("nav", "gem-tabs");
+    tabs.setAttribute("aria-label", "Workshop actions");
+    for (const [id, label] of [
+      ["socket", "Socket gems"],
+      ["transmute", `Transmute · ${craftableRecipeCount(gs)} ready`],
+    ]) {
+      const tab = button(
+        label,
+        () => {
+          mode = id;
+          render();
+        },
+        `mode-${id}`,
+        busy,
+      );
+      tab.setAttribute("aria-pressed", String(mode === id));
+      tabs.append(tab);
+    }
+    root.append(tabs);
+    if (notice) {
+      const status = element(
+        "p",
+        noticeIsError ? "gem-notice is-error" : "gem-notice",
+        notice,
+      );
+      status.setAttribute("role", noticeIsError ? "alert" : "status");
+      if (noticeIsError)
+        status.append(
+          button(
+            "Refresh inventory",
+            () =>
+              runAction(
+                (signal) => getGame(scene.gameState.id, { signal }),
+                "Inventory refreshed. Review your selection before confirming.",
+                undefined,
+                true,
+              ),
+            "refresh",
+            busy,
+          ),
+        );
+      root.append(status);
+    }
+    const body = element("div", "gem-body");
+    if (mode === "transmute") renderRecipe(gs, body);
+    else renderSocket(gs, body);
+    root.append(body);
+    body.scrollTop = scroll;
+    if (focusKey) {
+      const focused = [...root.querySelectorAll("[data-focus-key]")].find(
+        (n) => n.dataset.focusKey === focusKey && !n.disabled,
+      );
+      (focused || root).focus({ preventScroll: true });
+    }
+  }
   render();
+  root.focus();
+  return scene.gemWorkshopState;
 }

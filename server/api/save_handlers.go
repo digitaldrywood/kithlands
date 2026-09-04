@@ -117,6 +117,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		return nil, fmt.Errorf("unmarshaling inventory: %w", err)
 	}
 	inv.Normalize()
+	inv.DiscoverGemRecipes(gd)
 
 	var quests []generator.Quest
 	if err := json.Unmarshal(ss.QuestState, &quests); err != nil {
