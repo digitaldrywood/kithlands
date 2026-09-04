@@ -23,3 +23,14 @@ describe("victory presentation summary", () => {
     expect(formatSpoils(buildVictorySummary([]))).toBe("No item drops");
   });
 });
+
+it("includes the final quest reward in the battle receipt", () => {
+  const summary = buildVictorySummary([
+    "Victory! +900 XP, +220 gold",
+    "Quest complete: Silence the Bellbound Regent",
+    "Quest reward: +500 XP, +300 gold",
+  ]);
+  expect(summary.xpEarned).toBe(1400);
+  expect(summary.goldEarned).toBe(520);
+  expect(summary.quests).toHaveLength(1);
+});

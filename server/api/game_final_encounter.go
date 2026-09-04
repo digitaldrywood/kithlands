@@ -157,7 +157,8 @@ func (g *Game) completeFinalEncounter() bool {
 			c.XP += q.Reward.XP
 		}
 	}
-	g.logCombat(fmt.Sprintf("Quest complete: %s. +%d XP, +%d gold", q.Name, q.Reward.XP, q.Reward.Gold), CombatActionEntry{Kind: "info"})
+	g.logCombat(fmt.Sprintf("Quest complete: %s", q.Name), CombatActionEntry{Kind: "info"})
+	g.logCombat(fmt.Sprintf("Quest reward: +%d XP, +%d gold", q.Reward.XP, q.Reward.Gold), CombatActionEntry{Kind: "info"})
 	g.checkLevelUps()
 	g.restParty()
 	g.currentQ++

@@ -120,6 +120,7 @@
     "rust_beetle": "monster_rust_beetle",
     "moss_slime": "monster_moss_slime",
     "millroot_warden": "monster_millroot_warden",
-    "bellbound_regent": "monster_bellbound_regent"
+    "bellbound_regent": "monster_bellbound_regent",
+    "bell_sentinel": "monster_golem"
   }
 }

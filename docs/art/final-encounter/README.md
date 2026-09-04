@@ -2,8 +2,8 @@
 
 Original Kithlands final campaign boss. One static transparent monster image,
 created with the built-in OpenAI imagegen tool on 2026-09-04. No runtime image
-service is required. Existing Armored Knight guards retain their existing art
-and stable IDs. No character animation or generic enemy AI changes.
+service is required. Finale-only Bell Sentinels reuse the existing original golem art under their
+own stable content ID. Their stats match the previously sampled guards. No character animation or generic enemy AI changes.
 
 Source: `bellbound-regent-source.png`. Runtime export:
 `client/public/sprites/monsters/bellbound_regent.png`, fitted to 256 pixels and

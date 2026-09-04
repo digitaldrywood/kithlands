@@ -12,7 +12,9 @@ export function buildVictorySummary(log = []) {
 
   for (const rawLine of log) {
     const line = String(rawLine || "").trim();
-    const reward = line.match(/Victory!?\s*\+(\d+)\s+XP,\s*\+(\d+)\s+gold/i);
+    const reward = line.match(
+      /(?:Victory!?|Quest reward:)\s*\+(\d+)\s+XP,\s*\+(\d+)\s+gold/i,
+    );
     if (reward) {
       summary.xpEarned += Number.parseInt(reward[1], 10) || 0;
       summary.goldEarned += Number.parseInt(reward[2], 10) || 0;

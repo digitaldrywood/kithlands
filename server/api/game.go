@@ -596,6 +596,7 @@ type Game struct {
 func (g *Game) State() GameState {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	g.prepareFinalQuest()
 
 	state := GameState{
 		ID:                   g.id,
