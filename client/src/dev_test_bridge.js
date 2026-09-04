@@ -1741,6 +1741,27 @@ export function installDevTestBridge(game) {
       return clone(result);
     },
 
+    async shopItems(sceneKey = "Town") {
+      const scene = getScene(game, sceneKey);
+      const gameId = scene?.gameState?.id;
+      if (!gameId) throw new Error("Active scene has no game id");
+      const nodeId =
+        scene?.spawn?.node_id || scene?.gameState?.current_location?.map_id;
+      if (!nodeId) return { error: "Active scene is not inside a shop" };
+      return clone(await getShop(gameId, nodeId));
+    },
+
+    async buyShopOffer(nodeId, stockId, sceneKey = "Town") {
+      const scene = getScene(game, sceneKey);
+      const gameId = scene?.gameState?.id;
+      if (!gameId) throw new Error("Active scene has no game id");
+      const result = await buyItem(gameId, nodeId, stockId);
+      if (!result?.error) {
+        applySceneGameState(game, scene, result);
+      }
+      return clone(result);
+    },
+
     async forceEncounter(monsterIds, level = 1, sceneKey = "World") {
       const scene = getScene(game, sceneKey);
       const gameId = scene?.gameState?.id;
