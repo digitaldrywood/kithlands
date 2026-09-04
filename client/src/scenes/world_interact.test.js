@@ -1,5 +1,28 @@
-import { describe, expect, it } from "vitest";
-import { showInteractPrompt } from "./world_interact.js";
+import { describe, expect, it, vi } from "vitest";
+import { interactWithDoor, showInteractPrompt } from "./world_interact.js";
+
+describe("quest door transitions", () => {
+  it.each(["combat", "promotion", "victory", "defeat"])(
+    "routes %s through World instead of entering an interior",
+    async (phase) => {
+      const result = { phase, current_quest: 1, quests: [{}, {}] };
+      const scene = {
+        currentDoorSpawn: { node_id: "quest-target", name: "Trial" },
+        gameState: { phase: "world", current_quest: 0, quests: [{}, {}] },
+        scene: { start: vi.fn() },
+        cameras: { main: { fadeOut: vi.fn(), once: vi.fn() } },
+        async triggerQuestAdvance() {
+          this.gameState = result;
+        },
+      };
+      await interactWithDoor(scene);
+      expect(scene.scene.start).toHaveBeenCalledWith("World", {
+        gameState: result,
+      });
+      expect(scene.cameras.main.fadeOut).not.toHaveBeenCalled();
+    },
+  );
+});
 
 function makeScene() {
   return {

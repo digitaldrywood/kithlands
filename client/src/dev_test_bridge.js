@@ -1137,6 +1137,7 @@ function visibleBattleFxSnapshot(scene) {
 
   return {
     actorCursors: taggedCount("actor-cursor"),
+    animating: !!scene?.animating,
     reticles: taggedCount("reticle"),
     tracers: taggedCount("tracer"),
     bursts: taggedCount("burst"),
@@ -1388,6 +1389,52 @@ export function installDevTestBridge(game) {
 
     sceneIsActive(sceneKey) {
       return game.scene.isActive(sceneKey);
+    },
+
+    worldNavigationSnapshot() {
+      const scene = getScene(game, "World");
+      return clone({
+        x: scene?.playerX,
+        y: scene?.playerY,
+        animating: !!scene?.animating,
+        door: scene?.currentDoorSpawn || null,
+        spawns: scene?.spawns || [],
+        stepCount: scene?.stepCount,
+        walkable: scene?.tileData?.map((row) =>
+          row.map((tile) => scene.canWalkTile(tile)),
+        ),
+      });
+    },
+
+    townNavigationSnapshot() {
+      const scene = getScene(game, "Town");
+      return clone({
+        x: scene?.playerX,
+        y: scene?.playerY,
+        animating: !!scene?.animating,
+        nearNpcIndex: scene?.nearNpcIndex,
+        npcs: scene?.npcs?.map(({ x, y }) => ({ x, y })),
+        walkable: scene?.tiles?.map((row, y) =>
+          row.map(
+            (tile, x) =>
+              scene.canWalkTile(tile) &&
+              !scene.npcs.some((npc) => npc.x === x && npc.y === y),
+          ),
+        ),
+      });
+    },
+
+    startupSnapshot() {
+      const boot = getScene(game, "Boot");
+      return {
+        scene: activeScene(game)?.scene?.key,
+        progress: boot?.load?.progress,
+        loading: boot?.load?.isLoading(),
+        pending: [...(boot?.load?.list?.entries || [])].map((file) => file.key),
+        inflight: [...(boot?.load?.inflight?.entries || [])].map(
+          (file) => file.key,
+        ),
+      };
     },
 
     textureExists(key) {
@@ -1745,9 +1792,10 @@ export function installDevTestBridge(game) {
     },
 
     async loadSave(saveId) {
+      const source = activeScene(game);
       const result = await loadSaveApi(saveId);
       if (!result?.error) {
-        game.scene.start("World", { gameState: result });
+        source.scene.start("World", { gameState: result });
         await this.waitForSceneReady("World");
       }
       return clone(result);
@@ -1770,6 +1818,15 @@ export function installDevTestBridge(game) {
         throw new Error("Battle scene is not active");
       }
       return visibleBattleFxSnapshot(scene);
+    },
+
+    playCombatRound(actions) {
+      const scene = getScene(game, "Battle");
+      if (scene?.gameState?.phase !== "combat" || scene.animating) {
+        throw new Error("Battle is not ready for commands");
+      }
+      scene.memberActions = clone(actions);
+      void scene.submitAllActions();
     },
 
     captureBattleCanvas(sceneKey = "Battle") {
