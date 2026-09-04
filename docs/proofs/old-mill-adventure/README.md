@@ -2,7 +2,8 @@
 
 PR: [#304](https://github.com/digitaldrywood/kithlands/pull/304). Branch:
 `codex/old-mill-adventure`. No broad issue is closed by this expedition.
-The original monster pack from #303 is included.
+Original monster art and the shared stable-ID registry are provided by merged
+PR #303.
 
 ## What was verified
 
@@ -147,3 +148,29 @@ Strict external proximity enforcement is deferred: it requires authoritative
 World and Settlement movement plus proximity validation for `/transition`,
 not a client-submitted coordinate check. Independent review accepted this as
 an inherited navigation limitation; it is not claimed fixed by this PR.
+
+## Final dependency integration
+
+Final runtime commit `28b4634103bf8682b0f991b1118285a74502b467` is based on
+`e9c854de140b7cff965f50f744410db944fe8d5e`, including bestiary #302, inn #305,
+readiness #301 and monster pack #303. Four already-merged monster commits were
+removed from the branch history. `git diff --exit-code 28737e91ecf53fc8ff59f36f95c495481e5aa523 HEAD`
+confirmed the final rebase did not change any file from the tested integrated
+tree. Subsequent proof-only commits do not change that runtime.
+
+The readiness save-loader conflict preserves source-scene teardown and chooses
+Dungeon for dungeon checkpoints. Its four affected desktop/phone dungeon and
+Title save/load tests passed with
+`OLLAMA_URL=http://127.0.0.1:1 ./scripts/run_playwright_local.sh e2e/old-mill-adventure.spec.js e2e/readiness-save-load.spec.js --grep 'saved return|load'`.
+The [phone saved journal](390-saved-journal-1788535809297.png) was inspected.
+`cd server && go test ./api ./internal/interiors ./cmd/simulate` also passed
+after incorporating readiness and the active-interior chest/NPC behavior.
+
+Final monster metadata integration passed `make validate-data`,
+`cd server && go test ./api -run 'TestDungeon|TestOldMill|TestCombatItemTurn|TestFailedFlee' -count=1`,
+and the full client test/build/format gate (63 files, 521 tests).
+The final `--grep keyboard` browser run passed in 1.7 minutes, including real
+animated defeat, recovery, Smart-action retry, victory/Continue, retreat and
+the discovered Mill Bat using shared stable-ID artwork. Its
+[recovered trail](800-defeat-recovered-1788535938467.png) and
+[bestiary entry](800-mill-bat-discovery-1788535938467.png) were inspected.
