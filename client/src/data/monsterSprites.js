@@ -27,7 +27,10 @@ export const MONSTER_SPRITE_LOAD = [
   { key: "monster_briar_spider", path: "/sprites/monsters/briar_spider.png" },
   { key: "monster_rust_beetle", path: "/sprites/monsters/rust_beetle.png" },
   { key: "monster_moss_slime", path: "/sprites/monsters/moss_slime.png" },
-  { key: "monster_millroot_warden", path: "/sprites/monsters/millroot_warden.png" },
+  {
+    key: "monster_millroot_warden",
+    path: "/sprites/monsters/millroot_warden.png",
+  },
 ];
 
 export const ENEMY_SPRITES = {

@@ -1,0 +1,117 @@
+{
+  "mill_bat": {
+    "canvas": [
+      128,
+      128
+    ],
+    "source_bounds": [
+      45,
+      112,
+      1486,
+      885
+    ],
+    "occupied_bounds": [
+      23,
+      42,
+      105,
+      86
+    ],
+    "origin": [
+      0.5,
+      0.5
+    ],
+    "runtime_path": "client/public/sprites/monsters/mill_bat.png"
+  },
+  "briar_spider": {
+    "canvas": [
+      128,
+      128
+    ],
+    "source_bounds": [
+      59,
+      46,
+      1467,
+      971
+    ],
+    "occupied_bounds": [
+      17,
+      53,
+      111,
+      115
+    ],
+    "origin": [
+      0.5,
+      0.5
+    ],
+    "runtime_path": "client/public/sprites/monsters/briar_spider.png"
+  },
+  "rust_beetle": {
+    "canvas": [
+      128,
+      128
+    ],
+    "source_bounds": [
+      140,
+      108,
+      1407,
+      917
+    ],
+    "occupied_bounds": [
+      20,
+      59,
+      108,
+      115
+    ],
+    "origin": [
+      0.5,
+      0.5
+    ],
+    "runtime_path": "client/public/sprites/monsters/rust_beetle.png"
+  },
+  "moss_slime": {
+    "canvas": [
+      128,
+      128
+    ],
+    "source_bounds": [
+      245,
+      132,
+      1071,
+      1026
+    ],
+    "occupied_bounds": [
+      27,
+      35,
+      101,
+      115
+    ],
+    "origin": [
+      0.5,
+      0.5
+    ],
+    "runtime_path": "client/public/sprites/monsters/moss_slime.png"
+  },
+  "millroot_warden": {
+    "canvas": [
+      192,
+      192
+    ],
+    "source_bounds": [
+      15,
+      13,
+      1186,
+      1294
+    ],
+    "occupied_bounds": [
+      13,
+      6,
+      178,
+      186
+    ],
+    "origin": [
+      0.5,
+      0.5
+    ],
+    "runtime_path": "client/public/sprites/monsters/millroot_warden.png"
+  }
+}

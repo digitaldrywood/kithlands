@@ -33,4 +33,30 @@ describe("monster sprite registry", () => {
     const keys = MONSTER_SPRITE_LOAD.map((e) => e.key);
     expect(new Set(keys).size).toBe(keys.length);
   });
+
+  it("ships dedicated RGBA battle images for the Old Mill pack", () => {
+    const ids = [
+      "mill_bat",
+      "briar_spider",
+      "rust_beetle",
+      "moss_slime",
+      "millroot_warden",
+    ];
+    const images = ids.map((id) => {
+      const monster = monsters.find((entry) => entry.id === id);
+      const asset = MONSTER_SPRITE_LOAD.find(
+        (entry) => entry.key === ENEMY_SPRITES[monster.name],
+      );
+      const png = readFileSync(
+        resolve(here, "../../public", asset.path.slice(1)),
+      );
+      expect(png.subarray(1, 4).toString()).toBe("PNG");
+      const size = monster.is_boss ? 192 : 128;
+      expect(png.readUInt32BE(16)).toBe(size);
+      expect(png.readUInt32BE(20)).toBe(size);
+      expect(png[25]).toBe(6); // RGBA PNG, not a flattened background.
+      return png.toString("base64");
+    });
+    expect(new Set(images).size).toBe(ids.length);
+  });
 });
