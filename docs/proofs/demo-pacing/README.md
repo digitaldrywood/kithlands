@@ -38,11 +38,11 @@ completion matched victory, and Q12 remained the earned terminal encounter.
 ## Browser proof
 
 The focused fresh-campaign browser test passed and produced a compact
-[authoritative state snapshot](20260904-fresh-campaign-1788562804819.json).
-The [desktop quest log](20260904-quest-log-desktop-1788562804819.png) visibly
+[authoritative state snapshot](20260904-fresh-campaign-1788565877380.json).
+The [desktop quest log](20260904-quest-log-desktop-1788565877380.png) visibly
 shows the fresh Act 1 state, current objective, ordered steps, and upcoming
 required beats; the
-[phone capture](20260904-quest-log-phone-1788562804819.png) verifies the same
+[phone capture](20260904-quest-log-phone-1788565877380.png) verifies the same
 content at the mobile viewport. The state snapshot records all 12 required
 quest IDs and Q12 as the final entry.
 

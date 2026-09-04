@@ -19,10 +19,28 @@ test("fresh campaign exposes twelve required beats with Q12 last", async ({
   await page.waitForFunction(() =>
     window.__kithlandsTest?.sceneIsActive("Title"),
   );
-  const state = await page.evaluate(() =>
+  await page.evaluate(() =>
     window.__kithlandsTest.startQuickGame(
       `demo-pacing-${Date.now()}@kithlands.dev`,
     ),
+  );
+  const state = await page.evaluate(() =>
+    window.__kithlandsTest.startCustomGame({
+      town_name: "Cadott, WI",
+      people: [
+        { name: "Bob", relation: "friendly" },
+        { name: "Mrs Henderson", relation: "neutral" },
+        { name: "Mayor Grimes", relation: "rival" },
+      ],
+      places: ["The School", "Creswood Corners", "Fire Hall"],
+      big_building: "Town Hall",
+      party: [
+        { name: "Hero", class_id: "warrior" },
+        { name: "Sparks", class_id: "cinder" },
+      ],
+      difficulty: "normal",
+      rng_seed: 4,
+    }),
   );
 
   expect(state.quests).toHaveLength(12);
