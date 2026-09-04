@@ -345,3 +345,53 @@ func TestEquipmentBuildCanClearEverySlot(t *testing.T) {
 		t.Fatal("clearing loadout changed item ownership")
 	}
 }
+
+func TestEquipmentBuildRestoresLegacyStaticShieldAndHelmet(t *testing.T) {
+	t.Parallel()
+	g := buildTestGame(t)
+	shield := g.gd.Items.Shields[0].ID
+	helmet := g.gd.Items.Helmets[0].ID
+	g.inv.Equipment[0].ShieldID = shield
+	g.inv.Equipment[0].HelmetID = helmet
+	ss, err := g.ToSaveState("legacy defense", "user")
+	if err != nil {
+		t.Fatal(err)
+	}
+	g, err = FromSaveState(ss, g.gd, g.loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g.inv.Equipment[0].Equipped("off_hand").ItemID != shield || g.inv.Equipment[0].Equipped("head").ItemID != helmet {
+		t.Fatal("legacy defenses were not normalized")
+	}
+	defense := saveBuild(t, g, "Legacy defense")
+	equipped := g.inv.Equipment[0]
+	g.inv.Equipment[0] = inventory.EquipmentSlots{}
+	empty := saveBuild(t, g, "Unarmed")
+	g.inv.Equipment[0] = equipped
+	keys := map[string]string{"off_hand": equipmentStateID("shield", shield), "head": equipmentStateID("helmet", helmet)}
+	owned := len(g.inv.Instances)
+	for i := 0; i < 2; i++ {
+		p := previewBuild(t, g, empty)
+		if err := g.ApplyEquipmentBuild(0, empty, p.Token, false); err != nil {
+			t.Fatal(err)
+		}
+		for slot, key := range keys {
+			if g.inv.Equipment[0].Equipped(slot).ItemID != "" || g.inv.Consumables[key] != 1 {
+				t.Fatalf("clear %s lost or duplicated gear: %d", slot, g.inv.Consumables[key])
+			}
+		}
+		p = previewBuild(t, g, defense)
+		if err := g.ApplyEquipmentBuild(0, defense, p.Token, false); err != nil {
+			t.Fatal(err)
+		}
+		for slot, key := range keys {
+			if g.inv.Equipment[0].Equipped(slot).ItemID == "" || g.inv.Consumables[key] != 0 {
+				t.Fatalf("restore %s lost or duplicated gear: %d", slot, g.inv.Consumables[key])
+			}
+		}
+	}
+	if len(g.inv.Instances) != owned {
+		t.Fatal("static build switching changed instance ownership")
+	}
+}

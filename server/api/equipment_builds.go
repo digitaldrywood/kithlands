@@ -49,10 +49,7 @@ func (g *Game) checkEquipmentBuildMemberLocked(partySlot int) error {
 	if partySlot < 0 || partySlot >= len(g.party) || partySlot >= len(g.inv.Equipment) || g.party[partySlot] == nil {
 		return fmt.Errorf("invalid party slot")
 	}
-	if g.phase != "world" && g.phase != "quest_complete" {
-		return fmt.Errorf("saved builds can only be changed while exploring or after completing a quest")
-	}
-	return nil
+	return g.checkEquipmentMutationLocked()
 }
 
 func (g *Game) SaveEquipmentBuild(partySlot int, id, name string) error {
@@ -207,14 +204,7 @@ func (g *Game) planEquipmentBuildLocked(partySlot int, id string) (EquipmentBuil
 		}
 		candidate, err := g.recommendationCandidateForRef(ref, "", "balanced")
 		if ref.InstanceID == "" && err == nil {
-			switch candidate.category {
-			case "weapon":
-				candidate.inventoryKey = "wpn_" + ref.ItemID
-			case "armor":
-				candidate.inventoryKey = "arm_" + ref.ItemID
-			default:
-				reason = "legacy equipment in this position cannot be restored; delete this build and save current gear"
-			}
+			candidate.inventoryKey = equipmentStateID(candidate.category, ref.ItemID)
 		}
 		if reason == "" && err != nil {
 			reason = err.Error()
@@ -238,12 +228,9 @@ func (g *Game) planEquipmentBuildLocked(partySlot int, id string) (EquipmentBuil
 		if ref.ItemID == "" {
 			continue
 		}
-		if ref.InstanceID == "" {
-			base := g.gd.EquipmentBaseByID(ref.ItemID)
-			if base == nil || (base.Category != "weapon" && base.Category != "armor") {
-				preview.Reasons = append(preview.Reasons, fmt.Sprintf("%s contains unsupported legacy gear; resolve it before applying", slot.Name))
-				continue
-			}
+		if ref.InstanceID == "" && g.gd.EquipmentBaseByID(ref.ItemID) == nil {
+			preview.Reasons = append(preview.Reasons, fmt.Sprintf("%s contains unknown legacy gear; delete this build and save current gear", slot.Name))
+			continue
 		}
 		if _, err := working.UnequipAt(partySlot, slot.ID, g.gd); err != nil {
 			return preview, nil, err
