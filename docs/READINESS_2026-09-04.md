@@ -184,3 +184,32 @@ autosave. The API's normal load behavior resumes in the overworld; the audit
 records the new starting position rather than moving it to an assumed location.
 
 Final completion metrics and artifacts will be recorded after the continuation.
+
+
+## Integrated repair gate
+
+After rebasing onto `6cd1cc4` (merged bestiary and inn), `make test`, all 482
+client tests, the production build, and the full client formatting check passed.
+Nine browser checks passed in 1.6 minutes: three Cadott sizes, full-loop (24.1s),
+two actual Title save/load flows, and three startup sizes.
+
+The normal Title load flow exposed an orphaned email input over the World.
+Phaser DisplayList `removeAll(true)` means skip removal callbacks, not destroy
+objects. Title had emptied its list before looking for DOM elements, leaving
+native inputs outside scene cleanup. It now destroys a snapshot of owned menu
+objects before building the next screen. The targeted regression failed before
+the fix and passed afterward. The browser proof clicks the real save row and
+asserts matching saved party/gold and no email input in either the load menu or
+World. Inspected desktop/phone screenshots:
+`client/tmp/readiness/load-1788535453606/{1280x720,390x844}-{save-menu,loaded-world}.png`.
+
+The ongoing natural audit reached quest 6/24 and preserved an ordinary manual
+checkpoint after battle 75. The first continuation measured 96-, 83-, and
+110-tile shortest routes with 8, 6, and 9 encounters respectively. Its 53 timed
+rounds at an intermediate checkpoint averaged 3.9 seconds, maximum 6.2 seconds.
+These timings include automated submission and rendered presentation, not a
+manual-play speed measurement. Its earlier `steps` field counted key presses;
+the harness now separately records key presses and coordinate deltas so held
+keys cannot undercount actual tiles. Checkpoint journals are frozen per save ID,
+so later failed or interrupted attempts cannot overwrite a resume checkpoint's
+provenance.
