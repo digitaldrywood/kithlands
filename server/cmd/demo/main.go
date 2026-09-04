@@ -498,13 +498,14 @@ func runCombat(partyCombatants, enemies []*combat.Combatant, party []*character.
 						}
 					}
 
+					casterPower := magic.CasterPower{Intellect: pc.INT, SpellDamagePct: pc.SpellDamagePct}
 					if spell.Target == "all_enemies" {
 						totalDmg := 0
 						for _, e := range enemies {
 							if e.CurrentHP <= 0 {
 								continue
 							}
-							dmg := magic.ResolveSpellDamage(&spell, target, rng)
+							dmg := magic.ResolveSpellDamage(&spell, casterPower, target, rng)
 							e.CurrentHP -= dmg
 							totalDmg += dmg
 							if e.CurrentHP <= 0 {
@@ -515,7 +516,7 @@ func runCombat(partyCombatants, enemies []*combat.Combatant, party []*character.
 							}
 						}
 					} else {
-						dmg := magic.ResolveSpellDamage(&spell, target, rng)
+						dmg := magic.ResolveSpellDamage(&spell, casterPower, target, rng)
 						targetEnemy.CurrentHP -= dmg
 						if targetEnemy.CurrentHP <= 0 {
 							targetEnemy.CurrentHP = 0
@@ -535,7 +536,7 @@ func runCombat(partyCombatants, enemies []*combat.Combatant, party []*character.
 					}
 
 				case "heal":
-					healAmt := magic.ResolveHealSpell(&spell, rng)
+					healAmt := magic.ResolveHealSpell(&spell, magic.CasterPower{Intellect: pc.INT}, rng)
 					// Find most damaged party member
 					var healTarget *combat.Combatant
 					lowestPct := 101

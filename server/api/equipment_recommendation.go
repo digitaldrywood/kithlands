@@ -59,11 +59,11 @@ var equipmentRecommendationWeights = map[string]map[string]int{
 	"balanced": {
 		"power": 100, "absorb": 90, "str": 65, "agi": 55, "int": 55,
 		"vit": 65, "lck": 35, "hit_pct": 25, "crit_pct": 35,
-		"magic_defense": 55, "evade_penalty": -25,
+		"magic_defense": 55, "spell_damage_pct": 75, "evade_penalty": -25,
 	},
 	"offense": {
 		"power": 120, "str": 85, "agi": 55, "int": 70, "lck": 25,
-		"hit_pct": 35, "crit_pct": 50, "absorb": 15,
+		"hit_pct": 35, "crit_pct": 50, "spell_damage_pct": 90, "absorb": 15,
 		"magic_defense": 10, "evade_penalty": -10,
 	},
 	"defense": {
@@ -71,16 +71,13 @@ var equipmentRecommendationWeights = map[string]map[string]int{
 		"magic_defense": 80, "evade_penalty": -45,
 	},
 	"magic": {
-		"int": 120, "lck": 30, "magic_defense": 45, "power": 20,
-		"absorb": 25, "vit": 20, "evade_penalty": -15,
+		"int": 120, "spell_damage_pct": 180, "lck": 30, "power": 20,
+		"absorb": 25, "evade_penalty": -15,
 	},
 }
 
 func normalizeRecommendationGoal(goal string) (string, error) {
 	goal = strings.ToLower(strings.TrimSpace(goal))
-	if goal == "magic" {
-		return "", fmt.Errorf("magic equipment bonuses are inactive")
-	}
 	if goal == "" {
 		goal = "balanced"
 	}
@@ -339,7 +336,7 @@ func equipmentScore(stats map[string]int, goal string) int {
 	weights := equipmentRecommendationWeights[goal]
 	total := 0
 	for stat, value := range stats {
-		if stat == "int" || stat == "vit" || stat == "magic_defense" {
+		if stat == "vit" || stat == "magic_defense" {
 			continue
 		}
 		total += value * weights[stat]

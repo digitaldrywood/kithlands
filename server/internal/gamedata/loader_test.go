@@ -64,6 +64,30 @@ func TestLayeredWeaponVisualMetadataLoads(t *testing.T) {
 	}
 }
 
+func TestStaffSpellDamageMetadataLoads(t *testing.T) {
+	gd := gamedata.Load("../../../shared")
+	wants := map[string]int{
+		"arcane_staff":    10,
+		"war_staff":       12,
+		"elemental_staff": 15,
+		"sage_staff":      20,
+		"starcaller":      25,
+	}
+	for id, want := range wants {
+		weapon := gd.WeaponByID(id)
+		base := gd.EquipmentBaseByID(id)
+		if weapon == nil || base == nil {
+			t.Fatalf("%s not loaded", id)
+		}
+		if weapon.SpellDamagePct != want || base.Stats["spell_damage_pct"] != want {
+			t.Fatalf("%s spell damage = (%d, %d), want %d", id, weapon.SpellDamagePct, base.Stats["spell_damage_pct"], want)
+		}
+		if weapon.Special != "" {
+			t.Fatalf("%s retains stale special text %q", id, weapon.Special)
+		}
+	}
+}
+
 func TestLayeredShieldVisualMetadataLoads(t *testing.T) {
 	gd := gamedata.Load("../../../shared")
 	shield := gd.ShieldByID("steel_shield")

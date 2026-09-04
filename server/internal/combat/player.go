@@ -15,6 +15,7 @@ func NewPlayer(id int, c *character.Character, inv *inventory.Inventory, gd *gam
 		HitPct: e.HitPct, MaxHP: c.MaxHP, CurrentHP: c.CurrentHP, Status: c.Status, Row: string(c.Row),
 		WeaponPower: e.Power, ArmorAbsorb: e.Absorb, LongRange: inv.WeaponLongRange(id, gd),
 		BareHandDamage: e.BareHandDamage, EvadePenalty: e.EvadePenalty, CritPct: e.CritPct,
+		SpellDamagePct: e.SpellDamagePct,
 	}
 }
 

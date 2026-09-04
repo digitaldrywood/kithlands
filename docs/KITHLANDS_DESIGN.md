@@ -513,7 +513,7 @@ The promotion event is one of the few hand-authored beats in the campaign and ac
 |---|---|---|
 | **Strength** | STR | Physical damage, carry capacity |
 | **Agility** | AGI | Turn order, evasion (+2 evade per AGI), accuracy (+1 hit% per AGI) |
-| **Intellect** | INT | Magic damage, magic accuracy |
+| **Intellect** | INT | Magic damage and healing (+1% per point) |
 | **Vitality** | VIT | Max HP gains, status resistance |
 | **Luck** | LCK | Critical hit chance, flee chance, treasure rolls |
 | **Hit %** | HIT | Accuracy, and number of attacks per turn (extra attack every 32 HIT) |
@@ -611,13 +611,17 @@ Properties:
 
 ```
 spell_base = spell.power
-damage = rand(spell_base, spell_base * 2)
+rolled_damage = rand(spell_base, spell_base * 2)
+damage = floor(rolled_damage * (100 + effective_INT + staff_spell_damage_pct) / 100)
 if target.weak_to(spell.element): damage *= 1.5
 if target.resists(spell.element): damage *= 0.5
 if target.absorbs(spell.element): heals target instead
 ```
 
-Magic ignores armor absorb but is affected by Magic Defense (a derived stat from VIT and INT).
+`effective_INT` is the character's saved INT plus active equipment, affix, and
+socket INT. Healing uses the same scaling without `staff_spell_damage_pct`:
+`floor(rolled_heal * (100 + effective_INT) / 100)`. Magic ignores armor absorb.
+Incoming enemy magic and Magic Defense remain outside the current demo cut.
 
 ## 6.3 Hit and evade
 
@@ -691,6 +695,7 @@ Each weapon has:
 - **Power** (added to STR for damage)
 - **Hit%** (added to character's hit%)
 - **Crit%** (added to crit chance)
+- **Spell damage bonus** (staff-only percentage; offensive spells only)
 - **Class restriction** (which classes can equip it)
 - **Element** (none, fire, ice, lightning, holy, dark)
 - **Special** (rare: e.g., "+50% damage vs undead")

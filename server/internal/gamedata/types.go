@@ -327,22 +327,23 @@ type KeyItem struct {
 }
 
 type Weapon struct {
-	ID           string   `json:"id"`
-	Name         string   `json:"name"`
-	IconKey      string   `json:"icon_key,omitempty"`
-	Type         string   `json:"type"`
-	Tier         int      `json:"tier"`
-	Power        int      `json:"power"`
-	HitPct       int      `json:"hit_pct"`
-	CritPct      int      `json:"crit_pct"`
-	Element      string   `json:"element"`
-	Classes      []string `json:"classes"`
-	LongRange    bool     `json:"long_range,omitempty"`
-	VisualID     string   `json:"visual_id,omitempty"`
-	AnimationSet string   `json:"animation_set,omitempty"`
-	Special      string   `json:"special"`
-	BuyPrice     int      `json:"buy_price"`
-	SellPrice    int      `json:"sell_price"`
+	ID             string   `json:"id"`
+	Name           string   `json:"name"`
+	IconKey        string   `json:"icon_key,omitempty"`
+	Type           string   `json:"type"`
+	Tier           int      `json:"tier"`
+	Power          int      `json:"power"`
+	HitPct         int      `json:"hit_pct"`
+	CritPct        int      `json:"crit_pct"`
+	SpellDamagePct int      `json:"spell_damage_pct,omitempty"`
+	Element        string   `json:"element"`
+	Classes        []string `json:"classes"`
+	LongRange      bool     `json:"long_range,omitempty"`
+	VisualID       string   `json:"visual_id,omitempty"`
+	AnimationSet   string   `json:"animation_set,omitempty"`
+	Special        string   `json:"special"`
+	BuyPrice       int      `json:"buy_price"`
+	SellPrice      int      `json:"sell_price"`
 }
 
 type Ability struct {

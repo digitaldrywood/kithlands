@@ -810,6 +810,7 @@ func (g *Game) resolveScheduledSpell(combatants []*combat.Combatant, ma MemberAc
 		return
 	}
 	_ = magic.ConsumeMP(caster, spell)
+	casterPower := magic.CasterPower{Intellect: pc.INT, SpellDamagePct: pc.SpellDamagePct}
 
 	switch spell.Effect {
 	case "damage":
@@ -827,7 +828,7 @@ func (g *Game) resolveScheduledSpell(combatants []*combat.Combatant, ma MemberAc
 					target.Resistances = m.Resistances
 				}
 			}
-			dmg := magic.ResolveSpellDamage(spell, target, g.rng)
+			dmg := magic.ResolveSpellDamage(spell, casterPower, target, g.rng)
 			e.CurrentHP -= dmg
 			if dmg > 0 && e.Status == character.StatusSleep {
 				combat.ProcessSleepOnDamage(e)
@@ -850,7 +851,7 @@ func (g *Game) resolveScheduledSpell(combatants []*combat.Combatant, ma MemberAc
 			}
 		}
 	case "heal":
-		amt := magic.ResolveHealSpell(spell, g.rng)
+		amt := magic.ResolveHealSpell(spell, casterPower, g.rng)
 		g.resolveHealSpell(combatants, pc, caster, spell, ma.TargetID, amt)
 	case "buff":
 		g.resolveBuffSpell(combatants, pc, caster, spell, ma.TargetID)
@@ -924,7 +925,8 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 
 	// Find a caster who knows this spell and can afford the MP cost.
 	var caster *character.Character
-	for _, c := range g.party {
+	casterSlot := -1
+	for slot, c := range g.party {
 		sb, ok := g.spellBooks[c.Name]
 		if !ok {
 			continue
@@ -948,6 +950,7 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 			continue
 		}
 		caster = c
+		casterSlot = slot
 		_ = magic.ConsumeMP(c, spell)
 		break
 	}
@@ -955,6 +958,8 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 		state := g.stateUnlocked()
 		return &state, fmt.Errorf("no caster available")
 	}
+	effective := g.inv.ResolveEffectiveStats(caster, casterSlot, g.gd)
+	casterPower := magic.CasterPower{Intellect: effective.INT, SpellDamagePct: effective.SpellDamagePct}
 
 	switch spell.Effect {
 	case "damage":
@@ -967,7 +972,7 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 						target.Resistances = m.Resistances
 					}
 				}
-				dmg := magic.ResolveSpellDamage(spell, target, g.rng)
+				dmg := magic.ResolveSpellDamage(spell, casterPower, target, g.rng)
 				e.CurrentHP -= dmg
 				killed := e.CurrentHP <= 0
 				if killed {
@@ -988,7 +993,7 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 			}
 		}
 	case "heal":
-		amt := magic.ResolveHealSpell(spell, g.rng)
+		amt := magic.ResolveHealSpell(spell, casterPower, g.rng)
 		// Heal most damaged
 		var target *character.Character
 		for _, c := range g.party {

@@ -59,16 +59,25 @@ func ConsumeMP(c *character.Character, spell *gamedata.Spell) error {
 	return nil
 }
 
-// ResolveSpellDamage computes magic damage per Section 6.2.
-// damage = rand(spell_base, spell_base * 2)
-// Elemental modifiers applied per target.
-func ResolveSpellDamage(spell *gamedata.Spell, target *SpellTarget, rng *rand.Rand) int {
+// CasterPower is the disposable effective equipment snapshot used for one cast.
+// Intellect scales all numeric spell output; SpellDamagePct is offense-only.
+type CasterPower struct {
+	Intellect      int
+	SpellDamagePct int
+}
+
+// ResolveSpellDamage computes magic damage per Section 6.2. The original
+// authored roll stays recognizable, then effective INT and the staff modifier
+// add one percentage point each: roll * (100 + INT + spell damage %) / 100.
+// Elemental modifiers apply after caster scaling.
+func ResolveSpellDamage(spell *gamedata.Spell, caster CasterPower, target *SpellTarget, rng *rand.Rand) int {
 	base := spell.Power
 	if base <= 0 {
 		return 0
 	}
 
 	dmg := base + rng.IntN(base+1)
+	dmg = scaleSpellOutput(dmg, max(0, caster.Intellect)+max(0, caster.SpellDamagePct))
 
 	if target.WeakTo(spell.Element) {
 		dmg = dmg * 3 / 2
@@ -127,12 +136,19 @@ func (t *SpellTarget) AbsorbsElement(element string) bool {
 	return false
 }
 
-// ResolveHealSpell computes heal amount. Per GDD, healing = rand(power, power*2).
-func ResolveHealSpell(spell *gamedata.Spell, rng *rand.Rand) int {
+// ResolveHealSpell computes healing from the same authored roll and effective
+// INT scaling as damage. The staff's spell-damage modifier is intentionally
+// excluded because it is an offensive stat.
+func ResolveHealSpell(spell *gamedata.Spell, caster CasterPower, rng *rand.Rand) int {
 	if spell.Power <= 0 {
 		return 0
 	}
-	return spell.Power + rng.IntN(spell.Power+1)
+	rolled := spell.Power + rng.IntN(spell.Power+1)
+	return scaleSpellOutput(rolled, max(0, caster.Intellect))
+}
+
+func scaleSpellOutput(rolled, bonusPct int) int {
+	return rolled * (100 + bonusPct) / 100
 }
 
 // ResolveStatusSpell checks if a status effect lands. Returns true if successful.

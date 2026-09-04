@@ -77,7 +77,7 @@ test("equipment previews recover from network errors and retain keyboard focus",
   await expect(page.getByRole("dialog", { name: "Character" })).toHaveCount(0);
 });
 
-test("authoritative equipment totals survive equip, spell combat, and save/load", async ({
+test("authoritative magic equipment survives equip, spell combat, and save/load", async ({
   page,
 }) => {
   test.setTimeout(120_000);
@@ -97,15 +97,15 @@ test("authoritative equipment totals survive equip, spell combat, and save/load"
       difficulty: "normal",
       rng_seed: 9941,
       party: [
-        { name: "Ayla", class_id: "warrior" },
         { name: "Cato", class_id: "cinder" },
+        { name: "Mira", class_id: "mender" },
       ],
     }),
   );
   await page.waitForFunction(
     () => window.__kithlandsTest.activeSceneKey() === "World",
   );
-  for (const id of ["iron_sword", "trail_boots", "copper_amulet"]) {
+  for (const id of ["arcane_staff", "copper_amulet"]) {
     const result = await page.evaluate(
       (item) => window.__kithlandsTest.debugGiveItem(item, 1, "World"),
       id,
@@ -122,10 +122,28 @@ test("authoritative equipment totals survive equip, spell combat, and save/load"
   await expect(page.getByRole("dialog", { name: "Character" })).toBeVisible();
   await page.screenshot({ path: path.join(proofDir, "desktop-before.png") });
 
-  let swordPreview;
+  const goal = page.getByRole("combobox", { name: "Recommendation goal" });
+  await expect(goal.locator('option[value="magic"]')).toBeEnabled();
+  await goal.selectOption("magic");
+  await page.getByRole("button", { name: "Recommend Gear" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Magic Recommendation" }),
+  ).toBeVisible();
+  await expect(page.locator(".recommendation-dialog")).toContainText(
+    "Arcane Staff",
+  );
+  await expect(page.locator(".recommendation-dialog")).toContainText(
+    "Spell damage (%) +10",
+  );
+  await page.screenshot({
+    path: path.join(proofDir, "desktop-magic-recommendation.png"),
+  });
+  await page.getByRole("button", { name: "Keep Current" }).click();
+
+  let staffPreview;
+  let amuletPreview;
   for (const [slot, itemName] of [
-    ["main_hand", "Iron Sword"],
-    ["feet", "Trail Boots"],
+    ["main_hand", "Arcane Staff"],
     ["amulet", "Copper Amulet"],
   ]) {
     await page.locator(`[data-slot-id="${slot}"]`).click();
@@ -141,14 +159,23 @@ test("authoritative equipment totals survive equip, spell combat, and save/load"
     expect(response.ok()).toBeTruthy();
     const preview = await response.json();
     if (slot === "main_hand") {
-      swordPreview = preview;
-      expect(preview.after.attack).toBeGreaterThan(preview.before.attack);
-      await expect(page.locator(".comparison-table")).toContainText("Attack");
+      staffPreview = preview;
+      expect(preview.before.spell_damage_pct).toBe(0);
+      expect(preview.after.spell_damage_pct).toBe(10);
+      await expect(page.locator(".comparison-table")).toContainText(
+        "Spell damage (%)",
+      );
       await page.screenshot({
-        path: path.join(proofDir, "desktop-sword-comparison.png"),
+        path: path.join(proofDir, "desktop-staff-comparison.png"),
       });
     }
-    if (slot === "amulet") expect(preview.after.int).toBe(preview.before.int);
+    if (slot === "amulet") {
+      amuletPreview = preview;
+      expect(preview.after.int).toBe(preview.before.int + 1);
+      await expect(page.locator(".comparison-table")).toContainText(
+        "Intellect",
+      );
+    }
     await page.getByRole("button", { name: /^Equip in / }).click();
     await expect(page.locator(".equipment-status")).toContainText(
       "equipped in",
@@ -161,18 +188,16 @@ test("authoritative equipment totals survive equip, spell combat, and save/load"
     window.__kithlandsTest.gameState("World"),
   );
   expect(baseState(equipped.party)).toEqual(baseState(before.party));
-  expect(equipped.equipment[0].effective.attack).toBe(
-    swordPreview.after.attack,
-  );
-  expect(equipped.equipment[0].effective.evade).toBeGreaterThan(
-    before.equipment[0].effective.evade,
+  expect(equipped.equipment[0].effective.spell_damage_pct).toBe(10);
+  expect(equipped.equipment[0].effective.int).toBe(amuletPreview.after.int);
+  expect(equipped.equipment[0].effective.int).toBe(
+    before.equipment[0].effective.int + 1,
   );
   await expect(page.locator(".character-summary-panel")).toContainText(
-    "gear bonuses are inactive",
+    "Intellect adds the same percentage to spell damage and healing",
   );
   for (const [width, height] of [
     [1440, 900],
-    [800, 600],
     [390, 844],
   ]) {
     await page.setViewportSize({ width, height });
@@ -184,8 +209,8 @@ test("authoritative equipment totals survive equip, spell combat, and save/load"
     });
     expect(await page.locator(".equipment-slot").count()).toBe(12);
     if (width === 390) {
-      await page.locator(".equipment-inactive-note").scrollIntoViewIfNeeded();
-      await expect(page.locator(".equipment-inactive-note")).toBeVisible();
+      await page.locator(".equipment-magic-note").scrollIntoViewIfNeeded();
+      await expect(page.locator(".equipment-magic-note")).toBeVisible();
       await page.screenshot({
         path: path.join(proofDir, "mobile-scrolled-stats.png"),
       });
@@ -262,7 +287,7 @@ test("authoritative equipment totals survive equip, spell combat, and save/load"
   await writeFile(
     path.join(proofDir, "state-proof.json"),
     JSON.stringify(
-      { before, equipped, reloaded, combat, swordPreview },
+      { before, equipped, reloaded, combat, staffPreview, amuletPreview },
       null,
       2,
     ),

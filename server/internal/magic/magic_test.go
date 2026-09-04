@@ -249,7 +249,7 @@ func TestSpellDamage(t *testing.T) {
 
 	for i := 0; i < 100; i++ {
 		rng := rand.New(rand.NewPCG(uint64(i), 0))
-		dmg := magic.ResolveSpellDamage(spark, target, rng)
+		dmg := magic.ResolveSpellDamage(spark, magic.CasterPower{}, target, rng)
 		// Spark power=10, damage = rand(10, 20), so 10-20
 		if dmg < 10 || dmg > 20 {
 			t.Errorf("spark damage %d out of range [10, 20]", dmg)
@@ -266,7 +266,7 @@ func TestSpellDamageWeakness(t *testing.T) {
 	}
 
 	rng := rand.New(rand.NewPCG(42, 0))
-	dmg := magic.ResolveSpellDamage(spark, target, rng)
+	dmg := magic.ResolveSpellDamage(spark, magic.CasterPower{}, target, rng)
 	// Should be 1.5x, so minimum 15
 	if dmg < 15 {
 		t.Errorf("fire spell vs fire-weak: damage %d, expected >= 15", dmg)
@@ -282,7 +282,7 @@ func TestSpellDamageResistance(t *testing.T) {
 	}
 
 	rng := rand.New(rand.NewPCG(42, 0))
-	dmg := magic.ResolveSpellDamage(spark, target, rng)
+	dmg := magic.ResolveSpellDamage(spark, magic.CasterPower{}, target, rng)
 	// Should be 0.5x, so max 10
 	if dmg > 10 {
 		t.Errorf("fire spell vs fire-resist: damage %d, expected <= 10", dmg)
@@ -295,11 +295,64 @@ func TestHealSpell(t *testing.T) {
 
 	for i := 0; i < 100; i++ {
 		rng := rand.New(rand.NewPCG(uint64(i), 0))
-		heal := magic.ResolveHealSpell(cure, rng)
+		heal := magic.ResolveHealSpell(cure, magic.CasterPower{}, rng)
 		// Cure power=16, heal = rand(16, 32)
 		if heal < 16 || heal > 32 {
 			t.Errorf("cure heal %d out of range [16, 32]", heal)
 		}
+	}
+}
+
+func TestCasterPowerScalesTheSameAuthoredRoll(t *testing.T) {
+	gd := loadTestData(t)
+	target := &magic.SpellTarget{}
+
+	tests := []struct {
+		name    string
+		classID string
+		spellID string
+		heal    bool
+	}{
+		{name: "Cinder damage", classID: "cinder", spellID: "spark"},
+		{name: "Mender healing", classID: "mender", spellID: "cure", heal: true},
+		{name: "Wayfarer damage", classID: "wayfarer", spellID: "spark"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			spell := gd.SpellByID(tc.spellID)
+			intellect := gd.ClassByID(tc.classID).StartingStats.INT
+			baseRNG := rand.New(rand.NewPCG(913, 17))
+			scaledRNG := rand.New(rand.NewPCG(913, 17))
+			var base, scaled int
+			if tc.heal {
+				base = magic.ResolveHealSpell(spell, magic.CasterPower{}, baseRNG)
+				scaled = magic.ResolveHealSpell(spell, magic.CasterPower{Intellect: intellect}, scaledRNG)
+			} else {
+				base = magic.ResolveSpellDamage(spell, magic.CasterPower{}, target, baseRNG)
+				scaled = magic.ResolveSpellDamage(spell, magic.CasterPower{Intellect: intellect}, target, scaledRNG)
+			}
+			if want := base * (100 + intellect) / 100; scaled != want {
+				t.Fatalf("same-roll output = %d, want %d from base %d and INT %d", scaled, want, base, intellect)
+			}
+		})
+	}
+}
+
+func TestStaffSpellDamageIsOffenseOnly(t *testing.T) {
+	gd := loadTestData(t)
+	target := &magic.SpellTarget{}
+	power := magic.CasterPower{Intellect: 20, SpellDamagePct: 10}
+
+	baseDamage := magic.ResolveSpellDamage(gd.SpellByID("spark"), magic.CasterPower{}, target, rand.New(rand.NewPCG(44, 9)))
+	staffDamage := magic.ResolveSpellDamage(gd.SpellByID("spark"), power, target, rand.New(rand.NewPCG(44, 9)))
+	if want := baseDamage * 130 / 100; staffDamage != want {
+		t.Fatalf("staff damage = %d, want %d", staffDamage, want)
+	}
+
+	baseHeal := magic.ResolveHealSpell(gd.SpellByID("cure"), magic.CasterPower{}, rand.New(rand.NewPCG(44, 9)))
+	staffHeal := magic.ResolveHealSpell(gd.SpellByID("cure"), power, rand.New(rand.NewPCG(44, 9)))
+	if want := baseHeal * 120 / 100; staffHeal != want {
+		t.Fatalf("staff healing = %d, want INT-only %d", staffHeal, want)
 	}
 }
 

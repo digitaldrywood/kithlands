@@ -11,6 +11,7 @@ type EffectiveStats struct {
 	STR, AGI, INT, VIT, LCK int
 	HitPct, Power, Absorb   int
 	EvadePenalty, CritPct   int
+	SpellDamagePct          int
 	BareHandDamage          int
 }
 
@@ -24,9 +25,10 @@ func (inv *Inventory) ResolveEffectiveStats(c *character.Character, slot int, gd
 func ResolveStats(c *character.Character, gear map[string]int, class *gamedata.Class) EffectiveStats {
 	e := EffectiveStats{
 		STR: max(0, c.STR+gear["str"]), AGI: max(0, c.AGI+gear["agi"]),
-		INT: c.INT, VIT: c.VIT, LCK: max(0, c.LCK+gear["lck"]),
+		INT: max(0, c.INT+gear["int"]), VIT: c.VIT, LCK: max(0, c.LCK+gear["lck"]),
 		Power: gear["power"], Absorb: max(0, gear["absorb"]),
 		EvadePenalty: gear["evade_penalty"], CritPct: gear["crit_pct"],
+		SpellDamagePct: max(0, gear["spell_damage_pct"]),
 	}
 	e.HitPct = max(0, c.HitPct+gear["hit_pct"])
 	if class != nil && class.BareHand != nil {
@@ -46,12 +48,14 @@ func (e EffectiveStats) CritChance() int { return min(100, max(0, e.LCK/4+e.Crit
 
 // Values is the authoritative equipment-screen projection (before temporary
 // combat buffs and row modifiers). Power is equipment power, attack includes STR
-// or the class's bare-hand curve. Inactive magical bonuses are reported separately from active battle stats.
+// or the class's bare-hand curve. SpellDamagePct is an offensive casting bonus;
+// effective INT scales damage and healing.
 func (e EffectiveStats) Values() map[string]int {
 	return map[string]int{
 		"str": e.STR, "agi": e.AGI, "int": e.INT, "vit": e.VIT, "lck": e.LCK,
 		"power": e.Power, "attack": e.Attack(), "absorb": e.Absorb, "hit_pct": e.HitPct,
 		"evade": e.Evade(), "evade_penalty": e.EvadePenalty,
 		"crit_pct": e.CritChance(), "attacks_per_turn": 1 + e.HitPct/32,
+		"spell_damage_pct": e.SpellDamagePct,
 	}
 }

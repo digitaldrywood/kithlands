@@ -10,6 +10,7 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/combat"
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
 	"github.com/digitaldrywood/kithlands/internal/inventory"
+	"github.com/digitaldrywood/kithlands/internal/magic"
 )
 
 func equipmentGame(t *testing.T, class string) *Game {
@@ -43,8 +44,8 @@ func TestEffectiveEquipmentPreviewTransferUnequipAndSave(t *testing.T) {
 	if got.STR != base.STR+5 || got.HitPct != base.HitPct+32 || got.AGI != base.AGI+4 || got.ArmorAbsorb != 7 || got.Evade() != 2*(base.AGI+4)-3 || got.CritChance() != (base.LCK+8)/4+2 {
 		t.Fatalf("effective: %+v", got)
 	}
-	if got.INT != base.INT || got.VIT != base.VIT {
-		t.Fatal("inactive bonuses changed gameplay")
+	if got.INT != base.INT+50 || got.VIT != base.VIT {
+		t.Fatal("active INT or inactive VIT resolved incorrectly")
 	}
 	want := g.State().Equipment[0].Effective
 	for i := 0; i < 3; i++ {
@@ -222,22 +223,174 @@ func TestBrawlerEmberArmorPowerIsFlatAcrossMultipleSlots(t *testing.T) {
 	}
 }
 
-func TestInactiveGearDoesNotImproveRecommendation(t *testing.T) {
+func TestActiveIntAndInactiveDefenseRecommendation(t *testing.T) {
 	g := equipmentGame(t, "mender")
-	id := equipTestRing(t, g, map[string]int{"int": 200, "vit": 200, "magic_defense": 200})
+	id := equipTestRing(t, g, map[string]int{"int": 200})
 	if err := g.UnequipItem(0, "ring_1"); err != nil {
 		t.Fatal(err)
 	}
-	for _, goal := range []string{"balanced", "offense", "defense"} {
+	for _, goal := range []string{"balanced", "offense", "magic"} {
+		plan, err := g.RecommendEquipment(0, goal)
+		if err != nil {
+			t.Fatal(err)
+		}
+		found := false
+		for _, change := range plan.Changes {
+			if change.To.InstanceID == id {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("INT gear not recommended for %s", goal)
+		}
+	}
+
+	g = equipmentGame(t, "mender")
+	id = equipTestRing(t, g, map[string]int{"vit": 200, "magic_defense": 200})
+	if err := g.UnequipItem(0, "ring_1"); err != nil {
+		t.Fatal(err)
+	}
+	for _, goal := range []string{"balanced", "offense", "defense", "magic"} {
 		plan, err := g.RecommendEquipment(0, goal)
 		if err != nil {
 			t.Fatal(err)
 		}
 		for _, change := range plan.Changes {
 			if change.To.InstanceID == id {
-				t.Fatalf("inactive gear recommended for %s", goal)
+				t.Fatalf("inactive defense gear recommended for %s", goal)
 			}
 		}
+	}
+}
+
+func TestMagicEquipmentAgreesAcrossPreviewSocketsBuildCombatAndSave(t *testing.T) {
+	g := equipmentGame(t, "cinder")
+	g.gd.LootAffixByID("keen").Modifier.Stat = "int"
+	g.gd.GemByID("ember_shard").Effects = append(
+		g.gd.GemByID("ember_shard").Effects,
+		gamedata.GemEffect{Kind: "weapon", Stat: "int", Value: 3},
+	)
+	id, err := g.inv.AddInstance(inventory.EquipmentInstance{
+		BaseID:        "arcane_staff",
+		Kind:          "weapon",
+		Category:      "weapon",
+		ItemLevel:     1,
+		RequiredLevel: 1,
+		RarityID:      "common",
+		Affixes:       []inventory.AffixRoll{{AffixID: "keen", Value: 2}},
+		Sockets:       []inventory.ItemSocket{{GemID: "ember_shard"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	preview, err := g.PreviewEquipment(EquipmentPreviewRequest{Slot: 0, EquipmentSlot: "main_hand", ItemID: id, Type: "weapon"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview.Deltas["int"] != 5 || preview.Deltas["spell_damage_pct"] != 10 {
+		t.Fatalf("magic preview deltas = %v", preview.Deltas)
+	}
+	if err = g.EquipItemAt(0, "main_hand", id, "weapon"); err != nil {
+		t.Fatal(err)
+	}
+	state := g.State().Equipment[0]
+	if !reflect.DeepEqual(preview.After, state.Effective) {
+		t.Fatal("applied magic loadout differs from preview")
+	}
+
+	caster := g.makeCombatants()[0]
+	spell := g.gd.SpellByID("spark")
+	target := &magic.SpellTarget{}
+	baseRoll := magic.ResolveSpellDamage(spell, magic.CasterPower{}, target, rand.New(rand.NewPCG(71, 8)))
+	gotDamage := magic.ResolveSpellDamage(spell, magic.CasterPower{Intellect: caster.INT, SpellDamagePct: caster.SpellDamagePct}, target, rand.New(rand.NewPCG(71, 8)))
+	if want := baseRoll * (100 + caster.INT + caster.SpellDamagePct) / 100; gotDamage != want {
+		t.Fatalf("combat damage = %d, want %d", gotDamage, want)
+	}
+
+	if err = g.SaveEquipmentBuild(0, "", "Spellcraft"); err != nil {
+		t.Fatal(err)
+	}
+	buildID := g.inv.EquipmentBuilds[0][0].ID
+	if err = g.UnequipItem(0, "main_hand"); err != nil {
+		t.Fatal(err)
+	}
+	buildPreview, err := g.PreviewEquipmentBuild(0, buildID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buildStaff *ItemState
+	for _, slot := range buildPreview.Slots {
+		if slot.SlotID == "main_hand" {
+			buildStaff = slot.Item
+		}
+	}
+	if buildStaff == nil || buildStaff.Stats["int"] != 5 || buildStaff.Stats["spell_damage_pct"] != 10 {
+		t.Fatalf("build preview staff = %+v, want magic equipment stats", buildStaff)
+	}
+	if err = g.ApplyEquipmentBuild(0, buildID, buildPreview.Token, false); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(preview.After, g.State().Equipment[0].Effective) {
+		t.Fatal("applied build differs from direct equipment preview")
+	}
+	saved, err := g.ToSaveState("magic equipment", "test-user")
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := FromSaveState(saved, g.gd, g.loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(g.State().Equipment[0].Effective, loaded.State().Equipment[0].Effective) {
+		t.Fatal("magic equipment totals changed across save/load")
+	}
+}
+
+func TestMagicRecommendationSelectsAuthoredStaffBonus(t *testing.T) {
+	g := equipmentGame(t, "cinder")
+	g.inv.Consumables["wpn_arcane_staff"] = 1
+	plan, err := g.RecommendEquipment(0, "magic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Changes) != 1 || plan.Changes[0].To.ID != "wpn_arcane_staff" || plan.Deltas["spell_damage_pct"] != 10 {
+		t.Fatalf("magic recommendation = %+v", plan)
+	}
+	if err = g.ApplyRecommendedEquipment(0, "magic"); err != nil {
+		t.Fatal(err)
+	}
+	if got := g.State().Equipment[0].Effective["spell_damage_pct"]; got != 10 {
+		t.Fatalf("applied staff spell damage = %d, want 10", got)
+	}
+}
+
+func TestWorldHealingUsesEffectiveIntAtActionBoundary(t *testing.T) {
+	base := equipmentGame(t, "mender")
+	geared := equipmentGame(t, "mender")
+	equipTestRing(t, geared, map[string]int{"int": 20})
+	for _, g := range []*Game{base, geared} {
+		g.party[1].MaxHP = 1000
+		g.party[1].CurrentHP = 1
+		g.rng = rand.New(rand.NewPCG(55, 6))
+	}
+
+	cast := func(g *Game) int {
+		before := g.party[1].CurrentHP
+		if _, err := g.ProcessAction(GameActionRequest{Type: "spell", SlotIdx: 0, SpellID: "cure", TargetID: 1}); err != nil {
+			t.Fatal(err)
+		}
+		return g.party[1].CurrentHP - before
+	}
+	raw := magic.ResolveHealSpell(
+		base.gd.SpellByID("cure"),
+		magic.CasterPower{},
+		rand.New(rand.NewPCG(55, 6)),
+	)
+	if got, want := cast(base), raw*105/100; got != want {
+		t.Fatalf("base Mender heal = %d, want %d", got, want)
+	}
+	if got, want := cast(geared), raw*125/100; got != want {
+		t.Fatalf("equipped Mender heal = %d, want %d", got, want)
 	}
 }
 
