@@ -143,18 +143,20 @@ func TestStartingShopSellsExpandedClassGearAsRolledInventory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, shopItems := enterCadottShop(t, game)
+	nodeID, shopItems := enterCadottShop(t, game)
 	found := false
+	var offerID string
 	for _, item := range shopItems {
 		if item.ID == "training_wraps" {
 			found = item.Type == "equipment" && item.Category == "gloves" && item.IconKey != "" && item.Stats["power"] == 2
+			offerID = item.StockID
 		}
 	}
 	if !found {
 		t.Fatal("starting shop missing Hearthbound Wraps equipment metadata")
 	}
 	before := game.State().Gold
-	if err := game.BuyItem("training_wraps", "equipment"); err != nil {
+	if err := game.BuyItem(nodeID, offerID); err != nil {
 		t.Fatal(err)
 	}
 	after := game.State()

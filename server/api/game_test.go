@@ -68,11 +68,11 @@ func testServer(t *testing.T) (*api.Server, *httptest.Server) {
 			return
 		}
 		var req struct {
-			ItemID string `json:"item_id"`
-			Type   string `json:"type"`
+			NodeID  string `json:"node_id"`
+			StockID string `json:"stock_id"`
 		}
 		json.NewDecoder(r.Body).Decode(&req)
-		err := game.BuyItem(req.ItemID, req.Type)
+		err := game.BuyItem(req.NodeID, req.StockID)
 		if err != nil {
 			w.WriteHeader(400)
 			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})

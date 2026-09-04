@@ -39,15 +39,15 @@ func (s *Server) handleBuy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		ItemID string `json:"item_id"`
-		Type   string `json:"type"` // weapon, armor, consumable
+		NodeID  string `json:"node_id"`
+		StockID string `json:"stock_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		httpError(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 
-	err := game.BuyItem(req.ItemID, req.Type)
+	err := game.BuyItem(req.NodeID, req.StockID)
 	if err != nil {
 		httpError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -160,81 +160,72 @@ func (g *Game) GetShopItems(nodeID string) ([]ShopItemState, error) {
 	return items, nil
 }
 
-func (g *Game) BuyItem(itemID, itemType string) error {
+func (g *Game) BuyItem(nodeID, offerID string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if g.inDungeon() {
-		return fmt.Errorf("return to town before buying supplies")
+	if err := g.requireCurrentShopLocked(nodeID); err != nil {
+		return err
+	}
+	entry, err := g.currentStockEntryLocked(nodeID, offerID)
+	if err != nil {
+		return err
+	}
+	if entry.Type == "spell" {
+		return fmt.Errorf("choose a party member to learn this spell")
+	}
+	working := g.inv.Clone()
+	if working == nil {
+		return fmt.Errorf("inventory is unavailable")
+	}
+	if working.Gold < entry.Price {
+		return fmt.Errorf("need %d gold, have %d", entry.Price, working.Gold)
 	}
 
-	switch itemType {
+	switch entry.Type {
 	case "consumable":
-		for _, c := range g.gd.Items.Consumables {
-			if c.ID == itemID {
-				if g.inv.Gold < c.BuyPrice {
-					return fmt.Errorf("need %d gold, have %d", c.BuyPrice, g.inv.Gold)
-				}
-				g.inv.Gold -= c.BuyPrice
-				g.inv.Consumables[itemID]++
-				return nil
-			}
+		if g.findConsumable(entry.ItemID) == nil {
+			return fmt.Errorf("consumable not found: %s", entry.ItemID)
 		}
+		working.Consumables[entry.ItemID]++
 	case "weapon":
-		w := g.gd.WeaponByID(itemID)
+		w := g.gd.WeaponByID(entry.ItemID)
 		if w == nil {
 			return fmt.Errorf("weapon not found")
 		}
-		if g.inv.Gold < w.BuyPrice {
-			return fmt.Errorf("need %d gold, have %d", w.BuyPrice, g.inv.Gold)
-		}
-		g.inv.Gold -= w.BuyPrice
-		// Store weapon in consumables as a simple inventory
-		g.inv.Consumables["wpn_"+itemID]++
-		return nil
+		working.Consumables["wpn_"+entry.ItemID]++
 	case "armor":
-		a := g.gd.ArmorByID(itemID)
+		a := g.gd.ArmorByID(entry.ItemID)
 		if a == nil {
 			return fmt.Errorf("armor not found")
 		}
-		if g.inv.Gold < a.BuyPrice {
-			return fmt.Errorf("need %d gold, have %d", a.BuyPrice, g.inv.Gold)
-		}
-		g.inv.Gold -= a.BuyPrice
-		g.inv.Consumables["arm_"+itemID]++
-		return nil
+		working.Consumables["arm_"+entry.ItemID]++
 	case "equipment":
-		base := g.gd.EquipmentBaseByID(itemID)
-		if base == nil || base.Category == "weapon" || base.Category == "armor" {
-			return fmt.Errorf("expanded equipment not found: %s", itemID)
+		if entry.Instance == nil || entry.Instance.BaseID != entry.ItemID {
+			return fmt.Errorf("shop equipment %q is invalid", entry.ItemID)
 		}
-		if g.inv.Gold < base.BuyPrice {
-			return fmt.Errorf("need %d gold, have %d", base.BuyPrice, g.inv.Gold)
-		}
-		grant, err := g.grantLoot(itemID, g.maxPartyLevel(), 0)
-		if err != nil {
+		if err := working.AddExactInstance(*entry.Instance); err != nil {
 			return err
 		}
-		if grant.InstanceID == "" {
-			return fmt.Errorf("buying %q did not create equipment", itemID)
-		}
-		g.inv.Gold -= base.BuyPrice
-		return nil
 	case "key_item":
-		ki := g.gd.KeyItemByID(itemID)
+		ki := g.gd.KeyItemByID(entry.ItemID)
 		if ki == nil {
-			return fmt.Errorf("key item not found: %s", itemID)
+			return fmt.Errorf("key item not found: %s", entry.ItemID)
 		}
-		if g.inv.HasKeyItem(itemID) {
+		if working.HasKeyItem(entry.ItemID) {
 			return fmt.Errorf("already own %s", ki.Name)
 		}
-		if g.inv.Gold < ki.BuyPrice {
-			return fmt.Errorf("need %d gold, have %d", ki.BuyPrice, g.inv.Gold)
-		}
-		g.inv.Gold -= ki.BuyPrice
-		g.inv.AddKeyItem(itemID)
-		return nil
+		working.AddKeyItem(entry.ItemID)
+	default:
+		return fmt.Errorf("unknown shop item type: %s", entry.Type)
 	}
-	return fmt.Errorf("unknown item: %s", itemID)
+	working.Gold -= entry.Price
+	g.inv = working
+	if entry.Reusable {
+		entry.Version++
+	} else {
+		entry.Sold = true
+	}
+	return nil
 }
 
 func (g *Game) EquipItem(slot int, itemID, itemType string) error {

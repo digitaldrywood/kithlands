@@ -63,7 +63,7 @@ func TestCadottWorldShopRoundTripPreservesGameState(t *testing.T) {
 	if starter == nil || !slices.Contains(starter.ClassIDs, "warrior") {
 		t.Fatalf("shop is missing a warrior-compatible Wooden Club: %+v", starter)
 	}
-	if err := game.BuyItem(starter.ID, starter.Type); err != nil {
+	if err := game.BuyItem(interior.NodeID, starter.StockID); err != nil {
 		t.Fatalf("buy starter item: %v", err)
 	}
 	afterPurchase := game.State()
