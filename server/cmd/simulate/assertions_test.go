@@ -13,7 +13,7 @@ func TestDefaultCampaignRegressionBands(t *testing.T) {
 	}{
 		{"current pacing", 12.2, 0.3, ""},
 		{"legacy pacing", 3.5, 0.3, "promotion_level"},
-		{"late promotion", 14, 0.3, "promotion_level"},
+		{"late promotion", 15, 0.3, "promotion_level"},
 		{"excess attrition", 10, 0.5, "wipe_rate"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -237,5 +237,78 @@ func TestIsQuestOrderMonotonic(t *testing.T) {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestRouteAssertionsSeparateRequiredAndOptionalCompletion(t *testing.T) {
+	cfg := DefaultAssertionConfig()
+	summaries := map[string]Aggregated{
+		"main/aggressive": {
+			Route: RouteMain, Strategy: "aggressive", Runs: 100,
+			Victories: 80, VictoryRate: 0.80, Wipes: 20, WipeRate: 0.20,
+			MainPathCompletions: 80, MainPathCompletionRate: 0.80,
+			PromotionCount: 90, MeanPromotionLevel: 11,
+			MeanRouteQuestsCompleted: 10.5, MeanFinalLevel: 10,
+			MeanEncountersPerRun: 40, BossAttempts: 82, BossVictories: 80, BossVictoryRate: 80.0 / 82.0,
+		},
+		"optional/aggressive": {
+			Route: RouteOptional, Strategy: "aggressive", Runs: 100,
+			Victories: 85, VictoryRate: 0.85, Wipes: 15, WipeRate: 0.15,
+			MainPathCompletions: 85, MainPathCompletionRate: 0.85,
+			PromotionCount: 92, MeanPromotionLevel: 12,
+			OptionalQuestsAttempted: 300, OptionalQuestsCompleted: 270, OptionalCompletionRate: 0.90,
+			MeanRouteQuestsCompleted: 13.5, MeanFinalLevel: 11,
+			BossAttempts: 87, BossVictories: 85, BossVictoryRate: 85.0 / 87.0,
+		},
+	}
+	if failures := CheckAssertions(summaries, cfg); len(failures) != 0 {
+		t.Fatalf("valid route summaries failed: %+v", failures)
+	}
+
+	broken := summaries["main/aggressive"]
+	broken.OptionalQuestsCompleted = 1
+	summaries["main/aggressive"] = broken
+	failures := CheckAssertions(summaries, cfg)
+	found := false
+	for _, failure := range failures {
+		if failure.Kind == "optional_required" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("required route did not reject optional completion: %+v", failures)
+	}
+}
+
+func TestDefaultAssertionConfigEnforcesRouteContracts(t *testing.T) {
+	cfg := DefaultAssertionConfig()
+	if cfg.ExpectedMainQuestCount != 12 || cfg.MaxMainRouteEncounters <= 0 {
+		t.Fatalf("required-route defaults are not enforced: %+v", cfg)
+	}
+	if cfg.ExpectedOptionalQuestCount != 3 || cfg.MinOptionalCompletionRate <= 0 || cfg.MaxOptionalFinalLevelLead <= 0 || cfg.MaxOptionalBossVictoryLead <= 0 {
+		t.Fatalf("optional-route defaults are not enforced: %+v", cfg)
+	}
+}
+
+func TestRouteAssertionsRejectOptionalOverlevel(t *testing.T) {
+	cfg := DefaultAssertionConfig()
+	main := Aggregated{Route: RouteMain, Strategy: "cautious", Runs: 10, VictoryRate: 1, MainPathCompletionRate: 1, PromotionCount: 10, MeanPromotionLevel: 9, MeanRouteQuestsCompleted: 12, MeanFinalLevel: 10, BossAttempts: 10, BossVictories: 8, BossVictoryRate: 0.8}
+	optional := main
+	optional.Route = RouteOptional
+	optional.OptionalQuestsAttempted = 30
+	optional.OptionalQuestsCompleted = 30
+	optional.OptionalCompletionRate = 1
+	optional.MeanRouteQuestsCompleted = 15
+	optional.MeanFinalLevel = 14
+
+	failures := CheckAssertions(map[string]Aggregated{"main": main, "optional": optional}, cfg)
+	found := false
+	for _, failure := range failures {
+		if failure.Kind == "optional_overlevel" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("missing optional_overlevel failure: %+v", failures)
 	}
 }

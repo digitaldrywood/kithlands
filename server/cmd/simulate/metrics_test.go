@@ -94,20 +94,37 @@ func TestAggregateEncounterStartDistribution(t *testing.T) {
 	}
 }
 
-func TestGroupByStrategy(t *testing.T) {
+func TestGroupByRouteStrategy(t *testing.T) {
 	runs := []RunResult{
-		{Strategy: "aggressive", FinalPhase: "victory"},
-		{Strategy: "aggressive", FinalPhase: "defeat"},
-		{Strategy: "cautious", FinalPhase: "victory"},
+		{Route: RouteMain, Strategy: "aggressive", FinalPhase: "victory"},
+		{Route: RouteMain, Strategy: "aggressive", FinalPhase: "defeat"},
+		{Route: RouteOptional, Strategy: "cautious", FinalPhase: "victory"},
 	}
-	groups := GroupByStrategy(runs)
+	groups := GroupByRouteStrategy(runs)
 	if len(groups) != 2 {
 		t.Errorf("groups: got %d, want 2", len(groups))
 	}
-	if len(groups["aggressive"]) != 2 {
-		t.Errorf("aggressive runs: got %d, want 2", len(groups["aggressive"]))
+	if len(groups["main/aggressive"]) != 2 {
+		t.Errorf("aggressive runs: got %d, want 2", len(groups["main/aggressive"]))
 	}
-	if len(groups["cautious"]) != 1 {
-		t.Errorf("cautious runs: got %d, want 1", len(groups["cautious"]))
+	if len(groups["optional/cautious"]) != 1 {
+		t.Errorf("cautious runs: got %d, want 1", len(groups["optional/cautious"]))
+	}
+}
+
+func TestAggregateRouteMetrics(t *testing.T) {
+	runs := []RunResult{
+		{Route: RouteOptional, Strategy: "cautious", FinalPhase: "victory", FinalLevel: 11, MainQuestCount: 12, MainQuestsCompleted: 12, MainPathComplete: true, OptionalQuestsAttempted: 3, OptionalQuestsCompleted: 3, RouteQuestsCompleted: 15, BossAttempted: true, BossDefeated: true},
+		{Route: RouteOptional, Strategy: "cautious", FinalPhase: "defeat", FinalLevel: 9, MainQuestCount: 12, MainQuestsCompleted: 8, OptionalQuestsAttempted: 3, OptionalQuestsCompleted: 2, RouteQuestsCompleted: 10},
+	}
+	agg := Aggregate(runs)
+	if agg.Route != RouteOptional || agg.MainPathCompletionRate != 0.5 {
+		t.Fatalf("main route aggregate = %+v", agg)
+	}
+	if agg.OptionalQuestsAttempted != 6 || agg.OptionalQuestsCompleted != 5 || math.Abs(agg.OptionalCompletionRate-5.0/6.0) > 1e-9 {
+		t.Fatalf("optional aggregate = %+v", agg)
+	}
+	if agg.MeanRouteQuestsCompleted != 12.5 || agg.MeanFinalLevel != 10 || agg.BossVictoryRate != 1 {
+		t.Fatalf("route metrics = %+v", agg)
 	}
 }

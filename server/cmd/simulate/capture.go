@@ -25,6 +25,7 @@ type TurnSnapshot struct {
 	SchemaVersion int                    `json:"schema_version"`
 	Seed          int64                  `json:"seed"`
 	Strategy      string                 `json:"strategy"`
+	Route         string                 `json:"route,omitempty"`
 	Turn          int                    `json:"turn"`
 	CapturedAt    string                 `json:"captured_at"`
 	PreState      *api.GameState         `json:"pre_state"`
@@ -49,14 +50,17 @@ type captureWriter struct {
 }
 
 type captureKey struct {
-	seed int64
-	turn int
+	seed     int64
+	strategy string
+	route    string
+	turn     int
 }
 
 type pendingTurn struct {
 	preState *api.GameState
 	action   *api.GameActionRequest
 	strategy string
+	route    string
 }
 
 // NewCaptureHook constructs a PauseHook that writes TurnSnapshot JSON files
@@ -92,7 +96,7 @@ func (w *captureWriter) handle(ev PauseEvent) error {
 	if !w.interested(ev.Seed, int64(ev.Turn)) {
 		return nil
 	}
-	key := captureKey{seed: ev.Seed, turn: ev.Turn}
+	key := captureKey{seed: ev.Seed, strategy: ev.Strategy, route: ev.Route, turn: ev.Turn}
 
 	switch ev.Phase {
 	case HookBeforeAction:
@@ -101,6 +105,7 @@ func (w *captureWriter) handle(ev PauseEvent) error {
 			preState: cloneGameState(ev.State),
 			action:   cloneAction(ev.Action),
 			strategy: ev.Strategy,
+			route:    ev.Route,
 		}
 		w.mu.Unlock()
 		return nil
@@ -122,6 +127,7 @@ func (w *captureWriter) handle(ev PauseEvent) error {
 			SchemaVersion: TurnSnapshotSchemaVersion,
 			Seed:          ev.Seed,
 			Strategy:      pending.strategy,
+			Route:         pending.route,
 			Turn:          ev.Turn,
 			CapturedAt:    w.now().UTC().Format(time.RFC3339Nano),
 			PreState:      pending.preState,
@@ -140,7 +146,7 @@ func (w *captureWriter) handle(ev PauseEvent) error {
 }
 
 func (w *captureWriter) writeSnapshot(snap TurnSnapshot) error {
-	name := fmt.Sprintf("seed-%d-%s-turn-%04d.json", snap.Seed, sanitizeStrategy(snap.Strategy), snap.Turn)
+	name := fmt.Sprintf("seed-%d-%s-%s-turn-%04d.json", snap.Seed, sanitizeStrategy(snap.Route), sanitizeStrategy(snap.Strategy), snap.Turn)
 	path := filepath.Join(w.cfg.OutDir, name)
 	data, err := json.MarshalIndent(snap, "", "  ")
 	if err != nil {

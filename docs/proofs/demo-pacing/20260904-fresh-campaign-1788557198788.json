@@ -1,0 +1,57 @@
+{
+  "requiredQuestCount": 12,
+  "requiredQuestIDs": [
+    "quest_0",
+    "quest_1",
+    "quest_2",
+    "quest_promotion_3",
+    "quest_4",
+    "quest_5",
+    "quest_6",
+    "quest_7",
+    "quest_8",
+    "quest_9",
+    "quest_10",
+    "quest_boss_11"
+  ],
+  "requiredTemplateIDs": [
+    "Q04",
+    "Q02",
+    "Q02",
+    "promotion",
+    "Q02",
+    "Q04",
+    "Q05",
+    "Q01",
+    "Q03",
+    "Q03",
+    "Q04",
+    "Q12"
+  ],
+  "currentQuest": 0,
+  "finalQuest": {
+    "id": "quest_boss_11",
+    "template_id": "Q12",
+    "name": "Silence the Bellbound Regent",
+    "description": "The Bellbound Regent has bound every road to its command. Reach Old Ruins and break its hold on Cadott, WI.\nDefeat the Bellbound Regent and its Bell Sentinels. Clear the sentinels first to reduce incoming attacks. Use ice against the Regent; it resists fire. Keep healing in reserve.",
+    "completion": "The final bell falls silent. The Regent's crown dims, and the roads of Cadott, WI belong to its people again. Neighbors step outside, lanterns rise, and your companions walk home together. You brought them through. This adventure is complete.",
+    "act": 3,
+    "completed": false,
+    "giver_name": "Bob",
+    "giver_node_id": "person_0",
+    "target_name": "Old Ruins",
+    "target_node_id": "wilderness_2",
+    "reward": {
+      "xp": 500,
+      "gold": 300
+    }
+  },
+  "transport": {
+    "current_tier": "T1",
+    "tier_name": "On foot",
+    "sprite": "foot",
+    "encounter_rate_mult": 1,
+    "crosses_water": false,
+    "flies": false
+  }
+}

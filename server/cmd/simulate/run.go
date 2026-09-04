@@ -23,6 +23,7 @@ type PauseEvent struct {
 	Phase    HookPhase
 	Seed     int64
 	Strategy string
+	Route    string
 	Turn     int
 	State    *api.GameState
 	Action   *api.GameActionRequest
@@ -44,6 +45,10 @@ type RunOptions struct {
 
 	// Difficulty is the difficulty id (normal, hard, etc). Empty = normal.
 	Difficulty string
+
+	// Route selects required-only or optional-content campaign traversal.
+	// Empty defaults to the required main route.
+	Route RoutePolicy
 
 	// EncounterRollsPerQuest is how many {type:"encounter"} actions the sim
 	// injects between each strategy-issued quest_advance. Models the 6-12
@@ -70,6 +75,7 @@ func DefaultRunOptions() RunOptions {
 			{Name: "Shadow", ClassID: "rogue"},
 		},
 		Difficulty:             "normal",
+		Route:                  *RouteByName(RouteMain),
 		EncounterRollsPerQuest: 8,
 	}
 }
@@ -86,6 +92,9 @@ func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strategy Strate
 	}
 	if opts.Difficulty == "" {
 		opts.Difficulty = "normal"
+	}
+	if opts.Route.Name == "" {
+		opts.Route = *RouteByName(RouteMain)
 	}
 	if opts.EncounterRollsPerQuest == 0 {
 		opts.EncounterRollsPerQuest = DefaultRunOptions().EncounterRollsPerQuest
@@ -115,10 +124,16 @@ func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strategy Strate
 	result := RunResult{
 		Seed:            seed,
 		Strategy:        strategy.Name(),
+		Route:           opts.Route.Name,
 		EncounterStarts: make(map[string]int),
 	}
 
-	state := game.State()
+	optionalPlan, state, err := acceptOptionalQuestPlan(game, opts.Route.OptionalQuestLimit)
+	if err != nil {
+		return result, err
+	}
+	result.MainQuestCount = len(state.Quests)
+	result.OptionalQuestsAttempted = len(optionalPlan)
 	var prevPhase string
 	questsSeen := len(state.Quests)
 	result.LevelsAtQuestComplete = make([]int, questsSeen)
@@ -130,6 +145,10 @@ func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strategy Strate
 	// victory-screen state, so we cannot refill on phase transitions alone.
 	pendingRolls := questLegRolls(&state, opts.EncounterRollsPerQuest)
 	walkedLeg := questTravelLeg(&state)
+	optionalIdx := 0
+	optionalOutboundStarted := false
+	optionalReturning := false
+	optionalRolls := 0
 
 	for turn := 0; turn < opts.MaxTurns; turn++ {
 		result.TurnsElapsed = turn + 1
@@ -186,6 +205,44 @@ func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strategy Strate
 		var req api.GameActionRequest
 		switch state.Phase {
 		case "world":
+			if optionalIdx < len(optionalPlan) && optionalQuestEligible(&state, optionalPlan[optionalIdx]) {
+				plan := optionalPlan[optionalIdx]
+				quest := optionalQuestState(&state, plan.ID)
+				if quest == nil {
+					return result, fmt.Errorf("optional quest %q disappeared", plan.ID)
+				}
+				if quest.Completed {
+					optionalIdx++
+					optionalOutboundStarted = false
+					optionalReturning = false
+					optionalRolls = 0
+					continue
+				}
+				if quest.Status == "ready_to_turn_in" && !optionalReturning {
+					optionalReturning = true
+					optionalRolls = optionalLegRolls(&state, opts.EncounterRollsPerQuest, false)
+				} else if quest.Status == "accepted" && !optionalOutboundStarted {
+					optionalOutboundStarted = true
+					optionalRolls = optionalLegRolls(&state, opts.EncounterRollsPerQuest, true)
+				}
+				if optionalRolls > 0 {
+					req = api.GameActionRequest{Type: "encounter"}
+					optionalRolls--
+				} else if optionalReturning {
+					response := game.InteractWithNPC(plan.SourceNodeID)
+					if response == nil || response.GameState == nil {
+						return result, fmt.Errorf("turn in optional quest %q", plan.ID)
+					}
+					state = *response.GameState
+					optionalIdx++
+					optionalOutboundStarted = false
+					optionalReturning = false
+					continue
+				} else {
+					req = api.GameActionRequest{Type: "quest_advance", NodeID: plan.TargetNodeID}
+				}
+				break
+			}
 			// Walk sim: spend encounter rolls before letting the strategy
 			// teleport to the next quest node. Each roll lets the server
 			// generate a real combat against its seeded RNG.
@@ -232,6 +289,7 @@ func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strategy Strate
 				Phase:    HookBeforeAction,
 				Seed:     seed,
 				Strategy: strategy.Name(),
+				Route:    opts.Route.Name,
 				Turn:     turn,
 				State:    &preState,
 				Action:   &req,
@@ -246,6 +304,7 @@ func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strategy Strate
 				Phase:    HookAfterAction,
 				Seed:     seed,
 				Strategy: strategy.Name(),
+				Route:    opts.Route.Name,
 				Turn:     turn,
 				Action:   &req,
 				Err:      err,
@@ -280,6 +339,13 @@ func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strategy Strate
 
 	// Final state harvest.
 	result.GoldAtBoss = state.Gold
+	result.FinalLevel = leaderLevel(&state)
+	result.MainQuestsCompleted = completedMainQuests(&state)
+	result.OptionalQuestsCompleted = completedOptionalQuests(&state)
+	result.RouteQuestsCompleted = result.MainQuestsCompleted + result.OptionalQuestsCompleted
+	result.MainPathComplete = result.FinalPhase == "victory" && result.MainQuestsCompleted == result.MainQuestCount
+	result.BossAttempted = state.FinalEncounter != nil
+	result.BossDefeated = state.FinalEncounter != nil && state.FinalEncounter.Defeated
 
 	// Quest-order monotonicity: at the moment of victory, Completed must be
 	// monotonic. timeout/defeat runs don't contribute to this check.
@@ -294,4 +360,31 @@ func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strategy Strate
 	}
 
 	return result, nil
+}
+
+func leaderLevel(state *api.GameState) int {
+	if len(state.Party) == 0 {
+		return 0
+	}
+	return state.Party[0].Level
+}
+
+func completedMainQuests(state *api.GameState) int {
+	completed := 0
+	for _, quest := range state.Quests {
+		if quest.Completed && !quest.IsSideQuest {
+			completed++
+		}
+	}
+	return completed
+}
+
+func completedOptionalQuests(state *api.GameState) int {
+	completed := 0
+	for _, quest := range state.BuildingSideQuests {
+		if quest.Completed {
+			completed++
+		}
+	}
+	return completed
 }

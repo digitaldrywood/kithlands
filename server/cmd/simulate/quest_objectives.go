@@ -43,6 +43,7 @@ func questTravelLeg(gs *api.GameState) string {
 // Keep the CLI's per-quest budget fixed while accounting for each outbound and
 // return leg. An odd remainder belongs to the first journey.
 func questLegRolls(gs *api.GameState, budget int) int {
+	budget = scaledEncounterBudget(gs, budget)
 	if gs.CurrentQ >= 0 && gs.CurrentQ < len(gs.Quests) {
 		q := gs.Quests[gs.CurrentQ]
 		if q.Objectives != nil {
@@ -53,4 +54,23 @@ func questLegRolls(gs *api.GameState, budget int) int {
 		}
 	}
 	return budget
+}
+
+func optionalLegRolls(gs *api.GameState, budget int, outbound bool) int {
+	budget = scaledEncounterBudget(gs, budget)
+	if outbound {
+		return (budget + 1) / 2
+	}
+	return budget / 2
+}
+
+// EncounterRollsPerQuest is the T1 travel budget. Later transportation tiers
+// reduce the simulator's actual fight requests using the same shared-data
+// multiplier as the client, so an airship route does not fabricate battles.
+func scaledEncounterBudget(gs *api.GameState, budget int) int {
+	multiplier := 1.0
+	if gs.Transport.CurrentTier != "" {
+		multiplier = gs.Transport.EncounterMult
+	}
+	return int(float64(budget)*multiplier + 0.5)
 }
