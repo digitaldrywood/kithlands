@@ -39,6 +39,10 @@ export async function getClasses() {
   return apiCall("GET", "/data/classes");
 }
 
+export async function getMonsters() {
+  return apiCall("GET", "/data/monsters");
+}
+
 export async function getItems() {
   return apiCall("GET", "/data/items");
 }

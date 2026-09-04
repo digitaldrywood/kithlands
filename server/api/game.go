@@ -112,6 +112,8 @@ type MemberActionReq struct {
 
 // GameState is the full state sent to the client.
 type GameState struct {
+	Discovered map[string]bool `json:"discovered"` // monster IDs encountered in this save
+
 	ID           string  `json:"id"`
 	Phase        string  `json:"phase"`                   // world, combat, quest_complete, victory, defeat
 	XPBefore     []int   `json:"xp_before,omitempty"`     // XP values before combat for victory animation
@@ -826,6 +828,7 @@ func (g *Game) buildPartyMemberState(c *character.Character, slot int) PartyMemb
 }
 
 func (g *Game) fillExtras(state *GameState) {
+	state.Discovered = cloneBoolMap(g.discovered)
 	// XP/level before combat (for victory animation)
 	if len(g.xpBefore) > 0 {
 		state.XPBefore = g.xpBefore
