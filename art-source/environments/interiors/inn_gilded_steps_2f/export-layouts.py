@@ -7,10 +7,11 @@ root = source.parents[3]
 template = json.loads((root / "shared/interiors/inn_gilded_steps_2f.json").read_text())
 for floor in template["floors"]:
     objects = {name: [] for name in ("collision", "interactions", "npc-spawns", "player-spawns", "foreground")}
+    chests = {(entry["x"], entry["y"]): entry["id"] for entry in floor.get("chest_anchors", [])}
     for y, row in enumerate(floor["rows"]):
         for x, symbol in enumerate(row):
-            if symbol not in ".RDUV":
-                objects["collision"].append(dict(name=symbol, type="solid", x=x*32, y=y*32, width=32, height=32))
+            if symbol not in ".RDUV" or (x, y) in chests:
+                objects["collision"].append(dict(name=chests.get((x, y), symbol), type="solid", x=x*32, y=y*32, width=32, height=32))
     for kind, entries in (("stair", floor.get("stairs", [])), ("chest", floor.get("chest_anchors", []))):
         for entry in entries:
             objects["interactions"].append(dict(name=entry.get("id", kind), type=kind, x=entry["x"]*32, y=entry["y"]*32, width=32, height=32,
