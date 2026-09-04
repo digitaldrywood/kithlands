@@ -125,6 +125,23 @@ func (inv *Inventory) AddInstance(item EquipmentInstance) (string, error) {
 	return item.ID, nil
 }
 
+// AddExactInstance stores a previously rolled save-local instance without
+// changing its identity. Shops use this when a previewed offer is purchased.
+func (inv *Inventory) AddExactInstance(item EquipmentInstance) error {
+	inv.Normalize()
+	if item.ID == "" || item.BaseID == "" || !validEquipmentKind(item.Kind) {
+		return fmt.Errorf("invalid equipment instance")
+	}
+	if inv.Instances[item.ID] != nil {
+		return fmt.Errorf("equipment instance %q already owned", item.ID)
+	}
+	copy := item
+	copy.Affixes = append([]AffixRoll(nil), item.Affixes...)
+	copy.Sockets = append([]ItemSocket(nil), item.Sockets...)
+	inv.Instances[item.ID] = &copy
+	return nil
+}
+
 func (inv *Inventory) Instance(id string) *EquipmentInstance {
 	if inv == nil || inv.Instances == nil {
 		return nil

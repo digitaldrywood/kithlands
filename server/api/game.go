@@ -580,6 +580,7 @@ type Game struct {
 	formation            string          // current encounter layout type
 	worldEncounterCount  int             // successful overworld encounters started on this save
 	lootRollSeq          uint64          // persisted sequence for isolated deterministic loot rolls
+	shopStocks           map[string]*ShopStock
 	lastRoundActions     []MemberActionReq
 	pendingChestClaim    *PendingChestClaim
 	// encounterStart records preemptive/ambush state for the current fight so
