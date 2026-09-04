@@ -135,7 +135,7 @@ func TestStartingShopSellsExpandedClassGearAsRolledInventory(t *testing.T) {
 	gd := gamedata.Load("../../shared")
 	manager := api.NewGameManager(gd, "../../shared")
 	game, err := manager.CreateGame(api.NewGameRequest{
-		TownName: "Test", Places: []string{"Square"}, BigBuilding: "Hall",
+		TownName: "Cadott", Places: []string{"Square"}, BigBuilding: "Hall",
 		Party:      []api.PartyMemberReq{{Name: "Bram", ClassID: "brawler"}},
 		Difficulty: "normal", RNGSeed: 99,
 	})
@@ -143,8 +143,9 @@ func TestStartingShopSellsExpandedClassGearAsRolledInventory(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	_, shopItems := enterCadottShop(t, game)
 	found := false
-	for _, item := range game.GetShopItems("") {
+	for _, item := range shopItems {
 		if item.ID == "training_wraps" {
 			found = item.Type == "equipment" && item.Category == "gloves" && item.IconKey != "" && item.Stats["power"] == 2
 		}

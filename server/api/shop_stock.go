@@ -5,6 +5,7 @@ import (
 	"hash/fnv"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/digitaldrywood/kithlands/internal/inventory"
 	"github.com/digitaldrywood/kithlands/internal/loot"
@@ -146,4 +147,72 @@ func shopInstanceID(saveSeed int64, nodeID string, index int, itemID string) str
 	h := fnv.New64a()
 	_, _ = h.Write([]byte(strconv.FormatInt(saveSeed, 10) + "\x00" + nodeID + "\x00" + strconv.Itoa(index) + "\x00" + itemID))
 	return fmt.Sprintf("gear_shop_%016x", h.Sum64())
+}
+
+func (g *Game) shopItemStateLocked(nodeID string, index int, entry *ShopStockEntry) (ShopItemState, error) {
+	item := ShopItemState{
+		StockID: shopOfferID(nodeID, index, entry), ID: entry.ItemID,
+		Type: entry.Type, Price: entry.Price,
+	}
+	switch entry.Type {
+	case "weapon":
+		base := g.gd.WeaponByID(entry.ItemID)
+		if base == nil {
+			return ShopItemState{}, fmt.Errorf("shop weapon %q not found", entry.ItemID)
+		}
+		item.Name, item.IconKey = base.Name, base.IconKey
+		item.Power, item.HitPct, item.CritPct, item.Element = base.Power, base.HitPct, base.CritPct, base.Element
+		item.Classes, item.ClassIDs = formatShopClasses(base.Classes)
+	case "armor":
+		base := g.gd.ArmorByID(entry.ItemID)
+		if base == nil {
+			return ShopItemState{}, fmt.Errorf("shop armor %q not found", entry.ItemID)
+		}
+		item.Name, item.IconKey = base.Name, base.IconKey
+		item.Absorb, item.MagicDefense, item.EvadePenalty, item.Element = base.Absorb, base.MagicDefense, base.EvadePenalty, base.ElementResist
+		item.Classes, item.ClassIDs = formatShopClasses(base.Classes)
+	case "equipment":
+		if entry.Instance == nil {
+			return ShopItemState{}, fmt.Errorf("shop equipment %q has no roll", entry.ItemID)
+		}
+		view, err := g.rolledItemState(entry.Instance.ID, entry.Instance)
+		if err != nil {
+			return ShopItemState{}, fmt.Errorf("resolving shop equipment %q: %w", entry.ItemID, err)
+		}
+		item.InstanceID, item.Name, item.IconKey = view.InstanceID, view.Name, view.IconKey
+		item.Category, item.Stats, item.Rarity = view.Category, cloneStats(view.Stats), view.Rarity
+		item.ItemLevel, item.RequiredLevel = view.ItemLevel, view.RequiredLevel
+		item.Power, item.Absorb = view.Power, view.Absorb
+		item.Affixes = append([]ItemAffixState(nil), view.Affixes...)
+		item.Sockets = append([]ItemSocketState(nil), view.Sockets...)
+		item.Classes, item.ClassIDs = formatShopClasses(view.AllowedClasses)
+	case "consumable":
+		base := g.findConsumable(entry.ItemID)
+		if base == nil {
+			return ShopItemState{}, fmt.Errorf("shop consumable %q not found", entry.ItemID)
+		}
+		item.Name = base.Name
+	case "key_item":
+		base := g.gd.KeyItemByID(entry.ItemID)
+		if base == nil {
+			return ShopItemState{}, fmt.Errorf("shop key item %q not found", entry.ItemID)
+		}
+		item.Name = base.Name
+		item.Owned = g.inv.HasKeyItem(entry.ItemID)
+	case "spell":
+		base := g.gd.SpellByID(entry.ItemID)
+		if base == nil {
+			return ShopItemState{}, fmt.Errorf("shop spell %q not found", entry.ItemID)
+		}
+		item.Name, item.School, item.SpellLevel = base.Name, base.School, base.SpellLevel
+		item.Learners = g.spellLearnersForShop(base.ID)
+	default:
+		return ShopItemState{}, fmt.Errorf("unsupported shop item type %q", entry.Type)
+	}
+	return item, nil
+}
+
+func formatShopClasses(classIDs []string) (string, []string) {
+	copy := append([]string(nil), classIDs...)
+	return strings.Join(copy, ", "), copy
 }

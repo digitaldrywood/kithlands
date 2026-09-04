@@ -219,7 +219,7 @@ func TestShopReturnsItems(t *testing.T) {
 	_ = srv
 
 	gs := post(t, ts.URL+"/api/game/new", api.NewGameRequest{
-		TownName: "Test", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
+		TownName: "Cadott", People: []api.WizardPersonReq{{Name: "A", Relation: "friendly"}},
 		Places: []string{"X"}, BigBuilding: "Hall",
 		Party:      []api.PartyMemberReq{{Name: "Hero", ClassID: "warrior"}},
 		Difficulty: "normal",
@@ -232,7 +232,7 @@ func TestShopReturnsItems(t *testing.T) {
 		t.Fatal("game not found")
 	}
 
-	items := game.GetShopItems("shop")
+	_, items := enterCadottShop(t, game)
 	if len(items) == 0 {
 		t.Fatal("shop returned no items")
 	}

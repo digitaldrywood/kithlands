@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
-	"strings"
 
 	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
@@ -23,7 +22,11 @@ func (s *Server) handleShop(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items := game.GetShopItems(nodeID)
+	items, err := game.GetShopItems(nodeID)
+	if err != nil {
+		httpError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	jsonResp(w, map[string]any{"shop_items": items})
 }
 
@@ -131,132 +134,30 @@ func (s *Server) handleLearnSpell(w http.ResponseWriter, r *http.Request) {
 	jsonResp(w, state)
 }
 
-// GetShopItems returns available items for a shop node, scaled to party level.
-func (g *Game) GetShopItems(nodeID string) []ShopItemState {
+// GetShopItems returns the current save-owned offers for the active shop.
+func (g *Game) GetShopItems(nodeID string) ([]ShopItemState, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-
-	avgLevel := 0
-	for _, c := range g.party {
-		avgLevel += c.Level
+	if err := g.requireCurrentShopLocked(nodeID); err != nil {
+		return nil, err
 	}
-	avgLevel /= max(len(g.party), 1)
-
-	// Max weapon/armor tier based on level
-	maxTier := 1 + avgLevel/4
-	if maxTier > 3 {
-		maxTier = 3
+	stock, err := g.ensureShopStockLocked(nodeID)
+	if err != nil {
+		return nil, err
 	}
-
 	var items []ShopItemState
-
-	// Weapons
-	for _, w := range g.gd.Items.Weapons {
-		if w.Tier > maxTier {
+	for i := range stock.Entries {
+		entry := &stock.Entries[i]
+		if entry.Sold || (entry.Type == "key_item" && g.inv.HasKeyItem(entry.ItemID)) {
 			continue
 		}
-		items = append(items, ShopItemState{
-			ID:       w.ID,
-			Name:     w.Name,
-			IconKey:  w.IconKey,
-			Type:     "weapon",
-			Price:    w.BuyPrice,
-			Power:    w.Power,
-			HitPct:   w.HitPct,
-			CritPct:  w.CritPct,
-			Element:  w.Element,
-			Classes:  strings.Join(w.Classes, ", "),
-			ClassIDs: append([]string(nil), w.Classes...),
-		})
-	}
-
-	// Armor
-	for _, a := range g.gd.Items.Armor {
-		if a.Tier > maxTier {
-			continue
+		item, err := g.shopItemStateLocked(nodeID, i, entry)
+		if err != nil {
+			return nil, err
 		}
-		items = append(items, ShopItemState{
-			ID:           a.ID,
-			Name:         a.Name,
-			IconKey:      a.IconKey,
-			Type:         "armor",
-			Price:        a.BuyPrice,
-			Absorb:       a.Absorb,
-			MagicDefense: a.MagicDefense,
-			EvadePenalty: a.EvadePenalty,
-			Element:      a.ElementResist,
-			Classes:      strings.Join(a.Classes, ", "),
-			ClassIDs:     append([]string(nil), a.Classes...),
-		})
+		items = append(items, item)
 	}
-
-	// Expanded slots share the armor storefront but keep their authored
-	// category so the client can compare against the correct paper-doll slot.
-	for _, gear := range g.gd.Items.Gear {
-		if gear.Tier > maxTier {
-			continue
-		}
-		items = append(items, ShopItemState{
-			ID:       gear.ID,
-			Name:     gear.Name,
-			IconKey:  gear.IconKey,
-			Type:     "equipment",
-			Category: gear.Category,
-			Stats:    cloneStats(gear.Stats),
-			Price:    gear.BuyPrice,
-			Classes:  strings.Join(gear.Classes, ", "),
-			ClassIDs: append([]string(nil), gear.Classes...),
-		})
-	}
-
-	// Consumables
-	for _, c := range g.gd.Items.Consumables {
-		items = append(items, ShopItemState{
-			ID:    c.ID,
-			Name:  c.Name,
-			Type:  "consumable",
-			Price: c.BuyPrice,
-		})
-	}
-
-	// Key items (skip items already owned)
-	for _, ki := range g.gd.Items.KeyItems {
-		if ki.BuyPrice > 0 && !g.inv.HasKeyItem(ki.ID) {
-			items = append(items, ShopItemState{
-				ID:    ki.ID,
-				Name:  ki.Name,
-				Type:  "key_item",
-				Price: ki.BuyPrice,
-			})
-		}
-	}
-
-	// Spells (at magic shops)
-	node := g.loc.NodeByID(nodeID)
-	if node != nil {
-		for _, tag := range node.Tags {
-			if tag == "commerce" || tag == "rest" {
-				// Regular shop, no spells
-				break
-			}
-		}
-		// All shops sell spells for now (demo cut)
-		for _, sp := range g.gd.Spells.Spells {
-			if sp.SpellLevel <= maxTier {
-				items = append(items, ShopItemState{
-					ID:         sp.ID,
-					Name:       sp.Name,
-					Type:       "spell",
-					Price:      sp.SpellLevel * 100,
-					School:     sp.School,
-					SpellLevel: sp.SpellLevel,
-					Learners:   g.spellLearnersForShop(sp.ID),
-				})
-			}
-		}
-	}
-
-	return items
+	return items, nil
 }
 
 func (g *Game) BuyItem(itemID, itemType string) error {

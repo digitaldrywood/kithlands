@@ -49,7 +49,10 @@ func TestCadottWorldShopRoundTripPreservesGameState(t *testing.T) {
 		t.Fatal("store did not reuse the existing interior template system")
 	}
 
-	shopItems := game.GetShopItems(interior.NodeID)
+	shopItems, err := game.GetShopItems(interior.NodeID)
+	if err != nil {
+		t.Fatalf("get shop items: %v", err)
+	}
 	var starter *ShopItemState
 	for i := range shopItems {
 		if shopItems[i].ID == "wooden_club" {

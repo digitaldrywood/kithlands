@@ -2,7 +2,29 @@ package api_test
 
 import (
 	"testing"
+
+	"github.com/digitaldrywood/kithlands/api"
 )
+
+func enterCadottShop(t *testing.T, game *api.Game) (string, []api.ShopItemState) {
+	t.Helper()
+	entryNodeID := game.State().SettlementEntryNodeID
+	if _, err := game.ProcessLocationTransition(api.LocationTransitionRequest{
+		TransitionID: "enter-settlement", WorldNodeID: entryNodeID,
+	}); err != nil {
+		t.Fatalf("enter settlement: %v", err)
+	}
+	state, err := game.ProcessLocationTransition(api.LocationTransitionRequest{TransitionID: "general-store-door"})
+	if err != nil {
+		t.Fatalf("enter shop: %v", err)
+	}
+	nodeID := state.CurrentLocation.Interior.NodeID
+	items, err := game.GetShopItems(nodeID)
+	if err != nil {
+		t.Fatalf("get shop items: %v", err)
+	}
+	return nodeID, items
+}
 
 func findItem(items []any, id string) map[string]any {
 	for _, raw := range items {
@@ -31,7 +53,7 @@ func TestShopBuyCategoriesPreserveGoldAndInventoryState(t *testing.T) {
 	defer ts.Close()
 
 	gs := post(t, ts.URL+"/api/game/new", map[string]any{
-		"town_name":     "Test",
+		"town_name":     "Cadott",
 		"people":        []map[string]any{{"name": "A", "relation": "friendly"}},
 		"places":        []string{"X"},
 		"big_building":  "Hall",
@@ -45,7 +67,7 @@ func TestShopBuyCategoriesPreserveGoldAndInventoryState(t *testing.T) {
 		t.Fatal("game not found")
 	}
 
-	shopItems := game.GetShopItems("shop")
+	_, shopItems := enterCadottShop(t, game)
 	var shopCatalog []map[string]any
 	for _, item := range shopItems {
 		shopCatalog = append(shopCatalog, map[string]any{
@@ -113,7 +135,10 @@ func TestShopBuyCategoriesPreserveGoldAndInventoryState(t *testing.T) {
 		t.Fatalf("gold after key item = %d, want 55", got)
 	}
 
-	shopItems = game.GetShopItems("shop")
+	shopItems, err := game.GetShopItems("cadott-general-store")
+	if err != nil {
+		t.Fatalf("get shop items after purchase: %v", err)
+	}
 	shopCatalog = shopCatalog[:0]
 	for _, item := range shopItems {
 		shopCatalog = append(shopCatalog, map[string]any{

@@ -22,6 +22,15 @@ func newShopSpellGame(t *testing.T, party []PartyMemberReq) *Game {
 	if err != nil {
 		t.Fatalf("create game: %v", err)
 	}
+	entryNodeID := game.State().SettlementEntryNodeID
+	if _, err := game.ProcessLocationTransition(LocationTransitionRequest{
+		TransitionID: "enter-settlement", WorldNodeID: entryNodeID,
+	}); err != nil {
+		t.Fatalf("enter settlement: %v", err)
+	}
+	if _, err := game.ProcessLocationTransition(LocationTransitionRequest{TransitionID: "general-store-door"}); err != nil {
+		t.Fatalf("enter shop: %v", err)
+	}
 	return game
 }
 
@@ -84,7 +93,11 @@ func TestGetShopItemsIncludesSpellLearnerReasons(t *testing.T) {
 	setPartyLevel(t, game, 3, 4)
 	TeachSpellForTest(game, 2, "heal", 2)
 
-	heal := findShopSpell(game.GetShopItems("shop"), "heal")
+	items, err := game.GetShopItems("cadott-general-store")
+	if err != nil {
+		t.Fatalf("get shop items: %v", err)
+	}
+	heal := findShopSpell(items, "heal")
 	if heal == nil {
 		t.Fatal("shop missing heal")
 	}
@@ -118,7 +131,10 @@ func TestGetShopItemsIncludesEquipmentCompareStats(t *testing.T) {
 		{Name: "Mira", ClassID: "mender"},
 	})
 
-	items := game.GetShopItems("shop")
+	items, err := game.GetShopItems("cadott-general-store")
+	if err != nil {
+		t.Fatalf("get shop items: %v", err)
+	}
 	var weapon *ShopItemState
 	var armor *ShopItemState
 	for i := range items {
