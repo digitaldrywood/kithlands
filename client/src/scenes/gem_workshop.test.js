@@ -3,7 +3,9 @@ import {
   allRecipes,
   craftableRecipeCount,
   firstOpenSocket,
+  gemChangePreview,
   gemEffectForItem,
+  gemRecoveryPreview,
   gemWorkshopEnabled,
   knownRecipes,
   ownedGems,
@@ -218,6 +220,60 @@ describe("Gem Workshop selectors", () => {
       ],
     };
     expect(recommendedGems(state, armor)[0].gem.id).toBe("sapphire");
+  });
+
+  it("uses authoritative replacement and recovery previews for a filled socket", () => {
+    const item = {
+      instance_id: "gear_filled",
+      kind: "weapon",
+      sockets: [{ index: 0, gem_id: "ruby", gem_name: "Ruby" }],
+      gem_changes: [
+        {
+          action: "replace",
+          socket: 0,
+          gem_id: "sapphire",
+          installed_gem_id: "ruby",
+          installed_gem_name: "Ruby",
+          gold_cost: 10,
+          gold_before: 100,
+          gold_after: 90,
+          allowed: true,
+          token: "replace-token",
+          before: { power: 7 },
+          after: { power: 6 },
+        },
+        {
+          action: "recover",
+          socket: 0,
+          installed_gem_id: "ruby",
+          installed_gem_name: "Ruby",
+          gold_cost: 25,
+          gold_before: 100,
+          gold_after: 75,
+          allowed: true,
+          token: "recover-token",
+          before: { power: 7 },
+          after: { power: 5 },
+        },
+      ],
+    };
+    expect(gemChangePreview(item, 0, state.gems[1])).toMatchObject({
+      action: "replace",
+      gold_cost: 10,
+      current_value: 7,
+      proposed_value: 6,
+      after: { power: 6 },
+      token: "replace-token",
+    });
+    expect(gemRecoveryPreview(item, 0)).toMatchObject({
+      action: "recover",
+      gold_cost: 25,
+      gold_after: 75,
+      token: "recover-token",
+    });
+    expect(recommendedGems(state, item, 0).map(({ gem }) => gem.id)).toEqual([
+      "sapphire",
+    ]);
   });
 
   it("shows recipe readiness and the output improvement before crafting", () => {

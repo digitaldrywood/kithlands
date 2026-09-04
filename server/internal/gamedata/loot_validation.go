@@ -7,6 +7,8 @@ import (
 	"strconv"
 )
 
+const maxGemWorkshopGoldCost = 100_000
+
 func (gd *GameData) validateLoot() {
 	lootKinds := []string{"weapon", "armor", "accessory"}
 	if len(gd.Loot.Rarities) == 0 {
@@ -140,6 +142,17 @@ func (gd *GameData) validateLoot() {
 	}
 	if gd.GemByID(gd.Loot.Starter.GemID) == nil || gd.Loot.Starter.GemCount < 0 || gd.Loot.Starter.MinSockets < 0 {
 		panic("gamedata: loot starter grant is invalid")
+	}
+	for _, service := range []struct {
+		name string
+		cost int
+	}{
+		{name: "replacement", cost: gd.Loot.Workshop.Replacement.GoldCost},
+		{name: "recovery", cost: gd.Loot.Workshop.Recovery.GoldCost},
+	} {
+		if service.cost < 1 || service.cost > maxGemWorkshopGoldCost {
+			panic(fmt.Sprintf("gamedata: gem workshop %s cost must be between 1 and %d gold", service.name, maxGemWorkshopGoldCost))
+		}
 	}
 }
 

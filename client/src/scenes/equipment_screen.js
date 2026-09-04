@@ -834,13 +834,14 @@ function renderEquipmentDrawer(
   const current = element("section", "drawer-current");
   current.append(renderItemDetails("Equipped", slot.item));
   const currentActions = element("div", "drawer-current-actions");
-  const openSocket =
-    slot.item?.instance_id &&
-    slot.item?.sockets?.some((socket) => !socket.gem_id);
-  if (openSocket) {
+  const hasSockets = slot.item?.instance_id && slot.item?.sockets?.length > 0;
+  if (hasSockets) {
+    const openSocket = slot.item.sockets.some((socket) => !socket.gem_id);
     currentActions.append(
-      button("Socket", "equipment-action secondary", () =>
-        openSocketWorkshop(state, slot, slot.item),
+      button(
+        openSocket ? "Socket" : "Workshop",
+        "equipment-action secondary",
+        () => openSocketWorkshop(state, slot, slot.item),
       ),
     );
   }

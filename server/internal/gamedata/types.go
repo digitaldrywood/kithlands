@@ -418,11 +418,12 @@ type Consumable struct {
 // LootData defines randomized equipment, socket gems, and known recipes.
 // Base equipment continues to live in ItemsData.
 type LootData struct {
-	Rarities []LootRarity `json:"rarities"`
-	Affixes  []LootAffix  `json:"affixes"`
-	Gems     []Gem        `json:"gems"`
-	Recipes  []GemRecipe  `json:"recipes"`
-	Starter  StarterLoot  `json:"starter"`
+	Rarities []LootRarity      `json:"rarities"`
+	Affixes  []LootAffix       `json:"affixes"`
+	Gems     []Gem             `json:"gems"`
+	Recipes  []GemRecipe       `json:"recipes"`
+	Starter  StarterLoot       `json:"starter"`
+	Workshop GemWorkshopConfig `json:"workshop"`
 }
 
 type IntRange struct {
@@ -502,6 +503,17 @@ type StarterLoot struct {
 	GemID      string `json:"gem_id"`
 	GemCount   int    `json:"gem_count"`
 	MinSockets int    `json:"min_sockets"`
+}
+
+// GemWorkshopConfig declares fixed server-side service prices. The client
+// receives resolved preview costs and never supplies or calculates pricing.
+type GemWorkshopConfig struct {
+	Replacement GemWorkshopService `json:"replacement"`
+	Recovery    GemWorkshopService `json:"recovery"`
+}
+
+type GemWorkshopService struct {
+	GoldCost int `json:"gold_cost"`
 }
 
 // Spells

@@ -75,7 +75,7 @@ func TestStarterLootCanBeSocketedAndEquippedAtLevelOne(t *testing.T) {
 	}
 
 	if err := game.SocketGem(api.SocketGemRequest{
-		InstanceID: starter.ID, Socket: 0, GemID: "ember_shard",
+		InstanceID: starter.ID, Socket: 0, GemID: "ember_shard", Token: item.SocketPreviews[0].Token,
 	}); err != nil {
 		t.Fatalf("SocketGem: %v", err)
 	}

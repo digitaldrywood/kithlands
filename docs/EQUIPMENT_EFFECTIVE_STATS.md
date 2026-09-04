@@ -2,8 +2,9 @@
 
 The authoritative character snapshot combines saved growth with the resolved
 complete loadout. It is temporary: never save it over the character's base
-attributes. Equip, unequip, instance transfer, socketing, and reload therefore
-change the next snapshot without accumulating bonuses.
+attributes. Equip, unequip, instance transfer, socketing, gem replacement or
+recovery, and reload therefore change the next snapshot without accumulating
+bonuses.
 
 ## Current gameplay contract
 

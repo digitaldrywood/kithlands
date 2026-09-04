@@ -118,6 +118,14 @@
   flex-direction: column;
   gap: 8px;
 }
+.gem-socket-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.kith-gem-workshop .gem-socket-list button {
+  text-align: left;
+}
 .kith-gem-workshop .gem-choice {
   width: 100%;
   flex: 0 0 auto;
@@ -198,10 +206,31 @@
   border-color: #8ed4b3;
   font-weight: 650;
 }
+.gem-recovery {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 6px;
+  padding-top: 16px;
+  border-top: 1px solid #425975;
+}
+.kith-gem-workshop .gem-recover {
+  width: 100%;
+  background: #5a4326;
+  border-color: #e1b56e;
+  font-weight: 650;
+}
 .gem-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 10px 22px;
   background: #1d483d;
   color: #dcfff1;
+}
+.gem-notice button {
+  flex: 0 0 auto;
 }
 .gem-notice.is-error {
   background: #5b3039;
@@ -245,7 +274,12 @@
     padding: 3px;
     overscroll-behavior: contain;
   }
+  .gem-socket-list {
+    grid-template-columns: 1fr;
+  }
   .gem-notice {
+    align-items: stretch;
+    flex-direction: column;
     padding: 8px 12px;
     font-size: 14px;
   }

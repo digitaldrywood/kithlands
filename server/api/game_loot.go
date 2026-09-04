@@ -1,9 +1,12 @@
 package api
 
 import (
+	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"sort"
 
+	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
 	"github.com/digitaldrywood/kithlands/internal/inventory"
 	"github.com/digitaldrywood/kithlands/internal/loot"
@@ -137,7 +140,12 @@ func (g *Game) rolledItemState(id string, item *inventory.EquipmentInstance) (It
 		}
 		state.Sockets = append(state.Sockets, socketState)
 	}
-	state.SocketPreviews = g.gemSocketPreviews(item, resolved.Stats)
+	state.GemChanges = g.gemChangePreviews(item)
+	for _, preview := range state.GemChanges {
+		if preview.Action == inventory.GemActionSocket {
+			state.SocketPreviews = append(state.SocketPreviews, preview)
+		}
+	}
 	return state, nil
 }
 
@@ -239,59 +247,142 @@ func gemEffectStates(effects []gamedata.GemEffect) []GemEffectState {
 	return states
 }
 
-// GemSocketPreviewState contains read-only values from the same inventory
-// transaction used by confirmation. The client never calculates stat rules.
-type GemSocketPreviewState struct {
-	GemID           string         `json:"gem_id"`
-	Socket          int            `json:"socket"`
-	Allowed         bool           `json:"allowed"`
-	BlockReason     string         `json:"block_reason,omitempty"`
-	Before          map[string]int `json:"before"`
-	After           map[string]int `json:"after,omitempty"`
-	GearBefore      map[string]int `json:"gear_before,omitempty"`
-	GearAfter       map[string]int `json:"gear_after,omitempty"`
-	CharacterBefore map[string]int `json:"character_before,omitempty"`
-	CharacterAfter  map[string]int `json:"character_after,omitempty"`
+// GemChangePreviewState contains display-ready values from the same atomic
+// transaction used by confirmation. Gold and stat math never run in the client.
+type GemChangePreviewState struct {
+	Action           string         `json:"action"`
+	GemID            string         `json:"gem_id,omitempty"`
+	GemName          string         `json:"gem_name,omitempty"`
+	InstalledGemID   string         `json:"installed_gem_id,omitempty"`
+	InstalledGemName string         `json:"installed_gem_name,omitempty"`
+	Socket           int            `json:"socket"`
+	GoldCost         int            `json:"gold_cost"`
+	GoldBefore       int            `json:"gold_before"`
+	GoldAfter        int            `json:"gold_after"`
+	Allowed          bool           `json:"allowed"`
+	BlockReason      string         `json:"block_reason,omitempty"`
+	Token            string         `json:"token,omitempty"`
+	Before           map[string]int `json:"before"`
+	After            map[string]int `json:"after,omitempty"`
+	GearBefore       map[string]int `json:"gear_before,omitempty"`
+	GearAfter        map[string]int `json:"gear_after,omitempty"`
+	CharacterBefore  map[string]int `json:"character_before,omitempty"`
+	CharacterAfter   map[string]int `json:"character_after,omitempty"`
 }
 
-func (g *Game) gemSocketPreviews(item *inventory.EquipmentInstance, before map[string]int) []GemSocketPreviewState {
-	socketIndex := -1
-	for i, socket := range item.Sockets {
-		if socket.GemID == "" {
-			socketIndex = i
-			break
+// GemSocketPreviewState remains as the compatibility projection for open
+// sockets. New clients use gem_changes for all three Workshop actions.
+type GemSocketPreviewState = GemChangePreviewState
+
+func (g *Game) gemChangeGoldCost(action string) (int, error) {
+	switch action {
+	case inventory.GemActionSocket:
+		return 0, nil
+	case inventory.GemActionReplace:
+		return g.gd.Loot.Workshop.Replacement.GoldCost, nil
+	case inventory.GemActionRecover:
+		return g.gd.Loot.Workshop.Recovery.GoldCost, nil
+	default:
+		return 0, fmt.Errorf("unknown gem action %q", action)
+	}
+}
+
+func (g *Game) planGemChangeLocked(req GemChangeRequest) (GemChangePreviewState, *inventory.Inventory) {
+	preview := GemChangePreviewState{
+		Action: req.Action, GemID: req.GemID, Socket: req.Socket,
+		GoldBefore: g.inv.Gold,
+	}
+	cost, err := g.gemChangeGoldCost(req.Action)
+	if err != nil {
+		preview.BlockReason = err.Error()
+		return preview, nil
+	}
+	preview.GoldCost = cost
+	if gem := g.gd.GemByID(req.GemID); gem != nil {
+		preview.GemName = gem.Name
+	}
+	item := g.inv.Instance(req.InstanceID)
+	if item == nil {
+		preview.BlockReason = fmt.Sprintf("equipment instance %q not owned", req.InstanceID)
+		return preview, nil
+	}
+	if req.Socket >= 0 && req.Socket < len(item.Sockets) {
+		preview.InstalledGemID = item.Sockets[req.Socket].GemID
+		if gem := g.gd.GemByID(preview.InstalledGemID); gem != nil {
+			preview.InstalledGemName = gem.Name
 		}
 	}
-	if socketIndex < 0 {
-		return nil
+	resolvedBefore, err := inventory.ResolveInstance(item, g.gd)
+	if err != nil {
+		preview.BlockReason = err.Error()
+		return preview, nil
 	}
-	var previews []GemSocketPreviewState
-	for _, gem := range g.gd.Loot.Gems {
-		if g.inv.Gems[gem.ID] < 1 {
-			continue
-		}
-		preview := GemSocketPreviewState{GemID: gem.ID, Socket: socketIndex, Before: cloneStats(before)}
-		if err := g.checkGemMutationLocked(); err != nil {
-			preview.BlockReason = err.Error()
+	preview.Before = cloneStats(resolvedBefore.Stats)
+	if err := g.checkGemMutationLocked(); err != nil {
+		preview.BlockReason = err.Error()
+		return preview, nil
+	}
+	change := inventory.GemChange{
+		Action: req.Action, InstanceID: req.InstanceID, Socket: req.Socket,
+		IncomingGemID: req.GemID, GoldCost: cost,
+	}
+	working := g.inv.Clone()
+	if err := working.ChangeGem(change, g.maxPartyLevel(), g.gd); err != nil {
+		preview.BlockReason = err.Error()
+		return preview, nil
+	}
+	resolvedAfter, err := inventory.ResolveInstance(working.Instance(req.InstanceID), g.gd)
+	if err != nil {
+		preview.BlockReason = err.Error()
+		return preview, nil
+	}
+	preview.Allowed = true
+	preview.GoldAfter = working.Gold
+	preview.After = cloneStats(resolvedAfter.Stats)
+	if partySlot, _, equipped := g.inv.FindEquippedInstance(req.InstanceID); equipped {
+		preview.GearBefore = g.inv.LoadoutStats(partySlot, g.gd)
+		preview.GearAfter = working.LoadoutStats(partySlot, g.gd)
+		preview.CharacterBefore = g.inv.ResolveEffectiveStats(g.party[partySlot], partySlot, g.gd).Values()
+		preview.CharacterAfter = working.ResolveEffectiveStats(g.party[partySlot], partySlot, g.gd).Values()
+	}
+	payload, err := json.Marshal(struct {
+		Inventory *inventory.Inventory
+		Party     []*character.Character
+		Phase     string
+		Change    inventory.GemChange
+		Workshop  gamedata.GemWorkshopConfig
+	}{g.inv, g.party, g.phase, change, g.gd.Loot.Workshop})
+	if err != nil {
+		preview.Allowed = false
+		preview.BlockReason = fmt.Sprintf("fingerprinting gem preview: %v", err)
+		return preview, nil
+	}
+	preview.Token = fmt.Sprintf("%x", sha256.Sum256(payload))
+	return preview, working
+}
+
+func (g *Game) gemChangePreviews(item *inventory.EquipmentInstance) []GemChangePreviewState {
+	previews := make([]GemChangePreviewState, 0, len(item.Sockets)*(len(g.gd.Loot.Gems)+1))
+	for socketIndex, socket := range item.Sockets {
+		if socket.GemID != "" {
+			preview, _ := g.planGemChangeLocked(GemChangeRequest{
+				Action: inventory.GemActionRecover, InstanceID: item.ID, Socket: socketIndex,
+			})
 			previews = append(previews, preview)
-			continue
 		}
-		working := g.inv.Clone()
-		if err := working.SocketGem(item.ID, socketIndex, gem.ID, g.maxPartyLevel(), g.gd); err != nil {
-			preview.BlockReason = err.Error()
-		} else if resolved, err := inventory.ResolveInstance(working.Instance(item.ID), g.gd); err != nil {
-			preview.BlockReason = err.Error()
-		} else {
-			preview.Allowed = true
-			preview.After = cloneStats(resolved.Stats)
-			if partySlot, _, equipped := g.inv.FindEquippedInstance(item.ID); equipped {
-				preview.GearBefore = g.inv.LoadoutStats(partySlot, g.gd)
-				preview.GearAfter = working.LoadoutStats(partySlot, g.gd)
-				preview.CharacterBefore = g.inv.ResolveEffectiveStats(g.party[partySlot], partySlot, g.gd).Values()
-				preview.CharacterAfter = working.ResolveEffectiveStats(g.party[partySlot], partySlot, g.gd).Values()
+		for _, gem := range g.gd.Loot.Gems {
+			if g.inv.Gems[gem.ID] < 1 || socket.GemID == gem.ID {
+				continue
 			}
+			action := inventory.GemActionSocket
+			if socket.GemID != "" {
+				action = inventory.GemActionReplace
+			}
+			preview, _ := g.planGemChangeLocked(GemChangeRequest{
+				Action: action, InstanceID: item.ID, Socket: socketIndex, GemID: gem.ID,
+			})
+			previews = append(previews, preview)
 		}
-		previews = append(previews, preview)
 	}
 	return previews
 }
