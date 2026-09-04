@@ -21,6 +21,7 @@ import {
   showWorldMap,
   showInteractPrompt,
   hideInteractPrompt,
+  syncWorldArrival,
 } from "./world_interact.js";
 import { shouldStartBattle } from "./encounterFlow.js";
 import { initTouchControls } from "../systems/input.js";
@@ -53,6 +54,9 @@ import { questObjectiveText, questKindLabel } from "./quest_text.js";
 import { walkAuditHUDText } from "./walkAuditMode.js";
 import { applyGameplayViewport } from "../systems/gameplayViewport.js";
 import { updateDungeonEntry } from "./dungeonEntry.js";
+import { cancelDungeonRoute } from "./dungeonRoute.js";
+import { resolveWorldStartPosition } from "./worldPosition.js";
+import { rememberWorldTileMap, worldTileMapForGame } from "./worldMapCache.js";
 
 const ENEMY_SPRITES = {
   Slime: "monster_slime",
@@ -329,12 +333,12 @@ function drawWorldLocationMarkers(graphics, spawns = []) {
   }
 }
 
-// Cache tilemap and player position across scene restarts
-let cachedTileMap = null;
+// Cache player position across scene restarts.
 let cachedPlayerX = null;
 let cachedPlayerY = null;
 let cachedPlayerDir = "down";
 let cachedLeaderIndex = 0;
+let cachedGameID = null;
 
 export function getLeaderIndex() {
   return cachedLeaderIndex;
@@ -385,16 +389,25 @@ export class WorldScene extends Phaser.Scene {
   }
 
   init(data) {
+    cancelDungeonRoute(this);
+    this.dungeonRouteToken = null;
+    this.settleWorldStep?.(false);
+    this.settleWorldStep = null;
+    this.worldStepDone = null;
     this.gameState = data.gameState;
-    // Cache tilemap from initial game creation
-    if (this.gameState.tilemap) {
-      cachedTileMap = this.gameState.tilemap;
+    if (cachedGameID !== this.gameState?.id) {
+      cachedGameID = this.gameState?.id || null;
+      cachedPlayerX = null;
+      cachedPlayerY = null;
+      cachedPlayerDir = "down";
+      cachedLeaderIndex = 0;
     }
+    rememberWorldTileMap(this.gameState);
     console.log(
       "[World] init, phase:",
       this.gameState?.phase,
       "tilemap cached:",
-      !!cachedTileMap,
+      !!worldTileMapForGame(this.gameState?.id),
     );
   }
 
@@ -402,6 +415,12 @@ export class WorldScene extends Phaser.Scene {
     this.stepCount = 0;
     this.animating = false;
     this.gameOver = false;
+    this.events.once("shutdown", () => {
+      cancelDungeonRoute(this);
+      this.settleWorldStep?.(false);
+      this.settleWorldStep = null;
+      this.worldStepDone = null;
+    });
 
     initAudio(this);
     playMusic("music_overworld");
@@ -442,7 +461,7 @@ export class WorldScene extends Phaser.Scene {
 
     const layout = applyGameplayViewport(this);
 
-    const tm = cachedTileMap;
+    const tm = worldTileMapForGame(gs.id);
     if (!tm) {
       console.error("[World] no tilemap available");
       this.add
@@ -463,10 +482,24 @@ export class WorldScene extends Phaser.Scene {
     this.tileData = tm.tiles;
     this.mapW = tm.width;
     this.mapH = tm.height;
-    // Restore cached position or use tilemap default
-    this.playerX = cachedPlayerX !== null ? cachedPlayerX : tm.player_x;
-    this.playerY = cachedPlayerY !== null ? cachedPlayerY : tm.player_y;
     this.spawns = tm.spawns || [];
+    const start = resolveWorldStartPosition({
+      tileData: this.tileData,
+      width: this.mapW,
+      height: this.mapH,
+      spawns: this.spawns,
+      currentNodeID: gs.current_location?.world_node_id,
+      preferredPosition:
+        cachedPlayerX === null || cachedPlayerY === null
+          ? null
+          : { x: cachedPlayerX, y: cachedPlayerY },
+      defaultPosition: { x: tm.player_x, y: tm.player_y },
+      canWalk: (tile) => this.canWalkTile(tile),
+    });
+    this.playerX = start?.x ?? tm.player_x;
+    this.playerY = start?.y ?? tm.player_y;
+    cachedPlayerX = this.playerX;
+    cachedPlayerY = this.playerY;
 
     // World bounds
     const worldW = this.mapW * RENDERED_TILE;
@@ -783,6 +816,7 @@ export class WorldScene extends Phaser.Scene {
 
   update(time) {
     if (isWorldInputLocked(this)) return;
+    if (this.dungeonRouteRunning) return;
     if (!this.hudText || !this.player) return; // scene destroyed
     if (this.animating) return;
     if (time - this.lastMoveTime < this.moveCooldown) return;
@@ -800,13 +834,27 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  tryMove(dx, dy) {
-    const nx = this.playerX + dx;
-    const ny = this.playerY + dy;
-    if (nx < 0 || nx >= this.mapW || ny < 0 || ny >= this.mapH) return;
+  tryMove(dx, dy, options = {}) {
+    // Touch repeat and tap-to-walk callbacks run independently of update().
+    // Keep one tile step (including its authoritative arrival sync) in flight
+    // at a time so held input cannot skip graph waypoints.
+    if (
+      this.animating ||
+      isWorldInputLocked(this) ||
+      (this.dungeonRouteRunning && !options.route)
+    )
+      return false;
+    const origin = {
+      x: this.playerX,
+      y: this.playerY,
+      door: this.currentDoorSpawn || null,
+    };
+    const nx = origin.x + dx;
+    const ny = origin.y + dy;
+    if (nx < 0 || nx >= this.mapW || ny < 0 || ny >= this.mapH) return false;
 
     const tile = this.tileData[ny][nx];
-    if (!this.canWalkTile(tile)) return;
+    if (!this.canWalkTile(tile)) return false;
 
     this.playerX = nx;
     this.playerY = ny;
@@ -831,8 +879,45 @@ export class WorldScene extends Phaser.Scene {
     const stepMs = walkStepMs();
     this.animating = true;
     this.walkFrameAudit = [];
+    let finishWorldStep;
+    let worldStepSettled = false;
+    this.worldStepDone = new Promise((resolve) => {
+      finishWorldStep = resolve;
+    });
+    const settleWorldStep = (accepted) => {
+      if (worldStepSettled) return;
+      worldStepSettled = true;
+      if (this.settleWorldStep === settleWorldStep) {
+        this.settleWorldStep = null;
+      }
+      finishWorldStep(accepted);
+    };
+    this.settleWorldStep = settleWorldStep;
     const finishStepAnimation = playStepAnimation(this, stepMs, () => {
-      this.animating = false;
+      let accepted = true;
+      void syncWorldArrival(this)
+        .then((result) => {
+          if (result?.error && this.scene?.isActive()) {
+            accepted = false;
+            this.restoreRejectedWorldStep(origin, result.error);
+          }
+        })
+        .catch((error) => {
+          if (this.scene?.isActive()) {
+            accepted = false;
+            this.restoreRejectedWorldStep(
+              origin,
+              error instanceof Error ? error.message : String(error),
+            );
+          }
+        })
+        .finally(() => {
+          if (this.scene?.isActive()) {
+            this.animating = false;
+            this.updateHUD();
+          }
+          settleWorldStep(accepted);
+        });
     });
     this.tweens.add({
       targets: this.player,
@@ -893,6 +978,31 @@ export class WorldScene extends Phaser.Scene {
 
     this.updateHUD();
     this.updateMinimap();
+    return true;
+  }
+
+  restoreRejectedWorldStep(origin, reason) {
+    this.playerX = origin.x;
+    this.playerY = origin.y;
+    cachedPlayerX = origin.x;
+    cachedPlayerY = origin.y;
+    const position = walkSpritePosition(origin.x, origin.y, RENDERED_TILE);
+    this.player.setPosition(position.x, position.y);
+    setPlayerWalkFrame(this, WALK_IDLE_FRAME);
+    if (this.vehicleIndicator) {
+      this.vehicleIndicator.setPosition(
+        origin.x * RENDERED_TILE + RENDERED_TILE / 2,
+        origin.y * RENDERED_TILE + RENDERED_TILE / 2,
+      );
+    }
+    this.currentDoorSpawn = origin.door;
+    if (origin.door) showInteractPrompt(this, origin.door);
+    else hideInteractPrompt(this);
+    this.updateHUD();
+    this.updateMinimap();
+    this.showMessage(
+      `Travel paused: ${reason || "the route could not be confirmed"}. Returned to the last safe step; try again.`,
+    );
   }
 
   async triggerRandomEncounter(tile) {

@@ -142,6 +142,16 @@ func requireCurrentQuestTargetNodeID(t *testing.T, gs map[string]any) string {
 	return id
 }
 
+func currentLocationWorldNodeID(t *testing.T, gs map[string]any) string {
+	t.Helper()
+	location, _ := gs["current_location"].(map[string]any)
+	nodeID, _ := location["world_node_id"].(string)
+	if nodeID == "" {
+		t.Fatal("game state has no authoritative world node")
+	}
+	return nodeID
+}
+
 // TestQuestAdvanceIgnoresWrongNode is the red test for issue #63 bug 1:
 // entering the wrong building must not advance the current main quest.
 func TestQuestAdvanceIgnoresWrongNode(t *testing.T) {
@@ -150,7 +160,10 @@ func TestQuestAdvanceIgnoresWrongNode(t *testing.T) {
 	startQuest := int(gs["current_quest"].(float64))
 	startPhase, _ := gs["phase"].(string)
 
-	wrongNode := targetNodeID + "_not_it"
+	wrongNode := currentLocationWorldNodeID(t, gs)
+	if wrongNode == targetNodeID {
+		t.Fatal("fixture starts at the current quest target")
+	}
 	gs = post(t, ts.URL+"/api/game/"+gameID+"/action", api.GameActionRequest{
 		Type:   "quest_advance",
 		NodeID: wrongNode,

@@ -1,0 +1,14 @@
+{
+  "adventure_id": "forgotten-shrine",
+  "map_size": [24, 16],
+  "tile_size": 32,
+  "anchors": [
+    { "room": "forgotten-threshold", "action": "threshold-guardians", "tile": [12, 9], "landmark": "open road between guardian plinths" },
+    { "room": "echoing-nave", "action": "pilgrim-rest", "tile": [9, 13], "landmark": "pilgrim brazier and bench" },
+    { "room": "resonant-chapel", "action": "bell-tuning-lever", "tile": [16, 5], "landmark": "bronze tuning lever east of bell dais" },
+    { "room": "moonwater-archive", "action": "moon-mirror", "tile": [8, 5], "landmark": "rotation control beside moon mirror" },
+    { "room": "branching-reliquary", "action": "reliquary-sanctum", "tile": [12, 3], "landmark": "twin-seal door where both aisles rejoin" },
+    { "room": "inner-sanctum", "action": "sanctum-guardians", "tile": [12, 9], "landmark": "open celestial seal arena" },
+    { "room": "inner-sanctum", "action": "twin-sigil-altar", "tile": [12, 4], "landmark": "reward altar below broken dome" }
+  ]
+}

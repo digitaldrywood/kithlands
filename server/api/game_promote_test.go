@@ -29,7 +29,7 @@ func driveToPromotion(t *testing.T, game *api.Game) *api.GameState {
 			if target == "" {
 				t.Fatalf("quest[%d] has no target_node_id", state.CurrentQ)
 			}
-			if _, err := game.ProcessAction(nextCampaignAction(state)); err != nil {
+			if _, err := processCampaignAction(t, game, nextCampaignAction(state)); err != nil {
 				t.Fatalf("quest_advance[%d]: %v", state.CurrentQ, err)
 			}
 		case "combat":
@@ -240,6 +240,9 @@ func TestPromotionRequiresProofItemAtGiver(t *testing.T) {
 	promo := game.State().Quests[promoIdx]
 
 	// Visit giver (stage 0 → 1). Promotion must not fire.
+	if err := api.ArriveAtWorldNodeForTest(game, promo.GiverNodeID); err != nil {
+		t.Fatalf("arrive at giver: %v", err)
+	}
 	if _, err := game.ProcessAction(api.GameActionRequest{Type: "quest_advance", NodeID: promo.GiverNodeID}); err != nil {
 		t.Fatalf("visit giver: %v", err)
 	}

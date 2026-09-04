@@ -1,0 +1,26 @@
+{
+  "tool": "image_gen.imagegen (built-in)",
+  "date": "2026-09-04",
+  "model": "tool-selected built-in image model; no model or seed override",
+  "mode": "one original environment request per room",
+  "requested_aspect": "3:2 landscape",
+  "result_dimensions": [1536, 1024],
+  "runtime_dimensions": [768, 512],
+  "common_prompt": "Use case: stylized-concept. Original Kithlands Phaser/Tiled dungeon background for a 24x16 tile map. Polished 16-bit JRPG-inspired hand-painted pixel-art texture without copying an existing franchise. Strict top-down orthographic 3:2 room, entire gameplay footprint visible, clear walkable routes, slate gray and muted teal stone, aged bronze and silver, restrained amber light, sparse moss. No characters, creatures, UI, text, labels, watermark, baked grid, isometric camera, blocked entrances, or clutter across walk paths.",
+  "rooms": {
+    "forgotten-threshold.png": "Remote forest-ridge shrine entrance. Bottom-center road passes between mossy guardian plinths to a top-center arch. Dry reflecting basin at left and cracked bell pedestal at right.",
+    "echoing-nave.png": "Broad nave hub with bottom entry, left and right branch arches, monumental top reliquary gate, edge pews, and an accessible pilgrim brazier and bench in the lower-left.",
+    "resonant-chapel.png": "Bronze bell dominates the upper dais. A reachable tuning lever sits to its right, broken choir stalls frame a clear circular encounter floor, and the entrance remains open at bottom center.",
+    "moonwater-archive.png": "Dry central archive walkways cross shallow teal water. A moon mirror and rotation switch occupy the upper-left, a broken observatory lens the upper-right, and the central encounter floor stays open.",
+    "branching-reliquary.png": "Moon cases line the west aisle and bell/sun cases the east. Both paths circle a central casket and dry trench before rejoining at the twin-seal sanctum door.",
+    "inner-sanctum.png": "A cracked celestial floor seal forms the open boss arena. Empty guardian plinths and a reward altar rise at the north end beneath a broken teal-lit dome."
+  },
+  "generated_sources": {
+    "forgotten-threshold.png": "/Users/corylanou/.codex/generated_images/01a06dcc-9d7a-7672-ba54-5eae2727879e/exec-4fa260a3-14e1-4b99-8ae5-c1dd85658eef.png",
+    "echoing-nave.png": "/Users/corylanou/.codex/generated_images/01a06dcc-9d7a-7672-ba54-5eae2727879e/exec-c83bf587-5a37-4168-9c52-2dd198b899a7.png",
+    "resonant-chapel.png": "/Users/corylanou/.codex/generated_images/01a06dcc-9d7a-7672-ba54-5eae2727879e/exec-3d6d7a45-afec-4437-8bec-4672ea28e9a6.png",
+    "moonwater-archive.png": "/Users/corylanou/.codex/generated_images/01a06dcc-9d7a-7672-ba54-5eae2727879e/exec-91a3d749-47f3-42d1-b975-d92103a9d50f.png",
+    "branching-reliquary.png": "/Users/corylanou/.codex/generated_images/01a06dcc-9d7a-7672-ba54-5eae2727879e/exec-aedeba45-0206-4874-af5e-003ee7002ae5.png",
+    "inner-sanctum.png": "/Users/corylanou/.codex/generated_images/01a06dcc-9d7a-7672-ba54-5eae2727879e/exec-b17ccc32-fe1e-4804-a168-9ee6faa1a38a.png"
+  }
+}

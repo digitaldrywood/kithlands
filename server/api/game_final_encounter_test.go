@@ -43,6 +43,7 @@ func finalCheckpoint(t *testing.T, seed uint64) *Game {
 }
 func startFinal(t *testing.T, g *Game) *GameState {
 	t.Helper()
+	arriveAtWorldNode(t, g, g.finalQuest().TargetNodeID)
 	s, err := g.ProcessAction(GameActionRequest{Type: "quest_advance", NodeID: g.finalQuest().TargetNodeID})
 	if err != nil {
 		t.Fatal(err)
@@ -179,6 +180,7 @@ func TestFinalEncounterIgnoresQ12SideQuest(t *testing.T) {
 	}
 
 	g.currentQ = 0
+	arriveAtWorldNode(t, g, side.TargetNodeID)
 	s, err := g.ProcessAction(GameActionRequest{Type: "quest_advance", NodeID: side.TargetNodeID})
 	if err != nil {
 		t.Fatal(err)
@@ -190,10 +192,10 @@ func TestFinalEncounterIgnoresQ12SideQuest(t *testing.T) {
 func TestFinalEncounterArrivalAndSave(t *testing.T) {
 	g := finalCheckpoint(t, 1)
 	gold := g.inv.Gold
-	s, err := g.ProcessAction(GameActionRequest{Type: "quest_advance", NodeID: "unrelated"})
-	if err != nil {
-		t.Fatal(err)
+	if _, err := g.ProcessAction(GameActionRequest{Type: "quest_advance", NodeID: "unrelated"}); err == nil {
+		t.Fatal("remote wrong-node arrival was accepted")
 	}
+	s := g.State()
 	if s.Phase == "victory" || g.finalQuest().Completed || gold != g.inv.Gold {
 		t.Fatal("wrong arrival advanced finale")
 	}
@@ -309,6 +311,7 @@ func TestFinalEncounterMissingContentDoesNotComplete(t *testing.T) {
 	g := finalCheckpoint(t, 1)
 	g.gd.FinalEncounter.Monsters = []string{"missing"}
 	g.gd.FinalEncounter.FullPartyMonsters = []string{"missing"}
+	arriveAtWorldNode(t, g, g.finalQuest().TargetNodeID)
 	_, err := g.ProcessAction(GameActionRequest{Type: "quest_advance", NodeID: g.finalQuest().TargetNodeID})
 	if err == nil || !strings.Contains(err.Error(), "progress is safe") || g.finalQuest().Completed || g.finalEncounterActive() {
 		t.Fatal("failed setup did not preserve unfinished finale")

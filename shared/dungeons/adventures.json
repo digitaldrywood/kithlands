@@ -995,5 +995,440 @@
         "battle_background": "bg_forest_1"
       }
     ]
+  },
+  {
+    "id": "forgotten-shrine",
+    "title": "The Forgotten Shrine of {locality}",
+    "entry_label": "Forgotten Shrine path",
+    "entry_region": "far",
+    "description": "Beyond the familiar roads of {locality}, two silent seals guard a reliquary lost beneath the pines. The shrine remembers every path you open, even if you retreat.",
+    "entry_room": "forgotten-threshold",
+    "entry_position": {
+      "x": 12,
+      "y": 13
+    },
+    "complete_flag": "shrine-restored",
+    "return_text": "The twin seals shine over the far ridge. You carry the Twin-Sigil Amulet and 240 gold back toward {locality}; the shrine remains open.",
+    "retreat_text": "You follow the ridge markers back toward {locality}. The bells and moon mirror remain as you left them.",
+    "defeat_text": "The pilgrim flame wakes your party at the shrine threshold. Rested and safe, you can try the guardians again; every opened seal remains.",
+    "payoff": {
+      "gold": 240
+    },
+    "objectives": [
+      {
+        "until": "threshold-guardians-cleared",
+        "text": "Cross the far ridge and clear the guardians at the shrine threshold."
+      },
+      {
+        "until": "bell-tuned",
+        "text": "Explore the nave's western branch and tune the resonant bell."
+      },
+      {
+        "until": "moon-mirror-aligned",
+        "text": "Explore the nave's eastern branch and align the moonwater mirror."
+      },
+      {
+        "until": "sanctum-guardians-cleared",
+        "text": "Follow both reliquary paths to the inner sanctum and face its guardians."
+      },
+      {
+        "until": "shrine-restored",
+        "text": "Claim the Twin-Sigil Amulet from the restored altar."
+      }
+    ],
+    "rooms": [
+      {
+        "id": "forgotten-threshold",
+        "name": "The Forgotten Threshold",
+        "description": "Moonlight catches a dry basin, an old bell, and two stone watchers beside the road into the shrine.",
+        "map_file": "forgotten-threshold.json",
+        "actions": [
+          {
+            "id": "threshold-markers",
+            "label": "Read the ridge markers",
+            "kind": "hint",
+            "position": {
+              "x": 10,
+              "y": 12
+            },
+            "flag": "ridge-markers-read",
+            "text": "One marker bears a bell, the other a crescent. Both point through the arch."
+          },
+          {
+            "id": "threshold-guardians",
+            "label": "Face the threshold guardians",
+            "kind": "encounter",
+            "position": {
+              "x": 12,
+              "y": 9
+            },
+            "flag": "threshold-guardians-cleared",
+            "text": "Stone wings scrape against the old road.",
+            "encounter": {
+              "monsters": [
+                "gargoyle"
+              ],
+              "full_party": [
+                "gargoyle",
+                "gargoyle"
+              ],
+              "level": 4
+            }
+          },
+          {
+            "id": "threshold-nave",
+            "label": "Enter the echoing nave",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 3
+            },
+            "destination": "echoing-nave",
+            "arrival": {
+              "x": 12,
+              "y": 13
+            },
+            "requires": [
+              "threshold-guardians-cleared"
+            ],
+            "reason": "The stone watchers still bar the arch."
+          },
+          {
+            "id": "threshold-return",
+            "label": "Return to the far road",
+            "kind": "exit",
+            "position": {
+              "x": 12,
+              "y": 13
+            }
+          }
+        ],
+        "battle_background": "bg_ruins_1"
+      },
+      {
+        "id": "echoing-nave",
+        "name": "The Echoing Nave",
+        "description": "Two side chapels flank a sealed reliquary gate. A steady pilgrim flame still warms the lower aisle.",
+        "map_file": "echoing-nave.json",
+        "actions": [
+          {
+            "id": "nave-threshold",
+            "label": "Return to the threshold",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 13
+            },
+            "destination": "forgotten-threshold",
+            "arrival": {
+              "x": 12,
+              "y": 3
+            }
+          },
+          {
+            "id": "nave-chapel",
+            "label": "Enter the resonant chapel",
+            "kind": "door",
+            "position": {
+              "x": 2,
+              "y": 8
+            },
+            "destination": "resonant-chapel",
+            "arrival": {
+              "x": 12,
+              "y": 13
+            }
+          },
+          {
+            "id": "nave-archive",
+            "label": "Enter the moonwater archive",
+            "kind": "door",
+            "position": {
+              "x": 21,
+              "y": 8
+            },
+            "destination": "moonwater-archive",
+            "arrival": {
+              "x": 12,
+              "y": 13
+            }
+          },
+          {
+            "id": "nave-reliquary",
+            "label": "Open the twin-seal gate",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 3
+            },
+            "destination": "branching-reliquary",
+            "arrival": {
+              "x": 12,
+              "y": 13
+            },
+            "requires": [
+              "bell-tuned",
+              "moon-mirror-aligned"
+            ],
+            "reason": "The bell and moon seals must both answer."
+          },
+          {
+            "id": "pilgrim-rest",
+            "label": "Rest at the pilgrim flame",
+            "kind": "rest",
+            "position": {
+              "x": 9,
+              "y": 13
+            },
+            "text": "The small flame restores the whole party."
+          }
+        ],
+        "battle_background": "bg_ruins_1"
+      },
+      {
+        "id": "resonant-chapel",
+        "name": "The Resonant Chapel",
+        "description": "A bronze bell hangs above a circular choir floor. Its tuning lever is stiff with age.",
+        "map_file": "resonant-chapel.json",
+        "actions": [
+          {
+            "id": "chapel-return",
+            "label": "Return to the nave",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 13
+            },
+            "destination": "echoing-nave",
+            "arrival": {
+              "x": 2,
+              "y": 8
+            }
+          },
+          {
+            "id": "chapel-sentinels",
+            "label": "Face the silent choir",
+            "kind": "encounter",
+            "position": {
+              "x": 12,
+              "y": 9
+            },
+            "flag": "chapel-sentinels-cleared",
+            "text": "An armored keeper rises while an old chorister rattles beside it.",
+            "encounter": {
+              "monsters": [
+                "armored_knight"
+              ],
+              "full_party": [
+                "armored_knight",
+                "skeleton"
+              ],
+              "level": 4
+            }
+          },
+          {
+            "id": "bell-tuning-lever",
+            "label": "Tune the resonant bell",
+            "kind": "switch",
+            "position": {
+              "x": 16,
+              "y": 5
+            },
+            "requires": [
+              "chapel-sentinels-cleared"
+            ],
+            "reason": "The silent choir still guards the lever.",
+            "flag": "bell-tuned",
+            "text": "The bell answers with a low clear note. An amber seal wakes in the nave."
+          }
+        ],
+        "battle_background": "bg_ruins_1"
+      },
+      {
+        "id": "moonwater-archive",
+        "name": "The Moonwater Archive",
+        "description": "Shallow water surrounds a dry reading floor. A silvered mirror waits above the western channel.",
+        "map_file": "moonwater-archive.json",
+        "actions": [
+          {
+            "id": "archive-return",
+            "label": "Return to the nave",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 13
+            },
+            "destination": "echoing-nave",
+            "arrival": {
+              "x": 21,
+              "y": 8
+            }
+          },
+          {
+            "id": "archive-wraiths",
+            "label": "Cross the moonwater ward",
+            "kind": "encounter",
+            "position": {
+              "x": 12,
+              "y": 9
+            },
+            "flag": "archive-wraiths-cleared",
+            "text": "A bone sentinel rises while a stone-gray ward wolf circles the moonwater.",
+            "encounter": {
+              "monsters": [
+                "skeleton"
+              ],
+              "full_party": [
+                "skeleton",
+                "wolf"
+              ],
+              "level": 4
+            }
+          },
+          {
+            "id": "moon-mirror",
+            "label": "Align the moonwater mirror",
+            "kind": "switch",
+            "position": {
+              "x": 8,
+              "y": 5
+            },
+            "requires": [
+              "archive-wraiths-cleared"
+            ],
+            "reason": "The moonwater ward still holds the mirror.",
+            "flag": "moon-mirror-aligned",
+            "text": "The mirror catches a pale beam. A silver-blue seal wakes in the nave."
+          }
+        ],
+        "battle_background": "bg_ruins_1"
+      },
+      {
+        "id": "branching-reliquary",
+        "name": "The Branching Reliquary",
+        "description": "Moon relics line the western path, bell and sun relics the eastern. Both aisles rejoin before the sanctum.",
+        "map_file": "branching-reliquary.json",
+        "actions": [
+          {
+            "id": "reliquary-return",
+            "label": "Return to the nave",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 13
+            },
+            "destination": "echoing-nave",
+            "arrival": {
+              "x": 12,
+              "y": 3
+            }
+          },
+          {
+            "id": "reliquary-moon-path",
+            "label": "Study the moon reliquaries",
+            "kind": "hint",
+            "position": {
+              "x": 8,
+              "y": 7
+            },
+            "flag": "moon-relics-read",
+            "text": "The western cases describe patience: reflected light opens what force cannot."
+          },
+          {
+            "id": "reliquary-bell-path",
+            "label": "Study the bell reliquaries",
+            "kind": "hint",
+            "position": {
+              "x": 15,
+              "y": 7
+            },
+            "flag": "bell-relics-read",
+            "text": "The eastern cases describe resolve: a true note outlasts any guard."
+          },
+          {
+            "id": "reliquary-sanctum",
+            "label": "Enter the inner sanctum",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 3
+            },
+            "destination": "inner-sanctum",
+            "arrival": {
+              "x": 12,
+              "y": 13
+            }
+          }
+        ],
+        "battle_background": "bg_ruins_1"
+      },
+      {
+        "id": "inner-sanctum",
+        "name": "The Inner Sanctum",
+        "description": "A celestial seal fills the floor. The old guardian plinths face a closed altar beneath the broken dome.",
+        "map_file": "inner-sanctum.json",
+        "actions": [
+          {
+            "id": "sanctum-return",
+            "label": "Return to the reliquary",
+            "kind": "door",
+            "position": {
+              "x": 12,
+              "y": 13
+            },
+            "destination": "branching-reliquary",
+            "arrival": {
+              "x": 12,
+              "y": 3
+            }
+          },
+          {
+            "id": "sanctum-guardians",
+            "label": "Face the twin-seal guardians",
+            "kind": "encounter",
+            "position": {
+              "x": 12,
+              "y": 9
+            },
+            "flag": "sanctum-guardians-cleared",
+            "text": "The old Trial Guardian steps onto the celestial seal as stone wings unfold at its side.",
+            "encounter": {
+              "monsters": [
+                "trial_guardian",
+                "gargoyle"
+              ],
+              "full_party": [
+                "trial_guardian",
+                "gargoyle"
+              ],
+              "level": 5,
+              "boss": true
+            }
+          },
+          {
+            "id": "twin-sigil-altar",
+            "label": "Claim the Twin-Sigil Amulet",
+            "kind": "treasure",
+            "position": {
+              "x": 12,
+              "y": 4
+            },
+            "requires": [
+              "sanctum-guardians-cleared"
+            ],
+            "reason": "The twin-seal guardians still bar the altar.",
+            "flag": "shrine-restored",
+            "text": "Bell-bronze and moon-silver join in one amulet, made for any protector of {locality}.",
+            "reward": {
+              "item_id": "twin_sigil_amulet",
+              "count": 1,
+              "level": 6,
+              "sockets": 1
+            }
+          }
+        ],
+        "battle_background": "bg_ruins_1"
+      }
+    ]
   }
 ]

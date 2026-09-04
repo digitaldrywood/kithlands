@@ -60,6 +60,27 @@ func testServer(t *testing.T) (*api.Server, *httptest.Server) {
 		}
 		json.NewEncoder(w).Encode(result)
 	})
+	mux.HandleFunc("POST /api/game/{id}/test-arrive", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		game := srv.GetGameManager().GetGame(id)
+		if game == nil {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]string{"error": "not found"})
+			return
+		}
+		var req api.LocationTransitionRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+		if err := api.ArriveAtWorldNodeForTest(game, req.WorldNodeID); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+		json.NewEncoder(w).Encode(game.State())
+	})
 	mux.HandleFunc("POST /api/game/{id}/buy", func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 		game := srv.GetGameManager().GetGame(id)
@@ -635,7 +656,7 @@ func TestFullCampaign(t *testing.T) {
 		case "world", "quest_complete":
 			// Advance quest. Since issue #63, quest_advance requires the
 			// target node id; read it from the current quest entry.
-			gs = post(t, ts.URL+"/api/game/"+gameID+"/action", nextCampaignMapAction(t, gs))
+			gs = processCampaignMapAction(t, gs, ts.URL+"/api/game/"+gameID+"/action")
 
 		case "combat":
 			enemies := gs["enemies"].([]any)

@@ -30,6 +30,20 @@ func ForceWorldPhaseForTest(g *Game) {
 	g.enemies = nil
 }
 
+// ArriveAtWorldNodeForTest follows the same adjacent, server-authoritative
+// locality route used by the live overworld client.
+func ArriveAtWorldNodeForTest(g *Game, target string) error {
+	for _, nodeID := range g.WorldNodeRoute(target) {
+		if _, err := g.ProcessLocationTransition(LocationTransitionRequest{
+			TransitionID: "arrive-world-node",
+			WorldNodeID:  nodeID,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // ClearEquipmentForTest strips all equipped gear from every party slot. Used
 // by first-encounter balance tests that need to verify the opener without any
 // starting weapon or armor assistance.

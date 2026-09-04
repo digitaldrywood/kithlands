@@ -1,54 +1,119 @@
 import { dungeonAction } from "../api.js";
 import { isWorldInputLocked } from "../systems/modalLock.js";
 import { drawButton } from "../ui/panel.js";
+import { dungeonRouteForScene, followDungeonRoute } from "./dungeonRoute.js";
 
-export function dungeonEntryVisible(scene) {
-  const entry = scene.gameState?.dungeon_entry;
+export function dungeonEntryForScene(scene) {
+  const entries = scene.gameState?.dungeon_entries?.length
+    ? scene.gameState.dungeon_entries
+    : scene.gameState?.dungeon_entry
+      ? [scene.gameState.dungeon_entry]
+      : [];
   if (
-    !entry?.node_id ||
+    entries.length === 0 ||
     ["combat", "defeat", "victory", "promotion"].includes(
       scene.gameState?.phase,
     )
   )
-    return false;
+    return null;
   const near = (x, y) =>
     Math.abs(scene.playerX - x) + Math.abs(scene.playerY - y) <= 3;
   if (scene.gameState.current_location?.kind === "settlement") {
-    if (scene.gameState.current_location.world_node_id !== entry.node_id)
-      return false;
-    return (
-      scene.model?.interactions?.some(
-        (object) =>
-          object.type === "exit" &&
-          near(
-            Math.floor(object.x / scene.model.tileWidth),
-            Math.floor(object.y / scene.model.tileHeight),
-          ),
-      ) || false
+    const entry = entries.find(
+      (candidate) =>
+        candidate.node_id === scene.gameState.current_location.world_node_id,
     );
+    if (!entry) return null;
+    return scene.model?.interactions?.some(
+      (object) =>
+        object.type === "exit" &&
+        near(
+          Math.floor(object.x / scene.model.tileWidth),
+          Math.floor(object.y / scene.model.tileHeight),
+        ),
+    )
+      ? entry
+      : null;
   }
   if (
     scene.gameState.current_location?.kind &&
     scene.gameState.current_location.kind !== "world"
   )
-    return false;
-  return (scene.spawns || []).some(
-    (spawn) => spawn.node_id === entry.node_id && near(spawn.x, spawn.y),
-  );
+    return null;
+  const currentNodeID = scene.gameState.current_location?.world_node_id;
+  const matches = [];
+  for (const entry of entries) {
+    if (entry.node_id !== currentNodeID) continue;
+    const spawn = (scene.spawns || []).find(
+      (candidate) => candidate.node_id === entry.node_id,
+    );
+    if (!spawn || !near(spawn.x, spawn.y)) continue;
+    matches.push({
+      entry,
+      distance:
+        Math.abs(scene.playerX - spawn.x) + Math.abs(scene.playerY - spawn.y),
+    });
+  }
+  matches.sort((a, b) => a.distance - b.distance);
+  return matches[0]?.entry || null;
+}
+
+export function dungeonEntryVisible(scene) {
+  return dungeonEntryForScene(scene) !== null;
 }
 
 export function updateDungeonEntry(scene) {
-  const visible = dungeonEntryVisible(scene);
-  if (!visible) {
+  // Arrival state can update just before the final movement promise settles.
+  // Do not present a trail button until that authoritative step is actually
+  // usable; otherwise a quick click looks accepted but is ignored by the
+  // world input lock.
+  const entry =
+    scene.animating || scene.dungeonRouteRunning
+      ? null
+      : dungeonEntryForScene(scene);
+  if (!entry) {
     scene.dungeonEntryButton?.destroy();
     scene.dungeonEntryButton = null;
+    scene.currentDungeonEntry = null;
+  } else {
+    scene.currentDungeonEntry = entry;
+    if (scene.dungeonEntryButton) {
+      scene.dungeonEntryButton.setLabel(entry.label);
+    } else {
+      scene.dungeonEntryButton = createTrailButton(
+        scene,
+        entry.label,
+        () => enterDungeon(scene),
+        false,
+      );
+    }
+  }
+
+  const route = dungeonRouteForScene(scene);
+  if (!route) {
+    scene.dungeonRouteButton?.destroy();
+    scene.dungeonRouteButton = null;
     return;
   }
-  const entry = scene.gameState.dungeon_entry;
-  if (scene.dungeonEntryButton) {
-    scene.dungeonEntryButton.setLabel(entry.label);
+  const label = scene.dungeonRouteRunning
+    ? `Following path to ${route.title}…`
+    : `Follow path to ${route.title}`;
+  const routeEnabled = !scene.dungeonRouteRunning && !scene.animating;
+  if (scene.dungeonRouteButton) {
+    scene.dungeonRouteButton.setLabel(label);
+    scene.dungeonRouteButton.setEnabled(routeEnabled);
     return;
   }
+  scene.dungeonRouteButton = createTrailButton(
+    scene,
+    label,
+    () => void followDungeonRoute(scene, dungeonRouteForScene(scene)),
+    true,
+  );
+  scene.dungeonRouteButton.setEnabled(routeEnabled);
+}
+
+function createTrailButton(scene, label, onClick, route) {
   const portrait = scene.gameplayLayout?.portrait;
   const settlement = scene.gameState.current_location?.kind === "settlement";
   const y = settlement
@@ -56,22 +121,24 @@ export function updateDungeonEntry(scene) {
       ? 66
       : 29
     : portrait
-      ? scene.gameplayLayout.height - 572
-      : 528;
+      ? scene.gameplayLayout.height - (route ? 670 : 572)
+      : route
+        ? 478
+        : 528;
   const button = drawButton(
     scene,
     400,
     y,
     portrait ? 664 : 352,
     portrait ? 88 : 42,
-    entry.label,
-    () => enterDungeon(scene),
+    label,
+    onClick,
     {
       depth: settlement ? 1003 : 25,
       fontSize: portrait ? "28px" : "16px",
       fontFamily: "Trebuchet MS, Arial, sans-serif",
-      fill: 0x173b3a,
-      fillHover: 0x315653,
+      fill: route ? 0x29412e : 0x173b3a,
+      fillHover: route ? 0x49613f : 0x315653,
       fillPress: 0x102a2b,
       stroke: 0xd6c18a,
       textColor: "#fff0c2",
@@ -79,25 +146,27 @@ export function updateDungeonEntry(scene) {
     },
   );
   button.label.setWordWrapWidth(portrait ? 630 : 328).setAlign("center");
-  // The global tap-to-walk handler must not also receive a trail-button tap.
   for (const object of [button.bg, button.label]) {
     object.on("pointerdown", (_pointer, _x, _y, event) =>
       event?.stopPropagation(),
     );
   }
-  scene.dungeonEntryButton = button;
   scene.events.once("shutdown", () => {
-    scene.dungeonEntryButton = null;
+    button.destroy();
+    if (route) scene.dungeonRouteButton = null;
+    else scene.dungeonEntryButton = null;
   });
+  return button;
 }
 
 async function enterDungeon(scene) {
-  if (isWorldInputLocked(scene) || !dungeonEntryVisible(scene)) return;
+  const entry = dungeonEntryForScene(scene);
+  if (isWorldInputLocked(scene) || !entry) return;
   scene.animating = true;
   try {
     const result = await dungeonAction(scene.gameState.id, {
       type: "enter",
-      node_id: scene.gameState.dungeon_entry.node_id,
+      node_id: entry.node_id,
     });
     if (!scene.scene.isActive()) return;
     if (result?.error || result?.current_location?.kind !== "dungeon") {

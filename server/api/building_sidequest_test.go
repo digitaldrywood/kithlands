@@ -99,6 +99,10 @@ func TestBuildingSideQuestProgressAndTurnIn(t *testing.T) {
 	reward := quest["reward"].(map[string]any)
 	rewardGold := int(reward["gold"].(float64))
 
+	arrived := post(t, ts.URL+"/api/game/"+gameID+"/test-arrive", api.LocationTransitionRequest{WorldNodeID: targetNodeID})
+	if errMessage, _ := arrived["error"].(string); errMessage != "" {
+		t.Fatalf("arrive at side-quest target: %s", errMessage)
+	}
 	progressed := post(t, ts.URL+"/api/game/"+gameID+"/action", api.GameActionRequest{
 		Type:   "quest_advance",
 		NodeID: targetNodeID,

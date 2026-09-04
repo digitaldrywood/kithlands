@@ -5,6 +5,64 @@ import { transitionLocation } from "../api.js";
 import { isRestBuilding } from "./building_type.js";
 import { TILE_COLORS } from "./tileConstants.js";
 
+export function nearbyWorldArrival(scene) {
+  if (scene?.gameState?.current_location?.kind !== "world") return null;
+  const current = scene.gameState.current_location.world_node_id;
+  const nearby = (scene.spawns || [])
+    .map((spawn) => ({
+      spawn,
+      distance:
+        Math.abs(scene.playerX - spawn.x) + Math.abs(scene.playerY - spawn.y),
+    }))
+    .filter(({ distance }) => distance <= 3)
+    .sort((a, b) => a.distance - b.distance);
+  if (nearby.some(({ spawn }) => spawn.node_id === current)) return null;
+  return nearby[0]?.spawn || null;
+}
+
+// Keep the server's graph arrival in step with ordinary on-foot movement.
+// Calls are serialized so a fast held key cannot reorder adjacent arrivals.
+export async function syncWorldArrival(scene) {
+  const arrival = nearbyWorldArrival(scene);
+  if (!arrival) return null;
+  if (scene.worldArrivalPending) {
+    scene.worldArrivalQueued = true;
+    return null;
+  }
+
+  scene.worldArrivalPending = arrival.node_id;
+  try {
+    let result = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        result = await transitionLocation(
+          scene.gameState.id,
+          "arrive-world-node",
+          arrival.node_id,
+        );
+      } catch (error) {
+        result = {
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+      if (!result?.error) {
+        if (scene.scene?.isActive()) {
+          scene.gameState = result;
+          scene.updateHUD?.();
+        }
+        return result;
+      }
+    }
+    return result;
+  } finally {
+    scene.worldArrivalPending = null;
+    if (scene.worldArrivalQueued) {
+      scene.worldArrivalQueued = false;
+      void syncWorldArrival(scene);
+    }
+  }
+}
+
 export async function interactWithDoor(scene) {
   if (scene.animating || scene.menuOpen || scene.gameOver) return;
   const spawn = scene.currentDoorSpawn;

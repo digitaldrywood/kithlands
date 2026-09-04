@@ -13,6 +13,7 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/combat"
 	"github.com/digitaldrywood/kithlands/internal/dungeon"
 	"github.com/digitaldrywood/kithlands/internal/inventory"
+	"github.com/digitaldrywood/kithlands/internal/locality"
 	"github.com/digitaldrywood/kithlands/internal/settlements"
 )
 
@@ -35,12 +36,13 @@ type DungeonProgress struct {
 }
 
 type DungeonEntryState struct {
-	ID          string `json:"id"`
-	Title       string `json:"title"`
-	Label       string `json:"label"`
-	Description string `json:"description"`
-	NodeID      string `json:"node_id"`
-	Completed   bool   `json:"completed"`
+	ID           string   `json:"id"`
+	Title        string   `json:"title"`
+	Label        string   `json:"label"`
+	Description  string   `json:"description"`
+	NodeID       string   `json:"node_id"`
+	RouteNodeIDs []string `json:"route_node_ids,omitempty"`
+	Completed    bool     `json:"completed"`
 }
 type DungeonActionState struct {
 	ID        string `json:"id"`
@@ -81,18 +83,156 @@ func (g *Game) dungeonDefinition() *dungeon.Definition {
 	if g.gd == nil {
 		return nil
 	}
-	if g.dungeon == nil {
+	id := g.activeDungeonID
+	if id == "" && g.dungeon != nil {
+		id = g.dungeon.ID
+	}
+	if id == "" {
 		if len(g.gd.Dungeons) > 0 {
 			return &g.gd.Dungeons[0]
 		}
 		return nil
 	}
 	for i := range g.gd.Dungeons {
-		if g.gd.Dungeons[i].ID == g.dungeon.ID {
+		if g.gd.Dungeons[i].ID == id {
 			return &g.gd.Dungeons[i]
 		}
 	}
 	return nil
+}
+
+func (g *Game) dungeonDefinitionByID(id string) *dungeon.Definition {
+	if g.gd == nil || id == "" {
+		return nil
+	}
+	for i := range g.gd.Dungeons {
+		if g.gd.Dungeons[i].ID == id {
+			return &g.gd.Dungeons[i]
+		}
+	}
+	return nil
+}
+
+func (g *Game) dungeonEntryNode(def *dungeon.Definition) *locality.Node {
+	if def == nil || g.walk == nil {
+		return nil
+	}
+	if def.EntryRegion == "far" {
+		var best *locality.Node
+		bestDistance := -1
+		candidates := append([]*locality.Node(nil), g.walk.Far...)
+		candidates = append(candidates, g.walk.Medium...)
+		candidates = append(candidates, g.walk.Close...)
+		for _, node := range candidates {
+			if node == nil || g.walk.Spawn != nil && node.ID == g.walk.Spawn.ID || g.walk.BigBad != nil && node.ID == g.walk.BigBad.ID {
+				continue
+			}
+			distance, reachable := g.walk.DistanceMap[node.ID]
+			if !reachable {
+				continue
+			}
+			if distance > bestDistance || distance == bestDistance && best != nil && node.ID < best.ID {
+				best = node
+				bestDistance = distance
+			}
+		}
+		return best
+	}
+	return g.walk.Spawn
+}
+
+func (g *Game) dungeonDefinitionAtNode(nodeID string) *dungeon.Definition {
+	if nodeID == "" || g.gd == nil {
+		return nil
+	}
+	for i := range g.gd.Dungeons {
+		def := &g.gd.Dungeons[i]
+		if node := g.dungeonEntryNode(def); node != nil && node.ID == nodeID {
+			return def
+		}
+	}
+	return nil
+}
+
+func (g *Game) worldNodeRoute(target string) []string {
+	if g.loc == nil || target == "" {
+		return nil
+	}
+	start := g.location.WorldNodeID
+	if start == "" && g.walk != nil && g.walk.Spawn != nil {
+		start = g.walk.Spawn.ID
+	}
+	if start == "" || start == target {
+		return nil
+	}
+	previous := map[string]string{start: start}
+	queue := []string{start}
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+		if current == target {
+			break
+		}
+		for _, neighbor := range g.loc.Neighbors(current) {
+			if _, seen := previous[neighbor]; seen {
+				continue
+			}
+			previous[neighbor] = current
+			queue = append(queue, neighbor)
+		}
+	}
+	if _, ok := previous[target]; !ok {
+		return nil
+	}
+	reverse := []string{}
+	for node := target; node != start; node = previous[node] {
+		reverse = append(reverse, node)
+	}
+	route := make([]string, len(reverse))
+	for i := range reverse {
+		route[len(reverse)-1-i] = reverse[i]
+	}
+	return route
+}
+
+// WorldNodeRoute returns the adjacent locality nodes from the server-held
+// world arrival to target. Callers still submit each hop through
+// ProcessLocationTransition; the route itself never changes game state.
+func (g *Game) WorldNodeRoute(target string) []string {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.worldNodeRoute(target)
+}
+
+func (g *Game) dungeonProgress(id string) *DungeonProgress {
+	if g.dungeons != nil {
+		if progress := g.dungeons[id]; progress != nil {
+			return progress
+		}
+	}
+	if g.dungeon != nil && g.dungeon.ID == id {
+		return g.dungeon
+	}
+	return nil
+}
+
+func (g *Game) activateDungeon(def *dungeon.Definition) *DungeonProgress {
+	if g.dungeons == nil {
+		g.dungeons = make(map[string]*DungeonProgress)
+	}
+	progress := g.dungeons[def.ID]
+	if progress == nil {
+		progress = &DungeonProgress{ID: def.ID, Flags: map[string]bool{}}
+		g.dungeons[def.ID] = progress
+	}
+	for id, other := range g.dungeons {
+		if id != def.ID && other != nil {
+			other.Active = false
+		}
+	}
+	g.activeDungeonID = def.ID
+	g.dungeon = progress
+	return progress
 }
 func (g *Game) inDungeon() bool { return g.dungeon != nil && g.dungeon.Active }
 func (g *Game) dungeonText(text string) string {
@@ -103,19 +243,31 @@ func (g *Game) dungeonText(text string) string {
 	return strings.ReplaceAll(text, "{locality}", name)
 }
 func (g *Game) fillDungeonState(s *GameState) {
-	def := g.dungeonDefinition()
-	if def == nil {
+	if g.gd == nil {
 		return
 	}
-	node := ""
-	if g.walk != nil {
-		node = g.walk.Spawn.ID
+	for i := range g.gd.Dungeons {
+		def := &g.gd.Dungeons[i]
+		node := g.dungeonEntryNode(def)
+		if node == nil {
+			continue
+		}
+		entry := DungeonEntryState{ID: def.ID, Title: g.dungeonText(def.Title), Label: def.EntryLabel, Description: g.dungeonText(def.Description), NodeID: node.ID, RouteNodeIDs: g.worldNodeRoute(node.ID)}
+		if progress := g.dungeonProgress(def.ID); progress != nil {
+			entry.Completed = progress.PayoffClaimed
+		}
+		s.DungeonEntries = append(s.DungeonEntries, entry)
 	}
-	s.DungeonEntry = &DungeonEntryState{ID: def.ID, Title: g.dungeonText(def.Title), Label: def.EntryLabel, Description: g.dungeonText(def.Description), NodeID: node}
-	if g.dungeon != nil {
-		s.DungeonEntry.Completed = g.dungeon.PayoffClaimed
+	if len(s.DungeonEntries) > 0 {
+		entry := s.DungeonEntries[0]
+		s.DungeonEntry = &entry
 	}
+	s.ActiveDungeonID = g.activeDungeonID
 	if !g.inDungeon() {
+		return
+	}
+	def := g.dungeonDefinition()
+	if def == nil {
 		return
 	}
 	p := g.dungeon
@@ -153,28 +305,30 @@ func (g *Game) ProcessDungeon(req DungeonRequest) (GameState, error) {
 	if g.phase != "world" && g.phase != "quest_complete" {
 		return GameState{}, fmt.Errorf("finish the current encounter before exploring")
 	}
-	def := g.dungeonDefinition()
-	if def == nil {
-		return GameState{}, fmt.Errorf("this adventure is unavailable")
-	}
 	if req.Type == "enter" {
 		if g.inDungeon() || (g.location.Kind != LocationWorld && g.location.Kind != LocationSettlement) {
 			return GameState{}, fmt.Errorf("follow the trail from town")
 		}
-		if req.NodeID == "" || g.walk == nil || req.NodeID != g.walk.Spawn.ID || g.location.WorldNodeID != req.NodeID {
-			return GameState{}, fmt.Errorf("this trail belongs to your home locality")
+		def := g.dungeonDefinitionAtNode(req.NodeID)
+		if def == nil {
+			return GameState{}, fmt.Errorf("no authored adventure is bound to that world node")
 		}
-		if g.dungeon == nil {
-			g.dungeon = &DungeonProgress{ID: def.ID, Flags: map[string]bool{}}
+		if g.location.WorldNodeID != req.NodeID {
+			return GameState{}, fmt.Errorf("reach this trail from its world node first")
 		}
-		p := g.dungeon
-		p.Origin = g.location
+		p := g.activateDungeon(def)
+		origin := g.location
+		p.Origin = origin
 		p.Active = true
 		p.EncounterID = ""
 		g.enterDungeonRoom(def.EntryRoom, def.EntryPosition)
 		g.phase = "world"
 		g.message = g.dungeonText(def.Description)
 		return g.stateUnlocked(), nil
+	}
+	def := g.dungeonDefinition()
+	if def == nil {
+		return GameState{}, fmt.Errorf("this adventure is unavailable")
 	}
 	if !g.inDungeon() || g.location.Kind != LocationDungeon {
 		return GameState{}, fmt.Errorf("enter the adventure before exploring")
@@ -310,6 +464,7 @@ func (g *Game) leaveDungeon(def *dungeon.Definition) error {
 	}
 	p.Active = false
 	p.EncounterID = ""
+	g.activeDungeonID = ""
 	// The return message replaces the completed battle presentation.
 	g.combatLog = nil
 	g.combatActions = nil
@@ -401,11 +556,13 @@ func (g *Game) recoverDungeonDefeat() bool {
 }
 func (g *Game) restoreDungeon() {
 	if g.dungeon == nil {
+		g.activeDungeonID = ""
 		return
 	}
 	def := g.dungeonDefinition()
 	if def == nil {
 		g.dungeon = nil
+		g.activeDungeonID = ""
 		return
 	}
 	p := g.dungeon
@@ -414,6 +571,7 @@ func (g *Game) restoreDungeon() {
 	}
 	p.EncounterID = ""
 	if !p.Active {
+		g.activeDungeonID = ""
 		return
 	}
 	room := def.Room(p.RoomID)

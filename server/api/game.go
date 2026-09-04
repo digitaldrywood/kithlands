@@ -121,6 +121,8 @@ type GameState struct {
 	Discovered          map[string]bool               `json:"discovered"` // monster IDs encountered in this save
 	Dungeon             *DungeonState                 `json:"dungeon,omitempty"`
 	DungeonEntry        *DungeonEntryState            `json:"dungeon_entry,omitempty"`
+	DungeonEntries      []DungeonEntryState           `json:"dungeon_entries,omitempty"`
+	ActiveDungeonID     string                        `json:"active_dungeon_id,omitempty"`
 	ID                  string                        `json:"id"`
 	Phase               string                        `json:"phase"`                   // world, combat, quest_complete, victory, defeat
 	XPBefore            []int                         `json:"xp_before,omitempty"`     // XP values before combat for victory animation
@@ -550,6 +552,8 @@ type QuestRewardState struct {
 // Game holds the live state of one game session.
 type Game struct {
 	dungeon             *DungeonProgress
+	dungeons            map[string]*DungeonProgress
+	activeDungeonID     string
 	id                  string
 	gd                  *gamedata.GameData
 	rng                 *rand.Rand
