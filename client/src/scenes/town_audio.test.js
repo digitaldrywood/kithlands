@@ -185,3 +185,18 @@ describe("interiorCharacterScale", () => {
     expect(interiorCharacterScale(64)).toBe(1);
   });
 });
+
+describe("revisiting a town interior", () => {
+  it("allows leaving again after a previous visit completed its exit", async () => {
+    const scene = new TownScene();
+    scene.cameras = { main: { fadeOut: vi.fn(), once: vi.fn() } };
+    const data = { gameState: { phase: "world" }, spawn: { node_id: "shop" } };
+    scene.init(data);
+    await scene.exitToWorld();
+    expect(scene.cameras.main.fadeOut).toHaveBeenCalledTimes(1);
+    // Phaser reuses the same scene instance for the next building visit.
+    scene.init({ ...data, spawn: { node_id: "inn" } });
+    await scene.exitToWorld();
+    expect(scene.cameras.main.fadeOut).toHaveBeenCalledTimes(2);
+  });
+});

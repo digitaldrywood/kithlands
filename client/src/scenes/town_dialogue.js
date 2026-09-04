@@ -80,8 +80,9 @@ export async function openDialogue(scene, spawn, providedDialogue = null) {
   // the room and interaction prompts, but above the footer instead of behind
   // it.
   const depth = 1700;
-  const boxY = 430;
-  const boxH = 118;
+  const portrait = scene.gameplayLayout?.portrait === true;
+  const boxY = portrait ? scene.gameplayLayout.playfieldBottom - 280 : 430;
+  const boxH = portrait ? 240 : 118;
   const bg = scene.add
     .rectangle(400, boxY + boxH / 2, 760, boxH, 0x0a0a22, 1)
     .setStrokeStyle(2, 0x7fb7ff)
@@ -92,10 +93,10 @@ export async function openDialogue(scene, spawn, providedDialogue = null) {
 
   // NPC name label
   const nameText = scene.add
-    .text(40, boxY + 10, dialogue.npc_name, {
-      fontSize: "14px",
+    .text(40, boxY + (portrait ? 18 : 10), dialogue.npc_name, {
+      fontSize: portrait ? "30px" : "14px",
       color: "#ffff44",
-      fontFamily: "monospace",
+      fontFamily: portrait ? "Arial, sans-serif" : "monospace",
     })
     .setScrollFactor(0)
     .setDepth(depth + 1);
@@ -103,10 +104,10 @@ export async function openDialogue(scene, spawn, providedDialogue = null) {
 
   // Dialogue text
   const dialogueText = scene.add
-    .text(40, boxY + 35, lines[lineIndex], {
-      fontSize: "12px",
+    .text(40, boxY + (portrait ? 64 : 35), lines[lineIndex], {
+      fontSize: portrait ? "28px" : "12px",
       color: "#ffffff",
-      fontFamily: "monospace",
+      fontFamily: portrait ? "Arial, sans-serif" : "monospace",
       wordWrap: { width: 700 },
       lineSpacing: 4,
     })
@@ -116,10 +117,10 @@ export async function openDialogue(scene, spawn, providedDialogue = null) {
 
   // Advance prompt
   const promptText = scene.add
-    .text(704, boxY + boxH - 18, "Enter", {
-      fontSize: "10px",
+    .text(704, boxY + boxH - (portrait ? 28 : 18), portrait ? "Tap" : "Enter", {
+      fontSize: portrait ? "24px" : "10px",
       color: "#b9c7dd",
-      fontFamily: "monospace",
+      fontFamily: portrait ? "Arial, sans-serif" : "monospace",
     })
     .setOrigin(0.5)
     .setScrollFactor(0)

@@ -153,6 +153,9 @@ export function interiorPresentationFromTemplate(template, floorIndex = 0) {
     backgroundAsset,
     hideTileLayer: floor.presentation.hide_tile_layer === true,
     textureKey: `interior_background_${template.id}_${floor.floor_id ?? floorIndex}`,
+    foreground: floor.presentation.foreground || [],
+    chestClosedAsset: floor.presentation.chest_closed_asset || null,
+    chestOpenAsset: floor.presentation.chest_open_asset || null,
   };
 }
 

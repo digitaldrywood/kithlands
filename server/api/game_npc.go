@@ -107,6 +107,12 @@ func (g *Game) getNPCDialogueUnlocked(nodeID string) *NPCDialogueResponse {
 	baseID, roleIdx := normalizeNPCNodeID(nodeID)
 	node := g.loc.NodeByID(baseID)
 	if node == nil {
+		if spawn, ok := g.settlementInteriors[baseID]; ok &&
+			g.location.Kind == LocationInterior && g.location.MapID == baseID {
+			node = &locality.Node{ID: spawn.NodeID, Name: spawn.Name, Kind: locality.NodePlace, Tags: spawn.Tags}
+		}
+	}
+	if node == nil {
 		return nil
 	}
 

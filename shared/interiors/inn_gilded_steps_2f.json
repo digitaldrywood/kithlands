@@ -8,35 +8,112 @@
       "height": 12,
       "rows": [
         "WWWWWWWWWWWWWWWWWW",
-        "W..O..........O..W",
-        "W.BB..........F..W",
-        "W.BB......U......W",
-        "W................W",
-        "W....MMMM........W",
-        "W....H..H........W",
-        "W.....KKCCCKK....W",
-        "W................W",
-        "W...R............W",
-        "W................W",
+        "WBBBO...WW...FFF.W",
+        "WBBB....WW...FFF.W",
+        "WBBBHMMH.U.......W",
+        "W....MM.........OW",
+        "WO..............OW",
+        "WO....CCCCCCC...OW",
+        "WO..............OW",
+        "WO.RR............W",
+        "W..RR............W",
+        "WWWWWWW.R.WWWWWWWW",
         "WWWWWWWWDWWWWWWWWW"
       ],
-      "entrance": { "x": 8, "y": 11, "from": "overworld" },
+      "entrance": {
+        "x": 8,
+        "y": 11,
+        "from": "overworld"
+      },
       "stairs": [
-        { "x": 9, "y": 3, "to_floor": 1, "to_x": 7, "to_y": 6, "kind": "up" }
+        {
+          "x": 9,
+          "y": 3,
+          "to_floor": 1,
+          "to_x": 7,
+          "to_y": 6,
+          "kind": "up"
+        }
       ],
       "npc_anchors": [
-        { "role": "innkeeper", "x": 8, "y": 6 },
-        { "role": "flavor", "x": 4, "y": 5 },
-        { "role": "guard", "x": 12, "y": 5 }
+        {
+          "role": "innkeeper",
+          "x": 8,
+          "y": 5
+        },
+        {
+          "role": "flavor",
+          "x": 4,
+          "y": 5,
+          "sprite": "npc_elder"
+        },
+        {
+          "role": "guard",
+          "x": 12,
+          "y": 4
+        }
       ],
       "window_anchors": [
-        { "x": 4, "y": 0, "side": "north" },
-        { "x": 13, "y": 0, "side": "north" }
+        {
+          "x": 4,
+          "y": 0,
+          "side": "north"
+        },
+        {
+          "x": 13,
+          "y": 0,
+          "side": "north"
+        }
       ],
       "light_anchors": [
-        { "x": 14, "y": 1, "kind": "lantern" }
+        {
+          "x": 14,
+          "y": 1,
+          "kind": "lantern"
+        }
       ],
-      "chest_anchors": []
+      "chest_anchors": [],
+      "presentation": {
+        "background_asset": "/interiors/inn/gilded-steps-ground.png",
+        "hide_tile_layer": true,
+        "foreground": [
+          {
+            "x": 204,
+            "y": 187,
+            "width": 224,
+            "height": 56,
+            "row": 6
+          },
+          {
+            "x": 54,
+            "y": 99,
+            "width": 61,
+            "height": 24,
+            "row": 3
+          },
+          {
+            "x": 176,
+            "y": 119,
+            "width": 40,
+            "height": 30,
+            "row": 4
+          },
+          {
+            "x": 32,
+            "y": 309,
+            "width": 200,
+            "height": 22,
+            "row": 10
+          },
+          {
+            "x": 344,
+            "y": 309,
+            "width": 200,
+            "height": 22,
+            "row": 10
+          }
+        ]
+      }
     },
     {
       "floor_id": 1,
@@ -44,32 +121,96 @@
       "height": 10,
       "rows": [
         "WWWWWWWWWWWWWWWWWW",
-        "W..BB....O.......W",
-        "W..BB............W",
-        "W................W",
-        "W....MMMM........W",
-        "W....H..H........W",
-        "W......V.........W",
-        "W.............BB.W",
-        "W.............BB.W",
+        "WBBBB............W",
+        "WBBBB............W",
+        "WBBBB............W",
+        "WO....HMMH.......W",
+        "WO...........WWWWW",
+        "WO.....V.......BBW",
+        "WO...........H.BBW",
+        "WWWWWWW..WWWWWWWWW",
         "WWWWWWWWWWWWWWWWWW"
       ],
       "stairs": [
-        { "x": 7, "y": 6, "to_floor": 0, "to_x": 9, "to_y": 3, "kind": "down" }
+        {
+          "x": 7,
+          "y": 6,
+          "to_floor": 0,
+          "to_x": 9,
+          "to_y": 3,
+          "kind": "down"
+        }
       ],
       "npc_anchors": [
-        { "role": "gossip", "x": 11, "y": 4 }
+        {
+          "role": "gossip",
+          "x": 11,
+          "y": 4,
+          "sprite": "npc_elder"
+        }
       ],
       "window_anchors": [
-        { "x": 4, "y": 0, "side": "north" },
-        { "x": 12, "y": 0, "side": "north" }
+        {
+          "x": 4,
+          "y": 0,
+          "side": "north"
+        },
+        {
+          "x": 12,
+          "y": 0,
+          "side": "north"
+        }
       ],
       "light_anchors": [
-        { "x": 9, "y": 1, "kind": "lantern" }
+        {
+          "x": 9,
+          "y": 1,
+          "kind": "lantern"
+        }
       ],
       "chest_anchors": [
-        { "id": "gilded_guest_chest", "x": 14, "y": 2 }
-      ]
+        {
+          "id": "gilded_guest_chest",
+          "x": 14,
+          "y": 2
+        }
+      ],
+      "presentation": {
+        "background_asset": "/interiors/inn/gilded-steps-guest.png",
+        "hide_tile_layer": true,
+        "foreground": [
+          {
+            "x": 64,
+            "y": 124,
+            "width": 108,
+            "height": 13,
+            "row": 3
+          },
+          {
+            "x": 225,
+            "y": 143,
+            "width": 49,
+            "height": 30,
+            "row": 4
+          },
+          {
+            "x": 407,
+            "y": 170,
+            "width": 68,
+            "height": 21,
+            "row": 5
+          },
+          {
+            "x": 485,
+            "y": 227,
+            "width": 41,
+            "height": 30,
+            "row": 7
+          }
+        ],
+        "chest_closed_asset": "/interiors/inn/gilded-guest-chest-closed.png",
+        "chest_open_asset": "/interiors/inn/gilded-guest-chest-open.png"
+      }
     }
   ]
 }

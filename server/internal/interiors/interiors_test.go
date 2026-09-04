@@ -191,3 +191,25 @@ func writeTemplate(t *testing.T, dir, name, body string) {
 		t.Fatalf("write template %s: %v", name, err)
 	}
 }
+
+func TestValidateAuthoredForegroundAndChestAssets(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		region       ForegroundRegion
+		closed, open string
+		valid        bool
+	}{
+		{"valid", ForegroundRegion{X: 32, Y: 32, Width: 64, Height: 16, Row: 2}, "/closed.png", "/open.png", true},
+		{"crop outside room", ForegroundRegion{X: 150, Y: 32, Width: 64, Height: 16, Row: 2}, "", "", false},
+		{"negative depth row", ForegroundRegion{X: 32, Y: 32, Width: 64, Height: 16, Row: -1}, "", "", false},
+		{"missing open chest", ForegroundRegion{X: 32, Y: 32, Width: 64, Height: 16, Row: 2}, "/closed.png", "", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			template := Template{ID: "test", BuildingType: "inn", Floors: []Floor{{FloorID: 0, Width: 5, Height: 5, Rows: []string{"WWDWW", "W...W", "W...W", "W...W", "WWWWW"}, Entrance: &Entrance{X: 2, Y: 0}, Presentation: &FloorPresentation{BackgroundAsset: "/room.png", Foreground: []ForegroundRegion{tc.region}, ChestClosedAsset: tc.closed, ChestOpenAsset: tc.open}}}}
+			err := template.validate()
+			if (err == nil) != tc.valid {
+				t.Fatalf("validate() = %v; valid=%v", err, tc.valid)
+			}
+		})
+	}
+}
