@@ -211,6 +211,7 @@ type TransportInfo struct {
 }
 
 type ItemState struct {
+	GemChanges     []GemChangePreviewState `json:"gem_changes,omitempty"`
 	SocketPreviews []GemSocketPreviewState `json:"socket_previews,omitempty"`
 	ID             string                  `json:"id"`
 	InstanceID     string                  `json:"instance_id,omitempty"`

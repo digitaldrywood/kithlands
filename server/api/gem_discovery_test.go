@@ -21,6 +21,18 @@ func newGemGame(t *testing.T) *Game {
 	return g
 }
 
+func previewGemChange(t *testing.T, g *Game, req GemChangeRequest) GemChangeRequest {
+	t.Helper()
+	g.mu.Lock()
+	preview, _ := g.planGemChangeLocked(req)
+	g.mu.Unlock()
+	if !preview.Allowed || preview.Token == "" {
+		t.Fatalf("gem preview blocked: %+v", preview)
+	}
+	req.Token = preview.Token
+	return req
+}
+
 func TestEarnedGemDiscoveryPersistsThroughSocketAndSave(t *testing.T) {
 	t.Parallel()
 	g := newGemGame(t)
@@ -37,7 +49,8 @@ func TestEarnedGemDiscoveryPersistsThroughSocketAndSave(t *testing.T) {
 		t.Fatal(err)
 	}
 	id := g.inv.Equipment[0].WeaponInstanceID
-	if err := g.SocketGem(SocketGemRequest{InstanceID: id, GemID: "ember_shard", Socket: 0}); err != nil {
+	req := previewGemChange(t, g, GemChangeRequest{Action: inventory.GemActionSocket, InstanceID: id, GemID: "ember_shard", Socket: 0})
+	if err := g.ApplyGemChange(req); err != nil {
 		t.Fatal(err)
 	}
 	if g.inv.Gems["ember_shard"] != 0 {
@@ -145,12 +158,13 @@ func TestConcurrentGemRequestsConsumeOneFullTransaction(t *testing.T) {
 		t.Fatalf("repeated craft: successes %d gems %v", success, g.inv.Gems)
 	}
 	id := g.inv.Equipment[0].WeaponInstanceID
+	socketReq := previewGemChange(t, g, GemChangeRequest{Action: inventory.GemActionSocket, InstanceID: id, GemID: "ember_gem"})
 	results = make(chan error, 12)
 	for range 12 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			results <- g.SocketGem(SocketGemRequest{InstanceID: id, GemID: "ember_gem"})
+			results <- g.ApplyGemChange(socketReq)
 		}()
 	}
 	wg.Wait()
@@ -218,7 +232,7 @@ func TestGemSocketPreviewResolvesAccessoriesWithoutMutation(t *testing.T) {
 	if string(before) != string(after) {
 		t.Fatal("preview mutated inventory")
 	}
-	if err := g.SocketGem(SocketGemRequest{InstanceID: id, GemID: p.GemID, Socket: p.Socket}); err != nil {
+	if err := g.ApplyGemChange(GemChangeRequest{Action: inventory.GemActionSocket, InstanceID: id, GemID: p.GemID, Socket: p.Socket, Token: p.Token}); err != nil {
 		t.Fatal(err)
 	}
 	applied, err := inventory.ResolveInstance(g.inv.Instance(id), g.gd)

@@ -205,7 +205,14 @@ export async function applyRecommendedEquipment(
   });
 }
 
-export async function socketGem(gameId, instanceId, socket, gemId, options) {
+export async function socketGem(
+  gameId,
+  instanceId,
+  socket,
+  gemId,
+  token,
+  options,
+) {
   return apiCall(
     "POST",
     `/game/${gameId}/socket`,
@@ -213,6 +220,30 @@ export async function socketGem(gameId, instanceId, socket, gemId, options) {
       instance_id: instanceId,
       socket,
       gem_id: gemId,
+      token,
+    },
+    options,
+  );
+}
+
+export async function changeGem(
+  gameId,
+  action,
+  instanceId,
+  socket,
+  gemId,
+  token,
+  options,
+) {
+  return apiCall(
+    "POST",
+    `/game/${gameId}/gems/change`,
+    {
+      action,
+      instance_id: instanceId,
+      socket,
+      ...(gemId ? { gem_id: gemId } : {}),
+      token,
     },
     options,
   );

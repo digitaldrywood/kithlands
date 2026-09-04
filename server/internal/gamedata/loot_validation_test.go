@@ -76,6 +76,20 @@ func TestLootValidationRejectsInactiveOrNonDistinctBuildEffects(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "free replacement service",
+			want: "replacement cost",
+			mutate: func(gd *GameData) {
+				gd.Loot.Workshop.Replacement.GoldCost = 0
+			},
+		},
+		{
+			name: "unbounded recovery service",
+			want: "recovery cost",
+			mutate: func(gd *GameData) {
+				gd.Loot.Workshop.Recovery.GoldCost = maxGemWorkshopGoldCost + 1
+			},
+		},
 	}
 
 	for _, tt := range tests {

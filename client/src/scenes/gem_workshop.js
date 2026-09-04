@@ -1,4 +1,4 @@
-import { craftGem, getGame, socketGem } from "../api.js";
+import { changeGem, craftGem, getGame } from "../api.js";
 import { playSFX } from "../systems/audio.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 import "../styles/gem-workshop.css";
@@ -119,8 +119,14 @@ export function gemEffectForItem(gem, item) {
 
 export function socketPreview(item, gem) {
   const effect = gemEffectForItem(gem, item);
-  const resolved = item?.socket_previews?.find(
-    (preview) => preview.gem_id === gem?.id,
+  const socket = firstOpenSocket(item);
+  const changes = Array.isArray(item?.gem_changes)
+    ? item.gem_changes
+    : item?.socket_previews || [];
+  const resolved = changes.find(
+    (preview) =>
+      preview.gem_id === gem?.id &&
+      (preview.socket == null || socket < 0 || preview.socket === socket),
   );
   if (!effect || !resolved?.allowed) return null;
   return {
@@ -133,15 +139,49 @@ export function socketPreview(item, gem) {
   };
 }
 
+export function gemChangePreview(item, socket, gem) {
+  const effect = gemEffectForItem(gem, item);
+  const changes = Array.isArray(item?.gem_changes)
+    ? item.gem_changes
+    : item?.socket_previews || [];
+  const resolved = changes.find(
+    (preview) =>
+      preview.gem_id === gem?.id &&
+      (preview.socket == null || preview.socket === socket) &&
+      preview.action !== "recover",
+  );
+  if (!effect || !resolved) return null;
+  return {
+    ...resolved,
+    stat: statName(effect.stat),
+    current_value: resolved.before?.[effect.stat] || 0,
+    proposed_value: resolved.after?.[effect.stat] || 0,
+    delta:
+      (resolved.after?.[effect.stat] || 0) -
+      (resolved.before?.[effect.stat] || 0),
+  };
+}
+
+export function gemRecoveryPreview(item, socket) {
+  return (
+    item?.gem_changes?.find(
+      (preview) => preview.action === "recover" && preview.socket === socket,
+    ) || null
+  );
+}
+
 function maxPartyLevel(gs) {
   return Math.max(1, ...(gs?.party || []).map((member) => member?.level || 1));
 }
 
-export function recommendedGems(gs, item) {
+export function recommendedGems(gs, item, socket = firstOpenSocket(item)) {
   const level = maxPartyLevel(gs);
   return ownedGems(gs)
-    .map((gem) => ({ gem, preview: socketPreview(item, gem, gs) }))
-    .filter(({ gem, preview }) => preview && (gem.required_level || 1) <= level)
+    .map((gem) => ({ gem, preview: gemChangePreview(item, socket, gem) }))
+    .filter(
+      ({ gem, preview }) =>
+        preview?.allowed && (gem.required_level || 1) <= level,
+    )
     .sort(
       (a, b) =>
         b.preview.delta - a.preview.delta ||
@@ -259,6 +299,20 @@ function changedStats(parent, title, before = {}, after = {}) {
   parent.append(section);
 }
 
+export function statDeltaSummary(before = {}, after = {}) {
+  return [...new Set([...Object.keys(before), ...Object.keys(after)])]
+    .map((stat) => ({
+      stat,
+      delta: (after[stat] ?? 0) - (before[stat] ?? 0),
+    }))
+    .filter(({ delta }) => delta !== 0)
+    .sort((a, b) => statName(a.stat).localeCompare(statName(b.stat)))
+    .map(
+      ({ stat, delta }) => `${delta > 0 ? "+" : ""}${delta} ${statName(stat)}`,
+    )
+    .join(", ");
+}
+
 export function showGemWorkshop(
   scene,
   { onClose, preselectedInstanceID = "", initialMode = "socket" } = {},
@@ -284,6 +338,7 @@ export function showGemWorkshop(
   (document.querySelector("#game-ui") || document.body).append(root);
   let mode = initialMode;
   let selectedGearID = preselectedInstanceID;
+  let selectedSocket = -1;
   let selectedGemID = "";
   let selectedRecipeID = "";
   let recipePage = 0;
@@ -610,10 +665,25 @@ export function showGemWorkshop(
     if (!gear.some((i) => i.instance_id === selectedGearID))
       selectedGearID = gear[0]?.instance_id || "";
     const item = gear.find((i) => i.instance_id === selectedGearID);
+    if (
+      !item?.sockets?.length ||
+      selectedSocket < 0 ||
+      selectedSocket >= item.sockets.length
+    ) {
+      selectedSocket = Math.max(0, firstOpenSocket(item));
+    }
+    const socket = item?.sockets?.[selectedSocket];
     const gems = ownedGems(gs);
-    if (!gems.some((g) => g.id === selectedGemID))
-      selectedGemID = recommendedGems(gs, item)[0]?.gem.id || gems[0]?.id || "";
+    if (!gems.some((gem) => gem.id === selectedGemID)) {
+      selectedGemID =
+        recommendedGems(gs, item, selectedSocket)[0]?.gem.id ||
+        gems.find((gem) => gemChangePreview(item, selectedSocket, gem))?.id ||
+        gems[0]?.id ||
+        "";
+    }
     const gem = gems.find((g) => g.id === selectedGemID);
+    const resolved = gemChangePreview(item, selectedSocket, gem);
+    const recovery = gemRecoveryPreview(item, selectedSocket);
     const choices = element("section", "gem-choices");
     choices.append(element("h2", "", "1. Choose equipment"));
     const label = element("label", "gem-muted", "Equipment and equipped owner");
@@ -626,7 +696,7 @@ export function showGemWorkshop(
       const option = element(
         "option",
         "",
-        `${candidate.name} · ${candidate.equipped_by ? `${candidate.equipped_by}, ${candidate.equipped_kind}` : "In bag"} · ${candidate.sockets.filter((s) => !s.gem_id).length} open`,
+        `${candidate.name} · ${candidate.equipped_by ? `${candidate.equipped_by}, ${candidate.equipped_kind}` : "In bag"} · ${candidate.sockets.filter((s) => !s.gem_id).length} open, ${candidate.sockets.filter((s) => s.gem_id).length} filled`,
       );
       option.value = candidate.instance_id;
       option.selected = candidate.instance_id === selectedGearID;
@@ -634,25 +704,55 @@ export function showGemWorkshop(
     }
     select.addEventListener("change", () => {
       selectedGearID = select.value;
+      selectedSocket = -1;
       selectedGemID = "";
       gemPage = 0;
       notice = "";
       render();
     });
-    choices.append(label, select, element("h2", "", "2. Choose a loose gem"));
+    choices.append(label, select, element("h2", "", "2. Choose a socket"));
+    const socketList = element("div", "gem-socket-list");
+    socketList.setAttribute("role", "group");
+    socketList.setAttribute("aria-label", "Equipment sockets");
+    for (const [index, candidate] of item?.sockets?.entries() || []) {
+      const socketChoice = button(
+        `Socket ${index + 1}: ${candidate.gem_id ? candidate.gem_name : "Open"}`,
+        () => {
+          selectedSocket = index;
+          selectedGemID = "";
+          gemPage = 0;
+          notice = "";
+          render();
+        },
+        `socket-${index}`,
+        busy,
+      );
+      socketChoice.dataset.socketIndex = String(index);
+      socketChoice.setAttribute(
+        "aria-pressed",
+        String(index === selectedSocket),
+      );
+      socketList.append(socketChoice);
+    }
+    if (!item?.sockets?.length)
+      socketList.append(element("p", "gem-muted", "This item has no sockets."));
+    choices.append(
+      socketList,
+      element("h2", "", "3. Choose a loose gem to socket or replace"),
+    );
     pagedChoices(
       choices,
       gems.map((g) => {
-        const option = item?.socket_previews?.find((p) => p.gem_id === g.id);
-        const effect = gemEffectForItem(g, item);
+        const option = gemChangePreview(item, selectedSocket, g);
+        const delta = statDeltaSummary(option?.before, option?.after);
         return {
           ...g,
           name: `${g.name} × ${g.count}`,
           detail: option?.allowed
-            ? `+${effect?.value || 0} ${statName(effect?.stat)}`
+            ? `${option.action === "replace" ? `Replace ${option.installed_gem_name} · ` : ""}${delta || "No stat change"} · ${option.gold_cost} gold`
             : option?.block_reason ||
-              (firstOpenSocket(item) < 0
-                ? "No open socket"
+              (socket?.gem_id === g.id
+                ? "Already installed in this socket"
                 : "Choose compatible equipment"),
           muted: !option?.allowed,
         };
@@ -673,7 +773,7 @@ export function showGemWorkshop(
     const preview = element("section", "gem-preview");
     preview.setAttribute("aria-label", "Socket preview");
     preview.append(
-      element("p", "gem-eyebrow", "3. Review · select first, confirm below"),
+      element("p", "gem-eyebrow", "4. Review · select first, confirm below"),
     );
     if (!item) {
       preview.append(
@@ -695,25 +795,37 @@ export function showGemWorkshop(
             : "In your bag",
         ),
       );
-      preview.append(element("h3", "", "Current sockets"));
-      for (const [index, socket] of item.sockets.entries())
-        preview.append(
-          element(
-            "p",
-            "gem-effect",
-            `Socket ${index + 1}: ${socket.gem_id ? `${socket.gem_name} · +${socket.value} ${statName(socket.stat)}` : "Open"}`,
-          ),
-        );
-      const resolved = item.socket_previews?.find(
-        (p) => p.gem_id === selectedGemID,
+      preview.append(
+        element("h3", "", `Selected socket ${selectedSocket + 1}`),
+        element(
+          "p",
+          "gem-effect",
+          socket?.gem_id
+            ? `${socket.gem_name} · +${socket.value} ${statName(socket.stat)}`
+            : "Open",
+        ),
       );
       if (gem && resolved?.allowed) {
+        const replacing = resolved.action === "replace";
         preview.append(
-          element("h3", "", `Proposed: ${gem.name}`),
+          element(
+            "h3",
+            "",
+            `${replacing ? "Replacement" : "Proposed"}: ${gem.name}`,
+          ),
           element(
             "p",
             "gem-muted",
-            `Consumes 1 loose ${gem.name} (${gem.count} owned). Fills socket ${resolved.socket + 1}.`,
+            replacing
+              ? `Consumes 1 loose ${gem.name} (${gem.count} owned). ${resolved.installed_gem_name} is removed and not recovered.`
+              : `Consumes 1 loose ${gem.name} (${gem.count} owned). Fills socket ${resolved.socket + 1}.`,
+          ),
+          element(
+            "p",
+            resolved.gold_cost ? "gem-lock" : "gem-ready",
+            resolved.gold_cost
+              ? `Workshop fee: ${resolved.gold_cost} gold · ${resolved.gold_before} → ${resolved.gold_after} gold`
+              : `No workshop fee · ${resolved.gold_before} gold remains`,
           ),
         );
         changedStats(
@@ -734,48 +846,119 @@ export function showGemWorkshop(
           resolved.character_before,
           resolved.character_after,
         );
-        preview.append(
-          element(
-            "p",
-            "gem-lock",
-            "Socketing is permanent. This gem cannot be removed or recovered.",
-          ),
-        );
+        if (replacing)
+          preview.append(
+            element(
+              "p",
+              "gem-lock",
+              `Replacement permanently consumes the installed ${resolved.installed_gem_name}. Use Recover below first if you want it returned.`,
+            ),
+          );
       } else
         preview.append(
           element(
             "p",
             "gem-lock",
-            firstOpenSocket(item) < 0
-              ? "All sockets filled. Choose another item."
-              : resolved?.block_reason ||
-                  "Choose an owned, compatible gem to preview its effect.",
+            resolved?.block_reason ||
+              (socket?.gem_id
+                ? "Choose a different owned gem to preview replacement."
+                : "Choose an owned, compatible gem to preview its effect."),
           ),
         );
       const confirm = button(
-        busy ? "Socketing…" : `Socket ${gem?.name || "gem"} into ${item.name}`,
+        busy
+          ? "Applying…"
+          : resolved?.action === "replace"
+            ? `Replace with ${gem?.name || "gem"} · ${resolved?.gold_cost || 0} gold`
+            : `Socket ${gem?.name || "gem"} into ${item.name}`,
         () => {
           if (!resolved?.allowed || !gem) return;
           runAction(
             (signal) =>
-              socketGem(
+              changeGem(
                 scene.gameState.id,
+                resolved.action,
                 item.instance_id,
                 resolved.socket,
                 gem.id,
+                resolved.token,
                 { signal },
               ),
-            `${gem.name} socketed into ${item.name}.`,
+            resolved.action === "replace"
+              ? `${resolved.installed_gem_name} replaced with ${gem.name} in ${item.name}.`
+              : `${gem.name} socketed into ${item.name}.`,
             () => {
+              selectedGemID = "";
               crafted = false;
             },
           );
         },
         "confirm-socket",
-        busy || needsRefresh || !resolved?.allowed,
+        busy || needsRefresh || !resolved?.allowed || !resolved?.token,
       );
       confirm.className = "gem-confirm";
       preview.append(confirm);
+
+      if (recovery) {
+        const recover = element("section", "gem-recovery");
+        recover.append(
+          element("h3", "", `Recover ${recovery.installed_gem_name}`),
+          element(
+            "p",
+            "gem-muted",
+            `Returns exactly 1 ${recovery.installed_gem_name} to your loose gems and leaves socket ${selectedSocket + 1} open.`,
+          ),
+          element(
+            "p",
+            "gem-lock",
+            recovery.allowed
+              ? `Workshop fee: ${recovery.gold_cost} gold · ${recovery.gold_before} → ${recovery.gold_after} gold`
+              : recovery.block_reason,
+          ),
+        );
+        if (recovery.allowed) {
+          changedStats(
+            recover,
+            "Equipment after recovery",
+            recovery.before,
+            recovery.after,
+          );
+          changedStats(
+            recover,
+            `${item.equipped_by || "Character"} · effective after recovery`,
+            recovery.character_before,
+            recovery.character_after,
+          );
+        }
+        const recoverButton = button(
+          busy
+            ? "Recovering…"
+            : `Recover ${recovery.installed_gem_name} · ${recovery.gold_cost} gold`,
+          () =>
+            runAction(
+              (signal) =>
+                changeGem(
+                  scene.gameState.id,
+                  recovery.action,
+                  item.instance_id,
+                  recovery.socket,
+                  "",
+                  recovery.token,
+                  { signal },
+                ),
+              `${recovery.installed_gem_name} recovered from ${item.name}.`,
+              () => {
+                selectedGemID = recovery.installed_gem_id;
+                crafted = false;
+              },
+            ),
+          `recover-${selectedSocket}`,
+          busy || needsRefresh || !recovery.allowed || !recovery.token,
+        );
+        recoverButton.className = "gem-recover";
+        recover.append(recoverButton);
+        preview.append(recover);
+      }
     }
     body.append(choices, preview);
   }

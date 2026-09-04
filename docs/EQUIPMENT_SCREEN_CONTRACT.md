@@ -103,16 +103,22 @@ color. A value never silently disappears because it is zero.
 
 ### Socket or transmute
 
-The selected equipped item exposes **Socket** when it has an open socket and
-**Transmute** when a known recipe applies. These actions may open the Gem
-Workshop, but they keep the selected character, equipment slot, and instance
-ID as return context.
+The selected equipped item exposes **Socket** when it has an open socket,
+**Workshop** when its sockets are filled, and **Transmute** when a known recipe
+applies. These actions may open the Gem Workshop, but they keep the selected
+character, equipment slot, and instance ID as return context. An open socket
+accepts one compatible loose gem without a service fee. A filled socket offers
+server-priced replacement, which consumes the incoming gem and permanently
+removes the installed gem, plus server-priced recovery, which returns exactly
+the installed gem and leaves the socket open.
 
-Gem selection and recipe selection are non-mutating previews. The final action
-states both the verb and the target, for example **Socket Ember Gem into Keen
-Short Sword**. After confirmation, the server response replaces local screen
-state. The slot must immediately show the filled socket and may not reuse a
-stale pre-mutation instance view.
+Gem selection and recipe selection are non-mutating previews. The server
+supplies the exact gold and item, gear, and effective-character stat changes
+for socketing, replacement, and recovery; the client neither supplies nor
+calculates the price. The final action states both the verb and the target, for
+example **Socket Ember Gem into Keen Short Sword**. After confirmation, the
+server response replaces local screen state. The slot must immediately show
+the updated socket and may not reuse a stale pre-mutation instance view.
 
 ### Best gear
 
@@ -138,7 +144,8 @@ requested actions.
 - Equipment instances own base item ID, rolled values, rarity, item level, and
   sockets.
 - A party member's loadout maps slot ID to an equipped reference.
-- Equip, unequip, move, socket, and recipe transactions are server operations.
+- Equip, unequip, move, socket, gem replacement/recovery, and recipe
+  transactions are server operations.
 
 ### Required presentation fields before icon production
 

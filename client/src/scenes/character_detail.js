@@ -605,15 +605,22 @@ function drawEquipSlot(
       .setDepth(DEPTH_LABEL),
   );
 
-  const hasOpenSocket = item?.sockets?.some((socket) => !socket.gem_id);
-  if (item?.instance_id && hasOpenSocket) {
+  const hasSockets = item?.sockets?.length > 0;
+  const appliedGems = (item?.sockets || [])
+    .filter((socket) => socket.gem_id)
+    .map((socket) => socket.gem_name || "GEM");
+  if (item?.instance_id && hasSockets) {
+    const hasOpenSocket = item.sockets.some((socket) => !socket.gem_id);
+    const workshopLabel = hasOpenSocket
+      ? "SOCKET"
+      : `◆ ${appliedGems.join(" + ").toUpperCase()}`;
     const socketButton = drawButton(
       scene,
       cx + content.socketX,
       cy + content.actionY,
       layout.socket.width,
       layout.socket.height,
-      "SOCKET",
+      workshopLabel,
       onSocket,
       {
         depth: DEPTH_LABEL,
@@ -626,9 +633,6 @@ function drawEquipSlot(
     );
     group.push(socketButton);
   } else {
-    const appliedGems = (item?.sockets || [])
-      .filter((socket) => socket.gem_id)
-      .map((socket) => socket.gem_name || "GEM");
     const socketStatus =
       appliedGems.length > 0
         ? `◆ ${appliedGems.join(" + ").toUpperCase()}`

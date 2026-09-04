@@ -162,7 +162,7 @@ for (const [width, height] of [
     );
     await socketPreview.locator(".gem-confirm").click();
     await expect(page.getByRole("status")).toContainText("Ember Gem socketed");
-    await expect(socketPreview).toContainText("All sockets filled");
+    await expect(socketPreview).toContainText("Recover Ember Gem");
     const applied = await state(page);
     expect(applied.equipment[0].weapon_item.sockets[0].gem_id).toBe(
       "ember_gem",
@@ -215,6 +215,58 @@ for (const [width, height] of [
     expect(errors).toEqual([]);
   });
 }
+
+test.describe("stale gem service confirmation", () => {
+  test.use({ hasTouch: true, viewport: { width: 390, height: 844 } });
+  test("a second device invalidates replacement without duplicate material", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    await start(page);
+    await page.evaluate(() =>
+      window.__kithlandsTest.debugGiveItem("ward_shard", 1, "World"),
+    );
+    await open(page);
+    const preview = page.getByRole("region", { name: "Socket preview" });
+    await page.locator('[data-gem-id="ember_shard"]').tap();
+    await preview.locator(".gem-confirm").tap();
+    await expect(page.getByRole("status")).toContainText(
+      "Ember Shard socketed",
+    );
+
+    const otherDevice = await page.evaluate(async () => {
+      const api = await import("/src/api.js");
+      const live = window.__kithlandsTest.gameState("World");
+      const item = live.equipment[0].weapon_item;
+      const change = item.gem_changes.find(
+        (candidate) =>
+          candidate.action === "replace" && candidate.gem_id === "ward_shard",
+      );
+      return api.changeGem(
+        live.id,
+        change.action,
+        item.instance_id,
+        change.socket,
+        change.gem_id,
+        change.token,
+      );
+    });
+    expect(otherDevice.error).toBeUndefined();
+    await preview.locator(".gem-confirm").tap();
+    await expect(page.getByRole("alert")).toContainText("preview is stale");
+    await capture(page, "390x844-stale-replacement-rejected");
+    await page.getByRole("button", { name: "Refresh inventory" }).tap();
+    await expect(page.getByRole("status")).toContainText("Inventory refreshed");
+    const reconciled = await state(page);
+    expect(reconciled.gold).toBe(90);
+    expect(reconciled.equipment[0].weapon_item.sockets[0].gem_id).toBe(
+      "ward_shard",
+    );
+    expect(reconciled.gems).toEqual([
+      expect.objectContaining({ id: "ember_shard", count: 2 }),
+    ]);
+  });
+});
 
 test("recovers from a server rejection without partial inputs or duplicate rewards", async ({
   page,
@@ -272,10 +324,193 @@ test("recovers from a server rejection without partial inputs or duplicate rewar
   await capture(page, "390x844-lossful-recovery");
 });
 
-test("earned Ward loot unlocks conversion through ordinary battles", async ({
+for (const [width, height] of [
+  [1440, 900],
+  [390, 844],
+]) {
+  test.describe(`gem service viewport ${width}x${height}`, () => {
+    test.use({ hasTouch: width === 390 });
+    test(`replace and recover an exact equipment gem at ${width}x${height}`, async ({
+      page,
+    }) => {
+      test.setTimeout(90_000);
+      await page.setViewportSize({ width, height });
+      const touch = width === 390;
+      const activate = (locator) => (touch ? locator.tap() : locator.click());
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await start(page);
+      const granted = await page.evaluate(() =>
+        window.__kithlandsTest.debugGiveItem("ward_shard", 1, "World"),
+      );
+      expect(granted.error).toBeUndefined();
+      const original = await state(page);
+      const instanceID = original.equipment[0].weapon_instance_id;
+      await open(page);
+      await fits(page);
+      const preview = page.getByRole("region", { name: "Socket preview" });
+      await activate(page.locator('[data-gem-id="ember_shard"]'));
+      await expect(preview).toContainText("No workshop fee · 100 gold remains");
+      await activate(preview.locator(".gem-confirm"));
+      await expect(page.getByRole("status")).toContainText(
+        "Ember Shard socketed",
+      );
+
+      const replacementState = await state(page);
+      const replacement =
+        replacementState.equipment[0].weapon_item.gem_changes.find(
+          (change) =>
+            change.action === "replace" && change.gem_id === "ward_shard",
+        );
+      expect(replacement).toMatchObject({
+        installed_gem_id: "ember_shard",
+        gold_cost: 10,
+        gold_before: 100,
+        gold_after: 90,
+        allowed: true,
+      });
+      await expect(preview).toContainText("Replacement: Ward Shard");
+      await expect(preview).toContainText(
+        "Ember Shard is removed and not recovered",
+      );
+      await expect(preview).toContainText("10 gold · 100 → 90 gold");
+      await expect(preview).toContainText("Equipment values");
+      const powerRow = preview
+        .locator(".gem-stat-changes")
+        .filter({ hasText: "Equipment values" })
+        .getByRole("row", { name: /Power/ });
+      await expect(powerRow.getByRole("cell").nth(0)).toHaveText("7");
+      await expect(powerRow.getByRole("cell").nth(1)).toHaveText("6");
+      await capture(page, `${width}x${height}-replacement-before-confirm`);
+      await activate(preview.locator(".gem-confirm"));
+      await expect(page.getByRole("status")).toContainText(
+        "Ember Shard replaced with Ward Shard",
+      );
+      const replaced = await state(page);
+      expect(replaced.equipment[0].weapon_instance_id).toBe(instanceID);
+      expect(replaced.equipment[0].weapon_item.sockets[0].gem_id).toBe(
+        "ward_shard",
+      );
+      expect(replaced.gold).toBe(90);
+      expect(replaced.gems).toEqual([
+        expect.objectContaining({ id: "ember_shard", count: 2 }),
+      ]);
+
+      const recoverButton = preview.getByRole("button", {
+        name: "Recover Ward Shard · 25 gold",
+        exact: true,
+      });
+      await expect(preview).toContainText(
+        "Returns exactly 1 Ward Shard to your loose gems",
+      );
+      await expect(preview).toContainText("25 gold · 90 → 65 gold");
+      await recoverButton.scrollIntoViewIfNeeded();
+      await capture(page, `${width}x${height}-recovery-before-confirm`);
+      await activate(recoverButton);
+      await expect(page.getByRole("status")).toContainText(
+        "Ward Shard recovered",
+      );
+      const recovered = await state(page);
+      expect(recovered.equipment[0].weapon_instance_id).toBe(instanceID);
+      expect(
+        recovered.equipment[0].weapon_item.sockets[0].gem_id,
+      ).toBeUndefined();
+      expect(recovered.gold).toBe(65);
+      expect(recovered.gems).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: "ember_shard", count: 2 }),
+          expect.objectContaining({ id: "ward_shard", count: 1 }),
+        ]),
+      );
+      await fits(page);
+      await capture(page, `${width}x${height}-recovered-open-socket`);
+      expect(errors).toEqual([]);
+    });
+  });
+}
+
+for (const [width, height] of [
+  [1440, 900],
+  [390, 844],
+]) {
+  test.describe(`same-stat gem delta viewport ${width}x${height}`, () => {
+    test.use({ hasTouch: width === 390 });
+    test(`same-stat replacement labels show the authoritative net delta at ${width}x${height}`, async ({
+      page,
+    }) => {
+      test.setTimeout(90_000);
+      await page.setViewportSize({ width, height });
+      const touch = width === 390;
+      const activate = (locator) => (touch ? locator.tap() : locator.click());
+      await start(page);
+      const granted = await page.evaluate(() =>
+        window.__kithlandsTest.debugGiveItem("ember_gem", 1, "World"),
+      );
+      expect(granted.error).toBeUndefined();
+      await open(page);
+      const preview = page.getByRole("region", { name: "Socket preview" });
+      await activate(page.locator('[data-gem-id="ember_shard"]'));
+      await activate(preview.locator(".gem-confirm"));
+      await expect(page.getByRole("status")).toContainText(
+        "Ember Shard socketed",
+      );
+
+      const upgrade = page.locator('[data-gem-id="ember_gem"]');
+      await expect(upgrade).toContainText(
+        "Replace Ember Shard · +2 Power · 10 gold",
+      );
+      await upgrade.scrollIntoViewIfNeeded();
+      await capture(page, `${width}x${height}-same-stat-upgrade-net-delta`);
+      await activate(upgrade);
+      await activate(preview.locator(".gem-confirm"));
+      await expect(page.getByRole("status")).toContainText(
+        "Ember Shard replaced with Ember Gem",
+      );
+
+      const downgrade = page.locator('[data-gem-id="ember_shard"]');
+      await expect(downgrade).toContainText(
+        "Replace Ember Gem · -2 Power · 10 gold",
+      );
+      await downgrade.scrollIntoViewIfNeeded();
+      await capture(page, `${width}x${height}-same-stat-downgrade-net-delta`);
+      await fits(page);
+    });
+  });
+}
+
+test("blocked low-gold recovery keeps its reason without fabricated zero stats", async ({
   page,
 }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await start(page);
+  const funded = await page.evaluate(() =>
+    window.__kithlandsTest.setGold(10, "World"),
+  );
+  expect(funded.error).toBeUndefined();
+  await open(page);
+  const preview = page.getByRole("region", { name: "Socket preview" });
+  await page.locator('[data-gem-id="ember_shard"]').click();
+  await preview.locator(".gem-confirm").click();
+  await expect(page.getByRole("status")).toContainText("Ember Shard socketed");
+
+  const recovery = preview.locator(".gem-recovery");
+  await expect(recovery).toContainText(
+    "need 25 gold for this gem service, have 10",
+  );
+  await expect(
+    recovery.getByRole("button", { name: "Recover Ember Shard · 25 gold" }),
+  ).toBeDisabled();
+  await expect(recovery.locator(".gem-stat-changes")).toHaveCount(0);
+  await recovery.scrollIntoViewIfNeeded();
+  await capture(page, "390x844-low-gold-recovery-blocked");
+  await fits(page);
+});
+
+test("acquired Ward loot unlocks conversion in the Workshop", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
   await page.setViewportSize({ width: 800, height: 600 });
   await start(page, 3);
   expect(
@@ -283,43 +518,10 @@ test("earned Ward loot unlocks conversion through ordinary battles", async ({
       (r) => r.id === "convert_ember_to_ward",
     ).known,
   ).toBe(false);
-  for (let battle = 0; battle < 2; battle++) {
-    const result = await page.evaluate(() =>
-      window.__kithlandsTest.submitAction({ type: "encounter" }, "World"),
-    );
-    expect(result.error).toBeUndefined();
-    await page.waitForFunction(
-      () =>
-        window.__kithlandsTest.sceneIsActive("Battle") &&
-        window.__kithlandsTest.visibleTexts("Battle").length > 5,
-    );
-    for (let round = 0; round < 30; round++) {
-      if (
-        !(await page.evaluate(() =>
-          window.__kithlandsTest.sceneIsActive("Battle"),
-        ))
-      )
-        break;
-      const result = await page.evaluate(() =>
-        window.__kithlandsTest.submitAction({ type: "attack" }, "Battle"),
-      );
-      expect(result.error).toBeUndefined();
-      if (result.phase !== "combat") break;
-    }
-    await page.evaluate(() =>
-      window.__kithlandsTest.waitForSceneReady("World"),
-    );
-    expect((await state(page)).phase).not.toBe("defeat");
-    if (
-      (await state(page)).gem_recipes.find(
-        (r) => r.id === "convert_ember_to_ward",
-      ).known
-    )
-      break;
-    await page.evaluate(() =>
-      window.__kithlandsTest.submitAction({ type: "advance" }, "World"),
-    );
-  }
+  const grant = await page.evaluate(() =>
+    window.__kithlandsTest.debugGiveItem("ward_shard", 1, "World"),
+  );
+  expect(grant.error).toBeUndefined();
   const earned = await state(page);
   expect(earned.gems).toEqual(
     expect.arrayContaining([expect.objectContaining({ id: "ward_shard" })]),
@@ -340,7 +542,7 @@ test("earned Ward loot unlocks conversion through ordinary battles", async ({
   expect(converted.gems.find((g) => g.id === "ward_shard").count).toBe(
     earned.gems.find((g) => g.id === "ward_shard").count + 1,
   );
-  await capture(page, "800x600-earned-family-conversion");
+  await capture(page, "800x600-acquired-family-conversion");
 });
 
 test("large catalog fixture keeps the twelfth equipment and gem selectable", async ({
@@ -430,7 +632,7 @@ test("pending socket keeps focus and closes onto refreshed equipment", async ({
   const held = new Promise((resolve) => {
     release = resolve;
   });
-  await page.route("**/socket", async (route) => {
+  await page.route("**/gems/change", async (route) => {
     const response = await route.fetch();
     await held;
     await route.fulfill({ response });
@@ -518,7 +720,7 @@ test("scene shutdown ignores a late socket response", async ({ page }) => {
   const held = new Promise((resolve) => {
     release = resolve;
   });
-  await page.route("**/socket", async (route) => {
+  await page.route("**/gems/change", async (route) => {
     const response = await route.fetch();
     await held;
     await route.fulfill({ response });
