@@ -49,7 +49,7 @@ type RunOptions struct {
 	// injects between each strategy-issued quest_advance. Models the 6-12
 	// fights a real walk from town to town produces via the client's
 	// step-based rolls in world.js. Zero falls back to the default; pass -1
-	// to explicitly disable (legacy teleport-only path for tests).
+	// to explicitly disable encounter injection while retaining world travel.
 	EncounterRollsPerQuest int
 
 	// PauseHook, if non-nil, is invoked before and after every ProcessAction
@@ -208,6 +208,22 @@ func RunOne(gd *gamedata.GameData, sharedDir string, seed int64, strategy Strate
 		default:
 			// Unknown phase: try an advance to unstick.
 			req = api.GameActionRequest{Type: "advance"}
+		}
+
+		// Headless travel omits tile-by-tile rendering, but it still follows the
+		// server-authored locality graph and submits every adjacent arrival in
+		// order before interacting with a quest target.
+		if req.Type == "quest_advance" && req.NodeID != "" {
+			for _, nodeID := range game.WorldNodeRoute(req.NodeID) {
+				arrived, err := game.ProcessLocationTransition(api.LocationTransitionRequest{
+					TransitionID: "arrive-world-node",
+					WorldNodeID:  nodeID,
+				})
+				if err != nil {
+					return result, fmt.Errorf("travel @ turn %d to %s: %w", turn, nodeID, err)
+				}
+				state = arrived
+			}
 		}
 
 		if opts.PauseHook != nil {

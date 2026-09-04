@@ -195,6 +195,15 @@ func (g *Game) worldNodeRoute(target string) []string {
 	return route
 }
 
+// WorldNodeRoute returns the adjacent locality nodes from the server-held
+// world arrival to target. Callers still submit each hop through
+// ProcessLocationTransition; the route itself never changes game state.
+func (g *Game) WorldNodeRoute(target string) []string {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.worldNodeRoute(target)
+}
+
 func (g *Game) dungeonProgress(id string) *DungeonProgress {
 	if g.dungeons != nil {
 		if progress := g.dungeons[id]; progress != nil {

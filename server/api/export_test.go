@@ -33,7 +33,7 @@ func ForceWorldPhaseForTest(g *Game) {
 // ArriveAtWorldNodeForTest follows the same adjacent, server-authoritative
 // locality route used by the live overworld client.
 func ArriveAtWorldNodeForTest(g *Game, target string) error {
-	for _, nodeID := range g.worldNodeRoute(target) {
+	for _, nodeID := range g.WorldNodeRoute(target) {
 		if _, err := g.ProcessLocationTransition(LocationTransitionRequest{
 			TransitionID: "arrive-world-node",
 			WorldNodeID:  nodeID,
