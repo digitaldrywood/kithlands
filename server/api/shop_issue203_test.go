@@ -48,6 +48,26 @@ func hasShopItem(items []map[string]any, id string) bool {
 	return false
 }
 
+func requireShopOffer(t *testing.T, items []api.ShopItemState, itemID string) api.ShopItemState {
+	t.Helper()
+	for _, item := range items {
+		if item.ID == itemID {
+			return item
+		}
+	}
+	t.Fatalf("shop offer %q not found", itemID)
+	return api.ShopItemState{}
+}
+
+func shopBuyBody(nodeID string, offer api.ShopItemState) map[string]string {
+	return map[string]string{"node_id": nodeID, "stock_id": offer.StockID}
+}
+
+func postShopBuy(t *testing.T, baseURL, gameID, nodeID string, offers []api.ShopItemState, itemID string) map[string]any {
+	t.Helper()
+	return post(t, baseURL+"/api/game/"+gameID+"/buy", shopBuyBody(nodeID, requireShopOffer(t, offers, itemID)))
+}
+
 func TestShopBuyCategoriesPreserveGoldAndInventoryState(t *testing.T) {
 	srv, ts := testServer(t)
 	defer ts.Close()
@@ -67,7 +87,7 @@ func TestShopBuyCategoriesPreserveGoldAndInventoryState(t *testing.T) {
 		t.Fatal("game not found")
 	}
 
-	_, shopItems := enterCadottShop(t, game)
+	nodeID, shopItems := enterCadottShop(t, game)
 	var shopCatalog []map[string]any
 	for _, item := range shopItems {
 		shopCatalog = append(shopCatalog, map[string]any{
@@ -82,10 +102,7 @@ func TestShopBuyCategoriesPreserveGoldAndInventoryState(t *testing.T) {
 		}
 	}
 
-	gs = post(t, ts.URL+"/api/game/"+gameID+"/buy", map[string]string{
-		"item_id": "potion",
-		"type":    "consumable",
-	})
+	gs = post(t, ts.URL+"/api/game/"+gameID+"/buy", shopBuyBody(nodeID, requireShopOffer(t, shopItems, "potion")))
 	if gs["error"] != nil {
 		t.Fatalf("buy potion error: %v", gs["error"])
 	}
@@ -96,10 +113,7 @@ func TestShopBuyCategoriesPreserveGoldAndInventoryState(t *testing.T) {
 		t.Fatalf("potions after potion buy = %d, want 6", got)
 	}
 
-	gs = post(t, ts.URL+"/api/game/"+gameID+"/buy", map[string]string{
-		"item_id": "wooden_club",
-		"type":    "weapon",
-	})
+	gs = post(t, ts.URL+"/api/game/"+gameID+"/buy", shopBuyBody(nodeID, requireShopOffer(t, shopItems, "wooden_club")))
 	if gs["error"] != nil {
 		t.Fatalf("buy weapon error: %v", gs["error"])
 	}
@@ -110,10 +124,7 @@ func TestShopBuyCategoriesPreserveGoldAndInventoryState(t *testing.T) {
 		t.Fatal("weapon inventory missing wpn_wooden_club after buy")
 	}
 
-	gs = post(t, ts.URL+"/api/game/"+gameID+"/buy", map[string]string{
-		"item_id": "cloth_robe",
-		"type":    "armor",
-	})
+	gs = post(t, ts.URL+"/api/game/"+gameID+"/buy", shopBuyBody(nodeID, requireShopOffer(t, shopItems, "cloth_robe")))
 	if gs["error"] != nil {
 		t.Fatalf("buy armor error: %v", gs["error"])
 	}
@@ -124,10 +135,7 @@ func TestShopBuyCategoriesPreserveGoldAndInventoryState(t *testing.T) {
 		t.Fatal("armor inventory missing arm_cloth_robe after buy")
 	}
 
-	gs = post(t, ts.URL+"/api/game/"+gameID+"/buy", map[string]string{
-		"item_id": "strange_coin",
-		"type":    "key_item",
-	})
+	gs = post(t, ts.URL+"/api/game/"+gameID+"/buy", shopBuyBody(nodeID, requireShopOffer(t, shopItems, "strange_coin")))
 	if gs["error"] != nil {
 		t.Fatalf("buy key item error: %v", gs["error"])
 	}
