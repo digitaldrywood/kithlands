@@ -1,3 +1,5 @@
+import { buildVictoryXPSegments } from "./victoryXp.js";
+
 function cleanLineEnding(value) {
   return value.replace(/[!.]+$/, "").trim();
 }
@@ -38,4 +40,22 @@ export function buildVictorySummary(log = []) {
 export function formatSpoils(summary) {
   if (!summary?.found?.length) return "No item drops";
   return summary.found.join("  ·  ");
+}
+
+// A finale pays both split battle XP and per-survivor quest XP. Read the
+// authoritative progression segments so the receipt reflects what was awarded.
+export function buildFinalePartyXP(gs) {
+  if (!gs.final_encounter?.defeated) return null;
+  return gs.party.map((member, index) => {
+    if (gs.died_this_fight?.[index]) return 0;
+    return buildVictoryXPSegments({
+      prevXP: gs.xp_before?.[index] || 0,
+      currentXP: member.xp,
+      xpNext: member.xp_next,
+      xpThresholds: gs.xp_thresholds?.[index] || [],
+    }).reduce(
+      (total, segment) => total + Math.max(0, segment.end - segment.start),
+      0,
+    );
+  });
 }
