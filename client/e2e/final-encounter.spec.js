@@ -244,6 +244,7 @@ for (const viewport of [
           .visibleTexts("Title")
           .some((e) => e.interactive && e.text.includes("LOAD GAME")),
     );
+    await page.locator('input[type="email"]').fill(email);
     await page.evaluate(() =>
       window.__kithlandsTest.clickInteractiveText("LOAD GAME", "Title"),
     );
