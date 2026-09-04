@@ -300,3 +300,26 @@ func TestEquipmentBuildFollowsCharacterFormation(t *testing.T) {
 		t.Fatal("wrong build owner")
 	}
 }
+
+func TestEquipmentBuildFollowsChangedInstance(t *testing.T) {
+	t.Parallel()
+	g := buildTestGame(t)
+	id := saveBuild(t, g, "Travel")
+	ref := g.inv.EquipmentBuilds[0][0].Slots["main_hand"]
+	// A recipe may change an existing item while preserving its stable ID.
+	g.inv.Instance(ref.InstanceID).BaseID = "short_sword"
+	p := previewBuild(t, g, id)
+	if len(p.Reasons) != 0 {
+		t.Fatalf("instance upgrade rejected: %v", p.Reasons)
+	}
+	if err := g.ApplyEquipmentBuild(0, id, p.Token, false); err != nil {
+		t.Fatal(err)
+	}
+	equipped := g.inv.Equipment[0].Equipped("main_hand")
+	if equipped.InstanceID != ref.InstanceID || equipped.ItemID != "short_sword" {
+		t.Fatalf("instance identity not followed: %+v", equipped)
+	}
+	if g.inv.EquipmentBuilds[0][0].Slots["main_hand"] != ref {
+		t.Fatal("preview/apply rewrote saved intention")
+	}
+}

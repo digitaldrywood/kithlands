@@ -199,8 +199,10 @@ func (g *Game) planEquipmentBuildLocked(partySlot int, id string) (EquipmentBuil
 			seen[ref.InstanceID] = true
 			if instance == nil {
 				reason = "item is missing or sold; recover it or overwrite the build"
-			} else if instance.BaseID != ref.ItemID {
-				reason = "item identity has changed; overwrite the build"
+			} else {
+				// Instance identity wins over the saved base-ID display hint:
+				// an upgrade of this same instance follows the build.
+				ref.ItemID = instance.BaseID
 			}
 		}
 		candidate, err := g.recommendationCandidateForRef(ref, "", "balanced")
