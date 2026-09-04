@@ -170,24 +170,28 @@ func TestFromSaveStateMigratesLegacyCasterMP(t *testing.T) {
 func TestMigrateRequiredCampaignRetiresLinearSideQuests(t *testing.T) {
 	quests := []generator.Quest{
 		{ID: "main-0", Completed: true},
-		{ID: "side-complete", IsSideQuest: true, Completed: true},
+		{ID: "side_legacy_complete_1", IsSideQuest: true, Completed: true},
+		{ID: "discovered-side", IsSideQuest: true, Completed: true},
 		{ID: "main-1"},
-		{ID: "side-pending", IsSideQuest: true},
+		{ID: "side_legacy_pending_2", IsSideQuest: true},
 		{ID: "boss", TemplateID: "Q12"},
 	}
 
-	got, current := migrateRequiredCampaign(quests, 2)
-	if current != 1 {
-		t.Fatalf("current quest = %d, want 1 after removing a completed side quest", current)
+	got, current := migrateRequiredCampaign(quests, 3)
+	if current != 2 {
+		t.Fatalf("current quest = %d, want 2 after removing a completed legacy side quest", current)
 	}
-	wantIDs := []string{"main-0", "main-1", "boss"}
+	wantIDs := []string{"main-0", "discovered-side", "main-1", "boss"}
 	if len(got) != len(wantIDs) {
 		t.Fatalf("required campaign length = %d, want %d", len(got), len(wantIDs))
 	}
 	for i, want := range wantIDs {
-		if got[i].ID != want || got[i].IsSideQuest {
+		if got[i].ID != want {
 			t.Errorf("required quest %d = %+v, want %q", i, got[i], want)
 		}
+	}
+	if !got[1].IsSideQuest {
+		t.Fatal("non-legacy optional quest lost its side-quest identity")
 	}
 }
 
@@ -198,12 +202,12 @@ func TestFromSaveStateRetiresLinearSideQuests(t *testing.T) {
 	game.inv.Consumables["potion"] = 4
 	game.quests = []generator.Quest{
 		{ID: "main-0", TemplateID: "Q04", Completed: true},
-		{ID: "legacy-side-q12", TemplateID: "Q12", IsSideQuest: true, Completed: true},
+		{ID: "side_legacy_q12_1", TemplateID: "Q12", IsSideQuest: true, Completed: true},
 		{ID: "boss", TemplateID: "Q12"},
 	}
 	game.currentQ = 2
 	game.finalEncounter = &FinalEncounterProgress{
-		QuestID:  "legacy-side-q12",
+		QuestID:  "side_legacy_q12_1",
 		Defeated: true,
 		Recovery: "defeat",
 	}

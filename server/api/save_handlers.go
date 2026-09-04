@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/digitaldrywood/kithlands/internal/auth"
@@ -377,7 +378,7 @@ func migrateRequiredCampaign(quests []generator.Quest, current int) ([]generator
 	mainQuests := make([]generator.Quest, 0, len(quests))
 	mainBeforeCurrent := 0
 	for i, quest := range quests {
-		if quest.IsSideQuest {
+		if isLegacyLinearSideQuest(quest) {
 			continue
 		}
 		mainQuests = append(mainQuests, quest)
@@ -389,6 +390,13 @@ func migrateRequiredCampaign(quests []generator.Quest, current int) ([]generator
 		mainBeforeCurrent = len(mainQuests)
 	}
 	return mainQuests, mainBeforeCurrent
+}
+
+func isLegacyLinearSideQuest(quest generator.Quest) bool {
+	// The removed campaign generator assigned every inserted side quest an ID
+	// of side_<content ID>_<index>. Preserve other optional quest forms so new
+	// discovery-driven content remains save compatible.
+	return quest.IsSideQuest && strings.HasPrefix(quest.ID, "side_")
 }
 
 // migrateFinalEncounterProgress drops finale state created by a retired
