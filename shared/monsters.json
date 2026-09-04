@@ -654,5 +654,63 @@
     "encounter_weight": 0,
     "min_group": 1,
     "max_group": 1
+  },
+  {
+    "id": "bellbound_regent",
+    "name": "Bellbound Regent",
+    "tier": 20,
+    "size": "boss",
+    "is_boss": true,
+    "stats": {
+      "str": 54,
+      "agi": 14,
+      "int": 16,
+      "vit": 35,
+      "lck": 4,
+      "hit_pct": 34
+    },
+    "hp": 1100,
+    "armor_absorb": 18,
+    "xp_reward": 900,
+    "gold_reward": 220,
+    "weaknesses": [
+      "ice"
+    ],
+    "resistances": [
+      "fire"
+    ],
+    "absorbs": [],
+    "drops": [],
+    "encounter_weight": 0,
+    "min_group": 1,
+    "max_group": 1
+  },
+  {
+    "id": "bell_sentinel",
+    "name": "Bell Sentinel",
+    "tier": 3,
+    "size": "medium",
+    "stats": {
+      "str": 28,
+      "agi": 8,
+      "int": 4,
+      "vit": 16,
+      "lck": 3,
+      "hit_pct": 15
+    },
+    "hp": 95,
+    "armor_absorb": 18,
+    "xp_reward": 210,
+    "gold_reward": 60,
+    "weaknesses": [
+      "lightning"
+    ],
+    "resistances": [],
+    "absorbs": [],
+    "drops": [],
+    "encounter_weight": 0,
+    "min_group": 1,
+    "max_group": 2,
+    "is_boss": false
   }
 ]

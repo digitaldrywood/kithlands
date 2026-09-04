@@ -1,0 +1,2139 @@
+{
+  "party": [
+    {
+      "xp": 224,
+      "agi": 19,
+      "int": 11,
+      "lck": 21,
+      "row": "front",
+      "str": 39,
+      "vit": 25,
+      "name": "Ayla",
+      "level": 20,
+      "max_hp": 810,
+      "max_mp": 19,
+      "status": "",
+      "hit_pct": 67,
+      "class_id": "warrior",
+      "promoted": true,
+      "current_hp": 810,
+      "current_mp": 19
+    },
+    {
+      "xp": 224,
+      "agi": 19,
+      "int": 39,
+      "lck": 14,
+      "row": "back",
+      "str": 13,
+      "vit": 13,
+      "name": "Cato",
+      "level": 20,
+      "max_hp": 451,
+      "max_mp": 105,
+      "status": "",
+      "hit_pct": 24,
+      "class_id": "cinder",
+      "promoted": true,
+      "current_hp": 451,
+      "current_mp": 105
+    },
+    {
+      "xp": 224,
+      "agi": 25,
+      "int": 11,
+      "lck": 34,
+      "row": "front",
+      "str": 19,
+      "vit": 14,
+      "name": "Nia",
+      "level": 20,
+      "max_hp": 592,
+      "max_mp": 19,
+      "status": "",
+      "hit_pct": 67,
+      "class_id": "rogue",
+      "promoted": true,
+      "current_hp": 592,
+      "current_mp": 19
+    },
+    {
+      "xp": 224,
+      "agi": 14,
+      "int": 16,
+      "lck": 19,
+      "row": "back",
+      "str": 13,
+      "vit": 18,
+      "name": "Mira",
+      "level": 20,
+      "max_hp": 612,
+      "max_mp": 105,
+      "status": "",
+      "hit_pct": 24,
+      "class_id": "mender",
+      "promoted": true,
+      "current_hp": 612,
+      "current_mp": 105
+    }
+  ],
+  "inventory": {
+    "gems": {
+      "ward_shard": 9,
+      "ember_shard": 45
+    },
+    "gold": 4285,
+    "equipment": [
+      {
+        "loadout": {
+          "body": {
+            "item_id": "militia_mail",
+            "instance_id": "gear_000002"
+          },
+          "main_hand": {
+            "item_id": "militia_sword",
+            "instance_id": "gear_000001"
+          }
+        },
+        "armor_id": "militia_mail",
+        "weapon_id": "militia_sword",
+        "armor_instance_id": "gear_000002",
+        "weapon_instance_id": "gear_000001"
+      },
+      {
+        "loadout": {
+          "body": {
+            "item_id": "cinder_robes",
+            "instance_id": "gear_000004"
+          },
+          "main_hand": {
+            "item_id": "ember_rod",
+            "instance_id": "gear_000003"
+          }
+        },
+        "armor_id": "cinder_robes",
+        "weapon_id": "ember_rod",
+        "armor_instance_id": "gear_000004",
+        "weapon_instance_id": "gear_000003"
+      },
+      {
+        "loadout": {
+          "body": {
+            "item_id": "scout_leathers",
+            "instance_id": "gear_000006"
+          },
+          "main_hand": {
+            "item_id": "scout_knife",
+            "instance_id": "gear_000005"
+          }
+        },
+        "armor_id": "scout_leathers",
+        "weapon_id": "scout_knife",
+        "armor_instance_id": "gear_000006",
+        "weapon_instance_id": "gear_000005"
+      },
+      {
+        "loadout": {
+          "body": {
+            "item_id": "mender_vestments",
+            "instance_id": "gear_000008"
+          },
+          "main_hand": {
+            "item_id": "pilgrim_crook",
+            "instance_id": "gear_000007"
+          }
+        },
+        "armor_id": "mender_vestments",
+        "weapon_id": "pilgrim_crook",
+        "armor_instance_id": "gear_000008",
+        "weapon_instance_id": "gear_000007"
+      }
+    ],
+    "instances": {
+      "gear_000001": {
+        "id": "gear_000001",
+        "kind": "weapon",
+        "base_id": "militia_sword",
+        "sockets": [
+          {}
+        ],
+        "category": "weapon",
+        "rarity_id": "common",
+        "item_level": 1,
+        "required_level": 1
+      },
+      "gear_000002": {
+        "id": "gear_000002",
+        "kind": "armor",
+        "base_id": "militia_mail",
+        "sockets": [
+          {}
+        ],
+        "category": "armor",
+        "rarity_id": "common",
+        "item_level": 1,
+        "required_level": 1
+      },
+      "gear_000003": {
+        "id": "gear_000003",
+        "kind": "weapon",
+        "affixes": [
+          {
+            "value": 1,
+            "affix_id": "keen"
+          }
+        ],
+        "base_id": "ember_rod",
+        "sockets": [
+          {}
+        ],
+        "category": "weapon",
+        "rarity_id": "magic",
+        "item_level": 1,
+        "required_level": 1
+      },
+      "gear_000004": {
+        "id": "gear_000004",
+        "kind": "armor",
+        "base_id": "cinder_robes",
+        "sockets": [
+          {}
+        ],
+        "category": "armor",
+        "rarity_id": "common",
+        "item_level": 1,
+        "required_level": 1
+      },
+      "gear_000005": {
+        "id": "gear_000005",
+        "kind": "weapon",
+        "base_id": "scout_knife",
+        "sockets": [
+          {}
+        ],
+        "category": "weapon",
+        "rarity_id": "common",
+        "item_level": 1,
+        "required_level": 1
+      },
+      "gear_000006": {
+        "id": "gear_000006",
+        "kind": "armor",
+        "base_id": "scout_leathers",
+        "sockets": [
+          {}
+        ],
+        "category": "armor",
+        "rarity_id": "common",
+        "item_level": 1,
+        "required_level": 1
+      },
+      "gear_000007": {
+        "id": "gear_000007",
+        "kind": "weapon",
+        "affixes": [
+          {
+            "value": 1,
+            "affix_id": "keen"
+          }
+        ],
+        "base_id": "pilgrim_crook",
+        "sockets": [
+          {}
+        ],
+        "category": "weapon",
+        "rarity_id": "magic",
+        "item_level": 1,
+        "required_level": 1
+      },
+      "gear_000008": {
+        "id": "gear_000008",
+        "kind": "armor",
+        "base_id": "mender_vestments",
+        "category": "armor",
+        "rarity_id": "common",
+        "item_level": 1,
+        "required_level": 1
+      },
+      "gear_000009": {
+        "id": "gear_000009",
+        "kind": "armor",
+        "affixes": [
+          {
+            "value": 1,
+            "affix_id": "reinforced"
+          }
+        ],
+        "base_id": "trail_boots",
+        "sockets": [
+          {}
+        ],
+        "category": "boots",
+        "rarity_id": "magic",
+        "item_level": 2,
+        "required_level": 1
+      },
+      "gear_000010": {
+        "id": "gear_000010",
+        "kind": "weapon",
+        "affixes": [
+          {
+            "value": 1,
+            "affix_id": "keen"
+          }
+        ],
+        "base_id": "iron_sword",
+        "sockets": [
+          {}
+        ],
+        "category": "weapon",
+        "rarity_id": "magic",
+        "item_level": 2,
+        "required_level": 1
+      },
+      "gear_000011": {
+        "id": "gear_000011",
+        "kind": "weapon",
+        "affixes": [
+          {
+            "value": 1,
+            "affix_id": "keen"
+          }
+        ],
+        "base_id": "rusty_dagger",
+        "sockets": [
+          {}
+        ],
+        "category": "weapon",
+        "rarity_id": "magic",
+        "item_level": 1,
+        "required_level": 1
+      },
+      "gear_000012": {
+        "id": "gear_000012",
+        "kind": "armor",
+        "base_id": "leather_gloves",
+        "sockets": [
+          {}
+        ],
+        "category": "gloves",
+        "rarity_id": "common",
+        "item_level": 1,
+        "required_level": 1
+      },
+      "gear_000013": {
+        "id": "gear_000013",
+        "kind": "armor",
+        "base_id": "leather_gloves",
+        "sockets": [
+          {}
+        ],
+        "category": "gloves",
+        "rarity_id": "common",
+        "item_level": 1,
+        "required_level": 1
+      },
+      "gear_000014": {
+        "id": "gear_000014",
+        "kind": "weapon",
+        "affixes": [
+          {
+            "value": 1,
+            "affix_id": "keen"
+          }
+        ],
+        "base_id": "rusty_dagger",
+        "sockets": [
+          {}
+        ],
+        "category": "weapon",
+        "rarity_id": "magic",
+        "item_level": 1,
+        "required_level": 1
+      },
+      "gear_000015": {
+        "id": "gear_000015",
+        "kind": "weapon",
+        "base_id": "rusty_dagger",
+        "sockets": [
+          {}
+        ],
+        "category": "weapon",
+        "rarity_id": "common",
+        "item_level": 1,
+        "required_level": 1
+      },
+      "gear_000016": {
+        "id": "gear_000016",
+        "kind": "armor",
+        "base_id": "trail_boots",
+        "sockets": [
+          {}
+        ],
+        "category": "boots",
+        "rarity_id": "common",
+        "item_level": 2,
+        "required_level": 1
+      },
+      "gear_000017": {
+        "id": "gear_000017",
+        "kind": "armor",
+        "base_id": "leather_gloves",
+        "sockets": [
+          {}
+        ],
+        "category": "gloves",
+        "rarity_id": "common",
+        "item_level": 1,
+        "required_level": 1
+      },
+      "gear_000018": {
+        "id": "gear_000018",
+        "kind": "armor",
+        "base_id": "leather_cap",
+        "sockets": [
+          {}
+        ],
+        "category": "helmet",
+        "rarity_id": "common",
+        "item_level": 2,
+        "required_level": 1
+      },
+      "gear_000019": {
+        "id": "gear_000019",
+        "kind": "weapon",
+        "base_id": "rusty_dagger",
+        "category": "weapon",
+        "rarity_id": "common",
+        "item_level": 1,
+        "required_level": 1
+      },
+      "gear_000020": {
+        "id": "gear_000020",
+        "kind": "weapon",
+        "base_id": "iron_sword",
+        "category": "weapon",
+        "rarity_id": "common",
+        "item_level": 2,
+        "required_level": 1
+      },
+      "gear_000021": {
+        "id": "gear_000021",
+        "kind": "weapon",
+        "base_id": "iron_sword",
+        "category": "weapon",
+        "rarity_id": "common",
+        "item_level": 2,
+        "required_level": 1
+      },
+      "gear_000022": {
+        "id": "gear_000022",
+        "kind": "weapon",
+        "base_id": "iron_sword",
+        "category": "weapon",
+        "rarity_id": "common",
+        "item_level": 2,
+        "required_level": 1
+      },
+      "gear_000023": {
+        "id": "gear_000023",
+        "kind": "armor",
+        "base_id": "trail_boots",
+        "sockets": [
+          {}
+        ],
+        "category": "boots",
+        "rarity_id": "common",
+        "item_level": 2,
+        "required_level": 1
+      }
+    },
+    "key_items": [],
+    "consumables": {
+      "potion": 44,
+      "antidote": 7,
+      "wpn_wooden_club": 1
+    },
+    "next_instance": 23,
+    "schema_version": 3
+  },
+  "quest_state": [
+    {
+      "id": "quest_0",
+      "act": 1,
+      "name": "Fetch: Creswood Corners",
+      "reward": {
+        "xp": 50,
+        "gold": 30
+      },
+      "actions": [
+        {
+          "type": "goto",
+          "detail": "Creswood Corners",
+          "target": "",
+          "location": "place_1"
+        },
+        {
+          "type": "get",
+          "detail": "",
+          "target": "family heirloom",
+          "location": "place_1"
+        },
+        {
+          "type": "goto",
+          "detail": "Creswood Corners",
+          "target": "",
+          "location": "place_1"
+        },
+        {
+          "type": "give",
+          "detail": "Bob",
+          "target": "person_0",
+          "location": ""
+        }
+      ],
+      "completed": true,
+      "completion": "The family heirloom is returned. Bob nods in quiet thanks.",
+      "giver_name": "Bob",
+      "description": "Bob asks you to retrieve a family heirloom from Creswood Corners before nightfall.",
+      "target_name": "Creswood Corners",
+      "template_id": "Q01",
+      "giver_node_id": "person_0",
+      "target_node_id": "place_1"
+    },
+    {
+      "id": "quest_1",
+      "act": 1,
+      "name": "Delivery: Mrs Henderson",
+      "reward": {
+        "xp": 50,
+        "gold": 30
+      },
+      "actions": [
+        {
+          "type": "get",
+          "detail": "",
+          "target": "sealed box",
+          "location": "person_1"
+        },
+        {
+          "type": "goto",
+          "detail": "Mrs Henderson",
+          "target": "",
+          "location": "person_1"
+        },
+        {
+          "type": "give",
+          "detail": "Bob",
+          "target": "person_0",
+          "location": ""
+        }
+      ],
+      "completed": true,
+      "completion": "You return from Mrs Henderson. Bob looks relieved.",
+      "giver_name": "Bob",
+      "description": "Bob needs a sealed box carried to Mrs Henderson \u2014 and it can't wait.",
+      "target_name": "Mrs Henderson",
+      "template_id": "Q02",
+      "giver_node_id": "person_0",
+      "target_node_id": "person_1"
+    },
+    {
+      "id": "quest_2",
+      "act": 1,
+      "name": "Delivery: The Wayward Inn",
+      "reward": {
+        "xp": 50,
+        "gold": 30
+      },
+      "actions": [
+        {
+          "type": "get",
+          "detail": "",
+          "target": "letter",
+          "location": "inn"
+        },
+        {
+          "type": "goto",
+          "detail": "The Wayward Inn",
+          "target": "",
+          "location": "inn"
+        },
+        {
+          "type": "give",
+          "detail": "Bob",
+          "target": "person_0",
+          "location": ""
+        }
+      ],
+      "completed": true,
+      "completion": "The letter is delivered. Bob breathes easier knowing the task is done.",
+      "giver_name": "Bob",
+      "description": "Bob hands you a sealed letter. \"Take this to The Wayward Inn. They'll know what it means.\"",
+      "target_name": "The Wayward Inn",
+      "template_id": "Q02",
+      "giver_node_id": "person_0",
+      "target_node_id": "inn"
+    },
+    {
+      "id": "quest_3",
+      "act": 1,
+      "name": "Delivery: Bob",
+      "reward": {
+        "xp": 50,
+        "gold": 30
+      },
+      "actions": [
+        {
+          "type": "get",
+          "detail": "",
+          "target": "sealed box",
+          "location": "person_0"
+        },
+        {
+          "type": "goto",
+          "detail": "Bob",
+          "target": "",
+          "location": "person_0"
+        },
+        {
+          "type": "give",
+          "detail": "Bob",
+          "target": "person_0",
+          "location": ""
+        }
+      ],
+      "completed": true,
+      "completion": "The sealed box is delivered. Bob breathes easier knowing the task is done.",
+      "giver_name": "Bob",
+      "description": "Bob hands you a sealed sealed box. \"Take this to Bob. They'll know what it means.\"",
+      "target_name": "Bob",
+      "template_id": "Q02",
+      "giver_node_id": "person_0",
+      "target_node_id": "person_0"
+    },
+    {
+      "id": "quest_4",
+      "act": 1,
+      "name": "Bandit Clearing: The Wayward Inn",
+      "reward": {
+        "xp": 50,
+        "gold": 30
+      },
+      "actions": [
+        {
+          "type": "goto",
+          "detail": "The Wayward Inn",
+          "target": "",
+          "location": "inn"
+        },
+        {
+          "type": "kill",
+          "detail": "",
+          "target": "monsters",
+          "location": "inn"
+        },
+        {
+          "type": "goto",
+          "detail": "The Wayward Inn",
+          "target": "",
+          "location": "inn"
+        },
+        {
+          "type": "report",
+          "detail": "Bob",
+          "target": "person_0",
+          "location": ""
+        }
+      ],
+      "completed": true,
+      "completion": "Bob exhales. \"The road through The Wayward Inn is ours again. Well done.\"",
+      "giver_name": "Bob",
+      "description": "Bob says: \"Bandits have made The Wayward Inn unsafe. Clear them out and I'll reward you well.\"",
+      "target_name": "The Wayward Inn",
+      "template_id": "Q04",
+      "giver_node_id": "person_0",
+      "target_node_id": "inn"
+    },
+    {
+      "id": "quest_5",
+      "act": 1,
+      "name": "Bandit Clearing: The School",
+      "reward": {
+        "xp": 50,
+        "gold": 30
+      },
+      "actions": [
+        {
+          "type": "goto",
+          "detail": "The School",
+          "target": "",
+          "location": "place_0"
+        },
+        {
+          "type": "kill",
+          "detail": "",
+          "target": "monsters",
+          "location": "place_0"
+        },
+        {
+          "type": "goto",
+          "detail": "The School",
+          "target": "",
+          "location": "place_0"
+        },
+        {
+          "type": "report",
+          "detail": "Bob",
+          "target": "person_0",
+          "location": ""
+        }
+      ],
+      "completed": true,
+      "completion": "Bob exhales. \"The road through The School is ours again. Well done.\"",
+      "giver_name": "Bob",
+      "description": "Bob says: \"Bandits have made The School unsafe. Clear them out and I'll reward you well.\"",
+      "target_name": "The School",
+      "template_id": "Q04",
+      "giver_node_id": "person_0",
+      "target_node_id": "place_0"
+    },
+    {
+      "id": "quest_6",
+      "act": 1,
+      "name": "Bandit Clearing: General Store",
+      "reward": {
+        "xp": 50,
+        "gold": 30
+      },
+      "actions": [
+        {
+          "type": "goto",
+          "detail": "General Store",
+          "target": "",
+          "location": "shop"
+        },
+        {
+          "type": "kill",
+          "detail": "",
+          "target": "monsters",
+          "location": "shop"
+        },
+        {
+          "type": "goto",
+          "detail": "General Store",
+          "target": "",
+          "location": "shop"
+        },
+        {
+          "type": "report",
+          "detail": "Bob",
+          "target": "person_0",
+          "location": ""
+        }
+      ],
+      "completed": true,
+      "completion": "Bob exhales. \"The road through General Store is ours again. Well done.\"",
+      "giver_name": "Bob",
+      "description": "Bob says: \"Bandits have made General Store unsafe. Clear them out and I'll reward you well.\"",
+      "target_name": "General Store",
+      "template_id": "Q04",
+      "giver_node_id": "person_0",
+      "target_node_id": "shop"
+    },
+    {
+      "id": "quest_7",
+      "act": 1,
+      "name": "Lost Person: The Wayward Inn",
+      "reward": {
+        "xp": 50,
+        "gold": 30
+      },
+      "actions": [
+        {
+          "type": "learn",
+          "detail": "",
+          "target": "lost apprentice",
+          "location": "inn"
+        },
+        {
+          "type": "goto",
+          "detail": "The Wayward Inn",
+          "target": "",
+          "location": "inn"
+        },
+        {
+          "type": "escort",
+          "detail": "Bob",
+          "target": "lost apprentice",
+          "location": "person_0"
+        }
+      ],
+      "completed": true,
+      "completion": "The lost apprentice is safe. Bob weeps with relief.",
+      "giver_name": "Bob",
+      "description": "Bob has lost a lost apprentice and hopes you can track them through The Wayward Inn.",
+      "target_name": "The Wayward Inn",
+      "template_id": "Q05",
+      "giver_node_id": "person_0",
+      "target_node_id": "inn"
+    },
+    {
+      "id": "quest_promotion_8",
+      "act": 1,
+      "name": "Trial of Mastery: Old Ruins",
+      "reward": {
+        "xp": 200,
+        "gold": 100
+      },
+      "actions": [
+        {
+          "type": "goto",
+          "detail": "Bob",
+          "target": "",
+          "location": "person_0"
+        },
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "kill",
+          "detail": "",
+          "target": "trial_guardian",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "get",
+          "detail": "",
+          "target": "proof_of_courage",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "goto",
+          "detail": "Bob",
+          "target": "",
+          "location": "person_0"
+        },
+        {
+          "type": "report",
+          "detail": "Bob",
+          "target": "person_0",
+          "location": ""
+        }
+      ],
+      "completed": true,
+      "completion": "Bob nods with pride. \"You have passed the trial. Rise, promoted.\"",
+      "giver_name": "Bob",
+      "description": "Bob says: \"Prove your mastery at Old Ruins. Return to me when you are ready to claim your true name.\"",
+      "promo_stage": 2,
+      "target_name": "Bob",
+      "template_id": "promotion",
+      "dungeon_name": "Old Ruins",
+      "is_promotion": true,
+      "giver_node_id": "person_0",
+      "proof_item_id": "proof_of_courage",
+      "target_node_id": "person_0",
+      "boss_monster_id": "trial_guardian",
+      "dungeon_node_id": "wilderness_2"
+    },
+    {
+      "id": "quest_9",
+      "act": 2,
+      "name": "Delivery: Old Ruins",
+      "reward": {
+        "xp": 100,
+        "gold": 60
+      },
+      "actions": [
+        {
+          "type": "get",
+          "detail": "",
+          "target": "bundle of herbs",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "give",
+          "detail": "Bob",
+          "target": "person_0",
+          "location": ""
+        }
+      ],
+      "completed": true,
+      "completion": "You return from Old Ruins. Bob looks relieved.",
+      "giver_name": "Bob",
+      "description": "Bob needs a bundle of herbs carried to Old Ruins \u2014 and it can't wait.",
+      "target_name": "Old Ruins",
+      "template_id": "Q02",
+      "giver_node_id": "person_0",
+      "target_node_id": "wilderness_2"
+    },
+    {
+      "id": "quest_10",
+      "act": 2,
+      "name": "Lost Person: Old Ruins",
+      "reward": {
+        "xp": 100,
+        "gold": 60
+      },
+      "actions": [
+        {
+          "type": "learn",
+          "detail": "",
+          "target": "lost apprentice",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "escort",
+          "detail": "Bob",
+          "target": "lost apprentice",
+          "location": "person_0"
+        }
+      ],
+      "completed": true,
+      "completion": "The lost apprentice is safe. Bob weeps with relief.",
+      "giver_name": "Bob",
+      "description": "Bob has lost a lost apprentice and hopes you can track them through Old Ruins.",
+      "target_name": "Old Ruins",
+      "template_id": "Q05",
+      "giver_node_id": "person_0",
+      "target_node_id": "wilderness_2"
+    },
+    {
+      "id": "quest_11",
+      "act": 2,
+      "name": "Fetch: Old Ruins",
+      "reward": {
+        "xp": 100,
+        "gold": 60
+      },
+      "actions": [
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "get",
+          "detail": "",
+          "target": "family heirloom",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "give",
+          "detail": "Bob",
+          "target": "person_0",
+          "location": ""
+        }
+      ],
+      "completed": true,
+      "completion": "The family heirloom is returned. Bob nods in quiet thanks.",
+      "giver_name": "Bob",
+      "description": "Bob asks you to retrieve a family heirloom from Old Ruins before nightfall.",
+      "target_name": "Old Ruins",
+      "template_id": "Q01",
+      "giver_node_id": "person_0",
+      "target_node_id": "wilderness_2"
+    },
+    {
+      "id": "quest_12",
+      "act": 2,
+      "name": "Lost Person: Old Ruins",
+      "reward": {
+        "xp": 100,
+        "gold": 60
+      },
+      "actions": [
+        {
+          "type": "learn",
+          "detail": "",
+          "target": "wayward child",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "escort",
+          "detail": "Bob",
+          "target": "wayward child",
+          "location": "person_0"
+        }
+      ],
+      "completed": true,
+      "completion": "Bob embraces the wayward child you brought home. \"I can't thank you enough.\"",
+      "giver_name": "Bob",
+      "description": "Bob pleads with you: \"Please, find my wayward child. Last I heard, they were near Old Ruins.\"",
+      "target_name": "Old Ruins",
+      "template_id": "Q05",
+      "giver_node_id": "person_0",
+      "target_node_id": "wilderness_2"
+    },
+    {
+      "id": "quest_13",
+      "act": 2,
+      "name": "Bandit Clearing: Old Ruins",
+      "reward": {
+        "xp": 100,
+        "gold": 60
+      },
+      "actions": [
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "kill",
+          "detail": "",
+          "target": "monsters",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "report",
+          "detail": "Bob",
+          "target": "person_0",
+          "location": ""
+        }
+      ],
+      "completed": true,
+      "completion": "Bob exhales. \"The road through Old Ruins is ours again. Well done.\"",
+      "giver_name": "Bob",
+      "description": "Bob says: \"Bandits have made Old Ruins unsafe. Clear them out and I'll reward you well.\"",
+      "target_name": "Old Ruins",
+      "template_id": "Q04",
+      "giver_node_id": "person_0",
+      "target_node_id": "wilderness_2"
+    },
+    {
+      "id": "quest_14",
+      "act": 2,
+      "name": "Bandit Clearing: Old Ruins",
+      "reward": {
+        "xp": 100,
+        "gold": 60
+      },
+      "actions": [
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "kill",
+          "detail": "",
+          "target": "monsters",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "report",
+          "detail": "Bob",
+          "target": "person_0",
+          "location": ""
+        }
+      ],
+      "completed": true,
+      "completion": "Bob exhales. \"The road through Old Ruins is ours again. Well done.\"",
+      "giver_name": "Bob",
+      "description": "Bob says: \"Bandits have made Old Ruins unsafe. Clear them out and I'll reward you well.\"",
+      "target_name": "Old Ruins",
+      "template_id": "Q04",
+      "giver_node_id": "person_0",
+      "target_node_id": "wilderness_2"
+    },
+    {
+      "id": "quest_15",
+      "act": 2,
+      "name": "Investigation: Old Ruins",
+      "reward": {
+        "xp": 100,
+        "gold": 60
+      },
+      "actions": [
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "learn",
+          "detail": "",
+          "target": "torn page",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "report",
+          "detail": "Bob",
+          "target": "person_0",
+          "location": ""
+        }
+      ],
+      "completed": true,
+      "completion": "Your findings settle over Bob like a weight. \"Thank you for your eyes.\"",
+      "giver_name": "Bob",
+      "description": "Bob asks you to investigate the strange happenings at Old Ruins.",
+      "target_name": "Old Ruins",
+      "template_id": "Q03",
+      "giver_node_id": "person_0",
+      "target_node_id": "wilderness_2"
+    },
+    {
+      "id": "quest_16",
+      "act": 3,
+      "name": "Investigation: Old Ruins",
+      "reward": {
+        "xp": 150,
+        "gold": 90
+      },
+      "actions": [
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "learn",
+          "detail": "",
+          "target": "witness account",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "report",
+          "detail": "Bob",
+          "target": "person_0",
+          "location": ""
+        }
+      ],
+      "completed": true,
+      "completion": "Your findings settle over Bob like a weight. \"Thank you for your eyes.\"",
+      "giver_name": "Bob",
+      "description": "Bob asks you to investigate the strange happenings at Old Ruins.",
+      "target_name": "Old Ruins",
+      "template_id": "Q03",
+      "giver_node_id": "person_0",
+      "target_node_id": "wilderness_2"
+    },
+    {
+      "id": "quest_17",
+      "act": 3,
+      "name": "Investigation: Old Ruins",
+      "reward": {
+        "xp": 150,
+        "gold": 90
+      },
+      "actions": [
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "learn",
+          "detail": "",
+          "target": "strange clue",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "report",
+          "detail": "Bob",
+          "target": "person_0",
+          "location": ""
+        }
+      ],
+      "completed": true,
+      "completion": "Your findings settle over Bob like a weight. \"Thank you for your eyes.\"",
+      "giver_name": "Bob",
+      "description": "Bob asks you to investigate the strange happenings at Old Ruins.",
+      "target_name": "Old Ruins",
+      "template_id": "Q03",
+      "giver_node_id": "person_0",
+      "target_node_id": "wilderness_2"
+    },
+    {
+      "id": "quest_18",
+      "act": 3,
+      "name": "Investigation: Old Ruins",
+      "reward": {
+        "xp": 150,
+        "gold": 90
+      },
+      "actions": [
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "learn",
+          "detail": "",
+          "target": "strange clue",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "report",
+          "detail": "Bob",
+          "target": "person_0",
+          "location": ""
+        }
+      ],
+      "completed": true,
+      "completion": "Your findings settle over Bob like a weight. \"Thank you for your eyes.\"",
+      "giver_name": "Bob",
+      "description": "Bob asks you to investigate the strange happenings at Old Ruins.",
+      "target_name": "Old Ruins",
+      "template_id": "Q03",
+      "giver_node_id": "person_0",
+      "target_node_id": "wilderness_2"
+    },
+    {
+      "id": "quest_19",
+      "act": 3,
+      "name": "Investigation: Old Ruins",
+      "reward": {
+        "xp": 150,
+        "gold": 90
+      },
+      "actions": [
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "learn",
+          "detail": "",
+          "target": "torn page",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "report",
+          "detail": "Bob",
+          "target": "person_0",
+          "location": ""
+        }
+      ],
+      "completed": true,
+      "completion": "Your findings settle over Bob like a weight. \"Thank you for your eyes.\"",
+      "giver_name": "Bob",
+      "description": "Bob asks you to investigate the strange happenings at Old Ruins.",
+      "target_name": "Old Ruins",
+      "template_id": "Q03",
+      "giver_node_id": "person_0",
+      "target_node_id": "wilderness_2"
+    },
+    {
+      "id": "side_sq_war_dispatch_20",
+      "act": 1,
+      "name": "War Dispatch (Bob)",
+      "reward": {
+        "xp": 50,
+        "gold": 30
+      },
+      "actions": [
+        {
+          "type": "get",
+          "detail": "",
+          "target": "sealed box",
+          "location": "person_0"
+        },
+        {
+          "type": "goto",
+          "detail": "Bob",
+          "target": "",
+          "location": "person_0"
+        },
+        {
+          "type": "give",
+          "detail": "Bob",
+          "target": "person_0",
+          "location": ""
+        }
+      ],
+      "completed": true,
+      "completion": "You return from Bob. Bob looks relieved.",
+      "giver_name": "Bob",
+      "description": "Bob needs a sealed box carried to Bob \u2014 and it can't wait.",
+      "target_name": "Bob",
+      "template_id": "Q02",
+      "giver_node_id": "person_0",
+      "is_side_quest": true,
+      "target_node_id": "person_0"
+    },
+    {
+      "id": "side_sq_deserter_hunt_21",
+      "act": 2,
+      "name": "Deserter Hunt (Old Ruins)",
+      "reward": {
+        "xp": 100,
+        "gold": 60
+      },
+      "actions": [
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "kill",
+          "detail": "",
+          "target": "monsters",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "report",
+          "detail": "Bob",
+          "target": "person_0",
+          "location": ""
+        }
+      ],
+      "completed": true,
+      "completion": "Bob exhales. \"The road through Old Ruins is ours again. Well done.\"",
+      "giver_name": "Bob",
+      "description": "Bob says: \"Bandits have made Old Ruins unsafe. Clear them out and I'll reward you well.\"",
+      "target_name": "Old Ruins",
+      "template_id": "Q04",
+      "giver_node_id": "person_0",
+      "is_side_quest": true,
+      "target_node_id": "wilderness_2"
+    },
+    {
+      "id": "side_sq_enemy_stronghold_22",
+      "act": 3,
+      "name": "Enemy Stronghold (Old Ruins)",
+      "reward": {
+        "xp": 150,
+        "gold": 90
+      },
+      "actions": [
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "kill",
+          "detail": "",
+          "target": "monsters",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "report",
+          "detail": "Bob",
+          "target": "person_0",
+          "location": ""
+        }
+      ],
+      "completed": true,
+      "completion": "With Old Ruins safe, Bob can sleep through the night once more.",
+      "giver_name": "Bob",
+      "description": "Bob needs Old Ruins cleared of the monsters that have moved in.",
+      "target_name": "Old Ruins",
+      "template_id": "Q04",
+      "giver_node_id": "person_0",
+      "is_side_quest": true,
+      "target_node_id": "wilderness_2"
+    },
+    {
+      "id": "quest_boss_20",
+      "act": 3,
+      "name": "Defeat Old Ruins",
+      "reward": {
+        "xp": 500,
+        "gold": 300
+      },
+      "actions": [
+        {
+          "type": "goto",
+          "detail": "Old Ruins",
+          "target": "",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "kill",
+          "detail": "",
+          "target": "boss",
+          "location": "wilderness_2"
+        },
+        {
+          "type": "goto",
+          "detail": "Town Hall",
+          "target": "",
+          "location": "central"
+        },
+        {
+          "type": "report",
+          "detail": "Town Hall",
+          "target": "central",
+          "location": ""
+        }
+      ],
+      "completed": false,
+      "completion": "Old Ruins has fallen. Bob and all of Town Hall will remember this day.",
+      "giver_name": "Bob",
+      "description": "The shadow of Old Ruins looms over Town Hall. Bob begs you to end it.",
+      "target_name": "Old Ruins",
+      "template_id": "Q12",
+      "giver_node_id": "person_0",
+      "target_node_id": "wilderness_2"
+    }
+  ],
+  "world_state": {
+    "phase": "quest_complete",
+    "transport": {
+      "unlocked": {
+        "T1": true,
+        "T2": true,
+        "T3": true,
+        "T4": true,
+        "T5": true
+      },
+      "current_tier": "T5"
+    },
+    "discovered": {
+      "wolf": true,
+      "slime": true,
+      "goblin": true,
+      "skeleton": true,
+      "trial_guardian": true
+    },
+    "spell_books": {
+      "Nia": {
+        "known_spells": {
+          "1": [
+            "spark",
+            "frost",
+            "sleep"
+          ]
+        }
+      },
+      "Ayla": {
+        "known_spells": {
+          "1": [
+            "cure",
+            "light",
+            "bless"
+          ]
+        }
+      },
+      "Cato": {
+        "known_spells": {
+          "1": [
+            "spark",
+            "frost",
+            "sleep"
+          ]
+        }
+      },
+      "Mira": {
+        "known_spells": {
+          "1": [
+            "cure",
+            "light",
+            "bless"
+          ]
+        }
+      }
+    },
+    "current_quest": 23,
+    "triggered_flags": {},
+    "last_round_actions": [
+      {
+        "slot": 0,
+        "type": "attack",
+        "target_id": 100
+      },
+      {
+        "slot": 1,
+        "type": "spell",
+        "spell_id": "spark",
+        "target_id": 100
+      },
+      {
+        "slot": 2,
+        "type": "attack",
+        "target_id": 100
+      },
+      {
+        "slot": 3,
+        "type": "attack",
+        "target_id": 100
+      }
+    ],
+    "loot_roll_sequence": 23,
+    "building_side_quests": {
+      "inn": {
+        "id": "building_inn_safe_road_4",
+        "act": 1,
+        "name": "Clear the Coach Road",
+        "reward": {
+          "xp": 60,
+          "gold": 110
+        },
+        "status": "ready_to_turn_in",
+        "actions": [
+          {
+            "type": "goto",
+            "detail": "General Store",
+            "target": "",
+            "location": "shop"
+          },
+          {
+            "type": "kill",
+            "detail": "",
+            "target": "monsters",
+            "location": "shop"
+          },
+          {
+            "type": "goto",
+            "detail": "General Store",
+            "target": "",
+            "location": "shop"
+          },
+          {
+            "type": "report",
+            "detail": "Innkeeper",
+            "target": "inn",
+            "location": ""
+          }
+        ],
+        "completed": false,
+        "completion": "Innkeeper exhales. \"The road through General Store is ours again. Well done.\"",
+        "giver_name": "Innkeeper",
+        "description": "Innkeeper says: \"Bandits have made General Store unsafe. Clear them out and I'll reward you well.\"",
+        "target_name": "General Store",
+        "template_id": "Q04",
+        "building_type": "inn",
+        "giver_node_id": "inn",
+        "is_side_quest": true,
+        "source_node_id": "inn",
+        "target_node_id": "shop",
+        "source_node_name": "The Wayward Inn"
+      },
+      "shop": {
+        "id": "building_shop_receipt_5",
+        "act": 1,
+        "name": "Missing Receipt",
+        "reward": {
+          "xp": 50,
+          "gold": 95
+        },
+        "status": "accepted",
+        "actions": [
+          {
+            "type": "goto",
+            "detail": "Fire Hall",
+            "target": "",
+            "location": "place_2"
+          },
+          {
+            "type": "learn",
+            "detail": "",
+            "target": "ledger receipt",
+            "location": "place_2"
+          },
+          {
+            "type": "goto",
+            "detail": "Fire Hall",
+            "target": "",
+            "location": "place_2"
+          },
+          {
+            "type": "report",
+            "detail": "Merchant",
+            "target": "shop",
+            "location": ""
+          }
+        ],
+        "completed": false,
+        "completion": "Your findings settle over Merchant like a weight. \"Thank you for your eyes.\"",
+        "giver_name": "Merchant",
+        "description": "Merchant asks you to investigate the strange happenings at Fire Hall.",
+        "target_name": "Fire Hall",
+        "template_id": "Q03",
+        "building_type": "shop",
+        "giver_node_id": "shop",
+        "is_side_quest": true,
+        "source_node_id": "shop",
+        "target_node_id": "place_2",
+        "source_node_name": "General Store"
+      },
+      "temple": {
+        "id": "building_temple_well_6",
+        "act": 1,
+        "name": "Bless the Well",
+        "reward": {
+          "xp": 55,
+          "gold": 85
+        },
+        "status": "available",
+        "actions": [
+          {
+            "type": "goto",
+            "detail": "Mrs Henderson",
+            "target": "",
+            "location": "person_1"
+          },
+          {
+            "type": "learn",
+            "detail": "",
+            "target": "warding prayer",
+            "location": "person_1"
+          },
+          {
+            "type": "goto",
+            "detail": "Mrs Henderson",
+            "target": "",
+            "location": "person_1"
+          },
+          {
+            "type": "report",
+            "detail": "Priestess",
+            "target": "temple",
+            "location": ""
+          }
+        ],
+        "completed": false,
+        "completion": "Your findings settle over Priestess like a weight. \"Thank you for your eyes.\"",
+        "giver_name": "Priestess",
+        "description": "Priestess asks you to investigate the strange happenings at Mrs Henderson.",
+        "target_name": "Mrs Henderson",
+        "template_id": "Q03",
+        "building_type": "temple",
+        "giver_node_id": "temple",
+        "is_side_quest": true,
+        "source_node_id": "temple",
+        "target_node_id": "person_1",
+        "source_node_name": "Temple of Light"
+      },
+      "central": {
+        "id": "building_house_tools_0",
+        "act": 1,
+        "name": "Borrowed Tools",
+        "reward": {
+          "xp": 35,
+          "gold": 65
+        },
+        "status": "available",
+        "actions": [
+          {
+            "type": "get",
+            "detail": "",
+            "target": "bundle of tools",
+            "location": "person_2"
+          },
+          {
+            "type": "goto",
+            "detail": "Mayor Grimes",
+            "target": "",
+            "location": "person_2"
+          },
+          {
+            "type": "give",
+            "detail": "Elder",
+            "target": "central",
+            "location": ""
+          }
+        ],
+        "completed": false,
+        "completion": "You return from Mayor Grimes. Elder looks relieved.",
+        "giver_name": "Elder",
+        "description": "Elder needs a bundle of tools carried to Mayor Grimes \u2014 and it can't wait.",
+        "target_name": "Mayor Grimes",
+        "template_id": "Q02",
+        "building_type": "house",
+        "giver_node_id": "central",
+        "is_side_quest": true,
+        "source_node_id": "central",
+        "target_node_id": "person_2",
+        "source_node_name": "Town Hall"
+      },
+      "place_0": {
+        "id": "building_house_heirloom_1",
+        "act": 1,
+        "name": "Grandfather's Cane",
+        "reward": {
+          "xp": 40,
+          "gold": 70
+        },
+        "status": "available",
+        "actions": [
+          {
+            "type": "goto",
+            "detail": "Mrs Henderson",
+            "target": "",
+            "location": "person_1"
+          },
+          {
+            "type": "get",
+            "detail": "",
+            "target": "carved walking cane",
+            "location": "person_1"
+          },
+          {
+            "type": "goto",
+            "detail": "Mrs Henderson",
+            "target": "",
+            "location": "person_1"
+          },
+          {
+            "type": "give",
+            "detail": "Elder",
+            "target": "place_0",
+            "location": ""
+          }
+        ],
+        "completed": false,
+        "completion": "The carved walking cane is returned. Elder nods in quiet thanks.",
+        "giver_name": "Elder",
+        "description": "Elder asks you to retrieve a carved walking cane from Mrs Henderson before nightfall.",
+        "target_name": "Mrs Henderson",
+        "template_id": "Q01",
+        "building_type": "house",
+        "giver_node_id": "place_0",
+        "is_side_quest": true,
+        "source_node_id": "place_0",
+        "target_node_id": "person_1",
+        "source_node_name": "The School"
+      },
+      "place_1": {
+        "id": "building_house_heirloom_2",
+        "act": 1,
+        "name": "Grandfather's Cane",
+        "reward": {
+          "xp": 40,
+          "gold": 70
+        },
+        "status": "available",
+        "actions": [
+          {
+            "type": "goto",
+            "detail": "General Store",
+            "target": "",
+            "location": "shop"
+          },
+          {
+            "type": "get",
+            "detail": "",
+            "target": "carved walking cane",
+            "location": "shop"
+          },
+          {
+            "type": "goto",
+            "detail": "General Store",
+            "target": "",
+            "location": "shop"
+          },
+          {
+            "type": "give",
+            "detail": "Elder",
+            "target": "place_1",
+            "location": ""
+          }
+        ],
+        "completed": false,
+        "completion": "Elder clasps the carved walking cane and smiles. \"You've done me a great kindness.\"",
+        "giver_name": "Elder",
+        "description": "Elder says: \"I lost my carved walking cane somewhere near General Store. Will you bring it back to me?\"",
+        "target_name": "General Store",
+        "template_id": "Q01",
+        "building_type": "house",
+        "giver_node_id": "place_1",
+        "is_side_quest": true,
+        "source_node_id": "place_1",
+        "target_node_id": "shop",
+        "source_node_name": "Creswood Corners"
+      },
+      "place_2": {
+        "id": "building_house_child_3",
+        "act": 1,
+        "name": "Missing Child",
+        "reward": {
+          "xp": 75,
+          "gold": 85
+        },
+        "status": "available",
+        "actions": [
+          {
+            "type": "learn",
+            "detail": "",
+            "target": "missing child",
+            "location": "inn"
+          },
+          {
+            "type": "goto",
+            "detail": "The Wayward Inn",
+            "target": "",
+            "location": "inn"
+          },
+          {
+            "type": "escort",
+            "detail": "Elder",
+            "target": "missing child",
+            "location": "place_2"
+          }
+        ],
+        "completed": false,
+        "completion": "The missing child is safe. Elder weeps with relief.",
+        "giver_name": "Elder",
+        "description": "Elder has lost a missing child and hopes you can track them through The Wayward Inn.",
+        "target_name": "The Wayward Inn",
+        "template_id": "Q05",
+        "building_type": "house",
+        "giver_node_id": "place_2",
+        "is_side_quest": true,
+        "source_node_id": "place_2",
+        "target_node_id": "inn",
+        "source_node_name": "Fire Hall"
+      },
+      "wilderness_2": {
+        "id": "building_house_tools_7",
+        "act": 1,
+        "name": "Borrowed Tools",
+        "reward": {
+          "xp": 35,
+          "gold": 65
+        },
+        "status": "available",
+        "actions": [
+          {
+            "type": "get",
+            "detail": "",
+            "target": "bundle of tools",
+            "location": "place_1"
+          },
+          {
+            "type": "goto",
+            "detail": "Creswood Corners",
+            "target": "",
+            "location": "place_1"
+          },
+          {
+            "type": "give",
+            "detail": "Elder",
+            "target": "wilderness_2",
+            "location": ""
+          }
+        ],
+        "completed": false,
+        "completion": "The bundle of tools is delivered. Elder breathes easier knowing the task is done.",
+        "giver_name": "Elder",
+        "description": "Elder hands you a sealed bundle of tools. \"Take this to Creswood Corners. They'll know what it means.\"",
+        "target_name": "Creswood Corners",
+        "template_id": "Q02",
+        "building_type": "house",
+        "giver_node_id": "wilderness_2",
+        "is_side_quest": true,
+        "source_node_id": "wilderness_2",
+        "target_node_id": "place_1",
+        "source_node_name": "Old Ruins"
+      }
+    },
+    "world_encounter_count": 143,
+    "collected_hidden_items": {}
+  },
+  "rng_seed": 42,
+  "difficulty": "normal",
+  "spawn_node_id": "central",
+  "locality": {
+    "id": "1b67df67-9ced-496d-b6d5-5bae1b1c1288",
+    "name": "Cadott, WI",
+    "edges": [
+      {
+        "to": "place_0",
+        "from": "central",
+        "kind": "proximity",
+        "weight": 0.8
+      },
+      {
+        "to": "place_1",
+        "from": "central",
+        "kind": "proximity",
+        "weight": 0.8
+      },
+      {
+        "to": "place_2",
+        "from": "central",
+        "kind": "proximity",
+        "weight": 0.8
+      },
+      {
+        "to": "temple",
+        "from": "central",
+        "kind": "proximity",
+        "weight": 0.6
+      },
+      {
+        "to": "inn",
+        "from": "central",
+        "kind": "proximity",
+        "weight": 0.7
+      },
+      {
+        "to": "shop",
+        "from": "central",
+        "kind": "proximity",
+        "weight": 0.7
+      },
+      {
+        "to": "place_0",
+        "from": "person_0",
+        "kind": "social",
+        "weight": 0.6
+      },
+      {
+        "to": "central",
+        "from": "person_0",
+        "kind": "social",
+        "weight": 0.5
+      },
+      {
+        "to": "place_1",
+        "from": "person_1",
+        "kind": "social",
+        "weight": 0.6
+      },
+      {
+        "to": "place_2",
+        "from": "person_2",
+        "kind": "social",
+        "weight": 0.6
+      },
+      {
+        "to": "central",
+        "from": "person_2",
+        "kind": "factional",
+        "weight": 0.9
+      },
+      {
+        "to": "wilderness_1",
+        "from": "place_2",
+        "kind": "proximity",
+        "weight": 0.4
+      },
+      {
+        "to": "wilderness_2",
+        "from": "wilderness_1",
+        "kind": "proximity",
+        "weight": 0.3
+      },
+      {
+        "to": "wilderness_1",
+        "from": "inn",
+        "kind": "proximity",
+        "weight": 0.5
+      }
+    ],
+    "nodes": [
+      {
+        "id": "central",
+        "kind": "landmark",
+        "name": "Town Hall",
+        "tags": [
+          "central",
+          "landmark"
+        ],
+        "importance": 90
+      },
+      {
+        "id": "person_0",
+        "kind": "person",
+        "name": "Bob",
+        "tags": [
+          "person",
+          "friendly"
+        ],
+        "importance": 70
+      },
+      {
+        "id": "person_1",
+        "kind": "person",
+        "name": "Mrs Henderson",
+        "tags": [
+          "person",
+          "neutral"
+        ],
+        "importance": 70
+      },
+      {
+        "id": "person_2",
+        "kind": "person",
+        "name": "Mayor Grimes",
+        "tags": [
+          "person",
+          "rival"
+        ],
+        "importance": 80
+      },
+      {
+        "id": "place_0",
+        "kind": "place",
+        "name": "The School",
+        "tags": [
+          "place"
+        ],
+        "importance": 60
+      },
+      {
+        "id": "place_1",
+        "kind": "place",
+        "name": "Creswood Corners",
+        "tags": [
+          "place"
+        ],
+        "importance": 60
+      },
+      {
+        "id": "place_2",
+        "kind": "place",
+        "name": "Fire Hall",
+        "tags": [
+          "place"
+        ],
+        "importance": 60
+      },
+      {
+        "id": "inn",
+        "kind": "business",
+        "name": "The Wayward Inn",
+        "tags": [
+          "commerce",
+          "rest"
+        ],
+        "importance": 50
+      },
+      {
+        "id": "shop",
+        "kind": "business",
+        "name": "General Store",
+        "tags": [
+          "commerce",
+          "shop"
+        ],
+        "importance": 55
+      },
+      {
+        "id": "temple",
+        "kind": "landmark",
+        "name": "Temple of Light",
+        "tags": [
+          "temple",
+          "revive"
+        ],
+        "importance": 50
+      },
+      {
+        "id": "wilderness_1",
+        "kind": "natural",
+        "name": "Dark Forest",
+        "tags": [
+          "wilderness",
+          "danger"
+        ],
+        "importance": 40
+      },
+      {
+        "id": "wilderness_2",
+        "kind": "landmark",
+        "name": "Old Ruins",
+        "tags": [
+          "wilderness",
+          "dungeon"
+        ],
+        "importance": 45
+      }
+    ],
+    "center": {
+      "lat": 0,
+      "lng": 0
+    },
+    "source": "wizard",
+    "generated": "2026-09-04T09:55:13.845342-05:00"
+  }
+}

@@ -113,14 +113,16 @@ type MemberActionReq struct {
 type GameState struct {
 	EquipmentBuilds     [4][]inventory.EquipmentBuild `json:"equipment_builds"`
 	EquipmentBuildLimit int                           `json:"equipment_build_limit"`
-	Discovered          map[string]bool               `json:"discovered"` // monster IDs encountered in this save
-	Dungeon             *DungeonState                 `json:"dungeon,omitempty"`
-	DungeonEntry        *DungeonEntryState            `json:"dungeon_entry,omitempty"`
-	ID                  string                        `json:"id"`
-	Phase               string                        `json:"phase"`                   // world, combat, quest_complete, victory, defeat
-	XPBefore            []int                         `json:"xp_before,omitempty"`     // XP values before combat for victory animation
-	LevelBefore         []int                         `json:"level_before,omitempty"`  // levels before combat for victory animation
-	XPThresholds        [][]int                       `json:"xp_thresholds,omitempty"` // per-character XP thresholds at each level crossed
+	FinalEncounter      *FinalEncounterState          `json:"final_encounter,omitempty"`
+
+	Discovered   map[string]bool    `json:"discovered"` // monster IDs encountered in this save
+	Dungeon      *DungeonState      `json:"dungeon,omitempty"`
+	DungeonEntry *DungeonEntryState `json:"dungeon_entry,omitempty"`
+	ID           string             `json:"id"`
+	Phase        string             `json:"phase"`                   // world, combat, quest_complete, victory, defeat
+	XPBefore     []int              `json:"xp_before,omitempty"`     // XP values before combat for victory animation
+	LevelBefore  []int              `json:"level_before,omitempty"`  // levels before combat for victory animation
+	XPThresholds [][]int            `json:"xp_thresholds,omitempty"` // per-character XP thresholds at each level crossed
 	// DiedThisFight[i] is true for any party member whose IsAlive() was false
 	// at the moment victory-XP was distributed. Survives restParty() so the
 	// client can render the victory screen correctly. Reset at encounter start.
@@ -575,6 +577,8 @@ type Game struct {
 	// the first-round side-skip enforced by encounterStart.
 	combatRound      int
 	promotionOffered bool // midpoint promotion has already fired
+	finalEncounter   *FinalEncounterProgress
+
 	// scriptedBoss marks the currently running combat as a scripted quest
 	// encounter (today: the promotion trial guardian). The victory handler in
 	// game_combat.go uses this to drop the proof item, advance promo_stage,
@@ -592,6 +596,7 @@ type Game struct {
 func (g *Game) State() GameState {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	g.prepareFinalQuest()
 
 	state := GameState{
 		ID:                   g.id,
@@ -982,6 +987,7 @@ func (g *Game) fillInventoryState(state *GameState) {
 }
 
 func (g *Game) stateUnlocked() GameState {
+	g.prepareFinalQuest()
 	state := GameState{
 		ID: g.id, Phase: g.phase, CurrentQ: g.currentQ,
 		Gold:             g.inv.Gold,

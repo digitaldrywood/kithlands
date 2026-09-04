@@ -161,6 +161,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 		if g.rng.IntN(100) < 40 {
 			g.phase = "world"
 			g.message = "Got away safely!"
+			g.leaveFinalEncounter(false)
 			if g.inDungeon() {
 				g.dungeon.EncounterID = ""
 			}
@@ -616,7 +617,9 @@ func (g *Game) resolveCombatOutcome(combatants []*combat.Combatant) {
 
 		g.completeDungeonEncounter()
 
-		if g.scriptedBoss {
+		if g.completeFinalEncounter() {
+			g.resetEncounterStartState()
+		} else if g.scriptedBoss {
 			// Scripted quest encounter (today: the promotion trial
 			// guardian). Drop the proof item, advance promo_stage, and
 			// bypass the quest-complete screen because no quest actually
@@ -639,6 +642,7 @@ func (g *Game) resolveCombatOutcome(combatants []*combat.Combatant) {
 		g.phase = "defeat"
 		g.message = "Your party has fallen. Game over."
 		g.recoverDungeonDefeat()
+		g.leaveFinalEncounter(true)
 		g.spellBuffs = nil
 		g.clearPendingChestClaimUnlocked()
 		g.resetEncounterStartState()
@@ -1033,6 +1037,12 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 			g.party[i].CurrentHP = pc.CurrentHP
 			g.party[i].Status = pc.Status
 		}
+	}
+
+	if g.finalEncounterActive() {
+		g.resolveCombatOutcome(combatants)
+		state := g.stateUnlocked()
+		return &state, nil
 	}
 
 	if combat.CheckVictory(g.enemies) {

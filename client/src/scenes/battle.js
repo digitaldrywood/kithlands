@@ -23,6 +23,7 @@ import {
 import { buildVictoryXPSegments } from "../systems/victoryXp.js";
 import {
   buildVictorySummary,
+  buildFinalePartyXP,
   formatSpoils,
 } from "../systems/victoryPresentation.js";
 import { FloatingTextPool } from "../ui/floating_text.js";
@@ -842,6 +843,7 @@ export class BattleScene extends Phaser.Scene {
       enemyFingerprint,
     ].join("|");
     const key =
+      (gs.final_encounter?.active && gs.final_encounter.battle_background) ||
       gs.dungeon?.battle_background ||
       pickBackgroundKey(theme.motif, seedParts, this.buildingType);
     if (key && this.textures.exists(key)) {
@@ -3314,7 +3316,11 @@ export class BattleScene extends Phaser.Scene {
   }
 
   returnFromDungeonDefeat(gs) {
-    if (gs?.dungeon?.recovered_from_defeat !== true) return false;
+    const finalDefeat =
+      this.gameState?.final_encounter?.active &&
+      gs?.final_encounter?.recovery === "defeat";
+    if (gs?.dungeon?.recovered_from_defeat !== true && !finalDefeat)
+      return false;
     this.gameState = gs;
     this.autoMode = false;
     this.animating = false;
@@ -4715,6 +4721,9 @@ export class BattleScene extends Phaser.Scene {
 
     const log = gs.combat_log || [];
     const summary = buildVictorySummary(log);
+    const finaleXP = buildFinalePartyXP(gs);
+    if (finaleXP)
+      summary.xpEarned = finaleXP.reduce((total, xp) => total + xp, 0);
     const totalEther =
       (gs.ethers || 0) + (gs.hi_ethers || 0) + (gs.x_ethers || 0);
 
@@ -4909,7 +4918,9 @@ export class BattleScene extends Phaser.Scene {
         .text(
           mobileVictory ? 430 : 250,
           rowY - (mobileVictory ? 38 : -7),
-          diedThisFight ? "NO XP · DEFEATED" : `+${summary.xpEarned} XP`,
+          diedThisFight
+            ? "NO XP · DEFEATED"
+            : `+${finaleXP?.[i] ?? summary.xpEarned} XP`,
           {
             fontSize: mobileVictory ? "18px" : "10px",
             color: diedThisFight ? "#d77b82" : "#89c9f2",

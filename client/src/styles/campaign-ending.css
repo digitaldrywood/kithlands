@@ -1,0 +1,124 @@
+.campaign-ending {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  padding: max(20px, env(safe-area-inset-top)) 20px
+    max(20px, env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  background: radial-gradient(ellipse at top, #294647, #111e2d 65%);
+  color: #f6edda;
+  font-family: "Trebuchet MS", Arial, sans-serif;
+}
+.campaign-ending-panel {
+  width: min(100%, 700px);
+  box-sizing: border-box;
+  padding: clamp(24px, 4vw, 48px);
+  margin: auto;
+  border: 1px solid #9b8656;
+  border-radius: 16px;
+  background: #172a37;
+  box-shadow: 0 24px 80px #0006;
+  outline: none;
+}
+.campaign-ending-eyebrow {
+  color: #d7bc76;
+  letter-spacing: 0.08em;
+  font-size: 13px;
+  text-transform: uppercase;
+}
+.campaign-ending h1 {
+  font-family: Georgia, serif;
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: normal;
+  line-height: 1.15;
+}
+.campaign-ending-story,
+.campaign-ending-hint {
+  line-height: 1.65;
+  font-size: 17px;
+}
+.campaign-ending-hint {
+  color: #bdced3;
+}
+.campaign-ending-party {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 28px 0;
+}
+.campaign-ending-companion {
+  padding: 14px;
+  background: #223947;
+  border-radius: 7px;
+}
+.campaign-ending-companion strong,
+.campaign-ending-companion span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.campaign-ending-companion span {
+  color: #bed0d3;
+  margin-top: 5px;
+  font-size: 14px;
+}
+.campaign-ending-reward {
+  color: #e1c88c;
+  font-size: 14px;
+}
+.campaign-ending-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+.campaign-ending button {
+  min-height: 48px;
+  padding: 12px 20px;
+  border: 1px solid #cbb97e;
+  border-radius: 7px;
+  background: #325455;
+  color: #fff4d3;
+  font: inherit;
+  cursor: pointer;
+}
+.campaign-ending button:focus-visible {
+  outline: 3px solid #ffe3a0;
+  outline-offset: 4px;
+}
+.campaign-ending button:hover {
+  background: #426969;
+}
+.campaign-ending button:disabled {
+  opacity: 0.6;
+}
+.campaign-ending-status {
+  min-height: 24px;
+  color: #bbd4cb;
+  font-size: 14px;
+  line-height: 1.5;
+}
+@media (max-width: 480px) {
+  .campaign-ending {
+    padding: 12px;
+  }
+  .campaign-ending-panel {
+    padding: 24px 20px;
+  }
+  .campaign-ending-story,
+  .campaign-ending-hint {
+    font-size: 16px;
+  }
+  .campaign-ending-party {
+    gap: 8px;
+    margin: 20px 0;
+  }
+  .campaign-ending-companion {
+    padding: 10px;
+  }
+  .campaign-ending-actions {
+    flex-direction: column;
+  }
+}
