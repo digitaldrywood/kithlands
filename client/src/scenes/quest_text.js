@@ -16,6 +16,11 @@ export function questKindLabel(q) {
 
 export function questObjectiveText(q) {
   if (!q) return "Explore nearby locations.";
+  if (q.objectives && !q.completed) {
+    const action = q.actions?.[q.objectives.step];
+    if (action?.text)
+      return `${q.objectives.step + 1}/${q.actions.length} · ${action.text}`;
+  }
 
   if (q.is_promotion) {
     if (q.promo_stage === 1) {
@@ -69,4 +74,10 @@ export function questRewardText(q) {
   if (xp && gold) return `${xp} XP, ${gold} gold`;
   if (xp) return `${xp} XP`;
   return `${gold} gold`;
+}
+
+export function questCustodyText(q) {
+  if (q?.objectives?.item) return `Carrying: ${q.objectives.item}`;
+  if (q?.objectives?.clue) return `Clue recorded: ${q.objectives.clue}`;
+  return "";
 }

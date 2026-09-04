@@ -22,6 +22,7 @@ import {
   questKindLabel,
   questObjectiveText,
   questRewardText,
+  questCustodyText,
 } from "./quest_text.js";
 import {
   filterEquippableItems,
@@ -1595,8 +1596,9 @@ function renderQuestBlock(scene, overlay, q, x, y, kind) {
   const color = q.is_promotion ? "#ffcc44" : "#ffffff";
   const isCurrent = kind === "current";
   const cardH = isCurrent ? 90 : 74;
+  const cardTop = y;
   const card = scene.add
-    .rectangle(x + 315, y + 42, 630, cardH, 0x0b1729, 0.72)
+    .rectangle(x + 315, y + cardH / 2, 630, cardH, 0x0b1729, 0.72)
     .setStrokeStyle(1, isCurrent ? 0xd7b45c : 0x395a86, 0.8)
     .setScrollFactor(0)
     .setDepth(51);
@@ -1638,6 +1640,19 @@ function renderQuestBlock(scene, overlay, q, x, y, kind) {
     y += 15 * Math.max(1, desc.height / 15);
   }
 
+  const custody = questCustodyText(q);
+  if (custody) {
+    const held = scene.add
+      .text(x + 16, y, wrapText(custody, 85), {
+        fontSize: "12px",
+        color: "#f4d788",
+        fontFamily: "Arial",
+      })
+      .setScrollFactor(0)
+      .setDepth(51);
+    overlay.push(held);
+    y += held.height + 6;
+  }
   const reward = questRewardText(q);
   if (reward) {
     const rew = scene.add
@@ -1652,7 +1667,10 @@ function renderQuestBlock(scene, overlay, q, x, y, kind) {
     y += 15;
   }
 
-  return Math.max(y, card.y + cardH / 2 + 10);
+  const renderedHeight = Math.max(cardH, y - cardTop + 10);
+  card.setSize(630, renderedHeight);
+  card.setY(cardTop + renderedHeight / 2);
+  return cardTop + renderedHeight + 10;
 }
 
 function wrapText(s, width) {
