@@ -1,9 +1,62 @@
 import { playSFX } from "../systems/audio.js";
 import { isTouchDevice } from "../systems/input.js";
-import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
-import { transitionLocation } from "../api.js";
+import {
+  hasWorldLock,
+  isWorldInputLocked,
+  pauseWorldFor,
+  resumeWorldFor,
+} from "../systems/modalLock.js";
+import { gameAction, transitionLocation } from "../api.js";
 import { isRestBuilding } from "./building_type.js";
 import { TILE_COLORS } from "./tileConstants.js";
+import { openDialogue } from "./town_dialogue.js";
+
+function isNaturalSpawn(spawn) {
+  return (spawn?.kind || "").toLowerCase() === "natural";
+}
+
+export function pendingNaturalDiscovery(gameState, nodeId) {
+  return (gameState?.natural_discoveries || []).find(
+    (discovery) => discovery.node_id === nodeId && discovery.claimed !== true,
+  );
+}
+
+export function naturalDiscoveryDisplay(gameState, nodeId) {
+  const discoveries = (gameState?.natural_discoveries || []).filter(
+    (discovery) => discovery.node_id === nodeId,
+  );
+  return pendingNaturalDiscovery(gameState, nodeId) || discoveries.at(-1);
+}
+
+export function nearbyWorldInteraction(spawns, playerX, playerY) {
+  return (spawns || [])
+    .filter(
+      (spawn) =>
+        Math.abs(spawn.x - playerX) <= 1 && Math.abs(spawn.y - playerY) <= 2,
+    )
+    .sort((a, b) => {
+      const distanceA = Math.abs(a.x - playerX) + Math.abs(a.y - playerY);
+      const distanceB = Math.abs(b.x - playerX) + Math.abs(b.y - playerY);
+      if (distanceA !== distanceB) return distanceA - distanceB;
+      return Number(isNaturalSpawn(a)) - Number(isNaturalSpawn(b));
+    })[0];
+}
+
+export function updateWorldInteractionTarget(scene, playerX, playerY) {
+  const spawns = (scene.spawns || []).filter(
+    (spawn) =>
+      !isNaturalSpawn(spawn) ||
+      (naturalDiscoveryDisplay(scene.gameState, spawn.node_id) &&
+        scene.gameState?.current_location?.kind === "world" &&
+        scene.gameState.current_location.world_node_id === spawn.node_id),
+  );
+  const spawn = nearbyWorldInteraction(spawns, playerX, playerY);
+  scene.currentDoorSpawn = spawn && !isNaturalSpawn(spawn) ? spawn : null;
+  scene.currentNaturalSpawn = spawn && isNaturalSpawn(spawn) ? spawn : null;
+  if (spawn) showInteractPrompt(scene, spawn);
+  else hideInteractPrompt(scene);
+  return spawn || null;
+}
 
 export function nearbyWorldArrival(scene) {
   if (scene?.gameState?.current_location?.kind !== "world") return null;
@@ -49,6 +102,7 @@ export async function syncWorldArrival(scene) {
         if (scene.scene?.isActive()) {
           scene.gameState = result;
           scene.updateHUD?.();
+          scene.updateInteractionTarget?.();
         }
         return result;
       }
@@ -118,6 +172,78 @@ export async function interactWithDoor(scene) {
     }
     scene.scene.start("Town", { gameState: scene.gameState, spawn });
   });
+}
+
+function refreshWorldPresentation(scene) {
+  scene.updateHUD?.();
+  scene.updateQuestDisplay?.();
+  scene.updateVehicleIndicator?.();
+}
+
+function showTransientError(scene, message) {
+  scene.showMessage?.(message);
+  scene.time?.delayedCall?.(3000, () => scene.hideMessage?.());
+}
+
+function restoreWorldInteraction(scene) {
+  scene.animating = false;
+  scene.updateInteractionTarget?.();
+}
+
+export async function interactWithNaturalNode(scene) {
+  if (
+    scene.naturalInteractionActive ||
+    isWorldInputLocked(scene) ||
+    scene.menuOpen ||
+    scene.gameOver
+  )
+    return;
+  const spawn = scene.currentNaturalSpawn;
+  if (!spawn?.node_id || !scene.gameState?.id) return;
+
+  const discovery = naturalDiscoveryDisplay(scene.gameState, spawn.node_id);
+  scene.naturalInteractionActive = true;
+  hideInteractPrompt(scene);
+  pauseWorldFor(scene, "natural_discovery_request");
+  scene.animating = true;
+
+  try {
+    const result = await gameAction(scene.gameState.id, {
+      type: "natural_discovery",
+      node_id: spawn.node_id,
+    });
+    if (!result || result.error) {
+      showTransientError(
+        scene,
+        result?.error || "Could not explore this landmark. Please try again.",
+      );
+      return;
+    }
+
+    scene.gameState = result;
+    refreshWorldPresentation(scene);
+    await scene.triggerAutosave?.("natural_discovery");
+    if (!result.message) return;
+
+    resumeWorldFor(scene, "natural_discovery_request");
+    scene.animating = false;
+    await openDialogue(scene, spawn, {
+      npc_name: discovery?.title || spawn.name,
+      lines: [result.message],
+    });
+  } catch (error) {
+    console.error("[World] natural discovery failed:", error);
+    showTransientError(
+      scene,
+      "Could not explore this landmark. Please try again.",
+    );
+  } finally {
+    if (hasWorldLock(scene, "natural_discovery_request")) {
+      resumeWorldFor(scene, "natural_discovery_request");
+    }
+    scene.naturalInteractionActive = false;
+    restoreWorldInteraction(scene);
+  }
 }
 
 export function canShowWorldMap(scene) {
@@ -190,17 +316,16 @@ export function showWorldMap(scene) {
 
   // Location labels on the map
   for (const spawn of scene.spawns) {
-    if (spawn.kind === "natural") continue;
     const sx = mmX + spawn.x * scaleX;
     const sy = mmY + spawn.y * scaleY;
 
-    mmGfx.fillStyle(0xffffff, 1);
+    mmGfx.fillStyle(isNaturalSpawn(spawn) ? 0x9fd27d : 0xffffff, 1);
     mmGfx.fillRect(sx - 2, sy - 2, 5, 5);
 
     const label = scene.add
       .text(sx, sy - 8, spawn.name, {
         fontSize: "7px",
-        color: "#ffffff",
+        color: isNaturalSpawn(spawn) ? "#dff5c9" : "#ffffff",
         fontFamily: "monospace",
         backgroundColor: "#00000099",
         padding: { x: 1, y: 0 },
@@ -216,7 +341,7 @@ export function showWorldMap(scene) {
   const gs = scene.gameState;
   if (gs && gs.quests && gs.current_quest < gs.quests.length) {
     const current = gs.quests[gs.current_quest];
-    const targetNodeID = current && current.target_node_id;
+    const targetNodeID = !current?.hidden && current?.target_node_id;
     if (targetNodeID) {
       const target = scene.spawns.find((s) => s.node_id === targetNodeID);
       if (target) {
@@ -277,22 +402,29 @@ export function showWorldMap(scene) {
 export function showInteractPrompt(scene, spawn) {
   hideInteractPrompt(scene);
   const tags = spawn.tags || [];
+  const portrait = scene.gameplayLayout?.portrait === true;
   let action = "Enter";
-  if (isRestBuilding(tags)) action = "Rest";
+  if (isNaturalSpawn(spawn)) {
+    action =
+      pendingNaturalDiscovery(scene.gameState, spawn.node_id)?.prompt?.trim() ||
+      "Explore";
+  } else if (isRestBuilding(tags)) action = "Rest";
   else if (tags.includes("shop") || tags.includes("commerce")) action = "Shop";
   else if (tags.includes("temple") || tags.includes("revive")) action = "Pray";
 
   scene.interactPrompt = scene.add
     .text(
       scene.player.x,
-      scene.player.y - 30,
-      `${isTouchDevice() ? "[ TAP A ]" : "[ ENTER / SPACE ]"} ${action}`,
+      scene.player.y - (portrait ? 72 : 54),
+      `${isTouchDevice() ? "[ TAP A ]" : "[ ENTER ]"} ${action}`,
       {
-        fontSize: "10px",
+        fontSize: portrait ? "24px" : "10px",
         color: "#ffff44",
-        fontFamily: "monospace",
+        fontFamily: portrait ? "Trebuchet MS, Arial, sans-serif" : "monospace",
         backgroundColor: "#000000cc",
-        padding: { x: 6, y: 3 },
+        padding: portrait ? { x: 12, y: 7 } : { x: 6, y: 3 },
+        align: "center",
+        wordWrap: { width: portrait ? 520 : 360 },
       },
     )
     .setOrigin(0.5)

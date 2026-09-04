@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -91,13 +92,13 @@ type GameActionRequest struct {
 	QuestID        string `json:"quest_id,omitempty"`
 	ObjectiveIndex int    `json:"objective_index,omitempty"`
 
-	Type       string            `json:"type"` // attack, spell, item, flee, encounter, quest_advance
+	Type       string            `json:"type"` // attack, spell, item, flee, encounter, quest_advance, natural_discovery
 	TargetID   int               `json:"target_id,omitempty"`
 	SpellID    string            `json:"spell_id,omitempty"`
 	TargetMode string            `json:"target_mode,omitempty"`
 	ItemID     string            `json:"item_id,omitempty"`
 	SlotIdx    int               `json:"slot_idx,omitempty"`
-	NodeID     string            `json:"node_id,omitempty"` // node ID for quest_advance / sequence-break checks
+	NodeID     string            `json:"node_id,omitempty"` // node ID for quest_advance / natural_discovery
 	TileType   *int              `json:"tile_type,omitempty"`
 	Actions    []MemberActionReq `json:"actions,omitempty"` // per-member actions for combat
 }
@@ -147,6 +148,7 @@ type GameState struct {
 	HiEthers              int                      `json:"hi_ethers"`
 	XEthers               int                      `json:"x_ethers"`
 	Items                 []ItemState              `json:"items"`
+	KeyItems              []KeyItemState           `json:"key_items,omitempty"`
 	Gems                  []GemState               `json:"gems,omitempty"`
 	GemRecipes            []GemRecipeState         `json:"gem_recipes,omitempty"`
 	Equipment             [4]EquipState            `json:"equipment"`
@@ -163,6 +165,7 @@ type GameState struct {
 	Transport             TransportInfo            `json:"transport"`
 	CollectedHiddenItems  map[string]bool          `json:"collected_hidden_items,omitempty"`
 	TriggeredFlags        map[string]bool          `json:"triggered_flags,omitempty"`
+	NaturalDiscoveries    []NaturalDiscoveryState  `json:"natural_discoveries,omitempty"`
 	PendingChestClaim     *PendingChestClaimState  `json:"pending_chest_claim,omitempty"`
 	ShowcaseMode          bool                     `json:"showcase_mode,omitempty"`
 	ShowcaseTitle         string                   `json:"showcase_title,omitempty"`
@@ -240,6 +243,28 @@ type ItemState struct {
 	Effect       string `json:"effect,omitempty"`
 	CombatUsable bool   `json:"combat_usable,omitempty"`
 	WorldUsable  bool   `json:"world_usable,omitempty"`
+}
+
+// KeyItemState exposes authoritative key-item ownership without leaking the
+// inventory representation. Exploration clients can therefore distinguish a
+// consumed Strange Coin from the Ancient Ring it unlocks.
+type KeyItemState struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+}
+
+// NaturalDiscoveryState projects one authored discovery assigned to a
+// concrete natural locality node. Claimed and Revealed remain separate so a
+// locked passage can be known to the player without paying out.
+type NaturalDiscoveryState struct {
+	NodeID      string `json:"node_id"`
+	DiscoveryID string `json:"discovery_id"`
+	Kind        string `json:"kind"`
+	Title       string `json:"title"`
+	Prompt      string `json:"prompt"`
+	Claimed     bool   `json:"claimed"`
+	Revealed    bool   `json:"revealed"`
 }
 
 type ItemAffixState struct {
@@ -510,6 +535,7 @@ type QuestState struct {
 	Completion   string `json:"completion,omitempty"`
 	Act          int    `json:"act"`
 	Completed    bool   `json:"completed"`
+	Hidden       bool   `json:"hidden,omitempty"`
 	IsPromotion  bool   `json:"is_promotion,omitempty"`
 	IsSideQuest  bool   `json:"is_side_quest,omitempty"`
 	GiverName    string `json:"giver_name,omitempty"`
@@ -526,6 +552,18 @@ type QuestState struct {
 	BossMonsterID string           `json:"boss_monster_id,omitempty"`
 	PromoStage    int              `json:"promo_stage,omitempty"`
 	Reward        QuestRewardState `json:"reward"`
+}
+
+// MarshalJSON keeps unrevealed quests as opaque slots while preserving the
+// established wire shape for visible and completed quests.
+func (q QuestState) MarshalJSON() ([]byte, error) {
+	if q.Hidden {
+		return json.Marshal(struct {
+			Hidden bool `json:"hidden"`
+		}{Hidden: true})
+	}
+	type questStateJSON QuestState
+	return json.Marshal(questStateJSON(q))
 }
 
 type BuildingSideQuestState struct {
@@ -584,17 +622,19 @@ type Game struct {
 	// diedThisFight is captured at the exact moment the combat-victory block
 	// distributes XP (before restParty heals dead members). Exposed to the
 	// client via GameState.DiedThisFight.
-	diedThisFight        []bool
-	discovered           map[string]bool // bestiary: monster IDs encountered
-	collectedHiddenItems map[string]bool // town hidden-item keys already picked up
-	triggeredFlags       map[string]bool // generic persistent event flags + chest-open state
-	visitedNodes         map[string]bool // node IDs the player has entered (sequence-break tracking)
-	formation            string          // current encounter layout type
-	worldEncounterCount  int             // successful overworld encounters started on this save
-	lootRollSeq          uint64          // persisted sequence for isolated deterministic loot rolls
-	shopStocks           map[string]*ShopStock
-	lastRoundActions     []MemberActionReq
-	pendingChestClaim    *PendingChestClaim
+	diedThisFight            []bool
+	discovered               map[string]bool // bestiary: monster IDs encountered
+	collectedHiddenItems     map[string]bool // town hidden-item keys already picked up
+	triggeredFlags           map[string]bool // generic persistent event flags + chest-open state
+	naturalDiscoveryClaimed  map[string]bool // node/discovery pairs already rewarded
+	naturalDiscoveryRevealed map[string]bool // node/discovery pairs the player inspected
+	visitedNodes             map[string]bool // node IDs the player has entered (sequence-break tracking)
+	formation                string          // current encounter layout type
+	worldEncounterCount      int             // successful overworld encounters started on this save
+	lootRollSeq              uint64          // persisted sequence for isolated deterministic loot rolls
+	shopStocks               map[string]*ShopStock
+	lastRoundActions         []MemberActionReq
+	pendingChestClaim        *PendingChestClaim
 	// encounterStart records preemptive/ambush state for the current fight so
 	// the first call to ResolveTurn can skip one side's actions.
 	encounterStart combat.EncounterStart
@@ -651,6 +691,7 @@ func (g *Game) State() GameState {
 	state.Transport = g.buildTransportInfo()
 	state.CollectedHiddenItems = g.collectedHiddenItems
 	state.TriggeredFlags = cloneBoolMap(g.triggeredFlags)
+	g.fillNaturalDiscoveryState(&state)
 	state.PendingChestClaim = clonePendingChestClaimState(g.pendingChestClaim)
 	g.fillInventoryState(&state)
 	g.fillExtras(&state)
@@ -696,6 +737,9 @@ func cloneMemberActionReqs(in []MemberActionReq) []MemberActionReq {
 // preserving all promotion-quest metadata so the client HUD can drive the
 // three-stage flow without inspecting server internals.
 func questToState(q *generator.Quest) QuestState {
+	if q.Hidden {
+		return QuestState{Hidden: true}
+	}
 	var progress *generator.ObjectiveProgress
 	if q.Objectives != nil {
 		copy := *q.Objectives
@@ -710,6 +754,7 @@ func questToState(q *generator.Quest) QuestState {
 		Completion:    q.Completion,
 		Act:           q.Act,
 		Completed:     q.Completed,
+		Hidden:        q.Hidden,
 		IsPromotion:   q.IsPromotion,
 		IsSideQuest:   q.IsSideQuest,
 		GiverName:     q.GiverName,
@@ -959,6 +1004,15 @@ func (g *Game) fillInventoryState(state *GameState) {
 		}
 	}
 	sort.Slice(state.Items, func(i, j int) bool { return state.Items[i].ID < state.Items[j].ID })
+	for _, id := range g.inv.KeyItems {
+		item := KeyItemState{ID: id, Name: id}
+		if definition := g.gd.KeyItemByID(id); definition != nil {
+			item.Name = definition.Name
+			item.Description = definition.Description
+		}
+		state.KeyItems = append(state.KeyItems, item)
+	}
+	sort.Slice(state.KeyItems, func(i, j int) bool { return state.KeyItems[i].ID < state.KeyItems[j].ID })
 	g.fillGemState(state)
 
 	// Equipment per party slot
@@ -1048,6 +1102,7 @@ func (g *Game) stateUnlocked() GameState {
 	state.Transport = g.buildTransportInfo()
 	state.CollectedHiddenItems = g.collectedHiddenItems
 	state.TriggeredFlags = cloneBoolMap(g.triggeredFlags)
+	g.fillNaturalDiscoveryState(&state)
 	state.PendingChestClaim = clonePendingChestClaimState(g.pendingChestClaim)
 	g.fillInventoryState(&state)
 	g.fillExtras(&state)

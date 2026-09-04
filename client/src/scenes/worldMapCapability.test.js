@@ -59,7 +59,16 @@ function makeScene(overrides = {}) {
       [0, 1],
       [1, 0],
     ],
-    spawns: [{ kind: "building", name: "Home", x: 1, y: 1, node_id: "home" }],
+    spawns: [
+      { kind: "building", name: "Home", x: 1, y: 1, node_id: "home" },
+      {
+        kind: "natural",
+        name: "Willow Grove",
+        x: 0,
+        y: 0,
+        node_id: "grove",
+      },
+    ],
     playerX: 0,
     playerY: 1,
     gameState: {
@@ -149,16 +158,36 @@ describe("world map scene capability", () => {
     expect(menuObjects.every((object) => object.destroyed)).toBe(true);
     const mapObjects = scene.objects.slice(menuObjects.length);
     expect(mapObjects.some((object) => object.text === "Home")).toBe(true);
+    expect(mapObjects.some((object) => object.text === "Willow Grove")).toBe(
+      true,
+    );
     expect(mapObjects.some((object) => object.text === "★")).toBe(true);
-    expect(
-      mapObjects.find((object) => object.kind === "graphics").fillRect,
-    ).toHaveBeenCalledTimes(5);
+    const mapGraphics = mapObjects.find((object) => object.kind === "graphics");
+    expect(mapGraphics.fillRect).toHaveBeenCalledTimes(6);
+    expect(mapGraphics.fillStyle).toHaveBeenCalledWith(0x9fd27d, 1);
 
     scene.keyboardHandlers["keydown-ESC"]();
 
     expect(mapObjects.every((object) => object.destroyed)).toBe(true);
     expect(activeWorldLocks(scene)).toEqual([]);
     expect(isWorldInputLocked(scene)).toBe(false);
+  });
+
+  it("does not reveal a hidden quest target on the World map", () => {
+    const scene = makeScene({
+      gameState: {
+        party: [],
+        current_quest: 0,
+        quests: [{ hidden: true, target_node_id: "home" }],
+      },
+    });
+
+    showWorldMap(scene);
+
+    expect(scene.objects.some((object) => object.text === "★")).toBe(false);
+    expect(
+      scene.objects.some((object) => object.text === "[ CLOSE (ESC) ]"),
+    ).toBe(true);
   });
 
   it("closes a supported map by pointer without releasing another modal lock", () => {

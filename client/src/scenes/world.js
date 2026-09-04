@@ -18,10 +18,12 @@ import { toggleCodex } from "./world_codex.js";
 import { toggleDebugPanel, closeDebugPanel } from "./debug_panel.js";
 import {
   interactWithDoor,
+  interactWithNaturalNode,
   showWorldMap,
   showInteractPrompt,
   hideInteractPrompt,
   syncWorldArrival,
+  updateWorldInteractionTarget,
 } from "./world_interact.js";
 import { shouldStartBattle } from "./encounterFlow.js";
 import { initTouchControls } from "../systems/input.js";
@@ -303,8 +305,27 @@ function drawOverworldPointIcon(graphics, cx, cy, seed) {
   drawIconHouse(graphics, cx - 15, cy - 25, 30, 0xe8e8df, true);
 }
 
+function drawOverworldNaturalIcon(graphics, cx, cy, seed) {
+  const leafColor = seed % 2 === 0 ? 0x3f7d48 : 0x4d8552;
+  graphics.fillStyle(0x0a2b17, 0.75);
+  graphics.fillEllipse(cx, cy + 14, 50, 14);
+  graphics.fillStyle(0x665d4b, 1);
+  graphics.fillEllipse(cx - 12, cy + 9, 15, 9);
+  graphics.fillEllipse(cx + 11, cy + 10, 17, 10);
+  graphics.fillStyle(0xa89c79, 1);
+  graphics.fillEllipse(cx, cy + 7, 18, 11);
+  graphics.fillStyle(0x4e3824, 1);
+  graphics.fillRect(cx - 3, cy - 19, 6, 24);
+  graphics.fillStyle(leafColor, 1);
+  graphics.fillCircle(cx - 9, cy - 20, 12);
+  graphics.fillCircle(cx + 9, cy - 19, 13);
+  graphics.fillCircle(cx, cy - 30, 14);
+  graphics.fillStyle(0x85aa69, 0.9);
+  graphics.fillCircle(cx - 3, cy - 30, 6);
+}
+
 function drawWorldLocationMarker(graphics, spawn) {
-  if (!spawn || spawn.kind === "natural") return;
+  if (!spawn) return;
   const seed = hashCode(
     `${spawn.node_id || spawn.name || ""}:${spawn.x}:${spawn.y}`,
   );
@@ -316,7 +337,9 @@ function drawWorldLocationMarker(graphics, spawn) {
   graphics.fillStyle(0x071007, 0.32);
   graphics.fillEllipse(cx, cy + 17, 76, 20);
 
-  if (kind === "landmark" || type === "castle") {
+  if (kind === "natural") {
+    drawOverworldNaturalIcon(graphics, cx, cy, seed);
+  } else if (kind === "landmark" || type === "castle") {
     drawOverworldCastleIcon(graphics, cx, cy, seed);
   } else if (type === "temple") {
     drawOverworldTempleIcon(graphics, cx, cy, seed);
@@ -331,6 +354,30 @@ function drawWorldLocationMarkers(graphics, spawns = []) {
   for (const spawn of spawns) {
     drawWorldLocationMarker(graphics, spawn);
   }
+}
+
+function drawWorldNaturalLabels(scene, spawns = []) {
+  const labels = scene.add.container(0, 0).setDepth(3);
+  const portrait = scene.gameplayLayout?.portrait === true;
+  for (const spawn of spawns) {
+    if ((spawn?.kind || "").toLowerCase() !== "natural") continue;
+    const cx = spawn.x * RENDERED_TILE + RENDERED_TILE / 2;
+    const cy = spawn.y * RENDERED_TILE + RENDERED_TILE / 2;
+    labels.add(
+      scene.add
+        .text(cx, cy + (portrait ? 30 : 24), spawn.name, {
+          fontSize: portrait ? "20px" : "9px",
+          color: "#eaf5d8",
+          fontFamily: "Trebuchet MS, Arial, sans-serif",
+          backgroundColor: "#07150dcc",
+          padding: portrait ? { x: 8, y: 5 } : { x: 4, y: 2 },
+          align: "center",
+          wordWrap: { width: portrait ? 224 : 112 },
+        })
+        .setOrigin(0.5, 0),
+    );
+  }
+  return labels;
 }
 
 // Cache player position across scene restarts.
@@ -594,9 +641,11 @@ export class WorldScene extends Phaser.Scene {
 
     // Enter interacts with nearby locations. Space cycles the party leader.
     this.currentDoorSpawn = null;
+    this.currentNaturalSpawn = null;
+    this.naturalInteractionActive = false;
     this.interactPrompt = null;
     this.input.keyboard.addCapture(Phaser.Input.Keyboard.KeyCodes.SPACE);
-    this.input.keyboard.on("keydown-ENTER", () => interactWithDoor(this));
+    this.input.keyboard.on("keydown-ENTER", () => this.handleAction());
     this.input.keyboard.on("keydown-SPACE", (event) => {
       event?.preventDefault?.();
       cycleWorldLeader(this);
@@ -668,6 +717,7 @@ export class WorldScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(22);
     this.updateQuestDisplay();
+    this.updateInteractionTarget();
 
     // Message overlay
     this.messageText = this.add
@@ -834,6 +884,16 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
+  handleAction() {
+    if (isWorldInputLocked(this)) return;
+    if (this.currentNaturalSpawn) return interactWithNaturalNode(this);
+    return interactWithDoor(this);
+  }
+
+  updateInteractionTarget() {
+    return updateWorldInteractionTarget(this, this.playerX, this.playerY);
+  }
+
   tryMove(dx, dy, options = {}) {
     // Touch repeat and tap-to-walk callbacks run independently of update().
     // Keep one tile step (including its authoritative arrival sync) in flight
@@ -847,7 +907,6 @@ export class WorldScene extends Phaser.Scene {
     const origin = {
       x: this.playerX,
       y: this.playerY,
-      door: this.currentDoorSpawn || null,
     };
     const nx = origin.x + dx;
     const ny = origin.y + dy;
@@ -945,21 +1004,7 @@ export class WorldScene extends Phaser.Scene {
 
     this.stepCount++;
 
-    const nearbySpawn = this.spawns.find(
-      (s) =>
-        s.kind !== "natural" &&
-        Math.abs(s.x - nx) <= 1 &&
-        Math.abs(s.y - ny) <= 2,
-    );
-    if (tile === 5 || nearbySpawn) {
-      if (nearbySpawn) {
-        this.currentDoorSpawn = nearbySpawn;
-        showInteractPrompt(this, nearbySpawn);
-      }
-    } else if (this.currentDoorSpawn) {
-      this.currentDoorSpawn = null;
-      hideInteractPrompt(this);
-    }
+    this.updateInteractionTarget();
 
     if (!randomEncountersDisabledForDebug()) {
       // Random encounter chance varies by terrain tile and transport tier.
@@ -995,9 +1040,7 @@ export class WorldScene extends Phaser.Scene {
         origin.y * RENDERED_TILE + RENDERED_TILE / 2,
       );
     }
-    this.currentDoorSpawn = origin.door;
-    if (origin.door) showInteractPrompt(this, origin.door);
-    else hideInteractPrompt(this);
+    this.updateInteractionTarget();
     this.updateHUD();
     this.updateMinimap();
     this.showMessage(
@@ -1101,6 +1144,9 @@ export class WorldScene extends Phaser.Scene {
     if (this.locationGraphics) {
       this.locationGraphics.destroy();
     }
+    if (this.locationLabels) {
+      this.locationLabels.destroy(true);
+    }
     this.tileSprites = this.add.container(0, 0);
     this.tileSprites.setDepth(0);
     this.locationGraphics = this.add.graphics();
@@ -1144,6 +1190,7 @@ export class WorldScene extends Phaser.Scene {
     // On the overland map, settlements and points of interest are destination
     // markers. The full cluster of custom buildings belongs inside Town.
     drawWorldLocationMarkers(this.locationGraphics, this.spawns);
+    this.locationLabels = drawWorldNaturalLabels(this, this.spawns);
   }
 
   drawMinimap() {
@@ -1178,8 +1225,7 @@ export class WorldScene extends Phaser.Scene {
 
     // Location markers
     for (const spawn of this.spawns) {
-      if (spawn.kind === "natural") continue;
-      mmGfx.fillStyle(0xffffff, 1);
+      mmGfx.fillStyle(spawn.kind === "natural" ? 0x9fd27d : 0xffffff, 1);
       mmGfx.fillRect(
         mmX + spawn.x * scaleX - 1,
         mmY + spawn.y * scaleY - 1,
@@ -1304,6 +1350,14 @@ export class WorldScene extends Phaser.Scene {
 
     if (gs.current_quest < gs.quests.length) {
       const q = gs.quests[gs.current_quest];
+      if (q?.hidden) {
+        drawCard(
+          "Explore the world",
+          "No new objective has been revealed yet.",
+          0x88d47a,
+        );
+        return;
+      }
       const title = `${questKindLabel(q)}: ${q.name}`;
       const detail = questObjectiveText(q);
       drawCard(title, detail);

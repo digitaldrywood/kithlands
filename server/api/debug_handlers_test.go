@@ -342,6 +342,22 @@ func TestDebug_GiveItem_AddsConsumable(t *testing.T) {
 	}
 }
 
+func TestDebug_GiveItem_AddsKeyItem(t *testing.T) {
+	srv, ts := debugTestServer(t)
+	gameID := newGameViaHTTP(t, ts)
+	game := srv.GetGameManager().GetGame(gameID)
+
+	code, body := postDebugJSON(t, ts,
+		"/api/debug/game/"+gameID+"/give-item",
+		`{"item_id":"strange_coin","qty":1}`)
+	if code != http.StatusOK {
+		t.Fatalf("give key item: got %d (%s)", code, body)
+	}
+	if !api.HasKeyItemForTest(game, "strange_coin") {
+		t.Fatal("strange_coin not present in key-item inventory after give-item")
+	}
+}
+
 func TestDebug_SetGold_OverridesPartyGold(t *testing.T) {
 	_, ts := debugTestServer(t)
 	gameID := newGameViaHTTP(t, ts)

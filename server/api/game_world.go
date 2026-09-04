@@ -60,6 +60,8 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 		if err != nil || state != nil {
 			return state, err
 		}
+	case "natural_discovery":
+		return g.processNaturalDiscovery(req)
 
 	case "quest_advance":
 		if !g.validQuestVisit(req.NodeID) {
@@ -67,38 +69,12 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 			return nil, fmt.Errorf("reach the quest location before interacting")
 		}
 		g.questVisitNodeID = req.NodeID
-		// Track node visit for soft prerequisites and Strange Coin
+		// Track node visits and soft prerequisites. Exploration discoveries
+		// use their own explicit action so generic quest/simulator visits never
+		// claim one-shot rewards.
 		if req.NodeID != "" {
-			if g.visitedNodes == nil {
-				g.visitedNodes = make(map[string]bool)
-			}
-			g.visitedNodes[req.NodeID] = true
-
-			for nodeID, quest := range g.buildingSideQuests {
-				if quest.Status != generator.BuildingQuestAccepted {
-					continue
-				}
-				if quest.TargetNodeID != "" && req.NodeID == quest.TargetNodeID {
-					quest.Status = generator.BuildingQuestReadyToTurnIn
-					g.buildingSideQuests[nodeID] = quest
-					g.message += fmt.Sprintf("Building side quest updated: return to %s for %s.\n", quest.GiverName, quest.Name)
-				}
-			}
-
-			// Check soft prerequisites: reveal hidden quests
-			for i := range g.quests {
-				if g.quests[i].Hidden && g.quests[i].SoftPrereq == req.NodeID {
-					g.quests[i].Hidden = false
-					g.message += fmt.Sprintf("A hidden quest has been revealed: %s\n", g.quests[i].Name)
-				}
-			}
-
-			// Strange Coin: opens hidden door at natural/wilderness nodes
-			node := g.loc.NodeByID(req.NodeID)
-			if node != nil && node.Kind == locality.NodeNatural && g.inv.HasKeyItem("strange_coin") {
-				g.inv.RemoveKeyItem("strange_coin")
-				g.inv.AddKeyItem("ancient_ring")
-				g.message += "The Strange Coin vibrates... A hidden passage opens!\nFound: Ancient Ring of Power!\n"
+			for _, questName := range g.recordNodeVisit(req.NodeID) {
+				g.message += fmt.Sprintf("A hidden quest has been revealed: %s\n", questName)
 			}
 		}
 
@@ -108,6 +84,10 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 			g.message = fmt.Sprintf("%s is saved! Your adventure is complete.", g.loc.Name)
 		} else {
 			q := &g.quests[g.currentQ]
+			if q.Hidden {
+				state := g.stateUnlocked()
+				return &state, nil
+			}
 			if q.TemplateID == g.gd.FinalEncounter.QuestTemplateID && !q.IsPromotion && !q.IsSideQuest {
 				return g.advanceFinalEncounter(q, req.NodeID)
 			}
@@ -166,6 +146,46 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 
 	state := g.stateUnlocked()
 	return &state, nil
+}
+
+// recordNodeVisit applies the non-rewarding consequences of reaching a world
+// node. It is shared by quest progression and explicit natural discovery so
+// soft prerequisites keep their legacy behavior without generic visits
+// claiming exploration rewards.
+func (g *Game) recordNodeVisit(nodeID string) []string {
+	if nodeID == "" {
+		return nil
+	}
+	if g.visitedNodes == nil {
+		g.visitedNodes = make(map[string]bool)
+	}
+	g.visitedNodes[nodeID] = true
+
+	for giverNodeID, quest := range g.buildingSideQuests {
+		if quest.Status != generator.BuildingQuestAccepted {
+			continue
+		}
+		if quest.TargetNodeID != "" && nodeID == quest.TargetNodeID {
+			quest.Status = generator.BuildingQuestReadyToTurnIn
+			g.buildingSideQuests[giverNodeID] = quest
+			g.message += fmt.Sprintf("Building side quest updated: return to %s for %s.\n", quest.GiverName, quest.Name)
+		}
+	}
+
+	return g.revealHiddenQuestsAtNode(nodeID)
+}
+
+// revealHiddenQuestsAtNode makes matching soft-prerequisite quests visible and
+// returns only the quests changed by this call. Calling it again is a no-op.
+func (g *Game) revealHiddenQuestsAtNode(nodeID string) []string {
+	var revealed []string
+	for i := range g.quests {
+		if g.quests[i].Hidden && g.quests[i].SoftPrereq == nodeID {
+			g.quests[i].Hidden = false
+			revealed = append(revealed, g.quests[i].Name)
+		}
+	}
+	return revealed
 }
 
 func encounterTerrainTag(tileType *int) (string, error) {

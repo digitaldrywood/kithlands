@@ -532,6 +532,7 @@ export function initTouchControls(scene) {
     if (pointer.wasTouch && !_isTouch) {
       _isTouch = true;
       createTouchUI(scene);
+      scene.updateInteractionTarget?.();
     }
   });
 }

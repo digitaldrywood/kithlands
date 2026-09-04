@@ -866,6 +866,7 @@ function setPlayerTile(scene, x, y) {
     scene.player.x = pos.x;
     scene.player.y = pos.y;
   }
+  scene.updateInteractionTarget?.();
 }
 
 function frameHash(scene) {
@@ -1402,6 +1403,7 @@ export function installDevTestBridge(game) {
         y: scene?.playerY,
         animating: !!scene?.animating,
         door: scene?.currentDoorSpawn || null,
+        natural: scene?.currentNaturalSpawn || null,
         spawns: scene?.spawns || [],
         stepCount: scene?.stepCount,
         walkable: scene?.tileData?.map((row) =>
@@ -1456,6 +1458,7 @@ export function installDevTestBridge(game) {
         menuOpen: !!scene?.menuOpen,
         modalLocks: [...(scene?._modalLocks || [])],
         animating: !!scene?.animating,
+        naturalInteractionActive: !!scene?.naturalInteractionActive,
         characterDetailOpen:
           !!scene?.characterDetailGroup || !!scene?.equipmentScreenState,
         equipmentScreenOpen: !!scene?.equipmentScreenState,
@@ -2575,6 +2578,48 @@ export function installDevTestBridge(game) {
       if (!scene?.player) throw new Error("Scene has no player");
       setPlayerTile(scene, x, y);
       return playerSnapshot(scene, false);
+    },
+
+    restoreRejectedWorldStep(origin, reason = "route offline") {
+      const scene = getScene(game, "World");
+      if (
+        !scene?.player ||
+        typeof scene.restoreRejectedWorldStep !== "function"
+      ) {
+        throw new Error("World scene cannot restore a rejected step");
+      }
+      scene.restoreRejectedWorldStep(origin, reason);
+      return clone({
+        x: scene.playerX,
+        y: scene.playerY,
+        natural: scene.currentNaturalSpawn || null,
+        door: scene.currentDoorSpawn || null,
+        prompt: scene.interactPrompt?.text || "",
+      });
+    },
+
+    beginWorldAction() {
+      const scene = getScene(game, "World");
+      if (!scene || typeof scene.handleAction !== "function") {
+        throw new Error("World scene cannot handle an action");
+      }
+      if (scene.naturalInteractionActive || scene.animating) {
+        throw new Error("World natural interaction is still active");
+      }
+      if (scene._modalLocks?.size) {
+        throw new Error(
+          `World action is locked: ${[...scene._modalLocks].join(", ")}`,
+        );
+      }
+      if (!scene.currentNaturalSpawn?.node_id) {
+        throw new Error("World scene has no natural interaction target");
+      }
+      const nodeID = scene.currentNaturalSpawn.node_id;
+      const pending = scene.handleAction();
+      Promise.resolve(pending).catch((error) =>
+        console.error("[dev-test-bridge] World action failed:", error),
+      );
+      return { nodeID };
     },
 
     centerCameraOnPlayer(sceneKey) {

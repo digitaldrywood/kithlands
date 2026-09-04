@@ -59,21 +59,23 @@ func (g *Game) ToSaveState(name, userID string) (*save.SaveState, error) {
 	}
 
 	worldState := map[string]any{
-		"active_dungeon_id":      g.activeDungeonID,
-		"dungeons":               g.dungeons,
-		"final_encounter":        g.finalEncounter,
-		"current_quest":          g.currentQ,
-		"phase":                  g.phase,
-		"discovered":             g.discovered,
-		"spell_books":            g.spellBooks,
-		"transport":              g.trans,
-		"collected_hidden_items": g.collectedHiddenItems,
-		"triggered_flags":        g.triggeredFlags,
-		"building_side_quests":   g.buildingSideQuests,
-		"last_round_actions":     g.lastRoundActions,
-		"world_encounter_count":  g.worldEncounterCount,
-		"loot_roll_sequence":     g.lootRollSeq,
-		"shop_stocks":            g.shopStocks,
+		"active_dungeon_id":          g.activeDungeonID,
+		"dungeons":                   g.dungeons,
+		"final_encounter":            g.finalEncounter,
+		"current_quest":              g.currentQ,
+		"phase":                      g.phase,
+		"discovered":                 g.discovered,
+		"spell_books":                g.spellBooks,
+		"transport":                  g.trans,
+		"collected_hidden_items":     g.collectedHiddenItems,
+		"triggered_flags":            g.triggeredFlags,
+		"natural_discovery_claimed":  g.naturalDiscoveryClaimed,
+		"natural_discovery_revealed": g.naturalDiscoveryRevealed,
+		"building_side_quests":       g.buildingSideQuests,
+		"last_round_actions":         g.lastRoundActions,
+		"world_encounter_count":      g.worldEncounterCount,
+		"loot_roll_sequence":         g.lootRollSeq,
+		"shop_stocks":                g.shopStocks,
 	}
 	worldJSON, err := json.Marshal(worldState)
 	if err != nil {
@@ -132,19 +134,21 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		Dungeons        map[string]*DungeonProgress `json:"dungeons"`
 		// Dungeon is the pre-catalog save shape. It is migrated into
 		// Dungeons below and is no longer emitted by new saves.
-		Dungeon              *DungeonProgress                       `json:"dungeon"`
-		CurrentQ             int                                    `json:"current_quest"`
-		Phase                string                                 `json:"phase"`
-		Discovered           map[string]bool                        `json:"discovered"`
-		SpellBooks           map[string]*magic.SpellBook            `json:"spell_books"`
-		Transport            *transport.State                       `json:"transport"`
-		CollectedHiddenItems map[string]bool                        `json:"collected_hidden_items"`
-		TriggeredFlags       map[string]bool                        `json:"triggered_flags"`
-		BuildingSideQuests   map[string]generator.BuildingSideQuest `json:"building_side_quests"`
-		LastRoundActions     []MemberActionReq                      `json:"last_round_actions"`
-		WorldEncounterCount  int                                    `json:"world_encounter_count"`
-		LootRollSequence     uint64                                 `json:"loot_roll_sequence"`
-		ShopStocks           map[string]*ShopStock                  `json:"shop_stocks"`
+		Dungeon                  *DungeonProgress                       `json:"dungeon"`
+		CurrentQ                 int                                    `json:"current_quest"`
+		Phase                    string                                 `json:"phase"`
+		Discovered               map[string]bool                        `json:"discovered"`
+		SpellBooks               map[string]*magic.SpellBook            `json:"spell_books"`
+		Transport                *transport.State                       `json:"transport"`
+		CollectedHiddenItems     map[string]bool                        `json:"collected_hidden_items"`
+		TriggeredFlags           map[string]bool                        `json:"triggered_flags"`
+		NaturalDiscoveryClaimed  map[string]bool                        `json:"natural_discovery_claimed"`
+		NaturalDiscoveryRevealed map[string]bool                        `json:"natural_discovery_revealed"`
+		BuildingSideQuests       map[string]generator.BuildingSideQuest `json:"building_side_quests"`
+		LastRoundActions         []MemberActionReq                      `json:"last_round_actions"`
+		WorldEncounterCount      int                                    `json:"world_encounter_count"`
+		LootRollSequence         uint64                                 `json:"loot_roll_sequence"`
+		ShopStocks               map[string]*ShopStock                  `json:"shop_stocks"`
 	}
 	if err := json.Unmarshal(ss.WorldState, &worldState); err != nil {
 		return nil, fmt.Errorf("unmarshaling world state: %w", err)
@@ -174,6 +178,15 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	triggeredFlags := worldState.TriggeredFlags
 	if triggeredFlags == nil {
 		triggeredFlags = make(map[string]bool)
+	}
+	legacyNaturalDiscoveryClaims := worldState.NaturalDiscoveryClaimed == nil
+	naturalDiscoveryClaimed := worldState.NaturalDiscoveryClaimed
+	if naturalDiscoveryClaimed == nil {
+		naturalDiscoveryClaimed = make(map[string]bool)
+	}
+	naturalDiscoveryRevealed := worldState.NaturalDiscoveryRevealed
+	if naturalDiscoveryRevealed == nil {
+		naturalDiscoveryRevealed = make(map[string]bool)
 	}
 	buildingSideQuests := worldState.BuildingSideQuests
 	if buildingSideQuests == nil {
@@ -223,33 +236,35 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	}
 
 	game := &Game{
-		finalEncounter:       worldState.FinalEncounter,
-		dungeon:              activeDungeon,
-		dungeons:             dungeons,
-		activeDungeonID:      activeDungeonID,
-		id:                   fmt.Sprintf("game_%d", time.Now().UnixNano()),
-		gd:                   gd,
-		rng:                  rng,
-		rngSeed:              ss.RNGSeed,
-		loc:                  loc,
-		walk:                 walk,
-		tileMap:              tileMap,
-		party:                party,
-		spellBooks:           spellBooks,
-		inv:                  &inv,
-		quests:               quests,
-		buildingSideQuests:   buildingSideQuests,
-		currentQ:             worldState.CurrentQ,
-		phase:                "world", // always resume in world
-		diff:                 balance.GetDifficulty(ss.Difficulty),
-		discovered:           discovered,
-		collectedHiddenItems: collectedHidden,
-		triggeredFlags:       triggeredFlags,
-		worldEncounterCount:  worldState.WorldEncounterCount,
-		lootRollSeq:          worldState.LootRollSequence,
-		shopStocks:           shopStocks,
-		trans:                trans,
-		lastRoundActions:     cloneMemberActionReqs(worldState.LastRoundActions),
+		finalEncounter:           worldState.FinalEncounter,
+		dungeon:                  activeDungeon,
+		dungeons:                 dungeons,
+		activeDungeonID:          activeDungeonID,
+		id:                       fmt.Sprintf("game_%d", time.Now().UnixNano()),
+		gd:                       gd,
+		rng:                      rng,
+		rngSeed:                  ss.RNGSeed,
+		loc:                      loc,
+		walk:                     walk,
+		tileMap:                  tileMap,
+		party:                    party,
+		spellBooks:               spellBooks,
+		inv:                      &inv,
+		quests:                   quests,
+		buildingSideQuests:       buildingSideQuests,
+		currentQ:                 worldState.CurrentQ,
+		phase:                    "world", // always resume in world
+		diff:                     balance.GetDifficulty(ss.Difficulty),
+		discovered:               discovered,
+		collectedHiddenItems:     collectedHidden,
+		triggeredFlags:           triggeredFlags,
+		naturalDiscoveryClaimed:  naturalDiscoveryClaimed,
+		naturalDiscoveryRevealed: naturalDiscoveryRevealed,
+		worldEncounterCount:      worldState.WorldEncounterCount,
+		lootRollSeq:              worldState.LootRollSequence,
+		shopStocks:               shopStocks,
+		trans:                    trans,
+		lastRoundActions:         cloneMemberActionReqs(worldState.LastRoundActions),
 		location: LocationState{
 			Kind:        LocationWorld,
 			WorldNodeID: walk.Spawn.ID,
@@ -262,6 +277,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	if legacyTransport {
 		game.checkTransportUnlocks()
 	}
+	game.reconcileNaturalDiscoveryState(legacyNaturalDiscoveryClaims)
 
 	game.restoreDungeon()
 	game.restoreFinalEncounter()
@@ -346,15 +362,16 @@ func (s *Server) handleSaveGame(w http.ResponseWriter, r *http.Request) {
 
 // Autosave trigger event labels for display.
 var autosaveTriggerLabels = map[string]string{
-	"quest_complete": "Quest Complete",
-	"battle_victory": "Battle Victory",
-	"inn_rest":       "Inn Rest",
-	"temple_visit":   "Temple Visit",
-	"pre_combat":     "Before Combat",
-	"level_up":       "Level Up",
-	"purchase":       "Equipment Purchase",
-	"timed":          "Timed",
-	"victory":        "Victory",
+	"quest_complete":    "Quest Complete",
+	"battle_victory":    "Battle Victory",
+	"inn_rest":          "Inn Rest",
+	"temple_visit":      "Temple Visit",
+	"pre_combat":        "Before Combat",
+	"level_up":          "Level Up",
+	"purchase":          "Equipment Purchase",
+	"natural_discovery": "Natural Discovery",
+	"timed":             "Timed",
+	"victory":           "Victory",
 }
 
 func (s *Server) handleAutosave(w http.ResponseWriter, r *http.Request) {
