@@ -181,6 +181,10 @@ func TestWorldCheckpointLoadRecovery(t *testing.T) {
 	if remoteNodeID == "" {
 		t.Fatal("fixture has no remote node")
 	}
+	remoteCheckpoint := recoverWorldCheckpointNearNode(base.tileMap, base.loc, base.worldTraversal(), remoteNodeID, worldMapSignature(base.tileMap))
+	if remoteCheckpoint == nil {
+		t.Fatal("fixture remote node has no recoverable checkpoint")
+	}
 
 	tests := []struct {
 		name           string
@@ -190,7 +194,9 @@ func TestWorldCheckpointLoadRecovery(t *testing.T) {
 	}{
 		{name: "legacy missing", raw: "", wantNodeID: base.walk.Spawn.ID, wantCurrentSig: true},
 		{name: "malformed", raw: `"not-an-object"`, wantNodeID: base.walk.Spawn.ID, wantCurrentSig: true},
+		{name: "malformed coordinate", raw: `{"x":"bad","y":4,"world_node_id":"central","map_signature":"stale"}`, wantNodeID: base.walk.Spawn.ID, wantCurrentSig: true},
 		{name: "unknown node", raw: `{"x":4,"y":4,"world_node_id":"missing","map_signature":"stale"}`, wantNodeID: base.walk.Spawn.ID, wantCurrentSig: true},
+		{name: "coordinate belongs to another node", raw: checkpointJSON(t, WorldCheckpoint{X: remoteCheckpoint.X, Y: remoteCheckpoint.Y, WorldNodeID: base.walk.Spawn.ID, MapSignature: worldMapSignature(base.tileMap)}), wantNodeID: base.walk.Spawn.ID, wantCurrentSig: true},
 		{name: "stale map near valid node", raw: checkpointJSON(t, WorldCheckpoint{X: -10, Y: -10, WorldNodeID: remoteNodeID, MapSignature: "stale"}), wantNodeID: remoteNodeID, wantCurrentSig: true},
 		{name: "invalid exact tile", raw: checkpointJSON(t, WorldCheckpoint{X: -10, Y: -10, WorldNodeID: remoteNodeID, MapSignature: worldMapSignature(base.tileMap)}), wantNodeID: remoteNodeID, wantCurrentSig: true},
 	}
