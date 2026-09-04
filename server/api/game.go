@@ -305,6 +305,8 @@ type EquipState struct {
 	ArmorEvadePenalty int              `json:"armor_evade_penalty,omitempty"`
 	ArmorElement      string           `json:"armor_element,omitempty"`
 	ArmorItem         *ItemState       `json:"armor_item,omitempty"`
+	Effective         map[string]int   `json:"effective"`
+	Base              map[string]int   `json:"base"`
 	Bonuses           map[string]int   `json:"bonuses,omitempty"`
 	Loadout           []EquipSlotState `json:"loadout"`
 }
@@ -925,7 +927,9 @@ func (g *Game) fillInventoryState(state *GameState) {
 		es := EquipState{
 			WeaponID: eq.WeaponID, WeaponInstanceID: eq.WeaponInstanceID,
 			ArmorID: eq.ArmorID, ArmorInstanceID: eq.ArmorInstanceID,
-			Bonuses: g.inv.LoadoutStats(i, g.gd),
+			Bonuses:   g.inv.LoadoutStats(i, g.gd),
+			Effective: g.inv.ResolveEffectiveStats(g.party[i], i, g.gd).Values(),
+			Base:      inventory.ResolveStats(g.party[i], nil, g.gd.ClassByID(g.party[i].ClassID)).Values(),
 		}
 		if w := g.gd.WeaponByID(eq.WeaponID); w != nil {
 			es.WeaponName = w.Name
@@ -1111,9 +1115,9 @@ func cloneBoolMap(in map[string]bool) map[string]bool {
 func (g *Game) rollEncounterStartForNewFight() {
 	g.combatRound = 0
 	partyAGIs := make([]int, 0, len(g.party))
-	for _, c := range g.party {
+	for i, c := range g.party {
 		if c != nil && c.CurrentHP > 0 {
-			partyAGIs = append(partyAGIs, c.AGI)
+			partyAGIs = append(partyAGIs, g.inv.ResolveEffectiveStats(c, i, g.gd).AGI)
 		}
 	}
 	enemyAGIs := make([]int, 0, len(g.enemies))

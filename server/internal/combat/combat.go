@@ -20,9 +20,10 @@ type Combatant struct {
 	Status                  character.Status
 	Row                     string
 
-	WeaponPower int
-	LongRange   bool
-	ArmorAbsorb int
+	WeaponPower           int
+	LongRange             bool
+	ArmorAbsorb           int
+	EvadePenalty, CritPct int
 
 	// Bare-hand damage for Brawlers: base + (level * STR/2)
 	BareHandDamage int
@@ -476,7 +477,7 @@ func halveRoundedUp(v int) int {
 func physicalBaseDamage(attacker *Combatant) int {
 	baseDamage := attacker.STR + attacker.WeaponPower
 	if attacker.BareHandDamage > 0 {
-		baseDamage = attacker.BareHandDamage
+		baseDamage = attacker.BareHandDamage + attacker.WeaponPower
 	}
 	if mult := damageMultiplier(attacker); mult != 100 {
 		baseDamage = baseDamage * mult / 100
@@ -507,7 +508,7 @@ func resolveAttack(attacker, defender *Combatant, stats *gamedata.CombatConfig, 
 
 	for i := 0; i < numHits; i++ {
 		// Hit check per Section 6.3
-		toHit := stats.BaseHitChance + attackerHitPct - defender.AGI*2
+		toHit := stats.BaseHitChance + attackerHitPct - defender.Evade()
 		roll := rng.IntN(100) + 1
 		if roll > toHit {
 			hits = append(hits, Hit{Missed: true})
@@ -526,7 +527,7 @@ func resolveAttack(attacker, defender *Combatant, stats *gamedata.CombatConfig, 
 
 		// Crit check per Section 6.2
 		isCrit := false
-		critChance := attacker.LCK / 4
+		critChance := attacker.CritChance()
 		if critChance > 0 && rng.IntN(100) < critChance {
 			dmg *= stats.CritMultiplier
 			isCrit = true
@@ -567,7 +568,7 @@ func resolveBackstab(attacker, defender *Combatant, ignoreRow bool, stats *gamed
 	dmg := rollPhysicalDamage(baseDamage, mitigation, stats.MinDamagePerHit, rng)
 
 	isCrit := false
-	critChance := attacker.LCK / 4
+	critChance := attacker.CritChance()
 	if critChance > 0 && rng.IntN(100) < critChance {
 		dmg *= stats.CritMultiplier
 		isCrit = true

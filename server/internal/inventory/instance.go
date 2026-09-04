@@ -51,22 +51,8 @@ func (inv *Inventory) Normalize() {
 }
 
 func (slots *EquipmentSlots) normalizeLoadout() {
-	if slots.Loadout == nil {
-		slots.Loadout = make(map[string]EquippedItemRef)
-	}
-	if slots.WeaponID != "" {
-		slots.Loadout[MainHandSlot] = EquippedItemRef{
-			ItemID: slots.WeaponID, InstanceID: slots.WeaponInstanceID,
-		}
-	} else if ref := slots.Loadout[MainHandSlot]; ref.ItemID != "" {
-		slots.WeaponID, slots.WeaponInstanceID = ref.ItemID, ref.InstanceID
-	}
-	if slots.ArmorID != "" {
-		slots.Loadout[BodySlot] = EquippedItemRef{
-			ItemID: slots.ArmorID, InstanceID: slots.ArmorInstanceID,
-		}
-	} else if ref := slots.Loadout[BodySlot]; ref.ItemID != "" {
-		slots.ArmorID, slots.ArmorInstanceID = ref.ItemID, ref.InstanceID
+	for _, id := range []string{MainHandSlot, BodySlot, "off_hand", "head"} {
+		slots.setEquipped(id, slots.Equipped(id))
 	}
 }
 

@@ -101,6 +101,9 @@ func (g *Game) RecommendEquipment(partySlot int, goal string) (EquipmentRecommen
 func (g *Game) ApplyRecommendedEquipment(partySlot int, goal string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if err := g.checkEquipmentMutationLocked(); err != nil {
+		return err
+	}
 
 	plan, err := g.recommendEquipmentLocked(partySlot, goal)
 	if err != nil {
@@ -244,8 +247,8 @@ func (g *Game) recommendEquipmentLocked(partySlot int, goal string) (equipmentRe
 			if candidate.sourceSlot != "" && candidate.sourceSlot != slot.ID {
 				continue
 			}
-			if best == nil || candidate.score > best.score ||
-				(candidate.score == best.score && candidate.sourceSlot == slot.ID && best.sourceSlot != slot.ID) {
+			if (best == nil && candidate.score > 0) || (best != nil && candidate.score > best.score) ||
+				(best != nil && candidate.score == best.score && candidate.sourceSlot == slot.ID && best.sourceSlot != slot.ID) {
 				copy := *candidate
 				best = &copy
 			}
@@ -256,7 +259,7 @@ func (g *Game) recommendEquipmentLocked(partySlot int, goal string) (equipmentRe
 		}
 	}
 
-	before := g.inv.LoadoutStats(partySlot, g.gd)
+	before := g.inv.ResolveEffectiveStats(member, partySlot, g.gd).Values()
 	after := make(map[string]int)
 	plan := equipmentRecommendationPlan{state: EquipmentRecommendationState{
 		PartySlot: partySlot, CharacterName: member.Name, Goal: goal,
@@ -281,6 +284,7 @@ func (g *Game) recommendEquipmentLocked(partySlot int, goal string) (equipmentRe
 		plan.state.Changes = append(plan.state.Changes, change)
 		plan.changes = append(plan.changes, recommendationChangePlan{public: change, candidate: *selected})
 	}
+	after = inventory.ResolveStats(member, after, g.gd.ClassByID(member.ClassID)).Values()
 	plan.state.After = after
 	plan.state.Deltas = statDeltas(before, after)
 	plan.state.ScoreBefore = equipmentScore(before, goal)
@@ -338,6 +342,9 @@ func equipmentScore(stats map[string]int, goal string) int {
 	weights := equipmentRecommendationWeights[goal]
 	total := 0
 	for stat, value := range stats {
+		if stat == "int" || stat == "vit" || stat == "magic_defense" {
+			continue
+		}
 		total += value * weights[stat]
 	}
 	return total

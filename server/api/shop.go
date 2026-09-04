@@ -345,6 +345,9 @@ func (g *Game) EquipItem(slot int, itemID, itemType string) error {
 func (g *Game) EquipItemAt(slot int, equipmentSlot, itemID, itemType string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if err := g.checkEquipmentMutationLocked(); err != nil {
+		return err
+	}
 
 	if slot < 0 || slot >= len(g.party) {
 		return fmt.Errorf("invalid slot")
@@ -428,6 +431,9 @@ func (g *Game) EquipItemAt(slot int, equipmentSlot, itemID, itemType string) err
 func (g *Game) UnequipItem(slot int, equipmentSlot string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if err := g.checkEquipmentMutationLocked(); err != nil {
+		return err
+	}
 	if slot < 0 || slot >= len(g.party) {
 		return fmt.Errorf("invalid slot")
 	}
