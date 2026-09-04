@@ -207,7 +207,8 @@ func TestGemSocketPreviewResolvesAccessoriesWithoutMutation(t *testing.T) {
 		t.Fatalf("socket previews = %v", view.SocketPreviews)
 	}
 	p := view.SocketPreviews[0]
-	if !p.Allowed || p.After["str"]-p.Before["str"] != 1 || p.GearAfter["str"]-p.GearBefore["str"] != 1 {
+	if !p.Allowed || p.After["str"]-p.Before["str"] != 1 || p.GearAfter["str"]-p.GearBefore["str"] != 1 ||
+		p.CharacterAfter["str"]-p.CharacterBefore["str"] != 1 || p.CharacterAfter["attack"]-p.CharacterBefore["attack"] != 1 {
 		t.Fatalf("accessory preview = %+v", p)
 	}
 	after, err := json.Marshal(g.inv)

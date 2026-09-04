@@ -68,8 +68,8 @@ func (s *Server) handleCraftGem(w http.ResponseWriter, r *http.Request) {
 func (g *Game) SocketGem(req SocketGemRequest) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if g.phase != "world" && g.phase != "quest_complete" {
-		return fmt.Errorf("gem changes are only available while exploring or after a quest")
+	if err := g.checkGemMutationLocked(); err != nil {
+		return err
 	}
 	if req.InstanceID == "" || req.GemID == "" {
 		return fmt.Errorf("instance_id and gem_id are required")
@@ -80,11 +80,18 @@ func (g *Game) SocketGem(req SocketGemRequest) error {
 func (g *Game) CraftGem(req CraftGemRequest) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if g.phase != "world" && g.phase != "quest_complete" {
-		return fmt.Errorf("gem changes are only available while exploring or after a quest")
+	if err := g.checkGemMutationLocked(); err != nil {
+		return err
 	}
 	if req.RecipeID == "" {
 		return fmt.Errorf("recipe_id is required")
 	}
 	return g.inv.CraftGem(req.RecipeID, g.maxPartyLevel(), g.gd)
+}
+
+func (g *Game) checkGemMutationLocked() error {
+	if err := g.checkEquipmentMutationLocked(); err != nil {
+		return fmt.Errorf("gems can only be changed outside battle")
+	}
+	return nil
 }

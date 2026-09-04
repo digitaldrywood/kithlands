@@ -16,16 +16,15 @@ async function start(page, seed = 42) {
     window.__kithlandsTest?.sceneIsActive("Title"),
   );
   await page.evaluate(
-    (email) => window.__kithlandsTest.startQuickGame(email),
+    (email) => window.__kithlandsTest.startWizardFromTitle(email),
     email,
   );
   await page.evaluate(
     (seed) =>
       window.__kithlandsTest.startCustomGame({
         town_name: "Gem Town",
-        people: [{ name: "Coach Bell", relation: "friendly" }],
-        places: ["General Store", "Library", "Fire Hall"],
-        big_building: "Town Hall",
+        places: ["Square"],
+        big_building: "Hall",
         difficulty: "normal",
         rng_seed: seed,
         party: [
@@ -132,9 +131,26 @@ for (const [width, height] of [
       expect.objectContaining({ id: "ember_gem", count: 1 }),
     ]);
     expect(crafted.equipment[0].weapon_item.sockets[0].gem_id).toBeUndefined();
+    const effectivePreview =
+      crafted.equipment[0].weapon_item.socket_previews.find(
+        (preview) => preview.gem_id === "ember_gem",
+      );
+    expect(
+      effectivePreview.character_after.attack -
+        effectivePreview.character_before.attack,
+    ).toBe(3);
     await page
       .getByRole("button", { name: "Choose equipment to socket" })
       .click();
+    const effectiveTable = socketPreview
+      .locator(".gem-stat-changes")
+      .filter({ hasText: "effective values" });
+    await expect(
+      effectiveTable.getByRole("row", { name: /Attack/ }),
+    ).toContainText(String(effectivePreview.character_before.attack));
+    await expect(
+      effectiveTable.getByRole("row", { name: /Attack/ }),
+    ).toContainText(String(effectivePreview.character_after.attack));
     await expect(page.locator("#gem-equipment")).toHaveValue(
       before.equipment[0].weapon_instance_id,
     );
@@ -144,6 +160,9 @@ for (const [width, height] of [
     const applied = await state(page);
     expect(applied.equipment[0].weapon_item.sockets[0].gem_id).toBe(
       "ember_gem",
+    );
+    expect(applied.equipment[0].effective.attack).toBe(
+      effectivePreview.character_after.attack,
     );
     expect(applied.gems || []).toEqual([]);
     await capture(page, `${width}x${height}-socketed`);
@@ -183,6 +202,9 @@ for (const [width, height] of [
     expect(restored.gems || []).toEqual([]);
     expect(restored.equipment[0].weapon_item.sockets[0].gem_id).toBe(
       "ember_gem",
+    );
+    expect(restored.equipment[0].effective.attack).toBe(
+      effectivePreview.character_after.attack,
     );
     expect(errors).toEqual([]);
   });
@@ -255,7 +277,7 @@ test("earned Ward loot unlocks conversion through ordinary battles", async ({
       (r) => r.id === "convert_ember_to_ward",
     ).known,
   ).toBe(false);
-  for (let battle = 0; battle < 3; battle++) {
+  for (let battle = 0; battle < 2; battle++) {
     const result = await page.evaluate(() =>
       window.__kithlandsTest.submitAction({ type: "encounter" }, "World"),
     );
@@ -364,6 +386,31 @@ test("large catalog fixture keeps the twelfth equipment and gem selectable", asy
   ).toContainText("Catalog gear 12");
   await fits(page);
   await capture(page, "375x667-large-catalog-fixture-page-three");
+});
+
+test("equipment select receives native arrow keys inside Phaser", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 800, height: 600 });
+  await start(page);
+  await open(page);
+  const equipmentSelect = page.locator("#gem-equipment");
+  await equipmentSelect.evaluate((select) => {
+    const root = document.querySelector(".kith-gem-workshop");
+    select.addEventListener(
+      "keydown",
+      (event) => {
+        root.dataset.keyboardEvent = `${event.target.id}:${event.defaultPrevented}`;
+      },
+      { once: true },
+    );
+  });
+  await equipmentSelect.focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.locator(".kith-gem-workshop")).toHaveAttribute(
+    "data-keyboard-event",
+    "gem-equipment:false",
+  );
 });
 
 test("pending socket keeps focus and closes onto refreshed equipment", async ({

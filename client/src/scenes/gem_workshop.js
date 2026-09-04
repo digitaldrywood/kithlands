@@ -271,7 +271,9 @@ export function showGemWorkshop(
   const previousFocus = document.activeElement;
   const previousInput = scene.input?.enabled;
   const previousKeyboard = scene.input?.keyboard?.enabled;
+  const previousGlobalCapture = scene.input?.keyboard?.manager?.preventDefault;
   scene.input?.keyboard?.resetKeys();
+  scene.input?.keyboard?.disableGlobalCapture();
   if (scene.input) scene.input.enabled = false;
   if (scene.input?.keyboard) scene.input.keyboard.enabled = false;
   const root = element("section", "kith-gem-workshop");
@@ -306,6 +308,10 @@ export function showGemWorkshop(
     scene.input?.keyboard?.resetKeys();
     if (scene.input?.keyboard && previousKeyboard != null)
       scene.input.keyboard.enabled = previousKeyboard;
+    if (previousGlobalCapture === true)
+      scene.input?.keyboard?.enableGlobalCapture();
+    else if (previousGlobalCapture === false)
+      scene.input?.keyboard?.disableGlobalCapture();
     if (scene.input && previousInput != null)
       scene.input.enabled = previousInput;
     resumeWorldFor(scene, "gem_workshop");
@@ -317,8 +323,12 @@ export function showGemWorkshop(
   for (const event of ["pointerdown", "pointerup", "click", "wheel"])
     root.addEventListener(event, (e) => e.stopPropagation());
   const keydown = (event) => {
-    event.stopImmediatePropagation();
+    if (!root.contains(event.target)) {
+      event.stopImmediatePropagation();
+      root.focus({ preventScroll: true });
+    }
     if (event.key === "Escape") {
+      event.stopImmediatePropagation();
       event.preventDefault();
       close();
       return;
@@ -334,12 +344,14 @@ export function showGemWorkshop(
       (document.activeElement === first || document.activeElement === root)
     ) {
       event.preventDefault();
+      event.stopImmediatePropagation();
       last?.focus();
     } else if (
       !event.shiftKey &&
       (document.activeElement === last || document.activeElement === root)
     ) {
       event.preventDefault();
+      event.stopImmediatePropagation();
       first?.focus();
     }
   };

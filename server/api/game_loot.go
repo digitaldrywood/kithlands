@@ -193,9 +193,9 @@ func (g *Game) fillGemState(state *GameState) {
 			craftable = false
 			blockReason = err.Error()
 		}
-		if g.phase != "world" && g.phase != "quest_complete" {
+		if err := g.checkGemMutationLocked(); err != nil {
 			craftable = false
-			blockReason = "Gem changes are only available while exploring or after a quest."
+			blockReason = err.Error()
 		}
 		hint := "Available from the start."
 		if recipe.Discovery != nil {
@@ -242,14 +242,16 @@ func gemEffectStates(effects []gamedata.GemEffect) []GemEffectState {
 // GemSocketPreviewState contains read-only values from the same inventory
 // transaction used by confirmation. The client never calculates stat rules.
 type GemSocketPreviewState struct {
-	GemID       string         `json:"gem_id"`
-	Socket      int            `json:"socket"`
-	Allowed     bool           `json:"allowed"`
-	BlockReason string         `json:"block_reason,omitempty"`
-	Before      map[string]int `json:"before"`
-	After       map[string]int `json:"after,omitempty"`
-	GearBefore  map[string]int `json:"gear_before,omitempty"`
-	GearAfter   map[string]int `json:"gear_after,omitempty"`
+	GemID           string         `json:"gem_id"`
+	Socket          int            `json:"socket"`
+	Allowed         bool           `json:"allowed"`
+	BlockReason     string         `json:"block_reason,omitempty"`
+	Before          map[string]int `json:"before"`
+	After           map[string]int `json:"after,omitempty"`
+	GearBefore      map[string]int `json:"gear_before,omitempty"`
+	GearAfter       map[string]int `json:"gear_after,omitempty"`
+	CharacterBefore map[string]int `json:"character_before,omitempty"`
+	CharacterAfter  map[string]int `json:"character_after,omitempty"`
 }
 
 func (g *Game) gemSocketPreviews(item *inventory.EquipmentInstance, before map[string]int) []GemSocketPreviewState {
@@ -269,8 +271,8 @@ func (g *Game) gemSocketPreviews(item *inventory.EquipmentInstance, before map[s
 			continue
 		}
 		preview := GemSocketPreviewState{GemID: gem.ID, Socket: socketIndex, Before: cloneStats(before)}
-		if g.phase != "world" && g.phase != "quest_complete" {
-			preview.BlockReason = "Gem changes are only available while exploring or after a quest."
+		if err := g.checkGemMutationLocked(); err != nil {
+			preview.BlockReason = err.Error()
 			previews = append(previews, preview)
 			continue
 		}
@@ -285,6 +287,8 @@ func (g *Game) gemSocketPreviews(item *inventory.EquipmentInstance, before map[s
 			if partySlot, _, equipped := g.inv.FindEquippedInstance(item.ID); equipped {
 				preview.GearBefore = g.inv.LoadoutStats(partySlot, g.gd)
 				preview.GearAfter = working.LoadoutStats(partySlot, g.gd)
+				preview.CharacterBefore = g.inv.ResolveEffectiveStats(g.party[partySlot], partySlot, g.gd).Values()
+				preview.CharacterAfter = working.ResolveEffectiveStats(g.party[partySlot], partySlot, g.gd).Values()
 			}
 		}
 		previews = append(previews, preview)
