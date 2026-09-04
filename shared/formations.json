@@ -188,7 +188,7 @@
     "id": "mire_toad_chorus",
     "weight": 18,
     "min_encounter_level": 2,
-    "max_encounter_level": 9,
+    "max_encounter_level": 10,
     "terrain_tags": ["marsh"],
     "layout": "rows",
     "slots": [{ "monster_id": "mire_toad", "min": 2, "max": 3 }]
@@ -196,8 +196,8 @@
   {
     "id": "war_hydra_bog",
     "weight": 1,
-    "min_encounter_level": 60,
-    "max_encounter_level": 69,
+    "min_encounter_level": 9,
+    "max_encounter_level": 10,
     "terrain_tags": ["marsh"],
     "layout": "line",
     "slots": [{ "monster_id": "war_hydra", "min": 1, "max": 1 }]
@@ -242,8 +242,8 @@
   {
     "id": "wyvern_roost",
     "weight": 1,
-    "min_encounter_level": 50,
-    "max_encounter_level": 59,
+    "min_encounter_level": 8,
+    "max_encounter_level": 10,
     "terrain_tags": ["hill", "snow"],
     "layout": "line",
     "slots": [{ "monster_id": "wyvern", "min": 1, "max": 1 }]

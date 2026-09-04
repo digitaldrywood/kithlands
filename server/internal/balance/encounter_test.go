@@ -381,6 +381,55 @@ func TestStarterProtectedTerrainUsesSafeAuthoredFormations(t *testing.T) {
 	}
 }
 
+func TestLateDemoEliteEncounterBudgets(t *testing.T) {
+	tests := []struct {
+		formation string
+		monsterID string
+		terrain   string
+		level     int
+		maxHP     int
+		maxSTR    int
+		maxXP     int
+	}{
+		{formation: "wyvern_roost", monsterID: "wyvern", terrain: "snow", level: 8, maxHP: 130, maxSTR: 24, maxXP: 180},
+		{formation: "war_hydra_bog", monsterID: "war_hydra", terrain: "marsh", level: 9, maxHP: 200, maxSTR: 28, maxXP: 240},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.monsterID, func(t *testing.T) {
+			gd := loadTestData(t)
+			formation := gd.FormationByID(tt.formation)
+			if formation == nil {
+				t.Fatalf("missing formation %q", tt.formation)
+			}
+			gd.Formations = []gamedata.Formation{*formation}
+			result := balance.GenerateFormationEncounter(
+				gd,
+				tt.level,
+				balance.GetDifficulty("normal"),
+				tt.terrain,
+				rand.New(rand.NewPCG(1, 0)),
+			)
+			if len(result.Combatants) != 1 || result.Combatants[0].MonsterID != tt.monsterID {
+				t.Fatalf("expected one %s, got %+v", tt.monsterID, result.Combatants)
+			}
+			elite := result.Combatants[0]
+			if elite.MaxHP > tt.maxHP || elite.STR > tt.maxSTR || elite.XPReward > tt.maxXP {
+				t.Fatalf(
+					"%s exceeds late-demo budget: hp=%d/%d str=%d/%d xp=%d/%d",
+					tt.monsterID,
+					elite.MaxHP,
+					tt.maxHP,
+					elite.STR,
+					tt.maxSTR,
+					elite.XPReward,
+					tt.maxXP,
+				)
+			}
+		})
+	}
+}
+
 func TestOverworldExpansionIdentitiesAreEncounterable(t *testing.T) {
 	gd := loadTestData(t)
 	diff := balance.GetDifficulty("normal")
@@ -391,8 +440,8 @@ func TestOverworldExpansionIdentitiesAreEncounterable(t *testing.T) {
 	}{
 		{id: "giant_rat", terrain: "path", level: 1},
 		{id: "bandit", terrain: "path", level: 4},
-		{id: "war_hydra", terrain: "marsh", level: 100},
-		{id: "wyvern", terrain: "snow", level: 100},
+		{id: "war_hydra", terrain: "marsh", level: 9},
+		{id: "wyvern", terrain: "snow", level: 8},
 		{id: "bramblehog", terrain: "forest", level: 1},
 		{id: "mire_toad", terrain: "marsh", level: 1},
 		{id: "frosthorn", terrain: "snow", level: 3},
