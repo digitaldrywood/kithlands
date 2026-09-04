@@ -63,3 +63,31 @@ the retained desktop return proof is from the passing follow-up run.
 | options-1440x900 | [1788543280917-options-1440x900.png](1788543280917-options-1440x900.png) |
 | promotion-1440x900 | [1788543280917-promotion-1440x900.png](1788543280917-promotion-1440x900.png) |
 | world-return-1440x900 | [1788543280917-world-return-1440x900.png](1788543280917-world-return-1440x900.png) |
+
+## Independent review follow-up
+
+Three P2 findings were addressed after the initial visual acceptance. The viewport
+dialog resets Phaser's registered keys before disabling and before restoring
+keyboard input, preventing a released direction from remaining latched. The
+Options bridge and cinematic test now read the native dialog. The debug-assisted
+full-game-loop test waits for native promotion, claims it, and presses Continue
+Journey; its evidence JSON includes the promotion dialog text.
+
+Validation commands for this bounded follow-up:
+
+- `cd client && npm test -- --run src/scenes/options.test.js src/scenes/promotion.test.js src/systems/prefs.test.js` — 12 passed.
+- `cd client && npm run build` — passed with the existing large-chunk warning.
+- `cd client && npx prettier --check src/ui/viewport_dialog.js src/dev_test_bridge.js e2e/options-held-key.spec.js e2e/full-game-loop-victory.spec.js e2e/battle-cinematic.spec.js` — passed.
+- `./scripts/run_playwright_local.sh e2e/options-held-key.spec.js e2e/battle-cinematic.spec.js e2e/full-game-loop-victory.spec.js --grep 'releasing|exposes Full|covers wizard'` — four passed. The full game loop completed through victory; held ArrowRight and WASD D were each released inside Options and remained released/stationary for 650 ms after Party → World return. The cinematic test verified Full → Once → Short and the closed-dialog bridge state.
+- `git diff --check` — passed.
+
+The same ports were checked free before the wrapper. The original 17 accepted
+visual proofs remain unchanged. New Options, promotion, and victory captures were
+inspected at:
+
+- `client/test-results/battle-cinematic-battle-ci-64246-d-Short-in-the-options-menu-chromium/battle-cinematic-options-1788544083010.png`
+- `client/tmp/readiness/debug-1788544095096/promotion.png`
+- `client/tmp/readiness/debug-1788544095096/victory.png`
+
+This follow-up ran the debug-assisted full-game-loop harness; it does not claim a
+second complete traversal of the separate readiness campaign harness.

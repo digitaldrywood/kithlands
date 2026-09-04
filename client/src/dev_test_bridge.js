@@ -2220,16 +2220,15 @@ export function installDevTestBridge(game) {
 
     optionsSummary(sceneKey = "World") {
       const scene = getScene(game, sceneKey);
-      const labels = (scene?.children?.list || [])
-        .filter(
-          (child) =>
-            typeof child?.text === "string" &&
-            child.active !== false &&
-            child.visible !== false,
-        )
-        .map((child) => child.text);
+      const dialog = scene?.optionsDialog;
+      const open = !!dialog && !dialog.disposed && dialog.root.isConnected;
+      const labels = open
+        ? [...dialog.root.querySelectorAll("h1, h2, p, output, button")].map(
+            (node) => node.textContent.trim(),
+          )
+        : [];
       return {
-        open: !!scene?.optionsKeyHandlers,
+        open,
         mode: getLongCinematicMode(),
         labels,
       };

@@ -30,6 +30,9 @@ export function viewportDialog(scene, { key, title, onEscape, onKey }) {
   root.append(panel);
   (document.querySelector("#game-ui") || document.body).append(root);
   pauseWorldFor(scene, key);
+  // Phaser discards keyup while disabled. Clear any direction held when the
+  // dialog opens so it cannot remain latched after a release inside the UI.
+  scene.input.keyboard?.resetKeys();
   scene.input.enabled = false;
   if (scene.input.keyboard) scene.input.keyboard.enabled = false;
   let disposed = false;
@@ -71,6 +74,8 @@ export function viewportDialog(scene, { key, title, onEscape, onKey }) {
     window.removeEventListener("keydown", keydown, true);
     scene.events.off("shutdown", shutdown);
     root.remove();
+    // Reconcile again before restoring input, including scene shutdown.
+    scene.input.keyboard?.resetKeys();
     scene.input.enabled = inputEnabled;
     if (scene.input.keyboard && keyboardEnabled != null)
       scene.input.keyboard.enabled = keyboardEnabled;
