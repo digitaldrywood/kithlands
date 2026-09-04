@@ -113,6 +113,8 @@ async function capturePhase(page, name, label, sceneKey, highlights = []) {
       scene: window.__kithlandsTest.activeSceneKey(),
       state: window.__kithlandsTest.gameState(key),
       visibleTexts: window.__kithlandsTest.visibleTexts(key),
+      promotionText:
+        document.querySelector('[data-dialog="promotion"]')?.innerText || null,
     }),
     sceneKey,
   );
@@ -580,21 +582,18 @@ test.describe("full game loop debug-assisted regression", () => {
     await page.waitForFunction(
       () => window.__kithlandsTest.gameState("World")?.phase === "promotion",
     );
-    await page.waitForFunction(() =>
-      window.__kithlandsTest
-        .visibleTexts("World")
-        .some((entry) => entry.text.includes("CLASS PROMOTION")),
-    );
+    await expect(
+      page.getByRole("dialog", { name: "Class Promotion" }),
+    ).toBeVisible();
     await capturePhase(
       page,
       "promotion",
       "Promotion prompt is shown after returning with the proof",
       "World",
-      ["CLASS PROMOTION", "CLAIM PROMOTION", "Pyromancer", "Sage"],
+      ["Class Promotion", "Claim Promotion", "Pyromancer", "Sage"],
     );
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("CLAIM PROMOTION", "World"),
-    );
+    await page.getByRole("button", { name: "Claim Promotion" }).click();
+    await page.getByRole("button", { name: "Continue Journey" }).click();
     await page.waitForFunction(() =>
       window.__kithlandsTest
         .gameState("World")

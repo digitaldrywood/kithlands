@@ -403,11 +403,9 @@ test.describe("battle cinematic proof — issue #211", () => {
     const options = await page.evaluate(() =>
       window.__kithlandsTest.optionsSummary("World"),
     );
-    expect(options.labels).toContain("LONG CINEMATICS");
+    expect(options.labels).toContain("Long cinematics");
     expect(options.labels).toContain("FULL");
-    expect(options.labels).toContain(
-      "SHORT = auto-skip    ONCE = each major move once    FULL = always",
-    );
+    expect(options.labels).toContain("Always play long cinematics.");
     await setProofLabel(page, "Options: Full / Once / Short major cinematics");
     await page.waitForTimeout(120);
     await page.screenshot({
@@ -422,5 +420,15 @@ test.describe("battle cinematic proof — issue #211", () => {
     await page.waitForFunction(
       () => window.__kithlandsTest.battleCinematicMode() === "once",
     );
+    const row = page.locator('[data-option="cinematics"]');
+    await expect(row.locator("output")).toHaveText("ONCE");
+    await expect(row).toContainText("Play long cinematics once per battle.");
+    await page.keyboard.press("ArrowLeft");
+    await expect(row.locator("output")).toHaveText("SHORT");
+    await expect(row).toContainText("Auto-skip long cinematics.");
+    await page.keyboard.press("Escape");
+    expect(
+      await page.evaluate(() => window.__kithlandsTest.optionsSummary("World")),
+    ).toMatchObject({ open: false, mode: "short", labels: [] });
   });
 });

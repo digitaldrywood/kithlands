@@ -1,0 +1,104 @@
+[
+  {
+    "file": "1788543087775-options-375x667.png",
+    "source": "client/tmp/promotion-options-1788543087775/options-375x667.png",
+    "sha256": "ebfc0bcff5d6859471598b991a034a1e26a352aa420f5d30887b154ef2268753",
+    "inspected": true
+  },
+  {
+    "file": "1788543087775-options-390x844.png",
+    "source": "client/tmp/promotion-options-1788543087775/options-390x844.png",
+    "sha256": "ccece5c9060544772ea841e803bf96e55f2afe9f05053cd5e835fe37563024a3",
+    "inspected": true
+  },
+  {
+    "file": "1788543087775-options-800x600.png",
+    "source": "client/tmp/promotion-options-1788543087775/options-800x600.png",
+    "sha256": "4e96d4eb18103c806fd1d3b28e9bbe38af663546ad4a52e4b21ad433944c83b2",
+    "inspected": true
+  },
+  {
+    "file": "1788543087775-promotion-375x667.png",
+    "source": "client/tmp/promotion-options-1788543087775/promotion-375x667.png",
+    "sha256": "f973a4ec15b4cdf3effe330a7e7a55974affdd50b6658a3852db3b915bb5ac99",
+    "inspected": true
+  },
+  {
+    "file": "1788543087775-promotion-390x844.png",
+    "source": "client/tmp/promotion-options-1788543087775/promotion-390x844.png",
+    "sha256": "b6b8b6b8c80ab1d483d1dbe533abe11079bd0c2edf101a454da93a9acfe2bdbf",
+    "inspected": true
+  },
+  {
+    "file": "1788543087775-promotion-800x600.png",
+    "source": "client/tmp/promotion-options-1788543087775/promotion-800x600.png",
+    "sha256": "2e35125a84f2dc8af2a70af7a68fe0c2502f4ba1d7ea8807b175085ce7481ef5",
+    "inspected": true
+  },
+  {
+    "file": "1788543087775-promotion-result-375x667.png",
+    "source": "client/tmp/promotion-options-1788543087775/promotion-result-375x667.png",
+    "sha256": "726f47ef3eeea2b4fe7425f922af86c884d53c17c672d0b9b276b7a6a70e2805",
+    "inspected": true
+  },
+  {
+    "file": "1788543087775-promotion-result-800x600.png",
+    "source": "client/tmp/promotion-options-1788543087775/promotion-result-800x600.png",
+    "sha256": "fad1cd8d2132d0fe7d51366f4456bb08384a11bcc125b3919bf5fc251b09ccf4",
+    "inspected": true
+  },
+  {
+    "file": "1788543087775-party-return-375x667.png",
+    "source": "client/tmp/promotion-options-1788543087775/party-return-375x667.png",
+    "sha256": "64de964a13a3c676f140bb30eda85e2691837efcf011bce51ff6b11929d2662d",
+    "inspected": true
+  },
+  {
+    "file": "1788543087775-world-return-375x667.png",
+    "source": "client/tmp/promotion-options-1788543087775/world-return-375x667.png",
+    "sha256": "37de78955eae1a92c4a526e7991530b84ba702ccdc927161b9fa89d653ca31d9",
+    "inspected": true
+  },
+  {
+    "file": "1788543087775-promotion-server-error-390x844.png",
+    "source": "client/tmp/promotion-options-1788543087775/promotion-server-error-390x844.png",
+    "sha256": "944f55a114c9cdab3486ff31338830c0f30a39b8b8b7da875bf08a4b24fb6324",
+    "inspected": true
+  },
+  {
+    "file": "1788543087775-promotion-recovered-390x844.png",
+    "source": "client/tmp/promotion-options-1788543087775/promotion-recovered-390x844.png",
+    "sha256": "01e6c3102ae83fc7339b9d7830bdb4f9ceb98474eb3386bd92cd0b96020b1b49",
+    "inspected": true
+  },
+  {
+    "file": "1788543087775-promotion-timeout-375x667.png",
+    "source": "client/tmp/promotion-options-1788543087775/promotion-timeout-375x667.png",
+    "sha256": "95dd930e8fcf0525f7b72828f75b1e962911a0c1fafffb975fff06690b32676f",
+    "inspected": true
+  },
+  {
+    "file": "1788543087775-options-landscape-667x375.png",
+    "source": "client/tmp/promotion-options-1788543087775/options-landscape-667x375.png",
+    "sha256": "0bb5abda06540b3f3c79378b5d10e072cf9fce9577a351982143eb2a603d8e00",
+    "inspected": true
+  },
+  {
+    "file": "1788543280917-options-1440x900.png",
+    "source": "client/tmp/promotion-options-1788543280917/options-1440x900.png",
+    "sha256": "524e0f080af5ead9dddebef4bb823b72bebdc23c41a1d4024138926298607804",
+    "inspected": true
+  },
+  {
+    "file": "1788543280917-promotion-1440x900.png",
+    "source": "client/tmp/promotion-options-1788543280917/promotion-1440x900.png",
+    "sha256": "a0329e941024218136024cd3f0c7bf7b5aaa8b252f93e293c75c6b1cd83080c3",
+    "inspected": true
+  },
+  {
+    "file": "1788543280917-world-return-1440x900.png",
+    "source": "client/tmp/promotion-options-1788543280917/world-return-1440x900.png",
+    "sha256": "6b6fca84f98a2402493c9be8d55b8693d3b4c596f70a99dbd59c0a8e4c9dfc5f",
+    "inspected": true
+  }
+]

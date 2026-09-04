@@ -501,12 +501,8 @@ test("fresh save walks the fallback campaign through its story milestones", asyn
         await capture(page, "promotion-desktop");
         await page.setViewportSize({ width: 390, height: 844 });
         await capture(page, "promotion-phone");
-        await page.evaluate(() =>
-          window.__kithlandsTest.clickInteractiveText(
-            "Claim Promotion",
-            "World",
-          ),
-        );
+        await page.getByRole("button", { name: "Claim Promotion" }).click();
+        await page.getByRole("button", { name: "Continue Journey" }).click();
         await page.waitForFunction(() =>
           window.__kithlandsTest
             .gameState("World")
