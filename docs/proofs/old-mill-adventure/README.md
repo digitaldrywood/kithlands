@@ -96,3 +96,54 @@ combat route tests and browser route proofs are separate from those fixtures.
 
 The local wrapper used this worktree's ports 8921/3841, database
 `kithlands_841`, and browser state under `client/tmp/`.
+
+## Review follow-up and bestiary integration
+
+The bestiary merge at `2d86a5b` was integrated, preserving the cloned
+`GameState.Discovered` field. A real Mill Bat encounter, defeat/retry, retreat,
+and normal Field Codex opening display the discovered monster:
+[Mill Bat entry](800-mill-bat-discovery-1788535103269.png).
+The phone bestiary's encounter, save/reload and navigation test also passed.
+Command: `OLLAMA_URL=http://127.0.0.1:1 ./scripts/run_playwright_local.sh e2e/old-mill-adventure.spec.js e2e/bestiary.spec.js --grep 'keyboard|bestiary real.*390'` — two tests passed.
+
+Independent review found two dungeon integration defects, both corrected:
+
+- Party → World Map could open an unsupported renderer and strand its modal
+  lock. The Party menu now disables the action when world-map data is absent;
+  the renderer also rejects incomplete data before locking or drawing. Tests
+  exercise disabled clicks, pointer and Escape closure, restored dungeon
+  movement, and normal World Map opening/closing after retreat at 1440×900 and
+  390×844. Both browser tests passed with no page errors using
+  `OLLAMA_URL=http://127.0.0.1:1 ./scripts/run_playwright_local.sh e2e/old-mill-adventure.spec.js --grep 'party menu'`.
+- Public purchase, spell-learning and proprietor interaction methods could
+  still mutate state remotely. They now reject calls while the expedition is
+  active. Regression tests preserve inventory, gold, XP, spells, quests and
+  dungeon state, and prove normal purchase/learning/turn-in after retreat.
+  Equipment, field items/spells, formation and gem actions remain available.
+
+The follow-up passed `make test`,
+`cd server && go test ./api -run 'TestDungeonRejectsRemote|TestLearnSpell|TestGetShopItems' -count=1`,
+`cd server && go vet ./... && go test -race ./api`, the CI-pinned linter with
+zero issues, and the full client test/build/format gate (61 files, 507 tests).
+
+Inspected menu proof:
+
+- [Desktop disabled map](1440-party-map-disabled-1788535532415.png)
+- [Phone disabled map](390-party-map-disabled-1788535532415.png)
+- [Phone movement after close](390-party-closed-movement-1788535532415.png)
+- [Normal World Map after retreat](390-world-map-after-retreat-1788535532415.png)
+
+## Inherited navigation boundary
+
+External World and Settlement tile coordinates remain client-owned in the
+existing navigation protocol. The server validates the allowed phase and home
+locality, then always enters the authored approach at `(12, 12)`. Exact
+proximity to the external trail sign is a presentation affordance and is not
+certified by the server. A direct entry call can avoid walking back to that
+sign, but cannot skip the Kingfisher approach, bats, or authored dungeon gates.
+Every move and interaction inside the expedition is server-validated.
+
+Strict external proximity enforcement is deferred: it requires authoritative
+World and Settlement movement plus proximity validation for `/transition`,
+not a client-submitted coordinate check. Independent review accepted this as
+an inherited navigation limitation; it is not claimed fixed by this PR.

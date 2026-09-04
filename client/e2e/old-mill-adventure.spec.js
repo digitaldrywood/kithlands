@@ -450,4 +450,145 @@ test("Old Mill keyboard, real defeat recovery and retry at 800x600", async ({
       .completed,
   ).toBe(true);
   await capture(page, "800-retry-victory");
+  // The integrated bestiary must receive the discovery from a real authored
+  // encounter through GameState, including after returning to the world.
+  expect((await state(page)).discovered.mill_bat).toBe(true);
+  await page.evaluate(() =>
+    window.__kithlandsTest.clickInteractiveText("Retreat", "Dungeon"),
+  );
+  await page.waitForFunction(() =>
+    window.__kithlandsTest.sceneIsActive("World"),
+  );
+  await page.evaluate(() => window.__kithlandsTest.waitForSceneReady("World"));
+  await page.keyboard.press("h");
+  await expect(page.getByRole("dialog", { name: "Field codex" })).toBeVisible();
+  await expect(page.locator(".bestiary-detail h2")).toHaveText("Mill Bat");
+  await expect(page.locator(".bestiary-detail img")).toHaveAttribute(
+    "alt",
+    "Mill Bat",
+  );
+  await expect(page.locator(".bestiary-detail img")).toHaveJSProperty(
+    "complete",
+    true,
+  );
+  await capture(page, "800-mill-bat-discovery");
 });
+
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 390, height: 844 },
+]) {
+  test(`Old Mill party menu map guard and input recovery ${viewport.width}x${viewport.height}`, async ({
+    page,
+  }) => {
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.setViewportSize(viewport);
+    await page.goto("/?noEncounters=1");
+    await page.waitForFunction(() =>
+      window.__kithlandsTest?.sceneIsActive("Title"),
+    );
+    await page.evaluate(() => window.__kithlandsTest.startQuickGame());
+    await page.waitForFunction(() =>
+      window.__kithlandsTest.sceneIsActive("World"),
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.waitForSceneReady("World"),
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.clickInteractiveText("Old Mill trail", "World"),
+    );
+    await room(page, "approach");
+    await page.evaluate(() =>
+      window.__kithlandsTest.clickInteractiveText("Party", "Dungeon"),
+    );
+    await page.waitForFunction(
+      () => window.__kithlandsTest.sceneFlags("Dungeon").menuOpen,
+    );
+    const summary = await page.evaluate(() =>
+      window.__kithlandsTest.partyMenuSummary("Dungeon"),
+    );
+    const mapButton = summary.actionIcons.find(
+      (action) => action.label === "WORLD MAP" && action.kind === "button",
+    );
+    expect(mapButton.interactive).toBe(false);
+    await capture(page, `${viewport.width}-party-map-disabled`);
+    await tapLogical(
+      page,
+      (mapButton.bounds.left + mapButton.bounds.right) / 2,
+      (mapButton.bounds.top + mapButton.bounds.bottom) / 2,
+      summary.logicalSize.width,
+      summary.logicalSize.height,
+    );
+    expect(
+      await page.evaluate(
+        () => window.__kithlandsTest.sceneFlags("Dungeon").modalLocks,
+      ),
+    ).toEqual(["party_menu"]);
+    await page.evaluate(() =>
+      window.__kithlandsTest.clickInteractiveText("CLOSE", "Dungeon"),
+    );
+    await page.waitForFunction(
+      () => !window.__kithlandsTest.sceneFlags("Dungeon").menuOpen,
+    );
+    expect(
+      await page.evaluate(
+        () => window.__kithlandsTest.sceneFlags("Dungeon").modalLocks,
+      ),
+    ).toEqual([]);
+    const before = (await state(page)).dungeon.position;
+    await page.keyboard.down("ArrowUp");
+    await page.waitForTimeout(180);
+    await page.keyboard.up("ArrowUp");
+    await page.waitForFunction((before) => {
+      const position = window.__kithlandsTest.gameState().dungeon.position;
+      return position.x !== before.x || position.y !== before.y;
+    }, before);
+    await page.waitForFunction(
+      () => !window.__kithlandsTest.sceneFlags("Dungeon").animating,
+    );
+    await capture(page, `${viewport.width}-party-closed-movement`);
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(
+      () => window.__kithlandsTest.sceneFlags("Dungeon").menuOpen,
+    );
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(
+      () => !window.__kithlandsTest.sceneFlags("Dungeon").menuOpen,
+    );
+    expect(
+      await page.evaluate(
+        () => window.__kithlandsTest.sceneFlags("Dungeon").modalLocks,
+      ),
+    ).toEqual([]);
+    await page.evaluate(() =>
+      window.__kithlandsTest.clickInteractiveText("Retreat", "Dungeon"),
+    );
+    await page.waitForFunction(() =>
+      window.__kithlandsTest.sceneIsActive("World"),
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.waitForSceneReady("World"),
+    );
+    await page.keyboard.press("m");
+    await page.waitForFunction(
+      () => window.__kithlandsTest.sceneFlags("World").menuOpen,
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.clickInteractiveText("WORLD MAP", "World"),
+    );
+    expect(
+      await page.evaluate(
+        () => window.__kithlandsTest.sceneFlags("World").modalLocks,
+      ),
+    ).toEqual(["world_map"]);
+    await capture(page, `${viewport.width}-world-map-after-retreat`);
+    await page.keyboard.press("Escape");
+    expect(
+      await page.evaluate(
+        () => window.__kithlandsTest.sceneFlags("World").modalLocks,
+      ),
+    ).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+}

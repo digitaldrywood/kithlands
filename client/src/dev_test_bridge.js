@@ -350,6 +350,7 @@ function describeObject(entry, index) {
   const target = entry?.bg || entry;
   return {
     index,
+    interactive: target?.input?.enabled === true,
     label:
       (typeof entry?.label?.text === "string" && entry.label.text) ||
       (typeof target?.text === "string" && target.text) ||
@@ -597,6 +598,7 @@ function partyMenuSummary(scene) {
       kind: entry.partyMenuActionMeta.kind,
       key: entry.partyMenuActionMeta.key || null,
       bounds: entry.bounds,
+      interactive: entry.interactive,
     }));
 
   const resourceChips = entries
@@ -1451,6 +1453,8 @@ export function installDevTestBridge(game) {
       const scene = getScene(game, sceneKey);
       return {
         menuOpen: !!scene?.menuOpen,
+        modalLocks: [...(scene?._modalLocks || [])],
+        animating: !!scene?.animating,
         characterDetailOpen:
           !!scene?.characterDetailGroup || !!scene?.equipmentScreenState,
         equipmentScreenOpen: !!scene?.equipmentScreenState,

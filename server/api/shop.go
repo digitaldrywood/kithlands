@@ -262,6 +262,9 @@ func (g *Game) GetShopItems(nodeID string) []ShopItemState {
 func (g *Game) BuyItem(itemID, itemType string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if g.inDungeon() {
+		return fmt.Errorf("return to town before buying supplies")
+	}
 
 	switch itemType {
 	case "consumable":
@@ -452,6 +455,9 @@ func (g *Game) UnequipItem(slot int, equipmentSlot string) error {
 func (g *Game) LearnSpell(charName, spellID string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if g.inDungeon() {
+		return fmt.Errorf("return to town before learning spells")
+	}
 
 	_, spell, sb, err := g.validateSpellLearningLocked(charName, spellID)
 	if err != nil {

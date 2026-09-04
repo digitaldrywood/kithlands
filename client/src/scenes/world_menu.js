@@ -2,7 +2,7 @@ import { saveGame, equipItem } from "../api.js";
 import { playSFX } from "../systems/audio.js";
 import { getAutosaveEnabled, setAutosaveEnabled } from "../systems/prefs.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
-import { showWorldMap } from "./world_interact.js";
+import { canShowWorldMap, showWorldMap } from "./world_interact.js";
 import { openCharacterDetail } from "./character_detail.js";
 import { showEquipmentScreen } from "./equipment_screen.js";
 import { showOptions } from "./options.js";
@@ -320,6 +320,7 @@ export function toggleMenu(scene) {
       w: 126,
       iconKey: "target_cursor",
       iconFallback: "W",
+      enabled: canShowWorldMap(scene),
       onClick: () => {
         closeMenu(scene);
         showWorldMap(scene);

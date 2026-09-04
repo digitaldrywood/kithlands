@@ -62,7 +62,27 @@ export async function interactWithDoor(scene) {
   });
 }
 
+export function canShowWorldMap(scene) {
+  const { mapW, mapH, tileData, spawns, playerX, playerY } = scene || {};
+  return (
+    Number.isInteger(mapW) &&
+    mapW > 0 &&
+    Number.isInteger(mapH) &&
+    mapH > 0 &&
+    Array.isArray(tileData) &&
+    tileData.length >= mapH &&
+    Array.from({ length: mapH }, (_, y) => tileData[y]).every(
+      (row) => Array.isArray(row) && row.length >= mapW,
+    ) &&
+    Array.isArray(spawns) &&
+    Number.isFinite(playerX) &&
+    Number.isFinite(playerY)
+  );
+}
+
 export function showWorldMap(scene) {
+  if (!canShowWorldMap(scene)) return;
+
   pauseWorldFor(scene, "world_map");
   const ol = [];
 
