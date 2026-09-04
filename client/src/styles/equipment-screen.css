@@ -316,7 +316,8 @@
   background: #f1bf45;
 }
 
-.character-resource-note {
+.character-resource-note,
+.equipment-inactive-note {
   color: #e9c768;
   font-size: 8px;
   text-align: right;

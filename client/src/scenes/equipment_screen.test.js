@@ -77,7 +77,12 @@ function gameState() {
       { name: "Mage", class_id: "cinder", class_name: "Cinder", level: 1 },
     ],
     equipment: [
-      { loadout, bonuses: { power: 6, absorb: 5, lck: 1 } },
+      {
+        loadout,
+        bonuses: { power: 6, absorb: 5, lck: 1 },
+        effective: { attack: 26, power: 6, absorb: 5, lck: 6 },
+        base: { attack: 20, power: 0, absorb: 0, lck: 5 },
+      },
       {
         loadout: [
           slot("ring_1", "Ring I", ["ring"], {
@@ -185,35 +190,29 @@ describe("equipment screen model", () => {
     });
   });
 
-  it("shows exact loadout and character impact for a candidate", () => {
+  it("uses server preview totals without calculating character mechanics", () => {
     const state = gameState();
-    const candidate = state.items[0];
+    const preview = {
+      before: { attack: 26, power: 6, absorb: 5 },
+      after: { attack: 29, power: 9, absorb: 5 },
+      deltas: { attack: 3, power: 3, absorb: 0 },
+    };
     const comparison = buildEquipmentComparison(
       state,
       0,
       "main_hand",
-      candidate,
+      state.items[0],
+      preview,
     );
-
-    expect(comparison.before).toEqual({ power: 6, absorb: 5, lck: 1 });
-    expect(comparison.after).toEqual({
-      power: 9,
-      hit_pct: 2,
-      absorb: 5,
-      lck: 1,
-    });
-    expect(comparison.deltas).toMatchObject({
-      power: 3,
-      hit_pct: 2,
-      absorb: 0,
-    });
-    expect(comparison.character).toContain("Attack 26 → 29");
+    expect(comparison.ready).toBe(true);
+    expect(comparison.before).toEqual(preview.before);
+    expect(comparison.after).toEqual(preview.after);
     expect(buildEquipmentComparisonRows(comparison)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          stat: "power",
-          current: 6,
-          preview: 9,
+          stat: "attack",
+          current: 26,
+          preview: 29,
           delta: 3,
           tone: "positive",
         }),
@@ -228,14 +227,37 @@ describe("equipment screen model", () => {
     );
   });
 
-  it("treats moving one instance between repeated slots as a move, not a duplicate", () => {
+  it("waits for authoritative comparison instead of guessing from item stats", () => {
+    const state = gameState();
+    const comparison = buildEquipmentComparison(
+      state,
+      0,
+      "main_hand",
+      state.items[0],
+    );
+    expect(comparison.ready).toBe(false);
+    expect(comparison.after).toEqual(state.equipment[0].effective);
+    expect(comparison.deltas).toEqual({});
+  });
+
+  it("uses the server's whole-loadout preview for repeated-slot moves", () => {
     const state = gameState();
     const ring = state.equipment[0].loadout.find(
       (entry) => entry.id === "ring_1",
     ).item;
-    const comparison = buildEquipmentComparison(state, 0, "ring_2", ring);
-
-    expect(comparison.after.lck).toBe(1);
+    const preview = {
+      before: { lck: 6 },
+      after: { lck: 6 },
+      deltas: { lck: 0 },
+    };
+    const comparison = buildEquipmentComparison(
+      state,
+      0,
+      "ring_2",
+      ring,
+      preview,
+    );
+    expect(comparison.after.lck).toBe(6);
     expect(comparison.deltas.lck).toBe(0);
   });
 
