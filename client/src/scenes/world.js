@@ -1,4 +1,4 @@
-import { gameAction, autosaveGame, promoteParty } from "../api.js";
+import { gameAction, autosaveGame } from "../api.js";
 import {
   initAudio,
   playMusic,
@@ -11,6 +11,7 @@ import {
   getAutosaveInterval,
   walkStepMs,
 } from "../systems/prefs.js";
+import { showPromotion } from "./promotion.js";
 import { toggleMenu } from "./world_menu.js";
 import { toggleCodex } from "./world_codex.js";
 import { toggleDebugPanel, closeDebugPanel } from "./debug_panel.js";
@@ -1196,109 +1197,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   showPromotionPrompt(gs) {
-    // Full-screen backdrop
-    this.add.rectangle(400, 300, 800, 600, 0x0a0018);
-    this.add
-      .text(400, 80, "CLASS PROMOTION", {
-        fontSize: "32px",
-        color: "#ff88ff",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5);
-    this.add
-      .text(
-        400,
-        130,
-        gs.message || "A surge of power courses through the party...",
-        {
-          fontSize: "13px",
-          color: "#ffffff",
-          fontFamily: "monospace",
-          wordWrap: { width: 700 },
-          align: "center",
-        },
-      )
-      .setOrigin(0.5);
-
-    // Preview the promoted classes each party member will become.
-    const PROMOTION = {
-      warrior: "Knight",
-      brawler: "Champion",
-      rogue: "Shadow",
-      mender: "Sage",
-      cinder: "Pyromancer",
-      wayfarer: "Wanderer",
-    };
-    let y = 200;
-    for (const pm of gs.party) {
-      const promoted = PROMOTION[pm.class_id] || "???";
-      this.add
-        .text(
-          400,
-          y,
-          `${pm.name} (${pm.class_name} Lv${pm.level})  ->  ${promoted}`,
-          { fontSize: "14px", color: "#ffccff", fontFamily: "monospace" },
-        )
-        .setOrigin(0.5);
-      y += 28;
-    }
-
-    const acceptBtn = this.add
-      .text(280, 460, "Claim Promotion", {
-        fontSize: "16px",
-        color: "#88ff88",
-        fontFamily: "monospace",
-        backgroundColor: "#113311",
-        padding: { x: 14, y: 8 },
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    const skipBtn = this.add
-      .text(520, 460, "Skip", {
-        fontSize: "16px",
-        color: "#ffaaaa",
-        fontFamily: "monospace",
-        backgroundColor: "#331111",
-        padding: { x: 14, y: 8 },
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-
-    const finish = async (accept) => {
-      acceptBtn.disableInteractive();
-      skipBtn.disableInteractive();
-      try {
-        const result = await promoteParty(gs.id, accept);
-        if (result && !result.error) {
-          this.scene.start("World", { gameState: result });
-        } else {
-          this.add
-            .text(400, 510, `Error: ${result?.error || "unknown"}`, {
-              fontSize: "12px",
-              color: "#ff4444",
-              fontFamily: "monospace",
-            })
-            .setOrigin(0.5);
-        }
-      } catch (err) {
-        console.error("[promote]", err);
-      }
-    };
-    acceptBtn.on("pointerdown", () => finish(true));
-    skipBtn.on("pointerdown", () => finish(false));
-
-    this.add
-      .text(
-        400,
-        540,
-        "Promoted classes gain new spells, a new name, and a new look.",
-        {
-          fontSize: "10px",
-          color: "#888888",
-          fontFamily: "monospace",
-        },
-      )
-      .setOrigin(0.5);
+    return showPromotion(this, gs);
   }
 
   showEndScreen(title, subtitle, color, gs) {
