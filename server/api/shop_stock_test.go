@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"reflect"
+	"sync"
 	"testing"
 )
 
@@ -162,5 +163,84 @@ func TestShopPurchaseTransfersPreviewedInstanceAndRotatesOffers(t *testing.T) {
 	}
 	if err := game.BuyItem(nodeID, newPotion.StockID); err != nil {
 		t.Fatalf("refreshed reusable offer failed: %v", err)
+	}
+}
+
+func TestShopPurchaseAccessRejectionsAreAtomic(t *testing.T) {
+	game := newTownTestGame(t)
+	nodeID := enterStockTestShop(t, game)
+	items, err := game.GetShopItems(nodeID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	offer := findStockTestOffer(t, items, "patched_mantle")
+	originalLocation, originalPhase := game.location, game.phase
+	inn := game.settlementInteriors["cadott-riverlight-inn"]
+
+	tests := []struct {
+		name   string
+		nodeID string
+		setup  func()
+	}{
+		{name: "wrong node", nodeID: "cadott-riverlight-inn", setup: func() {}},
+		{name: "overworld", nodeID: nodeID, setup: func() { game.location = LocationState{Kind: LocationWorld} }},
+		{name: "nonshop", nodeID: "cadott-riverlight-inn", setup: func() {
+			game.location = LocationState{Kind: LocationInterior, MapID: inn.NodeID, Interior: cloneMapSpawn(&inn)}
+		}},
+		{name: "combat", nodeID: nodeID, setup: func() { game.phase = "combat" }},
+		{name: "dungeon", nodeID: nodeID, setup: func() { game.location = LocationState{Kind: "dungeon"} }},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			game.mu.Lock()
+			game.location, game.phase = originalLocation, originalPhase
+			test.setup()
+			game.mu.Unlock()
+			before := shopMutationSnapshot(t, game)
+			if err := game.BuyItem(test.nodeID, offer.StockID); err == nil {
+				t.Fatal("unauthorized purchase succeeded")
+			}
+			if shopMutationSnapshot(t, game) != before {
+				t.Fatal("unauthorized purchase mutated inventory or stock")
+			}
+		})
+	}
+}
+
+func TestConcurrentShopPurchaseHasOneWinner(t *testing.T) {
+	game := newTownTestGame(t)
+	nodeID := enterStockTestShop(t, game)
+	items, err := game.GetShopItems(nodeID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	offer := findStockTestOffer(t, items, "patched_mantle")
+	goldBefore := game.State().Gold
+	const buyers = 12
+	start := make(chan struct{})
+	results := make(chan error, buyers)
+	var wg sync.WaitGroup
+	wg.Add(buyers)
+	for range buyers {
+		go func() {
+			defer wg.Done()
+			<-start
+			results <- game.BuyItem(nodeID, offer.StockID)
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(results)
+	successes := 0
+	for err := range results {
+		if err == nil {
+			successes++
+		}
+	}
+	if successes != 1 {
+		t.Fatalf("successful concurrent buys = %d, want 1", successes)
+	}
+	if game.State().Gold != goldBefore-offer.Price || game.inv.Instance(offer.InstanceID) == nil {
+		t.Fatal("concurrent purchase did not commit exactly one item and price")
 	}
 }
