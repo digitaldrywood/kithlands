@@ -436,6 +436,7 @@ test("merchant catalog failures recover without stale offers", async ({
       !texts.includes("Wooden Club")
     );
   });
+  await capture(page, viewport, "catalog-load-error-retry");
   await page.evaluate(() =>
     window.__kithlandsTest.clickInteractiveText("Retry Stock", "Town"),
   );
@@ -493,6 +494,7 @@ test("merchant catalog failures recover without stale offers", async ({
       rolledOffer.name,
     ),
   ).toBe(false);
+  await capture(page, viewport, "catalog-refresh-error-after-purchase");
 
   await page.evaluate(() =>
     window.__kithlandsTest.clickInteractiveText("Retry Stock", "Town"),
