@@ -596,6 +596,7 @@ export class TownScene extends Phaser.Scene {
   }
 
   init(data) {
+    this._exiting = false;
     this.gameState = data.gameState;
     this.spawn = data.spawn;
     this.floorIndex = data.floorIndex || 0;
