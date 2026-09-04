@@ -207,8 +207,8 @@ func TestGemSocketPreviewResolvesAccessoriesWithoutMutation(t *testing.T) {
 		t.Fatalf("socket previews = %v", view.SocketPreviews)
 	}
 	p := view.SocketPreviews[0]
-	if !p.Allowed || p.After["str"]-p.Before["str"] != 1 || p.GearAfter["str"]-p.GearBefore["str"] != 1 ||
-		p.CharacterAfter["str"]-p.CharacterBefore["str"] != 1 || p.CharacterAfter["attack"]-p.CharacterBefore["attack"] != 1 {
+	if !p.Allowed || p.After["crit_pct"]-p.Before["crit_pct"] != 1 || p.GearAfter["crit_pct"]-p.GearBefore["crit_pct"] != 1 ||
+		p.CharacterAfter["crit_pct"]-p.CharacterBefore["crit_pct"] != 1 {
 		t.Fatalf("accessory preview = %+v", p)
 	}
 	after, err := json.Marshal(g.inv)
@@ -225,7 +225,7 @@ func TestGemSocketPreviewResolvesAccessoriesWithoutMutation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if applied.Stats["str"] != p.After["str"] {
+	if applied.Stats["crit_pct"] != p.After["crit_pct"] {
 		t.Fatal("preview disagrees with mutation")
 	}
 }

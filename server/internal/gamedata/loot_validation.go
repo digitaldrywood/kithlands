@@ -3,10 +3,12 @@ package gamedata
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 )
 
 func (gd *GameData) validateLoot() {
+	lootKinds := []string{"weapon", "armor", "accessory"}
 	if len(gd.Loot.Rarities) == 0 {
 		panic("gamedata: loot.json has no rarities")
 	}
@@ -20,6 +22,7 @@ func (gd *GameData) validateLoot() {
 		}
 		seen[id] = kind
 	}
+	peakAffixCount, peakAffixLevel := 0, 1
 	for _, rarity := range gd.Loot.Rarities {
 		claim("rarity", rarity.ID)
 		if rarity.Weight <= 0 || rarity.MinItemLevel < 1 {
@@ -27,27 +30,65 @@ func (gd *GameData) validateLoot() {
 		}
 		validateLootRange("rarity "+rarity.ID+" affixes", rarity.Affixes)
 		validateLootRange("rarity "+rarity.ID+" sockets", rarity.Sockets)
+		if rarity.Affixes.Max > peakAffixCount || (rarity.Affixes.Max == peakAffixCount && rarity.MinItemLevel > peakAffixLevel) {
+			peakAffixCount, peakAffixLevel = rarity.Affixes.Max, rarity.MinItemLevel
+		}
 	}
 	for _, affix := range gd.Loot.Affixes {
 		claim("affix", affix.ID)
-		if affix.Name == "" || affix.Weight <= 0 || affix.MinItemLevel < 1 {
+		if affix.Name == "" || affix.Weight <= 0 || affix.MinItemLevel < 1 || affix.RequiredLevel < 1 || len(affix.Kinds) == 0 {
 			panic(fmt.Sprintf("gamedata: loot affix %q is incomplete", affix.ID))
 		}
 		if affix.Position != "prefix" && affix.Position != "suffix" {
 			panic(fmt.Sprintf("gamedata: loot affix %q has invalid position %q", affix.ID, affix.Position))
 		}
-		if affix.Modifier.Min > affix.Modifier.Max || affix.Modifier.Min < 0 {
+		if affix.Modifier.Min > affix.Modifier.Max || affix.Modifier.Min < 1 {
 			panic(fmt.Sprintf("gamedata: loot affix %q has invalid modifier range", affix.ID))
 		}
+		kinds := make(map[string]bool)
 		for _, kind := range affix.Kinds {
 			if !validLootKind(kind) {
 				panic(fmt.Sprintf("gamedata: loot affix %q has invalid kind %q", affix.ID, kind))
 			}
+			if kinds[kind] {
+				panic(fmt.Sprintf("gamedata: loot affix %q repeats kind %q", affix.ID, kind))
+			}
+			kinds[kind] = true
 		}
-		if !validLootStat(affix.Modifier.Stat) {
-			panic(fmt.Sprintf("gamedata: loot affix %q has invalid stat %q", affix.ID, affix.Modifier.Stat))
+		if !validActiveLootStat(affix.Modifier.Stat) {
+			panic(fmt.Sprintf("gamedata: loot affix %q has inactive stat %q", affix.ID, affix.Modifier.Stat))
 		}
 	}
+	for _, kind := range lootKinds {
+		eligible, stats := 0, make(map[string]bool)
+		for _, affix := range gd.Loot.Affixes {
+			if affix.MinItemLevel <= peakAffixLevel && slices.Contains(affix.Kinds, kind) {
+				eligible++
+				stats[affix.Modifier.Stat] = true
+			}
+		}
+		if eligible < 4 {
+			panic(fmt.Sprintf("gamedata: loot kind %q has %d affixes eligible at item level %d, want at least 4", kind, eligible, peakAffixLevel))
+		}
+		if len(stats) < peakAffixCount {
+			panic(fmt.Sprintf("gamedata: loot kind %q cannot roll %d functionally distinct affixes at item level %d", kind, peakAffixCount, peakAffixLevel))
+		}
+	}
+	for _, rarity := range gd.Loot.Rarities {
+		for _, kind := range lootKinds {
+			eligible, stats := 0, make(map[string]bool)
+			for _, affix := range gd.Loot.Affixes {
+				if affix.MinItemLevel <= rarity.MinItemLevel && slices.Contains(affix.Kinds, kind) {
+					eligible++
+					stats[affix.Modifier.Stat] = true
+				}
+			}
+			if eligible < rarity.Affixes.Max || len(stats) < rarity.Affixes.Max {
+				panic(fmt.Sprintf("gamedata: rarity %q cannot roll %d functionally distinct %s affixes at item level %d", rarity.ID, rarity.Affixes.Max, kind, rarity.MinItemLevel))
+			}
+		}
+	}
+	gemRoles := make(map[string]map[string]string)
 	for _, gem := range gd.Loot.Gems {
 		claim("gem", gem.ID)
 		if gem.Name == "" || gem.Family == "" || gem.MaterialValue < 1 || gem.Tier < 1 || gem.RequiredLevel < 1 || len(gem.Effects) == 0 {
@@ -56,10 +97,33 @@ func (gd *GameData) validateLoot() {
 		if !validLootColor(gem.SocketColor) || !validLootColor(gem.GlowColor) {
 			panic(fmt.Sprintf("gamedata: gem %q has invalid socket colors", gem.ID))
 		}
+		effectKinds := make(map[string]bool)
 		for _, effect := range gem.Effects {
-			if !validLootKind(effect.Kind) || !validLootStat(effect.Stat) || effect.Value < 0 {
+			if !validLootKind(effect.Kind) || !validActiveLootStat(effect.Stat) || effect.Value < 1 {
 				panic(fmt.Sprintf("gamedata: gem %q has invalid effect", gem.ID))
 			}
+			if effectKinds[effect.Kind] {
+				panic(fmt.Sprintf("gamedata: gem %q repeats effect kind %q", gem.ID, effect.Kind))
+			}
+			effectKinds[effect.Kind] = true
+			if gemRoles[gem.Family] == nil {
+				gemRoles[gem.Family] = make(map[string]string)
+			}
+			if role := gemRoles[gem.Family][effect.Kind]; role != "" && role != effect.Stat {
+				panic(fmt.Sprintf("gamedata: gem family %q changes %s role from %q to %q", gem.Family, effect.Kind, role, effect.Stat))
+			}
+			gemRoles[gem.Family][effect.Kind] = effect.Stat
+		}
+		for _, kind := range lootKinds {
+			if !effectKinds[kind] {
+				panic(fmt.Sprintf("gamedata: gem %q has no %s effect", gem.ID, kind))
+			}
+		}
+	}
+	for _, kind := range lootKinds {
+		ember, ward := gemRoles["ember"][kind], gemRoles["ward"][kind]
+		if ember == "" || ward == "" || ember == ward {
+			panic(fmt.Sprintf("gamedata: ember and ward gems need distinct active %s roles", kind))
 		}
 	}
 	for _, recipe := range gd.Loot.Recipes {
@@ -149,6 +213,15 @@ func validLootStat(stat string) bool {
 	switch stat {
 	case "power", "absorb", "hit_pct", "crit_pct", "magic_defense", "evade_penalty",
 		"str", "agi", "int", "vit", "lck":
+		return true
+	default:
+		return false
+	}
+}
+
+func validActiveLootStat(stat string) bool {
+	switch stat {
+	case "power", "absorb", "hit_pct", "crit_pct", "evade_penalty", "str", "agi", "lck":
 		return true
 	default:
 		return false

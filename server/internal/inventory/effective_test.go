@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
 )
 
@@ -81,5 +82,33 @@ func TestCanonicalLoadoutWinsOverLegacyMirrors(t *testing.T) {
 	}
 	if !reflect.DeepEqual(before, inv.LoadoutStats(0, gd)) {
 		t.Fatal("stats changed on normalize")
+	}
+}
+
+func TestEveryLootEffectChangesAuthoritativeEffectiveStats(t *testing.T) {
+	gd := gamedata.Load("../../../shared")
+	class := gd.ClassByID("warrior")
+	member := character.New("Ayla", class.ID, class)
+	baseline := ResolveStats(member, nil, class).Values()
+
+	assertActive := func(label, stat string, value int) {
+		t.Helper()
+		got := ResolveStats(member, map[string]int{stat: value}, class).Values()
+		before, exists := baseline[stat]
+		if !exists {
+			t.Fatalf("%s uses %q, which is absent from authoritative effective values", label, stat)
+		}
+		if got[stat] == before || reflect.DeepEqual(got, baseline) {
+			t.Fatalf("%s %s %+d did not change authoritative effective values", label, stat, value)
+		}
+	}
+
+	for _, affix := range gd.Loot.Affixes {
+		assertActive("affix "+affix.ID, affix.Modifier.Stat, affix.Modifier.Min)
+	}
+	for _, gem := range gd.Loot.Gems {
+		for _, effect := range gem.Effects {
+			assertActive("gem "+gem.ID+" on "+effect.Kind, effect.Stat, effect.Value)
+		}
 	}
 }
