@@ -3,6 +3,14 @@
 This pass concerns the existing fallback campaign. It does not certify the new
 Old Mill adventure or close a broader visual/content issue.
 
+**Completed:** the same fresh save reached victory with all 24 quests complete,
+all four characters promoted at level 15 and finishing at level 22. Repairs
+shipped in PR #301. The natural audit passed its final 24-minute continuation;
+its earlier segments and ordinary save resumes are described below.
+[Durable metrics](proofs/readiness/20260904-1788535559978-summary.json) and
+[the final victory screenshot](proofs/readiness/20260904-1788535559978-campaign-victory.png)
+record the completed result.
+
 ## Simulator diagnosis
 
 The initial CLI command reproduced the audit exactly: seeds 1–10 yielded 27/30
@@ -26,14 +34,14 @@ Two disjoint sets of 100 seeds per strategy provide 600 campaigns total. A
 percentage points, materially better than the initial ten-run smoke sample.
 These are regression samples, not estimates of a child's chance of finishing.
 
-| Seeds | Strategy | Victories | Mean promotion level | Mean final leader level among victories |
-| --- | --- | --- | --- | --- |
-| 1–100 | aggressive | 80/100 | 10.56 | 21.11 |
-| 1–100 | cautious | 93/100 | 11.78 | 24.25 |
-| 1–100 | healer_heavy | 100/100 | 11.82 | 24.20 |
-| 1001–1100 | aggressive | 73/100 | 10.08 | 20.29 |
-| 1001–1100 | cautious | 93/100 | 11.56 | 24.02 |
-| 1001–1100 | healer_heavy | 98/100 | 11.67 | 24.20 |
+| Seeds     | Strategy     | Victories | Mean promotion level | Mean final leader level among victories |
+| --------- | ------------ | --------- | -------------------- | --------------------------------------- |
+| 1–100     | aggressive   | 80/100    | 10.56                | 21.11                                   |
+| 1–100     | cautious     | 93/100    | 11.78                | 24.25                                   |
+| 1–100     | healer_heavy | 100/100   | 11.82                | 24.20                                   |
+| 1001–1100 | aggressive   | 73/100    | 10.08                | 20.29                                   |
+| 1001–1100 | cautious     | 93/100    | 11.56                | 24.02                                   |
+| 1001–1100 | healer_heavy | 98/100    | 11.67                | 24.20                                   |
 
 The simulator's historical promotion metric samples the leader, then averages
 across runs that reached promotion. It is not the mean of all four characters.
@@ -118,12 +126,12 @@ Passed: `make test`; `cd server && go vet ./... && go build ./...`;
 Pinned CI lint passed with zero issues:
 
 ```sh
-cd server
+cd server &&
 GOTOOLCHAIN=go1.24.0 go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6 run --timeout=5m ./...
 ```
 
 The installed v2.7.2 reports G602 at unchanged `internal/locality/tilemap.go:766`.
-Inspection confirms the A* path checks every returned coordinate inside map
+Inspection confirms the A\* path checks every returned coordinate inside map
 bounds before appending it. The CI-pinned v2.1.6 passes. No out-of-bounds failure
 was reproduced and no lint suppression or unrelated map edit was made.
 
@@ -183,8 +191,7 @@ The initial fresh-save evidence is in
 autosave. The API's normal load behavior resumes in the overworld; the audit
 records the new starting position rather than moving it to an assumed location.
 
-Final completion metrics and artifacts will be recorded after the continuation.
-
+The continuation completed successfully; final metrics appear below.
 
 ## Integrated repair gate
 
@@ -203,8 +210,8 @@ asserts matching saved party/gold and no email input in either the load menu or
 World. Inspected desktop/phone screenshots:
 `client/tmp/readiness/load-1788535453606/{1280x720,390x844}-{save-menu,loaded-world}.png`.
 
-The ongoing natural audit reached quest 6/24 and preserved an ordinary manual
-checkpoint after battle 75. The first continuation measured 96-, 83-, and
+At the repair merge, the natural audit had reached quest 6/24 and preserved an
+ordinary manual checkpoint after battle 75. The first continuation measured 96-, 83-, and
 110-tile shortest routes with 8, 6, and 9 encounters respectively. Its 53 timed
 rounds at an intermediate checkpoint averaged 3.9 seconds, maximum 6.2 seconds.
 These timings include automated submission and rendered presentation, not a
@@ -213,3 +220,75 @@ the harness now separately records key presses and coordinate deltas so held
 keys cannot undercount actual tiles. Checkpoint journals are frozen per save ID,
 so later failed or interrupted attempts cannot overwrite a resume checkpoint's
 provenance.
+
+## Completed natural campaign
+
+The final continuation of `readiness-campaign.spec.js` passed in 24.0 minutes.
+The combined saved-session journal contains 143 completed battles and 270
+combat rounds: 142 rounds ended in `quest_complete`, one guardian round ended
+in `world`, and 127 rounds continued in `combat`. The first two outcomes count
+as 143 completed battles. The journal has only 106 explicit `battle` records
+(numbered 39–144), because that record type was added after the initial 37 wins.
+The attempt counter reads 144 because the initial ten-minute segment was
+interrupted during attempt 38; that unfinished attempt is not counted as a
+completed battle. Both potions and spells have combat-log evidence.
+There were no page errors or debug/OSM requests.
+
+| Outcome                   | Observed result                                                           |
+| ------------------------- | ------------------------------------------------------------------------- |
+| Quests                    | 24 of 24 completed; final phase `victory`                                 |
+| Party                     | Knight, Pyromancer, Shadow, Sage; all level 22 and at full HP             |
+| Promotion                 | Trial began at level 11, guardian defeated at 14, promotion claimed at 15 |
+| Final gold                | 4,585                                                                     |
+| Last continuation travel  | 1,133 actual tiles / 1,133 summed shortest-path tiles across 21 legs      |
+| Last continuation battles | 68 travel encounters plus the promotion guardian                          |
+| Timed combat rounds       | 196 samples: mean 3.63s, maximum 7.58s; initial 74 rounds were not timed  |
+
+All four characters were level 20 immediately before the final quest reward,
+which raised them to 22. The promotion level differs from the simulator samples:
+this session gained XP from the real giver/guardian/return journeys as well as
+its initial service detour. The simulator uses its fixed encounter-request policy
+and does not walk those routes. Neither result justifies retuning global content
+to fit the other's measurement.
+
+Twelve later legs needed only a one-tile approach at a repeated target. The
+last two long journeys had zero encounters because the game had normally
+unlocked T5 Airship with `encounter_rate_mult: 0`; the harness did not disable
+encounters. Many post-promotion objectives complete by returning to the same
+Old Ruins door, including the final quest. This is campaign-completion evidence,
+not proof that each quest type or a separate final-boss fight is implemented.
+
+The audited runtime tree was `37ef377`, byte-identical in Git to the merged
+`308dcd5`. The evidence update is based on main `c9a1286`, which also contains
+the later monster pack and Old Mill adventure. This audit does not certify those
+later additions. The 24-minute duration covers the final uninterrupted
+continuation, excluding the earlier ten-minute diagnostic, the segment paused
+for Title cleanup, and implementation/review time. Ordinary save resumes reset
+the overworld starting position; no position was restored with a debug mutation.
+Automated routing, rendering, and checkpoint overhead also make these timings
+unsuitable as a manual-play duration estimate.
+
+The exact successful continuation command, from the repository root, was:
+
+```sh
+READINESS_RESUME="$PWD/client/tmp/readiness/campaign-1788534572964/checkpoint-frozen.json" ./scripts/run_playwright_local.sh e2e/readiness-campaign.spec.js --output=tmp/readiness/continued-integrated-20260904
+```
+
+Reproduce a new session from the repository root:
+
+```sh
+./scripts/run_playwright_local.sh e2e/readiness-campaign.spec.js
+```
+
+To resume an interrupted audit, set `READINESS_RESUME` to its generated
+`checkpoint.json` when running the same command. Preserve that checkpoint's
+referenced journal and the worktree database. The proof's JSON summary records
+artifact provenance and image hashes without credentials or authentication tokens.
+
+Inspected natural promotion and victory proof:
+
+![Natural promotion at level 15](proofs/readiness/20260904-1788535559978-promotion-desktop.png)
+
+[Phone promotion screenshot](proofs/readiness/20260904-1788535559978-promotion-phone.png)
+
+![Natural campaign victory at level 22](proofs/readiness/20260904-1788535559978-campaign-victory.png)
