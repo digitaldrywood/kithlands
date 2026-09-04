@@ -1,0 +1,186 @@
+# Existing campaign readiness — 2026-09-04
+
+This pass concerns the existing fallback campaign. It does not certify the new
+Old Mill adventure or close a broader visual/content issue.
+
+## Simulator diagnosis
+
+The initial CLI command reproduced the audit exactly: seeds 1–10 yielded 27/30
+victories, with promotion means 10.86, 12.10, and 12.20 failing a [2, 5] band.
+This was a stale CLI expectation. Commit `ae5ea101` (#121) flattened the XP
+curve, scaled encounter XP, and changed `make simulate` to 10 ± 3. The CLI
+still used 3.5 ± 1.5. The correction centralizes the existing Makefile thresholds
+in the CLI; it changes no XP, monsters, encounter rates, or campaign content.
+The maximum wipe threshold also now matches Make's existing 0.45 rather than
+the CLI's looser 0.80. The existing minimum victory threshold is unchanged.
+
+Design §4.5 makes promotion story-triggered; §10.4 places it after Act 1. The
+current generator uses 5–8 Act-1 quests before the trial, with later acts and
+side quests bringing these sampled campaigns to 21–26 quests. The design
+text's earlier quest counts and XP table do not fully describe current content.
+This pass preserves the shipped story gate and records that documentation drift
+instead of retuning the game to an obsolete assertion.
+
+Two disjoint sets of 100 seeds per strategy provide 600 campaigns total. A
+100-run strategy sample has a worst-case binomial standard error of five
+percentage points, materially better than the initial ten-run smoke sample.
+These are regression samples, not estimates of a child's chance of finishing.
+
+| Seeds | Strategy | Victories | Mean promotion level | Mean final leader level among victories |
+| --- | --- | --- | --- | --- |
+| 1–100 | aggressive | 80/100 | 10.56 | 21.11 |
+| 1–100 | cautious | 93/100 | 11.78 | 24.25 |
+| 1–100 | healer_heavy | 100/100 | 11.82 | 24.20 |
+| 1001–1100 | aggressive | 73/100 | 10.08 | 20.29 |
+| 1001–1100 | cautious | 93/100 | 11.56 | 24.02 |
+| 1001–1100 | healer_heavy | 98/100 | 11.67 | 24.20 |
+
+The simulator's historical promotion metric samples the leader, then averages
+across runs that reached promotion. It is not the mean of all four characters.
+The help text and metric comments now say so. The policy injects eight
+encounter requests per quest, then submits normal quest-node actions without
+walking the map. It does not shop, make rest trips, or model human input time.
+Its promotion levels cannot be treated as measurements of browser travel pacing.
+
+Reproduction from `server/`:
+
+```sh
+go run ./cmd/simulate -runs 100 -seed 1 -shared=../shared -out ../client/tmp/readiness/seeds-1-100.json
+go run ./cmd/simulate -runs 100 -seed 1001 -shared=../shared -out ../client/tmp/readiness/seeds-1001-1100.json
+```
+
+Both reports include the seed range, strategy names, difficulty, turn cap, and
+encounter policy. Both passed all statistical and quest-order checks.
+
+## Browser regression repairs
+
+The older full-loop test waited for `CONTINUE` while the current button says
+`Continue`. It also assumed old shop labels, an obsolete canvas equipment
+picker, and a Phaser-only Escape event for the now-DOM Character dialog.
+Selectors now use the case-insensitive interactive text bridge for canvas UI
+and accessible roles plus the existing equipment-slot contract for DOM UI.
+Assertions still check combat logs, purchase effects, equipped items, earned XP,
+saved state, promotion, and the final quest. The fallback that warped beyond
+the last quest to manufacture victory is removed.
+
+Proof images are unobstructed screenshots under unique `client/tmp/readiness/`
+run directories. State and labels are separate JSON artifacts, so a diagnostic
+HTML overlay no longer hides the game being inspected.
+
+The door handler previously entered Town after any quest result. The phase
+guard now routes combat, promotion, victory, and defeat through World's existing
+phase handling before an interior opens. Four regression cases fail before the
+fix and pass afterward. The full-loop proof uses actual door interaction for
+those campaign milestones, with its position/quest setup explicitly marked as
+debug-assisted. DebugWarpQuest only changes the selected index; the regression
+therefore checks that the final door action completes the final quest and moves
+the index to the end. The separate natural test checks every quest.
+
+A second actual blocker appeared on repeat interior visits: Phaser reuses Town,
+but its `_exiting` flag remained true after the first exit. Resetting that flag
+in `init` allows the next visit to leave normally. A regression exercises two
+visits on the same scene instance, failing before the fix and passing after.
+This minimal fix was shared with the separate inn task as commit `7a479e4`.
+
+## Evidence boundaries and remaining risks
+
+- The full-loop regression uses debug encounters, forced victories, quest
+  warps, and position setup. It verifies transitions and UI/state contracts;
+  it is not a natural campaign playthrough.
+- The separate readiness campaign uses wizard creation, a seeded server RNG,
+  real keyboard travel and random encounter rolls, normal combat requests,
+  and the player's supported fast battle/message/walk settings. The automation
+  selects commands through the existing scene submission path. It rejects
+  debug and OSM requests. It is automated normal progression, not a manual
+  usability study or a deterministic measure of travel time.
+- The startup timeout recurred on the first 800×600 run of this fresh worktree.
+  Other sizes and subsequent startup checks passed. The cause remains
+  unconfirmed; no startup fix or longer timeout is claimed. Dedicated startup
+  proof records active scene, loader state, failed requests, and console errors.
+- Phone Title/shop/promotion screens retain desktop-style composition and can be
+  small within a tall viewport. This pass does not redesign menus or art.
+- Victory reward rows currently repeat the total party XP award next to each
+  surviving character. The server divides the award among eligible characters;
+  the display can overstate each character's gain. This existing presentation
+  mismatch is recorded rather than interpreted as a server progression bug.
+- Non-promotion quest actions currently complete on arrival at their target.
+  In particular, reaching the final quest target can complete the campaign
+  without a separate final-boss battle. Completion evidence must not be called
+  proof of a final-boss combat system. Expanding quest action execution is
+  outside this regression repair.
+
+## Validation
+
+Passed: `make test`; `cd server && go vet ./... && go build ./...`;
+`cd server && go test -race ./...`; `cd client && npm test` (473 tests);
+`cd client && npm run build`; and both 300-campaign samples above.
+
+Pinned CI lint passed with zero issues:
+
+```sh
+cd server
+GOTOOLCHAIN=go1.24.0 go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6 run --timeout=5m ./...
+```
+
+The installed v2.7.2 reports G602 at unchanged `internal/locality/tilemap.go:766`.
+Inspection confirms the A* path checks every returned coordinate inside map
+bounds before appending it. The CI-pinned v2.1.6 passes. No out-of-bounds failure
+was reproduced and no lint suppression or unrelated map edit was made.
+
+The repaired full-loop regression passed in 44.2 seconds. The three startup
+sizes passed in 1.8, 1.5, and 1.4 seconds (including screenshots); recorded loader
+state reached progress 1 with no pending/inflight files or page errors. Chromium
+reported ReadPixels performance warnings. The natural harness initially selected
+battle speed 6, which is slowest; it now selects the supported fastest setting 1.
+It also now handles the asynchronous World-to-Battle transition while waiting
+for a walking tween, rather than waiting forever on the inactive World scene.
+
+Inspected debug-assisted artifacts are under
+`client/tmp/readiness/debug-1788533526218/`: `world-start.png`, `encounter.png`,
+`shop-compare.png`, `shop-overlay.png`, `level-up.png`, `save-load.png`,
+`promotion.png`, and `victory.png`. Promotion guardian entry was also inspected
+at `client/tmp/readiness/debug-1788533439565/boss-battle.png`.
+
+The Cadott world/shop round trip passed at 800×600, 1280×720, and 390×844
+(16.2s, 16.0s, 20.6s). Inspected artifacts under
+`client/tmp/cadott-gold-slice/proof/` include all three
+`issue-267-<size>-shop-equipment-comparison-1788533659451.png` images,
+`issue-267-1280x720-exterior-arrival-1788533659451.png`, and
+`issue-267-390x844-overworld-round-trip-complete-1788533659451.png`.
+
+## Natural session measurements
+
+The initial ten-minute diagnostic completed 37 battles (74 combat rounds),
+started a 38th, completed one quest, bought an item, rested, and restored a save
+with matching party/inventory/equipment/gold/quest state. It used both potions
+and spells with corresponding combat log evidence. All four characters reached
+level 6. No debug or OSM request or page error occurred.
+
+This was not ten minutes spent pursuing the first quest directly. The test
+visited services first. Shortest legal tile routes on the generated map are
+approximately 90 tiles to the shop, 138 from shop to inn, and 103 from inn to
+the first objective, versus 75 directly from the initial spawn to that objective.
+That testing detour is a major confounder. The complete prescribed itinerary is
+about 1,931 walkable tiles over 28 stops, including the three-stage promotion
+trial. The harness uses breadth-first shortest legal routes, recalculated after
+movement, and never disables encounters. It does not currently prefer safer
+roads over shorter grass routes.
+
+The ten-minute cap expired during active combat, not at an action watchdog.
+The separate long campaign diagnostic now budgets up to an hour based on the
+measured route and first 38 encounters, with a 30-second combat-round watchdog
+and 15-second action waits. This does not increase the legacy regression's
+120-second cap or change game tuning. It writes ordinary server save checkpoints
+every five battles and at quest visits, with local journal and route metrics.
+`READINESS_RESUME` accepts the path to a generated `checkpoint.json`, so an audit
+can continue the same save after interruption. No authentication tokens are
+written to these artifacts.
+
+The initial fresh-save evidence is in
+`client/tmp/readiness/campaign-1788533712475/`: `first-battle.png`,
+`first-victory.png`, `shopping.png`, `rested-inn.png`, `save-reloaded.png`, and
+`journal.json`. The continuation uses that user's latest ordinary pre-combat
+autosave. The API's normal load behavior resumes in the overworld; the audit
+records the new starting position rather than moving it to an assumed location.
+
+Final completion metrics and artifacts will be recorded after the continuation.
