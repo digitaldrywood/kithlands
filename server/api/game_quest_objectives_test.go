@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/digitaldrywood/kithlands/internal/generator"
@@ -166,5 +167,82 @@ func TestQuestObjectivesIsolationAndInvalidVisits(t *testing.T) {
 	after, _ := json.Marshal(q)
 	if string(before) != string(after) {
 		t.Fatal("state response aliases server quest")
+	}
+}
+
+func TestQuestObjectivesCustomSpawnSaveAndLegacyResume(t *testing.T) {
+	base := newTownTestGame(t)
+	gm := NewGameManager(base.gd, "../../shared")
+	g, err := gm.CreateGame(NewGameRequest{TownName: "Reviewtown", BigBuilding: "Hall", People: []WizardPersonReq{{Name: "A", Relation: "friendly"}, {Name: "B", Relation: "friendly"}}, SpawnNodeID: "person_1", Party: []PartyMemberReq{{Name: "Hero", ClassID: "warrior"}}, Difficulty: "normal", RNGSeed: 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := g.quests[0]
+	if q.Objectives == nil {
+		t.Fatal("fixture requires staged first quest")
+	}
+	node := q.Actions[0].Location
+	if _, err := g.ProcessAction(GameActionRequest{Type: "quest_advance", NodeID: node}); err != nil {
+		t.Fatal(err)
+	}
+	ss, err := g.ToSaveState("custom", "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ss.SpawnNodeID != "person_1" {
+		t.Fatalf("saved wrong custom spawn %q", ss.SpawnNodeID)
+	}
+	for _, spawn := range []string{"person_1", "central", ""} {
+		t.Run("saved_spawn_"+spawn, func(t *testing.T) {
+			saved := *ss
+			saved.SpawnNodeID = spawn
+			restored, err := FromSaveState(&saved, g.gd, g.loc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if restored.walk.Spawn.ID != "person_1" {
+				t.Fatalf("restored unreachable component %q", restored.walk.Spawn.ID)
+			}
+			if _, err := restored.ProcessAction(GameActionRequest{Type: "quest_advance", NodeID: node}); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := restored.ProcessAction(objectiveAction(restored)); err != nil {
+				t.Fatalf("objective became unreachable after load: %v", err)
+			}
+			if restored.quests[0].Objectives.Item == "" {
+				t.Fatal("collection lost custody")
+			}
+		})
+	}
+}
+
+func TestQuestObjectivesPreserveExplorationNotifications(t *testing.T) {
+	g := objectiveTestGame(t, "Q01")
+	var giver string
+	var side generator.BuildingSideQuest
+	for node, q := range g.buildingSideQuests {
+		if q.Status == generator.BuildingQuestAvailable && q.TargetNodeID != g.quests[0].Actions[0].Location {
+			giver, side = node, q
+			break
+		}
+	}
+	if giver == "" {
+		t.Fatal("fixture requires unrelated side quest")
+	}
+	if result := g.InteractWithNPC(giver); result == nil {
+		t.Fatal("could not accept side quest")
+	}
+	state, err := g.ProcessAction(GameActionRequest{Type: "quest_advance", NodeID: side.TargetNodeID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g.buildingSideQuests[giver].Status != generator.BuildingQuestReadyToTurnIn {
+		t.Fatal("side quest did not advance")
+	}
+	if !strings.Contains(state.Message, side.Name) || !strings.Contains(state.Message, g.quests[0].Actions[0].Text) {
+		t.Fatalf("missing notification or objective: %q", state.Message)
+	}
+	if strings.Count(state.Message, g.quests[0].Actions[0].Text) != 1 {
+		t.Fatal("objective prompt duplicated")
 	}
 }

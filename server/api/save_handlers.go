@@ -87,7 +87,7 @@ func (g *Game) ToSaveState(name, userID string) (*save.SaveState, error) {
 		Name:        name,
 		Flavor:      "conquest",
 		Difficulty:  g.diff.ID,
-		SpawnNodeID: g.loc.Nodes[0].ID,
+		SpawnNodeID: g.walk.Spawn.ID,
 		Party:       partyJSON,
 		Inventory:   invJSON,
 		QuestState:  questJSON,
@@ -143,9 +143,10 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		return nil, fmt.Errorf("unmarshaling world state: %w", err)
 	}
 
-	generator.PrepareObjectives(quests, loc, loc.Nodes[0].ID, gd.QuestObjectives)
-	walk := locality.Walk(loc, loc.Nodes[0].ID)
-	tileMap := locality.GenerateTileMap(loc, loc.Nodes[0].ID, walk)
+	spawnID := savedQuestSpawn(ss.SpawnNodeID, loc, quests, worldState.CurrentQ)
+	generator.PrepareObjectives(quests, loc, spawnID, gd.QuestObjectives)
+	walk := locality.Walk(loc, spawnID)
+	tileMap := locality.GenerateTileMap(loc, spawnID, walk)
 
 	rng := rand.New(rand.NewPCG(uint64(ss.RNGSeed), 0))
 

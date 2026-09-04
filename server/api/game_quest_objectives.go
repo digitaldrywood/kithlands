@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/digitaldrywood/kithlands/internal/generator"
 	"github.com/digitaldrywood/kithlands/internal/locality"
@@ -34,7 +35,7 @@ func (g *Game) advanceObjectiveArrival(q *generator.Quest, nodeID string) bool {
 		q.Objectives.Step++
 	}
 	if q.Objectives.Step < len(q.Actions) {
-		g.message = q.Actions[q.Objectives.Step].Text
+		g.message = strings.TrimSpace(g.message + "\n" + q.Actions[q.Objectives.Step].Text)
 	}
 	return true
 }
@@ -117,4 +118,34 @@ func (g *Game) completeOrdinaryQuest(q *generator.Quest) {
 		g.phase = "quest_complete"
 		g.maybeTriggerPromotion(&completedCopy)
 	}
+}
+
+// savedQuestSpawn recovers the original connected component for old saves
+// which incorrectly persisted the first locality node as every custom spawn.
+// New saves retain the real spawn. Legacy recovery chooses only an existing
+// saved normal-quest anchor; it never adds edges or disables reachability.
+func savedQuestSpawn(saved string, loc *locality.Locality, quests []generator.Quest, current int) string {
+	if loc.NodeByID(saved) == nil {
+		saved = loc.Nodes[0].ID
+	}
+	if saved != loc.Nodes[0].ID {
+		return saved
+	}
+	walk := locality.Walk(loc, saved)
+	for i := max(0, current); i < len(quests); i++ {
+		q := &quests[i]
+		if !generator.UsesObjectives(q) || q.Completed {
+			continue
+		}
+		anchor := q.TargetNodeID
+		if q.Objectives != nil && q.Objectives.Step >= 0 && q.Objectives.Step < len(q.Actions) {
+			anchor = q.Actions[q.Objectives.Step].Location
+		}
+		if loc.NodeByID(anchor) != nil {
+			if _, reachable := walk.DistanceMap[anchor]; !reachable {
+				return anchor
+			}
+		}
+	}
+	return saved
 }
