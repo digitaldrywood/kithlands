@@ -102,6 +102,11 @@ describe("isWorldInputLocked respects legacy flags", () => {
     expect(isWorldInputLocked(scene)).toBe(true);
   });
 
+  it("stays locked while an encounter request is pending", () => {
+    const scene = { animating: false, encounterPending: true };
+    expect(isWorldInputLocked(scene)).toBe(true);
+  });
+
   it("returns false for a scene with all legacy flags cleared", () => {
     const scene = { gameOver: false, animating: false };
     expect(isWorldInputLocked(scene)).toBe(false);

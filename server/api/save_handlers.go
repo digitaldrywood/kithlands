@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand/v2"
 	"net/http"
@@ -36,11 +37,23 @@ type SaveGameData struct {
 
 // ToSaveState serializes the live game into a SaveState for database storage.
 func (g *Game) ToSaveState(name, userID string) (*save.SaveState, error) {
+	return g.ToSaveStateWithWorldPosition(name, userID, nil)
+}
+
+// ToSaveStateWithWorldPosition validates an optional renderer position before
+// serializing the server-owned checkpoint. Existing non-world callers omit it
+// and retain the last approved overworld tile.
+func (g *Game) ToSaveStateWithWorldPosition(name, userID string, position *WorldPosition) (*save.SaveState, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
 	if (g.inDungeon() || g.finalEncounterActive()) && g.phase == "combat" {
 		return nil, fmt.Errorf("finish or flee the encounter before saving")
+	}
+	if position != nil {
+		if err := g.updateWorldCheckpointLocked(*position, g.location.WorldNodeID); err != nil {
+			return nil, fmt.Errorf("updating world checkpoint: %w", err)
+		}
 	}
 
 	partyJSON, err := json.Marshal(g.party)
@@ -76,6 +89,7 @@ func (g *Game) ToSaveState(name, userID string) (*save.SaveState, error) {
 		"world_encounter_count":      g.worldEncounterCount,
 		"loot_roll_sequence":         g.lootRollSeq,
 		"shop_stocks":                g.shopStocks,
+		"world_checkpoint":           g.worldCheckpoint,
 	}
 	worldJSON, err := json.Marshal(worldState)
 	if err != nil {
@@ -149,6 +163,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		WorldEncounterCount      int                                    `json:"world_encounter_count"`
 		LootRollSequence         uint64                                 `json:"loot_roll_sequence"`
 		ShopStocks               map[string]*ShopStock                  `json:"shop_stocks"`
+		WorldCheckpoint          json.RawMessage                        `json:"world_checkpoint"`
 	}
 	if err := json.Unmarshal(ss.WorldState, &worldState); err != nil {
 		return nil, fmt.Errorf("unmarshaling world state: %w", err)
@@ -278,6 +293,34 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		game.checkTransportUnlocks()
 	}
 	game.reconcileNaturalDiscoveryState(legacyNaturalDiscoveryClaims)
+	var savedCheckpoint *WorldCheckpoint
+	if len(worldState.WorldCheckpoint) > 0 && string(worldState.WorldCheckpoint) != "null" {
+		var checkpoint WorldCheckpoint
+		if json.Unmarshal(worldState.WorldCheckpoint, &checkpoint) == nil {
+			savedCheckpoint = &checkpoint
+		}
+	}
+	dungeonOriginNodeID := ""
+	if activeDungeon != nil && activeDungeon.Active {
+		if def := game.dungeonDefinitionByID(activeDungeon.ID); def != nil {
+			if entry := game.dungeonEntryNode(def); entry != nil {
+				dungeonOriginNodeID = entry.ID
+			}
+		}
+	}
+	game.worldCheckpoint = resolveWorldCheckpoint(savedCheckpoint, tileMap, loc, game.worldTraversal(), spawnID, dungeonOriginNodeID)
+	if game.worldCheckpoint != nil {
+		game.location.WorldNodeID = game.worldCheckpoint.WorldNodeID
+		if activeDungeon != nil && activeDungeon.Active {
+			if activeDungeon.Origin.WorldNodeID != game.worldCheckpoint.WorldNodeID ||
+				(activeDungeon.Origin.Kind != LocationWorld && activeDungeon.Origin.Kind != LocationSettlement) {
+				activeDungeon.Origin = LocationState{
+					Kind:        LocationWorld,
+					WorldNodeID: game.worldCheckpoint.WorldNodeID,
+				}
+			}
+		}
+	}
 
 	game.restoreDungeon()
 	game.restoreFinalEncounter()
@@ -334,15 +377,20 @@ func (s *Server) handleSaveGame(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Name string `json:"name"`
+		Name          string         `json:"name"`
+		WorldPosition *WorldPosition `json:"world_position,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
 		req.Name = fmt.Sprintf("Save %s", time.Now().Format("Jan 2 15:04"))
 	}
 
-	ss, err := game.ToSaveState(req.Name, user.ID)
+	ss, err := game.ToSaveStateWithWorldPosition(req.Name, user.ID, req.WorldPosition)
 	if err != nil {
-		httpError(w, err.Error(), http.StatusInternalServerError)
+		status := http.StatusInternalServerError
+		if errors.Is(err, ErrInvalidWorldCheckpoint) {
+			status = http.StatusBadRequest
+		}
+		httpError(w, err.Error(), status)
 		return
 	}
 
@@ -389,7 +437,8 @@ func (s *Server) handleAutosave(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		TriggerEvent string `json:"trigger_event"`
+		TriggerEvent  string         `json:"trigger_event"`
+		WorldPosition *WorldPosition `json:"world_position,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		req.TriggerEvent = "timed"
@@ -404,9 +453,13 @@ func (s *Server) handleAutosave(w http.ResponseWriter, r *http.Request) {
 	}
 	saveName := fmt.Sprintf("Autosave - %s - %s", label, time.Now().Format("3:04pm"))
 
-	ss, err := game.ToSaveState(saveName, user.ID)
+	ss, err := game.ToSaveStateWithWorldPosition(saveName, user.ID, req.WorldPosition)
 	if err != nil {
-		httpError(w, err.Error(), http.StatusInternalServerError)
+		status := http.StatusInternalServerError
+		if errors.Is(err, ErrInvalidWorldCheckpoint) {
+			status = http.StatusBadRequest
+		}
+		httpError(w, err.Error(), status)
 		return
 	}
 	ss.SaveType = "autosave"

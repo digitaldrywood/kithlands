@@ -3,7 +3,11 @@ import { saveGame, equipItem } from "../api.js";
 import { playSFX } from "../systems/audio.js";
 import { getAutosaveEnabled, setAutosaveEnabled } from "../systems/prefs.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
-import { canShowWorldMap, showWorldMap } from "./world_interact.js";
+import {
+  canShowWorldMap,
+  checkpointWorldPosition,
+  showWorldMap,
+} from "./world_interact.js";
 import { openCharacterDetail } from "./character_detail.js";
 import { showEquipmentScreen } from "./equipment_screen.js";
 import { showOptions } from "./options.js";
@@ -57,11 +61,18 @@ export function buildPartyMemberScanContext(member = {}) {
   };
 }
 
+export async function saveFromPartyMenu(scene, saveName) {
+  const position =
+    scene?.scene?.key === "World" ? await checkpointWorldPosition(scene) : null;
+  return saveGame(scene.gameState.id, saveName, position);
+}
+
 export function toggleMenu(scene) {
   if (scene.menuOpen) {
     closeMenu(scene);
     return;
   }
+  if (scene.encounterPending) return;
 
   scene.menuOpen = true;
   pauseWorldFor(scene, "party_menu");
@@ -339,14 +350,20 @@ export function toggleMenu(scene) {
         saveHandle.setLabel("Saving...");
         const gss = scene.gameState;
         const saveName = `${gss.location} - ${gss.party.map((pp) => pp.name).join(", ")}`;
-        const result = await saveGame(gss.id, saveName);
-        playSFX("sfx_save");
-        closeMenu(scene);
-        if (result.error) {
-          scene.showMessage(`Save failed: ${result.error}`);
-        } else {
-          scene.showMessage("Game saved!");
+        try {
+          const result = await saveFromPartyMenu(scene, saveName);
+          if (result.error) {
+            scene.showMessage(`Save failed: ${result.error}`);
+          } else {
+            playSFX("sfx_save");
+            scene.showMessage("Game saved!");
+          }
+        } catch (error) {
+          scene.showMessage(
+            `Save failed: ${error instanceof Error ? error.message : String(error)}`,
+          );
         }
+        closeMenu(scene);
         scene.time.delayedCall(1500, () => scene.hideMessage());
       },
     },

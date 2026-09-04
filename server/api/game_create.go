@@ -197,6 +197,7 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 		shopStocks:               make(map[string]*ShopStock),
 		trans:                    transport.NewState(),
 	}
+	game.worldCheckpoint = resolveWorldCheckpoint(nil, tileMap, loc, game.worldTraversal(), spawnID)
 	if err := game.grantStarterLoot(); err != nil {
 		return nil, fmt.Errorf("granting starter loot: %w", err)
 	}

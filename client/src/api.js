@@ -127,10 +127,12 @@ export async function transitionLocation(
   gameId,
   transitionId,
   worldNodeId = "",
+  worldPosition = null,
 ) {
   return apiCall("POST", `/game/${gameId}/transition`, {
     transition_id: transitionId,
     world_node_id: worldNodeId,
+    ...(worldPosition ? { world_position: worldPosition } : {}),
   });
 }
 
@@ -317,8 +319,11 @@ export async function osmPreview(lat, lng, radiusMiles) {
   });
 }
 
-export async function saveGame(gameId, name) {
-  return apiCall("POST", `/game/${gameId}/save`, { name });
+export async function saveGame(gameId, name, worldPosition = null) {
+  return apiCall("POST", `/game/${gameId}/save`, {
+    name,
+    ...(worldPosition ? { world_position: worldPosition } : {}),
+  });
 }
 
 export async function listSaves() {
@@ -341,9 +346,10 @@ export async function interactWithNpc(gameId, nodeId) {
   return apiCall("POST", `/game/${gameId}/npc/${nodeId}/talk`, {});
 }
 
-export async function autosaveGame(gameId, triggerEvent) {
+export async function autosaveGame(gameId, triggerEvent, worldPosition = null) {
   return apiCall("POST", `/game/${gameId}/autosave`, {
     trigger_event: triggerEvent,
+    ...(worldPosition ? { world_position: worldPosition } : {}),
   });
 }
 

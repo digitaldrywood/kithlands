@@ -158,6 +158,7 @@ type GameState struct {
 	CombatActions         []CombatActionEntry      `json:"combat_actions,omitempty"`
 	LastRoundActions      []MemberActionReq        `json:"last_round_actions,omitempty"`
 	TileMap               *locality.TileMap        `json:"tilemap,omitempty"`
+	WorldCheckpoint       *WorldCheckpoint         `json:"world_checkpoint,omitempty"`
 	CurrentLocation       LocationState            `json:"current_location"`
 	SettlementMap         *settlements.Map         `json:"settlement_map,omitempty"`
 	SettlementEntryNodeID string                   `json:"settlement_entry_node_id,omitempty"`
@@ -600,6 +601,7 @@ type Game struct {
 	loc                 *locality.Locality
 	walk                *locality.WalkResult
 	tileMap             *locality.TileMap
+	worldCheckpoint     *WorldCheckpoint
 	settlementMap       *settlements.Map
 	settlementInteriors map[string]locality.MapSpawn
 	location            LocationState
@@ -686,6 +688,7 @@ func (g *Game) State() GameState {
 		state.Location = g.loc.Name
 		state.TileMap = g.tileMap
 	}
+	state.WorldCheckpoint = cloneWorldCheckpoint(g.worldCheckpoint)
 	g.fillLocationState(&state)
 
 	state.Transport = g.buildTransportInfo()
@@ -1097,6 +1100,7 @@ func (g *Game) stateUnlocked() GameState {
 	if g.loc != nil {
 		state.Location = g.loc.Name
 	}
+	state.WorldCheckpoint = cloneWorldCheckpoint(g.worldCheckpoint)
 	g.fillLocationState(&state)
 
 	state.Transport = g.buildTransportInfo()

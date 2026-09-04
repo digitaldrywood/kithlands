@@ -9,7 +9,10 @@ import {
 import { walkStepMs } from "../systems/prefs.js";
 import { drawButton, drawPanel } from "../ui/panel.js";
 import { getLeaderIndex } from "./world.js";
-import { rememberWorldTileMap } from "./worldMapCache.js";
+import {
+  rememberWorldCheckpoint,
+  rememberWorldTileMap,
+} from "./worldMapCache.js";
 import { toggleMenu } from "./world_menu.js";
 import {
   dungeonLayout,
@@ -40,6 +43,7 @@ export class DungeonScene extends Phaser.Scene {
     // A full save load may enter Dungeon before World. Retain its generated
     // map for the later retreat response, whose compact action state omits it.
     rememberWorldTileMap(this.gameState);
+    rememberWorldCheckpoint(this.gameState);
     this.entryMessage = data.entryMessage ?? data.gameState?.message ?? "";
     this.playerDir = data.playerDir || "up";
     this.animating = false;
