@@ -111,14 +111,16 @@ type MemberActionReq struct {
 
 // GameState is the full state sent to the client.
 type GameState struct {
-	Discovered   map[string]bool    `json:"discovered"` // monster IDs encountered in this save
-	Dungeon      *DungeonState      `json:"dungeon,omitempty"`
-	DungeonEntry *DungeonEntryState `json:"dungeon_entry,omitempty"`
-	ID           string             `json:"id"`
-	Phase        string             `json:"phase"`                   // world, combat, quest_complete, victory, defeat
-	XPBefore     []int              `json:"xp_before,omitempty"`     // XP values before combat for victory animation
-	LevelBefore  []int              `json:"level_before,omitempty"`  // levels before combat for victory animation
-	XPThresholds [][]int            `json:"xp_thresholds,omitempty"` // per-character XP thresholds at each level crossed
+	EquipmentBuilds     [4][]inventory.EquipmentBuild `json:"equipment_builds"`
+	EquipmentBuildLimit int                           `json:"equipment_build_limit"`
+	Discovered          map[string]bool               `json:"discovered"` // monster IDs encountered in this save
+	Dungeon             *DungeonState                 `json:"dungeon,omitempty"`
+	DungeonEntry        *DungeonEntryState            `json:"dungeon_entry,omitempty"`
+	ID                  string                        `json:"id"`
+	Phase               string                        `json:"phase"`                   // world, combat, quest_complete, victory, defeat
+	XPBefore            []int                         `json:"xp_before,omitempty"`     // XP values before combat for victory animation
+	LevelBefore         []int                         `json:"level_before,omitempty"`  // levels before combat for victory animation
+	XPThresholds        [][]int                       `json:"xp_thresholds,omitempty"` // per-character XP thresholds at each level crossed
 	// DiedThisFight[i] is true for any party member whose IsAlive() was false
 	// at the moment victory-XP was distributed. Survives restParty() so the
 	// client can render the victory screen correctly. Reset at encounter start.
@@ -870,6 +872,8 @@ func (g *Game) snapshotVictoryXPProgress() {
 }
 
 func (g *Game) fillInventoryState(state *GameState) {
+	state.EquipmentBuilds = g.inv.EquipmentBuildsSnapshot()
+	state.EquipmentBuildLimit = EquipmentBuildLimit
 	// Items: every consumable (potions, ethers, cures, tent, revive, …) AND
 	// any weapons/armor stored in the inventory map. Potions and ethers
 	// are ALSO exposed on flat fields for HUD/shop code predating #144, but

@@ -6,6 +6,7 @@ import {
   unequipItem,
 } from "../api.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
+import { renderEquipmentBuilds } from "./equipment_builds.js";
 import { showGemWorkshop } from "./gem_workshop.js";
 
 const LOCK_NAME = "equipment_screen";
@@ -101,6 +102,9 @@ export function showEquipmentScreen(scene, partyIndex = 0, options = {}) {
     selectedCandidateKey: "",
     goal: options.goal || "balanced",
     recommendation: null,
+    buildPanel: false,
+    buildPreview: null,
+    buildName: "",
     busy: false,
     status: "",
     statusTone: "",
@@ -354,7 +358,22 @@ function renderEquipmentScreen(state) {
     renderStatus(state),
   );
   if (state.recommendation) root.append(renderRecommendation(state));
-  if (focusKey !== null) {
+  if (state.buildPanel) {
+    for (const child of root.children) child.inert = true;
+    root.append(
+      renderEquipmentBuilds(
+        state,
+        () => renderEquipmentScreen(state),
+        () => closeBuildPanel(state),
+      ),
+    );
+    // Rerenders replace focused controls. Keep keyboard events inside the modal
+    // even while all mutation buttons are disabled awaiting the server.
+    root
+      .querySelector(".equipment-build-dialog")
+      ?.focus({ preventScroll: true });
+  }
+  if (focusKey !== null && !state.buildPanel) {
     const control = [
       ...root.querySelectorAll("button, select, [tabindex]"),
     ].find((entry) => equipmentFocusKey(entry) === focusKey);
@@ -466,7 +485,26 @@ function renderMain(
   loadout.setAttribute("aria-labelledby", "loadout-title");
   const loadoutTitle = element("h2", "section-title", "Loadout");
   loadoutTitle.id = "loadout-title";
-  loadout.append(loadoutTitle);
+  const loadoutHeading = element("div", "loadout-heading");
+  const builds = button(
+    "Saved Builds",
+    "equipment-action secondary equipment-build-open",
+    () => {
+      state.buildPanel = true;
+      state.buildPreview = null;
+      state.buildDeleteID = "";
+      state.buildOverwriteID = "";
+      state.recommendation = null;
+      state.status = "";
+      renderEquipmentScreen(state);
+      requestAnimationFrame(() =>
+        state.root.querySelector('[data-build-focus="close"]')?.focus(),
+      );
+    },
+  );
+  builds.disabled = state.busy;
+  loadoutHeading.append(loadoutTitle, builds);
+  loadout.append(loadoutHeading);
 
   const stage = element("div", "paperdoll-stage");
   const portrait = document.createElement("img");
@@ -1435,11 +1473,22 @@ function handleDetailTabKeydown(state, currentID, event) {
   );
 }
 
+function closeBuildPanel(state) {
+  if (state.busy) return;
+  state.buildPanel = false;
+  renderEquipmentScreen(state);
+  requestAnimationFrame(() =>
+    state.root.querySelector(".equipment-build-open")?.focus(),
+  );
+}
+
 function handleOverlayKeydown(state, event) {
   if (event.key === "Escape") {
     event.preventDefault();
     event.stopPropagation();
-    if (state.recommendation) {
+    if (state.buildPanel) {
+      closeBuildPanel(state);
+    } else if (state.recommendation) {
       state.recommendation = null;
       renderEquipmentScreen(state);
       focusSelectedSlot(state);
@@ -1449,9 +1498,10 @@ function handleOverlayKeydown(state, event) {
     return;
   }
   if (
+    !state.buildPanel &&
     ["ArrowLeft", "ArrowRight"].includes(event.key) &&
     !event.target.closest?.('[role="tablist"]') &&
-    event.target.tagName !== "SELECT"
+    !["SELECT", "INPUT", "TEXTAREA"].includes(event.target.tagName)
   ) {
     event.preventDefault();
     event.stopPropagation();
@@ -1459,12 +1509,23 @@ function handleOverlayKeydown(state, event) {
     return;
   }
   if (event.key !== "Tab") return;
+  const focusScope =
+    state.root.querySelector(".equipment-build-dialog") || state.root;
   const focusable = [
-    ...state.root.querySelectorAll(
-      "button:not(:disabled), select:not(:disabled), [tabindex='0']",
+    ...focusScope.querySelectorAll(
+      "button:not(:disabled), select:not(:disabled), input:not(:disabled), [tabindex='0']",
     ),
   ];
-  if (focusable.length === 0) return;
+  if (focusable.length === 0) {
+    event.preventDefault();
+    focusScope.focus();
+    return;
+  }
+  if (state.buildPanel && document.activeElement === focusScope) {
+    event.preventDefault();
+    (event.shiftKey ? focusable[focusable.length - 1] : focusable[0]).focus();
+    return;
+  }
   const first = focusable[0];
   const last = focusable[focusable.length - 1];
   if (event.shiftKey && document.activeElement === first) {

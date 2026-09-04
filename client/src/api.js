@@ -301,3 +301,40 @@ export async function autosaveGame(gameId, triggerEvent) {
     trigger_event: triggerEvent,
   });
 }
+
+export async function saveEquipmentBuild(gameId, slot, name, buildId = "") {
+  return apiCall("POST", `/game/${gameId}/equipment/builds/save`, {
+    slot,
+    name,
+    build_id: buildId,
+  });
+}
+
+export async function previewEquipmentBuild(gameId, slot, buildId) {
+  return apiCall("POST", `/game/${gameId}/equipment/builds/preview`, {
+    slot,
+    build_id: buildId,
+  });
+}
+
+export async function applyEquipmentBuild(
+  gameId,
+  slot,
+  buildId,
+  token,
+  confirmTransfer,
+) {
+  return apiCall("POST", `/game/${gameId}/equipment/builds/apply`, {
+    slot,
+    build_id: buildId,
+    token,
+    confirm_transfer: confirmTransfer,
+  });
+}
+
+export async function deleteEquipmentBuild(gameId, slot, buildId) {
+  return apiCall("POST", `/game/${gameId}/equipment/builds/delete`, {
+    slot,
+    build_id: buildId,
+  });
+}

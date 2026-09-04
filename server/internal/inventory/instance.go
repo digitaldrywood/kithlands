@@ -76,6 +76,7 @@ func (inv *Inventory) Clone() *Inventory {
 		return nil
 	}
 	copy := *inv
+	copy.EquipmentBuilds = inv.EquipmentBuildsSnapshot()
 	copy.Consumables = cloneCounts(inv.Consumables)
 	copy.Gems = cloneCounts(inv.Gems)
 	copy.KeyItems = append([]string(nil), inv.KeyItems...)
