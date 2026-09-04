@@ -1138,7 +1138,6 @@ function visibleBattleFxSnapshot(scene) {
   const portrait = taggedObject("active-portrait");
 
   return {
-    animating: !!scene.animating,
     actorCursors: taggedCount("actor-cursor"),
     animating: !!scene?.animating,
     reticles: taggedCount("reticle"),
@@ -1804,7 +1803,8 @@ export function installDevTestBridge(game) {
       const source = activeScene(game);
       const result = await loadSaveApi(saveId);
       if (!result?.error) {
-        const destination = result.current_location?.kind === "dungeon" ? "Dungeon" : "World";
+        const destination =
+          result.current_location?.kind === "dungeon" ? "Dungeon" : "World";
         source.scene.start(destination, { gameState: result });
         await this.waitForSceneReady(destination);
       }
