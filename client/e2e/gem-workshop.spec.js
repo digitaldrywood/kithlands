@@ -117,6 +117,12 @@ for (const [width, height] of [
     await selectRecipe(page, "refine_ember_gem");
     await expect(recipePreview).toContainText("3 owned / 3 needed");
     await expect(recipePreview.locator(".gem-confirm")).toBeEnabled();
+    const emberArmorEffect = recipePreview.getByText("armor: +2 Power", {
+      exact: true,
+    });
+    await expect(emberArmorEffect).toBeVisible();
+    await emberArmorEffect.scrollIntoViewIfNeeded();
+    await capture(page, `${width}x${height}-ember-power-detail`);
     // A native keyboard activation confirms the preview exactly once.
     await recipePreview.locator(".gem-confirm").focus();
     await page.keyboard.press("Enter");
