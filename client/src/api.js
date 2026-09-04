@@ -146,8 +146,11 @@ export async function getShop(gameId, nodeId) {
   return apiCall("GET", `/game/${gameId}/shop/${nodeId}`);
 }
 
-export async function buyItem(gameId, itemId, type) {
-  return apiCall("POST", `/game/${gameId}/buy`, { item_id: itemId, type });
+export async function buyItem(gameId, nodeId, stockId) {
+  return apiCall("POST", `/game/${gameId}/buy`, {
+    node_id: nodeId,
+    stock_id: stockId,
+  });
 }
 
 export async function equipItem(
@@ -234,10 +237,11 @@ export async function updatePartyFormation(gameId, updates, reorder = null) {
   return apiCall("POST", `/game/${gameId}/formation`, body);
 }
 
-export async function learnSpell(gameId, charName, spellId) {
+export async function learnSpell(gameId, nodeId, stockId, charName) {
   return apiCall("POST", `/game/${gameId}/learn`, {
+    node_id: nodeId,
+    stock_id: stockId,
     char_name: charName,
-    spell_id: spellId,
   });
 }
 

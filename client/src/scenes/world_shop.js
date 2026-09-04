@@ -131,6 +131,10 @@ export function shouldHandleShopEscape(scene) {
   return topWorldLock(scene) === "shop";
 }
 
+function shopSelectionID(item) {
+  return item?.stock_id || `${item?.type || "item"}:${item?.id || ""}`;
+}
+
 export async function openShop(scene, spawn) {
   pauseWorldFor(scene, "shop");
   scene.animating = true;
@@ -138,6 +142,7 @@ export async function openShop(scene, spawn) {
   let items = [];
   try {
     const shopData = await getShop(scene.gameState.id, spawn.node_id);
+    if (shopData?.error) throw new Error(shopData.error);
     items = shopData.shop_items || [];
   } catch (e) {
     console.error("[World] shop fetch failed:", e);
@@ -195,7 +200,9 @@ export async function openShop(scene, spawn) {
   const itemsForTab = (tabKey) => groupShopItems(items)[tabKey] || [];
 
   const currentSelectedItem = () =>
-    itemsForTab(currentTab).find((item) => item.id === selectedItemId) || null;
+    itemsForTab(currentTab).find(
+      (item) => shopSelectionID(item) === selectedItemId,
+    ) || null;
 
   const showToast = (message, ms = 1200) => {
     scene.showMessage(message);
@@ -214,6 +221,7 @@ export async function openShop(scene, spawn) {
   const refreshCatalog = async () => {
     try {
       const refreshed = await getShop(scene.gameState.id, spawn.node_id);
+      if (refreshed?.error) throw new Error(refreshed.error);
       items = refreshed.shop_items || [];
     } catch (e) {
       console.error("[Shop] refresh failed:", e);
@@ -222,12 +230,14 @@ export async function openShop(scene, spawn) {
 
   const syncSelection = () => {
     const tabItems = itemsForTab(currentTab);
-    const current = tabItems.find((item) => item.id === selectedItemId);
+    const current = tabItems.find(
+      (item) => shopSelectionID(item) === selectedItemId,
+    );
     if (current && isEquipmentShopItem(current)) {
       return current;
     }
     const fallback = tabItems.find((item) => isEquipmentShopItem(item)) || null;
-    selectedItemId = fallback?.id || null;
+    selectedItemId = fallback ? shopSelectionID(fallback) : null;
     const partyCount = Math.min(scene.gameState?.party?.length || 0, 4);
     if (focusedMemberIndex >= partyCount) focusedMemberIndex = 0;
     return fallback;
@@ -477,7 +487,11 @@ export async function openShop(scene, spawn) {
     detailGroup.push(elementLine);
 
     const buyStandard = async () => {
-      const result = await buyItem(scene.gameState.id, item.id, item.type);
+      const result = await buyItem(
+        scene.gameState.id,
+        spawn.node_id,
+        item.stock_id,
+      );
       if (result?.error) {
         showToast(result.error, 1500);
         return;
@@ -494,7 +508,11 @@ export async function openShop(scene, spawn) {
     };
 
     const buyForMember = async () => {
-      const purchase = await buyItem(scene.gameState.id, item.id, item.type);
+      const purchase = await buyItem(
+        scene.gameState.id,
+        spawn.node_id,
+        item.stock_id,
+      );
       if (purchase?.error) {
         showToast(purchase.error, 1500);
         return;
@@ -503,7 +521,7 @@ export async function openShop(scene, spawn) {
       const equipResult = await equipItem(
         purchase.id,
         focusedMemberIndex,
-        item.id,
+        item.instance_id || item.id,
         item.type,
       );
       const finalResult = equipResult?.error ? purchase : equipResult;
@@ -570,7 +588,8 @@ export async function openShop(scene, spawn) {
     for (const item of displayItems) {
       const affordable = currentGold >= item.price;
       const equippable = isEquipmentShopItem(item);
-      const selectedRow = selected?.id === item.id;
+      const selectedRow =
+        selected && shopSelectionID(selected) === shopSelectionID(item);
 
       const rowBg = scene.add
         .rectangle(
@@ -619,7 +638,7 @@ export async function openShop(scene, spawn) {
 
       if (equippable) {
         const selectRow = () => {
-          selectedItemId = item.id;
+          selectedItemId = shopSelectionID(item);
           renderList(itemsForTab(currentTab));
           renderDetail();
         };
@@ -655,7 +674,11 @@ export async function openShop(scene, spawn) {
             showSpellPicker(item);
             return;
           }
-          const result = await buyItem(scene.gameState.id, item.id, item.type);
+          const result = await buyItem(
+            scene.gameState.id,
+            spawn.node_id,
+            item.stock_id,
+          );
           if (result?.error) {
             showToast(result.error, 1500);
             return;
@@ -682,7 +705,11 @@ export async function openShop(scene, spawn) {
             showSpellPicker(item);
             return;
           }
-          const result = await buyItem(scene.gameState.id, item.id, item.type);
+          const result = await buyItem(
+            scene.gameState.id,
+            spawn.node_id,
+            item.stock_id,
+          );
           if (result?.error) {
             showToast(result.error, 1500);
             return;
@@ -771,8 +798,9 @@ export async function openShop(scene, spawn) {
       const triggerLearn = async () => {
         const result = await learnSpell(
           scene.gameState.id,
+          spawn.node_id,
+          item.stock_id,
           choice.name,
-          item.id,
         );
         if (result?.error) {
           showToast(result.error, 1500);

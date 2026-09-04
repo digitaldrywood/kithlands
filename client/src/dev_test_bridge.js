@@ -10,6 +10,7 @@ import {
   debugSetPartyVitals,
   debugWarpQuest,
   gameAction,
+  getShop,
   listSaves as listSavesApi,
   loadSave as loadSaveApi,
   newGame,
@@ -1724,7 +1725,16 @@ export function installDevTestBridge(game) {
       const scene = getScene(game, sceneKey);
       const gameId = scene?.gameState?.id;
       if (!gameId) throw new Error("Active scene has no game id");
-      const result = await buyItem(gameId, itemId, itemType);
+      const nodeId =
+        scene?.spawn?.node_id || scene?.gameState?.current_location?.map_id;
+      if (!nodeId) return { error: "Active scene is not inside a shop" };
+      const catalog = await getShop(gameId, nodeId);
+      if (catalog?.error) return clone(catalog);
+      const offer = (catalog?.shop_items || []).find(
+        (item) => item.id === itemId && item.type === itemType,
+      );
+      if (!offer) return { error: `Shop offer not found: ${itemId}` };
+      const result = await buyItem(gameId, nodeId, offer.stock_id);
       if (!result?.error) {
         applySceneGameState(game, scene, result);
       }
