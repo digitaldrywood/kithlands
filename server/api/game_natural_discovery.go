@@ -13,10 +13,10 @@ type naturalDiscoveryAssignment struct {
 	discovery *gamedata.NaturalDiscovery
 }
 
-// naturalDiscoveryAssignments distributes definitions and natural nodes in a
-// stable round robin. The larger collection determines the assignment count:
-// one wizard wilderness node therefore hosts every authored definition, while
-// an OSM locality with many natural nodes makes every node interactive.
+// naturalDiscoveryAssignments assigns every authored definition exactly once.
+// When a locality has fewer natural nodes than definitions, nodes repeat so the
+// wizard's single wilderness landmark can still host the full sequence. Extra
+// natural nodes remain scenery rather than duplicating one-shot discoveries.
 func (g *Game) naturalDiscoveryAssignments() []naturalDiscoveryAssignment {
 	if g == nil || g.gd == nil || g.loc == nil || len(g.gd.NaturalDiscoveries) == 0 {
 		return nil
@@ -32,15 +32,11 @@ func (g *Game) naturalDiscoveryAssignments() []naturalDiscoveryAssignment {
 		return nil
 	}
 
-	count := len(nodes)
-	if len(g.gd.NaturalDiscoveries) > count {
-		count = len(g.gd.NaturalDiscoveries)
-	}
-	assignments := make([]naturalDiscoveryAssignment, 0, count)
-	for i := 0; i < count; i++ {
+	assignments := make([]naturalDiscoveryAssignment, 0, len(g.gd.NaturalDiscoveries))
+	for i := range g.gd.NaturalDiscoveries {
 		assignments = append(assignments, naturalDiscoveryAssignment{
 			node:      nodes[i%len(nodes)],
-			discovery: &g.gd.NaturalDiscoveries[i%len(g.gd.NaturalDiscoveries)],
+			discovery: &g.gd.NaturalDiscoveries[i],
 		})
 	}
 	return assignments
@@ -65,7 +61,13 @@ func (g *Game) fillNaturalDiscoveryState(state *GameState) {
 	}
 }
 
-func (g *Game) processNaturalDiscovery(nodeID string) (*GameState, error) {
+func (g *Game) processNaturalDiscovery(req GameActionRequest) (*GameState, error) {
+	nodeID := req.NodeID
+	if err := g.validateNaturalDiscoveryAuthorization(nodeID); err != nil {
+		state := g.stateUnlocked()
+		return &state, err
+	}
+
 	node := g.loc.NodeByID(nodeID)
 	if node == nil {
 		state := g.stateUnlocked()
@@ -115,6 +117,12 @@ func (g *Game) processNaturalDiscovery(nodeID string) (*GameState, error) {
 	}
 
 	g.naturalDiscoveryRevealed[key] = true
+	if g.naturalDiscoveryKeyRewardOwned(discovery) {
+		g.naturalDiscoveryClaimed[key] = true
+		g.message = appendNaturalDiscoveryMessage(g.message, discovery.ExhaustedMessage)
+		state := g.stateUnlocked()
+		return &state, nil
+	}
 	if discovery.RequiresKeyItem != "" && !g.inv.HasKeyItem(discovery.RequiresKeyItem) {
 		g.message = appendNaturalDiscoveryMessage(g.message, discovery.LockedMessage)
 		for _, questName := range revealedQuests {
@@ -154,6 +162,44 @@ func (g *Game) processNaturalDiscovery(nodeID string) (*GameState, error) {
 
 	state := g.stateUnlocked()
 	return &state, nil
+}
+
+// validateNaturalDiscoveryAuthorization binds the reward action to the
+// server-owned graph arrival. Client tile coordinates are deliberately not
+// accepted as evidence because a direct caller can forge them.
+func (g *Game) validateNaturalDiscoveryAuthorization(nodeID string) error {
+	if g.location.Kind != LocationWorld {
+		return fmt.Errorf("natural discoveries are unavailable from %s", g.location.Kind)
+	}
+	if nodeID == "" || g.location.WorldNodeID != nodeID {
+		return fmt.Errorf("natural discovery node %q is not the current server-authorized arrival", nodeID)
+	}
+	return nil
+}
+
+func (g *Game) naturalDiscoveryKeyRewardOwned(discovery *gamedata.NaturalDiscovery) bool {
+	for _, reward := range discovery.Rewards {
+		if reward.Kind == "key_item" && g.inv.HasKeyItem(reward.ItemID) {
+			return true
+		}
+	}
+	return false
+}
+
+func (g *Game) reconcileNaturalDiscoveryState(inferOwnedRewards bool) {
+	if g.naturalDiscoveryClaimed == nil {
+		g.naturalDiscoveryClaimed = make(map[string]bool)
+	}
+	if g.naturalDiscoveryRevealed == nil {
+		g.naturalDiscoveryRevealed = make(map[string]bool)
+	}
+	for _, assignment := range g.naturalDiscoveryAssignments() {
+		key := naturalDiscoveryStateKey(assignment.node.ID, assignment.discovery.ID)
+		if g.naturalDiscoveryClaimed[key] || inferOwnedRewards && g.naturalDiscoveryKeyRewardOwned(assignment.discovery) {
+			g.naturalDiscoveryClaimed[key] = true
+			g.naturalDiscoveryRevealed[key] = true
+		}
+	}
 }
 
 func (g *Game) revealFirstHiddenQuest() []string {

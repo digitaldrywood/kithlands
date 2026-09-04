@@ -57,7 +57,11 @@ function makeScene() {
     playerX: 2,
     playerY: 3,
     spawns: [],
-    gameState: { id: "game-1", natural_discoveries: [] },
+    gameState: {
+      id: "game-1",
+      current_location: { kind: "world", world_node_id: "grove" },
+      natural_discoveries: [],
+    },
     add: {
       text(x, y, text, style) {
         return {
@@ -174,12 +178,35 @@ describe("natural discovery selection", () => {
     const scene = makeScene();
     const natural = { kind: "natural", node_id: "grove", x: 2, y: 3 };
     scene.spawns = [natural];
+    scene.gameState.natural_discoveries = [
+      { node_id: "grove", discovery_id: "clue", prompt: "Inspect" },
+    ];
     expect(updateWorldInteractionTarget(scene, 2, 3)).toBe(natural);
     expect(scene.currentNaturalSpawn).toBe(natural);
     expect(scene.currentDoorSpawn).toBeNull();
     updateWorldInteractionTarget(scene, 20, 20);
     expect(scene.currentNaturalSpawn).toBeNull();
     expect(scene.interactPrompt).toBeNull();
+  });
+
+  it("leaves extra natural scenery without an authored discovery inactive", () => {
+    const scene = makeScene();
+    scene.spawns = [{ kind: "natural", node_id: "scenery", x: 2, y: 3 }];
+    expect(updateWorldInteractionTarget(scene, 2, 3)).toBeNull();
+    expect(scene.currentNaturalSpawn).toBeNull();
+    expect(scene.interactPrompt).toBeNull();
+  });
+
+  it("keeps a natural discovery inactive until the server authorizes its arrival", () => {
+    const scene = makeScene();
+    scene.gameState.current_location.world_node_id = "home";
+    scene.gameState.natural_discoveries = [
+      { node_id: "grove", discovery_id: "clue", prompt: "Inspect" },
+    ];
+    scene.spawns = [{ kind: "natural", node_id: "grove", x: 2, y: 3 }];
+
+    expect(updateWorldInteractionTarget(scene, 2, 3)).toBeNull();
+    expect(scene.currentNaturalSpawn).toBeNull();
   });
 });
 

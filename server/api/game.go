@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -553,6 +554,18 @@ type QuestState struct {
 	Reward        QuestRewardState `json:"reward"`
 }
 
+// MarshalJSON keeps unrevealed quests as opaque slots while preserving the
+// established wire shape for visible and completed quests.
+func (q QuestState) MarshalJSON() ([]byte, error) {
+	if q.Hidden {
+		return json.Marshal(struct {
+			Hidden bool `json:"hidden"`
+		}{Hidden: true})
+	}
+	type questStateJSON QuestState
+	return json.Marshal(questStateJSON(q))
+}
+
 type BuildingSideQuestState struct {
 	ID             string           `json:"id"`
 	Name           string           `json:"name"`
@@ -724,6 +737,9 @@ func cloneMemberActionReqs(in []MemberActionReq) []MemberActionReq {
 // preserving all promotion-quest metadata so the client HUD can drive the
 // three-stage flow without inspecting server internals.
 func questToState(q *generator.Quest) QuestState {
+	if q.Hidden {
+		return QuestState{Hidden: true}
+	}
 	var progress *generator.ObjectiveProgress
 	if q.Objectives != nil {
 		copy := *q.Objectives

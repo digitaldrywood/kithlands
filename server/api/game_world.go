@@ -61,7 +61,7 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 			return state, err
 		}
 	case "natural_discovery":
-		return g.processNaturalDiscovery(req.NodeID)
+		return g.processNaturalDiscovery(req)
 
 	case "quest_advance":
 		if !g.validQuestVisit(req.NodeID) {
@@ -84,6 +84,10 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 			g.message = fmt.Sprintf("%s is saved! Your adventure is complete.", g.loc.Name)
 		} else {
 			q := &g.quests[g.currentQ]
+			if q.Hidden {
+				state := g.stateUnlocked()
+				return &state, nil
+			}
 			if q.TemplateID == g.gd.FinalEncounter.QuestTemplateID && !q.IsPromotion && !q.IsSideQuest {
 				return g.advanceFinalEncounter(q, req.NodeID)
 			}

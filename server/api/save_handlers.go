@@ -179,6 +179,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	if triggeredFlags == nil {
 		triggeredFlags = make(map[string]bool)
 	}
+	legacyNaturalDiscoveryClaims := worldState.NaturalDiscoveryClaimed == nil
 	naturalDiscoveryClaimed := worldState.NaturalDiscoveryClaimed
 	if naturalDiscoveryClaimed == nil {
 		naturalDiscoveryClaimed = make(map[string]bool)
@@ -276,6 +277,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	if legacyTransport {
 		game.checkTransportUnlocks()
 	}
+	game.reconcileNaturalDiscoveryState(legacyNaturalDiscoveryClaims)
 
 	game.restoreDungeon()
 	game.restoreFinalEncounter()

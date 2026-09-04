@@ -31,14 +31,14 @@ func TestNaturalDiscoveriesWizardFlowIsOneShotAndSaveCompatible(t *testing.T) {
 		}
 	}
 
-	// Legacy quest visits still reveal matching soft prerequisites, but they
-	// must never claim the new exploration content or pay its rewards.
+	// Generic quest interactions remain invalid at natural nodes, even after a
+	// legitimate arrival, and must never claim exploration rewards.
+	arriveAtWorldNode(t, game, nodeID)
 	beforeQuest, beforeGold, beforePotions := game.currentQ, game.inv.Gold, game.inv.Consumables["potion"]
-	stateResult, err := game.ProcessAction(GameActionRequest{Type: "quest_advance", NodeID: nodeID})
-	if err != nil {
-		t.Fatalf("natural quest_advance: %v", err)
+	if _, err := game.ProcessAction(GameActionRequest{Type: "quest_advance", NodeID: nodeID}); err == nil {
+		t.Fatal("natural quest_advance unexpectedly accepted")
 	}
-	state := *stateResult
+	state := game.State()
 	if game.currentQ != beforeQuest || state.Gold != beforeGold || state.Potions != beforePotions {
 		t.Fatalf("quest_advance mutated progression/rewards: current=%d gold=%d potions=%d", game.currentQ, state.Gold, state.Potions)
 	}
@@ -53,7 +53,7 @@ func TestNaturalDiscoveriesWizardFlowIsOneShotAndSaveCompatible(t *testing.T) {
 	if !strings.Contains(state.Message, "Carved arrows") {
 		t.Fatalf("clue message = %q", state.Message)
 	}
-	if hidden := questStateByID(t, state, "hidden_without_far_prereq"); !hidden.Hidden {
+	if !game.quests[len(game.quests)-1].Hidden {
 		t.Fatal("clue interaction unexpectedly used passage-only hidden quest fallback")
 	}
 
@@ -68,7 +68,7 @@ func TestNaturalDiscoveriesWizardFlowIsOneShotAndSaveCompatible(t *testing.T) {
 	if !strings.Contains(state.Message, "coin-shaped hollow") {
 		t.Fatalf("no-coin message = %q", state.Message)
 	}
-	if hidden := questStateByID(t, state, "hidden_without_far_prereq"); !hidden.Hidden {
+	if !game.quests[len(game.quests)-1].Hidden {
 		t.Fatal("no-coin passage attempt revealed fallback quest")
 	}
 	if hasKeyItemState(state, "ancient_ring") {
@@ -118,8 +118,8 @@ func TestNaturalDiscoveriesWizardFlowIsOneShotAndSaveCompatible(t *testing.T) {
 		t.Fatalf("key item state lost on reload: %+v", loadedState.KeyItems)
 	}
 
-	// Saves predating this feature have no discovery maps and load with the
-	// authored discoveries honestly unclaimed and unrevealed.
+	// Saves predating this feature have no discovery maps. The Ancient Ring is
+	// the legacy proof that the one-off Strange Coin passage was already opened.
 	var world map[string]json.RawMessage
 	if err := json.Unmarshal(ss.WorldState, &world); err != nil {
 		t.Fatalf("unmarshal world state: %v", err)
@@ -134,10 +134,12 @@ func TestNaturalDiscoveriesWizardFlowIsOneShotAndSaveCompatible(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load legacy world state: %v", err)
 	}
-	for _, discovery := range legacy.State().NaturalDiscoveries {
-		if discovery.Claimed || discovery.Revealed {
-			t.Fatalf("legacy save fabricated discovery state: %+v", discovery)
-		}
+	legacyState := legacy.State()
+	assertNaturalDiscoveryState(t, legacyState, "weathered_trail_clue", false, false)
+	assertNaturalDiscoveryState(t, legacyState, "hidden_supply_cache", false, false)
+	assertNaturalDiscoveryState(t, legacyState, "strange_coin_passage", true, true)
+	if !hasKeyItemState(legacyState, "ancient_ring") {
+		t.Fatal("legacy Ancient Ring was lost during discovery migration")
 	}
 }
 
@@ -161,25 +163,159 @@ func TestNaturalDiscoveryVisitRevealsMatchingSoftPrerequisiteWithoutCoin(t *test
 	}
 }
 
-func TestNaturalDiscoveriesRoundRobinAcrossMultipleNodes(t *testing.T) {
+func TestNaturalDiscoveriesDoNotRepeatAcrossExtraNodes(t *testing.T) {
 	game := newFormationTestGame(t, []PartyMemberReq{{Name: "Ayla", ClassID: "warrior"}})
 	game.loc.Nodes = append(game.loc.Nodes,
 		locality.Node{ID: "natural_two", Kind: locality.NodeNatural, Name: "Willow Marsh"},
 		locality.Node{ID: "natural_three", Kind: locality.NodeNatural, Name: "Granite Bluff"},
+		locality.Node{ID: "natural_four", Kind: locality.NodeNatural, Name: "Pine Hollow"},
+		locality.Node{ID: "natural_five", Kind: locality.NodeNatural, Name: "Fox Meadow"},
 	)
 
 	state := game.State()
 	if len(state.NaturalDiscoveries) != 3 {
 		t.Fatalf("three-node assignments = %d, want 3", len(state.NaturalDiscoveries))
 	}
-	seenNodes := make(map[string]bool)
-	seenDiscoveries := make(map[string]bool)
+	seenDiscoveries := make(map[string]int)
 	for _, discovery := range state.NaturalDiscoveries {
-		seenNodes[discovery.NodeID] = true
-		seenDiscoveries[discovery.DiscoveryID] = true
+		seenDiscoveries[discovery.DiscoveryID]++
 	}
-	if len(seenNodes) != 3 || len(seenDiscoveries) != 3 {
-		t.Fatalf("round-robin assignments nodes=%v discoveries=%v", seenNodes, seenDiscoveries)
+	if len(seenDiscoveries) != 3 {
+		t.Fatalf("unique discovery assignments = %v, want each authored definition once", seenDiscoveries)
+	}
+	for id, count := range seenDiscoveries {
+		if count != 1 {
+			t.Fatalf("discovery %s assigned %d times, want once", id, count)
+		}
+	}
+	if seenDiscoveries["strange_coin_passage"] != 1 {
+		t.Fatalf("Strange Coin passage assignments = %d, want one", seenDiscoveries["strange_coin_passage"])
+	}
+}
+
+func TestNaturalDiscoveryRequiresAuthorizedWorldArrival(t *testing.T) {
+	game := newFormationTestGame(t, []PartyMemberReq{{Name: "Ayla", ClassID: "warrior"}})
+	nodeID := firstNaturalNodeID(t, game)
+	targetX, targetY := naturalDiscoveryPositionForTest(t, game, nodeID)
+	before := game.State()
+
+	// Exact public marker coordinates are not authority. Unknown coordinate
+	// fields are intentionally ignored by the action decoder, while the
+	// server-owned graph arrival remains at spawn.
+	forgedWire, err := json.Marshal(map[string]any{
+		"type":     "natural_discovery",
+		"node_id":  nodeID,
+		"player_x": targetX,
+		"player_y": targetY,
+	})
+	if err != nil {
+		t.Fatalf("marshal forged discovery: %v", err)
+	}
+	var forged GameActionRequest
+	if err := json.Unmarshal(forgedWire, &forged); err != nil {
+		t.Fatalf("decode forged discovery: %v", err)
+	}
+
+	for _, tc := range []struct {
+		name     string
+		location LocationState
+		action   GameActionRequest
+	}{
+		{name: "forged target coordinates from spawn", location: LocationState{Kind: LocationWorld, WorldNodeID: game.walk.Spawn.ID}, action: forged},
+		{name: "settlement", location: LocationState{Kind: LocationSettlement, WorldNodeID: nodeID}, action: GameActionRequest{Type: "natural_discovery", NodeID: nodeID}},
+		{name: "interior", location: LocationState{Kind: LocationInterior, WorldNodeID: nodeID}, action: GameActionRequest{Type: "natural_discovery", NodeID: nodeID}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			game.location = tc.location
+			_, err := game.ProcessAction(tc.action)
+			if err == nil {
+				t.Fatal("unauthorized natural discovery unexpectedly accepted")
+			}
+			state := game.State()
+			if state.Gold != before.Gold || state.Potions != before.Potions {
+				t.Fatalf("rejected action changed rewards: gold=%d potions=%d", state.Gold, state.Potions)
+			}
+			for _, discovery := range state.NaturalDiscoveries {
+				if discovery.Claimed || discovery.Revealed {
+					t.Fatalf("rejected action changed discovery state: %+v", discovery)
+				}
+			}
+		})
+	}
+
+	game.location = LocationState{Kind: LocationWorld, WorldNodeID: game.walk.Spawn.ID}
+	arriveAtWorldNode(t, game, nodeID)
+	state := processNaturalDiscoveryForTest(t, game, nodeID)
+	assertNaturalDiscoveryState(t, state, "weathered_trail_clue", true, true)
+}
+
+func TestNaturalDiscoveryOwnedKeyRewardPreservesRequiredItem(t *testing.T) {
+	game := newFormationTestGame(t, []PartyMemberReq{{Name: "Ayla", ClassID: "warrior"}})
+	nodeID := firstNaturalNodeID(t, game)
+	for _, id := range []string{"weathered_trail_clue", "hidden_supply_cache"} {
+		game.naturalDiscoveryClaimed[naturalDiscoveryStateKey(nodeID, id)] = true
+		game.naturalDiscoveryRevealed[naturalDiscoveryStateKey(nodeID, id)] = true
+	}
+	game.inv.AddKeyItem("ancient_ring")
+	game.inv.AddKeyItem("strange_coin")
+
+	state := processNaturalDiscoveryForTest(t, game, nodeID)
+	assertNaturalDiscoveryState(t, state, "strange_coin_passage", true, true)
+	if !hasKeyItemState(state, "strange_coin") || !hasKeyItemState(state, "ancient_ring") {
+		t.Fatalf("owned passage reward consumed a key item: %+v", state.KeyItems)
+	}
+	if !strings.Contains(state.Message, "stands open and silent") {
+		t.Fatalf("owned passage message = %q, want exhausted copy", state.Message)
+	}
+}
+
+func TestHiddenCurrentQuestCannotAdvanceOrLeak(t *testing.T) {
+	game := newFormationTestGame(t, []PartyMemberReq{{Name: "Ayla", ClassID: "warrior"}})
+	nodeID := firstQuestVisitNodeID(t, game)
+	game.quests = []generator.Quest{{
+		ID:           "secret_route",
+		TemplateID:   "Q01",
+		Name:         "The Secret Route",
+		Description:  "Details that must remain hidden.",
+		Completion:   "Hidden completion.",
+		TargetNodeID: nodeID,
+		TargetName:   "Secret Grove",
+		Reward:       generator.QuestReward{XP: 25, Gold: 99},
+		Hidden:       true,
+		IsSideQuest:  true,
+		SoftPrereq:   "another_node",
+	}}
+	game.currentQ = 0
+	arriveAtWorldNode(t, game, nodeID)
+	beforeGold := game.inv.Gold
+
+	stateResult, err := game.ProcessAction(GameActionRequest{Type: "quest_advance", NodeID: nodeID})
+	if err != nil {
+		t.Fatalf("hidden quest advance: %v", err)
+	}
+	state := *stateResult
+	if game.quests[0].Completed || game.currentQ != 0 || state.Gold != beforeGold {
+		t.Fatalf("hidden quest advanced: completed=%v current=%d gold=%d", game.quests[0].Completed, game.currentQ, state.Gold)
+	}
+	if len(state.Quests) != 1 {
+		t.Fatalf("quest projection length = %d, want one redacted slot", len(state.Quests))
+	}
+	hidden := state.Quests[0]
+	if !hidden.Hidden || hidden.ID != "" || hidden.Name != "" || hidden.Description != "" || hidden.TargetNodeID != "" || hidden.Reward.Gold != 0 {
+		t.Fatalf("hidden quest leaked wire details: %+v", hidden)
+	}
+	wire, err := json.Marshal(hidden)
+	if err != nil {
+		t.Fatalf("marshal hidden quest: %v", err)
+	}
+	if string(wire) != `{"hidden":true}` {
+		t.Fatalf("hidden quest wire state = %s, want opaque marker", wire)
+	}
+
+	game.quests[0].Hidden = false
+	revealed := game.State().Quests[0]
+	if revealed.ID != "secret_route" || revealed.Name != "The Secret Route" || revealed.TargetNodeID != nodeID || revealed.Reward.Gold != 99 {
+		t.Fatalf("revealed quest projection = %+v", revealed)
 	}
 }
 
@@ -210,13 +346,43 @@ func firstNaturalNodeID(t *testing.T, game *Game) string {
 	return ""
 }
 
+func firstQuestVisitNodeID(t *testing.T, game *Game) string {
+	t.Helper()
+	for i := range game.loc.Nodes {
+		node := &game.loc.Nodes[i]
+		if node.ID == game.walk.Spawn.ID || node.Kind == locality.NodeNatural {
+			continue
+		}
+		if _, reachable := game.walk.DistanceMap[node.ID]; reachable {
+			return node.ID
+		}
+	}
+	t.Fatal("test locality has no reachable non-natural quest node")
+	return ""
+}
+
 func processNaturalDiscoveryForTest(t *testing.T, game *Game, nodeID string) GameState {
 	t.Helper()
-	state, err := game.ProcessAction(GameActionRequest{Type: "natural_discovery", NodeID: nodeID})
+	arriveAtWorldNode(t, game, nodeID)
+	state, err := game.ProcessAction(GameActionRequest{
+		Type:   "natural_discovery",
+		NodeID: nodeID,
+	})
 	if err != nil {
 		t.Fatalf("natural_discovery %s: %v", nodeID, err)
 	}
 	return *state
+}
+
+func naturalDiscoveryPositionForTest(t *testing.T, game *Game, nodeID string) (int, int) {
+	t.Helper()
+	for _, spawn := range game.tileMap.Spawns {
+		if spawn.NodeID == nodeID {
+			return spawn.X, spawn.Y
+		}
+	}
+	t.Fatalf("natural map spawn %s missing", nodeID)
+	return 0, 0
 }
 
 func assertNaturalDiscoveryState(t *testing.T, state GameState, id string, claimed, revealed bool) {

@@ -43,7 +43,14 @@ export function nearbyWorldInteraction(spawns, playerX, playerY) {
 }
 
 export function updateWorldInteractionTarget(scene, playerX, playerY) {
-  const spawn = nearbyWorldInteraction(scene.spawns, playerX, playerY);
+  const spawns = (scene.spawns || []).filter(
+    (spawn) =>
+      !isNaturalSpawn(spawn) ||
+      (naturalDiscoveryDisplay(scene.gameState, spawn.node_id) &&
+        scene.gameState?.current_location?.kind === "world" &&
+        scene.gameState.current_location.world_node_id === spawn.node_id),
+  );
+  const spawn = nearbyWorldInteraction(spawns, playerX, playerY);
   scene.currentDoorSpawn = spawn && !isNaturalSpawn(spawn) ? spawn : null;
   scene.currentNaturalSpawn = spawn && isNaturalSpawn(spawn) ? spawn : null;
   if (spawn) showInteractPrompt(scene, spawn);
@@ -95,6 +102,7 @@ export async function syncWorldArrival(scene) {
         if (scene.scene?.isActive()) {
           scene.gameState = result;
           scene.updateHUD?.();
+          scene.updateInteractionTarget?.();
         }
         return result;
       }
@@ -333,7 +341,7 @@ export function showWorldMap(scene) {
   const gs = scene.gameState;
   if (gs && gs.quests && gs.current_quest < gs.quests.length) {
     const current = gs.quests[gs.current_quest];
-    const targetNodeID = current && current.target_node_id;
+    const targetNodeID = !current?.hidden && current?.target_node_id;
     if (targetNodeID) {
       const target = scene.spawns.find((s) => s.node_id === targetNodeID);
       if (target) {

@@ -907,7 +907,6 @@ export class WorldScene extends Phaser.Scene {
     const origin = {
       x: this.playerX,
       y: this.playerY,
-      door: this.currentDoorSpawn || null,
     };
     const nx = origin.x + dx;
     const ny = origin.y + dy;
@@ -1041,9 +1040,7 @@ export class WorldScene extends Phaser.Scene {
         origin.y * RENDERED_TILE + RENDERED_TILE / 2,
       );
     }
-    this.currentDoorSpawn = origin.door;
-    if (origin.door) showInteractPrompt(this, origin.door);
-    else hideInteractPrompt(this);
+    this.updateInteractionTarget();
     this.updateHUD();
     this.updateMinimap();
     this.showMessage(
@@ -1353,6 +1350,14 @@ export class WorldScene extends Phaser.Scene {
 
     if (gs.current_quest < gs.quests.length) {
       const q = gs.quests[gs.current_quest];
+      if (q?.hidden) {
+        drawCard(
+          "Explore the world",
+          "No new objective has been revealed yet.",
+          0x88d47a,
+        );
+        return;
+      }
       const title = `${questKindLabel(q)}: ${q.name}`;
       const detail = questObjectiveText(q);
       drawCard(title, detail);
