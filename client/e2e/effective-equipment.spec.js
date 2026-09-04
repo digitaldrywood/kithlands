@@ -62,10 +62,6 @@ test("equipment previews recover from network errors and retain keyboard focus",
   await expect(
     page.getByRole("combobox", { name: "Recommendation goal" }),
   ).toBeFocused();
-  await page.screenshot({
-    path: path.join(proofDir, "preview-retry-focus.png"),
-  });
-
   // A late reply must not reopen a drawer that the player has closed.
   await candidate.click();
   await expect.poll(() => pending.length).toBe(1);

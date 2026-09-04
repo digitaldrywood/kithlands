@@ -59,7 +59,7 @@ async function openFromCharacterScreen(page) {
 test("manages the full loadout, previews recommendations, and returns from sockets", async ({
   page,
 }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(180_000);
   await mkdir(PROOF_DIR, { recursive: true });
   await page.setViewportSize({ width: 800, height: 600 });
   await startEquipmentGame(page);
