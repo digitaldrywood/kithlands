@@ -314,22 +314,17 @@ test.describe("full game loop debug-assisted regression", () => {
         ),
       );
       await page.evaluate(() =>
-        window.__kithlandsTest.forceEncounter(["dark_knight"], 1, "World"),
+        window.__kithlandsTest.forceEncounter(["slime", "goblin"], 1, "World"),
       );
       await waitForScene(page, "Battle");
     } else if (fleeResult.phase === "combat") {
       expect(
         fleeResult.combat_log.some((line) => line.includes("Couldn't escape!")),
       ).toBe(true);
-      await page.evaluate(() => window.__kithlandsTest.forceVictory("Battle"));
-      await continueBattleVictory(page);
-      await page.evaluate(() =>
-        window.__kithlandsTest.forceEncounter(["dark_knight"], 1, "World"),
-      );
       await waitForScene(page, "Battle");
     } else {
       await page.evaluate(() =>
-        window.__kithlandsTest.forceEncounter(["dark_knight"], 1, "World"),
+        window.__kithlandsTest.forceEncounter(["slime", "goblin"], 1, "World"),
       );
       await waitForScene(page, "Battle");
     }
@@ -365,6 +360,7 @@ test.describe("full game loop debug-assisted regression", () => {
       await waitForScene(page, "World");
     }
 
+    await page.evaluate(() => window.__kithlandsTest.setGold(100, "World"));
     await page.evaluate(() =>
       window.__kithlandsTest.setPartyLevels(
         [
@@ -376,10 +372,89 @@ test.describe("full game loop debug-assisted regression", () => {
         "World",
       ),
     );
+    await enterQuestDoor(page, "shop");
+    await waitForScene(page, "Town");
+    const npc = await page.evaluate(
+      () => window.__kithlandsTest.townNpcPositions("Town")[0],
+    );
+    await page.evaluate(
+      ({ x, y }) => window.__kithlandsTest.teleportTownPlayer(x, y + 1, "Town"),
+      npc,
+    );
+    await page.evaluate(() => window.__kithlandsTest.interact("Town"));
+    await page.waitForFunction(() =>
+      window.__kithlandsTest
+        .visibleTexts("Town")
+        .some(
+          (entry) =>
+            entry.interactive && /^leave shop$/i.test(entry.text.trim()),
+        ),
+    );
+
+    await page.evaluate(() =>
+      window.__kithlandsTest.clickInteractiveText("Armor", "Town"),
+    );
+    await page.waitForFunction(() =>
+      window.__kithlandsTest
+        .visibleTexts("Town")
+        .some((entry) => entry.text.includes("Silk Robe")),
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.clickInteractiveText("Silk Robe", "Town"),
+    );
+    const compareTexts = await page.evaluate(() =>
+      window.__kithlandsTest.visibleTexts("Town").map((entry) => entry.text),
+    );
+    const buyLabel = compareTexts.find((text) => /^buy for /i.test(text));
+    const indicatorCount = compareTexts.filter((text) =>
+      ["▲", "▼", "=", "-"].includes(text),
+    ).length;
+    expect(buyLabel).toBeTruthy();
+    expect(compareTexts).toContain("Preview: Silk Robe");
+    expect(indicatorCount).toBeGreaterThanOrEqual(4);
+    await capturePhase(
+      page,
+      "shop-compare",
+      "Shop compare UI is rendered",
+      "Town",
+      ["Silk Robe", "Buy for", "Abs", "MDef"],
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.clickInteractiveText("Buy", "Town"),
+    );
+    await page.waitForFunction(() => {
+      const state = window.__kithlandsTest.gameState("Town");
+      return state?.gold < 100;
+    });
+    const shopBuyState = await page.evaluate(() => {
+      const state = window.__kithlandsTest.gameState("Town");
+      return {
+        gold: state.gold,
+      };
+    });
+    expect(shopBuyState.gold).toBeLessThan(100);
     const weaponBuyResult = await page.evaluate(() =>
-      window.__kithlandsTest.debugGiveItem("hand_axe", 1, "World"),
+      window.__kithlandsTest.buyItem("hand_axe", "weapon", "Town"),
     );
     expect(weaponBuyResult.error).toBeFalsy();
+
+    await page.evaluate(() => window.__kithlandsTest.pressKey("m", "Town"));
+    await page.waitForFunction(
+      () => window.__kithlandsTest.sceneFlags("Town").menuOpen,
+    );
+    await capturePhase(
+      page,
+      "shop-overlay",
+      "Party overlay opened on top of the shop",
+      "Town",
+      ["PARTY MENU", "General Store", "Silk Robe", "Leave Shop"],
+    );
+    await page.evaluate(() => window.__kithlandsTest.pressKey("m", "Town"));
+    await page.waitForFunction(
+      () => !window.__kithlandsTest.sceneFlags("Town").menuOpen,
+    );
+    await page.evaluate(() => window.__kithlandsTest.exitTown("Town"));
+    await waitForScene(page, "World");
     await page.evaluate(() => window.__kithlandsTest.pressKey("m", "World"));
     await page.waitForFunction(
       () => window.__kithlandsTest.sceneFlags("World").menuOpen,
@@ -553,9 +628,9 @@ test.describe("full game loop debug-assisted regression", () => {
     );
     const finalQuest = await currentQuest(page, "World");
     await enterQuestDoor(page, finalQuest.target_node_id);
-    await waitForScene(page, "Battle");
-    await page.evaluate(() => window.__kithlandsTest.forceVictory("Battle"));
-    await continueBattleVictory(page);
+    await page.waitForFunction(
+      () => window.__kithlandsTest.gameState("World")?.phase === "victory",
+    );
     const completed = await page.evaluate(() =>
       window.__kithlandsTest.gameState("World"),
     );
@@ -563,15 +638,17 @@ test.describe("full game loop debug-assisted regression", () => {
     // Assert that the actual door action completed the final quest.
     expect(completed.quests[finalQuestIndex].completed).toBe(true);
     expect(completed.current_quest).toBe(completed.quests.length);
-    await expect(
-      page.getByRole("dialog", { name: "The roads are yours again" }),
-    ).toBeVisible();
+    await page.waitForFunction(() =>
+      window.__kithlandsTest
+        .visibleTexts("World")
+        .some((entry) => entry.text.includes("VICTORY!")),
+    );
     await capturePhase(
       page,
       "victory",
       "Campaign victory reached after promotion and save/load",
       "World",
-      ["The roads are yours again", "Cadott"],
+      ["VICTORY!", "Cadott"],
     );
 
     expect(pageErrors).toEqual([]);
