@@ -62,6 +62,7 @@ async function openCodex(page, mobile = false) {
 }
 
 async function capture(page, size, stage) {
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: path.join(proofDir, `${size.width}x${size.height}-${stage}.png`),
   });
@@ -209,7 +210,9 @@ for (const size of viewports) {
         .filter({ has: page.getByText("XP", { exact: true }) }),
     ).toContainText(String(known.xp_reward));
     await capture(page, size, "discovered");
-    await page.locator(".bestiary-scaling").scrollIntoViewIfNeeded();
+    await page
+      .locator(".bestiary-detail")
+      .evaluate((detail) => (detail.scrollTop = detail.scrollHeight));
     await capture(page, size, "base-stats");
     await expect(page.locator(".bestiary-detail")).toContainText(
       "Base stats & rewards",
