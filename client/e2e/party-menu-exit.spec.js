@@ -76,11 +76,8 @@ for (const width of [800, 390]) {
     ).toMatchObject({ width: 800, height: 600 });
     const saves = await page.evaluate(() => window.__kithlandsTest.listSaves());
     expect(saves.saves.length).toBeGreaterThan(0);
-    const texts = await page.evaluate(() =>
-      window.__kithlandsTest.visibleTexts("Title"),
-    );
-    expect(texts.some((entry) => entry.text.includes("LOAD GAME"))).toBe(true);
-    expect(texts.some((entry) => entry.text.includes("NEW GAME"))).toBe(true);
+    await expect(page.getByRole("button", { name: /New game/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Continue/ })).toBeVisible();
     await page.screenshot({
       path: testInfo.outputPath(`exit-title-${width}-${RUN_ID}.png`),
     });
