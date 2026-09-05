@@ -1,3 +1,4 @@
+import { roundedRectangle } from "../ui/theme.js";
 import { gameAction } from "../api.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 import { drawButton, drawPanel } from "../ui/panel.js";
@@ -203,15 +204,15 @@ export function showFieldMagicMenu(scene, opts = {}) {
 
   if (layout.mode === "mobile") {
     state.overlay.push(
-      scene.add
-        .rectangle(
-          layout.gameWidth / 2,
-          layout.gameHeight / 2,
-          layout.gameWidth,
-          layout.gameHeight,
-          0x020711,
-          0.96,
-        )
+      roundedRectangle(
+        scene,
+        layout.gameWidth / 2,
+        layout.gameHeight / 2,
+        layout.gameWidth,
+        layout.gameHeight,
+        0x151e2b,
+        0.96,
+      )
         .setScrollFactor(0)
         .setDepth(DEPTH_BG - 1)
         .setInteractive(),
@@ -263,15 +264,15 @@ export function showFieldMagicMenu(scene, opts = {}) {
   state.overlay.push(state.countText);
 
   state.overlay.push(
-    scene.add
-      .rectangle(
-        panel.x,
-        panelTop + layout.headerDividerInset,
-        panel.width - layout.list.xInset * 2,
-        1,
-        0x6d93b7,
-        0.65,
-      )
+    roundedRectangle(
+      scene,
+      panel.x,
+      panelTop + layout.headerDividerInset,
+      panel.width - layout.list.xInset * 2,
+      1,
+      0x384859,
+      0.65,
+    )
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT),
   );
@@ -294,15 +295,15 @@ export function showFieldMagicMenu(scene, opts = {}) {
   state.overlay.push(state.stageText);
 
   state.overlay.push(
-    scene.add
-      .rectangle(
-        panel.x,
-        panelBottom - layout.detail.dividerBottomInset,
-        panel.width - layout.list.xInset * 2,
-        1,
-        0x6d93b7,
-        0.65,
-      )
+    roundedRectangle(
+      scene,
+      panel.x,
+      panelBottom - layout.detail.dividerBottomInset,
+      panel.width - layout.list.xInset * 2,
+      1,
+      0x384859,
+      0.65,
+    )
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT),
   );
@@ -313,7 +314,7 @@ export function showFieldMagicMenu(scene, opts = {}) {
       "",
       {
         fontSize: `${layout.detail.nameFontSize}px`,
-        color: "#ffffff",
+        color: "#e9eef7",
         fontFamily: "Arial, sans-serif",
         fontStyle: "bold",
       },
@@ -380,7 +381,7 @@ export function showFieldMagicMenu(scene, opts = {}) {
       "↑↓ move    Enter/click select",
       {
         fontSize: `${layout.footer.hintFontSize}px`,
-        color: "#8ea4b8",
+        color: "#94a8bd",
         fontFamily: "Arial, sans-serif",
       },
     )
@@ -544,20 +545,20 @@ function renderRows(state, rows, emptyText) {
     if (idx >= rows.length) break;
     const row = rows[idx];
     const y = startY + i * rowHeight + rowHeight / 2;
-    const baseColor = row.greyed ? "#666666" : "#ffffff";
+    const baseColor = row.greyed ? "#697888" : "#e9eef7";
 
-    const bg = state.scene.add
-      .rectangle(
-        panel.x,
-        y,
-        panel.width - layout.list.xInset * 2,
-        rowHeight - (layout.mode === "mobile" ? 8 : 2),
-        0x1a2a4a,
-        0.8,
-      )
+    const bg = roundedRectangle(
+      state.scene,
+      panel.x,
+      y,
+      panel.width - layout.list.xInset * 2,
+      rowHeight - (layout.mode === "mobile" ? 8 : 2),
+      0x1c2736,
+      0.8,
+    )
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT)
-      .setStrokeStyle(1, 0x5f7f9f, 0)
+      .setStrokeStyle(1, 0x384859, 0)
       .setInteractive({ useHandCursor: !row.greyed });
     bg.__kithlandsMenuOverlay = {
       role: "row",
@@ -631,17 +632,17 @@ function refreshCursor(state) {
   for (const row of state.rowObjects) {
     const active = row.idx === state.cursor;
     if (active && !row.row.greyed) {
-      row.bg.setFillStyle(0x315884, 0.95);
+      row.bg.setFillStyle(0x384859, 0.95);
       row.bg.setStrokeStyle(1, 0xf1d66e, 1);
-      row.label.setColor("#ffffff");
+      row.label.setColor("#e9eef7");
     } else if (active) {
       row.bg.setFillStyle(0x333344, 0.8);
       row.bg.setStrokeStyle(1, 0xf1d66e, 0.55);
-      row.label.setColor("#666666");
+      row.label.setColor("#697888");
     } else {
-      row.bg.setFillStyle(0x1a2a4a, 0.8);
-      row.bg.setStrokeStyle(1, 0x5f7f9f, 0);
-      row.label.setColor(row.row.greyed ? "#666666" : "#ffffff");
+      row.bg.setFillStyle(0x1c2736, 0.8);
+      row.bg.setStrokeStyle(1, 0x384859, 0);
+      row.label.setColor(row.row.greyed ? "#697888" : "#e9eef7");
     }
   }
   const detail = state.rows?.[state.cursor]?.detail;

@@ -1,3 +1,5 @@
+import { element, viewportDialog } from "../ui/viewport_dialog.js";
+import { roundedRectangle } from "../ui/theme.js";
 import { showObjectiveQuestLog } from "./objective_quest_log.js";
 import { saveGame, equipItem } from "../api.js";
 import { playSFX } from "../systems/audio.js";
@@ -21,7 +23,7 @@ import {
   showGemWorkshop,
 } from "./gem_workshop.js";
 import { renderPartyMenu } from "../ui/party_menu.js";
-import { drawPanel, drawButton } from "../ui/panel.js";
+import { drawButton } from "../ui/panel.js";
 import { combatantConditionLabel } from "../systems/hpBar.js";
 import {
   questKindLabel,
@@ -34,8 +36,6 @@ import {
   computeEquipDelta,
   formatDeltaLabel,
 } from "./equipPicker.js";
-
-const MENU_FRAME_VARIANT = "ff6";
 
 export function buildPartyMemberScanContext(member = {}) {
   const xp = Math.max(0, Number(member.xp) || 0);
@@ -290,9 +290,16 @@ export async function showEquipPicker(scene, slot, type, opts = {}) {
     }
   };
 
-  const bg = scene.add
-    .rectangle(400, 300, 460, 220 + available.length * 30, 0x111144, 0.95)
-    .setStrokeStyle(2, 0x4444aa)
+  const bg = roundedRectangle(
+    scene,
+    400,
+    300,
+    460,
+    220 + available.length * 30,
+    0x1c2736,
+    0.95,
+  )
+    .setStrokeStyle(2, 0x384859)
     .setScrollFactor(0)
     .setDepth(50)
     .setInteractive();
@@ -301,8 +308,8 @@ export async function showEquipPicker(scene, slot, type, opts = {}) {
   const title = scene.add
     .text(400, 220, `Equip ${type} for ${gs.party[slot].name}:`, {
       fontSize: "13px",
-      color: "#ffffff",
-      fontFamily: "monospace",
+      color: "#e9eef7",
+      fontFamily: "Arial, sans-serif",
     })
     .setOrigin(0.5)
     .setScrollFactor(0)
@@ -313,8 +320,8 @@ export async function showEquipPicker(scene, slot, type, opts = {}) {
     const none = scene.add
       .text(400, 280, "No items available.\nBuy gear at the General Store!", {
         fontSize: "12px",
-        color: "#666666",
-        fontFamily: "monospace",
+        color: "#697888",
+        fontFamily: "Arial, sans-serif",
         align: "center",
       })
       .setOrigin(0.5)
@@ -331,13 +338,13 @@ export async function showEquipPicker(scene, slot, type, opts = {}) {
         .text(400, y, label, {
           fontSize: "12px",
           color: "#aaaaff",
-          fontFamily: "monospace",
+          fontFamily: "Arial, sans-serif",
         })
         .setOrigin(0.5)
         .setScrollFactor(0)
         .setDepth(51)
         .setInteractive({ useHandCursor: true });
-      row.on("pointerover", () => row.setColor("#ffffff"));
+      row.on("pointerover", () => row.setColor("#e9eef7"));
       row.on("pointerout", () => row.setColor("#aaaaff"));
       row.on("pointerdown", async () => {
         const result = await equipItem(gs.id, slot, item.id, type);
@@ -362,20 +369,19 @@ export async function showEquipPicker(scene, slot, type, opts = {}) {
     }
   }
 
-  const closeBtn = scene.add
-    .text(400, 380 + available.length * 15, "[ CANCEL ]", {
-      fontSize: "11px",
-      color: "#888888",
-      fontFamily: "monospace",
-    })
-    .setOrigin(0.5)
-    .setScrollFactor(0)
-    .setDepth(51)
-    .setInteractive({ useHandCursor: true });
-  closeBtn.on("pointerdown", () => {
-    overlay.forEach((o) => o.destroy());
-    reopenCaller();
-  });
+  const closeBtn = drawButton(
+    scene,
+    400,
+    380 + available.length * 15,
+    180,
+    32,
+    "Cancel",
+    () => {
+      overlay.forEach((o) => o.destroy());
+      reopenCaller();
+    },
+    { depth: 51, fontSize: "14px" },
+  );
   overlay.push(closeBtn);
 }
 
@@ -410,366 +416,69 @@ export function showQuestLog(scene) {
     showObjectiveQuestLog(scene);
     return;
   }
-  const questLog = buildLegacyQuestLogModel(quests, currentIdx);
-  pauseWorldFor(scene, "quest_log");
-  const overlay = [];
-
-  const bg = drawPanel(scene, 400, 300, 720, 520, {
-    depth: 50,
-    variant: MENU_FRAME_VARIANT,
-    radius: 12,
-    innerTop: 0x223758,
-    innerBottom: 0x101927,
-    outerFill: 0x314d78,
-    interactive: true,
+  const model = buildLegacyQuestLogModel(quests, currentIdx);
+  let dialog;
+  const close = () => dialog.dispose();
+  dialog = viewportDialog(scene, {
+    key: "quest_log",
+    title: "Quest Log",
+    onEscape: close,
   });
-  overlay.push(bg.bg);
-
-  const title = scene.add
-    .text(70, 58, "Quest Log", {
-      fontSize: "24px",
-      color: "#fff5c2",
-      fontFamily: "Georgia",
-      fontStyle: "bold",
-    })
-    .setOrigin(0, 0.5)
-    .setScrollFactor(0)
-    .setDepth(51);
-  overlay.push(title);
-
-  const subtitle = scene.add
-    .text(
-      70,
-      84,
-      `${questLog.completeCount} complete   ${questLog.remainingCount} main objectives remain`,
-      { fontSize: "12px", color: "#cbd9f3", fontFamily: "Arial" },
-    )
-    .setScrollFactor(0)
-    .setDepth(51);
-  overlay.push(subtitle);
-
-  const divider = scene.add
-    .rectangle(400, 108, 660, 2, 0x9bc7ff, 0.6)
-    .setScrollFactor(0)
-    .setDepth(51);
-  overlay.push(divider);
-
-  if (quests.length === 0) {
-    const empty = scene.add
-      .text(400, 300, "No active quests.", {
-        fontSize: "15px",
-        color: "#cbd9f3",
-        fontFamily: "Arial",
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(51);
-    overlay.push(empty);
-  } else {
-    let y = 126;
-    y = renderSectionHeader(
-      scene,
-      overlay,
-      "Current Objective",
-      70,
-      y,
-      0xf4d881,
-    );
-
-    if (questLog.current) {
-      y = renderQuestBlock(scene, overlay, questLog.current, 70, y, "current");
-    } else if (questLog.currentHidden) {
-      const hiddenLine = scene.add
-        .text(
-          80,
-          y,
-          "No objective revealed. Explore to uncover a hidden path.",
-          {
-            fontSize: "13px",
-            color: "#cbd9f3",
-            fontFamily: "Arial",
-          },
-        )
-        .setScrollFactor(0)
-        .setDepth(51);
-      overlay.push(hiddenLine);
-      y += 20;
-    } else {
-      const doneLine = scene.add
-        .text(80, y, "All quests complete!", {
-          fontSize: "13px",
-          color: "#44ff88",
-          fontFamily: "Arial",
-        })
-        .setScrollFactor(0)
-        .setDepth(51);
-      overlay.push(doneLine);
-      y += 20;
-    }
-    y += 10;
-
-    if (buildingSideQuests.length > 0 && y < 430) {
-      y = renderSectionHeader(scene, overlay, "Local Errands", 70, y, 0xd696c8);
-
-      for (const q of buildingSideQuests) {
-        if (y >= 430) break;
-        const status =
-          q.status === "ready_to_turn_in"
-            ? "Ready to turn in"
-            : q.status === "completed"
-              ? "Complete"
-              : "Active";
-        const line = scene.add
-          .text(
-            80,
-            y,
-            `${status}: ${q.name}${q.target_name ? ` at ${q.target_name}` : ""}`,
-            {
-              fontSize: "11px",
-              color: q.status === "completed" ? "#77cc77" : "#dd99cc",
-              fontFamily: "Arial",
-            },
-          )
-          .setScrollFactor(0)
-          .setDepth(51);
-        overlay.push(line);
-        y += 15;
-      }
-      y += 8;
-    }
-
-    y = renderSectionHeader(scene, overlay, "Next", 70, y, 0x88aacc);
-
-    const upcoming = questLog.upcoming;
-    if (upcoming.length === 0) {
-      const none = scene.add
-        .text(80, y, "No remaining main objectives.", {
-          fontSize: "11px",
-          color: "#8190aa",
-          fontFamily: "Arial",
-        })
-        .setScrollFactor(0)
-        .setDepth(51);
-      overlay.push(none);
-      y += 18;
-    } else {
-      const visibleUpcoming = upcoming.slice(0, 5);
-      for (const q of visibleUpcoming) {
-        const displayName =
-          q.template_id === "Q12" || q.name?.toLowerCase().startsWith("defeat")
-            ? "Final encounter"
-            : q.name;
-        const line = scene.add
-          .text(80, y, `${questKindLabel(q)}: ${displayName}`, {
-            fontSize: "11px",
-            color: "#6688aa",
-            fontFamily: "Arial",
-          })
-          .setScrollFactor(0)
-          .setDepth(51);
-        overlay.push(line);
-        y += 15;
-      }
-      const remaining = upcoming.length - visibleUpcoming.length;
-      if (remaining > 0) {
-        const more = scene.add
-          .text(
-            80,
-            y + 2,
-            `${remaining} later objectives hidden for clarity.`,
-            {
-              fontSize: "11px",
-              color: "#8ea2bd",
-              fontFamily: "Arial",
-            },
-          )
-          .setScrollFactor(0)
-          .setDepth(51);
-        overlay.push(more);
-        y += 18;
-      }
-    }
-    y += 8;
-
-    y = renderSectionHeader(scene, overlay, "Completed", 70, y, 0x66aa66);
-
-    if (currentIdx === 0) {
-      const none = scene.add
-        .text(80, y, "Nothing completed yet.", {
-          fontSize: "11px",
-          color: "#718083",
-          fontFamily: "Arial",
-        })
-        .setScrollFactor(0)
-        .setDepth(51);
-      overlay.push(none);
-    } else {
-      const completed = quests.slice(0, currentIdx).slice(-5);
-      for (const q of completed) {
-        if (y >= 510) break;
-        const line = scene.add
-          .text(80, y, `${questKindLabel(q)}: ${q.name}`, {
-            fontSize: "11px",
-            color: "#558855",
-            fontFamily: "Arial",
-          })
-          .setScrollFactor(0)
-          .setDepth(51);
-        overlay.push(line);
-        y += 15;
-      }
-      const hiddenCompleted = currentIdx - completed.length;
-      if (hiddenCompleted > 0 && y < 510) {
-        const more = scene.add
-          .text(80, y + 2, `${hiddenCompleted} earlier completions hidden.`, {
-            fontSize: "11px",
-            color: "#718083",
-            fontFamily: "Arial",
-          })
-          .setScrollFactor(0)
-          .setDepth(51);
-        overlay.push(more);
-      }
-    }
-  }
-
-  const closeBtn = drawButton(
-    scene,
-    400,
-    548,
-    128,
-    30,
-    "Close",
-    () => {
-      overlay.forEach((o) => o.destroy());
-      resumeWorldFor(scene, "quest_log");
-    },
-    {
-      depth: 51,
-      fontSize: "12px",
-      fill: 0x2d2535,
-      fillHover: 0x49385c,
-      stroke: 0xd7b45c,
-    },
+  dialog.root.classList.add("objective-quest-log");
+  dialog.header.append(
+    element(
+      "p",
+      "",
+      `${model.completeCount} complete · ${model.remainingCount} remaining`,
+    ),
   );
-  overlay.push(closeBtn);
-}
-
-function renderSectionHeader(scene, overlay, label, x, y, color) {
-  const header = scene.add
-    .text(x, y, label, {
-      fontSize: "12px",
-      color: "#f3e5b2",
-      fontFamily: "Georgia",
-      fontStyle: "bold",
-    })
-    .setScrollFactor(0)
-    .setDepth(51);
-  overlay.push(header);
-
-  const rule = scene.add
-    .rectangle(x + 118, y + 8, 440, 1, color, 0.55)
-    .setOrigin(0, 0.5)
-    .setScrollFactor(0)
-    .setDepth(51);
-  overlay.push(rule);
-  return y + 20;
-}
-
-function renderQuestBlock(scene, overlay, q, x, y, kind) {
-  const color = q.is_promotion ? "#ffcc44" : "#ffffff";
-  const isCurrent = kind === "current";
-  const cardH = isCurrent ? 90 : 74;
-  const cardTop = y;
-  const card = scene.add
-    .rectangle(x + 315, y + cardH / 2, 630, cardH, 0x0b1729, 0.72)
-    .setStrokeStyle(1, isCurrent ? 0xd7b45c : 0x395a86, 0.8)
-    .setScrollFactor(0)
-    .setDepth(51);
-  overlay.push(card);
-
-  const name = scene.add
-    .text(x + 16, y + 8, `${questKindLabel(q)}: ${q.name}`, {
-      fontSize: "13px",
-      color,
-      fontFamily: "Georgia",
-      fontStyle: "bold",
-    })
-    .setScrollFactor(0)
-    .setDepth(51);
-  overlay.push(name);
-  y += 28;
-
-  const objective = scene.add
-    .text(x + 16, y, questObjectiveText(q), {
-      fontSize: "12px",
-      color: "#dce8ff",
-      fontFamily: "Arial",
-    })
-    .setScrollFactor(0)
-    .setDepth(51);
-  overlay.push(objective);
-  y += 18;
-
-  if (q.description) {
-    const desc = scene.add
-      .text(x + 16, y, wrapText(q.description, 92), {
-        fontSize: "11px",
-        color: "#aebbd6",
-        fontFamily: "Arial",
-      })
-      .setScrollFactor(0)
-      .setDepth(51);
-    overlay.push(desc);
-    y += 15 * Math.max(1, desc.height / 15);
+  const add = (tag, value, className = "") =>
+    dialog.body.append(element(tag, className, value));
+  add("h2", "Current objective");
+  if (model.current) {
+    const quest = model.current;
+    add("h3", `${questKindLabel(quest)}: ${quest.name}`);
+    add("p", questObjectiveText(quest));
+    if (quest.description)
+      add("p", quest.description, "objective-quest-description");
+    const custody = questCustodyText(quest);
+    if (custody) add("p", custody, "objective-quest-custody");
+    const reward = questRewardText(quest);
+    if (reward) add("p", `Reward: ${reward}`, "objective-quest-reward");
+  } else
+    add(
+      "p",
+      model.currentHidden
+        ? "Explore to uncover your next objective."
+        : "No active quests.",
+    );
+  if (buildingSideQuests.length) {
+    add("h3", "Local errands");
+    for (const quest of buildingSideQuests)
+      add(
+        "p",
+        `${quest.name} · ${quest.status === "completed" ? "Complete" : quest.status === "ready_to_turn_in" ? "Ready to turn in" : "Active"}${quest.target_name ? ` · ${quest.target_name}` : ""}`,
+      );
   }
-
-  const custody = questCustodyText(q);
-  if (custody) {
-    const held = scene.add
-      .text(x + 16, y, wrapText(custody, 85), {
-        fontSize: "12px",
-        color: "#f4d788",
-        fontFamily: "Arial",
-      })
-      .setScrollFactor(0)
-      .setDepth(51);
-    overlay.push(held);
-    y += held.height + 6;
+  if (model.upcoming.length) {
+    add("h3", "Up next");
+    for (const quest of model.upcoming)
+      add(
+        "p",
+        `${questKindLabel(quest)}: ${quest.template_id === "Q12" || quest.name?.toLowerCase().startsWith("defeat") ? "Final encounter" : quest.name}`,
+        "objective-quest-secondary",
+      );
   }
-  const reward = questRewardText(q);
-  if (reward) {
-    const rew = scene.add
-      .text(x + 16, y, `Reward: ${reward}`, {
-        fontSize: "11px",
-        color: "#f0d77a",
-        fontFamily: "Arial",
-      })
-      .setScrollFactor(0)
-      .setDepth(51);
-    overlay.push(rew);
-    y += 15;
+  const completed = quests
+    .slice(0, currentIdx)
+    .filter((quest) => quest && !quest.hidden);
+  if (completed.length) {
+    add("h3", "Completed");
+    for (const quest of completed)
+      add("p", quest.name, "objective-quest-secondary");
   }
-
-  const renderedHeight = Math.max(cardH, y - cardTop + 10);
-  card.setSize(630, renderedHeight);
-  card.setY(cardTop + renderedHeight / 2);
-  return cardTop + renderedHeight + 10;
-}
-
-function wrapText(s, width) {
-  if (!s || s.length <= width) return s || "";
-  const words = s.split(" ");
-  const lines = [];
-  let line = "";
-  for (const w of words) {
-    if ((line + " " + w).trim().length > width) {
-      lines.push(line.trim());
-      line = w;
-    } else {
-      line = (line + " " + w).trim();
-    }
-  }
-  if (line) lines.push(line);
-  return lines.join("\n");
+  const button = element("button", "primary", "Close");
+  button.addEventListener("click", close);
+  dialog.footer.append(button);
+  return dialog;
 }

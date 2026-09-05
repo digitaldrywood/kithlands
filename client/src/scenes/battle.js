@@ -1,3 +1,4 @@
+import { roundedRectangle } from "../ui/theme.js";
 import { claimChest, gameAction, getGame } from "../api.js";
 import { createBattleCharacterSprite } from "../sprites/battleCharacterSprite.js";
 import { initAudio, playMusic, playSFX, stopMusic } from "../systems/audio.js";
@@ -401,7 +402,7 @@ export class BattleScene extends Phaser.Scene {
         .text(400, 260, boss.name, {
           fontSize: "28px",
           color: "#ff4444",
-          fontFamily: "monospace",
+          fontFamily: "Arial, sans-serif",
           fontStyle: "bold",
         })
         .setOrigin(0.5)
@@ -483,7 +484,7 @@ export class BattleScene extends Phaser.Scene {
       .setDepth(9000);
     const text = this.add
       .text(400, 300, label, {
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
         fontSize: "40px",
         color,
         stroke,
@@ -874,7 +875,7 @@ export class BattleScene extends Phaser.Scene {
     if (tips.length === 0) tips.push("Dev-only disposable battle");
     const panel = this.add.graphics().setDepth(11).setScrollFactor(0);
     panel._combatFxTag = "showcase-banner";
-    panel.fillStyle(0x160b1d, 0.9);
+    panel.fillStyle(0x151e2b, 0.9);
     panel.fillRoundedRect(12, 10, 520, 76, 7);
     panel.lineStyle(2, 0xff66cc, 0.9);
     panel.strokeRoundedRect(12, 10, 520, 76, 7);
@@ -882,7 +883,7 @@ export class BattleScene extends Phaser.Scene {
       .text(24, 17, title, {
         fontSize: "12px",
         color: "#ff88dd",
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
         fontStyle: "bold",
       })
       .setDepth(12)
@@ -894,7 +895,7 @@ export class BattleScene extends Phaser.Scene {
       .text(24, 34, detailText, {
         fontSize: "8px",
         color: "#e8d6ea",
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
         lineSpacing: 2,
       })
       .setDepth(12)
@@ -1466,7 +1467,7 @@ export class BattleScene extends Phaser.Scene {
       this.add.text(20, 440 - i * 16, log[log.length - 1 - i], {
         fontSize: "10px",
         color: "#cccccc",
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
         wordWrap: { width: 760 },
       });
     }
@@ -1821,7 +1822,7 @@ export class BattleScene extends Phaser.Scene {
       const label = this.add
         .text(0, 0, "", {
           fontSize: "10px",
-          fontFamily: "monospace",
+          fontFamily: "Arial, sans-serif",
           fontStyle: "bold",
           color: "#ffffff",
           backgroundColor: "#111111",
@@ -1926,7 +1927,7 @@ export class BattleScene extends Phaser.Scene {
     );
     const panelY = Math.max(48, anchor.y - anchor.height / 2 - 42);
     const bg = this.add
-      .rectangle(anchor.x, panelY, width, 42, 0x05070e, 0.94)
+      .rectangle(anchor.x, panelY, width, 42, 0x151e2b, 0.94)
       .setDepth(23)
       .setStrokeStyle(2, 0x2f3444)
       .setAlpha(0);
@@ -1939,7 +1940,7 @@ export class BattleScene extends Phaser.Scene {
       .text(anchor.x, panelY - 10, actorName, {
         fontSize: "9px",
         color: "#d6deef",
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
         fontStyle: "bold",
       })
       .setOrigin(0.5)
@@ -1950,7 +1951,7 @@ export class BattleScene extends Phaser.Scene {
       .text(anchor.x, panelY + 8, title, {
         fontSize: "15px",
         color,
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
         fontStyle: "bold",
       })
       .setOrigin(0.5)
@@ -2109,7 +2110,7 @@ export class BattleScene extends Phaser.Scene {
     };
     const style = battleElementStyle(element);
     const dimmer = this.add
-      .rectangle(400, 300, 800, 600, 0x02030a, 0.5)
+      .rectangle(400, 300, 800, 600, 0x151e2b, 0.5)
       .setDepth(12)
       .setAlpha(0);
     dimmer._combatFxTag = "major-cinematic";
@@ -2133,7 +2134,7 @@ export class BattleScene extends Phaser.Scene {
       .text(400, 72, "MAJOR TECHNIQUE", {
         fontSize: "13px",
         color: `#${style.accent.toString(16).padStart(6, "0")}`,
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
         fontStyle: "bold",
       })
       .setOrigin(0.5)
@@ -2164,7 +2165,7 @@ export class BattleScene extends Phaser.Scene {
       {
         depth: 80,
         fontSize: compactViewport ? "20px" : "12px",
-        fill: 0x111827,
+        fill: 0x151e2b,
         stroke: 0xf8d477,
         textColor: "#fff2bd",
       },
@@ -2428,9 +2429,9 @@ export class BattleScene extends Phaser.Scene {
         variant: "ff6",
         radius: 8,
         innerInset: 5,
-        outerFill: 0x315f9b,
-        innerTop: 0x10294d,
-        innerBottom: 0x071424,
+        outerFill: 0x384859,
+        innerTop: 0x1c2736,
+        innerBottom: 0x151e2b,
         outerStroke: 0xbfdcff,
         innerStroke: 0x6ea8ff,
         depth: 16,
@@ -2439,15 +2440,15 @@ export class BattleScene extends Phaser.Scene {
     frame.bg._combatFxTag = "action-panel";
     this.actionBtns.push(frame.bg);
 
-    const portraitFrame = this.add
-      .rectangle(
-        portraitX,
-        portraitY,
-        portraitFrameSize,
-        portraitFrameSize,
-        0x13243d,
-        1,
-      )
+    const portraitFrame = roundedRectangle(
+      this,
+      portraitX,
+      portraitY,
+      portraitFrameSize,
+      portraitFrameSize,
+      0x1c2736,
+      1,
+    )
       .setStrokeStyle(2, 0x88ccff)
       .setDepth(17);
     portraitFrame._combatFxTag = "active-portrait-frame";
@@ -2467,7 +2468,7 @@ export class BattleScene extends Phaser.Scene {
         .text(portraitX, portraitY, member.name[0] || "?", {
           fontSize: "28px",
           color: "#88ccff",
-          fontFamily: "monospace",
+          fontFamily: "Arial, sans-serif",
           fontStyle: "bold",
         })
         .setOrigin(0.5)
@@ -2528,11 +2529,11 @@ export class BattleScene extends Phaser.Scene {
           fontFamily: "Arial, sans-serif",
           textColor: button.color,
           textColorDisabled: "#6e7d91",
-          fill: 0x173054,
-          fillHover: 0x20406e,
-          fillPress: 0x2a548e,
-          fillActive: 0x26466f,
-          stroke: 0x5e91d6,
+          fill: 0x1c2736,
+          fillHover: 0x1c2736,
+          fillPress: 0x384859,
+          fillActive: 0x384859,
+          stroke: 0x384859,
           strokeActive: 0xffd36b,
           onFocus: () => {
             for (const commandHandle of commandHandles) {
@@ -2738,7 +2739,7 @@ export class BattleScene extends Phaser.Scene {
 
     this.promptText
       .setText(this.autoMode ? "AUTO-BATTLE..." : "REPEAT!")
-      .setColor(this.autoMode ? "#ff8844" : "#44ccff");
+      .setColor(this.autoMode ? "#ff8844" : "#94a8bd");
     this.currentMemberIdx = this.livingMembers.length; // skip per-member UI
     this.submitAllActions();
   }
@@ -2868,11 +2869,11 @@ export class BattleScene extends Phaser.Scene {
       variant: "ff6",
       radius: 10,
       innerInset: 5,
-      outerFill: 0x315f9b,
-      innerTop: 0x142f54,
-      innerBottom: 0x081326,
+      outerFill: 0x384859,
+      innerTop: 0x1c2736,
+      innerBottom: 0x151e2b,
       outerStroke: 0xcfe8ff,
-      innerStroke: 0x6094c9,
+      innerStroke: 0x384859,
       depth: 50,
       interactive: false,
     });
@@ -2934,8 +2935,8 @@ export class BattleScene extends Phaser.Scene {
         const entry = pickerRows[index];
         const selected = index === selectedIndex;
         entry.row
-          .setFillStyle(selected ? 0x315884 : 0x102442)
-          .setStrokeStyle(1, selected ? 0xf1cb66 : 0x315d83);
+          .setFillStyle(selected ? 0x384859 : 0x1c2736)
+          .setStrokeStyle(1, selected ? 0xf1cb66 : 0x384859);
         entry.name.setColor(selected ? "#ffffff" : "#b9cee2");
         entry.cost.setColor(selected ? "#ffe093" : "#8fc9f0");
       }
@@ -2945,9 +2946,8 @@ export class BattleScene extends Phaser.Scene {
     for (let i = 0; i < spells.length; i++) {
       const sp = spells[i];
       const y = top + 54 + i * rowHeight;
-      const row = this.add
-        .rectangle(400, y, 390, 29, 0x102442)
-        .setStrokeStyle(1, 0x315d83)
+      const row = roundedRectangle(this, 400, y, 390, 29, 0x1c2736)
+        .setStrokeStyle(1, 0x384859)
         .setInteractive({ useHandCursor: true })
         .setDepth(51);
       const nameText = this.add
@@ -3047,8 +3047,7 @@ export class BattleScene extends Phaser.Scene {
 
     const ol = [];
     const h = 60 + abilities.length * 36;
-    const bg = this.add
-      .rectangle(400, 370, 360, h, 0x331144, 0.95)
+    const bg = roundedRectangle(this, 400, 370, 360, h, 0x1c2736, 0.95)
       .setStrokeStyle(2, 0xaa44aa)
       .setDepth(50)
       .setInteractive();
@@ -3059,7 +3058,7 @@ export class BattleScene extends Phaser.Scene {
         .text(400, 370 - h / 2 + 16, `${member.name}'s abilities:`, {
           fontSize: "12px",
           color: "#ffffff",
-          fontFamily: "monospace",
+          fontFamily: "Arial, sans-serif",
         })
         .setOrigin(0.5)
         .setDepth(51),
@@ -3070,15 +3069,14 @@ export class BattleScene extends Phaser.Scene {
       const id = abilities[i];
       const m = meta[id] || { label: id, desc: "", targeted: true };
       const y = 370 - h / 2 + 46 + i * 36;
-      const row = this.add
-        .rectangle(400, y, 320, 30, 0x442255)
+      const row = roundedRectangle(this, 400, y, 320, 30, 0x1c2736)
         .setInteractive({ useHandCursor: true })
         .setDepth(51);
       const txt = this.add
         .text(400, y, `${i + 1}. ${m.label} - ${m.desc}`, {
           fontSize: "11px",
           color: "#ffaaff",
-          fontFamily: "monospace",
+          fontFamily: "Arial, sans-serif",
         })
         .setOrigin(0.5)
         .setDepth(52);
@@ -3107,11 +3105,11 @@ export class BattleScene extends Phaser.Scene {
       this.pickerItems.push({ action: selectAbility });
 
       row.on("pointerover", () => {
-        row.setFillStyle(0x663377);
+        row.setFillStyle(0x384859);
         txt.setColor("#ffffff");
       });
       row.on("pointerout", () => {
-        row.setFillStyle(0x442255);
+        row.setFillStyle(0x1c2736);
         txt.setColor("#ffaaff");
       });
       row.on("pointerdown", selectAbility);
@@ -3121,7 +3119,7 @@ export class BattleScene extends Phaser.Scene {
       .text(400, 370 + h / 2 - 15, "[ CANCEL / ESC ]", {
         fontSize: "10px",
         color: "#888888",
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
       })
       .setOrigin(0.5)
       .setDepth(51)
@@ -4638,7 +4636,7 @@ export class BattleScene extends Phaser.Scene {
     this.victoryResultLayout = resultLayout;
 
     const backdrop = this.add.graphics().setDepth(-4);
-    backdrop.fillGradientStyle(0x09192b, 0x09192b, 0x030711, 0x030711, 1);
+    backdrop.fillGradientStyle(0x151e2b, 0x151e2b, 0x151e2b, 0x151e2b, 1);
     backdrop.fillRect(0, 0, 800, screenHeight);
     backdrop._combatFxTag = "victory-backdrop";
 
@@ -4652,9 +4650,9 @@ export class BattleScene extends Phaser.Scene {
         variant: "ff6",
         depth: 0,
         radius: 14,
-        innerTop: 0x17365d,
-        innerBottom: 0x071323,
-        outerFill: 0x315d8f,
+        innerTop: 0x1c2736,
+        innerBottom: 0x151e2b,
+        outerFill: 0x384859,
         outerStroke: 0xd6efff,
         innerStroke: 0x76ace0,
         interactive: false,
@@ -4677,7 +4675,7 @@ export class BattleScene extends Phaser.Scene {
         .text(400, 76, "PARTY DEFEATED", {
           fontSize: "30px",
           color: "#ff7777",
-          fontFamily: "Georgia, serif",
+          fontFamily: "Arial, sans-serif",
           fontStyle: "bold",
         })
         .setOrigin(0.5);
@@ -4701,9 +4699,9 @@ export class BattleScene extends Phaser.Scene {
         () => this.scene.start("Title"),
         {
           fontSize: "16px",
-          fill: 0x17385e,
-          fillHover: 0x265986,
-          stroke: 0x6ea8dc,
+          fill: 0x1c2736,
+          fillHover: 0x384859,
+          stroke: 0x384859,
           strokeActive: 0xf2d27a,
         },
       );
@@ -4717,9 +4715,9 @@ export class BattleScene extends Phaser.Scene {
         () => this.scene.start("Title"),
         {
           fontSize: "14px",
-          fill: 0x111d30,
-          fillHover: 0x1c324d,
-          stroke: 0x4d7199,
+          fill: 0x151e2b,
+          fillHover: 0x1c2736,
+          stroke: 0x384859,
           strokeActive: 0xb7d8f5,
         },
       );
@@ -4739,7 +4737,7 @@ export class BattleScene extends Phaser.Scene {
       .text(52, resultLayout.titleY, "VICTORY!", {
         fontSize: resultLayout.titleSize,
         color: "#f6d77c",
-        fontFamily: "Georgia, serif",
+        fontFamily: "Arial, sans-serif",
         fontStyle: "bold",
       })
       .setDepth(2);
@@ -4760,9 +4758,9 @@ export class BattleScene extends Phaser.Scene {
         resultLayout.rewardWidth,
         resultLayout.rewardHeight,
         {
-          fill: 0x0a1d34,
+          fill: 0x151e2b,
           fillAlpha: 0.92,
-          stroke: 0x4679a9,
+          stroke: 0x384859,
           strokeWidth: 1,
           depth: 2,
           interactive: false,
@@ -4793,7 +4791,7 @@ export class BattleScene extends Phaser.Scene {
           detail,
           {
             fontSize: mobileVictory ? "16px" : "9px",
-            color: "#839bb4",
+            color: "#94a8bd",
             fontFamily: "Arial, sans-serif",
           },
         )
@@ -4849,28 +4847,27 @@ export class BattleScene extends Phaser.Scene {
       const leveledUp =
         !diedThisFight && log.some((l) => l.includes(`${p.name} leveled up`));
 
-      const row = this.add
-        .rectangle(
-          400,
-          rowY,
-          696,
-          rowHeight,
-          i % 2 === 0 ? 0x0c2038 : 0x0a1a2f,
-          0.96,
-        )
-        .setStrokeStyle(1, leveledUp ? 0xc7a94f : 0x284d72)
+      const row = roundedRectangle(
+        this,
+        400,
+        rowY,
+        696,
+        rowHeight,
+        i % 2 === 0 ? 0x151e2b : 0x151e2b,
+        0.96,
+      )
+        .setStrokeStyle(1, leveledUp ? 0xc7a94f : 0x384859)
         .setDepth(2);
       row._combatFxTag = "victory-party-row";
-      this.add
-        .rectangle(
-          55,
-          rowY,
-          4,
-          rowHeight - (mobileVictory ? 18 : 8),
-          leveledUp ? 0xf1cb66 : alive ? 0x62a9df : 0x8b4a52,
-          1,
-        )
-        .setDepth(3);
+      roundedRectangle(
+        this,
+        55,
+        rowY,
+        4,
+        rowHeight - (mobileVictory ? 18 : 8),
+        leveledUp ? 0xf1cb66 : alive ? 0x384859 : 0x8b4a52,
+        1,
+      ).setDepth(3);
 
       const cs = CLASS_SPRITES[p.sprite_id || p.class_id];
       if (cs && this.textures.exists(cs)) {
@@ -4952,17 +4949,17 @@ export class BattleScene extends Phaser.Scene {
         .setDepth(3);
       const progressX = mobileVictory ? 430 : 395;
       const progressY = rowY + (mobileVictory ? 34 : 10);
-      this.add
-        .rectangle(
-          progressX,
-          progressY,
-          barW,
-          mobileVictory ? 14 : 8,
-          0x07101d,
-          1,
-        )
+      roundedRectangle(
+        this,
+        progressX,
+        progressY,
+        barW,
+        mobileVictory ? 14 : 8,
+        0x151e2b,
+        1,
+      )
         .setOrigin(0, 0.5)
-        .setStrokeStyle(1, 0x315d83)
+        .setStrokeStyle(1, 0x384859)
         .setDepth(3);
 
       const delay = 450 + i * 650;
@@ -4989,14 +4986,14 @@ export class BattleScene extends Phaser.Scene {
         const firstWidth =
           firstMax > 0 ? (barW * firstSegment.start) / firstMax : 0;
 
-        const xpBarFill = this.add
-          .rectangle(
-            progressX,
-            progressY,
-            firstWidth,
-            mobileVictory ? 14 : 8,
-            0x5ca9de,
-          )
+        const xpBarFill = roundedRectangle(
+          this,
+          progressX,
+          progressY,
+          firstWidth,
+          mobileVictory ? 14 : 8,
+          0x384859,
+        )
           .setOrigin(0, 0.5)
           .setDepth(4);
 
@@ -5047,15 +5044,15 @@ export class BattleScene extends Phaser.Scene {
       }
 
       if (leveledUp) {
-        const badgeBg = this.add
-          .rectangle(
-            684,
-            rowY,
-            mobileVictory ? 116 : 102,
-            mobileVictory ? 44 : 28,
-            0x5b4614,
-            1,
-          )
+        const badgeBg = roundedRectangle(
+          this,
+          684,
+          rowY,
+          mobileVictory ? 116 : 102,
+          mobileVictory ? 44 : 28,
+          0x5b4614,
+          1,
+        )
           .setStrokeStyle(1, 0xf1cb66)
           .setAlpha(0)
           .setDepth(4);
@@ -5071,7 +5068,8 @@ export class BattleScene extends Phaser.Scene {
           .setDepth(5);
 
         const runLevelUp = (instant) => {
-          const flash = this.add.rectangle(
+          const flash = roundedRectangle(
+            this,
             400,
             rowY,
             696,
@@ -5119,9 +5117,9 @@ export class BattleScene extends Phaser.Scene {
       696,
       resultLayout.spoilsHeight,
       {
-        fill: 0x081728,
+        fill: 0x151e2b,
         fillAlpha: 0.96,
-        stroke: 0x345f87,
+        stroke: 0x384859,
         strokeWidth: 1,
         depth: 2,
         interactive: false,
@@ -5250,8 +5248,8 @@ export class BattleScene extends Phaser.Scene {
       {
         depth: 8,
         fontSize: layout.continueFontSize,
-        fill: 0x1d4938,
-        fillHover: 0x2f6a50,
+        fill: 0x1c2736,
+        fillHover: 0x384859,
         stroke: 0x9cdfb4,
         fontFamily: "Arial",
       },

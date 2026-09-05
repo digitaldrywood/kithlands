@@ -1,14 +1,14 @@
+@import "./menu-theme.css";
+
 .post-battle-loot-dialog .viewport-dialog-panel {
   width: min(100%, 920px);
-  border-color: #b9d6f2;
-  background:
-    linear-gradient(145deg, #1b3c61e8, #09172ce8 72%),
-    radial-gradient(circle at 76% 10%, #d7b85d33, transparent 34%);
+  border-color: var(--menu-muted);
+  background: var(--menu-panel);
 }
 
 .battle-loot-progress {
   margin: 8px 0 0;
-  color: #b8cee5;
+  color: var(--menu-muted);
   font-size: 14px;
 }
 
@@ -18,10 +18,10 @@
   gap: 18px;
   align-items: center;
   padding: 18px;
-  border: 1px solid #d2b96088;
+  border: 1px solid var(--menu-accent);
   border-radius: 14px;
-  background: linear-gradient(135deg, #152f4b, #081427);
-  box-shadow: inset 0 0 28px #e1c66f12;
+  background: var(--menu-panel);
+  box-shadow: 0 20px 70px #0006;
 }
 
 .battle-loot-icon {
@@ -29,13 +29,13 @@
   height: 84px;
   display: grid;
   place-items: center;
-  border: 2px solid #e5cf87;
+  border: 1px solid var(--menu-line);
   border-radius: 12px;
-  background: radial-gradient(circle, #365f82, #0b192d 72%);
-  color: #ffe8a2;
+  background: var(--menu-panel);
+  color: var(--menu-accent);
   font:
-    bold 38px/1 Georgia,
-    serif;
+    bold 38px/1 system-ui,
+    sans-serif;
   image-rendering: pixelated;
 }
 
@@ -56,7 +56,7 @@
 }
 
 .battle-loot-kicker {
-  color: #8ec7ed;
+  color: var(--menu-muted);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -64,26 +64,26 @@
 
 .battle-loot-item-copy h2 {
   margin: 3px 0 2px;
-  color: #fff0bb;
+  color: var(--menu-accent);
   font:
-    bold 27px/1.2 Georgia,
-    serif;
+    bold 27px/1.2 system-ui,
+    sans-serif;
 }
 
 .battle-loot-meta {
-  color: #c0d3e8;
+  color: var(--menu-muted);
   text-transform: capitalize;
 }
 
 .battle-loot-affixes {
   margin-top: 7px;
-  color: #dfc8ff;
+  color: var(--menu-text);
   font-size: 14px;
 }
 
 .battle-loot-sockets {
   margin-top: 4px;
-  color: #91d8ff;
+  color: var(--menu-muted);
   font-size: 13px;
 }
 
@@ -98,10 +98,10 @@
 
 .battle-loot-item-stats li {
   padding: 4px 8px;
-  border: 1px solid #6f91b866;
+  border: 1px solid var(--menu-line);
   border-radius: 999px;
-  background: #07162a;
-  color: #eaf4ff;
+  background: var(--menu-panel);
+  color: var(--menu-text);
   font-size: 12px;
 }
 
@@ -115,14 +115,14 @@
 
 .battle-loot-section-heading h2 {
   margin: 0;
-  color: #f7dda0;
+  color: var(--menu-accent);
   font:
-    bold 21px/1.2 Georgia,
-    serif;
+    bold 21px/1.2 system-ui,
+    sans-serif;
 }
 
 .battle-loot-section-heading p {
-  color: #9eb4cb;
+  color: var(--menu-muted);
   font-size: 13px;
 }
 
@@ -137,20 +137,20 @@
   min-width: 0;
   flex-direction: column;
   padding: 14px;
-  border: 1px solid #507ca8;
+  border: 1px solid var(--menu-line);
   border-radius: 11px;
-  background: #061426b8;
+  background: var(--menu-panel);
 }
 
 .battle-loot-comparison-heading h3 {
   margin: 0;
-  color: #f4f7fb;
+  color: var(--menu-text);
   font-size: 18px;
 }
 
 .battle-loot-comparison-heading p,
 .battle-loot-current {
-  color: #9db6cf;
+  color: var(--menu-muted);
   font-size: 13px;
 }
 
@@ -172,7 +172,7 @@
   grid-template-columns: 1fr auto 42px;
   gap: 8px;
   align-items: baseline;
-  color: #d9e7f5;
+  color: var(--menu-text);
   font-size: 13px;
 }
 
@@ -190,11 +190,11 @@
 
 .battle-loot-deltas .is-neutral {
   display: block;
-  color: #b1c1d1;
+  color: var(--menu-muted);
 }
 
 .battle-loot-before-after {
-  color: #9db2c8;
+  color: var(--menu-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -210,10 +210,10 @@
 .battle-loot-no-options {
   grid-column: 1 / -1;
   padding: 18px;
-  border: 1px solid #6b88a766;
+  border: 1px solid var(--menu-line);
   border-radius: 10px;
-  background: #071427;
-  color: #bfd1e4;
+  background: var(--menu-panel);
+  color: var(--menu-muted);
 }
 
 @media (max-width: 700px), (max-height: 650px) {

@@ -1,3 +1,5 @@
+@import "./menu-theme.css";
+
 .campaign-ending {
   position: fixed;
   inset: 0;
@@ -8,9 +10,9 @@
   padding: max(20px, env(safe-area-inset-top)) 20px
     max(20px, env(safe-area-inset-bottom));
   box-sizing: border-box;
-  background: radial-gradient(ellipse at top, #294647, #111e2d 65%);
-  color: #f6edda;
-  font-family: "Trebuchet MS", Arial, sans-serif;
+  background: var(--menu-panel);
+  color: var(--menu-accent);
+  font-family: system-ui, Arial, sans-serif;
 }
 .campaign-ending-panel {
   width: min(100%, 700px);
@@ -18,19 +20,19 @@
   padding: clamp(24px, 4vw, 48px);
   margin: auto;
   border: 1px solid #9b8656;
-  border-radius: 16px;
-  background: #172a37;
+  border-radius: 24px;
+  background: var(--menu-panel);
   box-shadow: 0 24px 80px #0006;
   outline: none;
 }
 .campaign-ending-eyebrow {
-  color: #d7bc76;
+  color: var(--menu-accent);
   letter-spacing: 0.08em;
   font-size: 13px;
   text-transform: uppercase;
 }
 .campaign-ending h1 {
-  font-family: Georgia, serif;
+  font-family: system-ui, sans-serif;
   font-size: clamp(28px, 4vw, 42px);
   font-weight: normal;
   line-height: 1.15;
@@ -41,7 +43,7 @@
   font-size: 17px;
 }
 .campaign-ending-hint {
-  color: #bdced3;
+  color: var(--menu-muted);
 }
 .campaign-ending-party {
   display: grid;
@@ -51,8 +53,8 @@
 }
 .campaign-ending-companion {
   padding: 14px;
-  background: #223947;
-  border-radius: 7px;
+  background: var(--menu-card);
+  border-radius: 12px;
 }
 .campaign-ending-companion strong,
 .campaign-ending-companion span {
@@ -60,12 +62,12 @@
   overflow-wrap: anywhere;
 }
 .campaign-ending-companion span {
-  color: #bed0d3;
+  color: var(--menu-muted);
   margin-top: 5px;
   font-size: 14px;
 }
 .campaign-ending-reward {
-  color: #e1c88c;
+  color: var(--menu-accent);
   font-size: 14px;
 }
 .campaign-ending-actions {
@@ -77,15 +79,15 @@
 .campaign-ending button {
   min-height: 48px;
   padding: 12px 20px;
-  border: 1px solid #cbb97e;
-  border-radius: 7px;
-  background: #325455;
-  color: #fff4d3;
+  border: 1px solid var(--menu-accent);
+  border-radius: 12px;
+  background: var(--menu-card);
+  color: var(--menu-accent);
   font: inherit;
   cursor: pointer;
 }
 .campaign-ending button:focus-visible {
-  outline: 3px solid #ffe3a0;
+  outline: 3px solid var(--menu-accent);
   outline-offset: 4px;
 }
 .campaign-ending button:hover {

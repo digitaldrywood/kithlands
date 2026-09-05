@@ -180,12 +180,18 @@ function findMenuButtonAt(scene, label, occurrence = 0) {
 }
 
 function findInteractiveText(scene, text) {
-  const matcher = String(text).toLowerCase();
+  const normalize = (value) =>
+    String(value)
+      .replace(/[\[\]]/g, "")
+      .trim()
+      .toLowerCase();
+  const matcher = normalize(text);
   const children = scene?.children?.list || [];
   for (const exact of [true, false]) {
     for (let i = children.length - 1; i >= 0; i -= 1) {
       const child = children[i];
-      const childText = child?.text?.toLowerCase();
+      const childText =
+        typeof child?.text === "string" ? normalize(child.text) : null;
       if (
         typeof childText === "string" &&
         (exact ? childText === matcher : childText.includes(matcher)) &&
@@ -1633,6 +1639,9 @@ export function installDevTestBridge(game) {
     },
 
     async startQuickGame(email = `playwright_${Date.now()}@kithlands.dev`) {
+      await waitFor(
+        () => typeof getScene(game, "Title")?.startGame === "function",
+      );
       const title = getScene(game, "Title");
       if (!title || typeof title.startGame !== "function") {
         throw new Error("Title scene is not ready");
@@ -2373,6 +2382,13 @@ export function installDevTestBridge(game) {
 
     clickMenuButton(label, sceneKey, occurrence = 0) {
       const scene = getScene(game, sceneKey);
+      const native = scene?.partyMenuDialog?.root?.querySelector(
+        `[data-action="${{ CHARACTER: "C", ITEMS: "I", MAGIC: "M", FORMATION: "F", "QUEST LOG": "Q", "WORLD MAP": "W", SAVE: "S", OPTIONS: "O", CLOSE: "ESC" }[label]}"]`,
+      );
+      if (native) {
+        native.click();
+        return;
+      }
       const button = findMenuButtonAt(scene, label, occurrence);
       if (!button) throw new Error(`Menu button not found: ${label}`);
       clickGameObject(button);

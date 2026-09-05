@@ -1,3 +1,4 @@
+import { roundedRectangle } from "../ui/theme.js";
 import { updatePartyFormation } from "../api.js";
 import { playSFX } from "../systems/audio.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
@@ -12,16 +13,16 @@ import { toggleMenu } from "./world_menu.js";
 
 const DEPTH_BG = 50;
 const DEPTH_CONTENT = 51;
-const FF6_BLUE = 0x4d78bf;
+const FF6_BLUE = 0x384859;
 const FF6_GOLD = 0xf4d881;
 const FF6_GOLD_DARK = 0xa66b1d;
 const FF6_GLOW = 0x9bc7ff;
-const ROW_FILL = 0x16274a;
-const ROW_FILL_HOVER = 0x21406e;
-const ROW_FILL_SELECTED = 0x2d5a93;
+const ROW_FILL = 0x1c2736;
+const ROW_FILL_HOVER = 0x384859;
+const ROW_FILL_SELECTED = 0x384859;
 const PICK_FILL = 0x4b3e24;
 const PREVIEW_FRONT = 0x53411f;
-const PREVIEW_BACK = 0x1f3358;
+const PREVIEW_BACK = 0x1c2736;
 
 function normalizeRow(row) {
   return row === "front" || row === "back" ? row : "";
@@ -37,7 +38,7 @@ function rowBadgeLabel(row) {
 
 function rowBadgeColor(row) {
   return row === "back"
-    ? { fill: 0x2a446f, stroke: 0xb9c8ff }
+    ? { fill: 0x384859, stroke: 0xb9c8ff }
     : { fill: 0x5d4920, stroke: FF6_GOLD };
 }
 
@@ -172,15 +173,15 @@ export function showFormationMenu(scene) {
 
   if (layout.mode === "mobile") {
     staticObjects.push(
-      scene.add
-        .rectangle(
-          layout.gameWidth / 2,
-          layout.gameHeight / 2,
-          layout.gameWidth,
-          layout.gameHeight,
-          0x020711,
-          0.96,
-        )
+      roundedRectangle(
+        scene,
+        layout.gameWidth / 2,
+        layout.gameHeight / 2,
+        layout.gameWidth,
+        layout.gameHeight,
+        0x151e2b,
+        0.96,
+      )
         .setScrollFactor(0)
         .setDepth(DEPTH_BG - 1)
         .setInteractive(),
@@ -192,18 +193,18 @@ export function showFormationMenu(scene) {
       fontSize: `${layout.title.fontSize}px`,
       fontStyle: "bold",
       color: "#fff5c2",
-      fontFamily: "Georgia",
+      fontFamily: "Arial, sans-serif",
     })
     .setOrigin(0, 0.5)
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
-  applyTextGlow(title, "#2c5f9d", 2);
+  applyTextGlow(title, "#384859", 2);
 
   const hintText = scene.add
     .text(layout.hint.x, layout.hint.y, "", {
       fontSize: `${layout.hint.fontSize}px`,
       color: "#dbe9ff",
-      fontFamily: "monospace",
+      fontFamily: "Arial, sans-serif",
       align: "center",
       wordWrap: { width: layout.hint.width },
     })
@@ -235,9 +236,9 @@ export function showFormationMenu(scene) {
       depth: DEPTH_BG + 0.5,
       interactive: false,
       variant: "ff6",
-      outerFill: 0x3b66a4,
-      innerTop: 0x214875,
-      innerBottom: 0x112341,
+      outerFill: 0x384859,
+      innerTop: 0x384859,
+      innerBottom: 0x1c2736,
       radius: 16,
     },
   );
@@ -251,9 +252,9 @@ export function showFormationMenu(scene) {
       depth: DEPTH_BG + 0.5,
       interactive: false,
       variant: "ff6",
-      outerFill: 0x3b66a4,
-      innerTop: 0x214875,
-      innerBottom: 0x112341,
+      outerFill: 0x384859,
+      innerTop: 0x384859,
+      innerBottom: 0x1c2736,
       radius: 16,
     },
   );
@@ -265,7 +266,7 @@ export function showFormationMenu(scene) {
       fontSize: `${layout.preview.title.fontSize}px`,
       fontStyle: "bold",
       color: "#fff1c2",
-      fontFamily: "Georgia",
+      fontFamily: "Arial, sans-serif",
     })
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
@@ -273,7 +274,7 @@ export function showFormationMenu(scene) {
     .text(layout.preview.frontHelp.x, layout.preview.frontHelp.y, "FRONT", {
       fontSize: `${layout.preview.frontHelp.fontSize}px`,
       color: "#f4d881",
-      fontFamily: "monospace",
+      fontFamily: "Arial, sans-serif",
     })
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
@@ -281,7 +282,7 @@ export function showFormationMenu(scene) {
     .text(layout.preview.backHelp.x, layout.preview.backHelp.y, "BACK", {
       fontSize: `${layout.preview.backHelp.fontSize}px`,
       color: "#b9c8ff",
-      fontFamily: "monospace",
+      fontFamily: "Arial, sans-serif",
     })
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
@@ -290,7 +291,7 @@ export function showFormationMenu(scene) {
       fontSize: `${layout.list.title.fontSize}px`,
       fontStyle: "bold",
       color: "#fff1c2",
-      fontFamily: "Georgia",
+      fontFamily: "Arial, sans-serif",
     })
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
@@ -358,8 +359,15 @@ export function showFormationMenu(scene) {
       const moved =
         currentSlots.get(member.originalSlot) != null &&
         currentSlots.get(member.originalSlot) !== slot;
-      const card = scene.add
-        .rectangle(x + cardW / 2, y + cardH / 2, cardW, cardH, fill, 0.96)
+      const card = roundedRectangle(
+        scene,
+        x + cardW / 2,
+        y + cardH / 2,
+        cardW,
+        cardH,
+        fill,
+        0.96,
+      )
         .setStrokeStyle(
           2,
           slot === state.focusedIdx
@@ -370,15 +378,15 @@ export function showFormationMenu(scene) {
         )
         .setScrollFactor(0)
         .setDepth(DEPTH_CONTENT);
-      const slotBadge = scene.add
-        .rectangle(
-          x + preview.slotBadge.x,
-          y + preview.slotBadge.y,
-          preview.slotBadge.width,
-          preview.slotBadge.height,
-          0x132947,
-          1,
-        )
+      const slotBadge = roundedRectangle(
+        scene,
+        x + preview.slotBadge.x,
+        y + preview.slotBadge.y,
+        preview.slotBadge.width,
+        preview.slotBadge.height,
+        0x1c2736,
+        1,
+      )
         .setStrokeStyle(1, 0xe7f2ff, 0.8)
         .setScrollFactor(0)
         .setDepth(DEPTH_CONTENT + 1);
@@ -387,7 +395,7 @@ export function showFormationMenu(scene) {
           fontSize: `${preview.slotBadge.fontSize}px`,
           fontStyle: "bold",
           color: "#fff7d6",
-          fontFamily: "Courier New",
+          fontFamily: "Arial, sans-serif",
         })
         .setOrigin(0.5)
         .setScrollFactor(0)
@@ -411,7 +419,7 @@ export function showFormationMenu(scene) {
               fontSize: `${Math.round(preview.portrait.size * 0.6)}px`,
               fontStyle: "bold",
               color: "#eef7ff",
-              fontFamily: "Georgia",
+              fontFamily: "Arial, sans-serif",
             },
           )
           .setOrigin(0.5)
@@ -423,7 +431,7 @@ export function showFormationMenu(scene) {
           fontSize: `${preview.name.fontSize}px`,
           fontStyle: "bold",
           color: "#f7fbff",
-          fontFamily: "Trebuchet MS",
+          fontFamily: "Arial, sans-serif",
         })
         .setScrollFactor(0)
         .setDepth(DEPTH_CONTENT + 2);
@@ -435,7 +443,7 @@ export function showFormationMenu(scene) {
           {
             fontSize: `${preview.rowLabel.fontSize}px`,
             color: member.row === "back" ? "#d5e2ff" : "#fff0b4",
-            fontFamily: "monospace",
+            fontFamily: "Arial, sans-serif",
           },
         )
         .setScrollFactor(0)
@@ -445,7 +453,7 @@ export function showFormationMenu(scene) {
             .text(x + preview.moved.x, y + preview.moved.y, "SWAP PREVIEW", {
               fontSize: `${preview.moved.fontSize}px`,
               color: "#8fd7ff",
-              fontFamily: "monospace",
+              fontFamily: "Arial, sans-serif",
             })
             .setScrollFactor(0)
             .setDepth(DEPTH_CONTENT + 2)
@@ -493,15 +501,15 @@ export function showFormationMenu(scene) {
             ? ROW_FILL_HOVER
             : ROW_FILL;
 
-      const rowBg = scene.add
-        .rectangle(
-          rightLeft + list.rowWidth / 2,
-          y + rowHeight / 2 - 2,
-          list.rowWidth,
-          list.rowBodyHeight,
-          rowFill,
-          0.98,
-        )
+      const rowBg = roundedRectangle(
+        scene,
+        rightLeft + list.rowWidth / 2,
+        y + rowHeight / 2 - 2,
+        list.rowWidth,
+        list.rowBodyHeight,
+        rowFill,
+        0.98,
+      )
         .setStrokeStyle(2, picked ? FF6_GOLD : selected ? FF6_GLOW : FF6_BLUE)
         .setScrollFactor(0)
         .setDepth(DEPTH_CONTENT);
@@ -531,15 +539,15 @@ export function showFormationMenu(scene) {
       });
 
       const portraitKey = resolvePortraitTextureKey(scene, member);
-      const portraitFrame = scene.add
-        .rectangle(
-          rightLeft + list.portrait.x,
-          y + list.portrait.y,
-          list.portrait.size,
-          list.portrait.size,
-          0x10233f,
-          1,
-        )
+      const portraitFrame = roundedRectangle(
+        scene,
+        rightLeft + list.portrait.x,
+        y + list.portrait.y,
+        list.portrait.size,
+        list.portrait.size,
+        0x1c2736,
+        1,
+      )
         .setStrokeStyle(2, rowColors.stroke)
         .setScrollFactor(0)
         .setDepth(DEPTH_CONTENT + 1);
@@ -561,7 +569,7 @@ export function showFormationMenu(scene) {
               fontSize: `${Math.round(list.portrait.imageSize * 0.6)}px`,
               fontStyle: "bold",
               color: "#eef7ff",
-              fontFamily: "Georgia",
+              fontFamily: "Arial, sans-serif",
             },
           )
           .setOrigin(0.5)
@@ -578,7 +586,7 @@ export function showFormationMenu(scene) {
             fontSize: `${list.name.fontSize}px`,
             fontStyle: "bold",
             color: "#f7fbff",
-            fontFamily: "Trebuchet MS",
+            fontFamily: "Arial, sans-serif",
           },
         )
         .setScrollFactor(0)
@@ -591,7 +599,7 @@ export function showFormationMenu(scene) {
           {
             fontSize: `${list.className.fontSize}px`,
             color: "#d2bdd7",
-            fontFamily: "Georgia",
+            fontFamily: "Arial, sans-serif",
           },
         )
         .setScrollFactor(0)
@@ -604,20 +612,20 @@ export function showFormationMenu(scene) {
           {
             fontSize: `${list.stats.fontSize}px`,
             color: "#dbe9ff",
-            fontFamily: "Courier New",
+            fontFamily: "Arial, sans-serif",
           },
         )
         .setScrollFactor(0)
         .setDepth(DEPTH_CONTENT + 2);
-      const rowBadgeBg = scene.add
-        .rectangle(
-          rightLeft + list.badge.x,
-          y + list.badge.y,
-          list.badge.width,
-          list.badge.height,
-          rowColors.fill,
-          1,
-        )
+      const rowBadgeBg = roundedRectangle(
+        scene,
+        rightLeft + list.badge.x,
+        y + list.badge.y,
+        list.badge.width,
+        list.badge.height,
+        rowColors.fill,
+        1,
+      )
         .setStrokeStyle(2, rowColors.stroke)
         .setScrollFactor(0)
         .setDepth(DEPTH_CONTENT + 1);
@@ -635,7 +643,7 @@ export function showFormationMenu(scene) {
             fontSize: `${list.badge.fontSize}px`,
             fontStyle: "bold",
             color: member.row === "back" ? "#e6f0ff" : "#fff5d1",
-            fontFamily: "monospace",
+            fontFamily: "Arial, sans-serif",
           },
         )
         .setOrigin(0.5)
@@ -647,7 +655,7 @@ export function showFormationMenu(scene) {
               fontSize: `${list.picked.fontSize}px`,
               fontStyle: "bold",
               color: "#ffef9f",
-              fontFamily: "monospace",
+              fontFamily: "Arial, sans-serif",
             })
             .setOrigin(0.5)
             .setScrollFactor(0)
@@ -768,10 +776,10 @@ export function showFormationMenu(scene) {
     closeAndSave,
     {
       depth: DEPTH_CONTENT,
-      fill: 0x294a7a,
-      fillHover: 0x335c95,
-      fillPress: 0x3a6ca8,
-      fillActive: 0x335c95,
+      fill: 0x384859,
+      fillHover: 0x384859,
+      fillPress: 0x384859,
+      fillActive: 0x384859,
       stroke: FF6_GOLD_DARK,
       strokeActive: FF6_GOLD,
       fontSize: `${layout.save.fontSize}px`,

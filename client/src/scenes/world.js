@@ -1,3 +1,4 @@
+import { drawPanel, drawButton } from "../ui/panel.js";
 import { gameAction, autosaveGame } from "../api.js";
 import { showCampaignEnding, showFinalRecovery } from "./campaignEnding.js";
 import {
@@ -1170,19 +1171,29 @@ export class WorldScene extends Phaser.Scene {
   }
 
   showEndScreen(title, subtitle, color, gs) {
-    this.add.rectangle(400, 300, 800, 600, 0x111111);
+    drawPanel(this, 400, 300, 776, 576, { depth: -1 });
+    drawButton(
+      this,
+      400,
+      550,
+      220,
+      42,
+      "Return to main menu",
+      () => this.scene.start("Title"),
+      { fontSize: "16px" },
+    );
     this.add
       .text(400, 120, title, {
         fontSize: "48px",
         color,
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
       })
       .setOrigin(0.5);
     this.add
       .text(400, 190, subtitle, {
         fontSize: "16px",
         color: "#ffffff",
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
       })
       .setOrigin(0.5);
 
@@ -1191,7 +1202,7 @@ export class WorldScene extends Phaser.Scene {
       .text(400, y, "Final Party:", {
         fontSize: "16px",
         color: "#ffff44",
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
       })
       .setOrigin(0.5);
     y += 30;
@@ -1201,7 +1212,11 @@ export class WorldScene extends Phaser.Scene {
           400,
           y,
           `${pm.name} (${pm.class_name}) Lv.${pm.level}  HP:${pm.max_hp}  STR:${pm.str} AGI:${pm.agi} INT:${pm.int_stat}`,
-          { fontSize: "13px", color: "#ffffff", fontFamily: "monospace" },
+          {
+            fontSize: "13px",
+            color: "#ffffff",
+            fontFamily: "Arial, sans-serif",
+          },
         )
         .setOrigin(0.5);
       y += 22;
@@ -1210,7 +1225,7 @@ export class WorldScene extends Phaser.Scene {
       .text(400, y + 20, `Gold: ${gs.gold}`, {
         fontSize: "14px",
         color: "#ffcc44",
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
       })
       .setOrigin(0.5);
   }

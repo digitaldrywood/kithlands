@@ -158,8 +158,8 @@ describe("drawPanel", () => {
     expect(bg.w).toBe(760);
     expect(bg.h).toBe(540);
     expect(bg.interactive).toBe(true);
-    expect(bg.stroke).toBe(0x4488ff);
-    expect(bg.strokeWidth).toBe(2);
+    expect(bg.stroke).toBe(0x384859);
+    expect(bg.strokeWidth).toBe(1);
   });
 
   it("skips setInteractive when interactive=false", () => {
@@ -228,17 +228,17 @@ describe("drawButton", () => {
     const btn = drawButton(scene, 0, 0, 100, 30, "Tab", () => {});
     btn.setActive(true);
     expect(btn.isActive()).toBe(true);
-    expect(btn.bg.stroke).toBe(0x88ccff);
+    expect(btn.bg.stroke).toBe(0xc9b589);
     btn.setActive(false);
-    expect(btn.bg.stroke).toBe(0x4488ff);
+    expect(btn.bg.stroke).toBe(0x384859);
   });
 
   it("pointerover on an enabled button switches to fillHover", () => {
     const scene = freshScene();
     const btn = drawButton(scene, 0, 0, 100, 30, "X", () => {});
     btn.bg.handlers.pointerover();
-    expect(btn.bg.fill).toBe(0x2a4a7a);
-    expect(btn.bg.stroke).toBe(0x88ccff);
+    expect(btn.bg.fill).toBe(0x283748);
+    expect(btn.bg.stroke).toBe(0xc9b589);
   });
 
   it("reports focus and blur for contextual help", () => {
@@ -321,12 +321,12 @@ describe("drawProgressBar", () => {
   it("setFocused swaps the track stroke color", () => {
     const scene = freshScene();
     const bar = drawProgressBar(scene, 0, 0, 200, 14, 3, 6);
-    expect(bar.track.stroke).toBe(0x4488ff);
+    expect(bar.track.stroke).toBe(0x8faee9);
     bar.setFocused(true);
-    expect(bar.track.stroke).toBe(0xffcc44);
+    expect(bar.track.stroke).toBe(0xc9b589);
     expect(bar.isFocused()).toBe(true);
     bar.setFocused(false);
-    expect(bar.track.stroke).toBe(0x4488ff);
+    expect(bar.track.stroke).toBe(0x8faee9);
     expect(bar.isFocused()).toBe(false);
   });
 

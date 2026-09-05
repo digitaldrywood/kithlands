@@ -1,3 +1,4 @@
+import { roundedRectangle } from "../ui/theme.js";
 import { getNpcDialogue } from "../api.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 import { isRestBuilding } from "./building_type.js";
@@ -83,8 +84,15 @@ export async function openDialogue(scene, spawn, providedDialogue = null) {
   const portrait = scene.gameplayLayout?.portrait === true;
   const boxY = portrait ? scene.gameplayLayout.playfieldBottom - 280 : 430;
   const boxH = portrait ? 240 : 118;
-  const bg = scene.add
-    .rectangle(400, boxY + boxH / 2, 760, boxH, 0x0a0a22, 1)
+  const bg = roundedRectangle(
+    scene,
+    400,
+    boxY + boxH / 2,
+    760,
+    boxH,
+    0x151e2b,
+    1,
+  )
     .setStrokeStyle(2, 0x7fb7ff)
     .setScrollFactor(0)
     .setDepth(depth)
@@ -96,7 +104,7 @@ export async function openDialogue(scene, spawn, providedDialogue = null) {
     .text(40, boxY + (portrait ? 18 : 10), dialogue.npc_name, {
       fontSize: portrait ? "30px" : "14px",
       color: "#ffff44",
-      fontFamily: portrait ? "Arial, sans-serif" : "monospace",
+      fontFamily: portrait ? "Arial, sans-serif" : "Arial, sans-serif",
     })
     .setScrollFactor(0)
     .setDepth(depth + 1);
@@ -107,7 +115,7 @@ export async function openDialogue(scene, spawn, providedDialogue = null) {
     .text(40, boxY + (portrait ? 64 : 35), lines[lineIndex], {
       fontSize: portrait ? "28px" : "12px",
       color: "#ffffff",
-      fontFamily: portrait ? "Arial, sans-serif" : "monospace",
+      fontFamily: portrait ? "Arial, sans-serif" : "Arial, sans-serif",
       wordWrap: { width: 700 },
       lineSpacing: 4,
     })
@@ -120,7 +128,7 @@ export async function openDialogue(scene, spawn, providedDialogue = null) {
     .text(704, boxY + boxH - (portrait ? 28 : 18), portrait ? "Tap" : "Enter", {
       fontSize: portrait ? "24px" : "10px",
       color: "#b9c7dd",
-      fontFamily: portrait ? "Arial, sans-serif" : "monospace",
+      fontFamily: portrait ? "Arial, sans-serif" : "Arial, sans-serif",
     })
     .setOrigin(0.5)
     .setScrollFactor(0)

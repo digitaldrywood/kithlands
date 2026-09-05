@@ -1,3 +1,4 @@
+import { roundedRectangle } from "../ui/theme.js";
 // Item menu shared by the world and battle flows. Same module powers the
 // screen and the in-combat item picker; a `mode` parameter decides whether
 // tent/rest-only items are filtered out and whether confirming commits via a
@@ -170,15 +171,15 @@ export function showItemMenu(scene, opts = {}) {
 
   if (layout.mode === "mobile") {
     state.overlay.push(
-      scene.add
-        .rectangle(
-          layout.gameWidth / 2,
-          layout.gameHeight / 2,
-          layout.gameWidth,
-          layout.gameHeight,
-          0x020711,
-          0.96,
-        )
+      roundedRectangle(
+        scene,
+        layout.gameWidth / 2,
+        layout.gameHeight / 2,
+        layout.gameWidth,
+        layout.gameHeight,
+        0x151e2b,
+        0.96,
+      )
         .setScrollFactor(0)
         .setDepth(DEPTH_BG - 1)
         .setInteractive(),
@@ -231,15 +232,15 @@ export function showItemMenu(scene, opts = {}) {
     .setDepth(DEPTH_TEXT);
   state.overlay.push(state.countText);
 
-  const headerDivider = scene.add
-    .rectangle(
-      panel.x,
-      panelTop + layout.headerDividerInset,
-      panel.width - layout.list.xInset * 2,
-      1,
-      0x6d93b7,
-      0.65,
-    )
+  const headerDivider = roundedRectangle(
+    scene,
+    panel.x,
+    panelTop + layout.headerDividerInset,
+    panel.width - layout.list.xInset * 2,
+    1,
+    0x384859,
+    0.65,
+  )
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
   state.overlay.push(headerDivider);
@@ -262,15 +263,15 @@ export function showItemMenu(scene, opts = {}) {
   state.overlay.push(state.stageText);
 
   // FF1 keeps the selected item's explanation in a persistent detail band.
-  const detailDivider = scene.add
-    .rectangle(
-      panel.x,
-      panelBottom - layout.detail.dividerBottomInset,
-      panel.width - layout.list.xInset * 2,
-      1,
-      0x6d93b7,
-      0.65,
-    )
+  const detailDivider = roundedRectangle(
+    scene,
+    panel.x,
+    panelBottom - layout.detail.dividerBottomInset,
+    panel.width - layout.list.xInset * 2,
+    1,
+    0x384859,
+    0.65,
+  )
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
   state.overlay.push(detailDivider);
@@ -281,7 +282,7 @@ export function showItemMenu(scene, opts = {}) {
       "",
       {
         fontSize: `${layout.detail.nameFontSize}px`,
-        color: "#ffffff",
+        color: "#e9eef7",
         fontFamily: "Arial, sans-serif",
         fontStyle: "bold",
       },
@@ -333,7 +334,7 @@ export function showItemMenu(scene, opts = {}) {
       "↑↓ move    Enter/click use    Esc close",
       {
         fontSize: `${layout.footer.hintFontSize}px`,
-        color: "#8ea4b8",
+        color: "#94a8bd",
         fontFamily: "Arial, sans-serif",
       },
     )
@@ -412,25 +413,25 @@ function rebuildRows(state) {
     const item = list[idx];
     const y = startY + i * rowHeight + rowHeight / 2;
 
-    const rowBg = state.scene.add
-      .rectangle(
-        panel.x,
-        y,
-        panel.width - layout.list.xInset * 2,
-        rowHeight - (layout.mode === "mobile" ? 8 : 2),
-        0x1a2f4b,
-        0.15,
-      )
+    const rowBg = roundedRectangle(
+      state.scene,
+      panel.x,
+      y,
+      panel.width - layout.list.xInset * 2,
+      rowHeight - (layout.mode === "mobile" ? 8 : 2),
+      0x1c2736,
+      0.15,
+    )
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT)
-      .setStrokeStyle(1, 0x5f7f9f, 0)
+      .setStrokeStyle(1, 0x384859, 0)
       .setInteractive({ useHandCursor: !item.greyed });
     rowBg.__kithlandsMenuOverlay = {
       role: "row",
       kind: "items",
       index: idx,
     };
-    const color = item.greyed ? "#666666" : "#ffffff";
+    const color = item.greyed ? "#697888" : "#e9eef7";
     const label = state.scene.add
       .text(panelLeft + layout.list.labelInset, y, item.name, {
         fontSize: `${layout.list.labelFontSize}px`,
@@ -467,7 +468,7 @@ function rebuildRows(state) {
     const empty = state.scene.add
       .text(panel.x, startY + rowHeight, "No usable items in this context.", {
         fontSize: `${layout.detail.descriptionFontSize}px`,
-        color: "#8ea4b8",
+        color: "#94a8bd",
         fontFamily: "Arial, sans-serif",
       })
       .setOrigin(0.5)
@@ -482,18 +483,18 @@ function refreshCursor(state) {
   for (const r of state.rowObjects) {
     const isCursor = r.idx === state.cursor;
     if (isCursor && !r.item.greyed) {
-      r.row.setFillStyle(0x315884, 0.88);
+      r.row.setFillStyle(0x384859, 0.88);
       r.row.setStrokeStyle(1, 0xf1d66e, 1);
-      r.label.setColor("#ffffff");
+      r.label.setColor("#e9eef7");
       r.qty?.setColor("#f3d878");
     } else if (isCursor) {
       r.row.setFillStyle(0x333344, 0.6);
       r.row.setStrokeStyle(1, 0xf1d66e, 0.55);
     } else {
-      r.row.setFillStyle(0x1a2f4b, 0.15);
-      r.row.setStrokeStyle(1, 0x5f7f9f, 0);
-      r.label.setColor(r.item.greyed ? "#666666" : "#ffffff");
-      r.qty?.setColor(r.item.greyed ? "#666666" : "#c7d8e9");
+      r.row.setFillStyle(0x1c2736, 0.15);
+      r.row.setStrokeStyle(1, 0x384859, 0);
+      r.label.setColor(r.item.greyed ? "#697888" : "#e9eef7");
+      r.qty?.setColor(r.item.greyed ? "#697888" : "#c7d8e9");
     }
   }
   const active = state.items[state.cursor];
@@ -641,18 +642,18 @@ function showTargetPicker(state, item) {
       cardW / 2 +
       column * (cardW + layout.targets.columnGap);
     const y = startY + rowIndex * layout.targets.rowGap;
-    const row = state.scene.add
-      .rectangle(
-        x,
-        y,
-        cardW,
-        layout.targets.cardHeight,
-        0x1a2f4b,
-        t.valid ? 0.58 : 0.24,
-      )
+    const row = roundedRectangle(
+      state.scene,
+      x,
+      y,
+      cardW,
+      layout.targets.cardHeight,
+      0x1c2736,
+      t.valid ? 0.58 : 0.24,
+    )
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT)
-      .setStrokeStyle(1, 0x5f7f9f, 0.55)
+      .setStrokeStyle(1, 0x384859, 0.55)
       .setInteractive({ useHandCursor: t.valid });
     row.__kithlandsMenuOverlay = {
       role: "target",
@@ -666,7 +667,7 @@ function showTargetPicker(state, item) {
         t.name,
         {
           fontSize: `${layout.targets.labelFontSize}px`,
-          color: t.valid ? "#ffffff" : "#667788",
+          color: t.valid ? "#e9eef7" : "#667788",
           fontFamily: "Arial, sans-serif",
           fontStyle: "bold",
         },
@@ -708,12 +709,12 @@ function refreshTargetCursor(state) {
   for (const entry of state.rowObjects) {
     const selected = entry.idx === state.cursor;
     entry.row.setFillStyle(
-      selected ? 0x315884 : 0x1a2f4b,
+      selected ? 0x384859 : 0x1c2736,
       entry.target.valid ? (selected ? 0.88 : 0.58) : 0.24,
     );
     entry.row.setStrokeStyle(
       1,
-      selected ? 0xf1d66e : 0x5f7f9f,
+      selected ? 0xf1d66e : 0x384859,
       selected ? 1 : 0.55,
     );
   }
