@@ -7,6 +7,13 @@ import {
   pauseWorldFor,
 } from "../systems/modalLock.js";
 
+vi.mock("../ui/party_menu.js", () => ({
+  renderPartyMenu: (scene, { actions }) => {
+    scene.menuActions = actions;
+    return { dispose: vi.fn(), handles: new Map() };
+  },
+}));
+
 function makeScene(overrides = {}) {
   const objects = [];
   const keyboardHandlers = {};
@@ -91,7 +98,7 @@ function makeScene(overrides = {}) {
         }),
       },
     },
-    events: { once: vi.fn() },
+    events: { once: vi.fn(), off: vi.fn() },
     textures: { exists: () => false },
     scale: { gameSize: { width: 800, height: 600 }, setGameSize: vi.fn() },
     ...overrides,
@@ -99,9 +106,7 @@ function makeScene(overrides = {}) {
 }
 
 function worldMapButton(scene) {
-  return scene.menuGroup.find(
-    (object) => object.bg?.__kithlandsPartyMenuAction?.label === "WORLD MAP",
-  );
+  return scene.menuActions.find((action) => action.hotkey === "W");
 }
 
 describe("world map scene capability", () => {
@@ -130,11 +135,7 @@ describe("world map scene capability", () => {
     const button = worldMapButton(scene);
     const objectCount = scene.objects.length;
 
-    expect(button.isEnabled()).toBe(false);
-    expect(button.bg.interactive).toBe(false);
-    expect(button.label.interactive).toBe(false);
-    button.bg.handlers.pointerdown();
-    button.bg.handlers.pointerup();
+    expect(button.enabled).toBe(false);
 
     expect(scene.menuOpen).toBe(true);
     expect(activeWorldLocks(scene)).toEqual(["party_menu"]);
@@ -148,9 +149,8 @@ describe("world map scene capability", () => {
     const button = worldMapButton(scene);
     const menuObjects = [...scene.objects];
 
-    expect(button.isEnabled()).toBe(true);
-    button.bg.handlers.pointerdown();
-    button.bg.handlers.pointerup();
+    expect(button.enabled).toBe(true);
+    button.onClick();
 
     expect(scene.menuOpen).toBe(false);
     expect(activeWorldLocks(scene)).toEqual(["world_map"]);
