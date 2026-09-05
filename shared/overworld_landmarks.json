@@ -1,0 +1,136 @@
+{
+  "id": "overworld-landmark-gold-slice-v1",
+  "source": "art-source/environments/overworld-landmarks/overworld-landmarks-source.svg",
+  "marker": {
+    "width": 64,
+    "height": 64,
+    "origin_x": 0.5,
+    "origin_y": 0.75,
+    "depth": 2
+  },
+  "badge": {
+    "width": 32,
+    "height": 32,
+    "offset_x": 22,
+    "offset_y": -18,
+    "depth_offset": 1
+  },
+  "classification_order": [
+    "natural_grove",
+    "ruined_dungeon",
+    "temple",
+    "isolated_home",
+    "settlement_home"
+  ],
+  "default_family": "isolated_home",
+  "node_overrides": {
+    "central": "settlement_home",
+    "temple": "temple",
+    "wilderness_1": "natural_grove",
+    "wilderness_2": "ruined_dungeon"
+  },
+  "families": {
+    "settlement_home": {
+      "match": {
+        "kinds": ["place", "business", "landmark"],
+        "building_types": ["inn", "shop"]
+      },
+      "variants": [
+        {
+          "id": "settlement-hearth",
+          "key": "world_landmark_settlement_hearth",
+          "path": "/sprites/world/landmarks/settlement-hearth.png"
+        },
+        {
+          "id": "settlement-bell",
+          "key": "world_landmark_settlement_bell",
+          "path": "/sprites/world/landmarks/settlement-bell.png"
+        }
+      ]
+    },
+    "temple": {
+      "match": {
+        "building_types": ["temple"],
+        "tags": ["temple", "revive", "shrine"]
+      },
+      "variants": [
+        {
+          "id": "temple-sun",
+          "key": "world_landmark_temple_sun",
+          "path": "/sprites/world/landmarks/temple-sun.png"
+        },
+        {
+          "id": "temple-moon",
+          "key": "world_landmark_temple_moon",
+          "path": "/sprites/world/landmarks/temple-moon.png"
+        }
+      ]
+    },
+    "ruined_dungeon": {
+      "match": {
+        "kinds": ["dungeon"],
+        "tags": ["dungeon", "cave", "ruins"]
+      },
+      "variants": [
+        {
+          "id": "dungeon-ruins",
+          "key": "world_landmark_dungeon_ruins",
+          "path": "/sprites/world/landmarks/dungeon-ruins.png"
+        },
+        {
+          "id": "dungeon-cave",
+          "key": "world_landmark_dungeon_cave",
+          "path": "/sprites/world/landmarks/dungeon-cave.png"
+        }
+      ]
+    },
+    "isolated_home": {
+      "match": {
+        "kinds": ["person"]
+      },
+      "variants": [
+        {
+          "id": "isolated-cottage",
+          "key": "world_landmark_isolated_cottage",
+          "path": "/sprites/world/landmarks/isolated-cottage.png"
+        },
+        {
+          "id": "isolated-watchhouse",
+          "key": "world_landmark_isolated_watchhouse",
+          "path": "/sprites/world/landmarks/isolated-watchhouse.png"
+        }
+      ]
+    },
+    "natural_grove": {
+      "match": {
+        "kinds": ["natural"]
+      },
+      "variants": [
+        {
+          "id": "natural-grove",
+          "key": "world_landmark_natural_grove",
+          "path": "/sprites/world/landmarks/natural-grove.png"
+        },
+        {
+          "id": "natural-spring",
+          "key": "world_landmark_natural_spring",
+          "path": "/sprites/world/landmarks/natural-spring.png"
+        }
+      ]
+    }
+  },
+  "adventure_badges": [
+    {
+      "dungeon_id": "old-mill",
+      "id": "badge-old-mill",
+      "key": "world_landmark_badge_old_mill",
+      "path": "/sprites/world/landmarks/badge-old-mill.png"
+    },
+    {
+      "dungeon_id": "forgotten-shrine",
+      "id": "badge-forgotten-shrine",
+      "key": "world_landmark_badge_forgotten_shrine",
+      "path": "/sprites/world/landmarks/badge-forgotten-shrine.png"
+    }
+  ]
+}
