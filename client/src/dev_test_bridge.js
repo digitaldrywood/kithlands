@@ -1393,6 +1393,23 @@ export function installDevTestBridge(game) {
       return activeScene(game)?.scene?.key || null;
     },
 
+    sceneInputSnapshot(sceneKey) {
+      const scene = getScene(game, sceneKey);
+      return {
+        inputEnabled: scene?.input?.enabled === true,
+        keyboardEnabled: scene?.input?.keyboard?.enabled === true,
+        modalLocks: [...(scene?._modalLocks || [])],
+      };
+    },
+
+    setPostBattleLootRequestTimeout(timeoutMs, sceneKey = "Battle") {
+      const scene = getScene(game, sceneKey);
+      if (!scene || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+        throw new Error("A live scene and positive timeout are required");
+      }
+      scene.postBattleLootRequestTimeoutMs = timeoutMs;
+    },
+
     sceneIsActive(sceneKey) {
       return game.scene.isActive(sceneKey);
     },

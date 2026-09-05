@@ -18,11 +18,12 @@ function installCheckpoint(email) {
   const user = randomUUID(),
     locality = randomUUID(),
     save = randomUUID();
+  const finalQuest = fixture.quest_state.at(-1);
   const query = `BEGIN;
 INSERT INTO users(id,email) VALUES(${sql(user)},${sql(email)});
 INSERT INTO localities(id,user_id,source,name,graph) VALUES(${sql(locality)},${sql(user)},'wizard',${sql(fixture.locality.name)},${sql(JSON.stringify(fixture.locality))});
 INSERT INTO saves(id,user_id,locality_id,name,flavor,difficulty,spawn_node_id,party,inventory,quest_state,world_state,rng_seed)
-VALUES(${sql(save)},${sql(user)},${sql(locality)},'Natural pre-Q12 checkpoint','conquest',${sql(fixture.difficulty)},${sql(fixture.spawn_node_id)},${sql(JSON.stringify(fixture.party))},${sql(JSON.stringify(fixture.inventory))},${sql(JSON.stringify(fixture.quest_state))},${sql(JSON.stringify(fixture.world_state))},${fixture.rng_seed}); COMMIT;`;
+VALUES(${sql(save)},${sql(user)},${sql(locality)},'Natural pre-Q12 checkpoint','conquest',${sql(fixture.difficulty)},${sql(finalQuest.target_node_id)},${sql(JSON.stringify(fixture.party))},${sql(JSON.stringify(fixture.inventory))},${sql(JSON.stringify(fixture.quest_state))},${sql(JSON.stringify(fixture.world_state))},${fixture.rng_seed}); COMMIT;`;
   execFileSync("psql", ["-d", database, "-v", "ON_ERROR_STOP=1", "-q"], {
     input: query,
     stdio: ["pipe", "pipe", "pipe"],
@@ -134,6 +135,19 @@ async function arrive(page) {
     window.__kithlandsTest.sceneIsActive("Battle"),
   );
 }
+async function resolvePostBattleLoot(page) {
+  await page.waitForFunction(
+    () =>
+      document.querySelector('.post-battle-loot-dialog[role="dialog"]') ||
+      window.__kithlandsTest
+        .visibleTexts("Battle")
+        .some((entry) => entry.interactive && /^continue$/i.test(entry.text)),
+  );
+  const dialog = page.getByRole("dialog", { name: "New Equipment" });
+  while (await dialog.isVisible()) {
+    await dialog.getByRole("button", { name: "Keep in Inventory" }).click();
+  }
+}
 for (const viewport of [
   { name: "desktop", width: 1440, height: 900 },
   { name: "phone", width: 390, height: 844 },
@@ -219,6 +233,7 @@ for (const viewport of [
     expect(won.phase).toBe("victory");
     expect(won.final_encounter.defeated).toBe(true);
     await page.keyboard.press("Space");
+    await resolvePostBattleLoot(page);
     await page.waitForFunction(() =>
       window.__kithlandsTest
         .visibleTexts("Battle")

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildFinalePartyXP,
   buildVictorySummary,
+  formatBattleDrop,
   formatSpoils,
 } from "./victoryPresentation.js";
 
@@ -25,6 +26,32 @@ describe("victory presentation summary", () => {
 
   it("returns a useful empty-drop label", () => {
     expect(formatSpoils(buildVictorySummary([]))).toBe("No item drops");
+  });
+
+  it("uses structured receipts for exact quantities and distinct rolls", () => {
+    const rewards = {
+      drops: [
+        { kind: "consumable", name: "Potion", quantity: 2 },
+        { kind: "gem", name: "Ember Shard", quantity: 3 },
+        { kind: "equipment", name: "Tempered Iron Sword", quantity: 1 },
+        { kind: "equipment", name: "Tempered Iron Sword", quantity: 1 },
+      ],
+    };
+    const summary = buildVictorySummary(
+      ["Found: stale log name!", "Victory! +48 XP, +21 gold"],
+      rewards,
+    );
+
+    expect(summary.found).toEqual([
+      "Potion ×2",
+      "Ember Shard ×3",
+      "Tempered Iron Sword",
+      "Tempered Iron Sword",
+    ]);
+    expect(formatSpoils(summary)).toBe(
+      "Potion ×2  ·  Ember Shard ×3  ·  Tempered Iron Sword  ·  Tempered Iron Sword",
+    );
+    expect(formatBattleDrop({ item_id: "future_relic" })).toBe("future_relic");
   });
 });
 

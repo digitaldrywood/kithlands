@@ -13,21 +13,24 @@ import (
 )
 
 type lootGrant struct {
+	ItemID     string
+	Kind       string
 	Name       string
 	InstanceID string
+	Quantity   int
 }
 
 // grantLoot is the authoritative acquisition path for combat and starter loot.
 func (g *Game) grantLoot(itemID string, itemLevel, minSockets int) (lootGrant, error) {
 	if consumable := g.findConsumable(itemID); consumable != nil {
 		g.inv.Consumables[itemID]++
-		return lootGrant{Name: consumable.Name}, nil
+		return lootGrant{ItemID: itemID, Kind: "consumable", Name: consumable.Name, Quantity: 1}, nil
 	}
 	if gem := g.gd.GemByID(itemID); gem != nil {
 		g.inv.Normalize()
 		g.inv.Gems[itemID]++
 		g.inv.DiscoverGemRecipes(g.gd)
-		return lootGrant{Name: gem.Name}, nil
+		return lootGrant{ItemID: itemID, Kind: "gem", Name: gem.Name, Quantity: 1}, nil
 	}
 	if g.gd.EquipmentBaseByID(itemID) == nil {
 		return lootGrant{}, fmt.Errorf("loot item %q not found", itemID)
@@ -46,7 +49,7 @@ func (g *Game) grantLoot(itemID string, itemLevel, minSockets int) (lootGrant, e
 	if err != nil {
 		return lootGrant{}, fmt.Errorf("resolving equipment %q: %w", id, err)
 	}
-	return lootGrant{Name: resolved.Name, InstanceID: id}, nil
+	return lootGrant{ItemID: itemID, Kind: "equipment", Name: resolved.Name, InstanceID: id, Quantity: 1}, nil
 }
 
 func (g *Game) grantStarterLoot() error {

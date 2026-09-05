@@ -572,6 +572,7 @@ func (g *Game) resolveCombatOutcome(combatants []*combat.Combatant) {
 			}
 		}
 		g.inv.Gold += totalGold
+		g.battleRewards = &battleRewardsReceipt{XP: totalXP, Gold: totalGold}
 		// Add dropped items to inventory
 		for _, drop := range drops {
 			grant, err := g.grantLoot(drop.itemID, drop.itemLevel, 0)
@@ -579,6 +580,7 @@ func (g *Game) resolveCombatOutcome(combatants []*combat.Combatant) {
 				g.logCombat(fmt.Sprintf("Loot error: %v", err), CombatActionEntry{Kind: "info"})
 				continue
 			}
+			g.addBattleDrop(grant)
 			g.logCombat(fmt.Sprintf("Found: %s!", grant.Name), CombatActionEntry{Kind: "info"})
 		}
 		// Snapshot who was dead at victory resolution BEFORE any XP is

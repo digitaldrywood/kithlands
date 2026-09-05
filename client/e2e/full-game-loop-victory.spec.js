@@ -147,6 +147,22 @@ async function waitForContinue(page) {
   );
 }
 
+async function resolvePostBattleLoot(page) {
+  await page.waitForFunction(
+    () =>
+      document.querySelector('.post-battle-loot-dialog[role="dialog"]') ||
+      window.__kithlandsTest
+        .visibleTexts("Battle")
+        .some(
+          (entry) => entry.interactive && /^continue$/i.test(entry.text.trim()),
+        ),
+  );
+  const dialog = page.getByRole("dialog", { name: "New Equipment" });
+  while (await dialog.isVisible()) {
+    await dialog.getByRole("button", { name: "Keep in Inventory" }).click();
+  }
+}
+
 async function enterQuestDoor(page, nodeId) {
   await page.evaluate((id) => {
     const spawn = window.__kithlandsTest
@@ -172,6 +188,7 @@ async function currentQuest(page, sceneKey = "World") {
 
 async function continueBattleVictory(page) {
   await page.evaluate(() => window.__kithlandsTest.pressKey("Space", "Battle"));
+  await resolvePostBattleLoot(page);
   await waitForContinue(page);
   await page.evaluate(() =>
     window.__kithlandsTest.clickInteractiveText("Continue", "Battle"),
@@ -488,6 +505,7 @@ test.describe("full game loop debug-assisted regression", () => {
       await page.evaluate(() =>
         window.__kithlandsTest.pressKey("Space", "Battle"),
       );
+      await resolvePostBattleLoot(page);
       await waitForContinue(page);
       if (
         victoryState.party.some(

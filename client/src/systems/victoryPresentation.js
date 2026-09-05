@@ -4,7 +4,13 @@ function cleanLineEnding(value) {
   return value.replace(/[!.]+$/, "").trim();
 }
 
-export function buildVictorySummary(log = []) {
+export function formatBattleDrop(drop = {}) {
+  const name = String(drop.name || drop.item?.name || drop.item_id || "Item");
+  const quantity = Math.max(1, Number(drop.quantity) || 1);
+  return quantity > 1 ? `${name} ×${quantity}` : name;
+}
+
+export function buildVictorySummary(log = [], battleRewards = null) {
   const summary = {
     xpEarned: 0,
     goldEarned: 0,
@@ -22,7 +28,7 @@ export function buildVictorySummary(log = []) {
       summary.goldEarned += Number.parseInt(reward[2], 10) || 0;
     }
 
-    if (/^Found:/i.test(line)) {
+    if (!Array.isArray(battleRewards?.drops) && /^Found:/i.test(line)) {
       const itemName = cleanLineEnding(line.replace(/^Found:\s*/i, ""));
       if (itemName && !summary.found.includes(itemName)) {
         summary.found.push(itemName);
@@ -32,6 +38,10 @@ export function buildVictorySummary(log = []) {
     if (/Quest complete/i.test(line)) {
       summary.quests.push(cleanLineEnding(line));
     }
+  }
+
+  if (Array.isArray(battleRewards?.drops)) {
+    summary.found = battleRewards.drops.map(formatBattleDrop);
   }
 
   return summary;
