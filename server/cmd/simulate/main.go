@@ -24,7 +24,9 @@ func main() {
 		seed          = flag.Int64("seed", 1, "base RNG seed (each run uses seed+i)")
 		sharedDir     = flag.String("shared", "../shared", "path to shared/ game data directory")
 		outPath       = flag.String("out", "", "optional JSON output path")
+		includeRuns   = flag.Bool("include-runs", false, "include every individual run in JSON output")
 		strategiesCS  = flag.String("strategies", "aggressive,cautious,healer_heavy", "comma-separated strategy list")
+		routesCS      = flag.String("routes", "main,optional", "comma-separated route policies (main, optional)")
 		maxTurns      = flag.Int("max-turns", 3000, "per-run turn cap")
 		encPerQuest   = flag.Int("encounter-rolls-per-quest", 8, "encounter actions injected between each strategy quest_advance (-1 to disable)")
 		wipeThresh    = flag.Float64("max-wipe-rate", defaults.MaxWipeRate, "fail if any strategy wipes more often than this")
@@ -49,8 +51,17 @@ func main() {
 		}
 		strategies = append(strategies, s)
 	}
+	var routes []RoutePolicy
+	for _, name := range splitCSV(*routesCS) {
+		route := RouteByName(name)
+		if route == nil {
+			fmt.Fprintf(os.Stderr, "unknown route: %q (known: main, optional)\n", name)
+			os.Exit(2)
+		}
+		routes = append(routes, *route)
+	}
 
-	fmt.Printf("simulate: runs=%d strategies=%d seed=%d\n", *runs, len(strategies), *seed)
+	fmt.Printf("simulate: runs=%d strategies=%d routes=%d seed=%d\n", *runs, len(strategies), len(routes), *seed)
 
 	runOpts := RunOptions{
 		MaxTurns:               *maxTurns,
@@ -78,9 +89,9 @@ func main() {
 		}
 	}
 
-	allResults := runAll(gd, *sharedDir, *seed, *runs, strategies, runOpts)
+	allResults := runAll(gd, *sharedDir, *seed, *runs, strategies, routes, runOpts)
 
-	groups := GroupByStrategy(allResults)
+	groups := GroupByRouteStrategy(allResults)
 	summaries := make(map[string]Aggregated, len(groups))
 	for name, runs := range groups {
 		summaries[name] = Aggregate(runs)
@@ -88,30 +99,28 @@ func main() {
 
 	printSummary(summaries)
 
-	cfg := AssertionConfig{
-		MaxWipeRate:       *wipeThresh,
-		MinWipeRate:       *minWipeThresh,
-		MinVictoryRate:    *victoryMin,
-		ExpectedPromoLvl:  *expectedLvl,
-		PromoLvlTolerance: *lvlTolerance,
-	}
+	cfg := defaults
+	cfg.MaxWipeRate = *wipeThresh
+	cfg.MinWipeRate = *minWipeThresh
+	cfg.MinVictoryRate = *victoryMin
+	cfg.ExpectedPromoLvl = *expectedLvl
+	cfg.PromoLvlTolerance = *lvlTolerance
 	fails := CheckAssertions(summaries, cfg)
+	if fails == nil {
+		fails = []AssertionFailure{}
+	}
 
 	if *outPath != "" {
-		report := map[string]any{
-			"run_options": map[string]any{
-				"base_seed":                 *seed,
-				"runs_per_strategy":         *runs,
-				"strategies":                splitCSV(*strategiesCS),
-				"max_turns":                 *maxTurns,
-				"encounter_rolls_per_quest": *encPerQuest,
-				"difficulty":                "normal",
-			},
-			"summaries": summaries,
-			"runs":      allResults,
-			"failures":  fails,
-			"config":    cfg,
+		runOptions := map[string]any{
+			"base_seed":                 *seed,
+			"runs_per_strategy":         *runs,
+			"strategies":                splitCSV(*strategiesCS),
+			"routes":                    splitCSV(*routesCS),
+			"max_turns":                 *maxTurns,
+			"encounter_rolls_per_quest": *encPerQuest,
+			"difficulty":                "normal",
 		}
+		report := buildReport(runOptions, summaries, allResults, fails, cfg, *includeRuns)
 		if err := writeJSON(*outPath, report); err != nil {
 			fmt.Fprintf(os.Stderr, "write %s: %v\n", *outPath, err)
 			os.Exit(2)
@@ -122,25 +131,41 @@ func main() {
 	if len(fails) > 0 {
 		fmt.Fprintln(os.Stderr, "\nASSERTION FAILURES:")
 		for _, f := range fails {
-			fmt.Fprintf(os.Stderr, "  [%s] %s: %s\n", f.Strategy, f.Kind, f.Message)
+			fmt.Fprintf(os.Stderr, "  [%s/%s] %s: %s\n", f.Route, f.Strategy, f.Kind, f.Message)
 		}
 		os.Exit(1)
 	}
 	fmt.Println("\nall assertions passed")
 }
 
+func buildReport(runOptions map[string]any, summaries map[string]Aggregated, runs []RunResult, failures []AssertionFailure, cfg AssertionConfig, includeRuns bool) map[string]any {
+	report := map[string]any{
+		"run_options": runOptions,
+		"summaries":   summaries,
+		"failures":    failures,
+		"config":      cfg,
+	}
+	if includeRuns {
+		report["runs"] = runs
+	}
+	return report
+}
+
 // runAll dispatches runs×strategies playthroughs across goroutines. Each run
 // uses seed+i so outcomes are fully reproducible with a single base seed.
-func runAll(gd *gamedata.GameData, sharedDir string, baseSeed int64, runs int, strategies []Strategy, opts RunOptions) []RunResult {
+func runAll(gd *gamedata.GameData, sharedDir string, baseSeed int64, runs int, strategies []Strategy, routes []RoutePolicy, opts RunOptions) []RunResult {
 	type job struct {
 		strategy Strategy
+		route    RoutePolicy
 		seed     int64
 	}
 
 	var jobs []job
-	for _, s := range strategies {
-		for i := 0; i < runs; i++ {
-			jobs = append(jobs, job{strategy: s, seed: baseSeed + int64(i)})
+	for _, route := range routes {
+		for _, s := range strategies {
+			for i := 0; i < runs; i++ {
+				jobs = append(jobs, job{strategy: s, route: route, seed: baseSeed + int64(i)})
+			}
 		}
 	}
 
@@ -154,8 +179,13 @@ func runAll(gd *gamedata.GameData, sharedDir string, baseSeed int64, runs int, s
 		go func(idx int, jb job) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			res, err := RunOne(gd, sharedDir, jb.seed, jb.strategy, opts)
+			jobOpts := opts
+			jobOpts.Route = jb.route
+			res, err := RunOne(gd, sharedDir, jb.seed, jb.strategy, jobOpts)
 			if err != nil {
+				res.Seed = jb.seed
+				res.Strategy = jb.strategy.Name()
+				res.Route = jb.route.Name
 				res.FinalPhase = "error"
 			}
 			results[idx] = res
@@ -172,13 +202,14 @@ func printSummary(summaries map[string]Aggregated) {
 	}
 	sort.Strings(names)
 
-	fmt.Printf("\n%-16s %8s %8s %8s %10s %10s %10s %10s\n",
-		"strategy", "runs", "victory", "wipe", "meanTurns", "meanEnc", "promoLvl", "promos")
+	fmt.Printf("\n%-10s %-16s %6s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s\n",
+		"route", "strategy", "runs", "terminal", "victory", "wipe", "turns", "routeQ", "battles", "promoLv", "finalLv", "sideDone", "bossWin")
 	for _, n := range names {
 		a := summaries[n]
-		fmt.Printf("%-16s %8d %7.1f%% %7.1f%% %10.1f %10.1f %10.2f %10d\n",
-			a.Strategy, a.Runs, a.VictoryRate*100, a.WipeRate*100,
-			a.MeanTurns, a.MeanEncountersPerRun, a.MeanPromotionLevel, a.PromotionCount)
+		fmt.Printf("%-10s %-16s %6d %7.1f%% %7.1f%% %7.1f%% %8.1f %8.1f %8.1f %8.2f %8.2f %7.1f%% %7.1f%%\n",
+			a.Route, a.Strategy, a.Runs, a.TerminalRate*100, a.VictoryRate*100, a.WipeRate*100,
+			a.MeanTurns, a.MeanRouteQuestsCompleted, a.MeanEncountersPerRun, a.MeanPromotionLevel,
+			a.MeanFinalLevel, a.OptionalCompletionRate*100, a.BossVictoryRate*100)
 	}
 
 	// Encounter-start distribution (aggregated over all strategies).

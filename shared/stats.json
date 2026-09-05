@@ -8,7 +8,7 @@
     { "id": "hit_pct", "name": "Hit %",  "description": "Accuracy, extra attack every 32 HIT" }
   ],
   "xp_curve": {
-    "formula": "floor(40 * level^0.7) + 30 — flattened per #121, ~4× growth L1→L15 (FF1-style) so a 15-quest campaign reaches levels 8-12",
+    "formula": "floor(40 * level^0.7) + 30 — flattened per #121, ~4× growth L1→L15 (FF1-style); shared campaign rewards replace XP from removed filler battles",
     "coefficient": 40,
     "exponent": 0.7,
     "constant": 30,

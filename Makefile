@@ -120,11 +120,11 @@ pre-commit:
 balance-sim:
 	cd server && go run ./cmd/balance_sim
 
-# Monte Carlo headless game simulator. Runs N full playthroughs per strategy,
-# collects progression/balance metrics, and fails on statistical assertion
-# violations. Use this as a regression gate for balance and quest logic.
-# Regression bands live in simulate's DefaultAssertionConfig so the CLI and
-# this target agree: promotion 10 +/- 3, maximum wipe rate 0.45.
+# Monte Carlo headless game simulator. Runs N main-only and optional-content
+# playthroughs per strategy, collects progression/balance metrics, and fails on
+# statistical assertion violations. Regression bands live in simulate's
+# DefaultAssertionConfig: 12 required beats, promotion 12 +/- 2, minimum
+# victory rate 0.65, and maximum wipe rate 0.35.
 simulate:
 	cd server && go run ./cmd/simulate -runs 100 \
 		$(if $(CAPTURE),-capture-seed $(or $(CAPTURE_SEED),1) -capture-turn $(or $(CAPTURE_TURN),-1) -capture-out $(or $(CAPTURE_OUT),./sim-capture),)

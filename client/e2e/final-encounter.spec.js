@@ -120,15 +120,59 @@ async function fight(page, lose = false) {
   }
   throw new Error("final encounter exceeded 100 rounds");
 }
+
+function localityRoute(start, target) {
+  const queue = [{ node: start, route: [start] }];
+  const visited = new Set([start]);
+  for (let i = 0; i < queue.length; i++) {
+    const at = queue[i];
+    if (at.node === target) return at.route;
+    for (const edge of fixture.locality.edges) {
+      const next =
+        edge.from === at.node
+          ? edge.to
+          : edge.to === at.node
+            ? edge.from
+            : null;
+      if (!next || visited.has(next)) continue;
+      visited.add(next);
+      queue.push({ node: next, route: [...at.route, next] });
+    }
+  }
+  throw new Error(`No locality route from ${start} to ${target}`);
+}
+
 async function arrive(page) {
   const gs = await state(page);
+  const target = gs.quests[gs.current_quest].target_node_id;
+  const current = gs.current_location?.world_node_id || fixture.spawn_node_id;
+  const route = localityRoute(current, target).slice(1);
+  const arrived =
+    route.length === 0
+      ? gs
+      : await page.evaluate(
+          async ({ gameId, route }) => {
+            const { transitionLocation } = await import("/src/api.js");
+            let result;
+            for (const nodeId of route) {
+              result = await transitionLocation(
+                gameId,
+                "arrive-world-node",
+                nodeId,
+              );
+            }
+            return result;
+          },
+          { gameId: gs.id, route },
+        );
+  expect(arrived.current_location?.world_node_id).toBe(target);
   const result = await page.evaluate(
     (node) =>
       window.__kithlandsTest.submitAction(
         { type: "quest_advance", node_id: node },
         "World",
       ),
-    gs.quests[gs.current_quest].target_node_id,
+    target,
   );
   expect(result.phase).toBe("combat");
   await page.waitForFunction(() =>

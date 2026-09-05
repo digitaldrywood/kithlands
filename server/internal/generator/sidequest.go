@@ -6,8 +6,6 @@ import (
 	"math/rand/v2"
 	"os"
 	"path/filepath"
-
-	"github.com/digitaldrywood/kithlands/internal/locality"
 )
 
 // SideQuestEntry matches the schema of shared/content/side_quests.json.
@@ -98,33 +96,4 @@ func selectSideQuests(pool []SideQuestEntry, act, count int, rng *rand.Rand) []S
 		candidates = append(candidates[:idx], candidates[idx+1:]...)
 	}
 	return picked
-}
-
-// instantiateSideQuest converts a pool entry into a concrete Quest.
-// Falls back to the main instantiator for slot filling but overrides the
-// displayed name with the curated side-quest name and flags it as a side quest.
-func instantiateSideQuest(entry SideQuestEntry, walk *locality.WalkResult, loc *locality.Locality, idx int, rng *rand.Rand) Quest {
-	tmpl := QuestTemplateByID(entry.Template)
-	if tmpl == nil {
-		return Quest{}
-	}
-	q := instantiateQuest(*tmpl, walk, loc, entry.Act, idx, rng)
-	q.ID = fmt.Sprintf("side_%s_%d", entry.ID, idx)
-	q.Name = fmt.Sprintf("%s (%s)", entry.Name, q.TargetName)
-	q.IsSideQuest = true
-	q.Hidden = entry.Hidden
-	// Resolve dynamic soft prereq markers to actual node IDs.
-	switch entry.SoftPrereq {
-	case "_far_node":
-		if len(walk.Far) > 0 {
-			q.SoftPrereq = walk.Far[rng.IntN(len(walk.Far))].ID
-		}
-	case "_medium_node":
-		if len(walk.Medium) > 0 {
-			q.SoftPrereq = walk.Medium[rng.IntN(len(walk.Medium))].ID
-		}
-	default:
-		q.SoftPrereq = entry.SoftPrereq
-	}
-	return q
 }

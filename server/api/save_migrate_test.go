@@ -6,6 +6,7 @@ import (
 
 	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
+	"github.com/digitaldrywood/kithlands/internal/generator"
 )
 
 // TestMigrateLegacyMP verifies that characters loaded from pre-MP saves
@@ -163,5 +164,80 @@ func TestFromSaveStateMigratesLegacyCasterMP(t *testing.T) {
 	}
 	if got := state.Party[1].MP; got != wantMP {
 		t.Fatalf("state MP = %d, want %d", got, wantMP)
+	}
+}
+
+func TestMigrateRequiredCampaignRetiresLinearSideQuests(t *testing.T) {
+	quests := []generator.Quest{
+		{ID: "main-0", Completed: true},
+		{ID: "side_legacy_complete_1", IsSideQuest: true, Completed: true},
+		{ID: "discovered-side", IsSideQuest: true, Completed: true},
+		{ID: "main-1"},
+		{ID: "side_legacy_pending_2", IsSideQuest: true},
+		{ID: "boss", TemplateID: "Q12"},
+	}
+
+	got, current := migrateRequiredCampaign(quests, 3)
+	if current != 2 {
+		t.Fatalf("current quest = %d, want 2 after removing a completed legacy side quest", current)
+	}
+	wantIDs := []string{"main-0", "discovered-side", "main-1", "boss"}
+	if len(got) != len(wantIDs) {
+		t.Fatalf("required campaign length = %d, want %d", len(got), len(wantIDs))
+	}
+	for i, want := range wantIDs {
+		if got[i].ID != want {
+			t.Errorf("required quest %d = %+v, want %q", i, got[i], want)
+		}
+	}
+	if !got[1].IsSideQuest {
+		t.Fatal("non-legacy optional quest lost its side-quest identity")
+	}
+}
+
+func TestFromSaveStateRetiresLinearSideQuests(t *testing.T) {
+	game := newXPProgressTestGame(t, []PartyMemberReq{{Name: "Hero", ClassID: "warrior"}})
+	game.party[0].XP = 321
+	game.inv.Gold = 777
+	game.inv.Consumables["potion"] = 4
+	game.quests = []generator.Quest{
+		{ID: "main-0", TemplateID: "Q04", Completed: true},
+		{ID: "side_legacy_q12_1", TemplateID: "Q12", IsSideQuest: true, Completed: true},
+		{ID: "boss", TemplateID: "Q12"},
+	}
+	game.currentQ = 2
+	game.finalEncounter = &FinalEncounterProgress{
+		QuestID:  "side_legacy_q12_1",
+		Defeated: true,
+		Recovery: "defeat",
+	}
+
+	saved, err := game.ToSaveState("legacy-linear-side", "test-user")
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := FromSaveState(saved, game.gd, game.loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.currentQ != 1 || len(loaded.quests) != 2 || loaded.quests[1].TemplateID != "Q12" {
+		t.Fatalf("legacy route was not migrated: current=%d quests=%+v", loaded.currentQ, loaded.quests)
+	}
+	if loaded.finalEncounter != nil {
+		t.Fatalf("stale side-quest finale progress survived migration: %+v", loaded.finalEncounter)
+	}
+	if loaded.party[0].XP != 321 {
+		t.Fatalf("earned party XP changed during migration: got %d, want 321", loaded.party[0].XP)
+	}
+	if loaded.inv.Gold != 777 || loaded.inv.Consumables["potion"] != 4 {
+		t.Fatalf("earned inventory changed during migration: gold=%d potions=%d", loaded.inv.Gold, loaded.inv.Consumables["potion"])
+	}
+}
+
+func TestMigrateFinalEncounterProgressPreservesRetainedFinalQuest(t *testing.T) {
+	progress := &FinalEncounterProgress{QuestID: "boss", Recovery: "defeat"}
+	quests := []generator.Quest{{ID: "boss", TemplateID: "Q12"}}
+	if got := migrateFinalEncounterProgress(progress, quests, "Q12"); got != progress {
+		t.Fatalf("retained final-quest progress was cleared: got %+v", got)
 	}
 }

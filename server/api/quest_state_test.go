@@ -28,8 +28,8 @@ func TestNewGame_QuestLogFields(t *testing.T) {
 	}
 
 	quests := gs["quests"].([]any)
-	if len(quests) < 18 || len(quests) > 26 {
-		t.Errorf("expected 18-26 quests per issue #123, got %d", len(quests))
+	if len(quests) != 12 {
+		t.Errorf("expected 12 required campaign quests, got %d", len(quests))
 	}
 
 	promoCount := 0
@@ -58,6 +58,9 @@ func TestNewGame_QuestLogFields(t *testing.T) {
 		isSideQuest, _ := q["is_side_quest"].(bool)
 		if isPromotion {
 			promoCount++
+		}
+		if isSideQuest {
+			t.Errorf("quest[%d] is optional content in the required campaign", i)
 		}
 		if templateID, _ := q["template_id"].(string); templateID == "Q12" && !isPromotion && !isSideQuest {
 			bossCount++

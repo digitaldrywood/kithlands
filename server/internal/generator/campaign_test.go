@@ -42,20 +42,39 @@ func newRng(seed uint64) *rand.Rand {
 	return rand.New(rand.NewPCG(seed, 0))
 }
 
+func testCampaignConfig() CampaignConfig {
+	return CampaignConfig{
+		RequiredQuestCount: RequiredCampaignQuestCount,
+		Acts: map[string]CampaignActConfig{
+			"1": {QuestCount: 3, Reward: QuestReward{XP: 120, Gold: 30}},
+			"2": {QuestCount: 4, Reward: QuestReward{XP: 240, Gold: 60}},
+			"3": {QuestCount: 3, Reward: QuestReward{XP: 360, Gold: 90}},
+		},
+		PromotionReward: QuestReward{XP: 480, Gold: 100},
+	}
+}
+
+func TestCampaignConfigValidate(t *testing.T) {
+	config := testCampaignConfig()
+	if err := config.Validate(); err != nil {
+		t.Fatalf("valid campaign config: %v", err)
+	}
+
+	config.Acts["2"] = CampaignActConfig{QuestCount: 5, Reward: QuestReward{XP: 240, Gold: 60}}
+	if err := config.Validate(); err == nil {
+		t.Fatal("expected mismatched act counts to fail validation")
+	}
+}
+
 func TestGenerateCampaign_QuestCount(t *testing.T) {
 	loc := testLocality(t)
 
-	// Run several seeds and verify count stays within 18-26 per issue #123.
-	// Minimum: 5 act1 + 1 promo + 7 act2 + 4 act3 + 1 boss = 18.
-	// Maximum: 8 act1 + 1 promo + 10 act2 + 6 act3 + 1 boss = 26 (the cap).
+	// Three Act 1 + promotion + four Act 2 + three Act 3 + Q12.
 	for seed := uint64(1); seed <= 50; seed++ {
 		rng := newRng(seed)
-		quests := GenerateCampaign(loc, "spawn", rng, nil)
-		if len(quests) < 18 {
-			t.Errorf("seed %d: expected >= 18 quests, got %d", seed, len(quests))
-		}
-		if len(quests) > 26 {
-			t.Errorf("seed %d: expected <= 26 quests (issue #123 cap), got %d", seed, len(quests))
+		quests := GenerateCampaign(loc, "spawn", rng, testCampaignConfig())
+		if len(quests) != RequiredCampaignQuestCount {
+			t.Errorf("seed %d: expected %d required quests, got %d", seed, RequiredCampaignQuestCount, len(quests))
 		}
 	}
 }
@@ -64,7 +83,7 @@ func TestGenerateCampaign_PromotionQuestHasTrialFields(t *testing.T) {
 	loc := testLocality(t)
 	for seed := uint64(1); seed <= 20; seed++ {
 		rng := newRng(seed)
-		quests := GenerateCampaign(loc, "spawn", rng, nil)
+		quests := GenerateCampaign(loc, "spawn", rng, testCampaignConfig())
 		var promo *Quest
 		for i := range quests {
 			if quests[i].IsPromotion {
@@ -119,7 +138,7 @@ func TestGenerateCampaign_ExactlyOnePromotion(t *testing.T) {
 	loc := testLocality(t)
 	for seed := uint64(1); seed <= 10; seed++ {
 		rng := newRng(seed)
-		quests := GenerateCampaign(loc, "spawn", rng, nil)
+		quests := GenerateCampaign(loc, "spawn", rng, testCampaignConfig())
 		promos := 0
 		for _, q := range quests {
 			if q.IsPromotion {
@@ -136,7 +155,7 @@ func TestGenerateCampaign_BossIsLast(t *testing.T) {
 	loc := testLocality(t)
 	for seed := uint64(1); seed <= 10; seed++ {
 		rng := newRng(seed)
-		quests := GenerateCampaign(loc, "spawn", rng, nil)
+		quests := GenerateCampaign(loc, "spawn", rng, testCampaignConfig())
 		if len(quests) == 0 {
 			t.Fatalf("seed %d: no quests generated", seed)
 		}
@@ -154,7 +173,7 @@ func TestGenerateCampaign_ActDistribution(t *testing.T) {
 	loc := testLocality(t)
 	for seed := uint64(1); seed <= 10; seed++ {
 		rng := newRng(seed)
-		quests := GenerateCampaign(loc, "spawn", rng, nil)
+		quests := GenerateCampaign(loc, "spawn", rng, testCampaignConfig())
 
 		var act1, act2, act3, boss int
 		for _, q := range quests {
@@ -174,14 +193,14 @@ func TestGenerateCampaign_ActDistribution(t *testing.T) {
 				act3++
 			}
 		}
-		if act1 < 5 || act1 > 8 {
-			t.Errorf("seed %d: Act 1 count %d outside [5,8]", seed, act1)
+		if act1 != 3 {
+			t.Errorf("seed %d: Act 1 count %d, want 3", seed, act1)
 		}
-		if act2 < 7 || act2 > 10 {
-			t.Errorf("seed %d: Act 2 count %d outside [7,10]", seed, act2)
+		if act2 != 4 {
+			t.Errorf("seed %d: Act 2 count %d, want 4", seed, act2)
 		}
-		if act3 < 4 || act3 > 6 {
-			t.Errorf("seed %d: Act 3 count %d outside [4,6]", seed, act3)
+		if act3 != 3 {
+			t.Errorf("seed %d: Act 3 count %d, want 3", seed, act3)
 		}
 		if boss != 1 {
 			t.Errorf("seed %d: expected exactly 1 boss, got %d", seed, boss)
@@ -191,7 +210,7 @@ func TestGenerateCampaign_ActDistribution(t *testing.T) {
 
 func TestGenerateCampaign_NoEmptyStrings(t *testing.T) {
 	loc := testLocality(t)
-	quests := GenerateCampaign(loc, "spawn", newRng(42), nil)
+	quests := GenerateCampaign(loc, "spawn", newRng(42), testCampaignConfig())
 	for i, q := range quests {
 		if q.Name == "" {
 			t.Errorf("quest %d: empty Name", i)
@@ -207,8 +226,8 @@ func TestGenerateCampaign_NoEmptyStrings(t *testing.T) {
 
 func TestGenerateCampaign_Deterministic(t *testing.T) {
 	loc := testLocality(t)
-	a := GenerateCampaign(loc, "spawn", newRng(7), nil)
-	b := GenerateCampaign(loc, "spawn", newRng(7), nil)
+	a := GenerateCampaign(loc, "spawn", newRng(7), testCampaignConfig())
+	b := GenerateCampaign(loc, "spawn", newRng(7), testCampaignConfig())
 	if len(a) != len(b) {
 		t.Fatalf("same seed produced different lengths: %d vs %d", len(a), len(b))
 	}
@@ -221,29 +240,17 @@ func TestGenerateCampaign_Deterministic(t *testing.T) {
 
 func TestGenerateCampaign_NoSpawnReturnsNil(t *testing.T) {
 	loc := &locality.Locality{ID: "empty", Nodes: nil}
-	quests := GenerateCampaign(loc, "nonexistent", newRng(1), nil)
+	quests := GenerateCampaign(loc, "nonexistent", newRng(1), testCampaignConfig())
 	if quests != nil {
 		t.Errorf("expected nil for missing spawn, got %d quests", len(quests))
 	}
 }
 
-func TestGenerateCampaign_WithSidePool_CapsAt26(t *testing.T) {
-	loc := testLocality(t)
-	// Minimal supported pool to force insertion.
-	pool := []SideQuestEntry{
-		{ID: "sq_a", Name: "Side A", Act: 1, Template: "Q01", Rarity: "common"},
-		{ID: "sq_b", Name: "Side B", Act: 2, Template: "Q04", Rarity: "common"},
-		{ID: "sq_c", Name: "Side C", Act: 3, Template: "Q03", Rarity: "common"},
-	}
-	for seed := uint64(1); seed <= 10; seed++ {
-		rng := newRng(seed)
-		quests := GenerateCampaign(loc, "spawn", rng, pool)
-		if len(quests) > 26 {
-			t.Errorf("seed %d: expected <= 26 with side pool, got %d", seed, len(quests))
-		}
-		// Boss must still be last even after side insertion.
-		if quests[len(quests)-1].TemplateID != "Q12" {
-			t.Errorf("seed %d: boss is not last quest after side insertion", seed)
+func TestGenerateCampaign_ContainsOnlyRequiredQuests(t *testing.T) {
+	quests := GenerateCampaign(testLocality(t), "spawn", newRng(1), testCampaignConfig())
+	for i, quest := range quests {
+		if quest.IsSideQuest {
+			t.Errorf("quest %d (%s) is optional in the required campaign", i, quest.ID)
 		}
 	}
 }

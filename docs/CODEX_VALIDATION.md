@@ -134,32 +134,40 @@ Key flags:
 
 - `-runs`: playthroughs per strategy
 - `-strategies`: `aggressive,cautious,healer_heavy`
+- `-routes`: `main,optional`; defaults to both
 - `-max-turns`: per-run cap
-- `-encounter-rolls-per-quest`: encounter pacing between quest steps
+- `-encounter-rolls-per-quest`: T1 encounter pacing between quest steps
 - `-expected-promo-level` and `-promo-level-tolerance`
 - `-max-wipe-rate`, `-min-wipe-rate`, `-min-victory-rate`
+- `-include-runs`: include raw per-run records in JSON output; aggregate-only by
+  default
 - `-capture-seed`, `-capture-turn`, `-capture-out` for per-turn snapshots
 
-The CLI and `make simulate` share regression defaults: promotion level 10 ± 3
-and maximum wipe rate 0.45. These preserve the #121 XP retuning and #156
-persistent-KO baseline; the older CLI expectation of 3.5 ± 1.5 was stale.
-Promotion remains a story event after Act 1, not a level requirement.
+The CLI and `make simulate` share regression defaults: exactly 12 required
+story beats, promotion level 12 ± 2, minimum victory rate 0.65, and maximum
+wipe rate 0.35. Route assertions also cap main-route battle volume, require
+optional completion, and bound the optional route's final-level and Q12 win
+advantages. Promotion remains a story event after Act 1, not a level
+requirement.
 The reported promotion mean samples the leader's level in runs that reach
 promotion, not every party member or runs that wipe before it.
 
 Use explicit `-seed` values when comparing runs. JSON reports include the base
-seed, strategy names, turn cap, and encounter-roll policy. Each strategy uses
-the same consecutive seeds. The policy injects eight encounter requests per
-quest and submits quest-node actions without walking the map; it does not
-simulate shopping, rest trips, or human travel time. Keep its pacing results
-separate from a browser playthrough.
+seed, route and strategy names, turn cap, and encounter-roll policy. Every
+route/strategy pair uses the same consecutive seeds. The policy starts with
+eight encounter requests per quest at T1 and scales later travel budgets by
+the current transport tier's shared encounter multiplier. It submits quest-node
+actions without walking the map and does not simulate shopping, rest trips, or
+human travel time. Keep its pacing results separate from a browser playthrough.
+Add `-include-runs` only when diagnosing seed-level behavior; durable proof
+reports should normally stay aggregate-only.
 
 Useful examples:
 
 ```sh
 cd server
 go run ./cmd/simulate -runs 100 -shared=../shared
-go run ./cmd/simulate -runs 25 -strategies=aggressive -out ./sim-report.json -shared=../shared
+go run ./cmd/simulate -runs 25 -routes=main -strategies=aggressive -out ./sim-report.json -shared=../shared
 go run ./cmd/simulate -runs 1 -capture-seed 1 -capture-turn -1 -capture-out ./sim-capture -shared=../shared
 ```
 
@@ -168,7 +176,11 @@ Use it for:
 - promotion timing regressions
 - encounter pacing changes
 - wipe-rate drift after combat or balance edits
+- required-versus-optional route length, level, and Q12 power drift
 - quest and transport progression behavior
+
+The full pacing and save-migration contract is in
+[`DEMO_CAMPAIGN_PACING.md`](DEMO_CAMPAIGN_PACING.md).
 
 ## 5. Shared Data Validation
 

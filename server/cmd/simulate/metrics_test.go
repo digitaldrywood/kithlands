@@ -36,6 +36,9 @@ func TestAggregateBasicStats(t *testing.T) {
 	if math.Abs(agg.VictoryRate-0.75) > 1e-9 {
 		t.Errorf("VictoryRate: got %v, want 0.75", agg.VictoryRate)
 	}
+	if agg.TerminalRuns != 4 || agg.NonTerminalRuns != 0 || agg.TerminalRate != 1 {
+		t.Errorf("terminal outcomes: got terminal=%d nonterminal=%d rate=%v", agg.TerminalRuns, agg.NonTerminalRuns, agg.TerminalRate)
+	}
 	wantMeanTurns := (100.0 + 200 + 80 + 150) / 4
 	if math.Abs(agg.MeanTurns-wantMeanTurns) > 1e-9 {
 		t.Errorf("MeanTurns: got %v, want %v", agg.MeanTurns, wantMeanTurns)
@@ -44,6 +47,22 @@ func TestAggregateBasicStats(t *testing.T) {
 	wantMeanPromoLvl := (8.0 + 10 + 6 + 9) / 4
 	if math.Abs(agg.MeanPromotionLevel-wantMeanPromoLvl) > 1e-9 {
 		t.Errorf("MeanPromotionLevel: got %v, want %v", agg.MeanPromotionLevel, wantMeanPromoLvl)
+	}
+}
+
+func TestAggregateCountsNonTerminalOutcomes(t *testing.T) {
+	agg := Aggregate([]RunResult{
+		{FinalPhase: "victory"},
+		{FinalPhase: "defeat"},
+		{FinalPhase: "error"},
+		{FinalPhase: "timeout"},
+		{FinalPhase: "world"},
+	})
+	if agg.TerminalRuns != 2 || agg.NonTerminalRuns != 3 || agg.ErrorRuns != 1 || agg.TimeoutRuns != 1 {
+		t.Fatalf("nonterminal outcome counts = %+v", agg)
+	}
+	if math.Abs(agg.TerminalRate-0.4) > 1e-9 {
+		t.Fatalf("TerminalRate: got %v, want 0.4", agg.TerminalRate)
 	}
 }
 
@@ -94,20 +113,37 @@ func TestAggregateEncounterStartDistribution(t *testing.T) {
 	}
 }
 
-func TestGroupByStrategy(t *testing.T) {
+func TestGroupByRouteStrategy(t *testing.T) {
 	runs := []RunResult{
-		{Strategy: "aggressive", FinalPhase: "victory"},
-		{Strategy: "aggressive", FinalPhase: "defeat"},
-		{Strategy: "cautious", FinalPhase: "victory"},
+		{Route: RouteMain, Strategy: "aggressive", FinalPhase: "victory"},
+		{Route: RouteMain, Strategy: "aggressive", FinalPhase: "defeat"},
+		{Route: RouteOptional, Strategy: "cautious", FinalPhase: "victory"},
 	}
-	groups := GroupByStrategy(runs)
+	groups := GroupByRouteStrategy(runs)
 	if len(groups) != 2 {
 		t.Errorf("groups: got %d, want 2", len(groups))
 	}
-	if len(groups["aggressive"]) != 2 {
-		t.Errorf("aggressive runs: got %d, want 2", len(groups["aggressive"]))
+	if len(groups["main/aggressive"]) != 2 {
+		t.Errorf("aggressive runs: got %d, want 2", len(groups["main/aggressive"]))
 	}
-	if len(groups["cautious"]) != 1 {
-		t.Errorf("cautious runs: got %d, want 1", len(groups["cautious"]))
+	if len(groups["optional/cautious"]) != 1 {
+		t.Errorf("cautious runs: got %d, want 1", len(groups["optional/cautious"]))
+	}
+}
+
+func TestAggregateRouteMetrics(t *testing.T) {
+	runs := []RunResult{
+		{Route: RouteOptional, Strategy: "cautious", FinalPhase: "victory", FinalLevel: 11, MainQuestCount: 12, MainQuestsCompleted: 12, MainPathComplete: true, OptionalQuestsAttempted: 3, OptionalQuestsCompleted: 3, RouteQuestsCompleted: 15, BossAttempted: true, BossDefeated: true},
+		{Route: RouteOptional, Strategy: "cautious", FinalPhase: "defeat", FinalLevel: 9, MainQuestCount: 12, MainQuestsCompleted: 8, OptionalQuestsAttempted: 3, OptionalQuestsCompleted: 2, RouteQuestsCompleted: 10},
+	}
+	agg := Aggregate(runs)
+	if agg.Route != RouteOptional || agg.MainPathCompletionRate != 0.5 {
+		t.Fatalf("main route aggregate = %+v", agg)
+	}
+	if agg.OptionalQuestsAttempted != 6 || agg.OptionalQuestsCompleted != 5 || math.Abs(agg.OptionalCompletionRate-5.0/6.0) > 1e-9 {
+		t.Fatalf("optional aggregate = %+v", agg)
+	}
+	if agg.MeanRouteQuestsCompleted != 12.5 || agg.MeanFinalLevel != 10 || agg.BossVictoryRate != 1 {
+		t.Fatalf("route metrics = %+v", agg)
 	}
 }

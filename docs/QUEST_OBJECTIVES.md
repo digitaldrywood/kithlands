@@ -37,11 +37,12 @@ without objective state receive a complete plan on load. Other templates,
 surprise quests, promotion, and Q12 retain their separate dispatch behavior.
 
 The campaign simulator submits ordinary arrival and action requests. Its
-`encounter-rolls-per-quest` budget remains per quest: the default eight rolls
-are split into four outbound and four return rolls for staged objectives.
-An odd extra roll belongs to the first leg. This models both journeys while
-preserving the CLI's encounter-budget contract; it is not a measurement of
-actual walking distance or browser encounter frequency.
+`encounter-rolls-per-quest` budget remains per quest: the default eight T1
+rolls are scaled by the current transport tier's shared encounter multiplier,
+then split across outbound and return legs for staged objectives. An odd extra
+roll belongs to the first leg. This models both journeys while preserving the
+CLI's encounter-budget contract; it is not a measurement of actual walking
+distance or browser encounter frequency.
 
 The readiness campaign harness follows the same interior interactions.
 `READINESS_OBJECTIVES_ONLY=1` stops after completing all three types and

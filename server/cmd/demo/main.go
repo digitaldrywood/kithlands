@@ -50,8 +50,7 @@ func main() {
 
 	// Generate campaign
 	walk := locality.Walk(loc, loc.Nodes[0].ID)
-	sidePool, _ := generator.LoadSideQuestPool("../shared")
-	quests := generator.GenerateCampaign(loc, loc.Nodes[0].ID, rng, sidePool)
+	quests := generator.GenerateCampaign(loc, loc.Nodes[0].ID, rng, gd.Campaign)
 
 	fmt.Printf("\n--- Campaign generated: %d quests ---\n", len(quests))
 	for i, q := range quests {

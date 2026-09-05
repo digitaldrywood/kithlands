@@ -1,15 +1,27 @@
 package main
 
+import "github.com/digitaldrywood/kithlands/internal/generator"
+
 // RunResult captures the outcome of a single playthrough. Emitted by RunOne
 // and consumed by Aggregate / CheckAssertions.
 type RunResult struct {
 	Seed       int64  `json:"seed"`
 	Strategy   string `json:"strategy"`
+	Route      string `json:"route"`
 	FinalPhase string `json:"final_phase"`
 
-	TurnsElapsed     int `json:"turns_elapsed"`
-	LevelAtPromotion int `json:"level_at_promotion,omitempty"`
-	GoldAtBoss       int `json:"gold_at_boss,omitempty"`
+	TurnsElapsed            int  `json:"turns_elapsed"`
+	LevelAtPromotion        int  `json:"level_at_promotion,omitempty"`
+	FinalLevel              int  `json:"final_level,omitempty"`
+	GoldAtBoss              int  `json:"gold_at_boss,omitempty"`
+	MainQuestCount          int  `json:"main_quest_count"`
+	MainQuestsCompleted     int  `json:"main_quests_completed"`
+	MainPathComplete        bool `json:"main_path_complete"`
+	OptionalQuestsAttempted int  `json:"optional_quests_attempted,omitempty"`
+	OptionalQuestsCompleted int  `json:"optional_quests_completed,omitempty"`
+	RouteQuestsCompleted    int  `json:"route_quests_completed"`
+	BossAttempted           bool `json:"boss_attempted,omitempty"`
+	BossDefeated            bool `json:"boss_defeated,omitempty"`
 
 	// LevelsAtQuestComplete[i] is the leader's level at the moment quest i
 	// completed (0 means the run ended before quest i was reached).
@@ -41,16 +53,43 @@ func (r RunResult) Wiped() bool {
 	return r.FinalPhase == "defeat"
 }
 
+// Terminal reports whether a playthrough reached an authored campaign ending.
+func (r RunResult) Terminal() bool {
+	return r.FinalPhase == "victory" || r.FinalPhase == "defeat"
+}
+
 // Aggregated is the summary of many runs of a single strategy.
 type Aggregated struct {
-	Strategy    string  `json:"strategy"`
-	Runs        int     `json:"runs"`
-	Wipes       int     `json:"wipes"`
-	WipeRate    float64 `json:"wipe_rate"`
-	Victories   int     `json:"victories"`
-	VictoryRate float64 `json:"victory_rate"`
+	Strategy        string  `json:"strategy"`
+	Route           string  `json:"route"`
+	Runs            int     `json:"runs"`
+	Wipes           int     `json:"wipes"`
+	WipeRate        float64 `json:"wipe_rate"`
+	Victories       int     `json:"victories"`
+	VictoryRate     float64 `json:"victory_rate"`
+	TerminalRuns    int     `json:"terminal_runs"`
+	TerminalRate    float64 `json:"terminal_rate"`
+	NonTerminalRuns int     `json:"nonterminal_runs"`
+	ErrorRuns       int     `json:"error_runs"`
+	TimeoutRuns     int     `json:"timeout_runs"`
 
-	MeanTurns float64 `json:"mean_turns"`
+	MeanTurns                float64 `json:"mean_turns"`
+	MeanFinalLevel           float64 `json:"mean_final_level"`
+	MeanMainQuestsCompleted  float64 `json:"mean_main_quests_completed"`
+	MeanOptionalCompleted    float64 `json:"mean_optional_quests_completed"`
+	MeanRouteQuestsCompleted float64 `json:"mean_route_quests_completed"`
+
+	MainPathCompletions    int     `json:"main_path_completions"`
+	MainPathCompletionRate float64 `json:"main_path_completion_rate"`
+	MainQuestCountMismatch int     `json:"main_quest_count_mismatch"`
+
+	OptionalQuestsAttempted int     `json:"optional_quests_attempted"`
+	OptionalQuestsCompleted int     `json:"optional_quests_completed"`
+	OptionalCompletionRate  float64 `json:"optional_completion_rate"`
+
+	BossAttempts    int     `json:"boss_attempts"`
+	BossVictories   int     `json:"boss_victories"`
+	BossVictoryRate float64 `json:"boss_victory_rate"`
 
 	PromotionCount     int     `json:"promotion_count"`
 	MeanPromotionLevel float64 `json:"mean_promotion_level"`
@@ -63,8 +102,9 @@ type Aggregated struct {
 }
 
 // Aggregate rolls a slice of RunResult into an Aggregated summary.
-// Runs with different Strategy values are all counted together — the caller
-// is responsible for passing a homogeneous slice (see GroupByStrategy).
+// Runs with different route or strategy values are all counted together — the
+// caller is responsible for passing a homogeneous slice (see
+// GroupByRouteStrategy).
 func Aggregate(runs []RunResult) Aggregated {
 	agg := Aggregated{
 		EncounterStarts: make(map[string]int),
@@ -73,21 +113,53 @@ func Aggregate(runs []RunResult) Aggregated {
 		return agg
 	}
 	agg.Strategy = runs[0].Strategy
+	agg.Route = runs[0].Route
 	agg.Runs = len(runs)
 
 	var totalTurns int
 	var totalPromoLvl int
+	var totalFinalLevel int
+	var totalMainCompleted int
+	var totalOptionalCompleted int
+	var totalRouteCompleted int
 	var totalEncounters int
 	var totalFled int
 
 	for _, r := range runs {
-		if r.Wiped() {
-			agg.Wipes++
+		if r.Terminal() {
+			agg.TerminalRuns++
+		} else {
+			agg.NonTerminalRuns++
 		}
-		if r.FinalPhase == "victory" {
+		switch r.FinalPhase {
+		case "victory":
 			agg.Victories++
+		case "defeat":
+			agg.Wipes++
+		case "error":
+			agg.ErrorRuns++
+		case "timeout":
+			agg.TimeoutRuns++
 		}
 		totalTurns += r.TurnsElapsed
+		totalFinalLevel += r.FinalLevel
+		totalMainCompleted += r.MainQuestsCompleted
+		totalOptionalCompleted += r.OptionalQuestsCompleted
+		totalRouteCompleted += r.RouteQuestsCompleted
+		if r.MainPathComplete {
+			agg.MainPathCompletions++
+		}
+		if r.MainQuestCount != generator.RequiredCampaignQuestCount {
+			agg.MainQuestCountMismatch++
+		}
+		agg.OptionalQuestsAttempted += r.OptionalQuestsAttempted
+		agg.OptionalQuestsCompleted += r.OptionalQuestsCompleted
+		if r.BossAttempted {
+			agg.BossAttempts++
+		}
+		if r.BossDefeated {
+			agg.BossVictories++
+		}
 		if r.LevelAtPromotion > 0 {
 			agg.PromotionCount++
 			totalPromoLvl += r.LevelAtPromotion
@@ -104,20 +176,33 @@ func Aggregate(runs []RunResult) Aggregated {
 
 	agg.WipeRate = float64(agg.Wipes) / float64(agg.Runs)
 	agg.VictoryRate = float64(agg.Victories) / float64(agg.Runs)
+	agg.TerminalRate = float64(agg.TerminalRuns) / float64(agg.Runs)
 	agg.MeanTurns = float64(totalTurns) / float64(agg.Runs)
+	agg.MeanFinalLevel = float64(totalFinalLevel) / float64(agg.Runs)
+	agg.MeanMainQuestsCompleted = float64(totalMainCompleted) / float64(agg.Runs)
+	agg.MeanOptionalCompleted = float64(totalOptionalCompleted) / float64(agg.Runs)
+	agg.MeanRouteQuestsCompleted = float64(totalRouteCompleted) / float64(agg.Runs)
+	agg.MainPathCompletionRate = float64(agg.MainPathCompletions) / float64(agg.Runs)
 	agg.MeanEncountersPerRun = float64(totalEncounters) / float64(agg.Runs)
 	agg.MeanFledPerRun = float64(totalFled) / float64(agg.Runs)
 	if agg.PromotionCount > 0 {
 		agg.MeanPromotionLevel = float64(totalPromoLvl) / float64(agg.PromotionCount)
 	}
+	if agg.OptionalQuestsAttempted > 0 {
+		agg.OptionalCompletionRate = float64(agg.OptionalQuestsCompleted) / float64(agg.OptionalQuestsAttempted)
+	}
+	if agg.BossAttempts > 0 {
+		agg.BossVictoryRate = float64(agg.BossVictories) / float64(agg.BossAttempts)
+	}
 	return agg
 }
 
-// GroupByStrategy partitions runs into per-strategy slices.
-func GroupByStrategy(runs []RunResult) map[string][]RunResult {
+// GroupByRouteStrategy partitions runs by both independent policy dimensions.
+func GroupByRouteStrategy(runs []RunResult) map[string][]RunResult {
 	out := make(map[string][]RunResult)
 	for _, r := range runs {
-		out[r.Strategy] = append(out[r.Strategy], r)
+		key := r.Route + "/" + r.Strategy
+		out[key] = append(out[key], r)
 	}
 	return out
 }
