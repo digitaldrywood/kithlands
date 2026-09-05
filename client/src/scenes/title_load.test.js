@@ -41,22 +41,14 @@ it("destroys native inputs and loading objects when changing title menus", async
   };
   const input = makeObject("DOMElement");
   const title = makeObject("Text");
-  const loadingObjects = [];
-  scene.add = {
-    text() {
-      const object = makeObject("Text");
-      loadingObjects.push(object);
-      return object;
-    },
-  };
-  scene.makeButton = vi.fn();
-
-  await scene.showLoadScreen();
+  scene.titleView = { dispose: vi.fn() };
+  const view = scene.titleView;
+  scene.clearMenu();
 
   expect(input.destroy).toHaveBeenCalledOnce();
   expect(title.destroy).toHaveBeenCalledOnce();
-  expect(loadingObjects[0].destroy).toHaveBeenCalledOnce();
-  expect(loadingObjects[1].destroy).toHaveBeenCalledOnce();
+  expect(view.dispose).toHaveBeenCalledOnce();
+  expect(scene.titleView).toBeNull();
 });
 
 it("restores title dimensions after leaving a portrait game", () => {
