@@ -17,7 +17,7 @@
         "W....O.........W",
         "W..............W",
         "W..H....R...H..W",
-        "W......F.......W",
+        "W.F............W",
         "WWWWWWWDWWWWWWWW"
       ],
       "entrance": { "x": 7, "y": 11, "from": "overworld" },
