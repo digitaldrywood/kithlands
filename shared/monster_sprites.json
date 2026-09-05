@@ -1,4 +1,5 @@
 {
+  "battle_sizes": { "small": 64, "medium": 100, "large": 144, "boss": 176 },
   "textures": [
     {
       "key": "monster_slime",

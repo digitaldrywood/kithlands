@@ -31,3 +31,15 @@ export function monsterSpriteKey(monster, source = registry) {
     ? source.byName[monster.name]
     : undefined;
 }
+
+// Catalog size is presentation metadata, independent of encounter instance IDs.
+export function monsterBattleSize(monster) {
+  const id = monster?.monster_id ?? monster?.id;
+  const definition =
+    monsters.find((entry) => entry.id === id) ||
+    monsters.find((entry) => entry.name === monster?.name);
+  return (
+    sprites.battle_sizes[definition?.size ?? monster?.size] ??
+    sprites.battle_sizes.medium
+  );
+}

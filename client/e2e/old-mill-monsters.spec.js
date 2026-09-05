@@ -81,8 +81,8 @@ for (const viewport of [
       );
       expect(snapshot.enemyMembers.map((e) => e.name)).toEqual(expectedNames);
       for (const enemy of snapshot.enemyMembers) {
-        expect(enemy.spriteBounds.width).toBeGreaterThan(80);
-        expect(enemy.spriteBounds.height).toBeGreaterThan(80);
+        expect(enemy.spriteBounds.width).toBeGreaterThan(30);
+        expect(enemy.spriteBounds.height).toBeGreaterThan(30);
         expect(enemy.spriteBounds.left).toBeGreaterThanOrEqual(0);
       }
       const stem = `${kind}-${viewport.width}x${viewport.height}-${run}`;

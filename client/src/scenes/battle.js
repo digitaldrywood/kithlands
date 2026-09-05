@@ -1282,17 +1282,13 @@ export class BattleScene extends Phaser.Scene {
       const placement = enemyLayout[i];
       const x = placement.x;
       const y = placement.y;
-      const sz =
-        e.name === "Dark Knight"
-          ? Math.max(80, placement.spriteSize)
-          : placement.spriteSize;
-      this.addCombatShadow(x, y + sz / 2 + 22, sz + 30, 18, 0.28);
+      const sz = placement.spriteSize;
 
       const key = monsterSpriteKey(e);
       let sprite;
       if (key && this.textures.exists(key)) {
         sprite = this.add.image(x, y, key);
-        sprite.setScale((sz / Math.max(sprite.width, sprite.height)) * 2);
+        sprite.setScale(sz / Math.max(sprite.width, sprite.height));
       } else {
         sprite = this.add.rectangle(
           x,
@@ -1302,6 +1298,13 @@ export class BattleScene extends Phaser.Scene {
           ENEMY_COLORS[e.name] || 0xff5722,
         );
       }
+      this.addCombatShadow(
+        x,
+        y + sprite.displayHeight / 2 - 4,
+        sprite.displayWidth * 0.75,
+        12,
+        0.28,
+      );
       sprite.setDepth(3);
       sprite.setInteractive({ useHandCursor: true });
       sprite.on("pointerdown", () => {
