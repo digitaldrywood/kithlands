@@ -3,6 +3,7 @@ const DESKTOP = {
   gameWidth: 800,
   gameHeight: 600,
   panel: { x: 400, y: 300, width: 760, height: 540 },
+  exit: { x: 380, y: 62, width: 112, height: 32 },
   title: { x: 82, y: 59, fontSize: 24, originX: 0 },
   resources: {
     y: 64,
@@ -26,6 +27,7 @@ const MOBILE = {
   gameWidth: 800,
   gameHeight: 1600,
   panel: { x: 400, y: 800, width: 760, height: 1540 },
+  exit: { x: 692, y: 78, width: 132, height: 64 },
   title: { x: 400, y: 78, fontSize: 40, originX: 0.5 },
   resources: {
     y: 142,
@@ -54,6 +56,7 @@ function copyLayout(source, partyCount) {
     ...source,
     panel: { ...source.panel },
     title: { ...source.title },
+    exit: { ...source.exit },
     resources: {
       ...source.resources,
       widths: [...source.resources.widths],

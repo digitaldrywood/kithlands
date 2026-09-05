@@ -58,3 +58,12 @@ it("destroys native inputs and loading objects when changing title menus", async
   expect(loadingObjects[0].destroy).toHaveBeenCalledOnce();
   expect(loadingObjects[1].destroy).toHaveBeenCalledOnce();
 });
+
+it("restores title dimensions after leaving a portrait game", () => {
+  const scene = new TitleScene();
+  scene.scale = { setGameSize: vi.fn() };
+  scene.showMainMenu = vi.fn();
+  scene.create();
+  expect(scene.scale.setGameSize).toHaveBeenCalledWith(800, 600);
+  expect(scene.showMainMenu).toHaveBeenCalledOnce();
+});
