@@ -539,3 +539,27 @@ func copySaveWithDungeonOrigin(t *testing.T, saved *savepkg.SaveState, dungeonID
 	clone.WorldState = encoded
 	return &clone
 }
+
+func TestWorldCheckpointAcceptsLandmarkGround(t *testing.T) {
+	game := newTownTestGame(t)
+	checked := 0
+	for y, row := range game.tileMap.Tiles {
+		for x, tile := range row {
+			if locality.TileType(tile) != locality.TileBuilding {
+				continue
+			}
+			position := WorldPosition{X: x, Y: y}
+			spawn := nearestWorldSpawn(game.tileMap, position, 3)
+			if spawn == nil {
+				continue
+			}
+			checked++
+			if err := validateWorldCheckpointPosition(game.tileMap, game.loc, worldTraversal{}, position, spawn.NodeID); err != nil {
+				t.Errorf("landmark ground at (%d,%d) rejects a walking checkpoint: %v", x, y, err)
+			}
+		}
+	}
+	if checked == 0 {
+		t.Fatal("fixture has no legacy building footprints near landmarks")
+	}
+}

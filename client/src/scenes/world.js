@@ -979,7 +979,8 @@ export class WorldScene extends Phaser.Scene {
       }
     }
     // The overland uses authored, content-classified destination markers.
-    // Collision and interactions remain driven by the original spawn data.
+    // Legacy building footprints render as walkable grass; spawn data still
+    // drives destination interactions.
     renderWorldLandmarks(this, this.spawns, this.gameState);
   }
 

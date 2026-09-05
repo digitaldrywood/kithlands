@@ -177,3 +177,16 @@ describe("rejected world step rollback", () => {
     expect(scene.currentNaturalSpawn).toBe(natural);
   });
 });
+
+describe("overland landmark ground", () => {
+  it("allows crossing old building footprints while visible terrain stays blocked", () => {
+    const scene = { gameState: { transport: { current_tier: "T1" } } };
+    expect(WorldScene.prototype.canWalkTile.call(scene, 4)).toBe(true);
+    for (const tile of [2, 3, 7, 8, 10, 14, 15, 17]) {
+      expect(
+        WorldScene.prototype.canWalkTile.call(scene, tile),
+        `tile ${tile}`,
+      ).toBe(false);
+    }
+  });
+});

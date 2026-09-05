@@ -117,7 +117,8 @@ func worldPositionInBounds(tileMap *locality.TileMap, position WorldPosition) bo
 
 func worldTileTraversable(tile locality.TileType, traversal worldTraversal) bool {
 	switch tile {
-	case locality.TileGrass, locality.TilePath, locality.TileDoor, locality.TileFloor,
+	// Legacy building footprints render as open ground beneath overland markers.
+	case locality.TileGrass, locality.TilePath, locality.TileBuilding, locality.TileDoor, locality.TileFloor,
 		locality.TileDarkGrass, locality.TileHill, locality.TileSand, locality.TileMarsh,
 		locality.TileSnow, locality.TileBridge:
 		return true
