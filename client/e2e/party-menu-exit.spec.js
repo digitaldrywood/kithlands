@@ -17,18 +17,13 @@ async function start(page) {
 }
 async function openExit(page, testInfo, suffix) {
   await page.keyboard.press("m");
-  await page.waitForFunction(() =>
-    window.__kithlandsTest
-      .visibleTexts("World")
-      .some((entry) => entry.text === "EXIT"),
-  );
+  await expect(page.getByRole("dialog", { name: "Your party" })).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath(`exit-menu-${suffix}-${RUN_ID}.png`),
   });
-  const position = await page.evaluate(() =>
-    window.__kithlandsTest.interactiveTextPosition("EXIT", "World"),
-  );
-  await page.mouse.click(position.x, position.y);
+  await page
+    .getByRole("button", { name: "Exit to main menu", exact: true })
+    .click();
   const dialog = page.getByRole("dialog", { name: "Exit to main menu?" });
   await expect(dialog).toBeVisible();
   return dialog;
