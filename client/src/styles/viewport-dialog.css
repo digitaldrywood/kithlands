@@ -305,3 +305,7 @@
     grid-column: 2;
   }
 }
+
+.exit-menu-actions {
+  flex-direction: column;
+}
