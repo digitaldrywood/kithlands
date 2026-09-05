@@ -181,13 +181,27 @@ function cancelAutoWalk(scene) {
 // ─── Tap-to-Move ──────────────────────────────────────────────
 
 function touchLayout(scene) {
-  return (
+  const layout =
     scene.gameplayLayout ||
     gameplayViewportLayout(
       globalThis.innerWidth || 800,
       globalThis.innerHeight || 600,
-    )
-  );
+    );
+  if (!scene.explorationHUD || !layout.portrait) return layout;
+  // Keep movement above the native footer; use the same offset for hit areas.
+  const offset = 150;
+  return {
+    ...layout,
+    dpad: { ...layout.dpad, y: layout.dpad.y - offset },
+    action: { ...layout.action, y: layout.action.y - offset },
+    controlArea: {
+      ...layout.controlArea,
+      dpadTop: layout.controlArea.dpadTop - offset,
+      dpadBottom: layout.controlArea.dpadBottom - offset,
+      actionTop: layout.controlArea.actionTop - offset,
+      actionBottom: layout.controlArea.actionBottom - offset,
+    },
+  };
 }
 
 function isControlArea(scene, x, y) {
@@ -202,7 +216,8 @@ function isControlArea(scene, x, y) {
       x <= area.actionRight &&
       y >= area.actionTop &&
       y <= area.actionBottom) ||
-    (x >= area.touchHudLeft &&
+    (!scene.explorationHUD &&
+      x >= area.touchHudLeft &&
       x <= area.touchHudRight &&
       y >= area.touchHudTop &&
       y <= area.touchHudBottom) ||
@@ -541,7 +556,7 @@ function createTouchUI(scene) {
   _controls = { elements: [], moveTimer: null };
   createDpad(scene);
   createActionButton(scene);
-  createTouchHUD(scene);
+  if (!scene.explorationHUD) createTouchHUD(scene);
   setupPinchZoom(scene);
   setupSwipeGestures(scene);
 }

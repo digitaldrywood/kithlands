@@ -1,3 +1,4 @@
+import { explorationHUD } from "../ui/exploration_hud.js";
 import { drawPanel, drawButton } from "../ui/panel.js";
 import { gameAction, autosaveGame } from "../api.js";
 import { showCampaignEnding, showFinalRecovery } from "./campaignEnding.js";
@@ -437,30 +438,13 @@ export class WorldScene extends Phaser.Scene {
     // Touch controls (D-pad, tap-to-move with pathfinding, pinch-to-zoom, swipe gestures)
     initTouchControls(this);
 
-    // HUD — two-line footer: party on top, resources/transport below.
-    // Single-line layout overflowed viewport with 4-member parties (#issue screenshot).
-    this.add
-      .rectangle(
-        layout.centerX,
-        layout.worldHud.centerY,
-        layout.width,
-        layout.worldHud.height,
-        0x000000,
-        0.8,
-      )
-      .setScrollFactor(0)
-      .setDepth(20);
-    this.add
-      .rectangle(
-        layout.centerX,
-        layout.worldHud.dividerY,
-        layout.width,
-        2,
-        0xd7b45c,
-        0.65,
-      )
-      .setScrollFactor(0)
-      .setDepth(21);
+    this.explorationHUD = explorationHUD(this, {
+      menu: () => toggleMenu(this),
+      help: () => toggleCodex(this),
+      mute: toggleMute,
+      isMuted,
+      colors: TILE_COLORS,
+    });
     this.hudText = this.add
       .text(10, layout.worldHud.partyY, "", {
         fontSize: layout.portrait ? "20px" : "12px",
@@ -478,6 +462,8 @@ export class WorldScene extends Phaser.Scene {
       })
       .setScrollFactor(0)
       .setDepth(21);
+    this.hudText.setVisible(false);
+    this.hudFooter.setVisible(false);
     this.updateHUD();
 
     // Objective card. The old two-line debug label exposed quest template
@@ -493,6 +479,8 @@ export class WorldScene extends Phaser.Scene {
       })
       .setScrollFactor(0)
       .setDepth(22);
+    this.questText.setVisible(false);
+    this.questCard.setVisible(false);
     this.updateQuestDisplay();
     this.updateInteractionTarget();
 
@@ -534,49 +522,6 @@ export class WorldScene extends Phaser.Scene {
       }
     }
 
-    // Minimap
-    this.drawMinimap();
-
-    // HUD buttons
-    const muteBtn = this.add
-      .text(606, 575, isMuted() ? "Unmute" : "Mute", {
-        fontSize: "11px",
-        color: "#9aa4b5",
-        fontFamily: "monospace",
-      })
-      .setScrollFactor(0)
-      .setDepth(21)
-      .setInteractive({ useHandCursor: true });
-    muteBtn.setVisible(!layout.portrait);
-    muteBtn.on("pointerdown", () => {
-      const m = toggleMute();
-      muteBtn.setText(m ? "Unmute" : "Mute");
-    });
-
-    const codexBtn = this.add
-      .text(680, 575, "Help  H", {
-        fontSize: "11px",
-        color: "#d8e6ff",
-        fontFamily: "monospace",
-      })
-      .setScrollFactor(0)
-      .setDepth(21)
-      .setInteractive({ useHandCursor: true });
-    codexBtn.setVisible(!layout.portrait);
-    codexBtn.on("pointerdown", () => toggleCodex(this));
-
-    const menuBtn = this.add
-      .text(752, 575, "Menu  M", {
-        fontSize: "11px",
-        color: "#f0d77a",
-        fontFamily: "monospace",
-      })
-      .setScrollFactor(0)
-      .setDepth(21)
-      .setInteractive({ useHandCursor: true });
-    menuBtn.setVisible(!layout.portrait);
-    menuBtn.on("pointerdown", () => toggleMenu(this));
-
     this.lastMoveTime = 0;
     this.moveCooldown = 150;
 
@@ -595,7 +540,8 @@ export class WorldScene extends Phaser.Scene {
       })
       .setScrollFactor(0)
       .setDepth(21)
-      .setAlpha(0);
+      .setAlpha(0)
+      .setVisible(false);
 
     console.log("[World] created, player at", this.playerX, this.playerY);
   }
@@ -1123,6 +1069,7 @@ export class WorldScene extends Phaser.Scene {
   updateQuestDisplay() {
     const gs = this.gameState;
     const drawCard = (title, detail, accent = 0xd7b45c) => {
+      this.explorationHUD?.objective(title, detail);
       const lines = [title, detail].filter(Boolean);
       this.questText.setText(lines.join("\n"));
       const bounds = this.questText.getBounds();
@@ -1159,10 +1106,12 @@ export class WorldScene extends Phaser.Scene {
   }
 
   showMessage(text) {
-    this.messageText.setText(text).setVisible(true);
+    this.messageText.setText(text).setVisible(!this.explorationHUD);
+    this.explorationHUD?.message(text);
   }
 
   hideMessage() {
+    this.explorationHUD?.message("");
     if (this.messageText) this.messageText.setVisible(false);
   }
 

@@ -103,7 +103,10 @@ export function renderPartyMenu(scene, { party, actions, onClose, onSelect }) {
     handles.set(action.hotkey, handle);
     if (index === 0) {
       button.classList.add("party-exit");
-      sidebar.append(button, element("p", "party-nav-heading", "ADVENTURE"));
+      label.textContent = "Exit game";
+      button.setAttribute("aria-label", "Exit to main menu");
+      dialog.header.append(button);
+      sidebar.append(element("p", "party-nav-heading", "ADVENTURE"));
     } else nav.append(button);
   });
   sidebar.append(nav);

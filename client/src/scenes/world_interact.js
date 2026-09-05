@@ -327,6 +327,10 @@ export function showInteractPrompt(scene, spawn) {
   else if (tags.includes("shop") || tags.includes("commerce")) action = "Shop";
   else if (tags.includes("temple") || tags.includes("revive")) action = "Pray";
 
+  if (scene.explorationHUD) {
+    scene.explorationHUD.interaction(`${action} — ${destination}`);
+    return;
+  }
   scene.interactPrompt = scene.add
     .text(
       scene.player.x,
@@ -349,6 +353,7 @@ export function showInteractPrompt(scene, spawn) {
 }
 
 export function hideInteractPrompt(scene) {
+  scene.explorationHUD?.interaction("");
   if (scene.interactPrompt) {
     scene.interactPrompt.destroy();
     scene.interactPrompt = null;

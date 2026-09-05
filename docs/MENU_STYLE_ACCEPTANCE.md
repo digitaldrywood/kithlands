@@ -52,3 +52,24 @@ it skips server-required quest arrivals. It was left unchanged. Promotion stylin
 is verified with an explicit presentation fixture, not a claim that that older
 end-to-end progression test passes. Shop tests now enter the actual server-held
 shop instead of mounting an unauthorized scene. Production game rules are intact.
+
+## Exploration HUD and persistent exit — 2026-09-05
+
+Branch: `codex/exploration-hud` (user playtest feedback; no issue assigned).
+The World HUD now uses native rounded slate surfaces for objectives, minimap,
+party health/magic, resources, notifications, interaction and trail buttons.
+Menu, Help and Mute remain available on narrow screens. Exit game stays in the
+party-menu header while navigation scrolls. Existing save/cancel/exit behavior
+is preserved. Scene shutdown removes the HUD and modal locks hide it behind
+menus. Touch movement and its hit areas sit above the footer.
+
+Validation:
+- `cd client && npm test -- --run`: 624 tests passed.
+- `cd client && npm run build`: passed; existing bundle-size advisory remains.
+- `./scripts/run_playwright_local.sh e2e/exploration-hud.spec.js e2e/party-menu-exit.spec.js e2e/modern-party-menu.spec.js`: 8 passed on rerun (first cold startup timed out before Title).
+- `./scripts/run_playwright_local.sh e2e/exploration-touch.spec.js`: passed, including touch menu/cancel and dungeon entry.
+- Inspected `client/tmp/exploration-hud-1788639234509/{world,menu}-{1440,720,390}.png` and contact sheet `review.jpg`.
+- Inspected `client/tmp/exploration-touch-1788639380784/touch-world.png` after correcting touch spacing.
+
+These changes affect the World exploration HUD and party-menu exit placement.
+They do not change terrain artwork or game mechanics.

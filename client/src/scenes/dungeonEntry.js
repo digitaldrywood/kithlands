@@ -115,6 +115,8 @@ export function updateDungeonEntry(scene) {
 }
 
 function createTrailButton(scene, label, onClick, route) {
+  if (scene.explorationHUD)
+    return scene.explorationHUD.trail(label, onClick, route);
   const portrait = scene.gameplayLayout?.portrait;
   const settlement = scene.gameState.current_location?.kind === "settlement";
   const y = settlement
