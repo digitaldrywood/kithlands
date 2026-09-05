@@ -22,6 +22,8 @@ export class TitleScene extends Phaser.Scene {
   }
 
   create() {
+    // World and party menus can use a tall portrait canvas.
+    this.scale.setGameSize(800, 600);
     this.showMainMenu();
   }
 

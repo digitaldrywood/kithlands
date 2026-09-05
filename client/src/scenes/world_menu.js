@@ -10,6 +10,7 @@ import {
 } from "./world_interact.js";
 import { openCharacterDetail } from "./character_detail.js";
 import { showEquipmentScreen } from "./equipment_screen.js";
+import { showExitMenu } from "./exit_menu.js";
 import { showOptions } from "./options.js";
 import { showItemMenu } from "./item_menu.js";
 import { hasCastableFieldSpell, showFieldMagicMenu } from "./field_magic.js";
@@ -146,6 +147,31 @@ export function toggleMenu(scene) {
     .setDepth(DEPTH_CONTENT);
   applyTextGlow(title, "#2c5f9d", 2);
   scene.menuGroup.push(title);
+  const exitButton = drawButton(
+    scene,
+    layout.exit.x,
+    layout.exit.y,
+    layout.exit.width,
+    layout.exit.height,
+    "EXIT",
+    () => {
+      closeMenu(scene);
+      showExitMenu(scene, () => {
+        const gs = scene.gameState;
+        return saveFromPartyMenu(
+          scene,
+          `${gs.location} - ${gs.party.map((member) => member.name).join(", ")}`,
+        );
+      });
+    },
+    {
+      fontSize: layout.mode === "mobile" ? "24px" : "12px",
+      fill: FF6_NAVY,
+      stroke: FF6_GOLD,
+      depth: DEPTH_CONTENT + 2,
+    },
+  );
+  scene.menuGroup.push(exitButton);
 
   const resourceStrip = [
     {
