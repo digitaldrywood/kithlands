@@ -1,3 +1,4 @@
+import quickStartDefaults from "../../../shared/quick_start.json";
 import {
   debugCreateShowcase,
   login,
@@ -340,22 +341,11 @@ export class TitleScene extends Phaser.Scene {
       setEmail(email); // remember email
 
       if (quick) {
-        // Use last wizard data if available, otherwise Cadott defaults
-        const last = getLastWizard();
-        const gameData = last || {
-          town_name: "Cadott, WI",
-          people: [
-            { name: "Bob", relation: "friendly" },
-            { name: "Mrs Henderson", relation: "neutral" },
-            { name: "Mayor Grimes", relation: "rival" },
-          ],
-          places: ["The School", "Creswood Corners", "Fire Hall"],
-          big_building: "Town Hall",
-          party: [
-            { name: "Hero", class_id: "warrior" },
-            { name: "Sparks", class_id: "cinder" },
-          ],
-          difficulty: "normal",
+        // Reuse the last town setup with the complete Quick Start party.
+        const gameData = {
+          ...quickStartDefaults,
+          ...getLastWizard(),
+          party: quickStartDefaults.party.map((member) => ({ ...member })),
         };
         console.log("[Title] quick start with", gameData.town_name);
         const gameResult = await newGame(gameData);
