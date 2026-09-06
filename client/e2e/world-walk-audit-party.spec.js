@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("walk audit route cycles every runtime class in the real World scene", async ({
   page,
 }, testInfo) => {
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
   await page.addInitScript(() => {
     localStorage.setItem("kithlands_prefs", JSON.stringify({ walkSpeed: 1 }));
   });
@@ -29,18 +29,22 @@ test("walk audit route cycles every runtime class in the real World scene", asyn
     expect(snapshot.playerTextureKey).toBe(`${snapshot.leaderClass}_walk`);
 
     const anchor = await page.evaluate(() =>
-      window.__kithlandsTest.findStraightAuditAnchor("right", 2, "World"),
+      window.__kithlandsTest.findStraightAuditAnchor("right", 4, "World"),
     );
     await page.evaluate(
       ({ x, y }) => window.__kithlandsTest.setPlayerTile(x, y, "World"),
       anchor,
     );
     const movement = await page.evaluate(() =>
-      window.__kithlandsTest.sampleMovePlayer("right", "World"),
+      // Observe a complete rendered cycle, as in the all-class atlas audit.
+      // Fixed wall-clock samples can all arrive after a slow CI render tick.
+      window.__kithlandsTest.sampleWalkCycle("right", "World", {
+        timeScale: 0.25,
+      }),
     );
     expect(
       new Set(movement.map((sample) => sample.frameIndex)).size,
-    ).toBeGreaterThan(1);
+    ).toBeGreaterThanOrEqual(4);
 
     await page.keyboard.press("Space");
     await page.waitForTimeout(150);

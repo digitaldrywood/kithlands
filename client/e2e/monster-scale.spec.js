@@ -16,10 +16,11 @@ const proofDir = fileURLToPath(
 
 for (const viewport of [
   { width: 1440, height: 900 },
-  { width: 720, height: 847 },
+  { width: 800, height: 600 },
+  { width: 645, height: 847 },
   { width: 390, height: 844 },
 ]) {
-  for (const kind of ["rats", "boss"]) {
+  for (const kind of ["rats", "bramblehog", "humanoid", "boss"]) {
     test(`${kind} at ${viewport.width}x${viewport.height}`, async ({
       page,
     }) => {
@@ -38,7 +39,16 @@ for (const viewport of [
       const encounter =
         kind === "rats"
           ? { monster_ids: ["giant_rat", "giant_rat"], level: 1 }
-          : { monster_ids: ["elder_dragon"], level: 1 };
+          : {
+              monster_ids: [
+                kind === "bramblehog"
+                  ? "bramblehog"
+                  : kind === "humanoid"
+                    ? "skeleton"
+                    : "elder_dragon",
+              ],
+              level: 1,
+            };
       const expectedNames = encounter.monster_ids.map(
         (id) => monsters.find((m) => m.id === id).name,
       );
@@ -76,10 +86,13 @@ for (const viewport of [
       expect(snapshot.enemyMembers.map((e) => e.name)).toEqual(expectedNames);
       for (const enemy of snapshot.enemyMembers) {
         expect(enemy.spriteBounds.width).toBeGreaterThan(30);
-        if (kind === "rats") {
+        if (kind === "rats" || kind === "bramblehog") {
           expect(
             Math.max(enemy.spriteBounds.width, enemy.spriteBounds.height),
-          ).toBeLessThanOrEqual(65);
+          ).toBeGreaterThanOrEqual(80);
+          expect(
+            Math.max(enemy.spriteBounds.width, enemy.spriteBounds.height),
+          ).toBeLessThan(100);
         } else {
           expect(
             Math.max(enemy.spriteBounds.width, enemy.spriteBounds.height),

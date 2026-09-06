@@ -18,6 +18,7 @@ async function startWorld(page) {
 test("real Space key cycles world leader without falling back to generic player sprites", async ({
   page,
 }, testInfo) => {
+  test.setTimeout(60_000);
   await startWorld(page);
 
   const before = await page.evaluate(() =>
@@ -47,7 +48,7 @@ test("real Space key cycles world leader without falling back to generic player 
     expect(after.playerTextureKey.startsWith("player_")).toBe(false);
 
     const anchor = await page.evaluate(() =>
-      window.__kithlandsTest.findStraightAuditAnchor("right", 2, "World"),
+      window.__kithlandsTest.findStraightAuditAnchor("right", 4, "World"),
     );
     expect(anchor).toBeTruthy();
     await page.evaluate(
@@ -58,13 +59,15 @@ test("real Space key cycles world leader without falling back to generic player 
       window.__kithlandsTest.setPlayerFacing("left", "World"),
     );
     const moved = await page.evaluate(() =>
-      window.__kithlandsTest.sampleMovePlayer("right", "World"),
+      window.__kithlandsTest.sampleWalkCycle("right", "World", {
+        timeScale: 0.25,
+      }),
     );
     expect(moved.every((sample) => sample.moved)).toBe(true);
     expect(moved.every((sample) => sample.hasWalkSheet)).toBe(true);
     expect(
       new Set(moved.map((sample) => sample.frameIndex)).size,
-    ).toBeGreaterThan(1);
+    ).toBeGreaterThanOrEqual(4);
     expect(new Set(moved.map((sample) => sample.displayWidth)).size).toBe(1);
     expect(new Set(moved.map((sample) => sample.displayHeight)).size).toBe(1);
     expect(moved.every((sample) => sample.originX === 0.5)).toBe(true);

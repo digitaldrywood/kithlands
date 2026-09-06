@@ -116,7 +116,8 @@ describe("monster proportions", () => {
     expect(sizes[0]).toBeLessThan(sizes[1]);
     expect(sizes[1]).toBeLessThan(sizes[2]);
     expect(sizes[2]).toBeLessThan(sizes[3]);
-    expect(sizes[0]).toBeLessThan(80);
+    expect(sizes[0]).toBeGreaterThanOrEqual(80);
+    expect(sizes[0]).toBeLessThan(100);
   });
   it("keeps large monsters inside crowded lanes", () => {
     for (const entry of buildEnemyBattleLayout(
