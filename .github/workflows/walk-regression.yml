@@ -9,6 +9,8 @@ jobs:
   walking:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      PGHOST: localhost
     services:
       postgres:
         image: postgres:17
@@ -37,6 +39,9 @@ jobs:
         run: |
           npm ci
           PLAYWRIGHT_BROWSERS_PATH="$PWD/tmp/ms-playwright" npx playwright install --with-deps chromium
+      - name: Warm server build cache
+        working-directory: server
+        run: go build ./cmd/kithlands
       - name: Verify accepted walk assets
         run: |
           sha256sum --check docs/walk-assets.sha256
@@ -51,4 +56,6 @@ jobs:
           path: |
             client/tmp/walk-rendered-*/
             client/test-results/
+            /tmp/kithlands-server-*.log
+            /tmp/kithlands-client-*.log
           retention-days: 14
