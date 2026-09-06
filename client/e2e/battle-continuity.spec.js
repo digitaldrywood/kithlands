@@ -90,7 +90,30 @@ for (const width of [800, 645, 390]) {
       });
     }
     await page.unroute("**/game/*/action");
-    await page.evaluate(() => window.__kithlandsTest.forceVictory());
+    const victory = await page.evaluate(() =>
+      window.__kithlandsTest.forceVictory(),
+    );
+    // Victory can award equipment; resolve its real decision before Continue.
+    for (const drop of victory.battle_rewards?.drops ?? []) {
+      if (
+        drop.kind !== "equipment" ||
+        drop.decision !== "pending" ||
+        !drop.instance_id
+      )
+        continue;
+      await page.getByRole("button", { name: "Keep in Inventory" }).click();
+      await page.waitForFunction(
+        (instanceId) =>
+          !window.__kithlandsTest
+            .gameState("Battle")
+            .battle_rewards?.drops?.some(
+              (entry) =>
+                entry.instance_id === instanceId &&
+                entry.decision === "pending",
+            ),
+        drop.instance_id,
+      );
+    }
     await page.waitForFunction(() =>
       window.__kithlandsTest
         .visibleTexts("Battle")
