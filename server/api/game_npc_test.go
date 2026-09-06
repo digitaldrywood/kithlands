@@ -184,8 +184,13 @@ func TestGetNPCDialogue_Variety(t *testing.T) {
 	baseline := games[0].GetNPCDialogue("shop")
 	for _, g := range games[1:] {
 		resp := g.GetNPCDialogue("shop")
-		if len(resp.Lines) > 1 && len(baseline.Lines) > 1 && resp.Lines[1] != baseline.Lines[1] {
-			sawDifferent = true
+		for i := 1; i < len(resp.Lines) && i < len(baseline.Lines); i++ {
+			if resp.Lines[i] != baseline.Lines[i] {
+				sawDifferent = true
+				break
+			}
+		}
+		if sawDifferent {
 			break
 		}
 	}

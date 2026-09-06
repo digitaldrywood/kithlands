@@ -482,3 +482,27 @@ func CastBuffSpellLiveBuffsForTest(g *Game, casterSlot, targetSlot int, spellID 
 	g.resolveBuffSpell(combatants, pc, caster, spell, targetSlot)
 	return combatants[targetSlot].Buffs
 }
+
+// SetPartyHPForTest sets a party member's CurrentHP to the given value without
+// touching status. Exposed only for tests; use this when you need to put a
+// character at exactly N HP for a deterministic combat scenario.
+func SetPartyHPForTest(g *Game, idx, hp int) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.party[idx].CurrentHP = hp
+}
+
+// MakeEnemiesLethalForTest cranks every active enemy's STR / WeaponPower /
+// BareHandDamage to a value that guarantees a one-shot kill on any party
+// member. Used to deterministically force a same-round caster death in
+// regression tests for the revive sync-back code path.
+func MakeEnemiesLethalForTest(g *Game) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	for _, e := range g.enemies {
+		e.STR = 9999
+		e.WeaponPower = 9999
+		e.BareHandDamage = 9999
+		e.HitPct = 100
+	}
+}
