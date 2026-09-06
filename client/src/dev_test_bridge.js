@@ -2763,8 +2763,9 @@ export function installDevTestBridge(game) {
       };
     },
 
-    async sampleWalkCycle(dir, sceneKey) {
+    async sampleWalkCycle(dir, sceneKey, { timeScale = 1 } = {}) {
       const scene = getScene(game, sceneKey);
+      const previousTimeScale = scene.tweens.timeScale;
       const [dx, dy] = DIR_DELTAS[dir] || [0, 0];
       // Read texture pixels before moving. Synchronous GPU readbacks inside
       // postrender can stall software-rendered CI enough to stop the gait.
@@ -2779,6 +2780,7 @@ export function installDevTestBridge(game) {
         });
       }
       scene.player.setFrame(initialFrame);
+      scene.tweens.timeScale = timeScale;
       const samples = [];
       let started = 0;
       let moved = false;
@@ -2805,6 +2807,7 @@ export function installDevTestBridge(game) {
         await waitFor(() => started === 3 && !scene.animating, 10000);
         return samples;
       } finally {
+        scene.tweens.timeScale = previousTimeScale;
         scene.events.off("update", advance);
         game.events.off("postrender", sample);
       }

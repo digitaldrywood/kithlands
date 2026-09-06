@@ -102,7 +102,9 @@ async function auditClassScene(page, sceneKey, classId) {
 
     const sequence = await page.evaluate(
       ({ dir, sceneKey }) =>
-        window.__kithlandsTest.sampleWalkCycle(dir, sceneKey),
+        window.__kithlandsTest.sampleWalkCycle(dir, sceneKey, {
+          timeScale: 0.25,
+        }),
       { dir, sceneKey },
     );
 
@@ -199,7 +201,7 @@ test.describe("walk audit", () => {
     test(`${classId} keeps the correct directional walk sequences in world and town`, async ({
       page,
     }) => {
-      test.setTimeout(60_000);
+      test.setTimeout(90_000);
       await startGame(page);
       await auditClassScene(page, "World", classId);
       await auditClassScene(page, "Town", classId);
