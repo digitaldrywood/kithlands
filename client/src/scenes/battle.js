@@ -289,6 +289,8 @@ export class BattleScene extends Phaser.Scene {
     this.pendingSpellId = null;
     this.pendingSpellEffect = null;
     this.actionBtns = null;
+    this.autoStopButton = null;
+    this.autoStopHint = null;
     this.actionHudObjects = [];
     this.combatShadows = [];
     this.backdropObjects = [];
@@ -646,17 +648,16 @@ export class BattleScene extends Phaser.Scene {
     });
 
     // Toggle AUTO-BATTLE mode (issue #99)
-    this.input.keyboard.on("keydown-Q", () => {
+    this.input.keyboard.on("keydown-Q", (event) => {
+      if (event.repeat) return;
+      if (this.autoMode) {
+        this.stopAutoAfterRound();
+        return;
+      }
       if (this.animating || this.targetingMode || this.pickerOverlay) return;
       if (!this.lastRoundActions) return;
-      this.autoMode = !this.autoMode;
-      if (this.autoMode) {
-        this.executeRepeat();
-      } else {
-        // Redraw buttons to update AUTO label
-        const slot = this.livingMembers[this.currentMemberIdx];
-        if (slot !== undefined) this.drawActions(this.gameState, slot);
-      }
+      this.autoMode = true;
+      this.executeRepeat();
     });
 
     // Number keys 1-9 for target/picker selection
@@ -2759,7 +2760,48 @@ export class BattleScene extends Phaser.Scene {
       .setText(this.autoMode ? "AUTO-BATTLE..." : "REPEAT!")
       .setColor(this.autoMode ? "#ff8844" : "#94a8bd");
     this.currentMemberIdx = this.livingMembers.length; // skip per-member UI
+    this.showAutoStopControl();
     this.submitAllActions();
+  }
+
+  // Stopping only changes the next round; the submitted server round and its
+  // presentation finish normally, including victory and error recovery.
+  stopAutoAfterRound() {
+    if (!this.autoMode) return;
+    this.autoMode = false;
+    this.autoStopButton?.setLabel("AUTO STOPPED");
+    this.autoStopButton?.setEnabled(false);
+    this.autoStopHint?.setText("Finishing this round");
+  }
+
+  showAutoStopControl() {
+    if (!this.autoMode) return;
+    const bounds = this.hudLayout.command;
+    const mobile = this.hudLayout.mode === "mobile";
+    this.autoStopButton = drawButton(
+      this,
+      bounds.x + bounds.width / 2,
+      bounds.y + bounds.height / 2 - (mobile ? 24 : 12),
+      bounds.width - 24,
+      mobile ? 88 : 44,
+      "STOP AUTO (Q)",
+      () => this.stopAutoAfterRound(),
+      { depth: 30, fontSize: mobile ? "25px" : "16px" },
+    );
+    this.autoStopHint = this.add
+      .text(
+        bounds.x + bounds.width / 2,
+        bounds.y + bounds.height / 2 + (mobile ? 46 : 26),
+        "Stop after this round",
+        {
+          fontFamily: "Arial, sans-serif",
+          fontSize: mobile ? "23px" : "14px",
+          color: "#dcecff",
+        },
+      )
+      .setOrigin(0.5)
+      .setDepth(30);
+    this.actionBtns.push(this.autoStopButton, this.autoStopHint);
   }
 
   enterTargetingMode() {

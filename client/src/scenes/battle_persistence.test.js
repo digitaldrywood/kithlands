@@ -179,44 +179,50 @@ describe("BattleScene repeat memory", () => {
     expect(scene._lastRoundActions).toEqual(serverActions);
   });
 
-  it("persists the authoritative round after combat submission and carries it into restart", async () => {
-    const scene = new BattleScene();
-    scene.gameState = makeCombatState();
-    scene.memberActions = [{ slot: 0, type: "attack", target_id: 7 }];
-    scene.promptText = {
-      setText() {
-        return this;
-      },
-      setColor() {
-        return this;
-      },
-    };
-    scene.animateCombatLog = vi.fn().mockResolvedValue(undefined);
-    scene.reconcileEnemySprites = vi.fn().mockResolvedValue(undefined);
-    scene.scaledDelay = (_ms, fn) => fn();
-    scene.showVictoryResults = vi.fn();
+  it.each([false, true])(
+    "preserves the completed round and carries auto stop=%s through restart",
+    async (stop) => {
+      const scene = new BattleScene();
+      scene.gameState = makeCombatState();
+      scene.memberActions = [{ slot: 0, type: "attack", target_id: 7 }];
+      scene.promptText = {
+        setText() {
+          return this;
+        },
+        setColor() {
+          return this;
+        },
+      };
+      scene.autoMode = true;
+      scene.animateCombatLog = vi.fn(async () => {
+        if (stop) scene.stopAutoAfterRound();
+      });
+      scene.reconcileEnemySprites = vi.fn().mockResolvedValue(undefined);
+      scene.scaledDelay = (_ms, fn) => fn();
+      scene.showVictoryResults = vi.fn();
 
-    const result = makeCombatState({
-      enemies: [{ id: 9, name: "Wolf", hp: 20, max_hp: 20 }],
-      combat_log: ["Bruno attacks!"],
-      combat_actions: [{ type: "attack", actor_slot: 0, target_id: 7 }],
-      last_round_actions: [{ slot: 0, type: "attack", target_id: 9 }],
-    });
-    apiMocks.gameAction.mockResolvedValue(result);
+      const result = makeCombatState({
+        enemies: [{ id: 9, name: "Wolf", hp: 20, max_hp: 20 }],
+        combat_log: ["Bruno attacks!"],
+        combat_actions: [{ type: "attack", actor_slot: 0, target_id: 7 }],
+        last_round_actions: [{ slot: 0, type: "attack", target_id: 9 }],
+      });
+      apiMocks.gameAction.mockResolvedValue(result);
 
-    await scene.submitAllActions();
+      await scene.submitAllActions();
 
-    expect(apiMocks.gameAction).toHaveBeenCalledWith("game-1", {
-      type: "combat_round",
-      actions: [{ slot: 0, type: "attack", target_id: 7 }],
-    });
-    expect(scene.scene.restart).toHaveBeenCalledWith({
-      gameState: result,
-      lastRoundActions: [{ slot: 0, type: "attack", target_id: 9 }],
-      autoMode: undefined,
-      seenMajorCinematics: [],
-    });
-  });
+      expect(apiMocks.gameAction).toHaveBeenCalledWith("game-1", {
+        type: "combat_round",
+        actions: [{ slot: 0, type: "attack", target_id: 7 }],
+      });
+      expect(scene.scene.restart).toHaveBeenCalledWith({
+        gameState: result,
+        lastRoundActions: [{ slot: 0, type: "attack", target_id: 9 }],
+        autoMode: !stop,
+        seenMajorCinematics: [],
+      });
+    },
+  );
 });
 
 describe("BattleScene dead actor guard", () => {
