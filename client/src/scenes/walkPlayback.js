@@ -46,12 +46,23 @@ export function beginWalkStep(scene, setFrame, tileSize = 32) {
     complete() {
       update(1);
       // A held key can start the next tile without flashing the idle pose.
-      state.idleTimer = scene.time.delayedCall(WALK_IDLE_DELAY_MS, () => {
+      const settleIdle = () => {
         if (scene.walkPlayback !== state || scene.player !== state.player)
           return;
-        state.phase = 0;
+        // World movement remains pending until the server acknowledges it.
+        // Keep the gait phase through that wait so a held direction can resume.
+        if (scene.animating) {
+          state.idleTimer = scene.time.delayedCall(
+            WALK_IDLE_DELAY_MS,
+            settleIdle,
+          );
+          return;
+        }
+        // Idle is a display pose, not lost distance. Preserve phase even if a
+        // slow render/network tick separates consecutive movement requests.
         setFrame(0);
-      });
+      };
+      state.idleTimer = scene.time.delayedCall(WALK_IDLE_DELAY_MS, settleIdle);
     },
   };
 }

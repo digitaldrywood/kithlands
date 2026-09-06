@@ -24,6 +24,17 @@ function fixture() {
   return { scene, pending, setFrame: vi.fn() };
 }
 describe("distance-driven walk playback", () => {
+  it("preserves phase while a completed tile awaits server acknowledgement", () => {
+    const { scene, pending, setFrame } = fixture();
+    scene.animating = true;
+    beginWalkStep(scene, setFrame).complete();
+    pending.at(-1).callback();
+    pending.at(-1).callback();
+    expect(scene.walkPlayback.phase).toBeCloseTo(1 / 3);
+    scene.animating = false;
+    beginWalkStep(scene, setFrame).update(0.5);
+    expect(setFrame).toHaveBeenLastCalledWith(3);
+  });
   it("preserves the gait across tile boundaries without an idle flash", () => {
     const { scene, pending, setFrame } = fixture();
     for (let tile = 0; tile < 3; tile++) {
@@ -38,14 +49,15 @@ describe("distance-driven walk playback", () => {
     pending.at(-1).callback();
     expect(scene.walkPlayback.phase).toBe(0);
   });
-  it("does not animate while stationary and restarts after stopping", () => {
+  it("shows idle while stationary without losing phase on a delayed next step", () => {
     const { scene, pending, setFrame } = fixture();
     const step = beginWalkStep(scene, setFrame);
     step.update(0.75);
     step.complete();
     pending.at(-1).callback();
-    beginWalkStep(scene, setFrame);
     expect(setFrame).toHaveBeenLastCalledWith(0);
+    beginWalkStep(scene, setFrame);
+    expect(setFrame).toHaveBeenLastCalledWith(2);
   });
   it("resets phase on direction or sprite changes and cancels stale idle callbacks", () => {
     const { scene, pending, setFrame } = fixture();
