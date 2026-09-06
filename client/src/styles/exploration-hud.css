@@ -25,8 +25,38 @@
   position: absolute;
   top: 12px;
   left: 12px;
-  width: min(340px, calc(100% - 132px));
-  padding: 14px 16px;
+  pointer-events: auto;
+  width: fit-content;
+  max-width: min(340px, calc(100% - 132px));
+}
+.explore-objective-details {
+  padding: 0 16px 14px;
+}
+.exploration-hud .explore-disclosure {
+  min-height: 44px;
+}
+.explore-objective > .explore-disclosure {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border-color: transparent;
+}
+.explore-dock {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.explore-party-details {
+  margin-bottom: 10px;
+}
+.explore-footer:not(.is-expanded) {
+  width: auto;
+  align-self: flex-end;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 .explore-eyebrow {
   display: block;
@@ -210,10 +240,9 @@
 }
 @media (max-width: 540px) {
   .explore-objective {
-    padding: 10px 12px;
     top: 8px;
     left: 8px;
-    width: calc(100% - 108px);
+    max-width: calc(100% - 108px);
   }
   .explore-objective strong {
     font-size: 12px;
