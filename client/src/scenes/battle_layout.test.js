@@ -128,3 +128,23 @@ describe("monster proportions", () => {
     }
   });
 });
+
+describe("encounter formation continuity", () => {
+  it("retains survivor lanes and scale after deaths and response reordering", () => {
+    const formation = [0, 1, 2, 3].map((id) => ({ id, monster_id: "rat" }));
+    for (const height of [320, 500]) {
+      const original = buildEnemyBattleLayout(formation, { height });
+      const survivors = [formation[3], formation[1]];
+      expect(buildEnemyBattleLayout(survivors, { height }, formation)).toEqual([
+        original[3],
+        original[1],
+      ]);
+      expect(
+        buildEnemyBattleLayout([formation[3]], { height }, formation),
+      ).toEqual([original[3]]);
+      expect(buildEnemyBattleLayout([formation[3]], { height })).not.toEqual([
+        original[3],
+      ]);
+    }
+  });
+});

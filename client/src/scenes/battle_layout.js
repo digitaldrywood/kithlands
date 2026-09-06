@@ -57,17 +57,26 @@ export function buildPartyBattleLayout(party = [], { compact = false } = {}) {
   });
 }
 
-export function buildEnemyBattleLayout(enemies = [], bounds = {}) {
+export function buildEnemyBattleLayout(
+  enemies = [],
+  bounds = {},
+  formation = enemies,
+) {
   const area = { x: 24, y: 84, width: 430, height: 320, ...bounds };
-  const count = Math.max(1, enemies.length);
+  const count = Math.max(1, formation.length);
   const columns = Math.min(3, Math.ceil(Math.sqrt(count)));
   const rows = Math.ceil(count / columns);
   const cellWidth = area.width / columns;
   const cellHeight = area.height / rows;
 
   return enemies.map((enemy, index) => {
-    const column = index % columns;
-    const row = Math.floor(index / columns);
+    const originalIndex =
+      formation === enemies
+        ? index
+        : formation.findIndex((entry) => entry.id === enemy.id);
+    const slot = originalIndex < 0 ? index : originalIndex;
+    const column = slot % columns;
+    const row = Math.floor(slot / columns);
     const lane = {
       x: area.x + column * cellWidth,
       y: area.y + row * cellHeight,
