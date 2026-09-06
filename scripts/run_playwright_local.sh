@@ -97,7 +97,6 @@ SERVER_PID=$!
 CLIENT_PID=$!
 
 wait_for_log "$SERVER_LOG" "kithlands server listening" "server"
-wait_for_log "$CLIENT_LOG" "Local:" "client"
 wait_for_http "http://localhost:${PORT}/api/data/classes" "server API"
 wait_for_http "http://localhost:${VITE_PORT}" "client"
 
