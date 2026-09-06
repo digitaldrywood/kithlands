@@ -19,7 +19,6 @@ test("real Space key cycles world leader without falling back to generic player 
   page,
 }, testInfo) => {
   await startWorld(page);
-  await page.locator("#game canvas").click();
 
   const before = await page.evaluate(() =>
     window.__kithlandsTest.sceneAuditInfo("World"),
