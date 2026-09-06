@@ -28,11 +28,9 @@ test("Quick Start creates a complete four-character party", async ({
   ]);
   await page.evaluate(() => window.__kithlandsTest.waitForSceneReady("World"));
   await page.keyboard.press("m");
-  await page.waitForFunction(() =>
-    window.__kithlandsTest
-      .visibleTexts("World")
-      .some((entry) => entry.text === "PARTY MENU"),
-  );
+  await expect(
+    page.getByRole("dialog", { name: "Your party", exact: true }),
+  ).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath(`quick-start-four-${RUN_ID}.png`),
     fullPage: true,

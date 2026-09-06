@@ -94,8 +94,10 @@ export function explorationHUD(scene, { menu, help, mute, isMuted, colors }) {
   window.addEventListener("resize", position);
   position();
   let previous = "";
+  let suspended = false;
   const update = () => {
-    root.hidden = activeWorldLocks(scene).length > 0 || !!scene.gameOver;
+    root.hidden =
+      suspended || activeWorldLocks(scene).length > 0 || !!scene.gameOver;
     root.classList.toggle("explore-touch", isTouchDevice());
     saveStatus.textContent =
       scene.saveIcon?.alpha > 0 ? scene.saveIcon.text : "";
@@ -135,15 +137,38 @@ export function explorationHUD(scene, { menu, help, mute, isMuted, colors }) {
     }
     resources.textContent = `${gs.transport?.tier_name || "On foot"} · ${gs.gold || 0} Gold · ${gs.potions || 0} Potions · ${(gs.ethers || 0) + (gs.hi_ethers || 0) + (gs.x_ethers || 0)} Ether`;
   };
+  // Paused/sleeping scenes stop updating, while their DOM remains mounted.
+  // Hide immediately so another scene never inherits the World controls.
+  const suspend = () => {
+    suspended = true;
+    root.hidden = true;
+  };
+  const resume = () => {
+    suspended = false;
+    position();
+    update();
+  };
+  scene.events.on("pause", suspend);
+  scene.events.on("sleep", suspend);
+  scene.events.on("resume", resume);
+  scene.events.on("wake", resume);
   scene.events.on("update", update);
   update();
-  scene.events.once("shutdown", () => {
+  const dispose = () => {
+    scene.events.off("pause", suspend);
+    scene.events.off("sleep", suspend);
+    scene.events.off("resume", resume);
+    scene.events.off("wake", resume);
+    scene.events.off("shutdown", dispose);
+    scene.events.off("destroy", dispose);
     scene.events.off("update", update);
     observer.disconnect();
     window.removeEventListener("resize", position);
     root.remove();
     scene.explorationHUD = null;
-  });
+  };
+  scene.events.once("shutdown", dispose);
+  scene.events.once("destroy", dispose);
   return {
     root,
     objective(heading, body) {

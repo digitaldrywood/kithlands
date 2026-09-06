@@ -4543,7 +4543,7 @@ export class BattleScene extends Phaser.Scene {
 
     // Immediately update fill bar — integer pixels, no sub-pixel sliver.
     if (hpBarData.fill) {
-      hpBarData.fill.width = fillW;
+      hpBarData.fill.setSize(fillW, hpBarData.fill.height);
       hpBarData.fill.setFillStyle(clampedHP > 0 ? bc : 0x333333);
     }
 
@@ -4564,6 +4564,11 @@ export class BattleScene extends Phaser.Scene {
       this.tweens.add({
         targets: hpBarData.ghost,
         width: fillW,
+        onUpdate: () =>
+          hpBarData.ghost.setSize(
+            hpBarData.ghost.width,
+            hpBarData.ghost.height,
+          ),
         duration: 250,
         delay: 100,
         ease: "Quad.Out",
@@ -4965,6 +4970,21 @@ export class BattleScene extends Phaser.Scene {
       const delay = 450 + i * 650;
 
       if (diedThisFight) {
+        // Defeat prevents a reward, but does not erase previously earned XP.
+        const retainedXP =
+          p.xp_next > 0 ? Math.max(0, Math.min(1, p.xp / p.xp_next)) : 0;
+        if (retainedXP > 0) {
+          roundedRectangle(
+            this,
+            progressX,
+            progressY,
+            barW * retainedXP,
+            mobileVictory ? 14 : 8,
+            0x65717d,
+          )
+            .setOrigin(0, 0.5)
+            .setDepth(4);
+        }
         this.add
           .text(684, rowY, "DEFEATED", {
             fontSize: mobileVictory ? "16px" : "10px",
@@ -5000,7 +5020,10 @@ export class BattleScene extends Phaser.Scene {
         const xpTweens = [];
         const animateSegment = (segmentIdx) => {
           if (segmentIdx >= segments.length) {
-            xpBarFill.width = p.xp_next > 0 ? (barW * p.xp) / p.xp_next : 0;
+            xpBarFill.setSize(
+              p.xp_next > 0 ? (barW * p.xp) / p.xp_next : 0,
+              xpBarFill.height,
+            );
             return;
           }
 
@@ -5009,7 +5032,7 @@ export class BattleScene extends Phaser.Scene {
             segment.max > 0 ? (barW * segment.start) / segment.max : 0;
           const endWidth =
             segment.max > 0 ? (barW * segment.end) / segment.max : 0;
-          xpBarFill.width = startWidth;
+          xpBarFill.setSize(startWidth, xpBarFill.height);
 
           if (segment.start === segment.end) {
             animateSegment(segmentIdx + 1);
@@ -5019,10 +5042,12 @@ export class BattleScene extends Phaser.Scene {
           const tween = this.tweens.add({
             targets: xpBarFill,
             width: endWidth,
+            onUpdate: () =>
+              xpBarFill.setSize(xpBarFill.width, xpBarFill.height),
             duration: Math.max(150, Math.floor(1200 / segments.length)),
             ease: "Power2",
             onComplete: () => {
-              xpBarFill.width = endWidth;
+              xpBarFill.setSize(endWidth, xpBarFill.height);
               animateSegment(segmentIdx + 1);
             },
           });
@@ -5034,12 +5059,18 @@ export class BattleScene extends Phaser.Scene {
           timer: xpTimer,
           finalize: () => {
             for (const tween of xpTweens) tween.stop();
-            xpBarFill.width = p.xp_next > 0 ? (barW * p.xp) / p.xp_next : 0;
+            xpBarFill.setSize(
+              p.xp_next > 0 ? (barW * p.xp) / p.xp_next : 0,
+              xpBarFill.height,
+            );
           },
         });
         this.victoryFinalizers.push(() => {
           for (const tween of xpTweens) tween.stop();
-          xpBarFill.width = p.xp_next > 0 ? (barW * p.xp) / p.xp_next : 0;
+          xpBarFill.setSize(
+            p.xp_next > 0 ? (barW * p.xp) / p.xp_next : 0,
+            xpBarFill.height,
+          );
         });
       }
 

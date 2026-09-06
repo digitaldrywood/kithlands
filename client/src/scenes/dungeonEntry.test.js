@@ -10,6 +10,7 @@ import {
   dungeonEntryForScene,
   dungeonEntryVisible,
   enterDungeon,
+  updateDungeonEntry,
 } from "./dungeonEntry.js";
 
 describe("dungeon entrance presentation", () => {
@@ -25,6 +26,41 @@ describe("dungeon entrance presentation", () => {
     ],
     playerX: 8,
     playerY: 10,
+  });
+
+  it("recreates native trail controls after the World scene restarts", () => {
+    const current = scene();
+    current.gameState.dungeon_entries = [
+      { node_id: "home" },
+      {
+        node_id: "other",
+        title: "Other trail",
+        route_node_ids: ["home", "other"],
+      },
+    ];
+    const shutdown = [];
+    current.events = { once: (_event, callback) => shutdown.push(callback) };
+    current.explorationHUD = {
+      trail: vi.fn(() => ({
+        setLabel: vi.fn(),
+        setEnabled: vi.fn(),
+        destroy: vi.fn(),
+      })),
+    };
+    updateDungeonEntry(current);
+    const first = current.dungeonEntryButton;
+    const firstRoute = current.dungeonRouteButton;
+    expect(first).toBeTruthy();
+    expect(firstRoute).toBeTruthy();
+    for (const callback of shutdown) callback();
+    expect(first.destroy).toHaveBeenCalledOnce();
+    expect(current.dungeonEntryButton).toBeNull();
+    expect(firstRoute.destroy).toHaveBeenCalledOnce();
+    expect(current.dungeonRouteButton).toBeNull();
+    updateDungeonEntry(current);
+    expect(current.dungeonEntryButton).not.toBe(first);
+    expect(current.dungeonRouteButton).not.toBe(firstRoute);
+    expect(current.explorationHUD.trail).toHaveBeenCalledTimes(4);
   });
 
   it("offers the trail only near the home locality entrance", () => {

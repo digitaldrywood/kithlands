@@ -1120,7 +1120,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   showEndScreen(title, subtitle, color, gs) {
-    drawPanel(this, 400, 300, 776, 576, { depth: -1 });
+    drawPanel(this, 400, 300, 776, 576, { depth: 0 });
     drawButton(
       this,
       400,

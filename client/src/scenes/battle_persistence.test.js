@@ -65,6 +65,7 @@ vi.mock("../systems/hpBar.js", () => ({
   formatHPLabel: vi.fn(() => ""),
   hpBarColorPct: vi.fn(() => 1),
   hpBarFillWidth: vi.fn(() => 10),
+  combatantConditionLabel: vi.fn(() => ""),
 }));
 
 vi.mock("../ui/floating_text.js", () => ({
@@ -341,4 +342,80 @@ describe("save-load persistence", () => {
       gameState: showcase,
     });
   });
+});
+
+describe("rounded battle meter updates", () => {
+  it("rebuilds fill and ghost geometry when HP changes", () => {
+    const scene = new BattleScene();
+    const makeBar = () => ({
+      width: 100,
+      height: 6,
+      pathWidth: 100,
+      setSize(width, height) {
+        this.width = width;
+        this.height = height;
+        this.pathWidth = width;
+      },
+      setFillStyle: vi.fn(),
+    });
+    const fill = makeBar();
+    const ghost = makeBar();
+    const tweens = [];
+    scene.tweens = { add: (config) => tweens.push(config) };
+    scene.animateHPBar({ fill, ghost, width: 100, currentHP: 100 }, 10, 100);
+    expect(fill.pathWidth).toBe(10);
+    ghost.width = 55;
+    tweens[0].onUpdate();
+    expect(ghost.pathWidth).toBe(55);
+    ghost.width = tweens[0].width;
+    tweens[0].onUpdate();
+    expect(ghost.pathWidth).toBe(10);
+  });
+});
+
+describe("defeated victory XP presentation", () => {
+  it.each([false, true])(
+    "retains a static half-full XP meter (mobile: %s)",
+    (mobile) => {
+      const scene = new BattleScene();
+      const shapes = [];
+      const object = (fields = {}) => {
+        const node = new Proxy(fields, {
+          get(target, key) {
+            if (key in target) return target[key];
+            return () => node;
+          },
+        });
+        return node;
+      };
+      scene.add = {
+        graphics: () => object(),
+        rectangle: (x, y, width, height, fill) => {
+          const shape = object({ x, y, width, height, fill });
+          shapes.push(shape);
+          return shape;
+        },
+        text: () => object(),
+      };
+      scene.hudLayout = { mode: mobile ? "mobile" : "desktop" };
+      scene.scale = { gameSize: { height: mobile ? 1600 : 600 } };
+      scene.children = { removeAll: vi.fn() };
+      scene.textures = { exists: () => false };
+      scene.input = { keyboard: { on: vi.fn() } };
+      scene.time = { delayedCall: vi.fn() };
+      scene.tweens = { add: vi.fn() };
+      scene.returnFromDungeonDefeat = () => false;
+      scene.showVictoryResults({
+        phase: "exploration",
+        party: [{ name: "Hero", hp: 0, max_hp: 100, xp: 150, xp_next: 300 }],
+        xp_before: [150],
+        died_this_fight: [true],
+      });
+      const fill = shapes.find((shape) => shape.fill === 0x65717d);
+      expect(fill).toBeDefined();
+      expect(fill.width).toBe(mobile ? 110 : 90);
+      expect(fill.x).toBe(mobile ? 430 : 395);
+      expect(scene.tweens.add).not.toHaveBeenCalled();
+    },
+  );
 });

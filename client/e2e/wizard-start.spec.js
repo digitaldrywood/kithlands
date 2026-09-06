@@ -141,7 +141,7 @@ async function addProofOverlay(page, label, sceneKey, highlights = []) {
 }
 
 test.describe("wizard start flow", () => {
-  test("skips straight from OSM search to party creation with no confirmation screen", async ({
+  test("Enter submits OSM search and skips straight to party creation", async ({
     page,
   }, testInfo) => {
     const pageErrors = [];
@@ -199,7 +199,7 @@ test.describe("wizard start flow", () => {
       fullPage: true,
     });
 
-    await clickWizardText(page, "FIND & CONTINUE");
+    await page.locator('input[type="text"]').press("Enter");
 
     await waitForWizardText(page, "Searching Cadott...");
     await expect(page.locator('input[type="text"]')).toHaveCount(0);

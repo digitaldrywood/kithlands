@@ -9,6 +9,7 @@ for (const viewport of [
   { width: 390, height: 844 },
 ]) {
   test(`walk out of affected houses at ${viewport.width}`, async ({ page }) => {
+    test.setTimeout(90000);
     await page.setViewportSize(viewport);
     await page.goto("/");
     await page.waitForFunction(() =>
@@ -17,6 +18,9 @@ for (const viewport of [
     await page.evaluate(() => window.__kithlandsTest.startQuickGame());
     await page.waitForFunction(
       () => window.__kithlandsTest.activeSceneKey() === "World",
+    );
+    await page.evaluate(() =>
+      window.__kithlandsTest.waitForSceneReady("World"),
     );
     for (const id of [
       "house_elder_study_1f",
@@ -43,11 +47,21 @@ for (const viewport of [
       await page.waitForFunction(() =>
         window.__kithlandsTest.sceneIsActive("Town"),
       );
-      await page.waitForTimeout(350);
-      await page.keyboard.press("ArrowUp");
-      await page.waitForFunction(
-        () => window.__kithlandsTest.townSnapshot().playerY === 9,
+      await page.evaluate(() =>
+        window.__kithlandsTest.waitForSceneReady("Town"),
       );
+      await expect(
+        page.getByRole("region", { name: "Exploration controls" }),
+      ).toHaveCount(0);
+      await page.waitForTimeout(350);
+      await page.keyboard.down("ArrowUp");
+      try {
+        await page.waitForFunction(
+          () => window.__kithlandsTest.townSnapshot().playerY === 9,
+        );
+      } finally {
+        await page.keyboard.up("ArrowUp");
+      }
       await page.waitForTimeout(350);
       await page.screenshot({
         path: new URL(`${id}-${viewport.width}-clear-door.png`, proof).pathname,
@@ -60,6 +74,9 @@ for (const viewport of [
         () => window.__kithlandsTest.activeSceneKey() === "World",
       );
       await page.keyboard.up("ArrowDown");
+      await page.evaluate(() =>
+        window.__kithlandsTest.waitForSceneReady("World"),
+      );
       expect(
         await page.evaluate(() => window.__kithlandsTest.sceneIsActive("Town")),
       ).toBe(false);

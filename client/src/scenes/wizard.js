@@ -521,80 +521,45 @@ export class WizardScene extends Phaser.Scene {
       slider.setVisible(useOSM);
     });
 
-    const findButton = this.addButton(
-      300 + formOffset,
-      "FIND & CONTINUE",
-      async () => {
-        if (!findButton.input?.enabled) return;
+    const submitTown = async () => {
+      if (!findButton.input?.enabled) return;
 
-        const townName = input.node.value.trim() || "Cadott, WI";
-        this.wizardData.town_name = townName;
-        this.wizardData.use_osm = useOSM;
-        this.wizardData.radius_miles = parseFloat(sliderEl.value);
+      const townName = input.node.value.trim() || "Cadott, WI";
+      this.wizardData.town_name = townName;
+      this.wizardData.use_osm = useOSM;
+      this.wizardData.radius_miles = parseFloat(sliderEl.value);
 
-        if (useOSM) {
-          this.wizardData.osm_preview = null;
-          this.wizardData.spawn_node_id = "";
-          this.setTownSearchState({
-            busy: true,
-            error: "",
-            label: this.formatTownSearchLabel(townName),
-          });
-          this.showStep();
+      if (useOSM) {
+        this.wizardData.osm_preview = null;
+        this.wizardData.spawn_node_id = "";
+        this.setTownSearchState({
+          busy: true,
+          error: "",
+          label: this.formatTownSearchLabel(townName),
+        });
+        this.showStep();
+        try {
+          const result = await geocode(townName);
+          if (result.error) {
+            this.setTownSearchState({
+              busy: false,
+              label: "",
+              error: "Location not found. Try another town or address.",
+            });
+            this.showStep();
+            return;
+          }
+          this.wizardData.lat = result.lat;
+          this.wizardData.lng = result.lng;
+
+          // Scan for POIs
           try {
-            const result = await geocode(townName);
-            if (result.error) {
-              this.setTownSearchState({
-                busy: false,
-                label: "",
-                error: "Location not found. Try another town or address.",
-              });
-              this.showStep();
-              return;
-            }
-            this.wizardData.lat = result.lat;
-            this.wizardData.lng = result.lng;
-
-            // Scan for POIs
-            try {
-              const preview = await osmPreview(
-                result.lat,
-                result.lng,
-                this.wizardData.radius_miles,
-              );
-              if (preview.error) {
-                this.wizardData.osm_preview = null;
-                this.wizardData.spawn_node_id = "";
-                this.setTownSearchState({
-                  busy: false,
-                  label: "",
-                  error: "Map lookup failed. Try again.",
-                });
-                this.showStep();
-                return;
-              } else {
-                this.wizardData.osm_preview = preview.nodes || [];
-                this.wizardData.radius_miles =
-                  preview.radius_miles || this.wizardData.radius_miles;
-                if ((preview.nodes || []).length > 0) {
-                  this.ensureOSMDefaults();
-                  this.setTownSearchState({
-                    busy: false,
-                    label: "",
-                    error: "",
-                  });
-                  this.step = 5;
-                } else {
-                  this.wizardData.spawn_node_id = "";
-                  this.setTownSearchState({
-                    busy: false,
-                    label: "",
-                    error: "",
-                  });
-                  this.step = 1;
-                }
-              }
-            } catch {
+            const preview = await osmPreview(
+              result.lat,
+              result.lng,
+              this.wizardData.radius_miles,
+            );
+            if (preview.error) {
               this.wizardData.osm_preview = null;
               this.wizardData.spawn_node_id = "";
               this.setTownSearchState({
@@ -604,34 +569,70 @@ export class WizardScene extends Phaser.Scene {
               });
               this.showStep();
               return;
+            } else {
+              this.wizardData.osm_preview = preview.nodes || [];
+              this.wizardData.radius_miles =
+                preview.radius_miles || this.wizardData.radius_miles;
+              if ((preview.nodes || []).length > 0) {
+                this.ensureOSMDefaults();
+                this.setTownSearchState({
+                  busy: false,
+                  label: "",
+                  error: "",
+                });
+                this.step = 5;
+              } else {
+                this.wizardData.spawn_node_id = "";
+                this.setTownSearchState({
+                  busy: false,
+                  label: "",
+                  error: "",
+                });
+                this.step = 1;
+              }
             }
-            this.showStep();
           } catch {
+            this.wizardData.osm_preview = null;
+            this.wizardData.spawn_node_id = "";
             this.setTownSearchState({
               busy: false,
               label: "",
-              error: "Geocoding failed. Try again.",
+              error: "Map lookup failed. Try again.",
             });
             this.showStep();
+            return;
           }
-        } else {
+          this.showStep();
+        } catch {
           this.setTownSearchState({
             busy: false,
             label: "",
-            error: "",
+            error: "Geocoding failed. Try again.",
           });
-          this.wizardData.osm_preview = null;
-          this.wizardData.spawn_node_id = "";
-          this.step++;
           this.showStep();
         }
-      },
+      } else {
+        this.setTownSearchState({
+          busy: false,
+          label: "",
+          error: "",
+        });
+        this.wizardData.osm_preview = null;
+        this.wizardData.spawn_node_id = "";
+        this.step++;
+        this.showStep();
+      }
+    };
+    const findButton = this.addButton(
+      300 + formOffset,
+      "FIND & CONTINUE",
+      submitTown,
     );
 
     input.node.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" || !findButton.input?.enabled) return;
       event.preventDefault();
-      findButton.emit("pointerdown");
+      void submitTown();
     });
   }
 

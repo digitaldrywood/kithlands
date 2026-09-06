@@ -2837,7 +2837,7 @@ export function installDevTestBridge(game) {
     startTownScene(spawn, fromSceneKey = "World", sceneData = {}) {
       const scene = getScene(game, fromSceneKey) || activeScene(game);
       const sourceGameState = clone(scene?.gameState) || defaultGameState();
-      game.scene.start("Town", {
+      scene.scene.start("Town", {
         ...clone(sceneData),
         gameState: sourceGameState,
         spawn: {
