@@ -1,3 +1,4 @@
+import quickStartDefaults from "../../../shared/quick_start.json";
 import {
   debugCreateShowcase,
   login,
@@ -15,16 +16,23 @@ import {
 } from "../systems/prefs.js";
 import { buildWalkAuditParty, walkAuditRequested } from "./walkAuditMode.js";
 
+import { titleScreen, titleAccount } from "../ui/title_screen.js";
+import { element } from "../ui/viewport_dialog.js";
+
 export class TitleScene extends Phaser.Scene {
   constructor() {
     super("Title");
   }
 
   create() {
+    // World and party menus can use a tall portrait canvas.
+    this.scale.setGameSize(800, 600);
     this.showMainMenu();
   }
 
   clearMenu() {
+    this.titleView?.dispose();
+    this.titleView = null;
     // DisplayList.removeAll(true) skips callbacks; it does not destroy objects.
     // Destroy a snapshot so native DOM inputs are removed before the list changes.
     this.children.list.slice().forEach((child) => child.destroy());
@@ -35,76 +43,33 @@ export class TitleScene extends Phaser.Scene {
     playMusic("music_title");
     this.clearMenu();
 
-    const cx = 400;
-
-    this.add
-      .text(cx, 80, "KITHLANDS", {
-        fontSize: "48px",
-        color: "#ffffff",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5);
-
-    this.add
-      .text(cx, 140, "Your town. Your people. Your saga.", {
-        fontSize: "16px",
-        color: "#aaaaaa",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5);
-
-    // Email input
-    this.add
-      .text(cx, 210, "Enter your email to play:", {
-        fontSize: "14px",
-        color: "#cccccc",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5);
-
-    const inputEl = document.createElement("input");
-    inputEl.type = "email";
-    inputEl.placeholder = "player@example.com";
-    inputEl.value = getEmail(); // pre-fill from last session
-    inputEl.style.cssText =
-      "font-size:16px;padding:6px 14px;width:280px;text-align:center;background:#222;color:#fff;border:2px solid #555;outline:none;font-family:monospace;";
-    this.add.dom(cx, 245, inputEl);
-
-    // Buttons
-    this.makeButton(cx, 310, "[ NEW GAME ]", "#44ff44", () =>
-      this.startGame(inputEl, false),
+    const view = titleScreen(this);
+    this.titleView = view;
+    this.statusText = view.statusText;
+    const inputEl = titleAccount(view.body, getEmail());
+    inputEl.addEventListener("input", () => view.statusText.setText(""));
+    view.action(
+      "New game",
+      "Make your hometown a legend",
+      () => this.startGame(inputEl, false),
+      true,
     );
-    const lastWiz = getLastWizard();
-    const quickLabel = lastWiz
-      ? `[ QUICK START - ${lastWiz.town_name} ]`
-      : "[ QUICK START - Cadott ]";
-    this.makeButton(cx, 350, quickLabel, "#ffcc44", () =>
-      this.startGame(inputEl, true),
-    );
-    this.makeButton(cx, 390, "[ LOAD GAME ]", "#4488ff", () =>
+    view.action("Continue", "Load a saved adventure", () =>
       this.doLogin(inputEl, () => this.showLoadScreen()),
     );
+    const last = getLastWizard();
+    view.action("Quick start", last?.town_name || "Explore Cadott", () =>
+      this.startGame(inputEl, true),
+    );
     if (import.meta.env?.DEV) {
-      this.makeButton(cx, 440, "[ SYSTEMS SHOWCASE ]", "#ff66cc", () =>
-        this.startShowcase(),
-      );
-      this.add
-        .text(cx, 466, "Dev-only • full combat loadout • disposable", {
-          fontSize: "10px",
-          color: "#aa88aa",
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5);
+      const tools = element("details", "title-dev-tools");
+      tools.append(element("summary", "", "Developer tools"));
+      const showcase = element("button", "", "Systems showcase");
+      showcase.type = "button";
+      showcase.addEventListener("click", () => this.startShowcase());
+      tools.append(showcase);
+      view.body.append(tools);
     }
-
-    this.statusText = this.add
-      .text(cx, 500, "", {
-        fontSize: "12px",
-        color: "#ff4444",
-        fontFamily: "monospace",
-        wordWrap: { width: 600 },
-      })
-      .setOrigin(0.5);
 
     if (
       import.meta.env?.DEV &&
@@ -115,21 +80,6 @@ export class TitleScene extends Phaser.Scene {
       inputEl.value = `walk_audit_${Date.now()}@kithlands.dev`;
       this.time.delayedCall(0, () => this.startGame(inputEl, true));
     }
-  }
-
-  makeButton(x, y, label, color, callback) {
-    const btn = this.add
-      .text(x, y, label, {
-        fontSize: "16px",
-        color,
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    btn.on("pointerover", () => btn.setAlpha(0.7));
-    btn.on("pointerout", () => btn.setAlpha(1));
-    btn.on("pointerdown", callback);
-    return btn;
   }
 
   async doLogin(inputEl, callback) {
@@ -153,165 +103,73 @@ export class TitleScene extends Phaser.Scene {
       callback();
     } catch (e) {
       this.statusText
-        .setText("Server unreachable. Run: make play")
+        .setText("Unable to connect. Please try again shortly.")
         .setColor("#ff4444");
     }
   }
 
   async showLoadScreen() {
     this.clearMenu();
-
-    const cx = 400;
-    this.add
-      .text(cx, 50, "LOAD GAME", {
-        fontSize: "28px",
-        color: "#4488ff",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5);
-
-    this.add
-      .text(cx, 90, "Loading saves...", {
-        fontSize: "12px",
-        color: "#aaaaaa",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5);
-
+    const view = titleScreen(this, "load");
+    this.titleView = view;
+    this.statusText = view.statusText;
+    view.body.append(element("h2", "title-load-heading", "Your adventures"));
+    const list = element("div", "title-saves");
+    view.body.append(list);
+    view.action("Back to main menu", "", () => this.showMainMenu());
+    view.statusText.setText("Finding your saved adventures…");
     try {
       const result = await listSaves();
+      if (this.titleView !== view) return;
+      if (result.error) throw new Error(result.error);
       const saves = result.saves || [];
-
-      this.clearMenu();
-
-      this.add
-        .text(cx, 40, "LOAD GAME", {
-          fontSize: "28px",
-          color: "#4488ff",
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5);
-
-      if (saves.length === 0) {
-        this.add
-          .text(cx, 200, "No saved games found.", {
-            fontSize: "14px",
-            color: "#666666",
-            fontFamily: "monospace",
-          })
-          .setOrigin(0.5);
-        this.add
-          .text(
-            cx,
-            240,
-            "Start a new game first, then save at an inn or temple.",
-            {
-              fontSize: "11px",
-              color: "#888888",
-              fontFamily: "monospace",
-            },
-          )
-          .setOrigin(0.5);
-      } else {
-        // Separate manual and autosaves so autosaves never displace manual saves
-        const manualSaves = saves.filter((sv) => sv.save_type !== "autosave");
-        const autoSaves = saves.filter((sv) => sv.save_type === "autosave");
-
-        let y = 80;
-
-        // Manual saves section
-        if (manualSaves.length > 0) {
-          this.add.text(150, y, "Manual Saves", {
-            fontSize: "12px",
-            color: "#aaaaaa",
-            fontFamily: "monospace",
-          });
-          y += 20;
-          for (const sv of manualSaves.slice(0, 5)) {
-            y = this.renderSaveRow(cx, y, sv, false);
-          }
-        }
-
-        // Autosaves section
-        if (autoSaves.length > 0) {
-          y += 5;
-          this.add.text(150, y, "Autosaves", {
-            fontSize: "12px",
-            color: "#44ccff",
-            fontFamily: "monospace",
-          });
-          y += 20;
-          for (const sv of autoSaves.slice(0, 3)) {
-            y = this.renderSaveRow(cx, y, sv, true);
-          }
+      view.statusText.setText(
+        saves.length
+          ? ""
+          : "No saves yet. Start a new adventure to begin your story.",
+      );
+      for (const [label, group] of [
+        ["Manual saves", saves.filter((save) => save.save_type !== "autosave")],
+        ["Autosaves", saves.filter((save) => save.save_type === "autosave")],
+      ]) {
+        if (!group.length) continue;
+        list.append(element("h3", "", label));
+        for (const save of group) {
+          const row = element("button", "title-save");
+          row.type = "button";
+          row.append(
+            element("strong", "", save.name),
+            element(
+              "span",
+              "",
+              `${(save.party || []).join(", ")} · ${new Date(save.updated_at).toLocaleDateString()}`,
+            ),
+          );
+          row.addEventListener("click", () => this.loadGameSave(save.id));
+          list.append(row);
         }
       }
-
-      this.makeButton(cx, 540, "[ BACK ]", "#aaaaaa", () =>
-        this.showMainMenu(),
-      );
-    } catch (e) {
-      console.error("[Title] load saves error:", e);
-      this.add
-        .text(cx, 200, "Failed to load saves.", {
-          fontSize: "14px",
-          color: "#ff4444",
-          fontFamily: "monospace",
-        })
-        .setOrigin(0.5);
-      this.makeButton(cx, 540, "[ BACK ]", "#aaaaaa", () =>
-        this.showMainMenu(),
-      );
+    } catch (error) {
+      if (this.titleView === view)
+        view.statusText
+          .setText("Could not load your saves. Please try again.")
+          .setColor("#ff4444");
     }
-  }
-
-  renderSaveRow(cx, y, sv, isAutosave) {
-    const partyStr = sv.party ? sv.party.join(", ") : "";
-    const dateStr = new Date(sv.updated_at).toLocaleDateString();
-    const timeStr =
-      sv.play_time > 0 ? `${Math.floor(sv.play_time / 60)}min` : "";
-
-    const rowColor = isAutosave ? 0x0a1a2a : 0x112233;
-    const strokeColor = isAutosave ? 0x225577 : 0x334466;
-    const row = this.add
-      .rectangle(cx, y + 15, 600, 50, rowColor)
-      .setStrokeStyle(1, strokeColor)
-      .setInteractive({ useHandCursor: true });
-
-    const nameColor = isAutosave ? "#44ccff" : "#ffffff";
-    this.add.text(150, y, sv.name, {
-      fontSize: "14px",
-      color: nameColor,
-      fontFamily: "monospace",
-    });
-
-    const detailStr = `${partyStr}  |  ${sv.difficulty}  |  ${dateStr} ${timeStr}`;
-    this.add.text(150, y + 18, detailStr, {
-      fontSize: "10px",
-      color: "#aaaaaa",
-      fontFamily: "monospace",
-    });
-
-    row.on("pointerover", () =>
-      row.setFillStyle(isAutosave ? 0x1a2a3a : 0x223355),
-    );
-    row.on("pointerout", () => row.setFillStyle(rowColor));
-    row.on("pointerdown", () => this.loadGameSave(sv.id));
-
-    return y + 55;
   }
 
   async loadGameSave(saveId) {
     try {
       const result = await loadSave(saveId);
       if (result.error) {
-        console.error("[Title] load error:", result.error);
+        this.statusText.setText(result.error).setColor("#ff4444");
         return;
       }
       console.log("[Title] save loaded, going to World");
       this.scene.start("World", { gameState: result });
     } catch (e) {
-      console.error("[Title] load failed:", e);
+      this.statusText
+        .setText("Could not load this save. Please try again.")
+        .setColor("#ff4444");
     }
   }
 
@@ -340,22 +198,11 @@ export class TitleScene extends Phaser.Scene {
       setEmail(email); // remember email
 
       if (quick) {
-        // Use last wizard data if available, otherwise Cadott defaults
-        const last = getLastWizard();
-        const gameData = last || {
-          town_name: "Cadott, WI",
-          people: [
-            { name: "Bob", relation: "friendly" },
-            { name: "Mrs Henderson", relation: "neutral" },
-            { name: "Mayor Grimes", relation: "rival" },
-          ],
-          places: ["The School", "Creswood Corners", "Fire Hall"],
-          big_building: "Town Hall",
-          party: [
-            { name: "Hero", class_id: "warrior" },
-            { name: "Sparks", class_id: "cinder" },
-          ],
-          difficulty: "normal",
+        // Reuse the last town setup with the complete Quick Start party.
+        const gameData = {
+          ...quickStartDefaults,
+          ...getLastWizard(),
+          party: quickStartDefaults.party.map((member) => ({ ...member })),
         };
         console.log("[Title] quick start with", gameData.town_name);
         const gameResult = await newGame(gameData);
@@ -377,7 +224,7 @@ export class TitleScene extends Phaser.Scene {
     } catch (e) {
       console.error("[Title] error:", e);
       this.statusText
-        .setText("Server unreachable. Run: make play")
+        .setText("Unable to connect. Please try again shortly.")
         .setColor("#ff4444");
     }
   }

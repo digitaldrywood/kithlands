@@ -1,0 +1,17 @@
+{
+  "town_name": "Cadott, WI",
+  "people": [
+    { "name": "Bob", "relation": "friendly" },
+    { "name": "Mrs Henderson", "relation": "neutral" },
+    { "name": "Mayor Grimes", "relation": "rival" }
+  ],
+  "places": ["The School", "Creswood Corners", "Fire Hall"],
+  "big_building": "Town Hall",
+  "party": [
+    { "name": "Hero", "class_id": "warrior" },
+    { "name": "Sparks", "class_id": "cinder" },
+    { "name": "Shade", "class_id": "rogue" },
+    { "name": "Willow", "class_id": "mender" }
+  ],
+  "difficulty": "normal"
+}

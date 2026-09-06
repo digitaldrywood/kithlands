@@ -1,3 +1,5 @@
+@import "./menu-theme.css";
+
 .kith-viewport-dialog {
   position: fixed;
   inset: 0;
@@ -7,10 +9,10 @@
   padding: max(12px, env(safe-area-inset-top))
     max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom))
     max(12px, env(safe-area-inset-left));
-  background: radial-gradient(ellipse at 50% 20%, #192c49, #040a14 85%);
-  color: #eff5ff;
+  background: var(--menu-panel);
+  color: var(--menu-text);
   font:
-    16px/1.45 "Trebuchet MS",
+    16px/1.45 system-ui,
     system-ui,
     sans-serif;
   text-align: left;
@@ -24,12 +26,10 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border: 1px solid #8aafda;
-  border-radius: 16px;
-  background: linear-gradient(145deg, #193556, #0a182d 70%);
-  box-shadow:
-    inset 0 0 0 3px #213e60,
-    0 16px 64px #0008;
+  border: 1px solid var(--menu-muted);
+  border-radius: 24px;
+  background: var(--menu-panel);
+  box-shadow: 0 20px 70px #0006;
   overflow: hidden;
 }
 .viewport-dialog-header,
@@ -39,17 +39,17 @@
 }
 .viewport-dialog-header {
   flex-shrink: 0;
-  border-bottom: 1px solid #7797ba55;
+  border-bottom: 1px solid var(--menu-line);
 }
 .viewport-dialog-header h1 {
-  color: #f4d991;
+  color: var(--menu-accent);
   font:
-    30px/1.15 Georgia,
-    serif;
+    30px/1.15 system-ui,
+    sans-serif;
   margin: 0;
 }
 .viewport-dialog-header p {
-  color: #c1d2e7;
+  color: var(--menu-muted);
   margin-top: 8px;
 }
 .viewport-dialog-body {
@@ -59,40 +59,40 @@
 }
 .viewport-dialog-footer {
   flex-shrink: 0;
-  border-top: 1px solid #7797ba55;
-  background: #08152988;
+  border-top: 1px solid var(--menu-line);
+  background: var(--menu-panel);
 }
 .kith-viewport-dialog button {
   min-height: 46px;
   min-width: 46px;
   padding: 9px 16px;
-  border: 1px solid #7697be;
-  border-radius: 8px;
-  background: #1c3a5c;
-  color: #edf5ff;
+  border: 1px solid var(--menu-line);
+  border-radius: 12px;
+  background: var(--menu-card);
+  color: var(--menu-text);
   font: inherit;
   cursor: pointer;
   touch-action: manipulation;
 }
 .kith-viewport-dialog button:hover:not(:disabled) {
-  background: #2b507a;
+  background: var(--menu-line);
 }
 .kith-viewport-dialog button:disabled {
   opacity: 0.45;
   cursor: default;
 }
 .kith-viewport-dialog :focus-visible {
-  outline: 3px solid #ffe5a4;
+  outline: 3px solid var(--menu-accent);
   outline-offset: 2px;
 }
 .kith-viewport-dialog .primary {
-  color: #182339;
-  background: #f0d38b;
-  border-color: #ffe7af;
+  color: var(--menu-panel);
+  background: var(--menu-accent);
+  border-color: var(--menu-accent);
   font-weight: bold;
 }
 .kith-viewport-dialog .primary:hover:not(:disabled) {
-  background: #ffe8ae;
+  background: var(--menu-accent);
 }
 .dialog-actions {
   display: flex;
@@ -103,7 +103,7 @@
 }
 .dialog-status {
   margin-bottom: 12px;
-  color: #c5dbf5;
+  color: var(--menu-text);
 }
 .dialog-status:empty {
   display: none;
@@ -119,28 +119,28 @@
 }
 .promotion-member {
   padding: 12px;
-  border: 1px solid #5c7ca355;
-  border-radius: 9px;
-  background: #06132566;
+  border: 1px solid var(--menu-line);
+  border-radius: 12px;
+  background: var(--menu-panel);
   overflow-wrap: anywhere;
 }
 .promotion-member strong {
   display: block;
   font-size: 18px;
-  color: #fff4d6;
+  color: var(--menu-accent);
 }
 .promotion-member p {
-  color: #c3d3e8;
+  color: var(--menu-muted);
 }
 .promotion-member .promotion-destination {
-  color: #f4d991;
+  color: var(--menu-accent);
 }
 .promotion-effects {
   margin-top: 16px;
-  color: #c9d8eb;
+  color: var(--menu-text);
 }
 .promotion-effects h2 {
-  color: #f4d991;
+  color: var(--menu-accent);
   font-size: 16px;
   margin-bottom: 6px;
 }
@@ -149,16 +149,16 @@
 }
 .objective-quest-log .objective-quest-kicker,
 .objective-quest-log .objective-quest-secondary {
-  color: #b9cce3;
+  color: var(--menu-muted);
   font-size: 14px;
 }
 .objective-quest-log h2 {
-  color: #fff4d6;
+  color: var(--menu-accent);
   font-size: 21px;
   margin-bottom: 8px;
 }
 .objective-quest-log h3 {
-  color: #f4d991;
+  color: var(--menu-accent);
   font-size: 17px;
   margin: 18px 0 8px;
 }
@@ -172,12 +172,12 @@
 .objective-quest-plan li {
   margin-bottom: 10px;
   padding: 7px 9px;
-  border-radius: 6px;
-  color: #b9cce3;
+  border-radius: 12px;
+  color: var(--menu-muted);
 }
 .objective-quest-plan .is-current {
-  background: #263f5e;
-  color: #ffe09a;
+  background: var(--menu-card);
+  color: var(--menu-accent);
   font-weight: bold;
 }
 .objective-quest-plan .is-complete {
@@ -186,11 +186,11 @@
 .objective-quest-custody {
   padding: 12px;
   border: 1px solid #66906e;
-  border-radius: 7px;
+  border-radius: 12px;
   color: #c9ebcf;
 }
 .objective-quest-reward {
-  color: #ffe09a;
+  color: var(--menu-accent);
 }
 .options-rows {
   display: grid;
@@ -198,12 +198,12 @@
 }
 .options-row {
   padding: 12px;
-  background: #07182b88;
-  border: 1px solid #7295bb55;
-  border-radius: 9px;
+  background: var(--menu-panel);
+  border: 1px solid var(--menu-line);
+  border-radius: 12px;
 }
 .options-row:focus-within {
-  border-color: #f4d991;
+  border-color: var(--menu-accent);
 }
 .options-label {
   display: flex;
@@ -217,7 +217,7 @@
   font-weight: normal;
 }
 .options-label output {
-  color: #f4d991;
+  color: var(--menu-accent);
 }
 .options-stepper {
   display: grid;
@@ -228,16 +228,16 @@
 .options-stepper progress {
   width: 100%;
   height: 12px;
-  accent-color: #b5d6ff;
+  accent-color: var(--menu-text);
 }
 .options-row p {
-  color: #c3d3e8;
+  color: var(--menu-muted);
   margin-top: 8px;
   font-size: 14px;
 }
 .options-key-hint {
   font-size: 14px;
-  color: #c3d3e8;
+  color: var(--menu-muted);
   margin-bottom: 10px;
 }
 @media (max-width: 500px) {
@@ -304,4 +304,38 @@
   .options-row p {
     grid-column: 2;
   }
+}
+
+.exit-menu-actions {
+  flex-direction: column;
+}
+
+.world-map-dialog .viewport-dialog-panel {
+  width: min(100%, 980px);
+}
+.world-map-canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 16px;
+}
+.world-map-legend {
+  color: var(--menu-muted);
+  margin: 16px 0;
+  font-size: 14px;
+}
+.world-map-places {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  list-style: none;
+  padding: 0;
+}
+.world-map-places li {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--menu-card);
+}
+.world-map-places .is-target {
+  color: var(--menu-accent);
 }

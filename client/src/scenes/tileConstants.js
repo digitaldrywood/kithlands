@@ -66,7 +66,8 @@ export const TILE_WALKABLE = Object.freeze({
   [TILE_IDS.path]: true,
   [TILE_IDS.water]: false,
   [TILE_IDS.tree]: false,
-  [TILE_IDS.building]: false,
+  // Legacy overland building footprints are grass under symbolic landmarks.
+  [TILE_IDS.building]: true,
   [TILE_IDS.door]: true,
   [TILE_IDS.floor]: true,
   [TILE_IDS.rock]: false,

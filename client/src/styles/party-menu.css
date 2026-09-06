@@ -1,0 +1,370 @@
+.modern-party-menu {
+  padding: 24px;
+  background: #080f1dcc;
+  backdrop-filter: blur(14px);
+  font:
+    14px/1.45 system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  color: #e9eef7;
+}
+.modern-party-menu .viewport-dialog-panel {
+  width: min(1120px, 100%);
+  height: min(780px, calc(100dvh - 48px));
+  border: 1px solid #ffffff18;
+  border-radius: 24px;
+  background: #151e2b;
+  box-shadow: 0 32px 100px #0008;
+}
+.modern-party-menu .viewport-dialog-header {
+  position: relative;
+  padding: 28px 32px 24px;
+  border-bottom: 1px solid #ffffff0c;
+}
+.modern-party-menu .party-eyebrow {
+  margin: 0 0 8px;
+  color: #a8b7cb;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
+.modern-party-menu .viewport-dialog-header h1 {
+  font:
+    600 30px/1.2 system-ui,
+    sans-serif;
+  color: #f6f8fc;
+  letter-spacing: -0.03em;
+}
+.modern-party-menu .party-dismiss {
+  position: absolute;
+  right: 24px;
+  top: 22px;
+  border: 0;
+  background: #ffffff08;
+  border-radius: 50%;
+  padding: 0;
+  font: 26px system-ui;
+  color: #aebdd0;
+}
+.modern-party-menu .party-resources {
+  display: flex;
+  gap: 24px;
+  margin-top: 20px;
+  color: #9eafc3;
+  font-size: 12px;
+}
+.party-resources > span {
+  display: flex;
+  gap: 7px;
+  align-items: baseline;
+}
+.party-resources strong {
+  color: #ecddaf;
+  font-size: 16px;
+  font-weight: 600;
+}
+.modern-party-menu .viewport-dialog-body {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  padding: 0;
+  overflow: hidden;
+  flex: 1;
+}
+.party-sidebar {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 12px 12px;
+  background: #101824;
+  border-right: 1px solid #ffffff08;
+}
+.modern-party-menu .party-nav-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 46px;
+  text-align: left;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: #becbdb;
+  margin-bottom: 3px;
+}
+.modern-party-menu .party-nav-action:hover:not(:disabled) {
+  background: #ffffff0a;
+  color: #fff;
+}
+.modern-party-menu .party-exit {
+  color: #f0c8ac;
+  background: #c9966810;
+  flex-shrink: 0;
+}
+.party-nav-heading {
+  color: #7f90a6;
+  letter-spacing: 0.16em;
+  font-size: 9px;
+  font-weight: 700;
+  margin: 20px 12px 12px;
+}
+.party-nav-scroll {
+  overflow-y: auto;
+  min-height: 0;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #445369 transparent;
+  padding-right: 4px;
+}
+.party-nav-action kbd {
+  font:
+    10px system-ui,
+    sans-serif;
+  color: #8c9bb0;
+  border: 1px solid #ffffff15;
+  border-radius: 5px;
+  padding: 2px 5px;
+}
+.party-overview {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 26px;
+  scrollbar-width: thin;
+  scrollbar-color: #445369 transparent;
+}
+.party-overview-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.party-overview-heading h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+.party-overview-heading > span {
+  font-size: 11px;
+  color: #8295ac;
+}
+.party-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.modern-party-menu .party-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 16px;
+  border: 1px solid #ffffff0d;
+  border-radius: 18px;
+  background: #1c2736;
+  text-align: left;
+  min-width: 0;
+  cursor: pointer;
+}
+.modern-party-menu .party-card[aria-pressed="true"] {
+  border-color: #aecdb275;
+  background: linear-gradient(145deg, #263a3c, #1c2835);
+  box-shadow: 0 6px 20px #0002;
+}
+.modern-party-menu .party-card:hover {
+  background: #243342;
+}
+.party-portrait {
+  width: 64px;
+  height: 100px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 8px #0005);
+}
+.party-member-details {
+  flex: 1;
+  min-width: 0;
+}
+.party-member-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.party-member-title h3 {
+  color: #f5f7fb;
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0;
+  overflow-wrap: anywhere;
+  letter-spacing: -0.02em;
+}
+.party-level {
+  color: #c7d4e3;
+  background: #ffffff08;
+  border-radius: 20px;
+  padding: 3px 8px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.party-class {
+  color: #94a8bd;
+  font-size: 11px;
+  margin: 4px 0 16px;
+  text-transform: capitalize;
+}
+.party-stat {
+  margin-top: 9px;
+}
+.party-stat-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #9eafc3;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.party-stat progress {
+  appearance: none;
+  display: block;
+  border: 0;
+  width: 100%;
+  height: 4px;
+  margin-top: 5px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff0b;
+}
+.party-stat progress::-webkit-progress-bar {
+  background: #ffffff0b;
+  border-radius: 8px;
+}
+.party-stat progress::-webkit-progress-value {
+  background: #8ac7aa;
+  border-radius: 8px;
+}
+.party-stat.magic progress::-webkit-progress-value {
+  background: #8faee9;
+}
+.party-stat.experience progress::-webkit-progress-value {
+  background: #c9b589;
+}
+.party-stat progress::-moz-progress-bar {
+  background: #8ac7aa;
+}
+.party-stat.magic progress::-moz-progress-bar {
+  background: #8faee9;
+}
+.party-stat.experience progress::-moz-progress-bar {
+  background: #c9b589;
+}
+.party-tip {
+  font-size: 11px;
+  color: #8b9db4;
+  margin: 20px 4px 0;
+  max-width: 420px;
+}
+@media (max-width: 1000px) {
+  .party-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .party-overview {
+    padding: 20px;
+  }
+  .modern-party-menu .viewport-dialog-body {
+    grid-template-columns: 180px minmax(0, 1fr);
+  }
+  .modern-party-menu .party-card {
+    padding: 16px;
+  }
+  .party-portrait {
+    height: 84px;
+  }
+}
+@media (max-width: 540px) {
+  .modern-party-menu {
+    padding: 8px;
+  }
+  .modern-party-menu .viewport-dialog-panel {
+    height: calc(100dvh - 16px);
+    border-radius: 18px;
+  }
+  .modern-party-menu .viewport-dialog-header {
+    padding: 22px 20px 18px;
+  }
+  .modern-party-menu .viewport-dialog-header h1 {
+    font-size: 25px;
+  }
+  .modern-party-menu .viewport-dialog-body {
+    grid-template-columns: 124px minmax(0, 1fr);
+  }
+  .party-sidebar {
+    padding: 12px 6px 8px;
+  }
+  .modern-party-menu .party-nav-action {
+    font-size: 12px;
+    padding: 10px 8px;
+  }
+  .party-nav-action kbd {
+    display: none;
+  }
+  .party-overview {
+    padding: 14px 10px;
+  }
+  .party-overview-heading {
+    display: block;
+    margin-bottom: 12px;
+  }
+  .party-overview-heading h2 {
+    font-size: 12px;
+  }
+  .party-overview-heading > span {
+    font-size: 10px;
+  }
+  .modern-party-menu .party-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 12px;
+    border-radius: 14px;
+  }
+  .party-portrait {
+    height: 76px;
+    align-self: center;
+  }
+  .party-member-title h3 {
+    font-size: 15px;
+  }
+  .party-class {
+    margin-bottom: 12px;
+  }
+  .party-tip {
+    font-size: 10px;
+  }
+}
+.modern-party-menu .viewport-dialog-header .party-exit {
+  position: absolute;
+  right: 76px;
+  top: 20px;
+  width: auto;
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid #c9966840;
+}
+@media (max-width: 540px) {
+  .modern-party-menu .viewport-dialog-header h1 {
+    margin-top: 24px;
+  }
+  .modern-party-menu .viewport-dialog-header .party-exit {
+    top: 12px;
+    right: 64px;
+    font-size: 12px;
+  }
+  .modern-party-menu .party-eyebrow {
+    max-width: 135px;
+  }
+}

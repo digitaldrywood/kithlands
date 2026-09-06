@@ -91,8 +91,8 @@ export function toggleDebugPanel(scene) {
   const title = scene.add
     .text(PANEL_CX, PANEL_TOP + 28, "DEBUG PANEL (dev build)", {
       fontSize: "18px",
-      color: "#ffff44",
-      fontFamily: "monospace",
+      color: "#c9b589",
+      fontFamily: "Arial, sans-serif",
     })
     .setOrigin(0.5)
     .setScrollFactor(0)
@@ -106,8 +106,8 @@ export function toggleDebugPanel(scene) {
       "Press ~ or ESC to close — not exposed in production",
       {
         fontSize: "11px",
-        color: "#88ccff",
-        fontFamily: "monospace",
+        color: "#94a8bd",
+        fontFamily: "Arial, sans-serif",
       },
     )
     .setOrigin(0.5)
@@ -121,7 +121,7 @@ export function toggleDebugPanel(scene) {
       .text(PANEL_CX, PANEL_CY, "no game loaded", {
         fontSize: "14px",
         color: "#ff6666",
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
       })
       .setOrigin(0.5)
       .setScrollFactor(0)

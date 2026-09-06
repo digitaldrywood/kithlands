@@ -529,6 +529,9 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 		if revived {
 			g.party[i].CurrentHP = 1
 			g.party[i].Status = character.StatusNone
+			// Defeat detection reads combatants, so it must see the revived ally too.
+			combatants[i].CurrentHP = 1
+			combatants[i].Status = character.StatusNone
 		}
 	}
 

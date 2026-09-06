@@ -214,3 +214,55 @@ func TestDiedThisFightResetsBetweenEncounters(t *testing.T) {
 		}
 	}
 }
+
+func TestReviveSyncedToCombatantsForDefeatCheck(t *testing.T) {
+	// Regression guard for the revive sync-back / defeat-check interaction.
+	//
+	// Scenario: 2-member party. Mage starts the round dead. Hero is at 1 HP
+	// and we boost the enemy to a guaranteed one-shot kill. In the same
+	// round, Hero revives Mage with Phoenix Down and the enemy lethally
+	// strikes Hero.
+	//
+	// Without the combatants mirror after the post-sync revive replay,
+	// CheckDefeat(combatants) reads a stale "all dead" slice and the round
+	// ends in g.phase = "defeat", even though g.party[Mage] was just
+	// revived to 1 HP and the party is technically still in the fight.
+	//
+	// Expected: phase != "defeat", Mage is alive at 1 HP, Hero is dead.
+	game := newGameWithParty(t, []api.PartyMemberReq{
+		{Name: "Hero", ClassID: "warrior"},
+		{Name: "Mage", ClassID: "cinder"},
+	})
+	enterCombat(t, game)
+	api.GiveItemForTest(game, "phoenix_down", 1)
+	api.KillPartyMemberForTest(game, 1) // Mage starts round dead
+	api.SetPartyHPForTest(game, 0, 1)   // Hero at 1 HP
+	api.MakeEnemiesLethalForTest(game)  // any enemy hit kills Hero
+
+	state := game.State()
+	if len(state.Enemies) == 0 {
+		t.Fatal("expected enemies in encounter")
+	}
+
+	// Round: Hero uses Phoenix Down on Mage. Slot 1 has no action (still
+	// dead at start of round). Enemies counter-attack and kill Hero.
+	if _, err := game.ProcessAction(api.GameActionRequest{
+		Type: "combat_round",
+		Actions: []api.MemberActionReq{
+			{Slot: 0, Type: "revive", TargetID: 1},
+		},
+	}); err != nil {
+		t.Fatalf("revive combat round: %v", err)
+	}
+
+	state = game.State()
+	if state.Phase == "defeat" {
+		t.Errorf("phase should not be 'defeat' after a same-round revive: got %q", state.Phase)
+	}
+	if hp := api.PartyHPForTest(game, 1); hp != 1 {
+		t.Errorf("Mage should be revived to 1 HP, got %d", hp)
+	}
+	if hp := api.PartyHPForTest(game, 0); hp > 0 {
+		t.Errorf("Hero should have been killed by lethal enemy, got hp=%d", hp)
+	}
+}

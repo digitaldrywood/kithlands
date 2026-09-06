@@ -441,8 +441,6 @@ const DEPTH_LIGHT = 3;
 const DEPTH_PROP = 8;
 const DEPTH_ACTOR = 12;
 const DEPTH_UI = 1400;
-const FRAME_SCALE = 0.25;
-const FRAME_TILE = 64 * FRAME_SCALE;
 
 function setPlayerWalkFrame(scene, frame) {
   if (!scene.player) return;
@@ -879,7 +877,7 @@ export class TownScene extends Phaser.Scene {
       .text(layout.centerX, layout.messageY, "", {
         fontSize: layout.portrait ? "24px" : "14px",
         color: "#ffffff",
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
         backgroundColor: "#000000dd",
         padding: { x: 16, y: 12 },
         wordWrap: { width: layout.portrait ? 680 : 500 },
@@ -1061,80 +1059,17 @@ export class TownScene extends Phaser.Scene {
     const x = Math.floor((this.gameplayLayout.width - width) / 2);
     const y = 12;
     const depth = DEPTH_UI;
-    const innerWidth = Math.max(FRAME_TILE, width - FRAME_TILE * 2);
-    const innerHeight = Math.max(FRAME_TILE, height - FRAME_TILE * 2);
-
-    const authored = this.hasAuthoredInteriorBackground();
-    const frame = authored
-      ? Object.values(
-          drawPanel(
-            this,
-            this.gameplayLayout.centerX,
-            y + height / 2,
-            width,
-            height,
-            { fill: 0x101b24, stroke: 0xc6a76a, interactive: false, depth },
-          ),
-        )
-      : [
-          this.add
-            .tileSprite(x + FRAME_TILE, y, innerWidth, FRAME_TILE, "border_t")
-            .setOrigin(0, 0)
-            .setScale(1)
-            .setDepth(depth),
-          this.add
-            .tileSprite(
-              x + FRAME_TILE,
-              y + height - FRAME_TILE,
-              innerWidth,
-              FRAME_TILE,
-              "border_b",
-            )
-            .setOrigin(0, 0)
-            .setScale(1)
-            .setDepth(depth),
-          this.add
-            .tileSprite(x, y + FRAME_TILE, FRAME_TILE, innerHeight, "border_l")
-            .setOrigin(0, 0)
-            .setScale(1)
-            .setDepth(depth),
-          this.add
-            .tileSprite(
-              x + width - FRAME_TILE,
-              y + FRAME_TILE,
-              FRAME_TILE,
-              innerHeight,
-              "border_r",
-            )
-            .setOrigin(0, 0)
-            .setScale(1)
-            .setDepth(depth),
-          this.add
-            .tileSprite(
-              x + FRAME_TILE,
-              y + FRAME_TILE,
-              innerWidth,
-              innerHeight,
-              "border_fill",
-            )
-            .setOrigin(0, 0)
-            .setScale(1)
-            .setDepth(depth - 1),
-        ];
-    const corners = authored
-      ? []
-      : [
-          ["border_tl", x, y],
-          ["border_tr", x + width - FRAME_TILE, y],
-          ["border_bl", x, y + height - FRAME_TILE],
-          ["border_br", x + width - FRAME_TILE, y + height - FRAME_TILE],
-        ].map(([key, px, py]) =>
-          this.add
-            .image(px, py, key)
-            .setOrigin(0, 0)
-            .setScale(FRAME_SCALE)
-            .setDepth(depth),
-        );
+    const frame = Object.values(
+      drawPanel(
+        this,
+        this.gameplayLayout.centerX,
+        y + height / 2,
+        width,
+        height,
+        { interactive: false, depth },
+      ),
+    );
+    const corners = [];
     const accent = this.add
       .rectangle(x + 14, y + height / 2, 6, height - 18, 0xd7b45c, 1)
       .setOrigin(0, 0.5)
@@ -1147,7 +1082,7 @@ export class TownScene extends Phaser.Scene {
         {
           fontSize: portrait ? "28px" : "15px",
           color: "#f5efe0",
-          fontFamily: portrait || authored ? "Arial, sans-serif" : "monospace",
+          fontFamily: "Arial, sans-serif",
           fontStyle: "bold",
         },
       )
@@ -1165,8 +1100,7 @@ export class TownScene extends Phaser.Scene {
             {
               fontSize: portrait ? "24px" : "10px",
               color: "#e8d8a8",
-              fontFamily:
-                portrait || authored ? "Arial, sans-serif" : "monospace",
+              fontFamily: "Arial, sans-serif",
             },
           )
           .setOrigin(0.5)
@@ -1203,7 +1137,7 @@ export class TownScene extends Phaser.Scene {
         {
           fontSize: this.gameplayLayout.portrait ? "22px" : "10px",
           color: "#e8dcc4",
-          fontFamily: "monospace",
+          fontFamily: "Arial, sans-serif",
         },
       )
       .setOrigin(0.5)
@@ -1466,7 +1400,7 @@ export class TownScene extends Phaser.Scene {
       .text(this.player.x, this.player.y - 25, label, {
         fontSize: this.gameplayLayout.portrait ? "24px" : "10px",
         color: "#ffff44",
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
         backgroundColor: "#000000cc",
         padding: { x: 6, y: 3 },
       })
@@ -1488,7 +1422,7 @@ export class TownScene extends Phaser.Scene {
       .text(this.player.x, this.player.y - 25, label, {
         fontSize: "14px",
         color: "#ffff44",
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
         backgroundColor: "#000000cc",
         padding: { x: 6, y: 3 },
       })

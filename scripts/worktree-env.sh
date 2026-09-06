@@ -10,7 +10,9 @@
 set -eu
 
 # First 4 hex chars of md5(PWD) → 16 bits → modulo 1000 keeps us in a predictable range.
-_kith_hash=$(printf '%s' "$PWD" | md5sum | head -c 4)
+# macOS exposes /tmp and /var through symlinks. Shells and make may resolve
+# these differently, but the same checkout must always use the same database.
+_kith_hash=$(printf '%s' "$(pwd -P)" | md5sum | head -c 4)
 _kith_offset=$((16#${_kith_hash} % 1000))
 
 export WORKTREE_OFFSET="${_kith_offset}"

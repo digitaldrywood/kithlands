@@ -1,3 +1,4 @@
+import { roundedRectangle } from "./theme.js";
 import {
   formatHPLabel,
   combatantConditionLabel,
@@ -9,9 +10,9 @@ import { drawPanel } from "./panel.js";
 const FONT = "Arial, sans-serif";
 
 function meterColor(current, maximum, kind) {
-  if (kind === "mp") return current > 0 ? 0x4e91ff : 0x39455f;
+  if (kind === "mp") return current > 0 ? 0x8faee9 : 0x384859;
   const pct = hpBarColorPct(current, maximum);
-  return pct > 0.5 ? 0x50d878 : pct > 0.25 ? 0xffb84d : 0xff5f5f;
+  return pct > 0.5 ? 0x8ac7aa : pct > 0.25 ? 0xffb84d : 0xff5f5f;
 }
 
 export function partyStatusRowLayout(rect, count, compact = false) {
@@ -42,23 +43,35 @@ function addMeter(scene, row, y, label, current, maximum, compact) {
   const barWidth = Math.max(54, row.width - (compact ? 32 : 163));
   const fontSize = compact ? "24px" : "8px";
   const meterHeight = compact ? 18 : 6;
-  const bg = scene.add
-    .rectangle(barX, barY, barWidth, meterHeight, 0x182238)
+  const bg = roundedRectangle(
+    scene,
+    barX,
+    barY,
+    barWidth,
+    meterHeight,
+    0x1c2736,
+  )
     .setOrigin(0, 0.5)
     .setDepth(18);
   const fillWidth = hpBarFillWidth(current, maximum, barWidth);
-  const ghost = scene.add
-    .rectangle(barX, barY, fillWidth, meterHeight, 0xff765f)
+  const ghost = roundedRectangle(
+    scene,
+    barX,
+    barY,
+    fillWidth,
+    meterHeight,
+    0xff765f,
+  )
     .setOrigin(0, 0.5)
     .setDepth(19);
-  const fill = scene.add
-    .rectangle(
-      barX,
-      barY,
-      fillWidth,
-      meterHeight,
-      meterColor(current, maximum, label.toLowerCase()),
-    )
+  const fill = roundedRectangle(
+    scene,
+    barX,
+    barY,
+    fillWidth,
+    meterHeight,
+    meterColor(current, maximum, label.toLowerCase()),
+  )
     .setOrigin(0, 0.5)
     .setDepth(20);
   const prefix = scene.add
@@ -72,7 +85,7 @@ function addMeter(scene, row, y, label, current, maximum, compact) {
   const value = scene.add
     .text(numberX, y, formatHPLabel(current, maximum), {
       fontSize,
-      color: "#ffffff",
+      color: "#e9eef7",
       fontFamily: FONT,
     })
     .setDepth(20);
@@ -121,17 +134,17 @@ export function drawBattlePartyStatus(
     (bounds, slot) => {
       const member = party[slot];
       const alive = member.hp > 0;
-      const card = scene.add
-        .rectangle(
-          bounds.x,
-          bounds.y,
-          bounds.width,
-          bounds.height,
-          alive ? 0x0b1b31 : 0x161821,
-          0.98,
-        )
+      const card = roundedRectangle(
+        scene,
+        bounds.x,
+        bounds.y,
+        bounds.width,
+        bounds.height,
+        alive ? 0x151e2b : 0x151e2b,
+        0.98,
+      )
         .setOrigin(0, 0)
-        .setStrokeStyle(1, alive ? 0x4f7fb8 : 0x5a5a66)
+        .setStrokeStyle(1, alive ? 0x384859 : 0x5a5a66)
         .setDepth(17);
       card._combatFxTag = "party-status-row";
       card._partySlot = slot;
@@ -142,7 +155,7 @@ export function drawBattlePartyStatus(
           member.name,
           {
             fontSize: compact ? "28px" : "10px",
-            color: alive ? "#ffffff" : "#9a9aa3",
+            color: alive ? "#e9eef7" : "#9a9aa3",
             fontFamily: FONT,
             fontStyle: "bold",
           },
@@ -202,7 +215,7 @@ export function drawBattlePartyStatus(
     setActive(slot) {
       rows.forEach((row, index) => {
         const active = index === slot;
-        row.card.setStrokeStyle(active ? 3 : 1, active ? 0xffd36b : 0x4f7fb8);
+        row.card.setStrokeStyle(active ? 3 : 1, active ? 0xffd36b : 0x384859);
         row.name.setText(`${active ? "▶ " : ""}${party[index].name}`);
       });
     },

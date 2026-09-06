@@ -115,6 +115,15 @@ export function updateDungeonEntry(scene) {
 }
 
 function createTrailButton(scene, label, onClick, route) {
+  if (scene.explorationHUD) {
+    const button = scene.explorationHUD.trail(label, onClick, route);
+    scene.events.once("shutdown", () => {
+      button.destroy();
+      if (route) scene.dungeonRouteButton = null;
+      else scene.dungeonEntryButton = null;
+    });
+    return button;
+  }
   const portrait = scene.gameplayLayout?.portrait;
   const settlement = scene.gameState.current_location?.kind === "settlement";
   const y = settlement

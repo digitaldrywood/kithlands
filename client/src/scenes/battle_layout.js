@@ -1,3 +1,5 @@
+import { monsterBattleSize } from "../data/monsterSprites.js";
+
 const PARTY_LAYOUT = {
   desktop: { frontX: 548, backX: 630, slotStartY: 110, slotGapY: 88 },
   mobile: { frontX: 552, backX: 628, slotStartY: 88, slotGapY: 140 },
@@ -62,9 +64,8 @@ export function buildEnemyBattleLayout(enemies = [], bounds = {}) {
   const rows = Math.ceil(count / columns);
   const cellWidth = area.width / columns;
   const cellHeight = area.height / rows;
-  const spriteSize = rows === 1 ? 82 : rows === 2 ? 64 : 50;
 
-  return enemies.map((_, index) => {
+  return enemies.map((enemy, index) => {
     const column = index % columns;
     const row = Math.floor(index / columns);
     const lane = {
@@ -79,7 +80,11 @@ export function buildEnemyBattleLayout(enemies = [], bounds = {}) {
       y: lane.y + lane.height * 0.56,
       nameY: lane.y + 8,
       numberY: lane.y + lane.height - 10,
-      spriteSize,
+      spriteSize: Math.min(
+        monsterBattleSize(enemy),
+        cellWidth - 24,
+        cellHeight - 56,
+      ),
     };
   });
 }

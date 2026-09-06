@@ -107,3 +107,23 @@ describe("floatingTextAnchorForEntry", () => {
     expect(anchor).toEqual({ x: 540, y: 158 });
   });
 });
+
+describe("monster proportions", () => {
+  it("keeps small creatures below humanoids and large creatures above them", () => {
+    const sizes = ["giant_rat", "skeleton", "elder_dragon", "dragon_lord"].map(
+      (monster_id) => buildEnemyBattleLayout([{ monster_id }])[0].spriteSize,
+    );
+    expect(sizes[0]).toBeLessThan(sizes[1]);
+    expect(sizes[1]).toBeLessThan(sizes[2]);
+    expect(sizes[2]).toBeLessThan(sizes[3]);
+    expect(sizes[0]).toBeLessThan(80);
+  });
+  it("keeps large monsters inside crowded lanes", () => {
+    for (const entry of buildEnemyBattleLayout(
+      Array.from({ length: 9 }, () => ({ monster_id: "dragon_lord" })),
+    )) {
+      expect(entry.spriteSize).toBeLessThanOrEqual(entry.lane.width - 24);
+      expect(entry.spriteSize).toBeLessThanOrEqual(entry.lane.height - 56);
+    }
+  });
+});

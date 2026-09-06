@@ -157,8 +157,8 @@ describe("MessageWindow", () => {
     expect(window.getText()).toBe("Bruno attacks Goblin!");
     expect(window.accentBar.fill).toBe(0xff8844);
     expect(window.text.text).toBe("Bruno attacks Goblin!");
-    expect(window.text.style.color).toBe("#ffffff");
-    expect(window.container.children.length).toBeGreaterThan(3);
+    expect(window.text.style.color).toBe("#e9eef7");
+    expect(window.container.children.length).toBe(3);
   });
 
   it("anchors text inside the framed fill area", () => {

@@ -141,7 +141,7 @@ async function addProofOverlay(page, label, sceneKey, highlights = []) {
 }
 
 test.describe("wizard start flow", () => {
-  test("skips straight from OSM search to party creation with no confirmation screen", async ({
+  test("Enter submits OSM search and skips straight to party creation", async ({
     page,
   }, testInfo) => {
     const pageErrors = [];
@@ -181,9 +181,7 @@ test.describe("wizard start flow", () => {
     await page
       .locator('input[type="email"]')
       .fill(`wizard-${RUN_ID}@kithlands.dev`);
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("NEW GAME", "Title"),
-    );
+    await page.getByRole("button", { name: /^New game/ }).click();
     await page.waitForFunction(
       () => window.__kithlandsTest.activeSceneKey() === "Wizard",
     );
@@ -201,7 +199,7 @@ test.describe("wizard start flow", () => {
       fullPage: true,
     });
 
-    await clickWizardText(page, "FIND & CONTINUE");
+    await page.locator('input[type="text"]').press("Enter");
 
     await waitForWizardText(page, "Searching Cadott...");
     await expect(page.locator('input[type="text"]')).toHaveCount(0);
@@ -220,7 +218,7 @@ test.describe("wizard start flow", () => {
     expect(busyTexts.some((text) => text.includes("Search radius:"))).toBe(
       false,
     );
-    expect(busyTexts).not.toContain("[ FIND & CONTINUE ]");
+    expect(busyTexts).not.toContain("FIND & CONTINUE");
 
     await addProofOverlay(page, "Search loading panel", "Wizard", [
       "LOCALITY WIZARD",
@@ -240,8 +238,8 @@ test.describe("wizard start flow", () => {
       window.__kithlandsTest.visibleTexts("Wizard").map((entry) => entry.text),
     );
     expect(visibleTexts).toContain("PICK YOUR PARTY");
-    expect(visibleTexts).toContain("[ CANCEL ]");
-    expect(visibleTexts).toContain("[ CREATE GAME ]");
+    expect(visibleTexts).toContain("CANCEL");
+    expect(visibleTexts).toContain("CREATE GAME");
     expect(visibleTexts).not.toContain("CONFIRM YOUR GAME");
     expect(visibleTexts).not.toContain("DISCOVERED LOCATIONS");
     expect(visibleTexts).not.toContain("MAP PREVIEW");
@@ -302,9 +300,7 @@ test.describe("wizard start flow", () => {
     await page
       .locator('input[type="email"]')
       .fill(`wizard-error-${RUN_ID}@kithlands.dev`);
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("NEW GAME", "Title"),
-    );
+    await page.getByRole("button", { name: /^New game/ }).click();
     await page.waitForFunction(
       () => window.__kithlandsTest.activeSceneKey() === "Wizard",
     );
@@ -325,6 +321,6 @@ test.describe("wizard start flow", () => {
     expect(
       visibleTexts.some((text) => text.includes("Use real-world map data")),
     ).toBe(true);
-    expect(visibleTexts).toContain("[ FIND & CONTINUE ]");
+    expect(visibleTexts).toContain("FIND & CONTINUE");
   });
 });

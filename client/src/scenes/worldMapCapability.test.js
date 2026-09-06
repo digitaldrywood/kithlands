@@ -1,11 +1,20 @@
+import { showWorldMapDialog, worldMapModel } from "../ui/world_map_menu.js";
 import { describe, expect, it, vi } from "vitest";
 import { showWorldMap } from "./world_interact.js";
 import { toggleMenu } from "./world_menu.js";
-import {
-  activeWorldLocks,
-  isWorldInputLocked,
-  pauseWorldFor,
-} from "../systems/modalLock.js";
+import { activeWorldLocks, pauseWorldFor } from "../systems/modalLock.js";
+
+vi.mock("../ui/world_map_menu.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  showWorldMapDialog: vi.fn(),
+}));
+
+vi.mock("../ui/party_menu.js", () => ({
+  renderPartyMenu: (scene, { actions }) => {
+    scene.menuActions = actions;
+    return { dispose: vi.fn(), handles: new Map() };
+  },
+}));
 
 function makeScene(overrides = {}) {
   const objects = [];
@@ -91,7 +100,7 @@ function makeScene(overrides = {}) {
         }),
       },
     },
-    events: { once: vi.fn() },
+    events: { once: vi.fn(), off: vi.fn() },
     textures: { exists: () => false },
     scale: { gameSize: { width: 800, height: 600 }, setGameSize: vi.fn() },
     ...overrides,
@@ -99,9 +108,7 @@ function makeScene(overrides = {}) {
 }
 
 function worldMapButton(scene) {
-  return scene.menuGroup.find(
-    (object) => object.bg?.__kithlandsPartyMenuAction?.label === "WORLD MAP",
-  );
+  return scene.menuActions.find((action) => action.hotkey === "W");
 }
 
 describe("world map scene capability", () => {
@@ -130,11 +137,7 @@ describe("world map scene capability", () => {
     const button = worldMapButton(scene);
     const objectCount = scene.objects.length;
 
-    expect(button.isEnabled()).toBe(false);
-    expect(button.bg.interactive).toBe(false);
-    expect(button.label.interactive).toBe(false);
-    button.bg.handlers.pointerdown();
-    button.bg.handlers.pointerup();
+    expect(button.enabled).toBe(false);
 
     expect(scene.menuOpen).toBe(true);
     expect(activeWorldLocks(scene)).toEqual(["party_menu"]);
@@ -142,65 +145,35 @@ describe("world map scene capability", () => {
     expect(scene.objects.every((object) => !object.destroyed)).toBe(true);
   });
 
-  it("opens a supported World map from the party menu and closes with Escape", () => {
+  it("opens the responsive map from the party menu", () => {
     const scene = makeScene();
     toggleMenu(scene);
-    const button = worldMapButton(scene);
-    const menuObjects = [...scene.objects];
-
-    expect(button.isEnabled()).toBe(true);
-    button.bg.handlers.pointerdown();
-    button.bg.handlers.pointerup();
-
+    worldMapButton(scene).onClick();
     expect(scene.menuOpen).toBe(false);
-    expect(activeWorldLocks(scene)).toEqual(["world_map"]);
-    expect(isWorldInputLocked(scene)).toBe(true);
-    expect(menuObjects.every((object) => object.destroyed)).toBe(true);
-    const mapObjects = scene.objects.slice(menuObjects.length);
-    expect(mapObjects.some((object) => object.text === "Home")).toBe(true);
-    expect(mapObjects.some((object) => object.text === "Willow Grove")).toBe(
-      true,
+    expect(showWorldMapDialog).toHaveBeenCalledWith(scene);
+    const model = worldMapModel(scene);
+    expect(model.locations.map((place) => place.name)).toEqual([
+      "Home",
+      "Willow Grove",
+    ]);
+    expect(model.locations.some((place) => place.target)).toBe(true);
+    expect(model.locations.some((place) => place.natural)).toBe(true);
+    expect(model.tiles).toEqual(scene.tileData);
+  });
+
+  it("does not reveal a hidden quest destination", () => {
+    const scene = makeScene();
+    scene.gameState.quests[scene.gameState.current_quest].hidden = true;
+    expect(worldMapModel(scene).locations.some((place) => place.target)).toBe(
+      false,
     );
-    expect(mapObjects.some((object) => object.text === "★")).toBe(true);
-    const mapGraphics = mapObjects.find((object) => object.kind === "graphics");
-    expect(mapGraphics.fillRect).toHaveBeenCalledTimes(6);
-    expect(mapGraphics.fillStyle).toHaveBeenCalledWith(0x9fd27d, 1);
-
-    scene.keyboardHandlers["keydown-ESC"]();
-
-    expect(mapObjects.every((object) => object.destroyed)).toBe(true);
-    expect(activeWorldLocks(scene)).toEqual([]);
-    expect(isWorldInputLocked(scene)).toBe(false);
   });
 
-  it("does not reveal a hidden quest target on the World map", () => {
-    const scene = makeScene({
-      gameState: {
-        party: [],
-        current_quest: 0,
-        quests: [{ hidden: true, target_node_id: "home" }],
-      },
-    });
-
-    showWorldMap(scene);
-
-    expect(scene.objects.some((object) => object.text === "★")).toBe(false);
-    expect(
-      scene.objects.some((object) => object.text === "[ CLOSE (ESC) ]"),
-    ).toBe(true);
-  });
-
-  it("closes a supported map by pointer without releasing another modal lock", () => {
-    const scene = makeScene({ spawns: [] });
+  it("keeps unrelated locks when opening a map", () => {
+    const scene = makeScene();
     pauseWorldFor(scene, "another_overlay");
     showWorldMap(scene);
-
-    const close = scene.objects.find(
-      (object) => object.text === "[ CLOSE (ESC) ]",
-    );
-    close.handlers.pointerdown();
-
-    expect(scene.objects.every((object) => object.destroyed)).toBe(true);
     expect(activeWorldLocks(scene)).toEqual(["another_overlay"]);
+    expect(showWorldMapDialog).toHaveBeenCalledWith(scene);
   });
 });

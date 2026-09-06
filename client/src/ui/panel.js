@@ -4,22 +4,23 @@
 // with proper hover/press states. Kept framework-light so a fake scene
 // shim (see panel.test.js) can exercise the wiring without Phaser.
 
+import { MENU_THEME, roundedRectangle } from "./theme.js";
 import { barFillWidth, barLabel } from "../systems/hpBar.js";
 
 const DEFAULT_BUTTON_STYLE = {
   fontSize: "12px",
   fontFamily: "Arial, sans-serif",
   fontStyle: "",
-  textColor: "#ffffff",
-  textColorDisabled: "#666666",
-  fill: 0x1a2a4a,
-  fillHover: 0x2a4a7a,
-  fillPress: 0x3a5a9a,
-  fillDisabled: 0x111122,
-  fillActive: 0x2a4a7a,
-  stroke: 0x4488ff,
-  strokeActive: 0x88ccff,
-  strokeWidth: 2,
+  textColor: "#e9eef7",
+  textColorDisabled: "#697888",
+  fill: MENU_THEME.card,
+  fillHover: MENU_THEME.hover,
+  fillPress: 0x344759,
+  fillDisabled: 0x101824,
+  fillActive: 0x283748,
+  stroke: MENU_THEME.line,
+  strokeActive: MENU_THEME.accent,
+  strokeWidth: 1,
   depth: 41,
 };
 
@@ -27,154 +28,39 @@ const DEFAULT_BUTTON_STYLE = {
 // objects, so callers can push them into their lifetime group and destroy
 // them together on close.
 export function drawPanel(scene, x, y, w, h, opts = {}) {
-  if (opts.variant === "ff6") {
-    return drawFF6Panel(scene, x, y, w, h, opts);
-  }
-
   const {
-    fill = 0x000000,
-    fillAlpha = 0.95,
-    stroke = 0x4488ff,
-    strokeWidth = 2,
     depth = 40,
     interactive = true,
+    radius = 18,
+    fillAlpha = 0.98,
   } = opts;
-
-  const bg = scene.add
-    .rectangle(x, y, w, h, fill, fillAlpha)
-    .setStrokeStyle(strokeWidth, stroke)
+  const bg = roundedRectangle(
+    scene,
+    x,
+    y,
+    w,
+    h,
+    opts.fill ?? MENU_THEME.panel,
+    fillAlpha,
+    radius,
+  )
+    .setStrokeStyle(1, 0x384859)
     .setScrollFactor(0)
     .setDepth(depth);
   if (interactive) bg.setInteractive();
   return { bg };
 }
 
-function drawFF6Panel(scene, x, y, w, h, opts = {}) {
-  const {
-    depth = 40,
-    radius = 18,
-    interactive = false,
-    shadowColor = 0x08111f,
-    shadowAlpha = 0.45,
-    shadowOffsetX = 3,
-    shadowOffsetY = 3,
-    outerStroke = 0xe4f3ff,
-    outerStrokeWidth = 3,
-    outerFill = 0x4f7dc4,
-    innerStroke = 0xc0d7ff,
-    innerStrokeWidth = 2,
-    innerTop = 0x2e5f9d,
-    innerBottom = 0x14294c,
-    innerInset = 6,
-    sheenColor = 0xffffff,
-    sheenAlpha = 0.12,
-  } = opts;
-
-  const bg = scene.add.graphics().setScrollFactor(0).setDepth(depth);
-  const left = x - w / 2;
-  const top = y - h / 2;
-
-  bg.fillStyle(shadowColor, shadowAlpha);
-  bg.fillRoundedRect(left + shadowOffsetX, top + shadowOffsetY, w, h, radius);
-
-  bg.lineStyle(outerStrokeWidth, outerStroke, 1);
-  bg.fillStyle(outerFill, 1);
-  bg.fillRoundedRect(left, top, w, h, radius);
-  bg.strokeRoundedRect(left, top, w, h, radius);
-
-  if (typeof bg.fillGradientStyle === "function") {
-    bg.fillGradientStyle(innerTop, innerTop, innerBottom, innerBottom, 1);
-  } else {
-    bg.fillStyle(innerTop, 1);
-  }
-  bg.lineStyle(innerStrokeWidth, innerStroke, 0.95);
-  bg.fillRoundedRect(
-    left + innerInset,
-    top + innerInset,
-    w - innerInset * 2,
-    h - innerInset * 2,
-    Math.max(4, radius - innerInset + 2),
-  );
-  bg.strokeRoundedRect(
-    left + innerInset,
-    top + innerInset,
-    w - innerInset * 2,
-    h - innerInset * 2,
-    Math.max(4, radius - innerInset + 2),
-  );
-
-  bg.fillStyle(sheenColor, sheenAlpha);
-  bg.fillRoundedRect(
-    left + innerInset + 4,
-    top + innerInset + 4,
-    w - innerInset * 2 - 8,
-    Math.max(18, Math.floor(h * 0.16)),
-    Math.max(4, radius - innerInset + 2),
-  );
-
-  if (interactive && typeof bg.setInteractive === "function") {
-    bg.setInteractive();
-  }
-  return { bg };
-}
-
-// Draw an opaque FF6-style horizontal strip across the bottom of the battle
-// scene (issue #258). The strip occludes the bottom third of the pre-rendered
-// background so the MessageWindow + ACTION_HUD panels on top have guaranteed
-// contrast regardless of the art behind them. Returns the graphics object so
-// the caller can destroy it alongside the rest of the backdrop.
-export function drawFF6BottomStrip(scene, opts = {}) {
-  const {
-    x = 0,
-    y = 420,
-    width = 800,
-    height = 180,
-    depth = 6,
-    outerStroke = 0xe4f3ff,
-    outerStrokeWidth = 3,
-    outerFill = 0x4f7dc4,
-    innerStroke = 0xc0d7ff,
-    innerStrokeWidth = 2,
-    innerTop = 0x2e5f9d,
-    innerBottom = 0x14294c,
-    innerInset = 6,
-    topEdgeColor = 0x08111f,
-    topEdgeAlpha = 0.55,
-    topEdgeHeight = 2,
-  } = opts;
-
+// Kept as an API alias for battle layouts; the chrome follows the shared theme.
+export function drawFF6BottomStrip(
+  scene,
+  { x = 0, y = 420, width = 800, height = 180, depth = 6 } = {},
+) {
   const g = scene.add.graphics().setScrollFactor(0).setDepth(depth);
-
-  g.fillStyle(outerFill, 1);
+  g.fillStyle(0x101824, 1);
   g.fillRect(x, y, width, height);
-
-  g.lineStyle(outerStrokeWidth, outerStroke, 1);
-  g.strokeRect(x, y, width, height);
-
-  if (typeof g.fillGradientStyle === "function") {
-    g.fillGradientStyle(innerTop, innerTop, innerBottom, innerBottom, 1);
-  } else {
-    g.fillStyle(innerTop, 1);
-  }
-  g.fillRect(
-    x + innerInset,
-    y + innerInset,
-    width - innerInset * 2,
-    height - innerInset * 2,
-  );
-  g.lineStyle(innerStrokeWidth, innerStroke, 0.95);
-  g.strokeRect(
-    x + innerInset,
-    y + innerInset,
-    width - innerInset * 2,
-    height - innerInset * 2,
-  );
-
-  // Hard dark line at the very top edge so the strip reads as a distinct
-  // foreground layer instead of blending into the painted background.
-  g.fillStyle(topEdgeColor, topEdgeAlpha);
-  g.fillRect(x, y - topEdgeHeight, width, topEdgeHeight);
-
+  g.fillStyle(0x384859, 1);
+  g.fillRect(x, y, width, 1);
   return g;
 }
 
@@ -193,20 +79,26 @@ export function drawFF6BottomStrip(scene, opts = {}) {
 export function drawButton(scene, x, y, w, h, label, onClick, opts = {}) {
   const style = { ...DEFAULT_BUTTON_STYLE, ...opts };
 
-  const bg = scene.add
-    .rectangle(x, y, w, h, style.fill, 1)
+  const bg = roundedRectangle(scene, x, y, w, h, style.fill, 1)
     .setStrokeStyle(style.strokeWidth, style.stroke)
     .setScrollFactor(0)
     .setDepth(style.depth)
     .setInteractive({ useHandCursor: true });
 
   const text = scene.add
-    .text(x, y, label, {
-      fontSize: style.fontSize,
-      fontStyle: style.fontStyle,
-      color: style.textColor,
-      fontFamily: style.fontFamily,
-    })
+    .text(
+      x,
+      y,
+      String(label)
+        .replace(/[\[\]]/g, "")
+        .trim(),
+      {
+        fontSize: style.fontSize,
+        fontStyle: style.fontStyle,
+        color: style.textColor,
+        fontFamily: style.fontFamily,
+      },
+    )
     .setOrigin(0.5)
     .setScrollFactor(0)
     .setDepth(style.depth + 1)
@@ -316,35 +208,35 @@ export function drawButton(scene, x, y, w, h, label, onClick, opts = {}) {
 }
 
 const DEFAULT_PROGRESS_BAR_STYLE = {
-  track: 0x1a2a4a,
-  fill: 0x4488ff,
-  stroke: 0x4488ff,
-  strokeFocus: 0xffcc44,
-  strokeWidth: 2,
+  track: 0x1c2736,
+  fill: 0x8faee9,
+  stroke: 0x8faee9,
+  strokeFocus: 0xc9b589,
+  strokeWidth: 1,
   depth: 41,
-  labelColor: "#ffcc44",
+  labelColor: "#c9b589",
   labelFontSize: "14px",
-  labelFontFamily: "monospace",
+  labelFontFamily: "Arial, sans-serif",
   labelOffset: 12,
   showLabel: true,
 };
 
 const DEFAULT_LABELED_STAT_BAR_STYLE = {
-  track: 0x222244,
-  fill: 0x4488ff,
-  stroke: 0x4488ff,
+  track: 0x283748,
+  fill: 0x8faee9,
+  stroke: 0x8faee9,
   strokeWidth: 1,
   depth: 41,
   height: 10,
   trackYOffset: 6,
-  labelColor: "#cccccc",
+  labelColor: "#94a8bd",
   labelFontSize: "11px",
-  labelFontFamily: "monospace",
+  labelFontFamily: "Arial, sans-serif",
   labelFontStyle: "",
   labelWidth: 24,
-  valueColor: "#ffffff",
+  valueColor: "#e9eef7",
   valueFontSize: "10px",
-  valueFontFamily: "monospace",
+  valueFontFamily: "Arial, sans-serif",
   valueFontStyle: "",
   valueWidth: 52,
   valueGap: 6,
@@ -358,7 +250,7 @@ const DEFAULT_LABELED_STAT_BAR_STYLE = {
   highlightFill: null,
   highlightAlpha: 0.55,
   tickCount: 0,
-  tickColor: 0xffffff,
+  tickColor: 0xe9eef7,
   tickAlpha: 0.18,
   tickHeight: null,
 };

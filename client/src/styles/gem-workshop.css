@@ -1,3 +1,5 @@
+@import "./menu-theme.css";
+
 .kith-gem-workshop {
   position: fixed;
   z-index: 1100;
@@ -10,10 +12,10 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  color: #edf3ff;
-  background: #10223b;
-  border: 2px solid #799cc4;
-  border-radius: 16px;
+  color: var(--menu-text);
+  background: var(--menu-panel);
+  border: 1px solid var(--menu-line);
+  border-radius: 24px;
   box-shadow: 0 14px 80px #000c;
   font:
     15px/1.45 system-ui,
@@ -32,9 +34,9 @@
 }
 .kith-gem-workshop h1 {
   font:
-    700 26px/1.2 Georgia,
-    serif;
-  color: #fff0be;
+    700 26px/1.2 system-ui,
+    sans-serif;
+  color: var(--menu-accent);
 }
 .kith-gem-workshop h2 {
   font-size: 19px;
@@ -42,36 +44,36 @@
 }
 .kith-gem-workshop h3 {
   font-size: 15px;
-  color: #c9ddf7;
+  color: var(--menu-text);
 }
 .kith-gem-workshop button,
 .kith-gem-workshop select {
   min-height: 44px;
   max-width: 100%;
   padding: 9px 12px;
-  border: 1px solid #6688b2;
-  border-radius: 8px;
-  background: #1a3554;
-  color: #edf3ff;
+  border: 1px solid var(--menu-line);
+  border-radius: 12px;
+  background: var(--menu-card);
+  color: var(--menu-text);
   font: inherit;
   cursor: pointer;
   white-space: normal;
   touch-action: manipulation;
 }
 .kith-gem-workshop button:hover:not(:disabled) {
-  background: #2b4d72;
+  background: var(--menu-line);
 }
 .kith-gem-workshop button:disabled {
   opacity: 0.6;
   cursor: default;
 }
 .kith-gem-workshop :focus-visible {
-  outline: 3px solid #fff1b9;
+  outline: 3px solid var(--menu-accent);
   outline-offset: 2px;
 }
 .kith-gem-workshop [aria-pressed="true"] {
-  background: #305879;
-  border-color: #ffe3a0;
+  background: var(--menu-line);
+  border-color: var(--menu-accent);
 }
 .gem-header {
   display: flex;
@@ -84,7 +86,7 @@
   display: flex;
   gap: 10px;
   padding: 0 22px 14px;
-  border-bottom: 1px solid #425975;
+  border-bottom: 1px solid var(--menu-line);
 }
 .gem-tabs button {
   flex: 1;
@@ -109,8 +111,8 @@
 }
 .gem-preview {
   padding: 20px;
-  background: #0a192c;
-  border: 1px solid #3c5678;
+  background: var(--menu-panel);
+  border: 1px solid var(--menu-line);
   border-radius: 12px;
 }
 .gem-choice-list {
@@ -152,16 +154,16 @@
   padding: 8px;
 }
 .gem-muted {
-  color: #b3c4db;
+  color: var(--menu-muted);
 }
 .gem-ready {
   color: #a6e8c9;
 }
 .gem-lock {
-  color: #ffdb9f;
+  color: var(--menu-accent);
 }
 .gem-eyebrow {
-  color: #b3c4db;
+  color: var(--menu-muted);
   font-size: 13px;
 }
 .gem-output {
@@ -171,8 +173,8 @@
 }
 .gem-costs {
   padding: 12px;
-  border: 1px solid #425975;
-  border-radius: 8px;
+  border: 1px solid var(--menu-line);
+  border-radius: 12px;
 }
 .gem-costs h3 {
   margin-bottom: 6px;
@@ -190,7 +192,7 @@
 .gem-stat-changes td {
   padding: 6px 4px;
   text-align: right;
-  border-bottom: 1px solid #314760;
+  border-bottom: 1px solid var(--menu-card);
 }
 .gem-stat-changes th:first-child {
   text-align: left;
@@ -198,7 +200,7 @@
 }
 .gem-stat-changes thead th {
   font-size: 13px;
-  color: #b3c4db;
+  color: var(--menu-muted);
 }
 .kith-gem-workshop .gem-confirm {
   width: 100%;
@@ -212,12 +214,12 @@
   gap: 9px;
   margin-top: 6px;
   padding-top: 16px;
-  border-top: 1px solid #425975;
+  border-top: 1px solid var(--menu-line);
 }
 .kith-gem-workshop .gem-recover {
   width: 100%;
   background: #5a4326;
-  border-color: #e1b56e;
+  border-color: var(--menu-accent);
   font-weight: 650;
 }
 .gem-notice {

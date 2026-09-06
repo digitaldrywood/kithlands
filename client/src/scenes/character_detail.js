@@ -1,3 +1,4 @@
+import { roundedRectangle } from "../ui/theme.js";
 import { drawPanel, drawButton, drawLabeledStatBar } from "../ui/panel.js";
 import { hpBarColorPct } from "../systems/hpBar.js";
 import { showEquipPicker } from "./world_menu.js";
@@ -62,7 +63,7 @@ export function openCharacterDetail(scene, partyIndex) {
     layout.shell.height,
     {
       depth: DEPTH_BG,
-      fill: 0x071328,
+      fill: 0x151e2b,
       fillAlpha: 0.98,
       stroke: 0x76a9eb,
       strokeWidth: layout.mode === "mobile" ? 4 : 2,
@@ -107,8 +108,8 @@ export function openCharacterDetail(scene, partyIndex) {
     scene.add
       .text(layout.header.name.x, layout.header.name.y, member.name, {
         fontSize: `${layout.header.name.fontSize}px`,
-        color: "#ffffff",
-        fontFamily: "monospace",
+        color: "#e9eef7",
+        fontFamily: "Arial, sans-serif",
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
@@ -127,8 +128,8 @@ export function openCharacterDetail(scene, partyIndex) {
     {
       depth: DEPTH_LABEL,
       fontSize: `${loadoutLayout.fontSize}px`,
-      fill: 0x1f5d48,
-      fillHover: 0x2b7d62,
+      fill: 0x1c2736,
+      fillHover: 0x384859,
       stroke: 0xa5f0c8,
       strokeWidth: 1,
     },
@@ -140,8 +141,8 @@ export function openCharacterDetail(scene, partyIndex) {
     scene.add
       .text(layout.header.position.x, layout.header.position.y, positionLabel, {
         fontSize: `${layout.header.position.fontSize}px`,
-        color: "#88ccff",
-        fontFamily: "monospace",
+        color: "#c9b589",
+        fontFamily: "Arial, sans-serif",
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
@@ -155,8 +156,8 @@ export function openCharacterDetail(scene, partyIndex) {
         `${member.class_name} · Lv.${member.level}`,
         {
           fontSize: `${layout.header.className.fontSize}px`,
-          color: "#ffcc44",
-          fontFamily: "monospace",
+          color: "#c9b589",
+          fontFamily: "Arial, sans-serif",
         },
       )
       .setOrigin(0.5)
@@ -166,15 +167,15 @@ export function openCharacterDetail(scene, partyIndex) {
 
   // Divider under the title strip, matching world_menu.js.
   group.push(
-    scene.add
-      .rectangle(
-        layout.shell.x,
-        layout.header.dividerY,
-        layout.header.dividerWidth,
-        layout.mode === "mobile" ? 2 : 1,
-        0x4488ff,
-        0.6,
-      )
+    roundedRectangle(
+      scene,
+      layout.shell.x,
+      layout.header.dividerY,
+      layout.header.dividerWidth,
+      layout.mode === "mobile" ? 2 : 1,
+      0x8faee9,
+      0.6,
+    )
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT),
   );
@@ -356,9 +357,16 @@ function drawPortrait(scene, group, member, layout) {
   // scaled to fit a 150x150 box. Falls back to a '?' glyph if the texture
   // hasn't loaded for some reason.
   group.push(
-    scene.add
-      .rectangle(layout.x, layout.y, layout.width, layout.height, 0x1a2a4a, 0.9)
-      .setStrokeStyle(2, 0x4488ff)
+    roundedRectangle(
+      scene,
+      layout.x,
+      layout.y,
+      layout.width,
+      layout.height,
+      0x1c2736,
+      0.9,
+    )
+      .setStrokeStyle(2, 0x8faee9)
       .setScrollFactor(0)
       .setDepth(DEPTH_CONTENT),
   );
@@ -377,8 +385,8 @@ function drawPortrait(scene, group, member, layout) {
       scene.add
         .text(layout.x, layout.y, (member.class_name || "?")[0] || "?", {
           fontSize: `${layout.fallbackFontSize}px`,
-          color: "#88ccff",
-          fontFamily: "monospace",
+          color: "#c9b589",
+          fontFamily: "Arial, sans-serif",
         })
         .setOrigin(0.5)
         .setScrollFactor(0)
@@ -437,8 +445,8 @@ function drawStatBlock(scene, group, member, equip, layout) {
     "XP",
     {
       ...barStyle,
-      fill: 0xffcc44,
-      labelColor: "#ffcc44",
+      fill: 0xc9b589,
+      labelColor: "#c9b589",
     },
   );
   group.push(
@@ -474,7 +482,7 @@ function drawStatBlock(scene, group, member, equip, layout) {
         layout.x,
         layout.y + layout.scalarOffsetY + i * layout.scalarGap,
         line,
-        "#ffffff",
+        "#e9eef7",
         `${layout.scalarFontSize}px`,
       ),
     );
@@ -487,7 +495,7 @@ function derivedAttack(member, equip) {
 
 function hpColorFor(hp, max) {
   const pct = hpBarColorPct(hp, max);
-  if (pct > 0.5) return 0x44ff44;
+  if (pct > 0.5) return 0x8ac7aa;
   if (pct > 0.25) return 0xff8800;
   if (pct > 0) return 0xff0000;
   return 0x333333;
@@ -519,19 +527,26 @@ function drawEquipSlot(
   { kind, item, total, inspector, onSocket, layout, state } = {},
 ) {
   const content = layout.cardContent;
-  const card = scene.add
-    .rectangle(cx, cy, layout.cardWidth, layout.cardHeight, 0x1a2a4a, 0.95)
-    .setStrokeStyle(2, 0x4488ff)
+  const card = roundedRectangle(
+    scene,
+    cx,
+    cy,
+    layout.cardWidth,
+    layout.cardHeight,
+    0x1c2736,
+    0.95,
+  )
+    .setStrokeStyle(2, 0x8faee9)
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT)
     .setInteractive({ useHandCursor: true });
   card.characterDetailMeta = { role: "equipment_card", slot: kind };
   card.on("pointerover", () => {
-    card.setStrokeStyle(2, 0xffcc44);
+    card.setStrokeStyle(2, 0xc9b589);
     inspector?.hover(kind);
   });
   card.on("pointerout", () => {
-    card.setStrokeStyle(2, 0x4488ff);
+    card.setStrokeStyle(2, 0x8faee9);
     inspector?.leave(kind);
   });
   card.on("pointerup", onClick);
@@ -542,8 +557,8 @@ function drawEquipSlot(
     scene.add
       .text(cx + content.labelX, cy + content.headerY, slotLabel, {
         fontSize: `${layout.labelFontSize}px`,
-        color: "#ffcc44",
-        fontFamily: "monospace",
+        color: "#c9b589",
+        fontFamily: "Arial, sans-serif",
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
@@ -560,9 +575,9 @@ function drawEquipSlot(
     {
       depth: DEPTH_LABEL,
       fontSize: `${layout.details.fontSize}px`,
-      fill: 0x14233f,
-      fillHover: 0x21406e,
-      stroke: 0x6f9fd8,
+      fill: 0x1c2736,
+      fillHover: 0x384859,
+      stroke: 0x384859,
       strokeWidth: 1,
     },
   );
@@ -575,8 +590,8 @@ function drawEquipSlot(
     scene.add
       .text(cx, cy + content.itemY, itemName || "(empty)", {
         fontSize: `${layout.itemFontSize}px`,
-        color: itemName ? "#ffffff" : "#888888",
-        fontFamily: "monospace",
+        color: itemName ? "#e9eef7" : "#888888",
+        fontFamily: "Arial, sans-serif",
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
@@ -587,7 +602,7 @@ function drawEquipSlot(
       .text(cx, cy + content.statY, compactEquipmentStat(kind, item, total), {
         fontSize: `${layout.statFontSize}px`,
         color: "#a8cfff",
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
@@ -597,8 +612,8 @@ function drawEquipSlot(
     scene.add
       .text(cx + content.changeX, cy + content.actionY, "CHANGE", {
         fontSize: `${layout.actionFontSize}px`,
-        color: "#88ccff",
-        fontFamily: "monospace",
+        color: "#c9b589",
+        fontFamily: "Arial, sans-serif",
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
@@ -625,8 +640,8 @@ function drawEquipSlot(
       {
         depth: DEPTH_LABEL,
         fontSize: `${layout.socket.fontSize}px`,
-        fill: 0x1f5d48,
-        fillHover: 0x2b7d62,
+        fill: 0x1c2736,
+        fillHover: 0x384859,
         stroke: 0xa5f0c8,
         strokeWidth: 1,
       },
@@ -644,7 +659,7 @@ function drawEquipSlot(
         .text(cx + content.socketX, cy + content.actionY, socketStatus, {
           fontSize: `${layout.statFontSize}px`,
           color: appliedGems.length > 0 ? "#8ff0a4" : "#6f819c",
-          fontFamily: "monospace",
+          fontFamily: "Arial, sans-serif",
         })
         .setOrigin(0.5)
         .setScrollFactor(0)
@@ -732,16 +747,16 @@ function drawEquipmentInspector(
   const right = layout.x + layout.width / 2 - layout.horizontalPadding;
   const top = layout.top;
 
-  const panel = scene.add
-    .rectangle(
-      layout.x,
-      top + layout.height / 2,
-      layout.width,
-      layout.height,
-      0x10213c,
-      0.98,
-    )
-    .setStrokeStyle(1, 0x4488ff)
+  const panel = roundedRectangle(
+    scene,
+    layout.x,
+    top + layout.height / 2,
+    layout.width,
+    layout.height,
+    0x151e2b,
+    0.98,
+  )
+    .setStrokeStyle(1, 0x8faee9)
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
   panel.characterDetailMeta = { role: "equipment_inspector" };
@@ -752,7 +767,7 @@ function drawEquipmentInspector(
     left,
     top + layout.headingOffsetY,
     "EQUIPMENT DETAILS",
-    "#ffcc44",
+    "#c9b589",
     `${layout.headingFontSize}px`,
   );
   const interaction = detailText(
@@ -760,7 +775,7 @@ function drawEquipmentInspector(
     right,
     top + layout.headingOffsetY,
     "HOVER • TAP DETAILS",
-    "#88ccff",
+    "#c9b589",
     `${layout.interactionFontSize}px`,
   ).setOrigin(1, 0);
   const name = detailText(
@@ -768,7 +783,7 @@ function drawEquipmentInspector(
     left,
     top + layout.nameOffsetY,
     "",
-    "#ffffff",
+    "#e9eef7",
     `${layout.nameFontSize}px`,
   );
   const meta = detailText(
@@ -787,15 +802,15 @@ function drawEquipmentInspector(
     "#a8cfff",
     `${layout.metaFontSize}px`,
   );
-  const divider = scene.add
-    .rectangle(
-      layout.x,
-      top + layout.dividerOffsetY,
-      layout.width - layout.horizontalPadding * 2,
-      1,
-      0x4488ff,
-      0.45,
-    )
+  const divider = roundedRectangle(
+    scene,
+    layout.x,
+    top + layout.dividerOffsetY,
+    layout.width - layout.horizontalPadding * 2,
+    1,
+    0x8faee9,
+    0.45,
+  )
     .setScrollFactor(0)
     .setDepth(DEPTH_CONTENT);
   const breakdownLabel = detailText(
@@ -803,7 +818,7 @@ function drawEquipmentInspector(
     left,
     top + layout.breakdownOffsetY,
     "",
-    "#ffcc44",
+    "#c9b589",
     `${layout.breakdownFontSize}px`,
   );
   const breakdownLines = Array.from({ length: 6 }, (_, index) =>
@@ -940,7 +955,7 @@ function equipmentSecondaryStats(kind, equip) {
 
 function detailText(scene, x, y, value, color, fontSize) {
   return scene.add
-    .text(x, y, value, { color, fontSize, fontFamily: "monospace" })
+    .text(x, y, value, { color, fontSize, fontFamily: "Arial, sans-serif" })
     .setOrigin(0, 0)
     .setScrollFactor(0)
     .setDepth(DEPTH_LABEL);
@@ -976,7 +991,7 @@ function drawSpells(scene, group, member, partyIndex, layout) {
         layout.x + layout.labelInset,
         layout.y,
         "(no spells)",
-        "#666666",
+        "#697888",
         `${layout.emptyFontSize}px`,
       ),
     );
@@ -992,7 +1007,7 @@ function drawSpells(scene, group, member, partyIndex, layout) {
     const ty = layout.y + 4 + row * layout.rowGap;
     const fieldSpell = fieldByID.get(spell.id);
     const interactive = fieldSpell && !fieldSpell.greyed;
-    const color = interactive ? "#aaccff" : fieldSpell ? "#666666" : "#555555";
+    const color = interactive ? "#aaccff" : fieldSpell ? "#697888" : "#555555";
     let label =
       spell.mp_cost != null ? `${spell.name} (${spell.mp_cost})` : spell.name;
     if (fieldSpell?.greyed && fieldSpell.disabledReason) {
@@ -1009,7 +1024,7 @@ function drawSpells(scene, group, member, partyIndex, layout) {
     );
     if (interactive) {
       text.setInteractive({ useHandCursor: true });
-      text.on("pointerover", () => text.setColor("#ffffff"));
+      text.on("pointerover", () => text.setColor("#e9eef7"));
       text.on("pointerout", () => text.setColor("#aaccff"));
       text.on("pointerdown", () => {
         closeCharacterDetail(scene);
@@ -1039,7 +1054,7 @@ function drawSpells(scene, group, member, partyIndex, layout) {
 
 function plainText(scene, x, y, str, color, size) {
   return scene.add
-    .text(x, y, str, { fontSize: size, color, fontFamily: "monospace" })
+    .text(x, y, str, { fontSize: size, color, fontFamily: "Arial, sans-serif" })
     .setScrollFactor(0)
     .setDepth(DEPTH_LABEL);
 }

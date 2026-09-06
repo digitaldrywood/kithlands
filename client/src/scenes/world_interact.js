@@ -1,3 +1,4 @@
+import { showWorldMapDialog } from "../ui/world_map_menu.js";
 import { playSFX } from "../systems/audio.js";
 import { isTouchDevice } from "../systems/input.js";
 import {
@@ -8,7 +9,6 @@ import {
 } from "../systems/modalLock.js";
 import { gameAction, transitionLocation } from "../api.js";
 import { isRestBuilding } from "./building_type.js";
-import { TILE_COLORS } from "./tileConstants.js";
 import { openDialogue } from "./town_dialogue.js";
 import { rememberWorldPosition } from "./worldMapCache.js";
 
@@ -308,137 +308,7 @@ export function canShowWorldMap(scene) {
 
 export function showWorldMap(scene) {
   if (!canShowWorldMap(scene)) return;
-
-  pauseWorldFor(scene, "world_map");
-  const ol = [];
-
-  // Full screen map overlay
-  const bg = scene.add
-    .rectangle(400, 300, 780, 560, 0x000000, 0.95)
-    .setScrollFactor(0)
-    .setDepth(50)
-    .setInteractive();
-  ol.push(bg);
-
-  ol.push(
-    scene.add
-      .text(400, 30, "WORLD MAP", {
-        fontSize: "18px",
-        color: "#ffff44",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(51),
-  );
-
-  // Draw large minimap
-  const mmW = 600,
-    mmH = 440;
-  const mmX = 100,
-    mmY = 55;
-  const scaleX = mmW / scene.mapW;
-  const scaleY = mmH / scene.mapH;
-
-  const mmGfx = scene.add.graphics().setScrollFactor(0).setDepth(51);
-  for (let y = 0; y < scene.mapH; y++) {
-    for (let x = 0; x < scene.mapW; x++) {
-      const tile = scene.tileData[y][x];
-      const color = TILE_COLORS[tile] || 0x000000;
-      mmGfx.fillStyle(color, 1);
-      mmGfx.fillRect(
-        mmX + x * scaleX,
-        mmY + y * scaleY,
-        Math.max(1, scaleX),
-        Math.max(1, scaleY),
-      );
-    }
-  }
-  ol.push(mmGfx);
-
-  // Location labels on the map
-  for (const spawn of scene.spawns) {
-    const sx = mmX + spawn.x * scaleX;
-    const sy = mmY + spawn.y * scaleY;
-
-    mmGfx.fillStyle(isNaturalSpawn(spawn) ? 0x9fd27d : 0xffffff, 1);
-    mmGfx.fillRect(sx - 2, sy - 2, 5, 5);
-
-    const label = scene.add
-      .text(sx, sy - 8, spawn.name, {
-        fontSize: "7px",
-        color: isNaturalSpawn(spawn) ? "#dff5c9" : "#ffffff",
-        fontFamily: "monospace",
-        backgroundColor: "#00000099",
-        padding: { x: 1, y: 0 },
-      })
-      .setOrigin(0.5, 1)
-      .setScrollFactor(0)
-      .setDepth(52);
-    ol.push(label);
-  }
-
-  // Quest target marker (issue #86). Highlights the current main quest's
-  // target building so the player can see where to go.
-  const gs = scene.gameState;
-  if (gs && gs.quests && gs.current_quest < gs.quests.length) {
-    const current = gs.quests[gs.current_quest];
-    const targetNodeID = !current?.hidden && current?.target_node_id;
-    if (targetNodeID) {
-      const target = scene.spawns.find((s) => s.node_id === targetNodeID);
-      if (target) {
-        const tx = mmX + target.x * scaleX;
-        const ty = mmY + target.y * scaleY;
-        const marker = scene.add
-          .circle(tx, ty, 7, 0xffff00, 0)
-          .setStrokeStyle(2, 0xffff00, 1)
-          .setScrollFactor(0)
-          .setDepth(52);
-        ol.push(marker);
-        const star = scene.add
-          .text(tx, ty, "★", {
-            fontSize: "11px",
-            color: "#ffff44",
-            fontFamily: "monospace",
-          })
-          .setOrigin(0.5)
-          .setScrollFactor(0)
-          .setDepth(53);
-        ol.push(star);
-      }
-    }
-  }
-
-  // Player position
-  const px = mmX + scene.playerX * scaleX;
-  const py = mmY + scene.playerY * scaleY;
-  const playerDot = scene.add
-    .circle(px, py, 4, 0xff4444)
-    .setScrollFactor(0)
-    .setDepth(52);
-  ol.push(playerDot);
-
-  ol.push(
-    scene.add
-      .text(400, 545, "[ CLOSE (ESC) ]", {
-        fontSize: "13px",
-        color: "#aaaaaa",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(51)
-      .setInteractive({ useHandCursor: true })
-      .on("pointerdown", () => {
-        ol.forEach((o) => o.destroy());
-        resumeWorldFor(scene, "world_map");
-      }),
-  );
-
-  scene.input.keyboard.once("keydown-ESC", () => {
-    ol.forEach((o) => o.destroy());
-    resumeWorldFor(scene, "world_map");
-  });
+  return showWorldMapDialog(scene);
 }
 
 export function showInteractPrompt(scene, spawn) {
@@ -457,6 +327,10 @@ export function showInteractPrompt(scene, spawn) {
   else if (tags.includes("shop") || tags.includes("commerce")) action = "Shop";
   else if (tags.includes("temple") || tags.includes("revive")) action = "Pray";
 
+  if (scene.explorationHUD) {
+    scene.explorationHUD.interaction(`${action} — ${destination}`);
+    return;
+  }
   scene.interactPrompt = scene.add
     .text(
       scene.player.x,
@@ -465,7 +339,9 @@ export function showInteractPrompt(scene, spawn) {
       {
         fontSize: portrait ? "24px" : "10px",
         color: "#ffff44",
-        fontFamily: portrait ? "Trebuchet MS, Arial, sans-serif" : "monospace",
+        fontFamily: portrait
+          ? "Trebuchet MS, Arial, sans-serif"
+          : "Arial, sans-serif",
         backgroundColor: "#000000cc",
         padding: portrait ? { x: 12, y: 7 } : { x: 6, y: 3 },
         align: "center",
@@ -477,6 +353,7 @@ export function showInteractPrompt(scene, spawn) {
 }
 
 export function hideInteractPrompt(scene) {
+  scene.explorationHUD?.interaction("");
   if (scene.interactPrompt) {
     scene.interactPrompt.destroy();
     scene.interactPrompt = null;

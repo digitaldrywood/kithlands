@@ -1,3 +1,5 @@
+import { roundedRectangle } from "../ui/theme.js";
+import { drawButton, drawPanel } from "../ui/panel.js";
 import { newGame, geocode, osmPreview } from "../api.js";
 import {
   getLastWizard,
@@ -88,16 +90,16 @@ export class WizardScene extends Phaser.Scene {
     const spinner = this.add
       .text(x, y, "", {
         fontSize: "16px",
-        color: "#ffcc44",
-        fontFamily: "monospace",
+        color: "#c9b589",
+        fontFamily: "Arial, sans-serif",
       })
       .setOrigin(0, 0.5)
       .setVisible(false);
     const label = this.add
       .text(x + 20, y, "", {
         fontSize: "12px",
-        color: "#ffcc44",
-        fontFamily: "monospace",
+        color: "#c9b589",
+        fontFamily: "Arial, sans-serif",
       })
       .setOrigin(0, 0.5)
       .setVisible(false);
@@ -185,6 +187,11 @@ export class WizardScene extends Phaser.Scene {
 
   showStep() {
     this.clearContent();
+    const shell = drawPanel(this, this.cx, 300, 776, 576, {
+      depth: -1,
+      interactive: false,
+    });
+    this.contentGroup.add(shell.bg);
 
     // Skip POI step when not using OSM
     if (!this.wizardData.use_osm && this.step === 1) {
@@ -268,8 +275,8 @@ export class WizardScene extends Phaser.Scene {
     const t = this.add
       .text(this.cx, 40, text, {
         fontSize: "20px",
-        color: "#ffffff",
-        fontFamily: "monospace",
+        color: "#e9eef7",
+        fontFamily: "Arial, sans-serif",
         wordWrap: { width: 700 },
       })
       .setOrigin(0.5, 0);
@@ -281,8 +288,8 @@ export class WizardScene extends Phaser.Scene {
     const t = this.add
       .text(this.cx, y, text, {
         fontSize: "14px",
-        color: "#cccccc",
-        fontFamily: "monospace",
+        color: "#94a8bd",
+        fontFamily: "Arial, sans-serif",
         wordWrap: { width: 600 },
       })
       .setOrigin(0.5, 0);
@@ -294,40 +301,38 @@ export class WizardScene extends Phaser.Scene {
     const el = document.createElement("input");
     el.type = "text";
     el.placeholder = placeholder;
-    el.style.cssText = `font-size:16px;padding:6px 12px;width:${width}px;text-align:center;background:#222;color:#fff;border:2px solid #555;outline:none;font-family:monospace;`;
+    el.style.cssText = `font-size:16px;padding:6px 12px;width:${width}px;text-align:center;background:#1c2736;color:#e9eef7;border:1px solid #384859;border-radius:10px;font-family:Arial,sans-serif;`;
     return this.add.dom(x, y, el);
   }
 
   addBackButton(y) {
     if (this.step <= 0) return;
-    const btn = this.add
-      .text(200, y, "[ BACK ]", {
-        fontSize: "14px",
-        color: "#888888",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    btn.on("pointerover", () => btn.setColor("#aaaaaa"));
-    btn.on("pointerout", () => btn.setColor("#888888"));
-    btn.on("pointerdown", () => this.goBack());
-    this.contentGroup.add(btn);
+    const button = drawButton(
+      this,
+      200,
+      y,
+      116,
+      36,
+      "Back",
+      () => this.goBack(),
+      { depth: 0, fontSize: "14px" },
+    );
+    this.contentGroup.addMultiple([button.bg, button.label]);
   }
 
   addButton(y, label, callback, x = this.cx) {
-    const btn = this.add
-      .text(x, y, `[ ${label} ]`, {
-        fontSize: "20px",
-        color: "#44ff44",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    btn.on("pointerover", () => btn.setColor("#88ff88"));
-    btn.on("pointerout", () => btn.setColor("#44ff44"));
-    btn.on("pointerdown", callback);
-    this.contentGroup.add(btn);
-    return btn;
+    const button = drawButton(
+      this,
+      x,
+      y,
+      Math.max(150, label.length * 10 + 32),
+      38,
+      label,
+      callback,
+      { depth: 0, fontSize: "16px" },
+    );
+    this.contentGroup.addMultiple([button.bg, button.label]);
+    return button.label;
   }
 
   setTownSearchState(nextState = {}) {
@@ -343,18 +348,25 @@ export class WizardScene extends Phaser.Scene {
   }
 
   addFramedPanel(x, y, width, height, opts = {}) {
-    const fill = opts.fill ?? 0x10192d;
+    const fill = opts.fill ?? 0x151e2b;
     const fillAlpha = opts.fillAlpha ?? 0.96;
-    const stroke = opts.stroke ?? 0x4488ff;
+    const stroke = opts.stroke ?? 0x8faee9;
     const strokeAlpha = opts.strokeAlpha ?? 1;
-    const accent = opts.accent ?? 0xffcc44;
+    const accent = opts.accent ?? 0xc9b589;
 
-    const outer = this.add
-      .rectangle(x, y, width, height, fill, fillAlpha)
-      .setStrokeStyle(2, stroke, strokeAlpha);
+    const outer = roundedRectangle(
+      this,
+      x,
+      y,
+      width,
+      height,
+      fill,
+      fillAlpha,
+      20,
+    ).setStrokeStyle(1, stroke, strokeAlpha);
     const inner = this.add
-      .rectangle(x, y, width - 18, height - 18, 0x081225, 0.35)
-      .setStrokeStyle(1, 0x24456f, 0.95);
+      .rectangle(x, y, width - 18, height - 18, 0x151e2b, 0.35)
+      .setStrokeStyle(1, 0x384859, 0.95);
     const accentRule = this.add.rectangle(
       x,
       y - height / 2 + 16,
@@ -373,13 +385,13 @@ export class WizardScene extends Phaser.Scene {
     this.addFramedPanel(this.cx, y, 520, height, {
       fill: 0x241018,
       stroke: 0xaa4455,
-      accent: 0xffcc44,
+      accent: 0xc9b589,
     });
     const bannerText = this.add
       .text(this.cx, y, text, {
         fontSize: "12px",
         color: "#ffd7d7",
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
         align: "center",
         wordWrap: { width: 460 },
       })
@@ -389,16 +401,16 @@ export class WizardScene extends Phaser.Scene {
 
   addLoadingPanel(y, label) {
     this.addFramedPanel(this.cx, y, 360, 92, {
-      fill: 0x10192d,
-      stroke: 0x4488ff,
-      accent: 0xffcc44,
+      fill: 0x151e2b,
+      stroke: 0x8faee9,
+      accent: 0xc9b589,
     });
 
     const loadingLine = this.add
       .text(this.cx, y, `${SPINNER_FRAMES[0]} ${label}`, {
         fontSize: "18px",
-        color: "#ffcc44",
-        fontFamily: "monospace",
+        color: "#c9b589",
+        fontFamily: "Arial, sans-serif",
       })
       .setOrigin(0.5);
     loadingLine.__kithlandsWizardLoadingPanel = {
@@ -460,8 +472,8 @@ export class WizardScene extends Phaser.Scene {
         `[${useOSM ? "X" : " "}] Use real-world map data (OpenStreetMap)`,
         {
           fontSize: "12px",
-          color: useOSM ? "#44aaff" : "#666666",
-          fontFamily: "monospace",
+          color: useOSM ? "#94a8bd" : "#697888",
+          fontFamily: "Arial, sans-serif",
         },
       )
       .setOrigin(0.5)
@@ -477,7 +489,7 @@ export class WizardScene extends Phaser.Scene {
         {
           fontSize: "12px",
           color: "#aaaaaa",
-          fontFamily: "monospace",
+          fontFamily: "Arial, sans-serif",
         },
       )
       .setOrigin(0.5);
@@ -490,7 +502,7 @@ export class WizardScene extends Phaser.Scene {
     sliderEl.max = "30";
     sliderEl.step = "1";
     sliderEl.value = String(this.wizardData.radius_miles || 1.5);
-    sliderEl.style.cssText = "width:250px;accent-color:#44aaff;";
+    sliderEl.style.cssText = "width:250px;accent-color:#384859;";
     const slider = this.add.dom(this.cx, 255 + formOffset, sliderEl);
     slider.setVisible(useOSM);
     this.contentGroup.add(slider);
@@ -504,85 +516,50 @@ export class WizardScene extends Phaser.Scene {
       osmToggle.setText(
         `[${useOSM ? "X" : " "}] Use real-world map data (OpenStreetMap)`,
       );
-      osmToggle.setColor(useOSM ? "#44aaff" : "#666666");
+      osmToggle.setColor(useOSM ? "#94a8bd" : "#697888");
       sliderLabel.setVisible(useOSM);
       slider.setVisible(useOSM);
     });
 
-    const findButton = this.addButton(
-      300 + formOffset,
-      "FIND & CONTINUE",
-      async () => {
-        if (!findButton.input?.enabled) return;
+    const submitTown = async () => {
+      if (!findButton.input?.enabled) return;
 
-        const townName = input.node.value.trim() || "Cadott, WI";
-        this.wizardData.town_name = townName;
-        this.wizardData.use_osm = useOSM;
-        this.wizardData.radius_miles = parseFloat(sliderEl.value);
+      const townName = input.node.value.trim() || "Cadott, WI";
+      this.wizardData.town_name = townName;
+      this.wizardData.use_osm = useOSM;
+      this.wizardData.radius_miles = parseFloat(sliderEl.value);
 
-        if (useOSM) {
-          this.wizardData.osm_preview = null;
-          this.wizardData.spawn_node_id = "";
-          this.setTownSearchState({
-            busy: true,
-            error: "",
-            label: this.formatTownSearchLabel(townName),
-          });
-          this.showStep();
+      if (useOSM) {
+        this.wizardData.osm_preview = null;
+        this.wizardData.spawn_node_id = "";
+        this.setTownSearchState({
+          busy: true,
+          error: "",
+          label: this.formatTownSearchLabel(townName),
+        });
+        this.showStep();
+        try {
+          const result = await geocode(townName);
+          if (result.error) {
+            this.setTownSearchState({
+              busy: false,
+              label: "",
+              error: "Location not found. Try another town or address.",
+            });
+            this.showStep();
+            return;
+          }
+          this.wizardData.lat = result.lat;
+          this.wizardData.lng = result.lng;
+
+          // Scan for POIs
           try {
-            const result = await geocode(townName);
-            if (result.error) {
-              this.setTownSearchState({
-                busy: false,
-                label: "",
-                error: "Location not found. Try another town or address.",
-              });
-              this.showStep();
-              return;
-            }
-            this.wizardData.lat = result.lat;
-            this.wizardData.lng = result.lng;
-
-            // Scan for POIs
-            try {
-              const preview = await osmPreview(
-                result.lat,
-                result.lng,
-                this.wizardData.radius_miles,
-              );
-              if (preview.error) {
-                this.wizardData.osm_preview = null;
-                this.wizardData.spawn_node_id = "";
-                this.setTownSearchState({
-                  busy: false,
-                  label: "",
-                  error: "Map lookup failed. Try again.",
-                });
-                this.showStep();
-                return;
-              } else {
-                this.wizardData.osm_preview = preview.nodes || [];
-                this.wizardData.radius_miles =
-                  preview.radius_miles || this.wizardData.radius_miles;
-                if ((preview.nodes || []).length > 0) {
-                  this.ensureOSMDefaults();
-                  this.setTownSearchState({
-                    busy: false,
-                    label: "",
-                    error: "",
-                  });
-                  this.step = 5;
-                } else {
-                  this.wizardData.spawn_node_id = "";
-                  this.setTownSearchState({
-                    busy: false,
-                    label: "",
-                    error: "",
-                  });
-                  this.step = 1;
-                }
-              }
-            } catch {
+            const preview = await osmPreview(
+              result.lat,
+              result.lng,
+              this.wizardData.radius_miles,
+            );
+            if (preview.error) {
               this.wizardData.osm_preview = null;
               this.wizardData.spawn_node_id = "";
               this.setTownSearchState({
@@ -592,34 +569,70 @@ export class WizardScene extends Phaser.Scene {
               });
               this.showStep();
               return;
+            } else {
+              this.wizardData.osm_preview = preview.nodes || [];
+              this.wizardData.radius_miles =
+                preview.radius_miles || this.wizardData.radius_miles;
+              if ((preview.nodes || []).length > 0) {
+                this.ensureOSMDefaults();
+                this.setTownSearchState({
+                  busy: false,
+                  label: "",
+                  error: "",
+                });
+                this.step = 5;
+              } else {
+                this.wizardData.spawn_node_id = "";
+                this.setTownSearchState({
+                  busy: false,
+                  label: "",
+                  error: "",
+                });
+                this.step = 1;
+              }
             }
-            this.showStep();
           } catch {
+            this.wizardData.osm_preview = null;
+            this.wizardData.spawn_node_id = "";
             this.setTownSearchState({
               busy: false,
               label: "",
-              error: "Geocoding failed. Try again.",
+              error: "Map lookup failed. Try again.",
             });
             this.showStep();
+            return;
           }
-        } else {
+          this.showStep();
+        } catch {
           this.setTownSearchState({
             busy: false,
             label: "",
-            error: "",
+            error: "Geocoding failed. Try again.",
           });
-          this.wizardData.osm_preview = null;
-          this.wizardData.spawn_node_id = "";
-          this.step++;
           this.showStep();
         }
-      },
+      } else {
+        this.setTownSearchState({
+          busy: false,
+          label: "",
+          error: "",
+        });
+        this.wizardData.osm_preview = null;
+        this.wizardData.spawn_node_id = "";
+        this.step++;
+        this.showStep();
+      }
+    };
+    const findButton = this.addButton(
+      300 + formOffset,
+      "FIND & CONTINUE",
+      submitTown,
     );
 
     input.node.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" || !findButton.input?.enabled) return;
       event.preventDefault();
-      findButton.emit("pointerdown");
+      void submitTown();
     });
   }
 
@@ -667,29 +680,29 @@ export class WizardScene extends Phaser.Scene {
               ? "NAT"
               : "LOC";
       const label = `[${kindLabel}] ${poi.name}`;
-      const color = i === selectedIdx ? "#44ff44" : "#aaaaaa";
+      const color = i === selectedIdx ? "#8ac7aa" : "#aaaaaa";
 
       const t = this.add
         .text(this.cx, 110 + i * 22, label, {
           fontSize: "13px",
           color,
-          fontFamily: "monospace",
+          fontFamily: "Arial, sans-serif",
           wordWrap: { width: 500 },
         })
         .setOrigin(0.5)
         .setInteractive({ useHandCursor: true });
 
       t.on("pointerover", () => {
-        if (i !== selectedIdx) t.setColor("#cccccc");
+        if (i !== selectedIdx) t.setColor("#94a8bd");
       });
       t.on("pointerout", () => {
-        t.setColor(i === selectedIdx ? "#44ff44" : "#aaaaaa");
+        t.setColor(i === selectedIdx ? "#8ac7aa" : "#aaaaaa");
       });
       t.on("pointerdown", () => {
         // Deselect old
         if (items[selectedIdx]) items[selectedIdx].setColor("#aaaaaa");
         selectedIdx = i;
-        t.setColor("#44ff44");
+        t.setColor("#8ac7aa");
         this.wizardData.spawn_node_id = pois[i].id;
       });
 
@@ -794,13 +807,13 @@ export class WizardScene extends Phaser.Scene {
 
     const labelStyle = {
       fontSize: "14px",
-      color: "#44ff44",
-      fontFamily: "monospace",
+      color: "#8ac7aa",
+      fontFamily: "Arial, sans-serif",
     };
     const arrowStyle = {
       fontSize: "18px",
       color: "#aaaaaa",
-      fontFamily: "monospace",
+      fontFamily: "Arial, sans-serif",
     };
 
     const leftArrow = this.add
@@ -815,9 +828,9 @@ export class WizardScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
-    leftArrow.on("pointerover", () => leftArrow.setColor("#ffffff"));
+    leftArrow.on("pointerover", () => leftArrow.setColor("#e9eef7"));
     leftArrow.on("pointerout", () => leftArrow.setColor("#aaaaaa"));
-    rightArrow.on("pointerover", () => rightArrow.setColor("#ffffff"));
+    rightArrow.on("pointerover", () => rightArrow.setColor("#e9eef7"));
     rightArrow.on("pointerout", () => rightArrow.setColor("#aaaaaa"));
 
     const cycle = (delta) => {
@@ -909,7 +922,7 @@ export class WizardScene extends Phaser.Scene {
       .text(this.cx, buttonY + 36, "", {
         fontSize: "11px",
         color: "#aaaaaa",
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
       })
       .setOrigin(0.5, 0);
     this.contentGroup.add(status);
@@ -937,49 +950,42 @@ export class WizardScene extends Phaser.Scene {
       });
     };
 
-    const cancelButton = this.add
-      .text(this.cx - 120, buttonY, "[ CANCEL ]", {
-        fontSize: "16px",
-        color: "#888888",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    cancelButton.on("pointerover", () => cancelButton.setColor("#aaaaaa"));
-    cancelButton.on("pointerout", () => cancelButton.setColor("#888888"));
-    cancelButton.on("pointerdown", () => this.goBack());
-    this.contentGroup.add(cancelButton);
-
-    const createButton = this.add
-      .text(this.cx + 40, buttonY, "[ CREATE GAME ]", {
-        fontSize: "20px",
-        color: "#44ff44",
-        fontFamily: "monospace",
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    createButton.on("pointerover", () => createButton.setColor("#88ff88"));
-    createButton.on("pointerout", () => createButton.setColor("#44ff44"));
-    this.contentGroup.add(createButton);
+    const cancelHandle = drawButton(
+      this,
+      this.cx - 140,
+      buttonY,
+      140,
+      38,
+      "CANCEL",
+      () => this.goBack(),
+      { depth: 0, fontSize: "16px" },
+    );
+    const createHandle = drawButton(
+      this,
+      this.cx + 45,
+      buttonY,
+      200,
+      38,
+      "CREATE GAME",
+      () => submit(),
+      { depth: 0, fontSize: "16px" },
+    );
+    const createButton = createHandle.label;
+    this.contentGroup.addMultiple([
+      cancelHandle.bg,
+      cancelHandle.label,
+      createHandle.bg,
+      createHandle.label,
+    ]);
 
     const setCreateBusy = (busy, busyLabel = "Creating world...") => {
       setPartyInputsDisabled(busy);
-      if (busy) {
-        createButton.disableInteractive();
-        createButton.setColor("#668866");
-        cancelButton.disableInteractive();
-        cancelButton.setColor("#555555");
-        createSpinner.setBusy(true, busyLabel);
-      } else {
-        createButton.setInteractive({ useHandCursor: true });
-        createButton.setColor("#44ff44");
-        cancelButton.setInteractive({ useHandCursor: true });
-        cancelButton.setColor("#888888");
-        createSpinner.setBusy(false);
-      }
+      createHandle.setEnabled(!busy);
+      cancelHandle.setEnabled(!busy);
+      createSpinner.setBusy(busy, busyLabel);
     };
 
-    createButton.on("pointerdown", async () => {
+    const submit = async () => {
       if (!createButton.input?.enabled) return;
 
       collectParty();
@@ -991,7 +997,7 @@ export class WizardScene extends Phaser.Scene {
       try {
         const result = await this.createGameRequest();
         if (result.error) {
-          status.setText(`Error: ${result.error}`).setColor("#ff4444");
+          status.setText(`Error: ${result.error}`).setColor("#e49c96");
           setCreateBusy(false);
           return;
         }
@@ -999,10 +1005,10 @@ export class WizardScene extends Phaser.Scene {
       } catch (e) {
         status
           .setText("Server error. Is the backend running?")
-          .setColor("#ff4444");
+          .setColor("#e49c96");
         setCreateBusy(false);
       }
-    });
+    };
   }
 
   showMapPreview() {
@@ -1029,9 +1035,9 @@ export class WizardScene extends Phaser.Scene {
     this.contentGroup.add(gfx);
 
     // Background
-    gfx.fillStyle(0x1a1a2e, 1);
+    gfx.fillStyle(0x151e2b, 1);
     gfx.fillRect(mapX, mapY, mapW, mapH);
-    gfx.lineStyle(1, 0x333355);
+    gfx.lineStyle(1, 0x1c2736);
     gfx.strokeRect(mapX, mapY, mapW, mapH);
 
     // Find bounds
@@ -1061,9 +1067,9 @@ export class WizardScene extends Phaser.Scene {
 
     // Color by kind
     const kindColors = {
-      business: 0xffcc44,
-      landmark: 0x4488ff,
-      place: 0x44cc44,
+      business: 0xc9b589,
+      landmark: 0x8faee9,
+      place: 0x8ac7aa,
       natural: 0x886633,
       person: 0xff4488,
     };
@@ -1078,7 +1084,7 @@ export class WizardScene extends Phaser.Scene {
 
       if (isSpawn) {
         // Spawn point: larger, with ring
-        gfx.fillStyle(0xffffff, 1);
+        gfx.fillStyle(0xe9eef7, 1);
         gfx.fillCircle(px, py, 7);
         gfx.fillStyle(color, 1);
         gfx.fillCircle(px, py, 5);
@@ -1091,9 +1097,9 @@ export class WizardScene extends Phaser.Scene {
     // Legend
     let ly = mapY + mapH + 15;
     const legendItems = [
-      { color: "#ffcc44", label: "Business" },
-      { color: "#4488ff", label: "Landmark" },
-      { color: "#44cc44", label: "Place" },
+      { color: "#c9b589", label: "Business" },
+      { color: "#8faee9", label: "Landmark" },
+      { color: "#8ac7aa", label: "Place" },
       { color: "#886633", label: "Natural" },
     ];
     const legendText = legendItems.map((l) => l.label).join("  |  ");
@@ -1174,13 +1180,13 @@ export class WizardScene extends Phaser.Scene {
     try {
       const result = await this.createGameRequest();
       if (result.error) {
-        this.addLabel(200, `Error: ${result.error}`).setColor("#ff4444");
+        this.addLabel(200, `Error: ${result.error}`).setColor("#e49c96");
         return;
       }
       this.scene.start("World", { gameState: result });
     } catch (e) {
       this.addLabel(200, "Server error. Is the backend running?").setColor(
-        "#ff4444",
+        "#e49c96",
       );
     }
   }

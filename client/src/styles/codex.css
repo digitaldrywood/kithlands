@@ -1,3 +1,5 @@
+@import "./menu-theme.css";
+
 .kith-codex-backdrop {
   position: fixed;
   inset: 0;
@@ -7,12 +9,12 @@
   padding: max(12px, env(safe-area-inset-top))
     max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom))
     max(12px, env(safe-area-inset-left));
-  background: #030b18b8;
+  background: var(--menu-panel);
 }
 .kith-codex {
-  --codex-text: #edf5ff;
-  --codex-muted: #b3c9e3;
-  --codex-gold: #f4d471;
+  --codex-text: var(--menu-text);
+  --codex-muted: var(--menu-muted);
+  --codex-gold: var(--menu-accent);
   color: var(--codex-text);
   font:
     16px/1.45 Arial,
@@ -23,12 +25,10 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: linear-gradient(145deg, #254b7a, #102642 65%);
-  border: 3px solid #b5d5f4;
+  background: var(--menu-panel);
+  border: 1px solid var(--menu-line);
   border-radius: 14px;
-  box-shadow:
-    inset 0 0 0 3px #456d9d,
-    0 16px 60px #000b;
+  box-shadow: 0 20px 70px #0006;
 }
 .kith-codex button {
   color: inherit;
@@ -36,12 +36,12 @@
   cursor: pointer;
   min-height: 44px;
   padding: 8px 16px;
-  background: #142f50;
-  border: 1px solid #628ab5;
-  border-radius: 6px;
+  background: var(--menu-card);
+  border: 1px solid var(--menu-line);
+  border-radius: 12px;
 }
 .kith-codex button:hover {
-  background: #2c5180;
+  background: var(--menu-line);
 }
 .kith-codex :focus-visible {
   outline: 3px solid var(--codex-gold);
@@ -72,15 +72,15 @@
   display: flex;
   gap: 8px;
   padding: 0 20px 12px;
-  border-bottom: 1px solid #6189b1;
+  border-bottom: 1px solid var(--menu-line);
 }
 .codex-tabs button {
   flex: 1;
 }
 .codex-tabs [aria-selected="true"] {
-  background: #3a6091;
-  border-color: #c9e3ff;
-  box-shadow: inset 0 -3px var(--codex-gold);
+  background: var(--menu-line);
+  border-color: var(--menu-text);
+  box-shadow: 0 20px 70px #0006;
 }
 .codex-content {
   display: flex;
@@ -92,7 +92,7 @@
 .codex-footer {
   color: var(--codex-muted);
   padding: 9px 20px;
-  border-top: 1px solid #527aa3;
+  border-top: 1px solid var(--menu-line);
   font-size: 13px;
 }
 .codex-status {
@@ -123,18 +123,18 @@
   flex: 1;
   min-height: 0;
   margin: 0 12px 12px;
-  border: 1px solid #527aa3;
-  border-radius: 8px;
+  border: 1px solid var(--menu-line);
+  border-radius: 12px;
   overflow: hidden;
-  background: #0a1b30b3;
+  background: var(--menu-panel);
 }
 .bestiary-list {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 8px;
-  border-right: 1px solid #527aa3;
-  scrollbar-color: #7296ba #112b49;
+  border-right: 1px solid var(--menu-line);
+  scrollbar-color: var(--menu-line) var(--menu-card);
 }
 .kith-codex .bestiary-entry {
   display: flex;
@@ -148,8 +148,8 @@
   background: transparent;
 }
 .kith-codex .bestiary-entry[aria-selected="true"] {
-  border-color: #adcef1;
-  background: #2b4d75;
+  border-color: var(--menu-muted);
+  background: var(--menu-line);
 }
 .bestiary-number {
   color: var(--codex-muted);
@@ -166,7 +166,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 20px 24px;
-  scrollbar-color: #7296ba #112b49;
+  scrollbar-color: var(--menu-line) var(--menu-card);
 }
 .bestiary-kicker {
   text-transform: uppercase;
@@ -182,7 +182,7 @@
   margin: 8px 0 12px;
   padding: 10px 12px;
   border-left: 3px solid var(--codex-gold);
-  background: #173553;
+  background: var(--menu-card);
 }
 .bestiary-field-note h3 {
   margin-top: 0;
@@ -208,7 +208,7 @@
   display: grid;
   place-items: center;
   margin: 8px 0;
-  background: radial-gradient(ellipse at center, #456c9940, transparent 68%);
+  background: var(--menu-panel);
 }
 .bestiary-portrait img {
   max-width: 100%;
@@ -238,7 +238,7 @@
 .bestiary-drops th,
 .bestiary-drops td {
   padding: 6px 9px;
-  border-bottom: 1px solid #42658a;
+  border-bottom: 1px solid var(--menu-line);
   text-align: left;
 }
 .bestiary-drops th {
@@ -259,8 +259,8 @@
   gap: 6px;
 }
 .bestiary-stats > div {
-  background: #1e3c5c;
-  border-radius: 4px;
+  background: var(--menu-card);
+  border-radius: 10px;
   padding: 7px 10px;
 }
 .bestiary-stats dt {
@@ -279,9 +279,9 @@
   place-items: center;
   height: 180px;
   font:
-    96px Georgia,
-    serif;
-  color: #91aec6;
+    96px system-ui,
+    sans-serif;
+  color: var(--menu-muted);
 }
 .codex-guide {
   overflow-y: auto;
@@ -289,7 +289,7 @@
 }
 .codex-guide-row {
   padding: 8px 0;
-  border-bottom: 1px solid #345679;
+  border-bottom: 1px solid var(--menu-line);
 }
 .codex-guide-row strong,
 .codex-guide-row span {
@@ -342,7 +342,7 @@
   }
   .bestiary-list {
     border-right: 0;
-    border-bottom: 1px solid #527aa3;
+    border-bottom: 1px solid var(--menu-line);
     padding: 4px;
   }
   .kith-codex .bestiary-entry {

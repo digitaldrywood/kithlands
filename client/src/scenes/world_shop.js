@@ -1,3 +1,4 @@
+import { roundedRectangle } from "../ui/theme.js";
 import {
   autosaveGame,
   buyItem,
@@ -43,8 +44,7 @@ const DETAIL_W = 240;
 const DETAIL_H = 370;
 
 function drawCycleControl(scene, x, y, label, onClick, depth) {
-  const bg = scene.add
-    .rectangle(x, y, 64, 38, 0x1e3558, 1)
+  const bg = roundedRectangle(scene, x, y, 64, 38, 0x1c2736, 1)
     .setStrokeStyle(2, 0x66a7ff)
     .setScrollFactor(0)
     .setDepth(depth)
@@ -53,7 +53,7 @@ function drawCycleControl(scene, x, y, label, onClick, depth) {
     .text(x, y + 1, label, {
       fontSize: "16px",
       color: "#dceaff",
-      fontFamily: "monospace",
+      fontFamily: "Arial, sans-serif",
       fontStyle: "bold",
     })
     .setOrigin(0.5)
@@ -63,8 +63,8 @@ function drawCycleControl(scene, x, y, label, onClick, depth) {
   const press = () => {
     if (typeof onClick === "function") onClick();
   };
-  const over = () => bg.setFillStyle(0x2b5486, 1);
-  const out = () => bg.setFillStyle(0x1e3558, 1);
+  const over = () => bg.setFillStyle(0x384859, 1);
+  const out = () => bg.setFillStyle(0x1c2736, 1);
   bg.on("pointerover", over);
   bg.on("pointerout", out);
   bg.on("pointerdown", press);
@@ -303,7 +303,7 @@ export async function openShop(scene, spawn) {
 
     const panel = drawPanel(scene, DETAIL_X, DETAIL_Y, DETAIL_W, DETAIL_H, {
       depth: MAIN_PANEL.depth + 2,
-      fill: 0x081225,
+      fill: 0x151e2b,
       stroke: 0x6699ff,
     });
     detailGroup.push(panel.bg);
@@ -312,7 +312,7 @@ export async function openShop(scene, spawn) {
       .text(DETAIL_X, DETAIL_Y - 165, item.name, {
         fontSize: "16px",
         color: "#fff5c2",
-        fontFamily: "Georgia",
+        fontFamily: "Arial, sans-serif",
         fontStyle: "bold",
       })
       .setOrigin(0.5)
@@ -391,7 +391,7 @@ export async function openShop(scene, spawn) {
         .text(indicatorX, DETAIL_Y - 110, indicator.symbol, {
           fontSize: indicator.slot === focusedMemberIndex ? "16px" : "13px",
           color: indicator.color,
-          fontFamily: "monospace",
+          fontFamily: "Arial, sans-serif",
         })
         .setOrigin(0.5)
         .setScrollFactor(0)
@@ -403,7 +403,7 @@ export async function openShop(scene, spawn) {
     const currentLine = scene.add
       .text(DETAIL_X - 98, DETAIL_Y - 90, `Current: ${compare.currentName}`, {
         fontSize: "10px",
-        color: "#ffffff",
+        color: "#e9eef7",
         fontFamily: "Arial",
       })
       .setScrollFactor(0)
@@ -425,7 +425,7 @@ export async function openShop(scene, spawn) {
         compare.canEquip ? "May equip" : "May not wield",
         {
           fontSize: "10px",
-          color: compare.canEquip ? "#44ff44" : "#ddaa66",
+          color: compare.canEquip ? "#8ac7aa" : "#ddaa66",
           fontFamily: "Arial",
         },
       )
@@ -437,8 +437,8 @@ export async function openShop(scene, spawn) {
     const statHeader = scene.add
       .text(DETAIL_X - 98, statY, "Item Stats", {
         fontSize: "11px",
-        color: "#ffcc44",
-        fontFamily: "Georgia",
+        color: "#c9b589",
+        fontFamily: "Arial, sans-serif",
         fontStyle: "bold",
       })
       .setScrollFactor(0)
@@ -462,8 +462,8 @@ export async function openShop(scene, spawn) {
     const compareHeader = scene.add
       .text(DETAIL_X - 98, statY, "Member Compare", {
         fontSize: "11px",
-        color: "#ffcc44",
-        fontFamily: "Georgia",
+        color: "#c9b589",
+        fontFamily: "Arial, sans-serif",
         fontStyle: "bold",
       })
       .setScrollFactor(0)
@@ -566,7 +566,7 @@ export async function openShop(scene, spawn) {
       30,
       "Buy",
       buyStandard,
-      { depth: MAIN_PANEL.depth + 3, fontSize: "11px", fill: 0x1d4938 },
+      { depth: MAIN_PANEL.depth + 3, fontSize: "11px", fill: 0x1c2736 },
     );
     const buyForBtn = drawButton(
       scene,
@@ -576,7 +576,7 @@ export async function openShop(scene, spawn) {
       30,
       buyForMemberLabel(member),
       buyForMember,
-      { depth: MAIN_PANEL.depth + 3, fontSize: "10px", fill: 0x1d4938 },
+      { depth: MAIN_PANEL.depth + 3, fontSize: "10px", fill: 0x1c2736 },
     );
     if (!affordable) {
       buyBtn.setEnabled(false);
@@ -605,16 +605,16 @@ export async function openShop(scene, spawn) {
       const selectedRow =
         selected && shopSelectionID(selected) === shopSelectionID(item);
 
-      const rowBg = scene.add
-        .rectangle(
-          LIST_ROW_CENTER_X,
-          y,
-          LIST_ROW_WIDTH,
-          LIST_ROW_HEIGHT,
-          selectedRow ? 0x23395d : 0x111a33,
-          0.95,
-        )
-        .setStrokeStyle(1, selectedRow ? 0x88ccff : 0x334466)
+      const rowBg = roundedRectangle(
+        scene,
+        LIST_ROW_CENTER_X,
+        y,
+        LIST_ROW_WIDTH,
+        LIST_ROW_HEIGHT,
+        selectedRow ? 0x1c2736 : 0x151e2b,
+        0.95,
+      )
+        .setStrokeStyle(1, selectedRow ? 0xc9b589 : 0x384859)
         .setScrollFactor(0)
         .setDepth(MAIN_PANEL.depth + 1);
       listGroup.push(rowBg);
@@ -627,7 +627,7 @@ export async function openShop(scene, spawn) {
         desc += " [Key]";
       }
 
-      const textColor = affordable || equippable ? "#ffffff" : "#777777";
+      const textColor = affordable || equippable ? "#e9eef7" : "#777777";
       const label = scene.add
         .text(LIST_LEFT, y + LIST_TEXT_Y_OFFSET, desc, {
           fontSize: "11px",
@@ -642,7 +642,7 @@ export async function openShop(scene, spawn) {
       const price = scene.add
         .text(455, y + LIST_TEXT_Y_OFFSET, `${item.price}g`, {
           fontSize: "11px",
-          color: affordable ? "#ffcc44" : "#777777",
+          color: affordable ? "#c9b589" : "#777777",
           fontFamily: "Arial",
         })
         .setOrigin(1, 0.5)
@@ -674,7 +674,7 @@ export async function openShop(scene, spawn) {
             .text(indicatorX, y, indicator.symbol, {
               fontSize: "12px",
               color: indicator.color,
-              fontFamily: "monospace",
+              fontFamily: "Arial, sans-serif",
             })
             .setOrigin(0.5)
             .setScrollFactor(0)
@@ -741,8 +741,8 @@ export async function openShop(scene, spawn) {
           {
             depth: MAIN_PANEL.depth + 2,
             fontSize: "10px",
-            fill: 0x1d4938,
-            fillHover: 0x2f6a50,
+            fill: 0x1c2736,
+            fillHover: 0x384859,
             stroke: 0x9cdfb4,
           },
         );
@@ -756,8 +756,8 @@ export async function openShop(scene, spawn) {
       const empty = scene.add
         .text(280, 205, "Nothing in this category.", {
           fontSize: "12px",
-          color: "#666666",
-          fontFamily: "monospace",
+          color: "#697888",
+          fontFamily: "Arial, sans-serif",
         })
         .setOrigin(0.5)
         .setScrollFactor(0)
@@ -801,8 +801,8 @@ export async function openShop(scene, spawn) {
       {
         depth: MAIN_PANEL.depth + 3,
         fontSize: "12px",
-        fill: 0x1d4938,
-        fillHover: 0x2f6a50,
+        fill: 0x1c2736,
+        fillHover: 0x384859,
         stroke: 0x9cdfb4,
       },
     );
@@ -847,7 +847,7 @@ export async function openShop(scene, spawn) {
     destroyPicker();
 
     const panel = drawPanel(scene, 400, 305, 470, 250, {
-      fill: 0x111133,
+      fill: 0x151e2b,
       stroke: 0x88aaff,
       depth: MAIN_PANEL.depth + 10,
     });
@@ -857,7 +857,7 @@ export async function openShop(scene, spawn) {
       .text(400, 205, `Learn ${item.name}`, {
         fontSize: "16px",
         color: "#ffff88",
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
@@ -868,7 +868,7 @@ export async function openShop(scene, spawn) {
       .text(400, 228, "Choose a party member.", {
         fontSize: "11px",
         color: "#aaccee",
-        fontFamily: "monospace",
+        fontFamily: "Arial, sans-serif",
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
@@ -900,8 +900,8 @@ export async function openShop(scene, spawn) {
       const label = scene.add
         .text(210, y, choice.label, {
           fontSize: "11px",
-          color: choice.canLearn ? "#ffffff" : "#777777",
-          fontFamily: "monospace",
+          color: choice.canLearn ? "#e9eef7" : "#777777",
+          fontFamily: "Arial, sans-serif",
         })
         .setScrollFactor(0)
         .setDepth(MAIN_PANEL.depth + 11);
@@ -923,8 +923,8 @@ export async function openShop(scene, spawn) {
           {
             depth: MAIN_PANEL.depth + 11,
             fontSize: "10px",
-            fill: 0x1d4938,
-            fillHover: 0x2f6a50,
+            fill: 0x1c2736,
+            fillHover: 0x384859,
             stroke: 0x9cdfb4,
           },
         );
@@ -967,20 +967,20 @@ export async function openShop(scene, spawn) {
       depth: MAIN_PANEL.depth,
       variant: "ff6",
       radius: 10,
-      innerTop: 0x223758,
-      innerBottom: 0x101927,
-      outerFill: 0x314d78,
+      innerTop: 0x1c2736,
+      innerBottom: 0x151e2b,
+      outerFill: 0x384859,
     },
   );
-  const scrim = scene.add
-    .rectangle(
-      scene.gameplayLayout?.centerX || 400,
-      scene.gameplayLayout?.centerY || 300,
-      scene.gameplayLayout?.width || 800,
-      scene.gameplayLayout?.height || 600,
-      0x02050b,
-      0.94,
-    )
+  const scrim = roundedRectangle(
+    scene,
+    scene.gameplayLayout?.centerX || 400,
+    scene.gameplayLayout?.centerY || 300,
+    scene.gameplayLayout?.width || 800,
+    scene.gameplayLayout?.height || 600,
+    0x151e2b,
+    0.94,
+  )
     .setScrollFactor(0)
     .setDepth(MAIN_PANEL.depth - 1)
     .setInteractive();
@@ -991,7 +991,7 @@ export async function openShop(scene, spawn) {
     .text(400, 64, `${spawn.name}`, {
       fontSize: "20px",
       color: "#f5efe0",
-      fontFamily: "Georgia",
+      fontFamily: "Arial, sans-serif",
       fontStyle: "bold",
     })
     .setOrigin(0.5)
@@ -1003,7 +1003,7 @@ export async function openShop(scene, spawn) {
     .text(400, 90, `Gold: ${scene.gameState.gold}`, {
       fontSize: "13px",
       color: "#f0d77a",
-      fontFamily: "monospace",
+      fontFamily: "Arial, sans-serif",
     })
     .setOrigin(0.5)
     .setScrollFactor(0)
@@ -1026,8 +1026,8 @@ export async function openShop(scene, spawn) {
       {
         depth: MAIN_PANEL.depth + 1,
         fontSize: "11px",
-        fill: 0x1e3558,
-        fillHover: 0x2b5486,
+        fill: 0x1c2736,
+        fillHover: 0x384859,
         stroke: 0x9cc8ff,
       },
     );
@@ -1048,7 +1048,7 @@ export async function openShop(scene, spawn) {
       depth: MAIN_PANEL.depth + 1,
       fontSize: "12px",
       fill: 0x2d2535,
-      fillHover: 0x49385c,
+      fillHover: 0x384859,
       stroke: 0xd7b45c,
     },
   );

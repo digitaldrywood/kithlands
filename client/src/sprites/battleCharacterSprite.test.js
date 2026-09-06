@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import classes from "../../../shared/classes.json";
+import items from "../../../shared/items.json";
 import {
   MENDER_BATTLE_BODY_KEY,
   MENDER_STAFF_CAST_FRAMES,
@@ -14,6 +16,8 @@ import {
 import {
   BATTLE_CHARACTER_CATALOG,
   battleProfileFor,
+  battleBodyAssets,
+  battleWeaponAssets,
 } from "../data/battleCharacters.js";
 
 function sceneWith(keys) {
@@ -350,4 +354,27 @@ describe("Wanderer battle runtime contract", () => {
       }),
     ).toBe(true);
   });
+});
+
+describe("starter party battle sprites", () => {
+  it.each(["warrior", "brawler", "rogue", "mender", "cinder"])(
+    "%s keeps its animated body with its starting equipment",
+    (classID) => {
+      const character = classes.find(({ id }) => id === classID);
+      const weapon = items.weapons.find(
+        ({ id }) => id === character.starting_loadout.main_hand,
+      );
+      const scene = sceneWith([
+        ...battleBodyAssets().map(({ key }) => key),
+        ...battleWeaponAssets().map(({ key }) => key),
+      ]);
+      expect(
+        canUseBattleCharacterSprite(scene, {
+          base_sprite: classID,
+          weapon_visual_id: weapon?.visual_id,
+          weapon_animation_set: weapon?.animation_set,
+        }),
+      ).toBe(true);
+    },
+  );
 });

@@ -1,5 +1,5 @@
-const FRAME_SCALE = 0.5;
-const FRAME_TILE = 64 * FRAME_SCALE;
+import { roundedRectangle } from "./theme.js";
+const FRAME_TILE = 16;
 const TEXT_PADDING_X = 12;
 const TEXT_PADDING_Y = 4;
 const DEFAULT_MIN_HEIGHT = 72;
@@ -14,7 +14,7 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-function toColorInt(color, fallback = 0xffff44) {
+function toColorInt(color, fallback = 0xc9b589) {
   if (typeof color === "number" && Number.isFinite(color)) return color;
   if (typeof color === "string") {
     const normalized = color.trim().replace(/^#/, "");
@@ -52,7 +52,7 @@ export class MessageWindow {
 
     this.frame = this.buildFrame(x, y, width, height, depth);
     this.accentBar = scene.add
-      .rectangle(x + 18, y + height / 2, 6, height - 22, 0xffff44, 1)
+      .rectangle(x + 18, y + height / 2, 3, height - 32, 0xc9b589, 1)
       .setOrigin(0, 0.5)
       .setDepth(depth + 1);
     this.text = scene.add
@@ -62,8 +62,8 @@ export class MessageWindow {
         "",
         {
           fontSize,
-          color: "#ffffff",
-          fontFamily: "monospace",
+          color: "#e9eef7",
+          fontFamily: "Arial, sans-serif",
           fontStyle: "bold",
           wordWrap: {
             width: this.contentBounds.width - TEXT_PADDING_X * 2,
@@ -91,67 +91,19 @@ export class MessageWindow {
       width: innerWidth,
       height: innerHeight,
     };
-    const fill = this.scene.add
-      .tileSprite(
-        this.contentBounds.x,
-        this.contentBounds.y,
-        this.contentBounds.width,
-        this.contentBounds.height,
-        "border_fill",
-      )
+    const fill = roundedRectangle(
+      this.scene,
+      x,
+      y,
+      width,
+      height,
+      0x151e2b,
+      0.98,
+      16,
+    )
       .setOrigin(0, 0)
       .setDepth(depth);
-    const top = this.scene.add
-      .tileSprite(x + FRAME_TILE, y, innerWidth, FRAME_TILE, "border_t")
-      .setOrigin(0, 0)
-      .setDepth(depth);
-    const bottom = this.scene.add
-      .tileSprite(
-        x + FRAME_TILE,
-        y + height - FRAME_TILE,
-        innerWidth,
-        FRAME_TILE,
-        "border_b",
-      )
-      .setOrigin(0, 0)
-      .setDepth(depth);
-    const left = this.scene.add
-      .tileSprite(x, y + FRAME_TILE, FRAME_TILE, innerHeight, "border_l")
-      .setOrigin(0, 0)
-      .setDepth(depth);
-    const right = this.scene.add
-      .tileSprite(
-        x + width - FRAME_TILE,
-        y + FRAME_TILE,
-        FRAME_TILE,
-        innerHeight,
-        "border_r",
-      )
-      .setOrigin(0, 0)
-      .setDepth(depth);
-
-    const corners = [
-      ["border_tl", x, y],
-      ["border_tr", x + width - FRAME_TILE, y],
-      ["border_bl", x, y + height - FRAME_TILE],
-      ["border_br", x + width - FRAME_TILE, y + height - FRAME_TILE],
-    ].map(([key, px, py]) =>
-      this.scene.add
-        .image(px, py, key)
-        .setOrigin(0, 0)
-        .setScale(FRAME_SCALE)
-        .setDepth(depth),
-    );
-
-    return {
-      fill,
-      top,
-      bottom,
-      left,
-      right,
-      corners,
-      nodes: [fill, top, bottom, left, right, ...corners],
-    };
+    return { fill, nodes: [fill] };
   }
 
   applyLayout(nextHeight) {
@@ -170,31 +122,11 @@ export class MessageWindow {
       height: innerHeight,
     };
 
-    this.frame.fill
-      .setPosition(this.contentBounds.x, this.contentBounds.y)
-      .setSize(this.contentBounds.width, this.contentBounds.height);
-    this.frame.top
-      .setPosition(x + FRAME_TILE, y)
-      .setSize(innerWidth, FRAME_TILE);
-    this.frame.bottom
-      .setPosition(x + FRAME_TILE, y + height - FRAME_TILE)
-      .setSize(innerWidth, FRAME_TILE);
-    this.frame.left
-      .setPosition(x, y + FRAME_TILE)
-      .setSize(FRAME_TILE, innerHeight);
-    this.frame.right
-      .setPosition(x + width - FRAME_TILE, y + FRAME_TILE)
-      .setSize(FRAME_TILE, innerHeight);
-
-    const [tl, tr, bl, br] = this.frame.corners;
-    tl.setPosition(x, y);
-    tr.setPosition(x + width - FRAME_TILE, y);
-    bl.setPosition(x, y + height - FRAME_TILE);
-    br.setPosition(x + width - FRAME_TILE, y + height - FRAME_TILE);
+    this.frame.fill.setPosition(x, y).setSize(width, height);
 
     this.accentBar
       .setPosition(x + 18, y + height / 2)
-      .setSize(6, Math.max(18, height - 22));
+      .setSize(3, Math.max(18, height - 32));
     this.text.setPosition(
       this.contentBounds.x + TEXT_PADDING_X,
       this.contentBounds.y + TEXT_PADDING_Y,
