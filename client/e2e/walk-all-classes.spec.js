@@ -23,6 +23,18 @@ const OPPOSITE_DIR = {
   right: "left",
 };
 async function startGame(page) {
+  // Use the same explicit render clock as the cadence tests. Headless Linux
+  // has no display vsync; requestAnimationFrame can alias the pose sampling.
+  await page.route("**/src/main.js", async (route) => {
+    const response = await route.fetch();
+    await route.fulfill({
+      response,
+      body: (await response.text()).replace(
+        "const game = new Phaser.Game(config);",
+        "config.fps = { target: 60, forceSetTimeOut: true };\nconst game = new Phaser.Game(config);",
+      ),
+    });
+  });
   // The audit must display every biomechanical pose even when headless
   // Chromium is under load; the normal-speed smoke test runs separately.
   await page.addInitScript(() => {
@@ -99,9 +111,10 @@ async function auditClassScene(page, sceneKey, classId) {
     expect(auditedFrames.every((frame) => expectedFrames.includes(frame))).toBe(
       true,
     );
-    expect(new Set(auditedFrames).size).toBeGreaterThanOrEqual(
-      Math.min(4, contract.frameSequence.length),
-    );
+    expect(
+      new Set(auditedFrames).size,
+      `${classId} ${sceneKey} ${dir}: assigned ${[...new Set(auditedFrames)]}; rendered ${[...new Set(sequence.map((s) => s.frameIndex))]}`,
+    ).toBeGreaterThanOrEqual(Math.min(4, contract.frameSequence.length));
     const passingFrames = [2, 6]
       .filter((frame) => contract.frameSequence.includes(frame))
       .map((frame) => contract.baseFrameByDirection[dir] + frame);
