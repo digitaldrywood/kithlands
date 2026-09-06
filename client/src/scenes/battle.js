@@ -249,6 +249,10 @@ export class BattleScene extends Phaser.Scene {
 
   init(data) {
     this.gameState = data.gameState;
+    // Only round restarts carry presentation forward; a new encounter starts fresh.
+    this.battlePresentation = data.battlePresentation ?? {
+      formation: (data.gameState?.enemies ?? []).map((enemy) => ({ ...enemy })),
+    };
     this._lastRoundActions = normalizeLastRoundActions(
       data.lastRoundActions ?? data.gameState?.last_round_actions,
     );
@@ -264,6 +268,14 @@ export class BattleScene extends Phaser.Scene {
     // so interior battles can pick the matching pre-rendered background.
     this.buildingType =
       data.buildingType ?? data.returnScene?.spawn?.building_type ?? null;
+  }
+
+  restartBattle(data) {
+    this.scene.restart({
+      ...data,
+      buildingType: this.buildingType,
+      battlePresentation: this.battlePresentation,
+    });
   }
 
   create() {
@@ -553,7 +565,7 @@ export class BattleScene extends Phaser.Scene {
         if (this.gameState.phase !== "combat") {
           this.showVictoryResults(this.gameState);
         } else {
-          this.scene.restart({
+          this.restartBattle({
             gameState: this.gameState,
             returnScene: this.returnScene,
             encounterTileType: this.encounterTileType,
@@ -840,18 +852,20 @@ export class BattleScene extends Phaser.Scene {
     // path below when the PNG is missing (e.g. before the generator script
     // has been run, or when the fallback test renames the folder out).
     const gs = this.gameState;
-    const enemyFingerprint = Array.isArray(gs?.enemies)
-      ? gs.enemies.map((e) => `${e?.id ?? ""}:${e?.name ?? ""}`).join(",")
+    const enemyFingerprint = Array.isArray(this.battlePresentation.formation)
+      ? this.battlePresentation.formation
+          .map((e) => `${e?.id ?? ""}:${e?.name ?? ""}`)
+          .join(",")
       : "";
     const seedParts = [
       this.encounterTileType ?? "x",
       this.buildingType ?? "",
       enemyFingerprint,
     ].join("|");
-    const key =
+    const key = (this.battlePresentation.backgroundKey ??=
       (gs.final_encounter?.active && gs.final_encounter.battle_background) ||
       gs.dungeon?.battle_background ||
-      pickBackgroundKey(theme.motif, seedParts, this.buildingType);
+      pickBackgroundKey(theme.motif, seedParts, this.buildingType));
     if (key && this.textures.exists(key)) {
       const bg = this.add
         .image(400, 300, key)
@@ -1273,9 +1287,13 @@ export class BattleScene extends Phaser.Scene {
 
   drawEnemies(gs) {
     const enemies = gs.enemies;
-    const enemyLayout = buildEnemyBattleLayout(enemies, {
-      height: this.hudLayout.mode === "mobile" ? 500 : 320,
-    });
+    const enemyLayout = buildEnemyBattleLayout(
+      enemies,
+      {
+        height: this.hudLayout.mode === "mobile" ? 500 : 320,
+      },
+      this.battlePresentation.formation,
+    );
     this.enemyNumbers = [];
 
     for (let i = 0; i < enemies.length; i++) {
@@ -3173,7 +3191,7 @@ export class BattleScene extends Phaser.Scene {
       if (result.phase !== "combat") {
         this.returnFromBattle(result);
       } else {
-        this.scene.restart({
+        this.restartBattle({
           gameState: result,
           returnScene: this.returnScene,
           encounterTileType: this.encounterTileType,
@@ -3239,7 +3257,7 @@ export class BattleScene extends Phaser.Scene {
           this.autoMode = false;
           this.showVictoryResults(this.gameState);
         } else {
-          this.scene.restart({
+          this.restartBattle({
             gameState: this.gameState,
             lastRoundActions: savedActions,
             autoMode: this.autoMode,
@@ -3271,7 +3289,7 @@ export class BattleScene extends Phaser.Scene {
         this.time.delayedCall(600, () => {
           this.animating = false;
           if (fresh.phase === "combat") {
-            this.scene.restart({
+            this.restartBattle({
               gameState: fresh,
               returnScene: this.returnScene,
               encounterTileType: this.encounterTileType,

@@ -1242,6 +1242,10 @@ function visibleBattleFxSnapshot(scene) {
     messageWindowTextBounds: messageLayout.textBounds || null,
     encounterTileType: scene?.encounterTileType ?? null,
     backdropCount: taggedCount("battle-backdrop"),
+    backdropTexture:
+      children.find(
+        (entry) => entry._combatFxTag === "battle-backdrop" && entry.texture,
+      )?.texture.key ?? null,
     showcaseBannerCount: taggedCount("showcase-banner"),
     groundPlaneCount: taggedCount("ground-plane"),
     shadowCount: taggedCount("combat-shadow"),
