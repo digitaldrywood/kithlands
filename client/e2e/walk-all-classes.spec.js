@@ -108,6 +108,17 @@ async function auditClassScene(page, sceneKey, classId) {
     const expectedFrames = contract.frameSequence.map(
       (frame) => contract.baseFrameByDirection[dir] + frame,
     );
+    await test.info().attach(`${classId}-${sceneKey}-${dir}-motion`, {
+      contentType: "application/json",
+      body: Buffer.from(
+        JSON.stringify(
+          sequence.map((sample) => ({
+            frame: sample.frameIndex,
+            assignments: sample.walkFrameAudit,
+          })),
+        ),
+      ),
+    });
     expect(auditedFrames.every((frame) => expectedFrames.includes(frame))).toBe(
       true,
     );
