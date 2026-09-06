@@ -1,4 +1,10 @@
 import { test, expect } from "@playwright/test";
+import { mkdirSync, writeFileSync } from "node:fs";
+const proof = new URL(
+  `../tmp/walk-rendered-all-classes-${Date.now()}/`,
+  import.meta.url,
+);
+mkdirSync(proof, { recursive: true });
 
 const CLASS_IDS = [
   "warrior",
@@ -64,6 +70,12 @@ async function restartSceneWithLeaderClass(page, sceneKey, classId) {
 
 async function auditClassScene(page, sceneKey, classId) {
   await restartSceneWithLeaderClass(page, sceneKey, classId);
+  expect(
+    await page.evaluate(
+      (other) => window.__kithlandsTest.sceneIsActive(other),
+      sceneKey === "World" ? "Town" : "World",
+    ),
+  ).toBe(false);
   const contract = await page.evaluate(
     (id) => window.__kithlandsTest.walkSheetContract(id),
     classId,
@@ -108,17 +120,15 @@ async function auditClassScene(page, sceneKey, classId) {
     const expectedFrames = contract.frameSequence.map(
       (frame) => contract.baseFrameByDirection[dir] + frame,
     );
-    await test.info().attach(`${classId}-${sceneKey}-${dir}-motion`, {
-      contentType: "application/json",
-      body: Buffer.from(
-        JSON.stringify(
-          sequence.map((sample) => ({
-            frame: sample.frameIndex,
-            assignments: sample.walkFrameAudit,
-          })),
-        ),
+    writeFileSync(
+      new URL(`${classId}-${sceneKey}-${dir}.json`, proof),
+      JSON.stringify(
+        sequence.map((sample) => ({
+          frame: sample.frameIndex,
+          assignments: sample.walkFrameAudit,
+        })),
       ),
-    });
+    );
     expect(auditedFrames.every((frame) => expectedFrames.includes(frame))).toBe(
       true,
     );

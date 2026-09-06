@@ -2697,6 +2697,11 @@ export function installDevTestBridge(game) {
         ? targetScene
         : activeScene(game);
       const gameState = auditGameState(currentScene?.gameState, classId);
+      // SceneManager.start does not stop the previous scene like ScenePlugin.start.
+      // Match real travel: do not render World underneath the Town audit.
+      for (const running of game.scene.getScenes(true)) {
+        if (running.scene.key !== sceneKey) game.scene.stop(running.scene.key);
+      }
       if (sceneKey === "World") {
         setLeaderIndex(0);
         game.scene.start("World", { gameState });
