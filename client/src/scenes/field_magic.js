@@ -434,6 +434,7 @@ export function showFieldMagicMenu(scene, opts = {}) {
 
 function rebuildRows(state) {
   clearRows(state);
+  state.hintText?.setText("↑↓ move · Enter/click select · Done to finish");
 
   if (state.casterSlot == null) {
     state.titleText.setText("FIELD MAGIC");
