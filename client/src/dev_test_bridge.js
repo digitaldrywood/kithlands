@@ -2861,7 +2861,9 @@ export function installDevTestBridge(game) {
 
     startScene(sceneKey, data = {}) {
       if (!sceneKey) throw new Error("sceneKey is required");
-      game.scene.start(sceneKey, clone(data));
+      const source = activeScene(game);
+      if (source) source.scene.start(sceneKey, clone(data));
+      else game.scene.start(sceneKey, clone(data));
       return true;
     },
 

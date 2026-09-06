@@ -35,6 +35,9 @@ for (const width of [1440, 720]) {
       return api.getShop(gs.id, gs.current_location.map_id);
     });
     await page.evaluate(() => window.__kithlandsTest.waitForSceneReady("Town"));
+    await expect(
+      page.getByRole("region", { name: "Exploration controls" }),
+    ).toHaveCount(0);
     const npc = await page.evaluate(
       () => window.__kithlandsTest.townNpcPositions("Town")[0],
     );
