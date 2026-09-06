@@ -10,7 +10,7 @@ async function state(page) {
   return page.evaluate(() => window.__kithlandsTest.gameState());
 }
 async function tapLogical(page, x, y, width = 800, height = 600) {
-  const box = await page.locator("canvas").boundingBox();
+  const box = await page.locator("#game canvas").boundingBox();
   await page.mouse.click(
     box.x + (x / width) * box.width,
     box.y + (y / height) * box.height,

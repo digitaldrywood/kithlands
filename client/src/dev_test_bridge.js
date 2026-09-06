@@ -1005,7 +1005,7 @@ function exportPlayerFrame(scene) {
   };
 }
 
-function playerSnapshot(scene, moved) {
+function playerSnapshot(scene, moved, includePixels = true) {
   const frame = scene?.player?.frame;
   const rawFrameIndex =
     frame && frame.name !== undefined ? Number(frame.name) : frame?.index;
@@ -1027,8 +1027,8 @@ function playerSnapshot(scene, moved) {
     hasWalkSheet: !!scene?.hasWalkSheet,
     leaderClass: scene?.leaderClass || null,
     walkFrameAudit: clone(scene?.walkFrameAudit || []),
-    frameHash: frameHash(scene),
-    framePixels: framePixelAudit(scene),
+    frameHash: includePixels ? frameHash(scene) : null,
+    framePixels: includePixels ? framePixelAudit(scene) : null,
     x: scene?.playerX ?? null,
     y: scene?.playerY ?? null,
     screenX,
@@ -2761,6 +2761,19 @@ export function installDevTestBridge(game) {
     async sampleWalkCycle(dir, sceneKey) {
       const scene = getScene(game, sceneKey);
       const [dx, dy] = DIR_DELTAS[dir] || [0, 0];
+      // Read texture pixels before moving. Synchronous GPU readbacks inside
+      // postrender can stall software-rendered CI enough to stop the gait.
+      const pixelChecks = new Map();
+      const initialFrame = scene.player.frame.name;
+      for (const pose of walkFrameSequence(scene.leaderClass)) {
+        const index = walkFrameIndex(dir, pose, scene.leaderClass);
+        scene.player.setFrame(index);
+        pixelChecks.set(index, {
+          frameHash: frameHash(scene),
+          framePixels: framePixelAudit(scene),
+        });
+      }
+      scene.player.setFrame(initialFrame);
       const samples = [];
       let started = 0;
       let moved = false;
@@ -2773,7 +2786,13 @@ export function installDevTestBridge(game) {
         started += 1;
       };
       const sample = () => {
-        if (started > 0) samples.push(playerSnapshot(scene, moved));
+        if (started > 0) {
+          const snapshot = playerSnapshot(scene, moved, false);
+          samples.push({
+            ...snapshot,
+            ...pixelChecks.get(snapshot.frameIndex),
+          });
+        }
       };
       scene.events.on("update", advance);
       game.events.on("postrender", sample);
