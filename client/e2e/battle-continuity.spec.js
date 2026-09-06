@@ -11,7 +11,9 @@ for (const width of [800, 645, 390]) {
     await page.waitForFunction(
       () => window.__kithlandsTest?.activeSceneKey() === "Title",
     );
-    await page.evaluate(() => window.__kithlandsTest.startQuickGame());
+    const exploration = await page.evaluate(() =>
+      window.__kithlandsTest.startQuickGame(),
+    );
     await page.waitForFunction(
       () => window.__kithlandsTest.activeSceneKey() === "World",
     );
@@ -90,37 +92,11 @@ for (const width of [800, 645, 390]) {
       });
     }
     await page.unroute("**/game/*/action");
-    const victory = await page.evaluate(() =>
-      window.__kithlandsTest.forceVictory(),
-    );
-    // Victory can award equipment; resolve its real decision before Continue.
-    for (const drop of victory.battle_rewards?.drops ?? []) {
-      if (
-        drop.kind !== "equipment" ||
-        drop.decision !== "pending" ||
-        !drop.instance_id
-      )
-        continue;
-      await page.getByRole("button", { name: "Keep in Inventory" }).click();
-      await page.waitForFunction(
-        (instanceId) =>
-          !window.__kithlandsTest
-            .gameState("Battle")
-            .battle_rewards?.drops?.some(
-              (entry) =>
-                entry.instance_id === instanceId &&
-                entry.decision === "pending",
-            ),
-        drop.instance_id,
-      );
-    }
-    await page.waitForFunction(() =>
-      window.__kithlandsTest
-        .visibleTexts("Battle")
-        .some((entry) => entry.interactive && entry.text.trim() === "Continue"),
-    );
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("Continue", "Battle"),
+    // Re-enter exploration through the existing dev bridge, then ask the server
+    // for a new encounter. Victory rewards have their own UI regression suite.
+    await page.evaluate(
+      (gameState) => window.__kithlandsTest.startScene("World", { gameState }),
+      exploration,
     );
     await page.waitForFunction(
       () => window.__kithlandsTest.activeSceneKey() === "World",
