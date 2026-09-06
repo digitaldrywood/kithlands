@@ -43,17 +43,32 @@ pid_is_running() {
 
 pid_cwd() {
   local pid="$1"
-  readlink -f "/proc/${pid}/cwd" 2>/dev/null || true
+  if [ -e "/proc/${pid}/cwd" ]; then
+    readlink -f "/proc/${pid}/cwd" 2>/dev/null || true
+    return
+  fi
+
+  lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -n 1
 }
 
 pid_exe() {
   local pid="$1"
-  readlink -f "/proc/${pid}/exe" 2>/dev/null || true
+  if [ -e "/proc/${pid}/exe" ]; then
+    readlink -f "/proc/${pid}/exe" 2>/dev/null || true
+    return
+  fi
+
+  lsof -a -p "$pid" -d txt -Fn 2>/dev/null | sed -n 's/^n//p' | head -n 1
 }
 
 pid_cmdline() {
   local pid="$1"
-  tr '\0' ' ' <"/proc/${pid}/cmdline" 2>/dev/null || true
+  if [ -r "/proc/${pid}/cmdline" ]; then
+    tr '\0' ' ' <"/proc/${pid}/cmdline" 2>/dev/null || true
+    return
+  fi
+
+  ps -p "$pid" -o command= 2>/dev/null || true
 }
 
 read_pid_file() {
@@ -186,7 +201,11 @@ spawn_detached() {
   : >"$log_file"
   (
     cd "$dir"
-    setsid -f "$@" </dev/null >>"$log_file" 2>&1
+    if command -v setsid >/dev/null 2>&1; then
+      setsid -f "$@" </dev/null >>"$log_file" 2>&1
+    else
+      nohup "$@" </dev/null >>"$log_file" 2>&1 &
+    fi
   )
 }
 
@@ -228,7 +247,9 @@ play() {
   require_command curl
   require_command go
   require_command npx
-  require_command setsid
+  if ! command -v setsid >/dev/null 2>&1; then
+    require_command nohup
+  fi
 
   ensure_runtime_dirs
   stop

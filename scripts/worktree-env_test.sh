@@ -33,6 +33,8 @@ read -r A_PORT A_VITE A_API A_DB A_URL A_OFFSET < <(_load "${TMP_A}")
 read -r B_PORT B_VITE B_API B_DB B_URL B_OFFSET < <(_load "${TMP_B}")
 # Determinism: run A again and require identical values.
 read -r A2_PORT A2_VITE A2_API A2_DB A2_URL A2_OFFSET < <(_load "${TMP_A}")
+ln -s "${TMP_A}" "${TMP_B}/alias"
+read -r ALIAS_PORT ALIAS_VITE ALIAS_API ALIAS_DB ALIAS_URL ALIAS_OFFSET < <(_load "${TMP_B}/alias")
 
 fail=0
 
@@ -65,6 +67,9 @@ check "determinism VITE_PORT" "${A_VITE}" "${A2_VITE}"
 check "determinism API_PORT" "${A_API}" "${A2_API}"
 check "determinism DB_NAME" "${A_DB}" "${A2_DB}"
 check "determinism DATABASE_URL" "${A_URL}" "${A2_URL}"
+check "symlink PORT" "${A_PORT}" "${ALIAS_PORT}"
+check "symlink VITE_PORT" "${A_VITE}" "${ALIAS_VITE}"
+check "symlink DATABASE_URL" "${A_URL}" "${ALIAS_URL}"
 
 # PORT/VITE_PORT/DB_NAME must all agree on the same offset.
 expected_port=$((8080 + A_OFFSET))
