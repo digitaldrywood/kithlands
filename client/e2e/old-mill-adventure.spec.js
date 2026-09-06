@@ -77,9 +77,9 @@ for (const viewport of [
       () => window.__kithlandsTest.activeSceneKey() === "World",
     );
     await page.waitForTimeout(400);
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("Old Mill trail", "World"),
-    );
+    await page
+      .getByRole("button", { name: "Old Mill trail", exact: true })
+      .click();
     await room(page, "approach");
     await capture(page, `${viewport.width}-approach`);
     await tapAction(page, "split-oak", viewport);
@@ -287,9 +287,9 @@ for (const viewport of [
       window.__kithlandsTest?.sceneIsActive("Title"),
     );
     await page.evaluate(() => window.__kithlandsTest.startQuickGame());
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("Old Mill trail", "World"),
-    );
+    await page
+      .getByRole("button", { name: "Old Mill trail", exact: true })
+      .click();
     await room(page, "approach");
     const started = Date.now();
     const seen = new Set();
@@ -334,9 +334,9 @@ for (const viewport of [
     );
     // Re-enter via the unlocked route: server state must still mark the boss,
     // reward, and shortcut complete, with no second town payout.
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("Old Mill trail", "World"),
-    );
+    await page
+      .getByRole("button", { name: "Old Mill trail", exact: true })
+      .click();
     await room(page, "approach");
     await act(page, "trail-shortcut", viewport);
     await act(page, "tailrace-roots", viewport);
@@ -495,9 +495,9 @@ for (const viewport of [
     await page.evaluate(() =>
       window.__kithlandsTest.waitForSceneReady("World"),
     );
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("Old Mill trail", "World"),
-    );
+    await page
+      .getByRole("button", { name: "Old Mill trail", exact: true })
+      .click();
     await room(page, "approach");
     await page.evaluate(() =>
       window.__kithlandsTest.clickInteractiveText("Party", "Dungeon"),
