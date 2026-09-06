@@ -47,7 +47,7 @@ jobs:
           sha256sum --check docs/walk-assets.sha256
           python3 skills/kithlands-visual-production/scripts/audit_walk_sheets.py client/public/sprites/walk --columns 6 --rows 8 --mode enforce
       - name: Verify rendered walking and all classes
-        run: ./scripts/run_playwright_local.sh e2e/walk-rendered-cadence.spec.js e2e/walk-all-classes.spec.js e2e/world-space-cycle.spec.js e2e/world-walk-audit-party.spec.js
+        run: ./scripts/run_playwright_local.sh e2e/walk-rendered-cadence.spec.js e2e/walk-all-classes.spec.js e2e/world-space-cycle.spec.js e2e/world-walk-audit-party.spec.js --config=e2e/playwright.walk.config.js
       - name: Retain motion evidence
         if: always()
         uses: actions/upload-artifact@v4
