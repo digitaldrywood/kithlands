@@ -2758,6 +2758,34 @@ export function installDevTestBridge(game) {
       };
     },
 
+    async sampleWalkCycle(dir, sceneKey) {
+      const scene = getScene(game, sceneKey);
+      const [dx, dy] = DIR_DELTAS[dir] || [0, 0];
+      const samples = [];
+      let started = 0;
+      let moved = false;
+      const advance = () => {
+        if (scene.animating || started >= 3) return;
+        const x = scene.playerX,
+          y = scene.playerY;
+        scene.tryMove(dx, dy);
+        moved = scene.playerX !== x || scene.playerY !== y;
+        started += 1;
+      };
+      const sample = () => {
+        if (started > 0) samples.push(playerSnapshot(scene, moved));
+      };
+      scene.events.on("update", advance);
+      game.events.on("postrender", sample);
+      try {
+        await waitFor(() => started === 3 && !scene.animating, 10000);
+        return samples;
+      } finally {
+        scene.events.off("update", advance);
+        game.events.off("postrender", sample);
+      }
+    },
+
     async sampleMovePlayer(dir, sceneKey) {
       const scene = getScene(game, sceneKey);
       if (!scene?.player || typeof scene.tryMove !== "function") {

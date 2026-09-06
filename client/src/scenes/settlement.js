@@ -1,3 +1,4 @@
+import { beginWalkStep } from "./walkPlayback.js";
 import { transitionLocation } from "../api.js";
 import { playMusic, playSFX } from "../systems/audio.js";
 import { initTouchControls, isTouchDevice } from "../systems/input.js";
@@ -8,9 +9,7 @@ import {
   classPortraitFallbackScale,
   fallbackWalkSpriteScale,
   WALK_IDLE_FRAME,
-  walkFrameForProgress,
   walkFrameIndex,
-  walkFrameSequence,
   walkSheetKey,
   walkSpritePosition,
   walkSpriteScale,
@@ -54,31 +53,6 @@ function setPlayerWalkFrame(scene, frame) {
       scene.playerFallbackTexture || `player_${scene.playerDir}`,
     );
   }
-}
-
-function clearWalkFrameTimers(scene) {
-  scene.walkFrameTimers?.forEach((timer) => timer?.remove?.(false));
-  scene.walkFrameTimers = [];
-}
-
-function playStepAnimation(scene, stepMs, onComplete) {
-  clearWalkFrameTimers(scene);
-  if (scene.hasWalkSheet) {
-    const sequence = walkFrameSequence(scene.leaderClass);
-    sequence.forEach((frame, index) => {
-      scene.walkFrameTimers.push(
-        scene.time.delayedCall(
-          Math.round((stepMs * index) / sequence.length),
-          () => setPlayerWalkFrame(scene, frame),
-        ),
-      );
-    });
-  }
-  return () => {
-    clearWalkFrameTimers(scene);
-    setPlayerWalkFrame(scene, WALK_IDLE_FRAME);
-    onComplete?.();
-  };
 }
 
 export class SettlementScene extends Phaser.Scene {
@@ -316,9 +290,9 @@ export class SettlementScene extends Phaser.Scene {
     else if (dx > 0) this.playerDir = "right";
     else if (dy < 0) this.playerDir = "up";
     else if (dy > 0) this.playerDir = "down";
-    setPlayerWalkFrame(this, WALK_IDLE_FRAME);
 
     if (!this.canWalkTile(this.tileData[nextY][nextX])) {
+      setPlayerWalkFrame(this, WALK_IDLE_FRAME);
       this.updateInteractionTargets();
       return;
     }
@@ -336,20 +310,21 @@ export class SettlementScene extends Phaser.Scene {
     const stepMs = walkStepMs();
     this.animating = true;
     this.walkFrameAudit = [];
-    const finishAnimation = playStepAnimation(this, stepMs, () => {
+    const walk = beginWalkStep(this, (frame) =>
+      setPlayerWalkFrame(this, frame),
+    );
+    const finishAnimation = () => {
+      walk.complete();
       this.animating = false;
-    });
+    };
     this.tweens.add({
       targets: this.player,
       x: destination.x,
       y: destination.y,
       duration: stepMs,
       ease: "Linear",
-      onUpdate: (tween) => {
-        setPlayerWalkFrame(
-          this,
-          walkFrameForProgress(tween.progress, this.leaderClass),
-        );
+      onUpdate: () => {
+        walk.updatePosition();
       },
       onComplete: finishAnimation,
     });

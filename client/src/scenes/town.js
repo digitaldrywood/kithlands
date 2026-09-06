@@ -1,3 +1,4 @@
+import { beginWalkStep } from "./walkPlayback.js";
 import { initAudio, playSFX, playMusic } from "../systems/audio.js";
 import {
   autosaveGame,
@@ -25,8 +26,6 @@ import { isTouchDevice, initTouchControls } from "../systems/input.js";
 import {
   walkSheetKey,
   walkFrameIndex,
-  walkFrameForProgress,
-  walkFrameSequence,
   walkSpritePosition,
   walkSpriteScale,
   fallbackWalkSpriteScale,
@@ -464,36 +463,6 @@ function setPlayerWalkFrame(scene, frame) {
       scene.playerFallbackTexture || `player_${scene.playerDir}`,
     );
   }
-}
-
-function clearWalkFrameTimers(scene) {
-  scene.walkFrameTimers?.forEach((timer) => timer?.remove?.(false));
-  scene.walkFrameTimers = [];
-}
-
-function playStepAnimation(scene, stepMs, onComplete) {
-  clearWalkFrameTimers(scene);
-  if (scene.hasWalkSheet) {
-    const sequence = walkFrameSequence(scene.leaderClass);
-    sequence.forEach((frame, index) => {
-      scene.walkFrameTimers.push(
-        scene.time.delayedCall(
-          Math.round((stepMs * index) / sequence.length),
-          () => setPlayerWalkFrame(scene, frame),
-        ),
-      );
-    });
-  } else {
-    setPlayerWalkFrame(scene, WALK_IDLE_FRAME);
-  }
-  return () => {
-    clearWalkFrameTimers(scene);
-    if (scene.hasWalkSheet) {
-      setPlayerWalkFrame(scene, walkFrameSequence(scene.leaderClass).at(-1));
-    }
-    setPlayerWalkFrame(scene, WALK_IDLE_FRAME);
-    onComplete?.();
-  };
 }
 
 function authoredInteriorAppearance(buildingType, seed) {
@@ -1194,7 +1163,6 @@ export class TownScene extends Phaser.Scene {
     else if (dy > 0) dir = "down";
     this.playerDir = dir;
 
-    setPlayerWalkFrame(this, WALK_IDLE_FRAME);
     this.player.setDepth(actorDepth(this.playerY));
 
     const dest = walkSpritePosition(
@@ -1207,20 +1175,21 @@ export class TownScene extends Phaser.Scene {
     const stepMs = walkStepMs();
     this.animating = true;
     this.walkFrameAudit = [];
-    const finishStepAnimation = playStepAnimation(this, stepMs, () => {
+    const walk = beginWalkStep(this, (frame) =>
+      setPlayerWalkFrame(this, frame),
+    );
+    const finishStepAnimation = () => {
+      walk.complete();
       this.animating = false;
-    });
+    };
     this.tweens.add({
       targets: this.player,
       x: dest.x,
       y: dest.y,
       duration: stepMs,
       ease: "Linear",
-      onUpdate: (tween) => {
-        setPlayerWalkFrame(
-          this,
-          walkFrameForProgress(tween.progress, this.leaderClass),
-        );
+      onUpdate: () => {
+        walk.updatePosition();
       },
       onComplete: finishStepAnimation,
     });

@@ -28,7 +28,7 @@ async function startGame(page) {
   await page.addInitScript(() => {
     localStorage.setItem("kithlands_prefs", JSON.stringify({ walkSpeed: 1 }));
   });
-  await page.goto("/");
+  await page.goto("/?noEncounters=1");
   await page.waitForFunction(() => !!window.__kithlandsTest);
   await page.waitForFunction(() =>
     window.__kithlandsTest.sceneIsActive("Title"),
@@ -78,7 +78,7 @@ async function auditClassScene(page, sceneKey, classId) {
 
     const sequence = await page.evaluate(
       ({ dir, sceneKey }) =>
-        window.__kithlandsTest.sampleMovePlayer(dir, sceneKey),
+        window.__kithlandsTest.sampleWalkCycle(dir, sceneKey),
       { dir, sceneKey },
     );
 
@@ -90,8 +90,8 @@ async function auditClassScene(page, sceneKey, classId) {
       sequence.every((step) => step.textureKey === `${classId}_walk`),
     ).toBe(true);
     const auditedFrames = sequence
-      .at(-1)
-      .walkFrameAudit.filter((entry) => entry.dir === dir)
+      .flatMap((sample) => sample.walkFrameAudit)
+      .filter((entry) => entry.dir === dir)
       .map((entry) => entry.frameIndex);
     const expectedFrames = contract.frameSequence.map(
       (frame) => contract.baseFrameByDirection[dir] + frame,
@@ -150,10 +150,12 @@ async function auditClassScene(page, sceneKey, classId) {
     );
 
     const firstStep = await page.evaluate(
-      ({ dir, sceneKey }) => window.__kithlandsTest.movePlayer(dir, sceneKey),
+      ({ dir, sceneKey }) =>
+        window.__kithlandsTest.sampleMovePlayer(dir, sceneKey),
       { dir, sceneKey },
     );
-    perDirection[dir] = firstStep.frameHash;
+    expect(firstStep.every((sample) => sample.moved)).toBe(true);
+    perDirection[dir] = firstStep[0].frameHash;
   }
   expect(new Set(Object.values(perDirection)).size).toBe(4);
 }

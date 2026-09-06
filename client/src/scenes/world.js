@@ -1,3 +1,4 @@
+import { beginWalkStep } from "./walkPlayback.js";
 import { explorationHUD } from "../ui/exploration_hud.js";
 import { drawPanel, drawButton } from "../ui/panel.js";
 import { gameAction, autosaveGame } from "../api.js";
@@ -33,8 +34,6 @@ import { initTouchControls } from "../systems/input.js";
 import {
   walkSheetKey,
   walkFrameIndex,
-  walkFrameForProgress,
-  walkFrameSequence,
   nextLeaderIndex,
   walkSpritePosition,
   walkSpriteScale,
@@ -129,36 +128,6 @@ function setPlayerWalkFrame(scene, frame) {
       scene.playerFallbackTexture || `player_${scene.playerDir}`,
     );
   }
-}
-
-function clearWalkFrameTimers(scene) {
-  scene.walkFrameTimers?.forEach((timer) => timer?.remove?.(false));
-  scene.walkFrameTimers = [];
-}
-
-function playStepAnimation(scene, stepMs, onComplete) {
-  clearWalkFrameTimers(scene);
-  if (scene.hasWalkSheet) {
-    const sequence = walkFrameSequence(scene.leaderClass);
-    sequence.forEach((frame, index) => {
-      scene.walkFrameTimers.push(
-        scene.time.delayedCall(
-          Math.round((stepMs * index) / sequence.length),
-          () => setPlayerWalkFrame(scene, frame),
-        ),
-      );
-    });
-  } else {
-    setPlayerWalkFrame(scene, WALK_IDLE_FRAME);
-  }
-  return () => {
-    clearWalkFrameTimers(scene);
-    if (scene.hasWalkSheet) {
-      setPlayerWalkFrame(scene, walkFrameSequence(scene.leaderClass).at(-1));
-    }
-    setPlayerWalkFrame(scene, WALK_IDLE_FRAME);
-    onComplete?.();
-  };
 }
 
 function isStructureTile(tile) {
@@ -651,8 +620,6 @@ export class WorldScene extends Phaser.Scene {
     else if (dy > 0) dir = "down";
     this.playerDir = dir;
 
-    setPlayerWalkFrame(this, WALK_IDLE_FRAME);
-
     // Cache position for scene transitions
     rememberWorldPosition(
       this.gameState.id,
@@ -682,7 +649,11 @@ export class WorldScene extends Phaser.Scene {
       finishWorldStep(accepted);
     };
     this.settleWorldStep = settleWorldStep;
-    const finishStepAnimation = playStepAnimation(this, stepMs, () => {
+    const walk = beginWalkStep(this, (frame) =>
+      setPlayerWalkFrame(this, frame),
+    );
+    const finishStepAnimation = () => {
+      walk.complete();
       let accepted = true;
       void syncWorldArrival(this)
         .then((result) => {
@@ -707,18 +678,15 @@ export class WorldScene extends Phaser.Scene {
           }
           settleWorldStep(accepted);
         });
-    });
+    };
     this.tweens.add({
       targets: this.player,
       x: dest.x,
       y: dest.y,
       duration: stepMs,
       ease: "Linear",
-      onUpdate: (tween) => {
-        setPlayerWalkFrame(
-          this,
-          walkFrameForProgress(tween.progress, this.leaderClass),
-        );
+      onUpdate: () => {
+        walk.updatePosition();
       },
       onComplete: finishStepAnimation,
     });
