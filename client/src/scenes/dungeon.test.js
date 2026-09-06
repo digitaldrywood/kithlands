@@ -40,6 +40,7 @@ function scene() {
   scene.player = { setFrame: vi.fn() };
   scene.shadow = { setPosition: vi.fn() };
   scene.tweens = { add: vi.fn() };
+  scene.time = { delayedCall: vi.fn(() => ({ remove: vi.fn() })) };
   scene.tileData = [[0, 0, 1]];
   scene.layout = { tile: 32 };
   scene.playerX = 0;

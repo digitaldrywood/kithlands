@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit Kithlands walk-sheet geometry against the canonical 8x8 contract."""
+"""Audit Kithlands walk-sheet geometry against the canonical six-column/eight-row contract."""
 
 from __future__ import annotations
 
@@ -327,7 +327,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("sheet_dir", type=Path)
     parser.add_argument("--cell", type=int, default=64)
-    parser.add_argument("--columns", type=int, default=8)
+    parser.add_argument("--columns", type=int, default=6)
     parser.add_argument("--rows", type=int, default=8)
     parser.add_argument("--alpha-threshold", type=int, default=8)
     parser.add_argument(

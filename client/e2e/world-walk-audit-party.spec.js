@@ -10,7 +10,6 @@ test("walk audit route cycles every runtime class in the real World scene", asyn
   await page.goto("/?walkAudit=1&noEncounters=1");
   await page.waitForFunction(() => !!window.__kithlandsTest);
   await page.evaluate(() => window.__kithlandsTest.waitForSceneReady("World"));
-  await page.locator("#game canvas").click();
 
   const classes = await page.evaluate(() =>
     window.__kithlandsTest.walkSheetClassIds(),

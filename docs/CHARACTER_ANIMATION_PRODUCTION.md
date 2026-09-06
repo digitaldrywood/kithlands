@@ -150,3 +150,40 @@ and walked in the actual audit game on 2026-08-08. Automated checks prove
 geometry, indexing, texture selection, stable scale/origin, and frame changes;
 human review proves that the motion reads correctly. Both are required for
 future changes.
+
+## Playback regression guard (2026-09-06)
+
+The August 8 implementation assigned frames from both delayed timers and tween
+updates. At normal speed, those assignments could overwrite one another before
+rendering. The tween callback also read `tween.progress` before Phaser updated
+it for the current tick, lagging the applied position. Every tile completion
+immediately reset to idle. Counting setter
+calls in `walkFrameAudit` did not prove that the passing poses reached the screen.
+The source sheets and frame mapping remained unchanged through September 5.
+
+`walkPlayback.js` now owns gait phase in World, Town, Settlement, and Dungeon.
+The six poses span three tiles, advance from the sprite’s applied position, and carry across
+consecutive steps. An 80 ms idle grace period avoids a contact-pose flash between
+held-key steps; stopping returns to frame zero. Direction and sprite changes
+reset phase. Keep the 384x512 atlas and bottom-center anchor unchanged.
+
+The `Walking regression` workflow runs for every PR and main push. It checks
+`docs/walk-assets.sha256`, the full geometry audit, all-class World/Town coverage,
+real Space cycling, and postrender sampling at all three speeds at 60 and 20 FPS.
+A replacement approved sheet requires updating its checksum **after** inspecting
+its actual poses and in-game motion. A checksum update alone is not acceptance.
+The rendered gait test must fail against the pre-fix implementation; never
+replace it with a test that merely counts frame assignments.
+
+Run the new normal-speed gate alongside the three existing proofs:
+
+```sh
+./scripts/run_playwright_local.sh e2e/walk-rendered-cadence.spec.js \
+  e2e/walk-all-classes.spec.js e2e/world-space-cycle.spec.js \
+  e2e/world-walk-audit-party.spec.js
+```
+
+The workflow retains frame-timing JSON and screenshots. The repository's merge
+rules should require its `walking` check, along with the existing CI checks.
+Visual inspection remains necessary for pose quality; structural and rendered
+cadence checks cannot judge whether newly drawn legs look natural.

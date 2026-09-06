@@ -1,0 +1,61 @@
+name: Walking regression
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  walking:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PGHOST: localhost
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.24'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Prepare local database role
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          psql -h localhost -U postgres -c "CREATE ROLE runner WITH LOGIN SUPERUSER"
+      - name: Install client and browser
+        working-directory: client
+        run: |
+          npm ci
+          PLAYWRIGHT_BROWSERS_PATH="$PWD/tmp/ms-playwright" npx playwright install --with-deps chromium
+      - name: Warm server build cache
+        working-directory: server
+        run: go build ./cmd/kithlands
+      - name: Verify accepted walk assets
+        run: |
+          sha256sum --check docs/walk-assets.sha256
+          python3 skills/kithlands-visual-production/scripts/audit_walk_sheets.py client/public/sprites/walk --columns 6 --rows 8 --mode enforce
+      - name: Verify rendered walking and all classes
+        run: ./scripts/run_playwright_local.sh e2e/walk-rendered-cadence.spec.js e2e/walk-all-classes.spec.js e2e/world-space-cycle.spec.js e2e/world-walk-audit-party.spec.js
+      - name: Retain motion evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: walking-proof
+          path: |
+            client/tmp/walk-rendered-*/
+            client/test-results/
+            /tmp/kithlands-server-*.log
+            /tmp/kithlands-client-*.log
+          retention-days: 14

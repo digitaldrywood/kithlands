@@ -50,7 +50,7 @@ async function moveSettlement(page, directions) {
 }
 
 async function tapLogicalCanvasPoint(page, x, y, sceneKey) {
-  const canvas = page.locator("canvas");
+  const canvas = page.locator("#game canvas");
   const box = await canvas.boundingBox();
   if (!box) throw new Error("game canvas is missing");
   const size = await page.evaluate(
@@ -91,7 +91,7 @@ async function expectGameplayViewport(page, viewport, sceneKey) {
   expect(snapshot.layout.portrait).toBe(viewport.mobile);
   expect(snapshot.size.width).toBe(800);
   expect(snapshot.size.height).toBe(viewport.mobile ? 1731 : 600);
-  const box = await page.locator("canvas").boundingBox();
+  const box = await page.locator("#game canvas").boundingBox();
   expect(box).not.toBeNull();
   if (viewport.mobile) {
     expect(box.y).toBeLessThan(1);
@@ -280,7 +280,17 @@ async function runGoldSlice(page, viewport) {
   const purchasedState = await page.evaluate(() =>
     window.__kithlandsTest.gameState("Town"),
   );
-  expect(purchasedState.equipment).toEqual(initialState.equipment);
+  // Server-generated workshop quotes change with the gold balance; buying
+  // an inventory item must leave the actual equipped items and sockets intact.
+  const equippedState = (equipment) =>
+    JSON.parse(
+      JSON.stringify(equipment, (key, value) =>
+        ["gem_changes", "socket_previews"].includes(key) ? undefined : value,
+      ),
+    );
+  expect(equippedState(purchasedState.equipment)).toEqual(
+    equippedState(initialState.equipment),
+  );
   expect(purchasedState.party).toEqual(initialState.party);
 
   await page.evaluate(() =>

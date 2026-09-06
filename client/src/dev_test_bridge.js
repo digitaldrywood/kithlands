@@ -1005,7 +1005,7 @@ function exportPlayerFrame(scene) {
   };
 }
 
-function playerSnapshot(scene, moved) {
+function playerSnapshot(scene, moved, includePixels = true) {
   const frame = scene?.player?.frame;
   const rawFrameIndex =
     frame && frame.name !== undefined ? Number(frame.name) : frame?.index;
@@ -1027,8 +1027,8 @@ function playerSnapshot(scene, moved) {
     hasWalkSheet: !!scene?.hasWalkSheet,
     leaderClass: scene?.leaderClass || null,
     walkFrameAudit: clone(scene?.walkFrameAudit || []),
-    frameHash: frameHash(scene),
-    framePixels: framePixelAudit(scene),
+    frameHash: includePixels ? frameHash(scene) : null,
+    framePixels: includePixels ? framePixelAudit(scene) : null,
     x: scene?.playerX ?? null,
     y: scene?.playerY ?? null,
     screenX,
@@ -2697,6 +2697,11 @@ export function installDevTestBridge(game) {
         ? targetScene
         : activeScene(game);
       const gameState = auditGameState(currentScene?.gameState, classId);
+      // SceneManager.start does not stop the previous scene like ScenePlugin.start.
+      // Match real travel: do not render World underneath the Town audit.
+      for (const running of game.scene.getScenes(true)) {
+        if (running.scene.key !== sceneKey) game.scene.stop(running.scene.key);
+      }
       if (sceneKey === "World") {
         setLeaderIndex(0);
         game.scene.start("World", { gameState });
@@ -2756,6 +2761,56 @@ export function installDevTestBridge(game) {
         x: scene.playerX,
         y: scene.playerY,
       };
+    },
+
+    async sampleWalkCycle(dir, sceneKey, { timeScale = 1 } = {}) {
+      const scene = getScene(game, sceneKey);
+      const previousTimeScale = scene.tweens.timeScale;
+      const [dx, dy] = DIR_DELTAS[dir] || [0, 0];
+      // Read texture pixels before moving. Synchronous GPU readbacks inside
+      // postrender can stall software-rendered CI enough to stop the gait.
+      const pixelChecks = new Map();
+      const initialFrame = scene.player.frame.name;
+      for (const pose of walkFrameSequence(scene.leaderClass)) {
+        const index = walkFrameIndex(dir, pose, scene.leaderClass);
+        scene.player.setFrame(index);
+        pixelChecks.set(index, {
+          frameHash: frameHash(scene),
+          framePixels: framePixelAudit(scene),
+        });
+      }
+      scene.player.setFrame(initialFrame);
+      scene.tweens.timeScale = timeScale;
+      const samples = [];
+      let started = 0;
+      let moved = false;
+      const advance = () => {
+        if (scene.animating || started >= 3) return;
+        const x = scene.playerX,
+          y = scene.playerY;
+        scene.tryMove(dx, dy);
+        moved = scene.playerX !== x || scene.playerY !== y;
+        started += 1;
+      };
+      const sample = () => {
+        if (started > 0) {
+          const snapshot = playerSnapshot(scene, moved, false);
+          samples.push({
+            ...snapshot,
+            ...pixelChecks.get(snapshot.frameIndex),
+          });
+        }
+      };
+      scene.events.on("update", advance);
+      game.events.on("postrender", sample);
+      try {
+        await waitFor(() => started === 3 && !scene.animating, 10000);
+        return samples;
+      } finally {
+        scene.tweens.timeScale = previousTimeScale;
+        scene.events.off("update", advance);
+        game.events.off("postrender", sample);
+      }
     },
 
     async sampleMovePlayer(dir, sceneKey) {

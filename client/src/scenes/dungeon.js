@@ -1,3 +1,4 @@
+import { beginWalkStep } from "./walkPlayback.js";
 import { dungeonAction, saveGame } from "../api.js";
 import { initAudio, playMusic, playSFX } from "../systems/audio.js";
 import { applyGameplayViewport } from "../systems/gameplayViewport.js";
@@ -24,7 +25,6 @@ import {
 import {
   walkSheetKey,
   walkFrameIndex,
-  walkFrameForProgress,
   walkSpritePosition,
   walkSpriteScale,
   WALK_IDLE_FRAME,
@@ -422,20 +422,22 @@ export class DungeonScene extends Phaser.Scene {
           position.y,
           this.layout.tile,
         );
+        const walk = beginWalkStep(
+          this,
+          (frame) =>
+            this.player.setFrame(
+              walkFrameIndex(this.playerDir, frame, this.leaderClass),
+            ),
+          this.layout.tile,
+        );
         this.tweens.add({
           targets: this.player,
           x: point.x,
           y: point.y,
           duration: walkStepMs(),
           ease: "Linear",
-          onUpdate: (tween) => {
-            this.player.setFrame(
-              walkFrameIndex(
-                this.playerDir,
-                walkFrameForProgress(tween.progress, this.leaderClass),
-                this.leaderClass,
-              ),
-            );
+          onUpdate: () => {
+            walk.updatePosition();
             this.shadow.setPosition(
               this.player.x,
               this.player.y - this.layout.tile * 0.1,
@@ -443,9 +445,7 @@ export class DungeonScene extends Phaser.Scene {
             this.updateMapFrame();
           },
           onComplete: () => {
-            this.player.setFrame(
-              walkFrameIndex(this.playerDir, WALK_IDLE_FRAME, this.leaderClass),
-            );
+            walk.complete();
             this.animating = false;
           },
         });

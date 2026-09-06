@@ -13,11 +13,29 @@ export function explorationHUD(scene, { menu, help, mute, isMuted, colors }) {
   const detail = element("p");
   const saveStatus = element("span", "explore-save-status");
   saveStatus.setAttribute("role", "status");
-  objective.append(
-    element("span", "explore-eyebrow", "CURRENT OBJECTIVE"),
-    title,
-    detail,
+  const objectiveToggle = element(
+    "button",
+    "explore-disclosure",
+    "Objective ▾",
   );
+  objectiveToggle.type = "button";
+  objectiveToggle.setAttribute("aria-expanded", "false");
+  objectiveToggle.setAttribute("aria-controls", "explore-objective-details");
+  const objectiveDetails = element("div", "explore-objective-details");
+  objectiveDetails.id = "explore-objective-details";
+  objectiveDetails.hidden = true;
+  objectiveDetails.append(title, detail);
+  objectiveToggle.onclick = () => {
+    objectiveDetails.hidden = !objectiveDetails.hidden;
+    objectiveToggle.setAttribute(
+      "aria-expanded",
+      String(!objectiveDetails.hidden),
+    );
+    objectiveToggle.textContent = objectiveDetails.hidden
+      ? "Objective ▾"
+      : "Objective ▴";
+  };
+  objective.append(objectiveToggle, objectiveDetails);
   const map = element("div", "explore-map explore-surface");
   const canvas = element("canvas");
   canvas.width = 120;
@@ -55,6 +73,20 @@ export function explorationHUD(scene, { menu, help, mute, isMuted, colors }) {
   notice.setAttribute("role", "status");
   notice.hidden = true;
   const footer = element("div", "explore-footer explore-surface");
+  const partyDetails = element("div", "explore-party-details");
+  partyDetails.id = "explore-party-details";
+  partyDetails.hidden = true;
+  const dock = element("div", "explore-dock");
+  const partyToggle = element("button", "explore-disclosure", "Party ▴");
+  partyToggle.type = "button";
+  partyToggle.setAttribute("aria-expanded", "false");
+  partyToggle.setAttribute("aria-controls", partyDetails.id);
+  partyToggle.onclick = () => {
+    partyDetails.hidden = !partyDetails.hidden;
+    footer.classList.toggle("is-expanded", !partyDetails.hidden);
+    partyToggle.setAttribute("aria-expanded", String(!partyDetails.hidden));
+    partyToggle.textContent = partyDetails.hidden ? "Party ▴" : "Party ▾";
+  };
   const party = element("div", "explore-party");
   const toolbar = element("div", "explore-toolbar");
   const resources = element("span", "explore-resources");
@@ -71,9 +103,12 @@ export function explorationHUD(scene, { menu, help, mute, isMuted, colors }) {
     sound.textContent = isMuted() ? "Unmute" : "Mute";
   });
   button("Help", help);
-  button("Menu", menu).classList.add("explore-menu-button");
+  const menuButton = button("Menu", menu);
+  menuButton.classList.add("explore-menu-button");
+  dock.append(partyToggle, menuButton);
   toolbar.append(resources, buttons);
-  footer.append(party, toolbar);
+  partyDetails.append(party, toolbar);
+  footer.append(partyDetails, dock);
   bottom.append(notice, interaction, prompts, footer);
   root.append(objective, map, saveStatus, bottom);
   document.body.append(root);
