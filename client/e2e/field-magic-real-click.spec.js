@@ -3,7 +3,9 @@ import { expect, test } from "@playwright/test";
 const RUN_ID = Date.now();
 
 async function waitForBridge(page) {
-  await page.waitForFunction(() => !!window.__kithlandsTest);
+  await page.waitForFunction(
+    () => window.__kithlandsTest?.activeSceneKey() === "Title",
+  );
 }
 
 async function startQuickAuth(page) {
@@ -51,6 +53,10 @@ async function setFieldMagicVitals(page, updates) {
 }
 
 async function clickBridgePosition(page, fnName, label, sceneKey) {
+  if (fnName === "menuButtonPosition" && label === "MAGIC") {
+    await page.getByRole("button", { name: /^Magic/ }).click();
+    return;
+  }
   const pos = await page.evaluate(
     ({ nextFnName, nextLabel, nextSceneKey }) =>
       window.__kithlandsTest[nextFnName](nextLabel, nextSceneKey),
@@ -176,9 +182,7 @@ test.describe("field magic real click flow", () => {
     await page.waitForFunction(
       () => window.__kithlandsTest.sceneFlags("World").menuOpen,
     );
-    await page.waitForFunction(
-      () => window.__kithlandsTest.menuButtonEnabled("MAGIC", "World") === true,
-    );
+    await expect(page.getByRole("button", { name: /^Magic/ })).toBeEnabled();
     await clickBridgePosition(page, "menuButtonPosition", "MAGIC", "World");
     await waitForFieldMagicRow(page, "Mira");
     await clickBridgePosition(page, "fieldMagicRowPosition", "Mira", "World");
@@ -203,6 +207,23 @@ test.describe("field magic real click flow", () => {
       fullPage: true,
     });
 
+    if (
+      await page.evaluate(
+        () => window.__kithlandsTest.sceneFlags("World").fieldMagicOpen,
+      )
+    ) {
+      await clickBridgePosition(
+        page,
+        "interactiveTextPosition",
+        "DONE",
+        "World",
+      );
+    }
+    const parentMenu = page.getByRole("button", {
+      name: "Back to game",
+      exact: true,
+    });
+    if (await parentMenu.isVisible()) await parentMenu.click();
     await page.evaluate(() =>
       window.__kithlandsTest.openCharacterDetail(0, "World"),
     );
@@ -314,6 +335,23 @@ test.describe("field magic real click flow", () => {
     expect(targetIdx).toBeGreaterThanOrEqual(0);
     const targetName = before[targetIdx].name;
 
+    if (
+      await page.evaluate(
+        () => window.__kithlandsTest.sceneFlags("World").fieldMagicOpen,
+      )
+    ) {
+      await clickBridgePosition(
+        page,
+        "interactiveTextPosition",
+        "DONE",
+        "World",
+      );
+    }
+    const parentMenu = page.getByRole("button", {
+      name: "Back to game",
+      exact: true,
+    });
+    if (await parentMenu.isVisible()) await parentMenu.click();
     await page.evaluate(() =>
       window.__kithlandsTest.openCharacterDetail(0, "World"),
     );
@@ -345,12 +383,16 @@ test.describe("field magic real click flow", () => {
         const party = window.__kithlandsTest.gameState("World").party;
         return (
           party[nextTargetIdx].hp > beforeHP &&
-          window.__kithlandsTest.sceneFlags("World").characterDetailOpen
+          window.__kithlandsTest.sceneFlags("World").fieldMagicOpen
         );
       },
       { nextTargetIdx: targetIdx, beforeHP: before[targetIdx].hp },
     );
 
+    await clickBridgePosition(page, "interactiveTextPosition", "DONE", "World");
+    await page.waitForFunction(
+      () => window.__kithlandsTest.sceneFlags("World").characterDetailOpen,
+    );
     await addVitalsOverlay(
       page,
       `REAL CLICK detail after Cure on ${targetName}`,
