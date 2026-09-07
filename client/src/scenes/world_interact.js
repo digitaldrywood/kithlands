@@ -1,3 +1,4 @@
+import { buildWalkAuditParty } from "./walkAuditMode.js";
 import { showWorldMapDialog } from "../ui/world_map_menu.js";
 import { playSFX } from "../systems/audio.js";
 import { isTouchDevice } from "../systems/input.js";
@@ -110,7 +111,16 @@ async function performWorldArrival(scene, checkpoint, step, debugNoEncounters) {
       }
       if (!result?.error) {
         if (scene.scene?.isActive()) {
-          scene.gameState = result;
+          // The developer walk route renders all twelve classes over a normal
+          // server game. Keep that fixture after authoritative movement acks.
+          scene.gameState =
+            import.meta.env.DEV && scene.gameState.walk_audit
+              ? {
+                  ...result,
+                  party: buildWalkAuditParty(result.party),
+                  walk_audit: true,
+                }
+              : result;
           scene.updateHUD?.();
           scene.updateInteractionTarget?.();
         }
