@@ -40,6 +40,11 @@ for (const viewport of [
         ({ fn, label }) => !!window.__kithlandsTest[fn](label, "World"),
         { fn, label },
       );
+      // Row objects exist before Phaser processes their input registration.
+      // Wait for rendered frames before sending a real pointer click.
+      await page.evaluate(() =>
+        window.__kithlandsTest.waitForSceneReady("World"),
+      );
       const pos = await page.evaluate(
         ({ fn, label }) => window.__kithlandsTest[fn](label, "World"),
         { fn, label },
