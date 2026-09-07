@@ -18,6 +18,8 @@ import { openDialogue } from "./town_dialogue.js";
 import {
   drawInteriorForeground,
   preloadInteriorChests,
+  preloadInteriorProps,
+  drawInteriorProps,
   interiorChestKey,
 } from "./town_presentation.js";
 import { toggleMenu } from "./world_menu.js";
@@ -591,6 +593,7 @@ export class TownScene extends Phaser.Scene {
       this.load.image(presentation.textureKey, presentation.backgroundAsset);
     }
     preloadInteriorChests(this);
+    preloadInteriorProps(this);
   }
 
   create() {
@@ -1004,6 +1007,7 @@ export class TownScene extends Phaser.Scene {
       this.backdropDrawables.push(background);
       this.backdropDrawables.push(
         ...drawInteriorForeground(this, (row) => depthForRow(row, DEPTH_PROP)),
+        ...drawInteriorProps(this, (row) => depthForRow(row, DEPTH_PROP)),
       );
     }
   }

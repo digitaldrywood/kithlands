@@ -8,33 +8,49 @@
       "height": 12,
       "rows": [
         "WWWWWWWWWWWWWWWW",
-        "W.O..........O.W",
-        "W....M.........W",
-        "W....H.........W",
+        "W....O...O.FFF.W",
+        "WBBK.O...O.FFF.W",
+        "WBB............W",
+        "WBB..........KKW",
+        "W............KKW",
+        "W.MMM.......HKKW",
+        "W.MMM..........W",
         "W..............W",
-        "W..OOO.........W",
-        "W......K.......W",
-        "W..............W",
-        "W....BB........W",
-        "W....BB...R....W",
-        "W.F............W",
-        "WWWWWWWDWWWWWWWW"
+        "WXX...........KW",
+        "WXX...........KW",
+        "WWWWWWWDDWWWWWWW"
       ],
-      "entrance": { "x": 7, "y": 11, "from": "overworld" },
+      "entrance": {
+        "x": 7,
+        "y": 11,
+        "from": "overworld"
+      },
       "npc_anchors": [
-        { "role": "elder", "x": 7, "y": 6 },
-        { "role": "quest_giver", "x": 4, "y": 8 }
-      ],
-      "window_anchors": [
-        { "x": 4, "y": 0, "side": "north" },
-        { "x": 11, "y": 0, "side": "north" }
-      ],
-      "light_anchors": [
-        { "x": 9, "y": 1, "kind": "lantern" }
+        {
+          "role": "elder",
+          "x": 11,
+          "y": 5
+        },
+        {
+          "role": "quest_giver",
+          "x": 5,
+          "y": 8,
+          "sprite": "npc_priestess"
+        }
       ],
       "chest_anchors": [
-        { "id": "elder_study_strongbox", "x": 12, "y": 5 }
-      ]
+        {
+          "id": "elder_study_strongbox",
+          "x": 12,
+          "y": 9
+        }
+      ],
+      "presentation": {
+        "background_asset": "/interiors/house/elder-study-background.png",
+        "hide_tile_layer": true,
+        "chest_closed_asset": "/interiors/inn/gilded-guest-chest-closed.png",
+        "chest_open_asset": "/interiors/inn/gilded-guest-chest-open.png"
+      }
     }
   ]
 }

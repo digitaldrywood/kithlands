@@ -56,6 +56,7 @@ describe("buildInteriorFromTemplate", () => {
       hideTileLayer: true,
       textureKey: "interior_background_inn_2floor_a_0",
       foreground: [],
+      props: [],
       chestClosedAsset: null,
       chestOpenAsset: null,
     });

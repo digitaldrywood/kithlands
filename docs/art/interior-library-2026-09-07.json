@@ -1,0 +1,29 @@
+{
+  "tool": "built-in image_gen",
+  "model": "not reported by tool",
+  "date": "2026-09-07",
+  "style_reference": "client/public/interiors/inn/gilded-steps-ground.png",
+  "assets": [
+    {
+      "path": "client/public/interiors/house/elder-study-background.png",
+      "sha256": "1b72d6f45f86ab08cda0007b02d5b4d17912d3d7b04fa80f3e02a5c320e09b16"
+    },
+    {
+      "path": "client/public/interiors/library/wood-shell.png",
+      "sha256": "3061a14bc0072c9aae205b9de8b69e786fe6e9e27be79b908d7e13a4f6e3ead3"
+    },
+    {
+      "path": "client/public/interiors/library/stone-shell.png",
+      "sha256": "b1daa43c1ab810fe56c8a7c23676c148efb3d17fa4c00ce7c0b5d3841894daf6"
+    }
+  ],
+  "rejected_drafts": {
+    "reason": "Furniture drafts contain an opaque painted checkerboard rather than RGBA transparency; do not install as runtime sprites.",
+    "files": [
+      "exec-a63cdd8d-9a97-4497-ad18-1b5b3de42079.png",
+      "exec-d29812df-5409-4426-a2e3-aca9c0f893a7.png",
+      "exec-70119b7e-bfc8-45ea-baab-56f9b84b3c67.png",
+      "exec-cff1006e-384c-46df-9757-ec54f3346221.png"
+    ]
+  }
+}

@@ -33,10 +33,21 @@ type Floor struct {
 	Presentation *FloorPresentation `json:"presentation,omitempty"`
 }
 
+// InteriorProp places a reusable furniture image in room-relative pixels.
+// Row determines drawing depth; floor rows remain authoritative for collision.
+type InteriorProp struct {
+	Asset  string `json:"asset"`
+	X      int    `json:"x"`
+	Y      int    `json:"y"`
+	Width  int    `json:"width"`
+	Height int    `json:"height"`
+	Row    int    `json:"row"`
+}
+
 // FloorPresentation describes an optional authored visual layer for a floor.
-// Rows, anchors, and the server-owned location state remain the gameplay
-// contract; the asset is presentation only.
+// Rows, anchors, and server-owned location state remain the gameplay contract.
 type FloorPresentation struct {
+	Props            []InteriorProp     `json:"props,omitempty"`
 	BackgroundAsset  string             `json:"background_asset"`
 	HideTileLayer    bool               `json:"hide_tile_layer,omitempty"`
 	Foreground       []ForegroundRegion `json:"foreground,omitempty"`
@@ -192,6 +203,14 @@ func (t *Template) validate() error {
 			}
 			if !strings.HasPrefix(asset, "/") {
 				return fmt.Errorf("template %q floor %d background_asset must be an absolute public path", t.ID, floor.FloorID)
+			}
+			for _, prop := range floor.Presentation.Props {
+				if !strings.HasPrefix(prop.Asset, "/interiors/") || strings.Contains(prop.Asset, "..") ||
+					prop.X < 0 || prop.Y < 0 || prop.Width <= 0 || prop.Height <= 0 ||
+					prop.X+prop.Width > floor.Width*32 || prop.Y+prop.Height > floor.Height*32 ||
+					prop.Row < 0 || prop.Row >= floor.Height {
+					return fmt.Errorf("template %q floor %d invalid furniture asset or bounds", t.ID, floor.FloorID)
+				}
 			}
 			for _, region := range floor.Presentation.Foreground {
 				if region.X < 0 || region.Y < 0 || region.Width <= 0 || region.Height <= 0 ||

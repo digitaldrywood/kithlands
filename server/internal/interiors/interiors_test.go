@@ -213,3 +213,27 @@ func TestValidateAuthoredForegroundAndChestAssets(t *testing.T) {
 		})
 	}
 }
+
+func TestFurnitureRejectsInvalidAssetsAndOutOfRoomBounds(t *testing.T) {
+	valid := InteriorProp{Asset: "/interiors/library/desk.png", X: 32, Y: 32, Width: 64, Height: 64, Row: 2}
+	cases := []struct {
+		name  string
+		prop  InteriorProp
+		valid bool
+	}{
+		{"valid", valid, true},
+		{"outside room", InteriorProp{Asset: valid.Asset, X: 128, Width: 64, Height: 64, Row: 2}, false},
+		{"traversal", InteriorProp{Asset: "/interiors/../private.png", Width: 64, Height: 64, Row: 2}, false},
+		{"zero size", InteriorProp{Asset: valid.Asset, Row: 2}, false},
+		{"invalid depth", InteriorProp{Asset: valid.Asset, Width: 64, Height: 64, Row: 5}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			template := Template{ID: "furniture", BuildingType: "house", Floors: []Floor{{FloorID: 0, Width: 5, Height: 5, Rows: []string{"WWWWW", "W...W", "W...W", "W...W", "WWDWW"}, Entrance: &Entrance{X: 2, Y: 4}, Presentation: &FloorPresentation{BackgroundAsset: "/interiors/library/wood-shell.png", Props: []InteriorProp{tc.prop}}}}}
+			err := template.validate()
+			if (err == nil) != tc.valid {
+				t.Fatalf("validate() = %v, want valid=%v", err, tc.valid)
+			}
+		})
+	}
+}
