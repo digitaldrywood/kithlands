@@ -8,6 +8,7 @@ on:
 jobs:
   walking:
     runs-on: ubuntu-latest
+    # The serial all-class audit plus battle, menu, and encounter flows exceed 20 minutes.
     timeout-minutes: 30
     env:
       PGHOST: localhost
