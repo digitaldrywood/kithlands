@@ -479,3 +479,33 @@ describe("nearbyWorldArrival", () => {
     expect(apiMocks.transitionLocation).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("server-owned encounter movement", () => {
+  it("submits ordinary movement even when no new location is reached", async () => {
+    const result = {
+      id: "game",
+      phase: "combat",
+      current_location: { kind: "world", world_node_id: "home" },
+    };
+    apiMocks.transitionLocation.mockResolvedValue(result);
+    const scene = {
+      gameState: {
+        id: "game",
+        current_location: { kind: "world", world_node_id: "home" },
+      },
+      playerX: 12,
+      playerY: 12,
+      spawns: [],
+      scene: { isActive: () => true },
+    };
+    await expect(syncWorldArrival(scene, { step: true })).resolves.toBe(result);
+    expect(apiMocks.transitionLocation).toHaveBeenCalledWith(
+      "game",
+      "world-step",
+      "home",
+      { x: 12, y: 12 },
+      { debugNoEncounters: false },
+    );
+    expect(scene.gameState).toBe(result);
+  });
+});

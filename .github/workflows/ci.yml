@@ -47,6 +47,10 @@ jobs:
           working-directory: server
           args: --timeout=5m --allow-serial-runners
 
+      - name: Sparse-encounter progression regression
+        working-directory: server
+        run: go run ./cmd/simulate -runs 20 -encounter-rolls-per-quest 1
+
       - name: Balance sim smoke test
         working-directory: server
         run: go run ./cmd/balance_sim -battles=10 -shared=../shared

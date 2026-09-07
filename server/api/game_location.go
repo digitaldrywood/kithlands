@@ -27,9 +27,10 @@ type LocationState struct {
 }
 
 type LocationTransitionRequest struct {
-	TransitionID  string         `json:"transition_id"`
-	WorldNodeID   string         `json:"world_node_id,omitempty"`
-	WorldPosition *WorldPosition `json:"world_position,omitempty"`
+	DebugNoEncounters bool           `json:"debug_no_encounters,omitempty"`
+	TransitionID      string         `json:"transition_id"`
+	WorldNodeID       string         `json:"world_node_id,omitempty"`
+	WorldPosition     *WorldPosition `json:"world_position,omitempty"`
 }
 
 // ProcessLocationTransition applies only transitions authored in the active
@@ -37,6 +38,12 @@ type LocationTransitionRequest struct {
 // interior back to that content-driven graph.
 func (g *Game) ProcessLocationTransition(req LocationTransitionRequest) (GameState, error) {
 	g.mu.Lock()
+	// A retried step that started combat must return the same result without rolling again.
+	if req.TransitionID == "world-step" && g.phase == "combat" && g.location.Kind == LocationWorld && req.WorldPosition != nil && g.worldCheckpoint != nil && req.WorldPosition.X == g.worldCheckpoint.X && req.WorldPosition.Y == g.worldCheckpoint.Y {
+		state := g.stateUnlocked()
+		g.mu.Unlock()
+		return state, nil
+	}
 	if g.phase != "world" && g.phase != "quest_complete" {
 		g.mu.Unlock()
 		return GameState{}, fmt.Errorf("location transitions are unavailable during %s", g.phase)
@@ -45,9 +52,12 @@ func (g *Game) ProcessLocationTransition(req LocationTransitionRequest) (GameSta
 	var err error
 	switch g.location.Kind {
 	case LocationWorld:
-		if req.TransitionID == "arrive-world-node" {
+		switch req.TransitionID {
+		case "world-step":
+			err = g.processWorldStepLocked(req)
+		case "arrive-world-node":
 			err = g.arriveWorldNodeLocked(req.WorldNodeID, req.WorldPosition)
-		} else {
+		default:
 			err = g.enterSettlementLocked(req)
 		}
 	case LocationSettlement:

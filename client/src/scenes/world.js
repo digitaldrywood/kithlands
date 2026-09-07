@@ -43,7 +43,6 @@ import {
   WALK_IDLE_FRAME,
 } from "./walkFrame.js";
 import { isWorldInputLocked } from "../systems/modalLock.js";
-import { encounterChanceForStep } from "./worldEncounter.js";
 import {
   FLY_TILES,
   TILE_COLORS,
@@ -208,7 +207,6 @@ export class WorldScene extends Phaser.Scene {
   }
 
   create() {
-    this.stepCount = 0;
     this.animating = false;
     this.encounterPending = false;
     this.gameOver = false;
@@ -668,8 +666,13 @@ export class WorldScene extends Phaser.Scene {
     const finishStepAnimation = () => {
       walk.complete();
       let accepted = true;
-      void syncWorldArrival(this)
+      let encounterResult = null;
+      void syncWorldArrival(this, {
+        step: true,
+        debugNoEncounters: randomEncountersDisabledForDebug(),
+      })
         .then((result) => {
+          if (shouldStartBattle(result)) encounterResult = result;
           if (result?.error && this.scene?.isActive()) {
             accepted = false;
             this.restoreRejectedWorldStep(origin, result.error);
@@ -690,6 +693,9 @@ export class WorldScene extends Phaser.Scene {
             this.updateHUD();
           }
           settleWorldStep(accepted);
+          if (accepted && encounterResult && this.scene?.isActive()) {
+            void this.triggerRandomEncounter(tile, encounterResult);
+          }
         });
     };
     this.tweens.add({
@@ -713,24 +719,7 @@ export class WorldScene extends Phaser.Scene {
       });
     }
 
-    this.stepCount++;
-
     this.updateInteractionTarget();
-
-    if (!randomEncountersDisabledForDebug()) {
-      // Random encounter chance varies by terrain tile and transport tier.
-      const encounterMult =
-        this.gameState.transport?.encounter_rate_mult ?? 1.0;
-      const chance = encounterChanceForStep({
-        tile,
-        stepCount: this.stepCount,
-        transportMult: encounterMult,
-      });
-      if (chance > 0 && Phaser.Math.Between(1, 100) <= chance) {
-        this.stepCount = 0;
-        this.triggerRandomEncounter(tile);
-      }
-    }
 
     this.updateHUD();
     this.updateMinimap();
@@ -766,7 +755,7 @@ export class WorldScene extends Phaser.Scene {
     );
   }
 
-  async triggerRandomEncounter(tile) {
+  async triggerRandomEncounter(tile, acceptedResult = null) {
     if (this.encounterPending) return;
     this.encounterPending = true;
     this.animating = true;
@@ -785,14 +774,23 @@ export class WorldScene extends Phaser.Scene {
     try {
       // Commit the world tile even when autosave is disabled, then keep the
       // optional save ordered before the encounter mutation.
-      const checkpoint = await checkpointWorldPosition(this);
-      await this.triggerAutosave("pre_combat", checkpoint);
-
-      const result = await gameAction(this.gameState.id, {
-        type: "encounter",
-        tile_type: tile,
-      });
+      let result = acceptedResult;
+      if (!result) {
+        // Explicit developer encounters retain the isolated debug flow.
+        const checkpoint = await checkpointWorldPosition(this);
+        await this.triggerAutosave("pre_combat", checkpoint);
+        result = await gameAction(this.gameState.id, {
+          type: "encounter",
+          tile_type: tile,
+        });
+      }
       this.gameState = result;
+      if (acceptedResult) {
+        await this.triggerAutosave("pre_combat", {
+          x: this.playerX,
+          y: this.playerY,
+        });
+      }
 
       // Only play flash/SFX once the server confirms a real fight. Otherwise
       // (phase=world fallback when generation produced no enemies, phase=defeat

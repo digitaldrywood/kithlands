@@ -81,11 +81,13 @@ export function currentWorldPosition(scene) {
   return { x: scene.playerX, y: scene.playerY };
 }
 
-async function performWorldArrival(scene, checkpoint) {
+async function performWorldArrival(scene, checkpoint, step, debugNoEncounters) {
   const arrival = nearbyWorldArrival(scene);
   const nodeID =
     arrival?.node_id ||
-    (checkpoint ? scene?.gameState?.current_location?.world_node_id || "" : "");
+    (checkpoint || step
+      ? scene?.gameState?.current_location?.world_node_id || ""
+      : "");
   const position = currentWorldPosition(scene);
   if (!nodeID || !position) return null;
 
@@ -96,9 +98,10 @@ async function performWorldArrival(scene, checkpoint) {
       try {
         result = await transitionLocation(
           scene.gameState.id,
-          "arrive-world-node",
+          step ? "world-step" : "arrive-world-node",
           nodeID,
           position,
+          ...(step ? [{ debugNoEncounters }] : []),
         );
       } catch (error) {
         result = {
@@ -123,11 +126,16 @@ async function performWorldArrival(scene, checkpoint) {
 
 // Keep graph arrivals and exact tile checkpoints ordered. Saving chains onto
 // this same promise, so it cannot overtake an in-flight movement arrival.
-export function syncWorldArrival(scene, { checkpoint = false } = {}) {
+export function syncWorldArrival(
+  scene,
+  { checkpoint = false, step = false, debugNoEncounters = false } = {},
+) {
   const previous = scene.worldArrivalPromise || Promise.resolve(null);
   const operation = previous
     .catch(() => null)
-    .then(() => performWorldArrival(scene, checkpoint));
+    .then(() =>
+      performWorldArrival(scene, checkpoint, step, debugNoEncounters),
+    );
   const settled = operation.finally(() => {
     if (scene.worldArrivalPromise === settled) {
       scene.worldArrivalPromise = null;

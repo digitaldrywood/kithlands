@@ -633,8 +633,9 @@ type Game struct {
 	naturalDiscoveryRevealed map[string]bool // node/discovery pairs the player inspected
 	visitedNodes             map[string]bool // node IDs the player has entered (sequence-break tracking)
 	formation                string          // current encounter layout type
-	worldEncounterCount      int             // successful overworld encounters started on this save
-	lootRollSeq              uint64          // persisted sequence for isolated deterministic loot rolls
+	encounterTravel          EncounterTravelState
+	worldEncounterCount      int    // successful overworld encounters started on this save
+	lootRollSeq              uint64 // persisted sequence for isolated deterministic loot rolls
 	shopStocks               map[string]*ShopStock
 	lastRoundActions         []MemberActionReq
 	pendingChestClaim        *PendingChestClaim

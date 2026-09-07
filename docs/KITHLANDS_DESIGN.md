@@ -662,6 +662,20 @@ Status effects do not stack — a character is either poisoned or not. This is a
 - **Ambushes** (player gets a round of free actions; rare)
 - **Surprise attacks** (enemies get a round of free actions; rare, more likely if Rogue is not in party)
 
+Random overworld timing is server-owned and distance-based. After a battle, a
+new budget is sampled uniformly from 60–100 ordinary grass steps. Each accepted
+movement spends `terrain_weight × difficulty_multiplier × transport_multiplier`.
+The first 12 eligible moves are protected. Normal grass has weight 1, roads 0.2,
+and dark grass 2. Values live in `shared/encounter_pacing.json`. Duplicate or
+rejected movement does not advance the budget. Menus, scene changes, and saves
+preserve it; a new random battle resets it. Flying and safe terrain spend no
+budget. This replaces the six-step grace followed by rapidly escalating rolls.
+Required quest XP is 180/360/540 by act, with 600 XP for promotion, so fewer
+random fights do not make the main route dependent on grinding. Pending required
+quests in older saves receive the new XP floor without changing completed or
+optional quests.
+
+
 ## 6.7 Victory and defeat
 
 - **Victory:** all enemies defeated. Party gains XP (split evenly among living members) and gold. Random chance of item drop based on encounter table.

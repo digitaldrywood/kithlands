@@ -41,7 +41,7 @@ import {
 } from "./scenes/walkFrame.js";
 import { setLeaderIndex } from "./scenes/world.js";
 import { checkpointWorldPosition } from "./scenes/world_interact.js";
-import { encounterChanceForStep } from "./scenes/worldEncounter.js";
+import encounterPacing from "../../shared/encounter_pacing.json";
 import { walkStepMs } from "./systems/prefs.js";
 
 const DIR_DELTAS = {
@@ -1433,7 +1433,6 @@ export function installDevTestBridge(game) {
         door: scene?.currentDoorSpawn || null,
         natural: scene?.currentNaturalSpawn || null,
         spawns: scene?.spawns || [],
-        stepCount: scene?.stepCount,
         gameId: scene?.gameState?.id || null,
         checkpoint: scene?.gameState?.world_checkpoint || null,
         arrivalPending: scene?.worldArrivalPending || null,
@@ -1600,15 +1599,7 @@ export function installDevTestBridge(game) {
         path,
         grass,
         darkGrass,
-        chances: {
-          path: encounterChanceForStep({ tile: 1, stepCount, transportMult }),
-          grass: encounterChanceForStep({ tile: 0, stepCount, transportMult }),
-          darkGrass: encounterChanceForStep({
-            tile: 9,
-            stepCount,
-            transportMult,
-          }),
-        },
+        pacing: encounterPacing,
       };
     },
 
@@ -2728,7 +2719,6 @@ export function installDevTestBridge(game) {
       const beforeX = scene.playerX;
       const beforeY = scene.playerY;
       const [dx, dy] = DIR_DELTAS[dir] || [0, 0];
-      if (scene.scene?.key === "World") scene.stepCount = 0;
       scene.tryMove(dx, dy);
       return playerSnapshot(
         scene,
@@ -2825,7 +2815,6 @@ export function installDevTestBridge(game) {
       const beforeX = scene.playerX;
       const beforeY = scene.playerY;
       const [dx, dy] = DIR_DELTAS[dir] || [0, 0];
-      if (scene.scene?.key === "World") scene.stepCount = 0;
       scene.tryMove(dx, dy);
       const moved = beforeX !== scene.playerX || beforeY !== scene.playerY;
       const stepMs = walkStepMs();
