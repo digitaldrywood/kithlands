@@ -8,7 +8,7 @@ on:
 jobs:
   walking:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       PGHOST: localhost
     services:
@@ -47,7 +47,7 @@ jobs:
           sha256sum --check docs/walk-assets.sha256
           python3 skills/kithlands-visual-production/scripts/audit_walk_sheets.py client/public/sprites/walk --columns 6 --rows 8 --mode enforce
       - name: Verify walking, battle controls, and repeat field magic
-        run: ./scripts/run_playwright_local.sh e2e/walk-rendered-cadence.spec.js e2e/walk-all-classes.spec.js e2e/world-space-cycle.spec.js e2e/world-walk-audit-party.spec.js e2e/battle-continuity.spec.js e2e/field-magic-repeat.spec.js e2e/battle-stop-auto.spec.js
+        run: ./scripts/run_playwright_local.sh e2e/walk-rendered-cadence.spec.js e2e/walk-all-classes.spec.js e2e/world-space-cycle.spec.js e2e/world-walk-audit-party.spec.js e2e/battle-continuity.spec.js e2e/field-magic-repeat.spec.js e2e/battle-stop-auto.spec.js e2e/world-terrain-visibility.spec.js
       - name: Retain motion evidence
         if: always()
         uses: actions/upload-artifact@v4

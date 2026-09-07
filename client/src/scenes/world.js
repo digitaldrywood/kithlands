@@ -1,3 +1,4 @@
+import { updateWorldTerrainVisibility } from "./worldTerrainVisibility.js";
 import { beginWalkStep } from "./walkPlayback.js";
 import { explorationHUD } from "../ui/exploration_hud.js";
 import { drawPanel, drawButton } from "../ui/panel.js";
@@ -358,6 +359,18 @@ export class WorldScene extends Phaser.Scene {
 
     // Camera follows player
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+    // FOLLOW_UPDATE fires after camera worldView is finalized, before drawing.
+    const cullTerrain = (camera) =>
+      updateWorldTerrainVisibility(
+        this.tileSprites.list,
+        camera.worldView,
+        RENDERED_TILE,
+      );
+    const terrainCamera = this.cameras.main;
+    terrainCamera.on("followupdate", cullTerrain);
+    this.events.once("shutdown", () =>
+      terrainCamera.off("followupdate", cullTerrain),
+    );
 
     // Input
     this.cursors = this.input.keyboard.createCursorKeys();
