@@ -25,5 +25,27 @@
       "exec-70119b7e-bfc8-45ea-baab-56f9b84b3c67.png",
       "exec-cff1006e-384c-46df-9757-ec54f3346221.png"
     ]
-  }
+  },
+  "transparent_furniture": [
+    {
+      "asset": "client/public/interiors/library/bed.png",
+      "sha256": "82b628de86f8a67da2afedb57c089ea968af6b3542afc70ceaa18b5bee9483d1",
+      "method": "built-in image generation edit removed the opaque checkerboard; RGBA verified; rendered room inspected"
+    },
+    {
+      "asset": "client/public/interiors/library/bookcase.png",
+      "sha256": "d4c0c7f150415de99deabc2ee091789bca90b0e0d5162c78295c78a70ed0f054",
+      "method": "built-in image generation edit removed the opaque checkerboard; RGBA verified; rendered room inspected"
+    },
+    {
+      "asset": "client/public/interiors/library/dining.png",
+      "sha256": "576be614c548aef0f2848e5ef682391e4f4322368cb5ce83f00d0257ac8f1473",
+      "method": "built-in image generation edit removed the opaque checkerboard; RGBA verified; rendered room inspected"
+    },
+    {
+      "asset": "client/public/interiors/library/desk.png",
+      "sha256": "d444ccfb148fd7e54c396101c60ce08062922418d9091d678ca0f242db3d2dc1",
+      "method": "built-in image generation edit removed the opaque checkerboard; RGBA verified; rendered room inspected"
+    }
+  ]
 }

@@ -15,10 +15,11 @@ type Registry struct {
 }
 
 type Template struct {
-	ID           string  `json:"id"`
-	BuildingType string  `json:"building_type"`
-	MusicID      string  `json:"music_id,omitempty"`
-	Floors       []Floor `json:"floors"`
+	LibraryGeneration int     `json:"library_generation,omitempty"`
+	ID                string  `json:"id"`
+	BuildingType      string  `json:"building_type"`
+	MusicID           string  `json:"music_id,omitempty"`
+	Floors            []Floor `json:"floors"`
 }
 
 type Floor struct {
@@ -157,6 +158,40 @@ func (r *Registry) Pick(buildingType string, seed int64) *Template {
 		idx += len(templates)
 	}
 	return templates[idx]
+}
+
+// PickLegacy preserves the original selection pool when upgrading unpinned saves.
+func (r *Registry) PickLegacy(buildingType string, seed int64) *Template {
+	if r == nil {
+		return nil
+	}
+	var candidates []*Template
+	for _, template := range r.ByBuildingType[buildingType] {
+		if template.LibraryGeneration == 0 {
+			candidates = append(candidates, template)
+		}
+	}
+	if len(candidates) == 0 {
+		return nil
+	}
+	index := seed % int64(len(candidates))
+	if index < 0 {
+		index += int64(len(candidates))
+	}
+	return candidates[index]
+}
+
+// ByID resolves a saved identity without rerolling it against a larger pool.
+func (r *Registry) ByID(buildingType, id string) *Template {
+	if r == nil {
+		return nil
+	}
+	for _, template := range r.ByBuildingType[buildingType] {
+		if template.ID == id {
+			return template
+		}
+	}
+	return nil
 }
 
 func (t *Template) validate() error {

@@ -8,33 +8,91 @@
       "height": 12,
       "rows": [
         "WWWWWWWWWWWWWWWW",
-        "W.O........O...W",
-        "W....BB........W",
-        "W....BB...M....W",
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "WBBB.OO...OO...W",
+        "WBBB.......KKK.W",
+        "WBBB.......KKK.W",
         "W..............W",
-        "W......K.......W",
+        "W..MMM.........W",
+        "W..MMM.........W",
         "W..............W",
-        "W....O.........W",
-        "W..............W",
-        "W..H....R...H..W",
-        "W.F............W",
-        "WWWWWWWDWWWWWWWW"
+        "WWWWWWW..WWWWWWW",
+        "WWWWWWWDDWWWWWWW"
       ],
-      "entrance": { "x": 7, "y": 11, "from": "overworld" },
+      "entrance": {
+        "x": 7,
+        "y": 11,
+        "from": "overworld"
+      },
       "npc_anchors": [
-        { "role": "elder", "x": 7, "y": 5 },
-        { "role": "gossip", "x": 3, "y": 9 }
-      ],
-      "window_anchors": [
-        { "x": 4, "y": 0, "side": "north" },
-        { "x": 11, "y": 0, "side": "north" }
-      ],
-      "light_anchors": [
-        { "x": 10, "y": 1, "kind": "lantern" }
+        {
+          "role": "elder",
+          "x": 10,
+          "y": 5
+        },
+        {
+          "role": "gossip",
+          "x": 6,
+          "y": 7,
+          "sprite": "npc_priestess"
+        }
       ],
       "chest_anchors": [
-        { "id": "widow_keepsake_box", "x": 12, "y": 7 }
-      ]
+        {
+          "id": "widow_keepsake_box",
+          "x": 12,
+          "y": 8
+        }
+      ],
+      "presentation": {
+        "background_asset": "/interiors/library/wood-shell.png",
+        "hide_tile_layer": true,
+        "chest_closed_asset": "/interiors/inn/gilded-guest-chest-closed.png",
+        "chest_open_asset": "/interiors/inn/gilded-guest-chest-open.png",
+        "props": [
+          {
+            "asset": "/interiors/library/bed.png",
+            "x": 32,
+            "y": 80,
+            "width": 96,
+            "height": 128,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 160,
+            "y": 64,
+            "width": 64,
+            "height": 64,
+            "row": 3
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 320,
+            "y": 64,
+            "width": 64,
+            "height": 64,
+            "row": 3
+          },
+          {
+            "asset": "/interiors/library/desk.png",
+            "x": 352,
+            "y": 128,
+            "width": 112,
+            "height": 75,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/dining.png",
+            "x": 80,
+            "y": 224,
+            "width": 112,
+            "height": 80,
+            "row": 8
+          }
+        ]
+      }
     }
   ]
 }

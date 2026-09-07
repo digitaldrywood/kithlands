@@ -592,6 +592,8 @@ type QuestRewardState struct {
 
 // Game holds the live state of one game session.
 type Game struct {
+	savedInteriorTemplates map[string]string
+
 	dungeon             *DungeonProgress
 	dungeons            map[string]*DungeonProgress
 	activeDungeonID     string

@@ -93,6 +93,7 @@ func (g *Game) ToSaveStateWithWorldPosition(name, userID string, position *World
 		"battle_rewards":             g.battleRewards,
 		"shop_stocks":                g.shopStocks,
 		"world_checkpoint":           g.worldCheckpoint,
+		"interior_templates":         g.interiorChoices(),
 	}
 	worldJSON, err := json.Marshal(worldState)
 	if err != nil {
@@ -146,9 +147,10 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	}
 
 	var worldState struct {
-		FinalEncounter  *FinalEncounterProgress     `json:"final_encounter"`
-		ActiveDungeonID string                      `json:"active_dungeon_id"`
-		Dungeons        map[string]*DungeonProgress `json:"dungeons"`
+		InteriorTemplates map[string]string           `json:"interior_templates"`
+		FinalEncounter    *FinalEncounterProgress     `json:"final_encounter"`
+		ActiveDungeonID   string                      `json:"active_dungeon_id"`
+		Dungeons          map[string]*DungeonProgress `json:"dungeons"`
 		// Dungeon is the pre-catalog save shape. It is migrated into
 		// Dungeons below and is no longer emitted by new saves.
 		Dungeon                  *DungeonProgress                       `json:"dungeon"`
@@ -263,6 +265,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	}
 
 	game := &Game{
+		savedInteriorTemplates:   worldState.InteriorTemplates,
 		finalEncounter:           worldState.FinalEncounter,
 		dungeon:                  activeDungeon,
 		dungeons:                 dungeons,
@@ -625,6 +628,11 @@ func (s *Server) handleLoadSave(w http.ResponseWriter, r *http.Request) {
 	}
 	s.games.applyInteriorTemplates(game.tileMap)
 	if err := s.games.attachSettlementMap(game); err != nil {
+		httpError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := s.games.restoreInteriorChoices(game); err != nil {
 		httpError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
