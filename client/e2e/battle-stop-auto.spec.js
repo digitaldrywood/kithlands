@@ -11,6 +11,8 @@ for (const viewport of [
     page,
   }, info) => {
     test.setTimeout(90000);
+    const pageErrors = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
 
     await page.setViewportSize(viewport);
     await page.goto("/");
@@ -70,6 +72,11 @@ for (const viewport of [
     });
     await page.keyboard.press("q");
     await expect.poll(() => rounds).toBe(2);
+    // Let Auto cross two scene restarts without a stop request.
+    release();
+    await expect.poll(() => rounds).toBe(3);
+    release();
+    await expect.poll(() => rounds).toBe(4);
     const position = await page.evaluate(() =>
       window.__kithlandsTest.interactiveTextPosition("STOP AUTO (Q)", "Battle"),
     );
@@ -89,19 +96,20 @@ for (const viewport of [
       () => !window.__kithlandsTest.battleVisibilitySnapshot().animating,
     );
     await page.waitForTimeout(1200);
-    expect(rounds).toBe(2);
+    expect(rounds).toBe(4);
     await page.screenshot({
       path: info.outputPath(`auto-${run}-${viewport.width}-manual.png`),
     });
     // Auto can be resumed, and its keyboard stop works during the request too.
     await page.keyboard.press("q");
-    await expect.poll(() => rounds).toBe(3);
+    await expect.poll(() => rounds).toBe(5);
     await page.keyboard.press("q");
     release();
     await page.waitForFunction(
       () => !window.__kithlandsTest.battleVisibilitySnapshot().animating,
     );
     await page.waitForTimeout(1200);
-    expect(rounds).toBe(3);
+    expect(rounds).toBe(5);
+    expect(pageErrors).toEqual([]);
   });
 }
