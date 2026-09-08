@@ -6,9 +6,14 @@ on:
     branches: [main]
 
 jobs:
-  walking:
+  visual-tests:
+    name: visual-tests (${{ matrix.suite }})
     runs-on: ubuntu-latest
-    # The serial all-class audit plus battle, menu, and encounter flows exceed 20 minutes.
+    # Run the 22-minute walk suite independently of the 122-floor interior audit.
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [walking, interiors]
     timeout-minutes: 30
     env:
       PGHOST: localhost
@@ -48,14 +53,16 @@ jobs:
           sha256sum --check docs/walk-assets.sha256
           python3 skills/kithlands-visual-production/scripts/audit_walk_sheets.py client/public/sprites/walk --columns 6 --rows 8 --mode enforce
       - name: Verify walking, battle controls, and repeat field magic
+        if: matrix.suite == 'walking'
         run: ./scripts/run_playwright_local.sh e2e/walk-rendered-cadence.spec.js e2e/walk-all-classes.spec.js e2e/world-space-cycle.spec.js e2e/world-walk-audit-party.spec.js e2e/battle-continuity.spec.js e2e/field-magic-repeat.spec.js e2e/battle-stop-auto.spec.js e2e/world-terrain-visibility.spec.js e2e/world-encounter-pacing.spec.js
       - name: Verify complete interior library and playable entrances
+        if: matrix.suite == 'interiors'
         run: ./scripts/run_playwright_local.sh e2e/interior-library-gallery.spec.js e2e/elder-house-visit.spec.js e2e/interior-door-access.spec.js e2e/interior-templates-proof.spec.js
       - name: Retain motion evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: walking-proof
+          name: visual-proof-${{ matrix.suite }}
           path: |
             client/tmp/walk-rendered-*/
             client/test-results/
@@ -64,3 +71,14 @@ jobs:
             /tmp/kithlands-server-*.log
             /tmp/kithlands-client-*.log
           retention-days: 14
+
+  # Preserve the protected check name; neither suite may fail or be skipped.
+  walking:
+    runs-on: ubuntu-latest
+    needs: visual-tests
+    if: ${{ always() }}
+    steps:
+      - name: Require every visual suite
+        env:
+          VISUAL_RESULT: ${{ needs.visual-tests.result }}
+        run: test "$VISUAL_RESULT" = success

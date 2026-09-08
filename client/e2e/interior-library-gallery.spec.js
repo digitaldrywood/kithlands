@@ -14,7 +14,8 @@ for (const family of ["house", "inn", "shop", "temple"]) {
   test(`render every ${family} layout and reuse its art textures`, async ({
     page,
   }) => {
-    test.setTimeout(180000);
+    // CI needs about four seconds per rendered floor; the largest family has 38.
+    test.setTimeout(300000);
     await page.setViewportSize({ width: 1440, height: 1000 });
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
