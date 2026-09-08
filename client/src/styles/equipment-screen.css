@@ -1686,3 +1686,93 @@
     grid-column: 1 / -1;
   }
 }
+
+/* Spell browsing and field casting use the entire character screen. */
+.kith-equipment-screen.is-spells .equipment-header {
+  grid-template-columns: 44px minmax(0, 1fr) 44px 72px;
+  grid-template-areas: "prev identity next close";
+}
+.kith-equipment-screen.is-spells .equipment-main {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+.kith-equipment-screen.is-spells .character-summary-panel {
+  max-height: none;
+}
+.kith-equipment-screen.is-spells .character-detail-panel {
+  display: flex;
+  flex-direction: column;
+}
+.is-spells .character-detail-tab {
+  font-size: 14px;
+  min-height: 44px;
+}
+.spell-resources {
+  margin: 0;
+  color: var(--menu-accent);
+  font-size: 18px;
+}
+.spell-workspace {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr);
+  gap: 16px;
+}
+.spell-library,
+.spell-targets {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.spell-choice,
+.spell-target {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  min-height: 60px;
+  text-align: left;
+  color: var(--menu-text, #e9eef7);
+  background: var(--menu-card, #1c2736);
+  border: 1px solid var(--menu-line);
+  border-radius: 12px;
+  font: inherit;
+}
+.spell-choice[aria-pressed="true"] {
+  border-color: var(--menu-accent);
+  background: var(--menu-line);
+}
+.spell-choice small,
+.spell-target small {
+  color: var(--sheet-muted);
+}
+.spell-target:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.spell-casting {
+  min-width: 0;
+}
+.spell-casting h3 {
+  margin-top: 0;
+}
+.spell-casting p {
+  line-height: 1.5;
+}
+.spell-availability {
+  color: var(--menu-accent);
+}
+.spell-targets {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-block: 14px;
+}
+@media (max-width: 600px) {
+  .spell-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .spell-library {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .spell-choice,
+  .spell-target {
+    padding: 10px;
+  }
+}
