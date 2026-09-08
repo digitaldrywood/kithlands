@@ -1,3 +1,4 @@
+import { setPathMode } from "../systems/prefs.js";
 import { describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
@@ -29,6 +30,7 @@ describe("dungeon entrance presentation", () => {
   });
 
   it("recreates native trail controls after the World scene restarts", () => {
+    setPathMode(true);
     const current = scene();
     current.gameState.dungeon_entries = [
       { node_id: "home" },
@@ -61,6 +63,10 @@ describe("dungeon entrance presentation", () => {
     expect(current.dungeonEntryButton).not.toBe(first);
     expect(current.dungeonRouteButton).not.toBe(firstRoute);
     expect(current.explorationHUD.trail).toHaveBeenCalledTimes(4);
+    setPathMode(false);
+    updateDungeonEntry(current);
+    expect(current.dungeonRouteButton).toBeNull();
+    expect(current.dungeonEntryButton).toBeTruthy();
   });
 
   it("offers the trail only near the home locality entrance", () => {

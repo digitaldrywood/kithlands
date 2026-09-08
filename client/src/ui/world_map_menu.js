@@ -1,6 +1,8 @@
+import { getPathMode } from "../systems/prefs.js";
 import { element, viewportDialog } from "./viewport_dialog.js";
 import {
   cancelDungeonRoute,
+  changePathMode,
   followDungeonRoute,
 } from "../scenes/dungeonRoute.js";
 import { TILE_COLORS } from "../scenes/tileConstants.js";
@@ -48,6 +50,25 @@ export function showWorldMapDialog(scene) {
   dialog.header.append(
     element("p", "", "Your travels, nearby places, and current destination."),
   );
+  const mode = element(
+    "button",
+    "",
+    `Path mode: ${getPathMode() ? "On" : "Off"}`,
+  );
+  mode.setAttribute("aria-pressed", String(getPathMode()));
+  mode.addEventListener("click", () => {
+    changePathMode(scene, !getPathMode());
+    close();
+    showWorldMapDialog(scene);
+  });
+  dialog.header.append(
+    mode,
+    element(
+      "p",
+      "",
+      "Off: explore freely or mark a destination. On: choose Follow route to walk automatically.",
+    ),
+  );
   const canvas = element("canvas", "world-map-canvas");
   canvas.width = 900;
   canvas.height = 660;
@@ -82,6 +103,11 @@ export function showWorldMapDialog(scene) {
     ctx.beginPath();
     ctx.arc(x, y, 13, 0, Math.PI * 2);
     ctx.fill();
+    if (adventure.id === scene.trackedDungeonID) {
+      ctx.strokeStyle = "#f4d881";
+      ctx.lineWidth = 5;
+      ctx.stroke();
+    }
     ctx.fillStyle = "#f4d881";
     ctx.font = "bold 18px sans-serif";
     ctx.textAlign = "center";
@@ -114,9 +140,20 @@ export function showWorldMapDialog(scene) {
           `Entrance: ${adventure.entrance?.name || "Not on this map"}${adventure.completed ? " · Completed" : ""}`,
         ),
       );
+      const hint = element("button", "", "Mark destination");
+      hint.setAttribute("aria-label", `Mark destination: ${adventure.title}`);
+      hint.disabled = !adventure.entrance;
+      hint.addEventListener("click", () => {
+        cancelDungeonRoute(scene);
+        scene.trackedDungeonID = adventure.id;
+        scene.updateHUD?.();
+        close();
+        showWorldMapDialog(scene);
+      });
+      card.append(hint);
       const follow = element("button", "primary", "Follow route");
       follow.setAttribute("aria-label", `Follow route to ${adventure.title}`);
-      follow.disabled = !adventure.entrance;
+      follow.disabled = !adventure.entrance || !getPathMode();
       follow.addEventListener("click", async () => {
         scene.trackedDungeonID = adventure.id;
         cancelDungeonRoute(scene);
