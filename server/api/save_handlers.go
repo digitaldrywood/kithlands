@@ -325,6 +325,15 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 			}
 		}
 	}
+	// Accept the exact pre-footbridge map signature, then revalidate the
+	// position against the new map. This migration only opens river tiles;
+	// arbitrary stale or corrupt map signatures still use normal recovery.
+	if savedCheckpoint != nil && savedCheckpoint.MapSignature != worldMapSignature(tileMap) {
+		legacyMap := locality.GenerateTileMapBeforeFootbridges(loc, spawnID, walk)
+		if savedCheckpoint.MapSignature == worldMapSignature(legacyMap) {
+			savedCheckpoint.MapSignature = worldMapSignature(tileMap)
+		}
+	}
 	game.worldCheckpoint = resolveWorldCheckpoint(savedCheckpoint, tileMap, loc, game.worldTraversal(), spawnID, dungeonOriginNodeID)
 	if game.worldCheckpoint != nil {
 		game.location.WorldNodeID = game.worldCheckpoint.WorldNodeID
@@ -683,7 +692,7 @@ func (s *Server) saveLocality(ctx context.Context, game *Game, userID string) {
 	_, _ = s.db.Exec(ctx,
 		`INSERT INTO localities (id, user_id, source, name, graph)
 		 VALUES ($1, $2, $3, $4, $5)
-		 ON CONFLICT (id) DO UPDATE SET last_used_at = NOW()`,
+		 ON CONFLICT (id) DO UPDATE SET graph = EXCLUDED.graph, last_used_at = NOW()`,
 		loc.ID, userID, loc.Source, loc.Name, graphJSON)
 }
 

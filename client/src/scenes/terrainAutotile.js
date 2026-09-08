@@ -109,8 +109,13 @@ export function buildTerrainRenderPlan(tiles, x, y) {
       tile === TILE_IDS.bridge
         ? pickBridgeBaseTile(tiles, x, y)
         : pickMostCommonGround(tiles, x, y, PATH_BASE_FALLBACK);
-    const mask = orthogonalMask(tiles, x, y, (neighbor) =>
-      isPathTile(neighbor),
+    const mask = orthogonalMask(
+      tiles,
+      x,
+      y,
+      (neighbor) =>
+        isPathTile(neighbor) ||
+        (tile === TILE_IDS.bridge && isGroundTile(neighbor)),
     );
     return {
       baseKey:

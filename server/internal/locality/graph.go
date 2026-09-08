@@ -6,15 +6,15 @@ import "time"
 // Nodes are people, places, businesses, landmarks.
 // Edges are relationships between them.
 type Locality struct {
-	ID        string     `json:"id"`
-	Name      string     `json:"name"`
-	Center    LatLng     `json:"center"`
-	Nodes     []Node     `json:"nodes"`
-	Edges     []Edge     `json:"edges"`
-	Generated time.Time  `json:"generated"`
-	Source    string     `json:"source"` // wizard, csv, osm, hybrid
-	roads      []Road      // parsed OSM road data (not serialized)
-	waterways  []Waterway  // parsed OSM waterway data (not serialized)
+	ID               string     `json:"id"`
+	Name             string     `json:"name"`
+	Center           LatLng     `json:"center"`
+	Nodes            []Node     `json:"nodes"`
+	Edges            []Edge     `json:"edges"`
+	Generated        time.Time  `json:"generated"`
+	Source           string     `json:"source"` // wizard, csv, osm, hybrid
+	RoadSegments     []Road     `json:"roads,omitempty"`
+	WaterwaySegments []Waterway `json:"waterways,omitempty"`
 }
 
 type LatLng struct {

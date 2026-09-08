@@ -129,8 +129,8 @@ func BuildFromOSM(ctx context.Context, lat, lng float64, radiusM int, townName s
 	}
 
 	// Store road data for tilemap rendering
-	loc.roads = parseRoads(roadElements, nodeMap, minLat, maxLat, minLng, maxLng)
-	loc.waterways = parseWaterways(waterwayElements, nodeMap, minLat, maxLat, minLng, maxLng)
+	loc.RoadSegments = parseRoads(roadElements, nodeMap, minLat, maxLat, minLng, maxLng)
+	loc.WaterwaySegments = parseWaterways(waterwayElements, nodeMap, minLat, maxLat, minLng, maxLng)
 
 	return loc, nil
 }
@@ -393,15 +393,14 @@ type Road struct {
 	Class  string                   // raw OSM `highway` tag value (motorway, primary, residential, footway, ...)
 }
 
-// roads stores parsed road data (not exported in JSON, used by tilemap)
-// We add this as an unexported field accessor
+// Roads returns the saved OSM road segments for tilemap rendering.
 func (l *Locality) Roads() []Road {
-	return l.roads
+	return l.RoadSegments
 }
 
 // Waterways returns the parsed OSM waterway segments for tilemap rendering.
 func (l *Locality) Waterways() []Waterway {
-	return l.waterways
+	return l.WaterwaySegments
 }
 
 // queryOverpass fetches OSM data around a point.

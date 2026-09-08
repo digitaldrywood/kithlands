@@ -132,6 +132,16 @@ func BuildingTypeFromTags(tags []string) string {
 // Map scales with node count. Nodes are spread across the map with
 // wilderness, forests, water, and paths between them.
 func GenerateTileMap(loc *Locality, spawnID string, walk *WalkResult) *TileMap {
+	return generateTileMap(loc, spawnID, walk, true)
+}
+
+// GenerateTileMapBeforeFootbridges reproduces the old map only to validate a
+// saved checkpoint during migration. New games must use GenerateTileMap.
+func GenerateTileMapBeforeFootbridges(loc *Locality, spawnID string, walk *WalkResult) *TileMap {
+	return generateTileMap(loc, spawnID, walk, false)
+}
+
+func generateTileMap(loc *Locality, spawnID string, walk *WalkResult, footbridges bool) *TileMap {
 	nodeCount := len(loc.Nodes)
 	mapW := clamp(nodeCount*18, 120, 250)
 	mapH := mapW * 3 / 4
@@ -215,6 +225,10 @@ func GenerateTileMap(loc *Locality, spawnID string, walk *WalkResult) *TileMap {
 			tiles[y][t] = int(TileForest)
 			tiles[y][mapW-1-t] = int(TileForest)
 		}
+	}
+
+	if footbridges {
+		addRiverFootbridges(tiles, spawns, mapW, mapH)
 	}
 
 	return &TileMap{
