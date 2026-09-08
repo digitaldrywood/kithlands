@@ -1,3 +1,4 @@
+import { getPathMode } from "../systems/prefs.js";
 import { dungeonAction } from "../api.js";
 import { isWorldInputLocked } from "../systems/modalLock.js";
 import { drawButton } from "../ui/panel.js";
@@ -90,7 +91,7 @@ export function updateDungeonEntry(scene) {
     }
   }
 
-  const route = dungeonRouteForScene(scene);
+  const route = getPathMode() ? dungeonRouteForScene(scene) : null;
   if (!route) {
     scene.dungeonRouteButton?.destroy();
     scene.dungeonRouteButton = null;

@@ -1,3 +1,4 @@
+import { getPathMode, setPathMode } from "../systems/prefs.js";
 const WAYPOINT_RADIUS = 2;
 const RENDERED_TILE = 32;
 
@@ -106,6 +107,12 @@ function clearRouteGuide(scene) {
   scene.dungeonRouteGuide = [];
 }
 
+export function changePathMode(scene, enabled) {
+  setPathMode(enabled);
+  if (!enabled) cancelDungeonRoute(scene);
+  scene.updateHUD?.();
+}
+
 export function cancelDungeonRoute(scene) {
   if (scene.dungeonRouteToken) scene.dungeonRouteToken.cancelled = true;
   scene.dungeonRouteRunning = false;
@@ -138,7 +145,12 @@ function drawRouteGuide(scene, path) {
 }
 
 export async function followDungeonRoute(scene, entry) {
-  if (!entry?.node_id || scene.dungeonRouteRunning || scene.animating)
+  if (
+    !getPathMode() ||
+    !entry?.node_id ||
+    scene.dungeonRouteRunning ||
+    scene.animating
+  )
     return false;
   const token = { cancelled: false };
   scene.dungeonRouteToken = token;
