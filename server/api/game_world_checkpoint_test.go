@@ -563,3 +563,55 @@ func TestWorldCheckpointAcceptsLandmarkGround(t *testing.T) {
 		t.Fatal("fixture has no legacy building footprints near landmarks")
 	}
 }
+
+func TestFootbridgeMigrationPreservesExactSavedPosition(t *testing.T) {
+	game := newTownTestGame(t)
+	game.loc.WaterwaySegments = []locality.Waterway{{Kind: "stream", Points: []struct{ X, Y float64 }{{.5, 0}, {.5, 1}}}}
+	spawnID := game.walk.Spawn.ID
+	walk := locality.Walk(game.loc, spawnID)
+	legacy := locality.GenerateTileMapBeforeFootbridges(game.loc, spawnID, walk)
+	game.tileMap = legacy
+	game.worldCheckpoint = resolveWorldCheckpoint(nil, legacy, game.loc, game.worldTraversal(), spawnID)
+	position := findWorldCheckpointPosition(t, game, spawnID, func(p WorldPosition, _ locality.TileType) bool {
+		return p.X != game.worldCheckpoint.X || p.Y != game.worldCheckpoint.Y
+	})
+	saved, err := game.ToSaveStateWithWorldPosition("before bridges", "test-user", &position)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Exercise the real locality JSON boundary: waterways used to disappear here.
+	encoded, err := json.Marshal(game.loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var loc locality.Locality
+	if err := json.Unmarshal(encoded, &loc); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := FromSaveState(saved, game.gd, &loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if worldMapSignature(loaded.tileMap) == worldMapSignature(legacy) {
+		t.Fatal("fixture has no new bridges")
+	}
+	got := loaded.State().WorldCheckpoint
+	if got.X != position.X || got.Y != position.Y {
+		t.Fatalf("migration moved player from %+v to %+v", position, got)
+	}
+	if got.MapSignature != worldMapSignature(loaded.tileMap) {
+		t.Fatal("migration did not update signature")
+	}
+	// A second save/load must use exactly the same crossings and checkpoint.
+	again, err := loaded.ToSaveState("with bridges", "test-user")
+	if err != nil {
+		t.Fatal(err)
+	}
+	reloaded, err := FromSaveState(again, game.gd, &loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(reloaded.tileMap.Tiles, loaded.tileMap.Tiles) || !reflect.DeepEqual(reloaded.State().WorldCheckpoint, got) {
+		t.Fatal("crossings or position changed on second load")
+	}
+}

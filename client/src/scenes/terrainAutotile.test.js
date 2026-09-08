@@ -87,4 +87,25 @@ describe("buildTerrainRenderPlan", () => {
       }),
     );
   });
+  it.each([0, 9, 11, 12, 13, 16])(
+    "connects a footbridge deck to land tile %s",
+    (bank) => {
+      const horizontal = [
+        [15, 15, 15],
+        [bank, 18, bank],
+        [15, 15, 15],
+      ];
+      const vertical = [
+        [15, bank, 15],
+        [15, 18, 15],
+        [15, bank, 15],
+      ];
+      expect(buildTerrainRenderPlan(horizontal, 1, 1).overlay.mask).toBe(
+        AUTOTILE_EDGE_EAST | AUTOTILE_EDGE_WEST,
+      );
+      expect(buildTerrainRenderPlan(vertical, 1, 1).overlay.mask).toBe(
+        AUTOTILE_EDGE_NORTH | AUTOTILE_EDGE_SOUTH,
+      );
+    },
+  );
 });
