@@ -179,6 +179,35 @@ describe("BattleScene repeat memory", () => {
     expect(scene._lastRoundActions).toEqual(serverActions);
   });
 
+  it("continues Auto after restart before any manual buttons exist", () => {
+    const scene = new BattleScene();
+    scene.gameState = makeCombatState();
+    scene.livingMembers = [0];
+    scene.lastRoundActions = [{ slot: 0, type: "attack", target_id: 7 }];
+    scene.autoMode = true;
+    scene.actionBtns = null;
+    scene.promptText = {
+      setText() {
+        return this;
+      },
+      setColor() {
+        return this;
+      },
+    };
+    const stopControl = { destroy: vi.fn() };
+    scene.showAutoStopControl = () => scene.actionBtns.push(stopControl);
+    scene.submitAllActions = vi.fn();
+
+    scene.executeRepeat();
+
+    expect(scene.autoMode).toBe(true);
+    expect(scene.actionBtns).toEqual([stopControl]);
+    expect(scene.memberActions).toEqual([
+      { slot: 0, type: "attack", target_id: 7 },
+    ]);
+    expect(scene.submitAllActions).toHaveBeenCalledOnce();
+  });
+
   it.each([false, true])(
     "preserves the completed round and carries auto stop=%s through restart",
     async (stop) => {

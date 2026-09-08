@@ -2750,11 +2750,12 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    // Remove old action buttons
+    // A restarted Auto round has no manual buttons yet. Always initialize
+    // the list before adding the Stop control for this round.
     if (this.actionBtns) {
       this.actionBtns.forEach((o) => o.destroy());
-      this.actionBtns = [];
     }
+    this.actionBtns = [];
 
     this.promptText
       .setText(this.autoMode ? "AUTO-BATTLE..." : "REPEAT!")
