@@ -1,3 +1,4 @@
+import { renderCharacterSpells } from "./character_spells.js";
 import {
   applyRecommendedEquipment,
   equipItem,
@@ -346,6 +347,7 @@ function renderEquipmentScreen(state) {
       : null,
   );
 
+  root.classList.toggle("is-spells", state.detailTab === "spells");
   root.replaceChildren();
   root.append(
     renderHeader(state, model),
@@ -466,7 +468,9 @@ function renderHeader(state, model) {
     () => closeEquipmentScreen(state.scene),
     "Close equipment",
   );
-  header.append(previous, identity, next, goal, recommend, close);
+  if (state.detailTab === "spells")
+    header.append(previous, identity, next, close);
+  else header.append(previous, identity, next, goal, recommend, close);
   return header;
 }
 
@@ -482,6 +486,10 @@ function renderMain(
     "div",
     `equipment-main${selectedSlot ? " has-selection" : ""}`,
   );
+  if (state.detailTab === "spells") {
+    main.append(renderCharacterSummary(state, model));
+    return main;
+  }
   const loadout = element("section", "loadout-panel");
   loadout.setAttribute("aria-labelledby", "loadout-title");
   const loadoutTitle = element("h2", "section-title", "Loadout");
@@ -557,6 +565,7 @@ function renderCharacterSummary(state, model) {
   for (const [id, label] of DETAIL_TABS) {
     const tab = button(label, "character-detail-tab", () => {
       state.detailTab = id;
+      state.status = "";
       renderEquipmentScreen(state);
       requestAnimationFrame(() =>
         state.root.querySelector(`[data-detail-tab="${id}"]`)?.focus(),
@@ -585,7 +594,8 @@ function renderCharacterSummary(state, model) {
     "aria-labelledby",
     `character-detail-tab-${state.detailTab}`,
   );
-  if (state.detailTab === "spells") renderSpellsTab(tabPanel, member);
+  if (state.detailTab === "spells")
+    renderCharacterSpells(state, tabPanel, () => renderEquipmentScreen(state));
   else if (state.detailTab === "special") renderSpecialTab(tabPanel, member);
   else renderSummaryTab(tabPanel, model);
   panel.append(tabPanel);
@@ -680,35 +690,6 @@ function renderSummaryTab(panel, model) {
   );
   condition.append(conditions);
   panel.append(condition);
-}
-
-function renderSpellsTab(panel, member) {
-  const spells = member.spells || [];
-  if (!spells.length) {
-    panel.append(
-      element("p", "character-detail-empty", "No spells learned yet."),
-    );
-    return;
-  }
-  const list = element("div", "character-ability-list");
-  for (const spell of spells) {
-    const row = element("article", "character-ability-card");
-    row.append(
-      element("strong", "", spell.name),
-      element(
-        "span",
-        "character-ability-cost",
-        `${Number(spell.mp_cost) || 0} MP`,
-      ),
-      element(
-        "span",
-        "character-ability-effect",
-        spell.effect || titleCase(spell.target || "Spell"),
-      ),
-    );
-    list.append(row);
-  }
-  panel.append(list);
 }
 
 function renderSpecialTab(panel, member) {
@@ -1211,7 +1192,10 @@ function renderStatus(state) {
   const status = element(
     "div",
     `equipment-status ${state.statusTone || ""}`,
-    state.status || "Select a slot, compare, then confirm.",
+    state.status ||
+      (state.detailTab === "spells"
+        ? "Select a spell to view its details or cast field magic."
+        : "Select a slot, compare, then confirm."),
   );
   status.setAttribute("role", "status");
   status.setAttribute("aria-live", "polite");
