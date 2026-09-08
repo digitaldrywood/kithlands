@@ -29,7 +29,7 @@ func (g *Game) processWorldStepLocked(req LocationTransitionRequest) error {
 	// Visual audit tools may reposition the renderer between samples. This
 	// exemption is available only on explicitly enabled development servers.
 	if req.DebugNoEncounters && DebugEnabled() {
-		return g.arriveWorldNodeLocked(nodeID, &position)
+		return g.recordWorldArrivalLocked(nodeID, &position, true)
 	}
 	dx := checkpointAbs(position.X - g.worldCheckpoint.X)
 	dy := checkpointAbs(position.Y - g.worldCheckpoint.Y)
@@ -39,7 +39,7 @@ func (g *Game) processWorldStepLocked(req LocationTransitionRequest) error {
 	if dx > 1 || dy > 1 {
 		return fmt.Errorf("world step must move to an adjacent tile")
 	}
-	if err := g.arriveWorldNodeLocked(nodeID, &position); err != nil {
+	if err := g.recordWorldArrivalLocked(nodeID, &position, true); err != nil {
 		return err
 	}
 	tile := locality.TileType(g.tileMap.Tiles[position.Y][position.X])
