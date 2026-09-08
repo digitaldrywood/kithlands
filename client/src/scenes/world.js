@@ -186,6 +186,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   init(data) {
+    if (this.gameState?.id !== data.gameState?.id) this.trackedDungeonID = null;
     cancelDungeonRoute(this);
     this.dungeonRouteToken = null;
     this.settleWorldStep?.(false);

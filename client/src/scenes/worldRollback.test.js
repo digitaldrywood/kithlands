@@ -190,3 +190,16 @@ describe("overland landmark ground", () => {
     }
   });
 });
+
+describe("tracked adventure campaign lifetime", () => {
+  it("keeps a destination across scene returns but clears it for another game", () => {
+    const scene = {
+      gameState: { id: "campaign-a" },
+      trackedDungeonID: "forgotten-shrine",
+    };
+    WorldScene.prototype.init.call(scene, { gameState: { id: "campaign-a" } });
+    expect(scene.trackedDungeonID).toBe("forgotten-shrine");
+    WorldScene.prototype.init.call(scene, { gameState: { id: "campaign-b" } });
+    expect(scene.trackedDungeonID).toBeNull();
+  });
+});

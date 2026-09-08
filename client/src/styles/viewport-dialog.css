@@ -339,3 +339,26 @@
 .world-map-places .is-target {
   color: var(--menu-accent);
 }
+
+.world-map-adventures {
+  display: grid;
+  gap: 12px;
+  margin-block: 18px;
+}
+
+.world-map-adventures h2,
+.world-map-adventure h3 {
+  margin: 0;
+}
+
+.world-map-adventure {
+  padding: 16px;
+  border: 1px solid var(--menu-accent);
+  border-radius: 14px;
+  background: var(--menu-card);
+}
+
+.world-map-adventure p {
+  color: var(--menu-muted);
+  margin-block: 10px;
+}

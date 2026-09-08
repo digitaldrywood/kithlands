@@ -9,11 +9,11 @@ jobs:
   visual-tests:
     name: visual-tests (${{ matrix.suite }})
     runs-on: ubuntu-latest
-    # Run the 22-minute walk suite independently of the 122-floor interior audit.
+    # Keep movement, gameplay, and interior checks within independent job budgets.
     strategy:
       fail-fast: false
       matrix:
-        suite: [walking, interiors]
+        suite: [walking, gameplay, interiors]
     timeout-minutes: 30
     env:
       PGHOST: localhost
@@ -52,9 +52,12 @@ jobs:
         run: |
           sha256sum --check docs/walk-assets.sha256
           python3 skills/kithlands-visual-production/scripts/audit_walk_sheets.py client/public/sprites/walk --columns 6 --rows 8 --mode enforce
-      - name: Verify walking, battle controls, and repeat field magic
+      - name: Verify all-class walking and world rendering
         if: matrix.suite == 'walking'
-        run: ./scripts/run_playwright_local.sh e2e/walk-rendered-cadence.spec.js e2e/walk-all-classes.spec.js e2e/world-space-cycle.spec.js e2e/world-walk-audit-party.spec.js e2e/battle-continuity.spec.js e2e/field-magic-repeat.spec.js e2e/battle-stop-auto.spec.js e2e/world-terrain-visibility.spec.js e2e/world-encounter-pacing.spec.js e2e/river-footbridges.spec.js
+        run: ./scripts/run_playwright_local.sh e2e/walk-rendered-cadence.spec.js e2e/walk-all-classes.spec.js e2e/world-space-cycle.spec.js e2e/world-walk-audit-party.spec.js e2e/world-terrain-visibility.spec.js
+      - name: Verify battle controls, field magic, pacing, and adventure navigation
+        if: matrix.suite == 'gameplay'
+        run: ./scripts/run_playwright_local.sh e2e/battle-continuity.spec.js e2e/field-magic-repeat.spec.js e2e/battle-stop-auto.spec.js e2e/world-encounter-pacing.spec.js e2e/river-footbridges.spec.js e2e/adventure-map-navigation.spec.js
       - name: Verify complete interior library and playable entrances
         if: matrix.suite == 'interiors'
         run: ./scripts/run_playwright_local.sh e2e/interior-library-gallery.spec.js e2e/elder-house-visit.spec.js e2e/interior-door-access.spec.js e2e/interior-templates-proof.spec.js
@@ -72,7 +75,7 @@ jobs:
             /tmp/kithlands-client-*.log
           retention-days: 14
 
-  # Preserve the protected check name; neither suite may fail or be skipped.
+  # Preserve the protected check name; every suite must pass.
   walking:
     runs-on: ubuntu-latest
     needs: visual-tests

@@ -74,10 +74,15 @@ func (g *Game) ProcessLocationTransition(req LocationTransitionRequest) (GameSta
 	return g.State(), nil
 }
 
-// arriveWorldNodeLocked records physical progress through the locality graph.
-// The client may name only the node it has reached; it cannot jump past the
-// server-owned current node because each arrival must follow an authored edge.
+// arriveWorldNodeLocked handles legacy graph travel. Physical world-step
+// requests instead prove arrival with an adjacent, traversable tile.
 func (g *Game) arriveWorldNodeLocked(nodeID string, position *WorldPosition) error {
+	return g.recordWorldArrivalLocked(nodeID, position, false)
+}
+
+// A validated adjacent tile step proves physical arrival independently of the
+// locality graph. Legacy node-only travel still requires an authored edge.
+func (g *Game) recordWorldArrivalLocked(nodeID string, position *WorldPosition, walked bool) error {
 	if g.loc == nil || g.walk == nil || g.walk.Spawn == nil {
 		return fmt.Errorf("world navigation is unavailable")
 	}
@@ -95,7 +100,7 @@ func (g *Game) arriveWorldNodeLocked(nodeID string, position *WorldPosition) err
 		}
 		return nil
 	}
-	if !slices.Contains(g.loc.Neighbors(current), nodeID) {
+	if !walked && !slices.Contains(g.loc.Neighbors(current), nodeID) {
 		return fmt.Errorf("world node %q is not adjacent to the current arrival", nodeID)
 	}
 	if position != nil {
