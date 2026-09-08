@@ -30,7 +30,7 @@ describe("Forgotten Shrine world route", () => {
     expect(dungeonRouteForScene(scene)?.id).toBe("shrine");
   });
 
-  it("detours around an off-route marker before reaching the next waypoint", () => {
+  it("walks through unrelated landmarks on the way to the entrance", () => {
     const spawns = [
       { node_id: "central", x: 1, y: 5 },
       { node_id: "person_0", x: 7, y: 5 },
@@ -45,11 +45,11 @@ describe("Forgotten Shrine world route", () => {
       canWalk: () => true,
     });
     expect(path).not.toBeNull();
-    expect(path.every((point) => distance(point, spawns[1]) > 3)).toBe(true);
+    expect(path.some((point) => distance(point, spawns[1]) === 0)).toBe(true);
     expect(distance(path.at(-1), spawns[2])).toBeLessThanOrEqual(2);
   });
 
-  it("reports an unavailable route when a small map cannot avoid the off-route marker", () => {
+  it("keeps a crowded narrow route available", () => {
     const spawns = [
       { node_id: "central", x: 0, y: 1 },
       { node_id: "person_0", x: 4, y: 1 },
@@ -64,7 +64,39 @@ describe("Forgotten Shrine world route", () => {
         currentNodeID: "central",
         canWalk: () => true,
       }),
+    ).not.toBeNull();
+  });
+
+  it("does not route through impassable water", () => {
+    const tiles = openMap(9, 3);
+    for (const row of tiles) row[4] = 1;
+    const target = { node_id: "shrine", x: 8, y: 1 };
+    expect(
+      planDungeonWaypointPath({
+        tileData: tiles,
+        start: { x: 0, y: 1 },
+        target,
+        spawns: [target],
+        canWalk: (tile) => tile === 0,
+      }),
     ).toBeNull();
+  });
+
+  it("finishes inside the target's nearest-location area when entrances overlap", () => {
+    const spawns = [
+      { node_id: "other", x: 5, y: 1 },
+      { node_id: "shrine", x: 7, y: 1 },
+    ];
+    const path = planDungeonWaypointPath({
+      tileData: openMap(10, 3),
+      start: { x: 0, y: 1 },
+      target: spawns[1],
+      spawns,
+      canWalk: () => true,
+    });
+    expect(distance(path.at(-1), spawns[1])).toBeLessThan(
+      distance(path.at(-1), spawns[0]),
+    );
   });
 
   it("cancels an interrupted route and clears its guide", () => {

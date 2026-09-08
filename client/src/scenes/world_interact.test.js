@@ -322,6 +322,24 @@ describe("natural discovery interaction", () => {
 });
 
 describe("nearbyWorldArrival", () => {
+  it("matches the server nearest spawn rule inside overlapping arrival areas", () => {
+    const scene = {
+      gameState: { current_location: { kind: "world", world_node_id: "home" } },
+      playerX: 6,
+      playerY: 1,
+      spawns: [
+        { node_id: "ridge", x: 7, y: 1 },
+        { node_id: "home", x: 5, y: 1 },
+      ],
+    };
+    // Ties use spawn order, just like server checkpoint validation.
+    expect(nearbyWorldArrival(scene)?.node_id).toBe("ridge");
+    scene.playerX = 7;
+    expect(nearbyWorldArrival(scene)?.node_id).toBe("ridge");
+    scene.playerX = 5;
+    expect(nearbyWorldArrival(scene)).toBeNull();
+  });
+
   it("selects a reached node only after leaving the current arrival", () => {
     const scene = {
       gameState: {

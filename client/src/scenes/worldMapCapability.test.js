@@ -112,6 +112,25 @@ function worldMapButton(scene) {
 }
 
 describe("world map scene capability", () => {
+  it("exposes adventure titles and entrance hosts and tracks the selected destination", () => {
+    const scene = makeScene();
+    scene.gameState.dungeon_entries = [
+      { id: "shrine", title: "Forgotten Shrine", node_id: "grove" },
+    ];
+    scene.trackedDungeonID = "shrine";
+    const model = worldMapModel(scene);
+    expect(model.adventures[0]).toMatchObject({
+      title: "Forgotten Shrine",
+      number: 1,
+      entrance: { name: "Willow Grove" },
+    });
+    expect(
+      model.locations
+        .filter((place) => place.target)
+        .map((place) => place.node_id),
+    ).toEqual(["grove"]);
+  });
+
   it.each([
     ["dungeon without world spawns", { spawns: undefined }],
     ["missing terrain", { tileData: undefined }],

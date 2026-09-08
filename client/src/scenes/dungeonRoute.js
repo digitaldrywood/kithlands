@@ -1,4 +1,3 @@
-const ARRIVAL_RADIUS = 3;
 const WAYPOINT_RADIUS = 2;
 const RENDERED_TILE = 32;
 
@@ -15,30 +14,26 @@ export function planDungeonWaypointPath({
   start,
   target,
   spawns,
-  currentNodeID,
   canWalk,
 }) {
   const height = tileData?.length || 0;
   const width = tileData?.[0]?.length || 0;
   if (!width || !height || !target || !Number.isInteger(start?.x)) return null;
-  const current = (spawns || []).find(
-    (spawn) => spawn.node_id === currentNodeID,
-  );
-  const offRoute = (spawns || []).filter(
-    (spawn) =>
-      spawn.node_id !== currentNodeID && spawn.node_id !== target.node_id,
-  );
   const inBounds = (point) =>
     point.x >= 0 && point.y >= 0 && point.x < width && point.y < height;
   const walkable = (point) =>
     inBounds(point) && canWalk(tileData[point.y][point.x]);
-  const avoidsOffRouteArrival = (point) =>
-    offRoute.every((spawn) => distance(point, spawn) > ARRIVAL_RADIUS);
-  const reached = (point) =>
-    distance(point, target) <= WAYPOINT_RADIUS &&
-    (!current ||
-      current.node_id === target.node_id ||
-      distance(point, current) > ARRIVAL_RADIUS);
+  const reached = (point) => {
+    const nearest = (spawns || []).reduce(
+      (best, spawn) =>
+        !best || distance(point, spawn) < distance(point, best) ? spawn : best,
+      null,
+    );
+    return (
+      distance(point, target) <= WAYPOINT_RADIUS &&
+      (!nearest || nearest.node_id === target.node_id)
+    );
+  };
 
   if (reached(start)) return [];
   const queue = [start];
@@ -53,8 +48,7 @@ export function planDungeonWaypointPath({
     ]) {
       const next = { x: point.x + dx, y: point.y + dy };
       const key = pointKey(next);
-      if (parents.has(key) || !walkable(next) || !avoidsOffRouteArrival(next))
-        continue;
+      if (parents.has(key) || !walkable(next)) continue;
       parents.set(key, point);
       if (reached(next)) {
         const path = [next];
@@ -83,17 +77,25 @@ export function dungeonRouteForScene(scene) {
   const candidates = (scene.gameState.dungeon_entries || [])
     .filter(
       (entry) =>
-        entry.node_id !== currentNodeID &&
-        entry.route_node_ids?.length > 0 &&
+        (entry.node_id !== currentNodeID ||
+          scene.spawns?.some(
+            (spawn) =>
+              spawn.node_id === entry.node_id &&
+              distance(spawn, { x: scene.playerX, y: scene.playerY }) >
+                WAYPOINT_RADIUS,
+          )) &&
         scene.spawns?.some((spawn) => spawn.node_id === entry.node_id),
     )
     .sort(
       (a, b) =>
-        b.route_node_ids.length - a.route_node_ids.length ||
+        (b.route_node_ids?.length || 0) - (a.route_node_ids?.length || 0) ||
         a.title.localeCompare(b.title),
     );
   return (
-    candidates.find((entry) => entry.id === scene.currentDungeonRouteID) ||
+    candidates.find(
+      (entry) =>
+        entry.id === (scene.currentDungeonRouteID || scene.trackedDungeonID),
+    ) ||
     candidates[0] ||
     null
   );
@@ -111,14 +113,11 @@ export function cancelDungeonRoute(scene) {
   clearRouteGuide(scene);
 }
 
-function drawRouteGuide(scene, entry) {
+function drawRouteGuide(scene, path) {
   clearRouteGuide(scene);
-  scene.dungeonRouteGuide = (entry.route_node_ids || []).flatMap(
-    (nodeID, index) => {
-      const spawn = scene.spawns.find(
-        (candidate) => candidate.node_id === nodeID,
-      );
-      if (!spawn) return [];
+  scene.dungeonRouteGuide = path
+    .filter((_, index) => index % 5 === 0 || index === path.length - 1)
+    .flatMap((spawn, index) => {
       const x = spawn.x * RENDERED_TILE + RENDERED_TILE / 2;
       const y = spawn.y * RENDERED_TILE + RENDERED_TILE / 2;
       const marker = scene.add
@@ -135,27 +134,21 @@ function drawRouteGuide(scene, entry) {
         .setOrigin(0.5)
         .setDepth(10);
       return [marker, label];
-    },
-  );
+    });
 }
 
 export async function followDungeonRoute(scene, entry) {
-  if (
-    !entry?.route_node_ids?.length ||
-    scene.dungeonRouteRunning ||
-    scene.animating
-  )
+  if (!entry?.node_id || scene.dungeonRouteRunning || scene.animating)
     return false;
   const token = { cancelled: false };
   scene.dungeonRouteToken = token;
   scene.dungeonRouteRunning = true;
   scene.currentDungeonRouteID = entry.id;
-  drawRouteGuide(scene, entry);
+  scene.trackedDungeonID = entry.id;
   scene.updateHUD?.();
   try {
-    for (const nodeID of entry.route_node_ids) {
+    for (const nodeID of [entry.node_id]) {
       if (token.cancelled || !scene.scene?.isActive()) return false;
-      if (scene.gameState.current_location?.world_node_id === nodeID) continue;
       const target = scene.spawns.find((spawn) => spawn.node_id === nodeID);
       const path = planDungeonWaypointPath({
         tileData: scene.tileData,
@@ -167,10 +160,11 @@ export async function followDungeonRoute(scene, entry) {
       });
       if (!path) {
         scene.showMessage?.(
-          `No safe marked path reaches ${target?.name || entry.title}. Try another approach.`,
+          `No walkable route reaches ${entry.title} from here. Try another approach.`,
         );
         return false;
       }
+      drawRouteGuide(scene, path);
       for (const step of path) {
         if (token.cancelled || !scene.scene?.isActive()) return false;
         const dx = step.x - scene.playerX;

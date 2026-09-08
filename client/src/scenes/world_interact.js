@@ -71,7 +71,7 @@ export function nearbyWorldArrival(scene) {
     }))
     .filter(({ distance }) => distance <= 3)
     .sort((a, b) => a.distance - b.distance);
-  if (nearby.some(({ spawn }) => spawn.node_id === current)) return null;
+  if (nearby[0]?.spawn.node_id === current) return null;
   return nearby[0]?.spawn || null;
 }
 
