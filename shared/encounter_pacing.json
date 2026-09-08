@@ -1,0 +1,6 @@
+{
+  "minimum_grass_steps": 60,
+  "maximum_grass_steps": 100,
+  "safe_steps": 12,
+  "terrain_weights": { "0": 1, "1": 0.2, "9": 2, "10": 3, "11": 2.4, "12": 1.4, "13": 2.6, "16": 1.8, "18": 0.2 }
+}

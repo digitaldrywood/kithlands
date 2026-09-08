@@ -3,16 +3,16 @@
   "acts": {
     "1": {
       "quest_count": 3,
-      "reward": { "xp": 120, "gold": 30 }
+      "reward": { "xp": 180, "gold": 30 }
     },
     "2": {
       "quest_count": 4,
-      "reward": { "xp": 240, "gold": 60 }
+      "reward": { "xp": 360, "gold": 60 }
     },
     "3": {
       "quest_count": 3,
-      "reward": { "xp": 360, "gold": 90 }
+      "reward": { "xp": 540, "gold": 90 }
     }
   },
-  "promotion_reward": { "xp": 480, "gold": 100 }
+  "promotion_reward": { "xp": 600, "gold": 100 }
 }

@@ -44,6 +44,7 @@ type DialoguePool struct {
 
 // GameData holds all loaded game data from shared/.
 type GameData struct {
+	EncounterPacing    EncounterPacing
 	Campaign           generator.CampaignConfig
 	FinalEncounter     FinalEncounter
 	Dungeons           []dungeon.Definition
@@ -89,6 +90,10 @@ type GameData struct {
 // with a clear error, not produce a broken game."
 func Load(sharedDir string) *GameData {
 	gd := &GameData{}
+	gd.EncounterPacing = loadJSON[EncounterPacing](sharedDir, "encounter_pacing.json")
+	if err := gd.EncounterPacing.Validate(); err != nil {
+		panic(err)
+	}
 	gd.Campaign = loadJSON[generator.CampaignConfig](sharedDir, "campaign.json")
 	if err := gd.Campaign.Validate(); err != nil {
 		panic(fmt.Sprintf("gamedata: %v", err))

@@ -233,6 +233,7 @@ func (g *Game) startRandomEncounter(terrainTag string) (*GameState, error) {
 		g.rollEncounterStartForNewFight()
 	}
 	g.worldEncounterCount++
+	g.encounterTravel = EncounterTravelState{}
 
 	if g.discovered == nil {
 		g.discovered = make(map[string]bool)

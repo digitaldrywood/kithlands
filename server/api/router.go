@@ -211,6 +211,10 @@ func (s *Server) handleGameAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Type == "encounter" && !DebugEnabled() {
+		httpError(w, "random encounters are determined by world movement", http.StatusBadRequest)
+		return
+	}
 	result, err := game.ProcessAction(req)
 	if err != nil {
 		if errors.Is(err, ErrInternalAction) {

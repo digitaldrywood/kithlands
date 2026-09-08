@@ -102,28 +102,6 @@ export const FLY_TILES = Object.freeze({
   [TILE_IDS.mountain]: true,
 });
 
-export const TILE_ENCOUNTER_MULTIPLIERS = Object.freeze({
-  [TILE_IDS.grass]: 0.5,
-  [TILE_IDS.path]: 0.1,
-  [TILE_IDS.water]: 0,
-  [TILE_IDS.tree]: 0,
-  [TILE_IDS.building]: 0,
-  [TILE_IDS.door]: 0,
-  [TILE_IDS.floor]: 0,
-  [TILE_IDS.rock]: 0,
-  [TILE_IDS.bush]: 0,
-  [TILE_IDS.darkGrass]: 1.0,
-  [TILE_IDS.forest]: 1.5,
-  [TILE_IDS.hill]: 1.2,
-  [TILE_IDS.sand]: 0.7,
-  [TILE_IDS.marsh]: 1.3,
-  [TILE_IDS.lake]: 0,
-  [TILE_IDS.river]: 0,
-  [TILE_IDS.snow]: 0.9,
-  [TILE_IDS.mountain]: 0,
-  [TILE_IDS.bridge]: 0.1,
-});
-
 const GROUND_TILES = new Set([
   TILE_IDS.grass,
   TILE_IDS.darkGrass,

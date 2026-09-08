@@ -88,6 +88,7 @@ func (g *Game) ToSaveStateWithWorldPosition(name, userID string, position *World
 		"building_side_quests":       g.buildingSideQuests,
 		"last_round_actions":         g.lastRoundActions,
 		"world_encounter_count":      g.worldEncounterCount,
+		"encounter_travel":           g.encounterTravel,
 		"loot_roll_sequence":         g.lootRollSeq,
 		"battle_rewards":             g.battleRewards,
 		"shop_stocks":                g.shopStocks,
@@ -162,6 +163,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		NaturalDiscoveryRevealed map[string]bool                        `json:"natural_discovery_revealed"`
 		BuildingSideQuests       map[string]generator.BuildingSideQuest `json:"building_side_quests"`
 		LastRoundActions         []MemberActionReq                      `json:"last_round_actions"`
+		EncounterTravel          EncounterTravelState                   `json:"encounter_travel"`
 		WorldEncounterCount      int                                    `json:"world_encounter_count"`
 		LootRollSequence         uint64                                 `json:"loot_roll_sequence"`
 		BattleRewards            *battleRewardsReceipt                  `json:"battle_rewards"`
@@ -172,6 +174,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		return nil, fmt.Errorf("unmarshaling world state: %w", err)
 	}
 	quests, worldState.CurrentQ = migrateRequiredCampaign(quests, worldState.CurrentQ)
+	refreshPendingCampaignXP(quests, worldState.CurrentQ, gd)
 	worldState.FinalEncounter = migrateFinalEncounterProgress(
 		worldState.FinalEncounter,
 		quests,
@@ -285,6 +288,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		naturalDiscoveryClaimed:  naturalDiscoveryClaimed,
 		naturalDiscoveryRevealed: naturalDiscoveryRevealed,
 		worldEncounterCount:      worldState.WorldEncounterCount,
+		encounterTravel:          validEncounterTravel(worldState.EncounterTravel),
 		lootRollSeq:              worldState.LootRollSequence,
 		battleRewards:            worldState.BattleRewards,
 		shopStocks:               shopStocks,

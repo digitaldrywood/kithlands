@@ -128,11 +128,13 @@ export async function transitionLocation(
   transitionId,
   worldNodeId = "",
   worldPosition = null,
+  options = {},
 ) {
   return apiCall("POST", `/game/${gameId}/transition`, {
     transition_id: transitionId,
     world_node_id: worldNodeId,
     ...(worldPosition ? { world_position: worldPosition } : {}),
+    ...(options.debugNoEncounters ? { debug_no_encounters: true } : {}),
   });
 }
 
