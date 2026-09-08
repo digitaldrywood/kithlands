@@ -206,3 +206,12 @@ export function clearPrefs() {
     /* ignore */
   }
 }
+
+// Navigation assistance is a UI preference, never saved campaign state.
+export function getPathMode() {
+  return getPref("pathMode", false) === true;
+}
+
+export function setPathMode(enabled) {
+  setPref("pathMode", enabled === true);
+}

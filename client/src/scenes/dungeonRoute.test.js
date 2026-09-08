@@ -1,6 +1,9 @@
+import { clearPrefs, getPathMode } from "../systems/prefs.js";
 import { describe, expect, it, vi } from "vitest";
 import {
   cancelDungeonRoute,
+  changePathMode,
+  followDungeonRoute,
   dungeonRouteForScene,
   planDungeonWaypointPath,
 } from "./dungeonRoute.js";
@@ -122,3 +125,35 @@ describe("Forgotten Shrine world route", () => {
 function distance(a, b) {
   return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 }
+
+describe("opt-in path mode", () => {
+  it("defaults off and refuses to start movement", async () => {
+    clearPrefs();
+    const scene = { tryMove: vi.fn(), updateHUD: vi.fn() };
+    expect(getPathMode()).toBe(false);
+    expect(await followDungeonRoute(scene, { node_id: "shrine" })).toBe(false);
+    expect(scene.tryMove).not.toHaveBeenCalled();
+  });
+
+  it("enables without starting and disables an active route while keeping its hint", () => {
+    clearPrefs();
+    const marker = { destroy: vi.fn() };
+    const scene = {
+      trackedDungeonID: "shrine",
+      dungeonRouteToken: { cancelled: false },
+      dungeonRouteRunning: true,
+      dungeonRouteGuide: [marker],
+      updateHUD: vi.fn(),
+      tryMove: vi.fn(),
+    };
+    changePathMode(scene, true);
+    expect(getPathMode()).toBe(true);
+    expect(scene.tryMove).not.toHaveBeenCalled();
+    changePathMode(scene, false);
+    expect(getPathMode()).toBe(false);
+    expect(scene.dungeonRouteToken.cancelled).toBe(true);
+    expect(scene.dungeonRouteRunning).toBe(false);
+    expect(marker.destroy).toHaveBeenCalled();
+    expect(scene.trackedDungeonID).toBe("shrine");
+  });
+});

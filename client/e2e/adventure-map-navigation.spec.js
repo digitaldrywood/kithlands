@@ -42,6 +42,33 @@ for (const viewport of [
             .dungeon_entries.find((entry) => entry.id === id),
         id,
       );
+      if (id === "forgotten-shrine") {
+        const mode = page.getByRole("button", {
+          name: "Path mode: Off",
+          exact: true,
+        });
+        await expect(mode).toHaveAttribute("aria-pressed", "false");
+        await expect(
+          page.getByRole("button", {
+            name: `Follow route to ${entry.title}`,
+            exact: true,
+          }),
+        ).toBeDisabled();
+        await page
+          .getByRole("button", {
+            name: `Mark destination: ${entry.title}`,
+            exact: true,
+          })
+          .click();
+        await expect(mode).toBeVisible();
+        await page.screenshot({
+          path: testInfo.outputPath(`${Date.now()}-hint-mode-off.png`),
+        });
+        await mode.click();
+        await expect(
+          page.getByRole("button", { name: "Path mode: On", exact: true }),
+        ).toHaveAttribute("aria-pressed", "true");
+      }
       const follow = page.getByRole("button", {
         name: `Follow route to ${entry.title}`,
         exact: true,
