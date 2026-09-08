@@ -1,0 +1,215 @@
+{
+  "id": "inn_dining_lodge_04",
+  "building_type": "inn",
+  "floors": [
+    {
+      "floor_id": 0,
+      "width": 16,
+      "height": 14,
+      "rows": [
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "WBBBOOCCCCCOOO.W",
+        "WBBB..CCCCCOOO.W",
+        "WBBB.......OUO.W",
+        "W...MMM........W",
+        "W...MMM........W",
+        "W..............W",
+        "W..............W",
+        "W..MMM.........W",
+        "W..MMM.........W",
+        "WWWWWWW..WWWWWWW",
+        "WWWWWWWDDWWWWWWW"
+      ],
+      "entrance": {
+        "x": 7,
+        "y": 13,
+        "from": "overworld"
+      },
+      "stairs": [
+        {
+          "x": 12,
+          "y": 5,
+          "to_floor": 1,
+          "to_x": 7,
+          "to_y": 7,
+          "kind": "up"
+        }
+      ],
+      "npc_anchors": [
+        {
+          "role": "innkeeper",
+          "x": 11,
+          "y": 6
+        },
+        {
+          "role": "flavor",
+          "x": 9,
+          "y": 7,
+          "sprite": "npc_elder"
+        },
+        {
+          "role": "guard",
+          "x": 12,
+          "y": 9
+        }
+      ],
+      "chest_anchors": [],
+      "presentation": {
+        "background_asset": "/interiors/library/wood-shell.png",
+        "hide_tile_layer": true,
+        "props": [
+          {
+            "asset": "/interiors/library/stairs-up.png",
+            "x": 352,
+            "y": 64,
+            "width": 96,
+            "height": 128,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/bed.png",
+            "x": 32,
+            "y": 64,
+            "width": 96,
+            "height": 128,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/counter.png",
+            "x": 192,
+            "y": 48,
+            "width": 160,
+            "height": 112,
+            "row": 4
+          },
+          {
+            "asset": "/interiors/library/dining.png",
+            "x": 128,
+            "y": 176,
+            "width": 96,
+            "height": 80,
+            "row": 7
+          },
+          {
+            "asset": "/interiors/library/dining.png",
+            "x": 96,
+            "y": 304,
+            "width": 96,
+            "height": 80,
+            "row": 11
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 128,
+            "y": 64,
+            "width": 64,
+            "height": 64,
+            "row": 3
+          }
+        ],
+        "chest_closed_asset": "/interiors/inn/gilded-guest-chest-closed.png",
+        "chest_open_asset": "/interiors/inn/gilded-guest-chest-open.png"
+      }
+    },
+    {
+      "floor_id": 1,
+      "width": 18,
+      "height": 10,
+      "rows": [
+        "WWWWWWWWWWWWWWWWWW",
+        "WBBBB............W",
+        "WBBBB............W",
+        "WBBBB............W",
+        "WO....HMMH.......W",
+        "WO...........WWWWW",
+        "WO.....V.......BBW",
+        "WO...........H.BBW",
+        "WWWWWWW..WWWWWWWWW",
+        "WWWWWWWWWWWWWWWWWW"
+      ],
+      "stairs": [
+        {
+          "x": 7,
+          "y": 6,
+          "to_floor": 0,
+          "to_x": 12,
+          "to_y": 6,
+          "kind": "down"
+        }
+      ],
+      "npc_anchors": [
+        {
+          "role": "gossip",
+          "x": 11,
+          "y": 4,
+          "sprite": "npc_elder"
+        }
+      ],
+      "window_anchors": [
+        {
+          "x": 4,
+          "y": 0,
+          "side": "north"
+        },
+        {
+          "x": 12,
+          "y": 0,
+          "side": "north"
+        }
+      ],
+      "light_anchors": [
+        {
+          "x": 9,
+          "y": 1,
+          "kind": "lantern"
+        }
+      ],
+      "chest_anchors": [
+        {
+          "id": "gilded_guest_chest",
+          "x": 14,
+          "y": 2
+        }
+      ],
+      "presentation": {
+        "background_asset": "/interiors/inn/gilded-steps-guest.png",
+        "hide_tile_layer": true,
+        "foreground": [
+          {
+            "x": 64,
+            "y": 124,
+            "width": 108,
+            "height": 13,
+            "row": 3
+          },
+          {
+            "x": 225,
+            "y": 143,
+            "width": 49,
+            "height": 30,
+            "row": 4
+          },
+          {
+            "x": 407,
+            "y": 170,
+            "width": 68,
+            "height": 21,
+            "row": 5
+          },
+          {
+            "x": 485,
+            "y": 227,
+            "width": 41,
+            "height": 30,
+            "row": 7
+          }
+        ],
+        "chest_closed_asset": "/interiors/inn/gilded-guest-chest-closed.png",
+        "chest_open_asset": "/interiors/inn/gilded-guest-chest-open.png"
+      }
+    }
+  ],
+  "library_generation": 1
+}

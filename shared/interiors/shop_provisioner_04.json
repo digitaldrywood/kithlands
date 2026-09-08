@@ -1,0 +1,104 @@
+{
+  "id": "shop_provisioner_04",
+  "building_type": "shop",
+  "floors": [
+    {
+      "floor_id": 0,
+      "width": 16,
+      "height": 12,
+      "rows": [
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "W..OO.KKKCCCCC.W",
+        "W.....KKKCCCCC.W",
+        "W..............W",
+        "W.MMM..........W",
+        "W.MMM.....MMM..W",
+        "W.........MMM..W",
+        "W..............W",
+        "WWWWWWW..WWWWWWW",
+        "WWWWWWWDDWWWWWWW"
+      ],
+      "entrance": {
+        "x": 7,
+        "y": 11,
+        "from": "overworld"
+      },
+      "presentation": {
+        "background_asset": "/interiors/library/wood-shell.png",
+        "hide_tile_layer": true,
+        "props": [
+          {
+            "asset": "/interiors/library/counter.png",
+            "x": 288,
+            "y": 48,
+            "width": 160,
+            "height": 112,
+            "row": 4
+          },
+          {
+            "asset": "/interiors/library/dining.png",
+            "x": 64,
+            "y": 176,
+            "width": 96,
+            "height": 80,
+            "row": 7
+          },
+          {
+            "asset": "/interiors/library/dining.png",
+            "x": 320,
+            "y": 208,
+            "width": 96,
+            "height": 80,
+            "row": 8
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 96,
+            "y": 64,
+            "width": 64,
+            "height": 64,
+            "row": 3
+          },
+          {
+            "asset": "/interiors/library/desk.png",
+            "x": 192,
+            "y": 80,
+            "width": 96,
+            "height": 80,
+            "row": 4
+          }
+        ],
+        "chest_closed_asset": "/interiors/inn/gilded-guest-chest-closed.png",
+        "chest_open_asset": "/interiors/inn/gilded-guest-chest-open.png"
+      },
+      "npc_anchors": [
+        {
+          "role": "shopkeeper",
+          "x": 14,
+          "y": 6
+        },
+        {
+          "role": "merchant_wandering",
+          "x": 9,
+          "y": 8,
+          "sprite": "npc_merchant"
+        },
+        {
+          "role": "guard",
+          "x": 10,
+          "y": 5
+        }
+      ],
+      "chest_anchors": [
+        {
+          "id": "corner_goods_stash",
+          "x": 12,
+          "y": 9
+        }
+      ]
+    }
+  ],
+  "library_generation": 1
+}

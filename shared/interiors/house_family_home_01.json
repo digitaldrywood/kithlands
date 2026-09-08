@@ -1,0 +1,91 @@
+{
+  "id": "house_family_home_01",
+  "building_type": "house",
+  "floors": [
+    {
+      "floor_id": 0,
+      "width": 16,
+      "height": 12,
+      "rows": [
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "WBBBMMM.OO.BBB.W",
+        "WBBBMMM....BBB.W",
+        "WBBB.......BBB.W",
+        "W..............W",
+        "W..............W",
+        "W..............W",
+        "W..............W",
+        "WWWWWWW..WWWWWWW",
+        "WWWWWWWDDWWWWWWW"
+      ],
+      "entrance": {
+        "x": 7,
+        "y": 11,
+        "from": "overworld"
+      },
+      "npc_anchors": [
+        {
+          "role": "blacksmith",
+          "x": 4,
+          "y": 6
+        },
+        {
+          "role": "flavor",
+          "x": 6,
+          "y": 5,
+          "sprite": "npc_elder"
+        }
+      ],
+      "chest_anchors": [
+        {
+          "id": "blacksmith_apprentice_cache",
+          "x": 12,
+          "y": 9
+        }
+      ],
+      "presentation": {
+        "background_asset": "/interiors/library/wood-shell.png",
+        "hide_tile_layer": true,
+        "props": [
+          {
+            "asset": "/interiors/library/bed.png",
+            "x": 32,
+            "y": 64,
+            "width": 96,
+            "height": 128,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/bed.png",
+            "x": 352,
+            "y": 64,
+            "width": 96,
+            "height": 128,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 256,
+            "y": 64,
+            "width": 64,
+            "height": 64,
+            "row": 3
+          },
+          {
+            "asset": "/interiors/library/dining.png",
+            "x": 128,
+            "y": 80,
+            "width": 96,
+            "height": 80,
+            "row": 4
+          }
+        ],
+        "chest_closed_asset": "/interiors/inn/gilded-guest-chest-closed.png",
+        "chest_open_asset": "/interiors/inn/gilded-guest-chest-open.png"
+      }
+    }
+  ],
+  "library_generation": 1
+}

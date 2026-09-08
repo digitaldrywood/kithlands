@@ -26,6 +26,7 @@ for (const viewport of [
       "house_elder_study_1f",
       "house_widow_keep_1f",
       "house_abandoned_passage_1f",
+      "temple_sunhall_1f",
     ]) {
       const template = JSON.parse(
         readFileSync(
@@ -38,8 +39,8 @@ for (const viewport of [
           window.__kithlandsTest.startTownScene({
             node_id: template.id,
             name: template.id,
-            tags: ["house"],
-            building_type: "house",
+            tags: [template.building_type],
+            building_type: template.building_type,
             interior_template: template,
           }),
         template,

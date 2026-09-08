@@ -98,7 +98,7 @@ test.describe("interior templates proof", () => {
     });
     expect(shopSnapshot.templateId).toBe("shop_backroom_stock_1f");
     expect(shopSnapshot.floorCount).toBe(1);
-    expect(shopSnapshot.roomW).toBe(18);
+    expect(shopSnapshot.roomW).toBe(TEMPLATES.shop.floors[0].width);
     await captureCanvas(page, "shop-single-floor");
 
     const templeSnapshot = await visitInterior(
@@ -111,20 +111,17 @@ test.describe("interior templates proof", () => {
         interior_seed: 303,
         interior_template: TEMPLATES.temple,
       },
-      { floorIndex: 1, playerStart: { x: 6, y: 5 } },
+      { floorIndex: 1, playerStart: { x: 3, y: 6 } },
     );
     expect(templeSnapshot.templateId).toBe("temple_crypt_2f");
     expect(templeSnapshot.secretWallCount).toBeGreaterThan(0);
-    await page.evaluate(() =>
-      window.__kithlandsTest.movePlayer("right", "Town"),
-    );
-    await page.evaluate(() =>
-      window.__kithlandsTest.movePlayer("right", "Town"),
-    );
+    await page.evaluate(() => window.__kithlandsTest.movePlayer("up", "Town"));
+    await page.evaluate(() => window.__kithlandsTest.movePlayer("up", "Town"));
     const templeSecretSnapshot = await page.evaluate(() =>
       window.__kithlandsTest.townSnapshot("Town"),
     );
-    expect(templeSecretSnapshot.playerX).toBe(8);
+    expect(templeSecretSnapshot.playerX).toBe(3);
+    expect(templeSecretSnapshot.playerY).toBe(4);
     expect(templeSecretSnapshot.floorIndex).toBe(1);
     await captureCanvas(page, "temple-secret-passage");
 

@@ -13,20 +13,53 @@ export function drawInteriorForeground(scene, depthForRow) {
 
 export function preloadInteriorChests(scene) {
   const presentation = scene.interiorPresentation;
-  for (const [state, asset] of [
-    ["closed", presentation?.chestClosedAsset],
-    ["open", presentation?.chestOpenAsset],
+  for (const asset of [
+    presentation?.chestClosedAsset,
+    presentation?.chestOpenAsset,
   ]) {
-    const key = `${presentation?.textureKey}_chest_${state}`;
+    const key = `interior_chest:${asset}`;
     if (asset && !scene.textures.exists(key)) scene.load.image(key, asset);
   }
 }
 
 export function interiorChestKey(scene, opened) {
-  const key = `${scene.interiorPresentation?.textureKey}_chest_${opened ? "open" : "closed"}`;
+  const asset = opened
+    ? scene.interiorPresentation?.chestOpenAsset
+    : scene.interiorPresentation?.chestClosedAsset;
+  const key = `interior_chest:${asset}`;
   return scene.textures.exists(key)
     ? key
     : opened
       ? "object_chest_open"
       : "object_chest_closed";
+}
+
+// Texture identity follows the reusable asset, not the individual room.
+// Visiting a hundred layouts must not load a hundred copies of a bookcase.
+export function interiorPropKey(asset) {
+  return `interior_prop:${asset}`;
+}
+
+export function preloadInteriorProps(scene) {
+  const assets = new Set(
+    (scene.interiorPresentation?.props || []).map((prop) => prop.asset),
+  );
+  for (const asset of assets) {
+    const key = interiorPropKey(asset);
+    if (!scene.textures.exists(key)) scene.load.image(key, asset);
+  }
+}
+
+export function drawInteriorProps(scene, depthForRow) {
+  return (scene.interiorPresentation?.props || []).map((prop) =>
+    scene.add
+      .image(
+        scene.offsetX + prop.x,
+        scene.offsetY + prop.y,
+        interiorPropKey(prop.asset),
+      )
+      .setOrigin(0)
+      .setDisplaySize(prop.width, prop.height)
+      .setDepth(depthForRow(prop.row)),
+  );
 }

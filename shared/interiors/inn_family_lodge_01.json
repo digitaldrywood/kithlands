@@ -1,0 +1,131 @@
+{
+  "id": "inn_family_lodge_01",
+  "building_type": "inn",
+  "floors": [
+    {
+      "floor_id": 0,
+      "width": 16,
+      "height": 14,
+      "rows": [
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "W...OCCCCCBBB..W",
+        "W...OCCCCCBBB..W",
+        "WOOSO.....BBB..W",
+        "W..............W",
+        "W...........BBBW",
+        "W...........BBBW",
+        "W..MMM......BBBW",
+        "W..MMM.........W",
+        "W..............W",
+        "WWWWWWW..WWWWWWW",
+        "WWWWWWWDDWWWWWWW"
+      ],
+      "entrance": {
+        "x": 7,
+        "y": 13,
+        "from": "overworld"
+      },
+      "npc_anchors": [
+        {
+          "role": "innkeeper",
+          "x": 9,
+          "y": 5
+        },
+        {
+          "role": "gossip",
+          "x": 13,
+          "y": 10,
+          "sprite": "npc_elder"
+        },
+        {
+          "role": "flavor",
+          "x": 6,
+          "y": 9,
+          "sprite": "npc_elder"
+        }
+      ],
+      "chest_anchors": [
+        {
+          "id": "riverrest_guest_cache",
+          "x": 1,
+          "y": 3
+        }
+      ],
+      "presentation": {
+        "background_asset": "/interiors/library/wood-shell.png",
+        "hide_tile_layer": true,
+        "props": [
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 128,
+            "y": 64,
+            "width": 32,
+            "height": 128,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 32,
+            "y": 128,
+            "width": 32,
+            "height": 64,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 64,
+            "y": 128,
+            "width": 32,
+            "height": 64,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 96,
+            "y": 128,
+            "width": 32,
+            "height": 64,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/bed.png",
+            "x": 320,
+            "y": 64,
+            "width": 96,
+            "height": 128,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/bed.png",
+            "x": 384,
+            "y": 192,
+            "width": 96,
+            "height": 128,
+            "row": 9
+          },
+          {
+            "asset": "/interiors/library/counter.png",
+            "x": 160,
+            "y": 48,
+            "width": 160,
+            "height": 112,
+            "row": 4
+          },
+          {
+            "asset": "/interiors/library/dining.png",
+            "x": 96,
+            "y": 272,
+            "width": 96,
+            "height": 80,
+            "row": 10
+          }
+        ],
+        "chest_closed_asset": "/interiors/inn/gilded-guest-chest-closed.png",
+        "chest_open_asset": "/interiors/inn/gilded-guest-chest-open.png"
+      }
+    }
+  ],
+  "library_generation": 1
+}

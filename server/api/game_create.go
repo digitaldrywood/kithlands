@@ -154,7 +154,7 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 	generator.PrepareObjectives(quests, loc, spawnID, gm.gd.QuestObjectives)
 	walk := locality.Walk(loc, spawnID)
 	tileMap := locality.GenerateTileMap(loc, spawnID, walk)
-	gm.applyInteriorTemplates(tileMap)
+	gm.applyInteriorTemplates(tileMap, rngSeed)
 	buildingSideQuests := generator.GenerateBuildingSideQuests(loc, walk, rng, gm.buildingQuestPool)
 	settlementMap := gm.settlementMaps.ForLocality(loc.Name)
 	settlementInteriors, err := gm.buildSettlementInteriors(settlementMap)
@@ -205,12 +205,16 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 	return game, nil
 }
 
-func (gm *GameManager) applyInteriorTemplates(tileMap *locality.TileMap) {
+func (gm *GameManager) applyInteriorTemplates(tileMap *locality.TileMap, selectionSalt int64) {
 	if gm == nil || gm.interiorTemplates == nil || tileMap == nil {
 		return
 	}
 	for i := range tileMap.Spawns {
 		spawn := &tileMap.Spawns[i]
+		// Mix the game seed into new worlds so identical wizard node IDs do
+		// not force the same interiors in every playthrough. Loads use zero
+		// and then restore saved identities (or the original legacy pool).
+		spawn.InteriorSeed ^= selectionSalt
 		spawn.Interior = gm.interiorTemplates.Pick(spawn.BuildingType, spawn.InteriorSeed)
 	}
 }
@@ -228,6 +232,10 @@ func (gm *GameManager) buildSettlementInteriors(townMap *settlements.Map) (map[s
 		destinationID := interaction.Property("destination_id")
 		buildingType := interaction.Property("building_type")
 		seed := stableInteriorSeed(destinationID)
+		template := gm.interiorTemplates.Pick(buildingType, seed)
+		if templateID := interaction.Property("interior_template_id"); templateID != "" {
+			template = gm.interiorTemplates.ByID(buildingType, templateID)
+		}
 		spawn := locality.MapSpawn{
 			NodeID:       destinationID,
 			Name:         interaction.Property("display_name"),
@@ -235,7 +243,7 @@ func (gm *GameManager) buildSettlementInteriors(townMap *settlements.Map) (map[s
 			Tags:         splitSettlementTags(interaction.Property("tags")),
 			BuildingType: buildingType,
 			InteriorSeed: seed,
-			Interior:     gm.interiorTemplates.Pick(buildingType, seed),
+			Interior:     template,
 		}
 		if spawn.Interior == nil {
 			return nil, fmt.Errorf("settlement %q door %q has no %q interior template", townMap.Property("id"), interaction.Name, buildingType)

@@ -1,0 +1,259 @@
+{
+  "id": "temple_reliquary_03",
+  "building_type": "temple",
+  "floors": [
+    {
+      "floor_id": 0,
+      "width": 16,
+      "height": 14,
+      "rows": [
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "W.....AAAA.OOO.W",
+        "W.PPPPAAAA.OOO.W",
+        "W..........OVO.W",
+        "W.OO.OO........W",
+        "W..............W",
+        "WPPPP..........W",
+        "W..............W",
+        "W...KKK........W",
+        "W...KKK........W",
+        "WWWWWWW..WWWWWWW",
+        "WWWWWWWDDWWWWWWW"
+      ],
+      "entrance": {
+        "x": 7,
+        "y": 13,
+        "from": "overworld"
+      },
+      "stairs": [
+        {
+          "x": 12,
+          "y": 5,
+          "to_floor": 1,
+          "to_x": 12,
+          "to_y": 6,
+          "kind": "down"
+        }
+      ],
+      "npc_anchors": [
+        {
+          "role": "priestess",
+          "x": 10,
+          "y": 6
+        },
+        {
+          "role": "gossip",
+          "x": 12,
+          "y": 10,
+          "sprite": "npc_elder"
+        }
+      ],
+      "chest_anchors": [],
+      "presentation": {
+        "background_asset": "/interiors/library/stone-shell.png",
+        "hide_tile_layer": true,
+        "props": [
+          {
+            "asset": "/interiors/library/stairs-down.png",
+            "x": 352,
+            "y": 64,
+            "width": 96,
+            "height": 128,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/altar.png",
+            "x": 192,
+            "y": 64,
+            "width": 128,
+            "height": 96,
+            "row": 4
+          },
+          {
+            "asset": "/interiors/library/pew.png",
+            "x": 64,
+            "y": 96,
+            "width": 128,
+            "height": 64,
+            "row": 4
+          },
+          {
+            "asset": "/interiors/library/pew.png",
+            "x": 32,
+            "y": 224,
+            "width": 128,
+            "height": 64,
+            "row": 8
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 64,
+            "y": 160,
+            "width": 64,
+            "height": 64,
+            "row": 6
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 160,
+            "y": 160,
+            "width": 64,
+            "height": 64,
+            "row": 6
+          },
+          {
+            "asset": "/interiors/library/desk.png",
+            "x": 128,
+            "y": 304,
+            "width": 96,
+            "height": 80,
+            "row": 11
+          }
+        ],
+        "chest_closed_asset": "/interiors/inn/gilded-guest-chest-closed.png",
+        "chest_open_asset": "/interiors/inn/gilded-guest-chest-open.png"
+      }
+    },
+    {
+      "floor_id": 1,
+      "width": 16,
+      "height": 14,
+      "rows": [
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "W...O.AAAA.OOO.W",
+        "W...S.AAAA.OOO.W",
+        "WOOSO......OUO.W",
+        "W....OO..OO....W",
+        "W..............W",
+        "W..KKK.........W",
+        "W..KKK.........W",
+        "W..............W",
+        "W.........PPPP.W",
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW"
+      ],
+      "stairs": [
+        {
+          "x": 12,
+          "y": 5,
+          "to_floor": 0,
+          "to_x": 12,
+          "to_y": 6,
+          "kind": "up"
+        }
+      ],
+      "npc_anchors": [
+        {
+          "role": "guard",
+          "x": 10,
+          "y": 7
+        }
+      ],
+      "chest_anchors": [
+        {
+          "id": "crypt_cache",
+          "x": 1,
+          "y": 3
+        },
+        {
+          "id": "crypt_reliquary",
+          "x": 1,
+          "y": 4
+        }
+      ],
+      "presentation": {
+        "background_asset": "/interiors/library/stone-closed-shell.png",
+        "hide_tile_layer": true,
+        "props": [
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 128,
+            "y": 64,
+            "width": 32,
+            "height": 128,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 32,
+            "y": 128,
+            "width": 32,
+            "height": 64,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 64,
+            "y": 128,
+            "width": 32,
+            "height": 64,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 96,
+            "y": 128,
+            "width": 32,
+            "height": 64,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/stairs-up.png",
+            "x": 352,
+            "y": 64,
+            "width": 96,
+            "height": 128,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/altar.png",
+            "x": 192,
+            "y": 64,
+            "width": 128,
+            "height": 96,
+            "row": 4
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 288,
+            "y": 160,
+            "width": 64,
+            "height": 64,
+            "row": 6
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 160,
+            "y": 160,
+            "width": 64,
+            "height": 64,
+            "row": 6
+          },
+          {
+            "asset": "/interiors/library/desk.png",
+            "x": 96,
+            "y": 240,
+            "width": 96,
+            "height": 80,
+            "row": 9
+          },
+          {
+            "asset": "/interiors/library/pew.png",
+            "x": 320,
+            "y": 320,
+            "width": 128,
+            "height": 64,
+            "row": 11
+          }
+        ],
+        "chest_closed_asset": "/interiors/inn/gilded-guest-chest-closed.png",
+        "chest_open_asset": "/interiors/inn/gilded-guest-chest-open.png"
+      }
+    }
+  ],
+  "library_generation": 1
+}

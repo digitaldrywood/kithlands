@@ -54,8 +54,9 @@ describe("buildInteriorFromTemplate", () => {
     expect(interior.presentation).toEqual({
       backgroundAsset: "/interiors/inn/hearthside.png",
       hideTileLayer: true,
-      textureKey: "interior_background_inn_2floor_a_0",
+      textureKey: "interior_background:/interiors/inn/hearthside.png",
       foreground: [],
+      props: [],
       chestClosedAsset: null,
       chestOpenAsset: null,
     });

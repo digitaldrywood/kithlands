@@ -224,7 +224,8 @@ async function runGoldSlice(page, viewport) {
     roomW: 16,
     roomH: 12,
     backgroundAsset: "/interiors/shop/shop-corner-goods-background.png",
-    backgroundTextureKey: "interior_background_shop_corner_goods_1f_0",
+    backgroundTextureKey:
+      "interior_background:/interiors/shop/shop-corner-goods-background.png",
     backgroundLoaded: true,
     hidesTileLayer: true,
     roomDrawableCount: 0,

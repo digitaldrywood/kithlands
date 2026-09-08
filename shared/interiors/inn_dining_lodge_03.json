@@ -1,0 +1,100 @@
+{
+  "id": "inn_dining_lodge_03",
+  "building_type": "inn",
+  "floors": [
+    {
+      "floor_id": 0,
+      "width": 16,
+      "height": 14,
+      "rows": [
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "W.CCCCC...BBBOOW",
+        "W.CCCCC...BBB..W",
+        "W.........BBB..W",
+        "W..............W",
+        "W..........MMM.W",
+        "W..........MMM.W",
+        "W..............W",
+        "W..........MMM.W",
+        "W..........MMM.W",
+        "WWWWWWW..WWWWWWW",
+        "WWWWWWWDDWWWWWWW"
+      ],
+      "entrance": {
+        "x": 7,
+        "y": 13,
+        "from": "overworld"
+      },
+      "npc_anchors": [
+        {
+          "role": "innkeeper",
+          "x": 7,
+          "y": 5
+        },
+        {
+          "role": "flavor",
+          "x": 6,
+          "y": 8,
+          "sprite": "npc_elder"
+        },
+        {
+          "role": "guard",
+          "x": 4,
+          "y": 6
+        }
+      ],
+      "chest_anchors": [],
+      "presentation": {
+        "background_asset": "/interiors/library/wood-shell.png",
+        "hide_tile_layer": true,
+        "props": [
+          {
+            "asset": "/interiors/library/bed.png",
+            "x": 320,
+            "y": 64,
+            "width": 96,
+            "height": 128,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/counter.png",
+            "x": 64,
+            "y": 48,
+            "width": 160,
+            "height": 112,
+            "row": 4
+          },
+          {
+            "asset": "/interiors/library/dining.png",
+            "x": 352,
+            "y": 304,
+            "width": 96,
+            "height": 80,
+            "row": 11
+          },
+          {
+            "asset": "/interiors/library/dining.png",
+            "x": 352,
+            "y": 208,
+            "width": 96,
+            "height": 80,
+            "row": 8
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 416,
+            "y": 64,
+            "width": 64,
+            "height": 64,
+            "row": 3
+          }
+        ],
+        "chest_closed_asset": "/interiors/inn/gilded-guest-chest-closed.png",
+        "chest_open_asset": "/interiors/inn/gilded-guest-chest-open.png"
+      }
+    }
+  ],
+  "library_generation": 1
+}
