@@ -15,6 +15,26 @@
     {
       "path": "client/public/interiors/library/stone-shell.png",
       "sha256": "b1daa43c1ab810fe56c8a7c23676c148efb3d17fa4c00ce7c0b5d3841894daf6"
+    },
+    {
+      "path": "client/public/interiors/library/counter.png",
+      "sha256": "a76d411639d78de565ac62c85788b70ae180da67eda6b38ad417a7e6df5156ce",
+      "method": "built-in image generation; original isolated furniture or shell edit"
+    },
+    {
+      "path": "client/public/interiors/library/stairs-up.png",
+      "sha256": "0de88210b0218b8858f634dcd1ab6eb0ea99e30d5b2162fda9ea870987f29036",
+      "method": "built-in image generation; original isolated furniture or shell edit"
+    },
+    {
+      "path": "client/public/interiors/library/stairs-down.png",
+      "sha256": "2fec538700cbe51491538d38d6e7bedbb172ef868b32093f462b1527a1ced9fb",
+      "method": "built-in image generation; original isolated furniture or shell edit"
+    },
+    {
+      "path": "client/public/interiors/library/stone-closed-shell.png",
+      "sha256": "3d55b9794f33b716922971156aabc9001238dc231c8f10a26bec0a7fe18cd240",
+      "method": "built-in image generation; original isolated furniture or shell edit"
     }
   ],
   "rejected_drafts": {

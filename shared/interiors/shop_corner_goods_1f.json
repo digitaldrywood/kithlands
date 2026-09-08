@@ -20,25 +20,66 @@
         "W......R.......W",
         "WWWWWWWDWWWWWWWW"
       ],
-      "entrance": { "x": 7, "y": 11, "from": "overworld" },
+      "entrance": {
+        "x": 7,
+        "y": 11,
+        "from": "overworld"
+      },
       "presentation": {
         "background_asset": "/interiors/shop/shop-corner-goods-background.png",
-        "hide_tile_layer": true
+        "hide_tile_layer": true,
+        "chest_closed_asset": "/interiors/inn/gilded-guest-chest-closed.png",
+        "chest_open_asset": "/interiors/inn/gilded-guest-chest-open.png"
       },
       "npc_anchors": [
-        { "role": "shopkeeper", "x": 7, "y": 3 },
-        { "role": "merchant_wandering", "x": 3, "y": 6 },
-        { "role": "guard", "x": 10, "y": 6 }
+        {
+          "role": "shopkeeper",
+          "x": 7,
+          "y": 3
+        },
+        {
+          "role": "merchant_wandering",
+          "x": 3,
+          "y": 6,
+          "sprite": "npc_merchant"
+        },
+        {
+          "role": "guard",
+          "x": 10,
+          "y": 6
+        }
       ],
       "window_anchors": [
-        { "x": 4, "y": 0, "side": "north" },
-        { "x": 11, "y": 0, "side": "north" }
+        {
+          "x": 4,
+          "y": 0,
+          "side": "north"
+        },
+        {
+          "x": 11,
+          "y": 0,
+          "side": "north"
+        }
       ],
       "light_anchors": [
-        { "x": 5, "y": 1, "kind": "lantern" },
-        { "x": 10, "y": 1, "kind": "lantern" }
+        {
+          "x": 5,
+          "y": 1,
+          "kind": "lantern"
+        },
+        {
+          "x": 10,
+          "y": 1,
+          "kind": "lantern"
+        }
       ],
-      "chest_anchors": [{ "id": "corner_goods_stash", "x": 12, "y": 9 }]
+      "chest_anchors": [
+        {
+          "id": "corner_goods_stash",
+          "x": 12,
+          "y": 9
+        }
+      ]
     }
   ]
 }

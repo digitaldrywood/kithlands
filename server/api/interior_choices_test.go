@@ -70,3 +70,36 @@ func TestNewGameInteriorSelectionVariesBySeed(t *testing.T) {
 		t.Fatal("room selection is not deterministic for a fixed seed")
 	}
 }
+
+func TestSavedRoomChoicesSurviveLargerRegistry(t *testing.T) {
+	game := newXPProgressTestGame(t, []PartyMemberReq{{Name: "Hero", ClassID: "warrior"}})
+	expected := game.interiorChoices()
+	saved, err := game.ToSaveState("expanded library", "test-user")
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := FromSaveState(saved, game.gd, game.loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gm := NewGameManager(game.gd, "../../shared")
+	for family := range gm.interiorTemplates.ByBuildingType {
+		gm.interiorTemplates.ByBuildingType[family] = append(gm.interiorTemplates.ByBuildingType[family], &interiors.Template{ID: "future_" + family, BuildingType: family, LibraryGeneration: 2})
+	}
+	gm.applyInteriorTemplates(loaded.tileMap, 0)
+	if err := gm.attachSettlementMap(loaded); err != nil {
+		t.Fatal(err)
+	}
+	if err := gm.restoreInteriorChoices(loaded); err != nil {
+		t.Fatal(err)
+	}
+	actual := loaded.interiorChoices()
+	if len(actual) != len(expected) {
+		t.Fatalf("room count changed: %d != %d", len(actual), len(expected))
+	}
+	for id, want := range expected {
+		if actual[id] != want {
+			t.Errorf("%s changed from %s to %s", id, want, actual[id])
+		}
+	}
+}

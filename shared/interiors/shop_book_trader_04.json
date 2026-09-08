@@ -1,0 +1,112 @@
+{
+  "id": "shop_book_trader_04",
+  "building_type": "shop",
+  "floors": [
+    {
+      "floor_id": 0,
+      "width": 16,
+      "height": 12,
+      "rows": [
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "WOOOOOO.CCCCCOOW",
+        "W.......CCCCC..W",
+        "W..............W",
+        "W..............W",
+        "W..KKK.........W",
+        "W..KKK.........W",
+        "W..............W",
+        "WWWWWWW..WWWWWWW",
+        "WWWWWWWDDWWWWWWW"
+      ],
+      "entrance": {
+        "x": 7,
+        "y": 11,
+        "from": "overworld"
+      },
+      "npc_anchors": [
+        {
+          "role": "shopkeeper",
+          "x": 13,
+          "y": 5
+        },
+        {
+          "role": "merchant_wandering",
+          "x": 5,
+          "y": 4,
+          "sprite": "npc_merchant"
+        },
+        {
+          "role": "guard",
+          "x": 2,
+          "y": 8
+        }
+      ],
+      "chest_anchors": [
+        {
+          "id": "stockroom_cache",
+          "x": 12,
+          "y": 9
+        }
+      ],
+      "presentation": {
+        "background_asset": "/interiors/library/wood-shell.png",
+        "hide_tile_layer": true,
+        "props": [
+          {
+            "asset": "/interiors/library/counter.png",
+            "x": 256,
+            "y": 48,
+            "width": 160,
+            "height": 112,
+            "row": 4
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 416,
+            "y": 64,
+            "width": 64,
+            "height": 64,
+            "row": 3
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 96,
+            "y": 64,
+            "width": 64,
+            "height": 64,
+            "row": 3
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 160,
+            "y": 64,
+            "width": 64,
+            "height": 64,
+            "row": 3
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 32,
+            "y": 64,
+            "width": 64,
+            "height": 64,
+            "row": 3
+          },
+          {
+            "asset": "/interiors/library/desk.png",
+            "x": 96,
+            "y": 208,
+            "width": 96,
+            "height": 80,
+            "row": 8
+          }
+        ],
+        "chest_closed_asset": "/interiors/inn/gilded-guest-chest-closed.png",
+        "chest_open_asset": "/interiors/inn/gilded-guest-chest-open.png"
+      }
+    }
+  ],
+  "library_generation": 1
+}

@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 const run = Date.now();
 for (const room of [
-  { id: "house_elder_study_1f", chest: "elder_study_strongbox" },
-  { id: "temple_sunhall_1f", chest: "sunhall_offering_chest" },
+  { id: "house_elder_study_1f", chest: "elder_study_strongbox", seed: 9 },
+  { id: "temple_sunhall_1f", chest: "sunhall_offering_chest", seed: 26 },
 ])
   test(`${room.id} loads from server selection and treasure opens once`, async ({
     page,
@@ -16,22 +16,24 @@ for (const room of [
       () => window.__kithlandsTest?.activeSceneKey() === "Title",
     );
     await page.evaluate(() => window.__kithlandsTest.startQuickGame());
-    await page.evaluate(() =>
-      window.__kithlandsTest.startCustomGame({
-        town_name: "Cadott, WI",
-        rng_seed: 1,
-        people: [
-          { name: "Bob", relation: "friendly" },
-          { name: "Willow", relation: "neutral" },
-        ],
-        places: ["School", "Creswood Corners", "Fire Hall"],
-        big_building: "Town Hall",
-        party: [
-          { name: "Hero", class_id: "warrior" },
-          { name: "Willow", class_id: "mender" },
-        ],
-        difficulty: "normal",
-      }),
+    await page.evaluate(
+      (seed) =>
+        window.__kithlandsTest.startCustomGame({
+          town_name: "Cadott, WI",
+          rng_seed: seed,
+          people: [
+            { name: "Bob", relation: "friendly" },
+            { name: "Willow", relation: "neutral" },
+          ],
+          places: ["School", "Creswood Corners", "Fire Hall"],
+          big_building: "Town Hall",
+          party: [
+            { name: "Hero", class_id: "warrior" },
+            { name: "Willow", class_id: "mender" },
+          ],
+          difficulty: "normal",
+        }),
+      room.seed,
     );
     await page.waitForFunction(
       () => window.__kithlandsTest.activeSceneKey() === "World",

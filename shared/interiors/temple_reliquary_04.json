@@ -1,0 +1,112 @@
+{
+  "id": "temple_reliquary_04",
+  "building_type": "temple",
+  "floors": [
+    {
+      "floor_id": 0,
+      "width": 16,
+      "height": 12,
+      "rows": [
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "W.....AAAAOO.OOW",
+        "W.....AAAA.....W",
+        "W..............W",
+        "W..PPPP..PPPP..W",
+        "W..............W",
+        "WKKK...........W",
+        "WKKK...........W",
+        "WWWWWWW..WWWWWWW",
+        "WWWWWWWDDWWWWWWW"
+      ],
+      "entrance": {
+        "x": 7,
+        "y": 11,
+        "from": "overworld"
+      },
+      "npc_anchors": [
+        {
+          "role": "priestess",
+          "x": 10,
+          "y": 4
+        },
+        {
+          "role": "gossip",
+          "x": 5,
+          "y": 8,
+          "sprite": "npc_elder"
+        },
+        {
+          "role": "guard",
+          "x": 2,
+          "y": 3
+        }
+      ],
+      "chest_anchors": [
+        {
+          "id": "sunhall_offering_chest",
+          "x": 12,
+          "y": 9
+        }
+      ],
+      "presentation": {
+        "background_asset": "/interiors/library/stone-shell.png",
+        "hide_tile_layer": true,
+        "props": [
+          {
+            "asset": "/interiors/library/altar.png",
+            "x": 192,
+            "y": 64,
+            "width": 128,
+            "height": 96,
+            "row": 4
+          },
+          {
+            "asset": "/interiors/library/pew.png",
+            "x": 96,
+            "y": 160,
+            "width": 128,
+            "height": 64,
+            "row": 6
+          },
+          {
+            "asset": "/interiors/library/pew.png",
+            "x": 288,
+            "y": 160,
+            "width": 128,
+            "height": 64,
+            "row": 6
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 320,
+            "y": 64,
+            "width": 64,
+            "height": 64,
+            "row": 3
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 416,
+            "y": 64,
+            "width": 64,
+            "height": 64,
+            "row": 3
+          },
+          {
+            "asset": "/interiors/library/desk.png",
+            "x": 32,
+            "y": 240,
+            "width": 96,
+            "height": 80,
+            "row": 9
+          }
+        ],
+        "chest_closed_asset": "/interiors/inn/gilded-guest-chest-closed.png",
+        "chest_open_asset": "/interiors/inn/gilded-guest-chest-open.png"
+      }
+    }
+  ],
+  "library_generation": 1
+}

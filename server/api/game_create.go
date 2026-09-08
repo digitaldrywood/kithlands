@@ -232,6 +232,10 @@ func (gm *GameManager) buildSettlementInteriors(townMap *settlements.Map) (map[s
 		destinationID := interaction.Property("destination_id")
 		buildingType := interaction.Property("building_type")
 		seed := stableInteriorSeed(destinationID)
+		template := gm.interiorTemplates.Pick(buildingType, seed)
+		if templateID := interaction.Property("interior_template_id"); templateID != "" {
+			template = gm.interiorTemplates.ByID(buildingType, templateID)
+		}
 		spawn := locality.MapSpawn{
 			NodeID:       destinationID,
 			Name:         interaction.Property("display_name"),
@@ -239,7 +243,7 @@ func (gm *GameManager) buildSettlementInteriors(townMap *settlements.Map) (map[s
 			Tags:         splitSettlementTags(interaction.Property("tags")),
 			BuildingType: buildingType,
 			InteriorSeed: seed,
-			Interior:     gm.interiorTemplates.Pick(buildingType, seed),
+			Interior:     template,
 		}
 		if spawn.Interior == nil {
 			return nil, fmt.Errorf("settlement %q door %q has no %q interior template", townMap.Property("id"), interaction.Name, buildingType)

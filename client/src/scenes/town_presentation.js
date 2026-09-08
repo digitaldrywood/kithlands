@@ -13,17 +13,20 @@ export function drawInteriorForeground(scene, depthForRow) {
 
 export function preloadInteriorChests(scene) {
   const presentation = scene.interiorPresentation;
-  for (const [state, asset] of [
-    ["closed", presentation?.chestClosedAsset],
-    ["open", presentation?.chestOpenAsset],
+  for (const asset of [
+    presentation?.chestClosedAsset,
+    presentation?.chestOpenAsset,
   ]) {
-    const key = `${presentation?.textureKey}_chest_${state}`;
+    const key = `interior_chest:${asset}`;
     if (asset && !scene.textures.exists(key)) scene.load.image(key, asset);
   }
 }
 
 export function interiorChestKey(scene, opened) {
-  const key = `${scene.interiorPresentation?.textureKey}_chest_${opened ? "open" : "closed"}`;
+  const asset = opened
+    ? scene.interiorPresentation?.chestOpenAsset
+    : scene.interiorPresentation?.chestClosedAsset;
+  const key = `interior_chest:${asset}`;
   return scene.textures.exists(key)
     ? key
     : opened

@@ -2921,6 +2921,12 @@ export function installDevTestBridge(game) {
       return (scene.npcs || []).map((npc) => ({ x: npc.x, y: npc.y }));
     },
 
+    interiorTextureKeys() {
+      return game.textures
+        .getTextureKeys()
+        .filter((key) => key.startsWith("interior_"));
+    },
+
     townSnapshot(sceneKey = "Town") {
       const scene = getScene(game, sceneKey);
       if (!scene) throw new Error("Town scene is not active");

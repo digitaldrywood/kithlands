@@ -5,35 +5,123 @@
     {
       "floor_id": 0,
       "width": 16,
-      "height": 12,
+      "height": 14,
       "rows": [
         "WWWWWWWWWWWWWWWW",
-        "W.O..........O.W",
-        "W....X.........W",
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "W...O.OO.OO.BBBW",
+        "W...O.......BBBW",
+        "WOOSO.......BBBW",
+        "W........MMM...W",
+        "W........MMM...W",
         "W..............W",
-        "W..S...........W",
-        "W...........X..W",
-        "W......K.......W",
         "W..............W",
-        "W....BB........W",
-        "W....BB...O....W",
-        "W.F............W",
-        "WWWWWWWDWWWWWWWW"
+        "W..........KKK.W",
+        "W..........KKK.W",
+        "WWWWWWW..WWWWWWW",
+        "WWWWWWWDDWWWWWWW"
       ],
-      "entrance": { "x": 7, "y": 11, "from": "overworld" },
+      "entrance": {
+        "x": 7,
+        "y": 13,
+        "from": "overworld"
+      },
       "npc_anchors": [
-        { "role": "flavor", "x": 6, "y": 6 }
-      ],
-      "window_anchors": [
-        { "x": 4, "y": 0, "side": "north" },
-        { "x": 11, "y": 0, "side": "north" }
-      ],
-      "light_anchors": [
-        { "x": 9, "y": 1, "kind": "lantern" }
+        {
+          "role": "flavor",
+          "x": 14,
+          "y": 6,
+          "sprite": "npc_elder"
+        }
       ],
       "chest_anchors": [
-        { "id": "abandoned_wall_cache", "x": 12, "y": 5 }
-      ]
+        {
+          "id": "abandoned_wall_cache",
+          "x": 1,
+          "y": 3
+        }
+      ],
+      "presentation": {
+        "background_asset": "/interiors/library/wood-shell.png",
+        "hide_tile_layer": true,
+        "props": [
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 128,
+            "y": 64,
+            "width": 32,
+            "height": 128,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 32,
+            "y": 128,
+            "width": 32,
+            "height": 64,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 64,
+            "y": 128,
+            "width": 32,
+            "height": 64,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 96,
+            "y": 128,
+            "width": 32,
+            "height": 64,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/bed.png",
+            "x": 384,
+            "y": 64,
+            "width": 96,
+            "height": 128,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 192,
+            "y": 64,
+            "width": 64,
+            "height": 64,
+            "row": 3
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 288,
+            "y": 64,
+            "width": 64,
+            "height": 64,
+            "row": 3
+          },
+          {
+            "asset": "/interiors/library/desk.png",
+            "x": 352,
+            "y": 304,
+            "width": 96,
+            "height": 80,
+            "row": 11
+          },
+          {
+            "asset": "/interiors/library/dining.png",
+            "x": 288,
+            "y": 176,
+            "width": 96,
+            "height": 80,
+            "row": 7
+          }
+        ],
+        "chest_closed_asset": "/interiors/inn/gilded-guest-chest-closed.png",
+        "chest_open_asset": "/interiors/inn/gilded-guest-chest-open.png"
+      }
     }
   ]
 }

@@ -1,0 +1,99 @@
+{
+  "id": "shop_general_store_01",
+  "building_type": "shop",
+  "floors": [
+    {
+      "floor_id": 0,
+      "width": 16,
+      "height": 12,
+      "rows": [
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "W..OO.OO.CCCCC.W",
+        "W........CCCCC.W",
+        "W..............W",
+        "W..............W",
+        "W.KKK..........W",
+        "W.KKK.......MMMW",
+        "W...........MMMW",
+        "WWWWWWW..WWWWWWW",
+        "WWWWWWWDDWWWWWWW"
+      ],
+      "entrance": {
+        "x": 7,
+        "y": 11,
+        "from": "overworld"
+      },
+      "npc_anchors": [
+        {
+          "role": "shopkeeper",
+          "x": 14,
+          "y": 6
+        },
+        {
+          "role": "merchant_wandering",
+          "x": 5,
+          "y": 5,
+          "sprite": "npc_merchant"
+        },
+        {
+          "role": "flavor",
+          "x": 3,
+          "y": 4,
+          "sprite": "npc_elder"
+        }
+      ],
+      "chest_anchors": [],
+      "presentation": {
+        "background_asset": "/interiors/library/wood-shell.png",
+        "hide_tile_layer": true,
+        "props": [
+          {
+            "asset": "/interiors/library/counter.png",
+            "x": 288,
+            "y": 48,
+            "width": 160,
+            "height": 112,
+            "row": 4
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 192,
+            "y": 64,
+            "width": 64,
+            "height": 64,
+            "row": 3
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 96,
+            "y": 64,
+            "width": 64,
+            "height": 64,
+            "row": 3
+          },
+          {
+            "asset": "/interiors/library/desk.png",
+            "x": 64,
+            "y": 208,
+            "width": 96,
+            "height": 80,
+            "row": 8
+          },
+          {
+            "asset": "/interiors/library/dining.png",
+            "x": 384,
+            "y": 240,
+            "width": 96,
+            "height": 80,
+            "row": 9
+          }
+        ],
+        "chest_closed_asset": "/interiors/inn/gilded-guest-chest-closed.png",
+        "chest_open_asset": "/interiors/inn/gilded-guest-chest-open.png"
+      }
+    }
+  ],
+  "library_generation": 1
+}

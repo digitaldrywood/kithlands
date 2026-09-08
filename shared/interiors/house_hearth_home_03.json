@@ -1,0 +1,99 @@
+{
+  "id": "house_hearth_home_03",
+  "building_type": "house",
+  "floors": [
+    {
+      "floor_id": 0,
+      "width": 16,
+      "height": 12,
+      "rows": [
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "W.....OO.OOBBB.W",
+        "W..........BBB.W",
+        "W..........BBB.W",
+        "W..............W",
+        "W.MMM....KKK...W",
+        "W.MMM....KKK...W",
+        "W..............W",
+        "WWWWWWW..WWWWWWW",
+        "WWWWWWWDDWWWWWWW"
+      ],
+      "entrance": {
+        "x": 7,
+        "y": 11,
+        "from": "overworld"
+      },
+      "npc_anchors": [
+        {
+          "role": "elder",
+          "x": 13,
+          "y": 6
+        },
+        {
+          "role": "quest_giver",
+          "x": 10,
+          "y": 5,
+          "sprite": "npc_priestess"
+        }
+      ],
+      "chest_anchors": [
+        {
+          "id": "elder_study_strongbox",
+          "x": 12,
+          "y": 9
+        }
+      ],
+      "presentation": {
+        "background_asset": "/interiors/library/wood-shell.png",
+        "hide_tile_layer": true,
+        "props": [
+          {
+            "asset": "/interiors/library/bed.png",
+            "x": 352,
+            "y": 64,
+            "width": 96,
+            "height": 128,
+            "row": 5
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 288,
+            "y": 64,
+            "width": 64,
+            "height": 64,
+            "row": 3
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 192,
+            "y": 64,
+            "width": 64,
+            "height": 64,
+            "row": 3
+          },
+          {
+            "asset": "/interiors/library/desk.png",
+            "x": 288,
+            "y": 208,
+            "width": 96,
+            "height": 80,
+            "row": 8
+          },
+          {
+            "asset": "/interiors/library/dining.png",
+            "x": 64,
+            "y": 208,
+            "width": 96,
+            "height": 80,
+            "row": 8
+          }
+        ],
+        "chest_closed_asset": "/interiors/inn/gilded-guest-chest-closed.png",
+        "chest_open_asset": "/interiors/inn/gilded-guest-chest-open.png"
+      }
+    }
+  ],
+  "library_generation": 1
+}

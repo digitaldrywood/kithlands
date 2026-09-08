@@ -1,27 +1,36 @@
 # Rich interior library
 
-Target: 100 distinct, pregenerated floor plans across houses, inns, shops, and temples, sharing polished environment and furniture art. The collection is not complete. The repository currently still has twelve templates.
+The library now contains 25 templates per family and 122 floors. Five furniture profiles per family provide distinct sleeping,
+reading, dining, trading, worship, and archive arrangements. Secret alcoves and
+stairs have protected approaches. The original twelve template IDs, floor IDs,
+and treasure IDs remain intact; canonical Cadott doors explicitly name their
+curated templates.
 
-## Implemented reference room
+`shared/interior_library_design.json` contains the source profiles and legacy
+blueprints. Run `python3 scripts/build_interior_library.py` to reproduce the
+checked-in runtime JSON and manifest. Run
+`python3 scripts/export_interior_tiled.py client/tmp/interior-tiled-review` to
+export all 122 floors with external furniture tilesets and ordered visual,
+collision, interaction, NPC, and player layers. Tiled exports are for editing
+and inspection; the existing server-authoritative interior JSON remains the
+runtime format. Exported image layers record runtime display dimensions as
+custom properties because the renderer scales source backgrounds to each room.
 
-`house_elder_study_1f` now has an original painted background, aligned blocked furniture footprints, an open south entrance, reachable NPC anchors, and the existing `elder_study_strongbox` treasure identity. The secondary NPC uses an existing finished sprite and the chest reuses the finished inn chest art. Existing save loading reapplies current template data; this change keeps the template, floor and chest IDs.
+The server rejects disconnected walkable areas, unreachable NPCs or treasure,
+and obstructed stair destinations. Tests assert exactly 100 distinct floor
+plans, 25 per family, legacy treasure identities, and save selections surviving
+future registry expansion. Texture keys share background, furniture, and chest
+assets across all templates.
 
-The scene supports furniture supplied by `presentation.props`, using room-relative pixel bounds and a feet row for drawing order. Texture keys are shared by asset path across visits. The server validates furniture assets and bounds. Wood and stone shell art is prepared for subsequent layouts.
+Current proof: `client/tmp/interior-library-1788837141076/` contains all 122
+rendered floors and 13 inspected gallery pages. The gallery passed all four
+family checks; visual inspection caught and corrected hidden NPCs and the
+remaining shop placeholders. The elder/temple server-selected treasure visits
+and doorway tests at 1440/720/390 passed in run 1788837003288. Full integration,
+733 client tests, build, semantic data validation, and Go lint passed. Final
+combined-base regression checks and merge are still pending.
 
-The second reference room, `house_widow_keep_1f`, uses the wood shell and four transparent reusable furniture assets. Entry and exit were inspected at 1440, 720, and 390 pixel viewports.
-
-Saves now store selected template IDs. Unpinned legacy saves use generation-zero templates to preserve the original seed selection. Missing pinned IDs produce an explicit load error instead of silently changing the room. New library content must set `library_generation: 1`.
-
-`temple_sunhall_1f` now uses the stone shell with an original altar and four pews, a connected central aisle, finished NPC sprites, and the original offering chest. Desktop/mobile doorways and an authenticated server-selected visit with one-time chest opening are verified.
-
-New worlds mix the game RNG seed into building selection. Previously the wizard reused fixed node IDs, which forced identical interiors across every playthrough even when more than one template existed. Saved choices remain pinned; unpinned legacy loads retain the original selection.
-
-## Remaining production work
-
-- Complete merchant furniture integration. The original opaque drafts remain rejected; bed, bookcase, dining table, desk, altar, and pew now have verified transparent replacements.
-- Author 25 intentional layouts for each of the four building families. Different file names or palette swaps alone do not count as distinct layouts.
-- Validate connected entrances, all NPC approaches, chest approaches, stairs, and secret passages for every floor.
-- Keep existing template, floor and treasure IDs when upgrading remaining legacy rooms.
-- Inspect a gallery of all 100 rooms and real entry, interaction, treasure, stairs and exit flows at desktop and mobile sizes before reporting the collection complete.
-
-Asset provenance is recorded in `docs/art/interior-library-2026-09-07.json`. Furniture generation requested individual isolated transparent objects in the same overhead perspective as the reference house; the original opaque checkerboards were removed through built-in image generation edits before the four selected props were used.
+Asset provenance: `docs/art/interior-library-2026-09-07.json`. Selected furniture
+has verified RGBA transparency. New worlds mix their RNG seed into selection;
+saves pin template IDs, while unpinned legacy saves select generation-zero
+templates. Missing pinned templates fail explicitly rather than reshuffling.

@@ -1,0 +1,602 @@
+[
+  {
+    "id": "house_abandoned_passage_1f",
+    "family": "house",
+    "profile": "original",
+    "floors": 1
+  },
+  {
+    "id": "house_blacksmith_kid_1f",
+    "family": "house",
+    "profile": "original",
+    "floors": 1
+  },
+  {
+    "id": "house_elder_study_1f",
+    "family": "house",
+    "profile": "original",
+    "floors": 1
+  },
+  {
+    "id": "house_widow_keep_1f",
+    "family": "house",
+    "profile": "original",
+    "floors": 1
+  },
+  {
+    "id": "house_hearth_home_01",
+    "family": "house",
+    "profile": "hearth_home",
+    "floors": 1
+  },
+  {
+    "id": "house_family_home_01",
+    "family": "house",
+    "profile": "family_home",
+    "floors": 1
+  },
+  {
+    "id": "house_scribe_home_01",
+    "family": "house",
+    "profile": "scribe_home",
+    "floors": 1
+  },
+  {
+    "id": "house_guest_home_01",
+    "family": "house",
+    "profile": "guest_home",
+    "floors": 1
+  },
+  {
+    "id": "house_reading_home_01",
+    "family": "house",
+    "profile": "reading_home",
+    "floors": 1
+  },
+  {
+    "id": "house_hearth_home_02",
+    "family": "house",
+    "profile": "hearth_home",
+    "floors": 1
+  },
+  {
+    "id": "house_family_home_02",
+    "family": "house",
+    "profile": "family_home",
+    "floors": 1
+  },
+  {
+    "id": "house_scribe_home_02",
+    "family": "house",
+    "profile": "scribe_home",
+    "floors": 1
+  },
+  {
+    "id": "house_guest_home_02",
+    "family": "house",
+    "profile": "guest_home",
+    "floors": 1
+  },
+  {
+    "id": "house_reading_home_02",
+    "family": "house",
+    "profile": "reading_home",
+    "floors": 1
+  },
+  {
+    "id": "house_hearth_home_03",
+    "family": "house",
+    "profile": "hearth_home",
+    "floors": 1
+  },
+  {
+    "id": "house_family_home_03",
+    "family": "house",
+    "profile": "family_home",
+    "floors": 1
+  },
+  {
+    "id": "house_scribe_home_03",
+    "family": "house",
+    "profile": "scribe_home",
+    "floors": 1
+  },
+  {
+    "id": "house_guest_home_03",
+    "family": "house",
+    "profile": "guest_home",
+    "floors": 1
+  },
+  {
+    "id": "house_reading_home_03",
+    "family": "house",
+    "profile": "reading_home",
+    "floors": 1
+  },
+  {
+    "id": "house_hearth_home_04",
+    "family": "house",
+    "profile": "hearth_home",
+    "floors": 1
+  },
+  {
+    "id": "house_family_home_04",
+    "family": "house",
+    "profile": "family_home",
+    "floors": 1
+  },
+  {
+    "id": "house_scribe_home_04",
+    "family": "house",
+    "profile": "scribe_home",
+    "floors": 1
+  },
+  {
+    "id": "house_guest_home_04",
+    "family": "house",
+    "profile": "guest_home",
+    "floors": 1
+  },
+  {
+    "id": "house_reading_home_04",
+    "family": "house",
+    "profile": "reading_home",
+    "floors": 1
+  },
+  {
+    "id": "house_hearth_home_05",
+    "family": "house",
+    "profile": "hearth_home",
+    "floors": 1
+  },
+  {
+    "id": "inn_gilded_steps_2f",
+    "family": "inn",
+    "profile": "original",
+    "floors": 2
+  },
+  {
+    "id": "inn_hearthside_1f",
+    "family": "inn",
+    "profile": "original",
+    "floors": 1
+  },
+  {
+    "id": "inn_riverrest_secret_1f",
+    "family": "inn",
+    "profile": "original",
+    "floors": 1
+  },
+  {
+    "id": "inn_traveler_lodge_01",
+    "family": "inn",
+    "profile": "traveler_lodge",
+    "floors": 2
+  },
+  {
+    "id": "inn_reading_lodge_01",
+    "family": "inn",
+    "profile": "reading_lodge",
+    "floors": 1
+  },
+  {
+    "id": "inn_family_lodge_01",
+    "family": "inn",
+    "profile": "family_lodge",
+    "floors": 1
+  },
+  {
+    "id": "inn_dining_lodge_01",
+    "family": "inn",
+    "profile": "dining_lodge",
+    "floors": 2
+  },
+  {
+    "id": "inn_quiet_lodge_01",
+    "family": "inn",
+    "profile": "quiet_lodge",
+    "floors": 1
+  },
+  {
+    "id": "inn_traveler_lodge_02",
+    "family": "inn",
+    "profile": "traveler_lodge",
+    "floors": 1
+  },
+  {
+    "id": "inn_reading_lodge_02",
+    "family": "inn",
+    "profile": "reading_lodge",
+    "floors": 2
+  },
+  {
+    "id": "inn_family_lodge_02",
+    "family": "inn",
+    "profile": "family_lodge",
+    "floors": 1
+  },
+  {
+    "id": "inn_dining_lodge_02",
+    "family": "inn",
+    "profile": "dining_lodge",
+    "floors": 1
+  },
+  {
+    "id": "inn_quiet_lodge_02",
+    "family": "inn",
+    "profile": "quiet_lodge",
+    "floors": 2
+  },
+  {
+    "id": "inn_traveler_lodge_03",
+    "family": "inn",
+    "profile": "traveler_lodge",
+    "floors": 1
+  },
+  {
+    "id": "inn_reading_lodge_03",
+    "family": "inn",
+    "profile": "reading_lodge",
+    "floors": 1
+  },
+  {
+    "id": "inn_family_lodge_03",
+    "family": "inn",
+    "profile": "family_lodge",
+    "floors": 2
+  },
+  {
+    "id": "inn_dining_lodge_03",
+    "family": "inn",
+    "profile": "dining_lodge",
+    "floors": 1
+  },
+  {
+    "id": "inn_quiet_lodge_03",
+    "family": "inn",
+    "profile": "quiet_lodge",
+    "floors": 1
+  },
+  {
+    "id": "inn_traveler_lodge_04",
+    "family": "inn",
+    "profile": "traveler_lodge",
+    "floors": 2
+  },
+  {
+    "id": "inn_reading_lodge_04",
+    "family": "inn",
+    "profile": "reading_lodge",
+    "floors": 1
+  },
+  {
+    "id": "inn_family_lodge_04",
+    "family": "inn",
+    "profile": "family_lodge",
+    "floors": 1
+  },
+  {
+    "id": "inn_dining_lodge_04",
+    "family": "inn",
+    "profile": "dining_lodge",
+    "floors": 2
+  },
+  {
+    "id": "inn_quiet_lodge_04",
+    "family": "inn",
+    "profile": "quiet_lodge",
+    "floors": 1
+  },
+  {
+    "id": "inn_traveler_lodge_05",
+    "family": "inn",
+    "profile": "traveler_lodge",
+    "floors": 1
+  },
+  {
+    "id": "inn_reading_lodge_05",
+    "family": "inn",
+    "profile": "reading_lodge",
+    "floors": 2
+  },
+  {
+    "id": "shop_backroom_stock_1f",
+    "family": "shop",
+    "profile": "original",
+    "floors": 1
+  },
+  {
+    "id": "shop_broad_counter_1f",
+    "family": "shop",
+    "profile": "original",
+    "floors": 1
+  },
+  {
+    "id": "shop_corner_goods_1f",
+    "family": "shop",
+    "profile": "original",
+    "floors": 1
+  },
+  {
+    "id": "shop_book_trader_01",
+    "family": "shop",
+    "profile": "book_trader",
+    "floors": 1
+  },
+  {
+    "id": "shop_general_store_01",
+    "family": "shop",
+    "profile": "general_store",
+    "floors": 1
+  },
+  {
+    "id": "shop_provisioner_01",
+    "family": "shop",
+    "profile": "provisioner",
+    "floors": 1
+  },
+  {
+    "id": "shop_scribe_shop_01",
+    "family": "shop",
+    "profile": "scribe_shop",
+    "floors": 1
+  },
+  {
+    "id": "shop_household_shop_01",
+    "family": "shop",
+    "profile": "household_shop",
+    "floors": 1
+  },
+  {
+    "id": "shop_book_trader_02",
+    "family": "shop",
+    "profile": "book_trader",
+    "floors": 1
+  },
+  {
+    "id": "shop_general_store_02",
+    "family": "shop",
+    "profile": "general_store",
+    "floors": 1
+  },
+  {
+    "id": "shop_provisioner_02",
+    "family": "shop",
+    "profile": "provisioner",
+    "floors": 1
+  },
+  {
+    "id": "shop_scribe_shop_02",
+    "family": "shop",
+    "profile": "scribe_shop",
+    "floors": 1
+  },
+  {
+    "id": "shop_household_shop_02",
+    "family": "shop",
+    "profile": "household_shop",
+    "floors": 1
+  },
+  {
+    "id": "shop_book_trader_03",
+    "family": "shop",
+    "profile": "book_trader",
+    "floors": 1
+  },
+  {
+    "id": "shop_general_store_03",
+    "family": "shop",
+    "profile": "general_store",
+    "floors": 1
+  },
+  {
+    "id": "shop_provisioner_03",
+    "family": "shop",
+    "profile": "provisioner",
+    "floors": 1
+  },
+  {
+    "id": "shop_scribe_shop_03",
+    "family": "shop",
+    "profile": "scribe_shop",
+    "floors": 1
+  },
+  {
+    "id": "shop_household_shop_03",
+    "family": "shop",
+    "profile": "household_shop",
+    "floors": 1
+  },
+  {
+    "id": "shop_book_trader_04",
+    "family": "shop",
+    "profile": "book_trader",
+    "floors": 1
+  },
+  {
+    "id": "shop_general_store_04",
+    "family": "shop",
+    "profile": "general_store",
+    "floors": 1
+  },
+  {
+    "id": "shop_provisioner_04",
+    "family": "shop",
+    "profile": "provisioner",
+    "floors": 1
+  },
+  {
+    "id": "shop_scribe_shop_04",
+    "family": "shop",
+    "profile": "scribe_shop",
+    "floors": 1
+  },
+  {
+    "id": "shop_household_shop_04",
+    "family": "shop",
+    "profile": "household_shop",
+    "floors": 1
+  },
+  {
+    "id": "shop_book_trader_05",
+    "family": "shop",
+    "profile": "book_trader",
+    "floors": 1
+  },
+  {
+    "id": "shop_general_store_05",
+    "family": "shop",
+    "profile": "general_store",
+    "floors": 1
+  },
+  {
+    "id": "temple_crypt_2f",
+    "family": "temple",
+    "profile": "original",
+    "floors": 2
+  },
+  {
+    "id": "temple_sunhall_1f",
+    "family": "temple",
+    "profile": "original",
+    "floors": 1
+  },
+  {
+    "id": "temple_sun_chapel_01",
+    "family": "temple",
+    "profile": "sun_chapel",
+    "floors": 2
+  },
+  {
+    "id": "temple_archive_chapel_01",
+    "family": "temple",
+    "profile": "archive_chapel",
+    "floors": 1
+  },
+  {
+    "id": "temple_pilgrim_chapel_01",
+    "family": "temple",
+    "profile": "pilgrim_chapel",
+    "floors": 2
+  },
+  {
+    "id": "temple_sanctuary_01",
+    "family": "temple",
+    "profile": "sanctuary",
+    "floors": 1
+  },
+  {
+    "id": "temple_reliquary_01",
+    "family": "temple",
+    "profile": "reliquary",
+    "floors": 2
+  },
+  {
+    "id": "temple_sun_chapel_02",
+    "family": "temple",
+    "profile": "sun_chapel",
+    "floors": 1
+  },
+  {
+    "id": "temple_archive_chapel_02",
+    "family": "temple",
+    "profile": "archive_chapel",
+    "floors": 2
+  },
+  {
+    "id": "temple_pilgrim_chapel_02",
+    "family": "temple",
+    "profile": "pilgrim_chapel",
+    "floors": 1
+  },
+  {
+    "id": "temple_sanctuary_02",
+    "family": "temple",
+    "profile": "sanctuary",
+    "floors": 2
+  },
+  {
+    "id": "temple_reliquary_02",
+    "family": "temple",
+    "profile": "reliquary",
+    "floors": 1
+  },
+  {
+    "id": "temple_sun_chapel_03",
+    "family": "temple",
+    "profile": "sun_chapel",
+    "floors": 2
+  },
+  {
+    "id": "temple_archive_chapel_03",
+    "family": "temple",
+    "profile": "archive_chapel",
+    "floors": 1
+  },
+  {
+    "id": "temple_pilgrim_chapel_03",
+    "family": "temple",
+    "profile": "pilgrim_chapel",
+    "floors": 2
+  },
+  {
+    "id": "temple_sanctuary_03",
+    "family": "temple",
+    "profile": "sanctuary",
+    "floors": 1
+  },
+  {
+    "id": "temple_reliquary_03",
+    "family": "temple",
+    "profile": "reliquary",
+    "floors": 2
+  },
+  {
+    "id": "temple_sun_chapel_04",
+    "family": "temple",
+    "profile": "sun_chapel",
+    "floors": 1
+  },
+  {
+    "id": "temple_archive_chapel_04",
+    "family": "temple",
+    "profile": "archive_chapel",
+    "floors": 2
+  },
+  {
+    "id": "temple_pilgrim_chapel_04",
+    "family": "temple",
+    "profile": "pilgrim_chapel",
+    "floors": 1
+  },
+  {
+    "id": "temple_sanctuary_04",
+    "family": "temple",
+    "profile": "sanctuary",
+    "floors": 2
+  },
+  {
+    "id": "temple_reliquary_04",
+    "family": "temple",
+    "profile": "reliquary",
+    "floors": 1
+  },
+  {
+    "id": "temple_sun_chapel_05",
+    "family": "temple",
+    "profile": "sun_chapel",
+    "floors": 2
+  },
+  {
+    "id": "temple_archive_chapel_05",
+    "family": "temple",
+    "profile": "archive_chapel",
+    "floors": 1
+  },
+  {
+    "id": "temple_pilgrim_chapel_05",
+    "family": "temple",
+    "profile": "pilgrim_chapel",
+    "floors": 2
+  }
+]

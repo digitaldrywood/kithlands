@@ -126,6 +126,10 @@ func LoadDir(sharedDir string) (*Registry, error) {
 			return nil, fmt.Errorf("validating %s: %w", entry.Name(), err)
 		}
 
+		if err := template.validateAccess(); err != nil {
+			return nil, fmt.Errorf("validating access in %s: %w", entry.Name(), err)
+		}
+
 		registry.Templates = append(registry.Templates, &template)
 		registry.ByBuildingType[template.BuildingType] = append(
 			registry.ByBuildingType[template.BuildingType],
