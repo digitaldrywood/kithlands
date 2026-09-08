@@ -626,7 +626,7 @@ func (s *Server) handleLoadSave(w http.ResponseWriter, r *http.Request) {
 		httpError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	s.games.applyInteriorTemplates(game.tileMap)
+	s.games.applyInteriorTemplates(game.tileMap, 0)
 	if err := s.games.attachSettlementMap(game); err != nil {
 		httpError(w, err.Error(), http.StatusInternalServerError)
 		return

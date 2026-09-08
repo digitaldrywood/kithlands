@@ -52,3 +52,21 @@ func TestInteriorIdentitiesPersistInSave(t *testing.T) {
 		t.Fatalf("saved room was lost: %q", got)
 	}
 }
+
+func TestNewGameInteriorSelectionVariesBySeed(t *testing.T) {
+	a := &interiors.Template{ID: "a", BuildingType: "temple"}
+	b := &interiors.Template{ID: "b", BuildingType: "temple"}
+	gm := &GameManager{interiorTemplates: &interiors.Registry{ByBuildingType: map[string][]*interiors.Template{"temple": {a, b}}}}
+	pick := func(seed int64) string {
+		tileMap := &locality.TileMap{Spawns: []locality.MapSpawn{{NodeID: "temple", BuildingType: "temple", InteriorSeed: 100}}}
+		gm.applyInteriorTemplates(tileMap, seed)
+		return tileMap.Spawns[0].Interior.ID
+	}
+	if pick(10) == pick(11) {
+		t.Fatal("different game seeds still force the same room")
+	}
+	first := pick(10)
+	if first != pick(10) {
+		t.Fatal("room selection is not deterministic for a fixed seed")
+	}
+}

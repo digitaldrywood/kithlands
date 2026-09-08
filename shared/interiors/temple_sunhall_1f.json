@@ -8,31 +8,112 @@
       "height": 12,
       "rows": [
         "WWWWWWWWWWWWWWWW",
-        "W......TT......W",
-        "W....NNAAANN...W",
+        "WWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWW",
+        "WOO...AAAA...OOW",
+        "W.....AAAA.....W",
         "W..............W",
-        "W..PPPP..PPPP..W",
-        "W..PPPP..PPPP..W",
-        "W......K.......W",
+        "W.PPPP....PPPP.W",
         "W..............W",
-        "W....O....O....W",
+        "W.PPPP....PPPP.W",
         "W..............W",
-        "W......R.......W",
-        "WWWWWWWDWWWWWWWW"
+        "WWWWWWW..WWWWWWW",
+        "WWWWWWWDDWWWWWWW"
       ],
-      "entrance": { "x": 7, "y": 11, "from": "overworld" },
+      "entrance": {
+        "x": 7,
+        "y": 11,
+        "from": "overworld"
+      },
       "npc_anchors": [
-        { "role": "priestess", "x": 7, "y": 6 },
-        { "role": "gossip", "x": 4, "y": 8 },
-        { "role": "guard", "x": 10, "y": 8 }
-      ],
-      "window_anchors": [
-        { "x": 4, "y": 0, "side": "north" },
-        { "x": 11, "y": 0, "side": "north" }
+        {
+          "role": "priestess",
+          "x": 7,
+          "y": 5
+        },
+        {
+          "role": "gossip",
+          "x": 6,
+          "y": 8,
+          "sprite": "npc_elder"
+        },
+        {
+          "role": "guard",
+          "x": 9,
+          "y": 7
+        }
       ],
       "chest_anchors": [
-        { "id": "sunhall_offering_chest", "x": 12, "y": 9 }
-      ]
+        {
+          "id": "sunhall_offering_chest",
+          "x": 12,
+          "y": 9
+        }
+      ],
+      "presentation": {
+        "background_asset": "/interiors/library/stone-shell.png",
+        "hide_tile_layer": true,
+        "chest_closed_asset": "/interiors/inn/gilded-guest-chest-closed.png",
+        "chest_open_asset": "/interiors/inn/gilded-guest-chest-open.png",
+        "props": [
+          {
+            "asset": "/interiors/library/altar.png",
+            "x": 192,
+            "y": 80,
+            "width": 128,
+            "height": 85,
+            "row": 4
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 32,
+            "y": 64,
+            "width": 64,
+            "height": 64,
+            "row": 3
+          },
+          {
+            "asset": "/interiors/library/bookcase.png",
+            "x": 416,
+            "y": 64,
+            "width": 64,
+            "height": 64,
+            "row": 3
+          },
+          {
+            "asset": "/interiors/library/pew.png",
+            "x": 64,
+            "y": 160,
+            "width": 128,
+            "height": 64,
+            "row": 6
+          },
+          {
+            "asset": "/interiors/library/pew.png",
+            "x": 320,
+            "y": 160,
+            "width": 128,
+            "height": 64,
+            "row": 6
+          },
+          {
+            "asset": "/interiors/library/pew.png",
+            "x": 64,
+            "y": 224,
+            "width": 128,
+            "height": 64,
+            "row": 8
+          },
+          {
+            "asset": "/interiors/library/pew.png",
+            "x": 320,
+            "y": 224,
+            "width": 128,
+            "height": 64,
+            "row": 8
+          }
+        ]
+      }
     }
   ]
 }

@@ -46,6 +46,16 @@
       "asset": "client/public/interiors/library/desk.png",
       "sha256": "d444ccfb148fd7e54c396101c60ce08062922418d9091d678ca0f242db3d2dc1",
       "method": "built-in image generation edit removed the opaque checkerboard; RGBA verified; rendered room inspected"
+    },
+    {
+      "asset": "client/public/interiors/library/altar.png",
+      "sha256": "02cdfa8d9e4eaa1f9dbe0004895b079a2f3c1a6782637debdcd8fc1441ef2309",
+      "method": "built-in image generation followed by transparent-background edit; inspected in temple at 1440/645/390"
+    },
+    {
+      "asset": "client/public/interiors/library/pew.png",
+      "sha256": "899b798902b6f3f7d982a3ea77d02056d931b182229f51d66385ce26206b480f",
+      "method": "built-in image generation followed by transparent-background edit; inspected in temple at 1440/645/390"
     }
   ]
 }

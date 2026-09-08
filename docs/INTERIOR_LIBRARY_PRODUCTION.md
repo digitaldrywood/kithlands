@@ -12,9 +12,13 @@ The second reference room, `house_widow_keep_1f`, uses the wood shell and four t
 
 Saves now store selected template IDs. Unpinned legacy saves use generation-zero templates to preserve the original seed selection. Missing pinned IDs produce an explicit load error instead of silently changing the room. New library content must set `library_generation: 1`.
 
+`temple_sunhall_1f` now uses the stone shell with an original altar and four pews, a connected central aisle, finished NPC sprites, and the original offering chest. Desktop/mobile doorways and an authenticated server-selected visit with one-time chest opening are verified.
+
+New worlds mix the game RNG seed into building selection. Previously the wizard reused fixed node IDs, which forced identical interiors across every playthrough even when more than one template existed. Saved choices remain pinned; unpinned legacy loads retain the original selection.
+
 ## Remaining production work
 
-- Extend the transparent furniture set for merchant and temple layouts. The original opaque drafts remain rejected; bed, bookcase, dining table, and desk now have verified transparent replacements.
+- Complete merchant furniture integration. The original opaque drafts remain rejected; bed, bookcase, dining table, desk, altar, and pew now have verified transparent replacements.
 - Author 25 intentional layouts for each of the four building families. Different file names or palette swaps alone do not count as distinct layouts.
 - Validate connected entrances, all NPC approaches, chest approaches, stairs, and secret passages for every floor.
 - Keep existing template, floor and treasure IDs when upgrading remaining legacy rooms.
