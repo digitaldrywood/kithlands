@@ -25,7 +25,7 @@ function point(entry = {}) {
   const sprite = entry.sprite || entry;
   return {
     x: Number(entry.x ?? sprite?.x) || 0,
-    y: Number(entry.y ?? sprite?.y) || 0,
+    y: Number(entry.feetY ?? entry.y ?? sprite?.y) || 0,
     width: Math.max(42, Number(entry.width ?? sprite?.displayWidth) || 56),
   };
 }

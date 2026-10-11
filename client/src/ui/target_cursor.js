@@ -47,9 +47,9 @@ export class TargetCursor {
     this.sprite = this.graphics;
   }
 
-  drawActor(width, height, color) {
+  drawActor(width, height, color, feetOffset) {
     const ringWidth = Math.max(50, width + 14);
-    const ringY = Math.max(18, height * 0.42);
+    const ringY = feetOffset ?? Math.max(18, height * 0.42);
     this.graphics.lineStyle(3, color, 0.95);
     this.graphics.strokeEllipse(0, ringY, ringWidth, 16);
     this.graphics.lineStyle(1, 0xffffff, 0.7);
@@ -110,7 +110,12 @@ export class TargetCursor {
       .setAlpha(1);
 
     if (this.variant === "actor") {
-      this.drawActor(width, height, color);
+      this.drawActor(
+        width,
+        height,
+        color,
+        entry?.feetY != null ? entry.feetY - y : undefined,
+      );
       this.label.setOrigin(1, 0.5).setPosition(x - width / 2 - 16, y);
       this.scene.tweens.add({
         targets: this.graphics,

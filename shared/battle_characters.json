@@ -1,5 +1,6 @@
 {
   "frame_size": 192,
+  "feet_anchor": [96, 184],
   "required_states": [
     "idle_guard",
     "physical_attack",
@@ -14,6 +15,7 @@
     "unarmed": {
       "states": {
         "physical_attack": {
+          "cue_frame": 3,
           "frames": [
             { "frame": 0, "duration": 90 },
             { "frame": 1, "duration": 80 },
@@ -24,6 +26,7 @@
           ]
         },
         "cast_class_ability": {
+          "cue_frame": 4,
           "frames": [
             { "frame": 0, "duration": 90 },
             { "frame": 1, "duration": 95, "body": { "y": -2 } },
@@ -103,6 +106,7 @@
     "weapon": {
       "states": {
         "physical_attack": {
+          "cue_frame": 3,
           "frames": [
             { "frame": 0, "duration": 90 },
             { "frame": 1, "duration": 80 },
@@ -113,6 +117,7 @@
           ]
         },
         "cast_class_ability": {
+          "cue_frame": 2,
           "frames": [
             { "frame": 0, "duration": 90 },
             { "frame": 1, "duration": 95, "body": { "y": -2 } },
@@ -192,6 +197,7 @@
     "caster": {
       "states": {
         "physical_attack": {
+          "cue_frame": 3,
           "frames": [
             { "frame": 0, "duration": 90 },
             { "frame": 1, "duration": 85, "body": { "x": -2 } },
@@ -210,6 +216,7 @@
           ]
         },
         "cast_class_ability": {
+          "cue_frame": 3,
           "frames": [
             { "frame": 0, "duration": 105 },
             { "frame": 1, "duration": 100 },
@@ -340,6 +347,7 @@
           ]
         },
         "physical_attack": {
+          "cue_frame": 3,
           "body_key": "battle_warrior_sword_attack_body",
           "body_path": "/sprites/battle/warrior/sword-attack-body.png",
           "frames": [
@@ -388,6 +396,7 @@
           ]
         },
         "cast_class_ability": {
+          "cue_frame": 2,
           "body_key": "battle_warrior_sword_attack_body",
           "body_path": "/sprites/battle/warrior/sword-attack-body.png",
           "frames": [
@@ -667,6 +676,7 @@
           "frames": [{ "frame": 0, "duration": 120, "attachments": {} }]
         },
         "physical_attack": {
+          "cue_frame": 3,
           "body_key": "battle_brawler_unarmed_strike_body",
           "body_path": "/sprites/battle/brawler/unarmed-strike-body.png",
           "frames": [
@@ -703,6 +713,7 @@
           ]
         },
         "physical_attack": {
+          "cue_frame": 3,
           "body_key": "battle_rogue_dagger_slash_body",
           "body_path": "/sprites/battle/rogue/dagger-slash-body.png",
           "frames": [
@@ -775,6 +786,7 @@
           ]
         },
         "cast_class_ability": {
+          "cue_frame": 3,
           "body_key": "battle_mender_staff_cast_body",
           "body_path": "/sprites/battle/mender/staff-cast-body.png",
           "frames": [
@@ -847,6 +859,7 @@
           ]
         },
         "cast_class_ability": {
+          "cue_frame": 3,
           "body_key": "battle_cinder_staff_cast_body",
           "body_path": "/sprites/battle/cinder/staff-cast-body.png",
           "frames": [
@@ -919,6 +932,7 @@
           ]
         },
         "cast_class_ability": {
+          "cue_frame": 3,
           "body_key": "battle_wayfarer_staff_inspire_body",
           "body_path": "/sprites/battle/wayfarer/staff-inspire-body.png",
           "frames": [
@@ -1061,6 +1075,7 @@
           "frames": [{ "frame": 0, "duration": 120, "attachments": {} }]
         },
         "physical_attack": {
+          "cue_frame": 3,
           "body_key": "battle_champion_unarmed_palm_burst_body",
           "body_path": "/sprites/battle/champion/unarmed-palm-burst-body.png",
           "frames": [
@@ -1097,6 +1112,7 @@
           ]
         },
         "physical_attack": {
+          "cue_frame": 3,
           "body_key": "battle_shadow_dagger_veil_strike_body",
           "body_path": "/sprites/battle/shadow/dagger-veil-strike-body.png",
           "frames": [
@@ -1169,6 +1185,7 @@
           ]
         },
         "cast_class_ability": {
+          "cue_frame": 3,
           "body_key": "battle_sage_staff_sanctuary_body",
           "body_path": "/sprites/battle/sage/staff-sanctuary-body.png",
           "frames": [
@@ -1241,6 +1258,7 @@
           ]
         },
         "cast_class_ability": {
+          "cue_frame": 3,
           "body_key": "battle_pyromancer_staff_inferno_body",
           "body_path": "/sprites/battle/pyromancer/staff-inferno-body.png",
           "frames": [
@@ -1313,6 +1331,7 @@
           ]
         },
         "cast_class_ability": {
+          "cue_frame": 3,
           "body_key": "battle_wanderer_staff_waystar_body",
           "body_path": "/sprites/battle/wanderer/staff-waystar-body.png",
           "frames": [

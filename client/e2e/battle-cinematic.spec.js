@@ -120,13 +120,13 @@ test.describe("battle cinematic proof — issue #211", () => {
         elapsed: performance.now() - startedAt,
       };
     });
-    expect(timings.preImpact).toBeGreaterThanOrEqual(100);
-    expect(timings.preImpact).toBeLessThan(240);
+    // The authored strike cue replaces the old extra 120 ms timer.
+    expect(timings.preImpact).toBeLessThan(50);
     expect(timings.postDamage).toBeGreaterThanOrEqual(430);
-    expect(timings.postDamage).toBeLessThan(650);
+    expect(timings.postDamage).toBeLessThan(1100);
     expect(timings.total).toBeGreaterThanOrEqual(800);
-    expect(timings.total).toBeLessThan(1500);
-    expect(timings.elapsed).toBeLessThan(1600);
+    expect(timings.total).toBeLessThan(2100);
+    expect(timings.elapsed).toBeLessThan(2200);
   });
 
   test("makes hero and monster attackers enter the action", async ({

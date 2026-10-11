@@ -1,3 +1,4 @@
+import { beginBattleAction } from "./battle_action_playback.js";
 import { roundedRectangle } from "../ui/theme.js";
 import { claimChest, gameAction, getGame } from "../api.js";
 import { createBattleCharacterSprite } from "../sprites/battleCharacterSprite.js";
@@ -60,7 +61,7 @@ import {
 } from "../systems/auto_battle.js";
 import { drawButton, drawFF6BottomStrip, drawPanel } from "../ui/panel.js";
 import { TILE_COLORS, TILE_IDS } from "./tileConstants.js";
-import { pickBackgroundKey } from "./battleBackgrounds.js";
+import { battleBackdropFrame, pickBackgroundKey } from "./battleBackgrounds.js";
 import {
   battleElementStyle,
   buildAttackMotionPath,
@@ -398,6 +399,28 @@ export class BattleScene extends Phaser.Scene {
 
     this.drawEnemies(gs);
     this.drawParty(gs);
+    const syncShadows = () => {
+      for (const entry of [
+        ...Object.values(this.partySprites),
+        ...Object.values(this.enemySprites),
+      ]) {
+        const sprite = entry.sprite,
+          shadow = sprite?.battleShadow;
+        if (!shadow?.active) continue;
+        shadow.setPosition(
+          sprite.x,
+          sprite.y + (sprite.feetAnchored ? 0 : sprite.displayHeight / 2 - 4),
+        );
+        shadow.setVisible(sprite.visible && !entry.dead);
+        shadow.setAlpha(sprite.alpha * (entry.row === "back" ? 0.24 : 0.32));
+      }
+    };
+    this.events.on("postupdate", syncShadows);
+    this.events.once("shutdown", () => {
+      this.events.off("postupdate", syncShadows);
+      for (const entry of Object.values(this.partySprites))
+        entry.battleAction?.resume();
+    });
     this.drawPartyStatus(gs);
     this.setupBattleCharacterAudit(gs);
     this.createLowHpVignette();
@@ -869,9 +892,13 @@ export class BattleScene extends Phaser.Scene {
       pickBackgroundKey(theme.motif, seedParts, this.buildingType));
     if (key && this.textures.exists(key)) {
       const bg = this.add
-        .image(400, 300, key)
+        .image(0, 0, key, battleBackdropFrame(this.textures.get(key)))
+        .setOrigin(0, 0)
         .setDepth(-5)
-        .setDisplaySize(800, 600);
+        .setDisplaySize(
+          800,
+          this.hudLayout.battlefield.y + this.hudLayout.battlefield.height,
+        );
       bg._combatFxTag = "battle-backdrop";
       bg._combatFxVariant = "image";
       this.backdropObjects.push(bg);
@@ -1278,9 +1305,10 @@ export class BattleScene extends Phaser.Scene {
         Math.max(36, width),
         Math.max(12, height),
         this.backdropTheme?.shadow ?? 0x000000,
-        alpha,
+        1,
       )
-      .setDepth(1);
+      .setDepth(1)
+      .setAlpha(alpha);
     shadow._combatFxTag = "combat-shadow";
     this.combatShadows.push(shadow);
     return shadow;
@@ -1292,6 +1320,9 @@ export class BattleScene extends Phaser.Scene {
       enemies,
       {
         height: this.hudLayout.mode === "mobile" ? 500 : 320,
+        groundTop: this.hudLayout.mode === "mobile" ? 340 : 205,
+        groundBottom:
+          this.hudLayout.battlefield.y + this.hudLayout.battlefield.height - 10,
       },
       this.battlePresentation.formation,
     );
@@ -1318,7 +1349,7 @@ export class BattleScene extends Phaser.Scene {
           ENEMY_COLORS[e.name] || 0xff5722,
         );
       }
-      this.addCombatShadow(
+      sprite.battleShadow = this.addCombatShadow(
         x,
         y + sprite.displayHeight / 2 - 4,
         sprite.displayWidth * 0.75,
@@ -1430,9 +1461,9 @@ export class BattleScene extends Phaser.Scene {
           fallbackKey,
         },
       );
-      this.addCombatShadow(
-        placement.spriteX + 4,
-        placement.spriteY + 37,
+      sprite.battleShadow = this.addCombatShadow(
+        placement.spriteX,
+        placement.spriteY,
         62,
         16,
         placement.row === "front" ? 0.32 : 0.24,
@@ -1523,14 +1554,18 @@ export class BattleScene extends Phaser.Scene {
   resolveVisualEntry(entry) {
     if (!entry) return null;
     const sprite = entry.sprite || entry;
-    const x = entry.x ?? sprite.x;
-    const y = entry.y ?? sprite.y;
+    const x = sprite.x ?? entry.x;
+    const feetY = sprite.y ?? entry.y;
+    const y = feetY - (sprite.feetAnchored ? sprite.displayHeight / 2 : 0);
     if (typeof x !== "number" || typeof y !== "number") return null;
 
     return {
       sprite,
       x,
       y,
+      feetY: sprite.feetAnchored
+        ? feetY
+        : feetY + (sprite.displayHeight || 56) / 2,
       width: Math.max(
         42,
         Math.round((sprite.displayWidth || sprite.width || 56) * 0.72),
@@ -1723,7 +1758,8 @@ export class BattleScene extends Phaser.Scene {
     const visual = this.resolveVisualEntry(targetEntry);
     if (!visual) return;
 
-    const { sprite, x, y } = visual;
+    const { sprite, x } = visual;
+    const y = sprite.y;
     const defeated = isParty && Number.isFinite(newHP) && newHP <= 0;
 
     this.tweens.killTweensOf(sprite);
@@ -2013,42 +2049,53 @@ export class BattleScene extends Phaser.Scene {
     const actor = this.resolveVisualEntry(actorEntry);
     const target = this.resolveVisualEntry(targetEntry);
     if (!actor || !target) return;
-
     const reducedMotion = this.reducedBattleMotion();
     const path = buildAttackMotionPath(actor, target, reducedMotion);
     this.tweens.killTweensOf(actor.sprite);
-    this.setSpritePosition(actor.sprite, path.origin.x, path.origin.y);
-    void actor.sprite.playBattleAttack?.({
-      reducedMotion,
-      speedMultiplier: battleSpeedMul(),
-    });
-
-    await this.tweenP(actor.sprite, {
-      x: path.anticipation.x,
-      y: path.anticipation.y,
-      duration: reducedMotion ? 40 : ACTION_BEAT_MS.physicalAnticipation,
-      ease: "Quad.Out",
-    });
-    if (reducedMotion) {
-      await this.tweenP(actor.sprite, {
-        x: path.strike.x,
-        y: path.strike.y,
-        duration: 70,
-        ease: "Quad.Out",
-      });
+    if (actor.sprite.playBattleState) {
+      actorEntry.battleAction?.resume();
+      actorEntry.battleAction = beginBattleAction(
+        actor.sprite,
+        "physical_attack",
+        {
+          reducedMotion,
+          speedMultiplier: battleSpeedMul(),
+          onFrame: ({ frame, duration, cueFrame }) => {
+            if (frame === cueFrame)
+              this.setSpritePosition(
+                actor.sprite,
+                path.strike.x,
+                path.strike.y,
+              );
+            const dest =
+              frame < cueFrame
+                ? frame === 0
+                  ? path.origin
+                  : frame === 1 && !reducedMotion
+                    ? path.anticipation
+                    : path.strike
+                : frame > cueFrame
+                  ? { x: actorEntry.x, y: actorEntry.y }
+                  : null;
+            if (dest)
+              return this.tweenP(actor.sprite, {
+                ...dest,
+                duration,
+                ease: "Sine.InOut",
+              });
+          },
+        },
+      );
+      await actorEntry.battleAction.cue;
       return;
     }
-    await this.tweenP(actorEntry.sprite, {
-      x: path.apex.x,
-      y: path.apex.y,
-      duration: ACTION_BEAT_MS.physicalLaunch * 0.62,
-      ease: "Quad.Out",
-    });
-    await this.tweenP(actorEntry.sprite, {
+    await this.tweenP(actor.sprite, {
       x: path.strike.x,
-      y: path.strike.y,
-      duration: ACTION_BEAT_MS.physicalLaunch * 0.38,
-      ease: "Quad.In",
+      y:
+        path.strike.y -
+        (actor.sprite.feetAnchored ? 0 : actor.sprite.displayHeight / 2),
+      duration: reducedMotion ? 110 : 240,
+      ease: "Sine.InOut",
     });
   }
 
@@ -2277,22 +2324,22 @@ export class BattleScene extends Phaser.Scene {
   async playCastAnticipation(actorEntry, element = "none") {
     const actor = this.resolveVisualEntry(actorEntry);
     if (!actor) return;
-    const style = battleElementStyle(element);
     const reducedMotion = this.reducedBattleMotion();
-    void actor.sprite.playBattleCast?.({
-      reducedMotion,
-      speedMultiplier: battleSpeedMul(),
-    });
     this.spawnCastAura(actorEntry, element);
-    this.tweens.killTweensOf(actor.sprite);
-    this.setSpritePosition(actor.sprite, actor.x, actor.y);
-    actor.sprite.setTint?.(style.core);
-    await this.tweenP(actor.sprite, {
-      y: actor.y - (reducedMotion ? 0 : 12),
-      duration: reducedMotion ? 80 : ACTION_BEAT_MS.spellCharge,
-      ease: "Sine.Out",
-    });
-    actor.sprite.clearTint?.();
+    if (actor.sprite.playBattleState) {
+      actorEntry.battleAction?.resume();
+      actorEntry.battleAction = beginBattleAction(
+        actor.sprite,
+        "cast_class_ability",
+        {
+          reducedMotion,
+          speedMultiplier: battleSpeedMul(),
+        },
+      );
+      await actorEntry.battleAction.cue;
+    } else {
+      await this.wait(reducedMotion ? 80 : ACTION_BEAT_MS.spellCharge);
+    }
   }
 
   spawnSpellImpact(targetEntry, element = "none") {
@@ -2402,6 +2449,12 @@ export class BattleScene extends Phaser.Scene {
 
   async resetPartySprite(actorEntry) {
     if (!actorEntry?.sprite) return;
+    if (actorEntry.battleAction) {
+      const action = actorEntry.battleAction;
+      actorEntry.battleAction = null;
+      action.resume();
+      await action.finished;
+    }
     await this.tweenP(actorEntry.sprite, {
       x: actorEntry.x,
       y: actorEntry.y,
@@ -3464,12 +3517,14 @@ export class BattleScene extends Phaser.Scene {
           await this.showActionTitle(pe, attackTitle, "#ffcc66");
           await this.playMajorCinematicPrelude(action, pe, "none");
           await this.lungePartySprite(pe, ee);
-          await this.wait(ACTION_BEAT_MS.preImpact);
+          if (!pe?.battleAction && !attackerEnemy?.battleAction)
+            await this.wait(ACTION_BEAT_MS.preImpact);
         } else if (pe) {
           this.revealLine(`${attacker} attacks!`, "#ff8844");
           await this.showActionTitle(pe, attackTitle, "#ffcc66");
           await this.playMajorCinematicPrelude(action, pe, "none");
-          await this.wait(ACTION_BEAT_MS.preImpact);
+          if (!pe?.battleAction && !attackerEnemy?.battleAction)
+            await this.wait(ACTION_BEAT_MS.preImpact);
         } else if (attackerEnemy && pt) {
           this.showActionFocus(attackerEnemy, pt, {
             tracerColor: ACTION_TRACER_COLORS.enemyToParty,
@@ -3479,7 +3534,8 @@ export class BattleScene extends Phaser.Scene {
           await this.showActionTitle(attackerEnemy, attackTitle, "#ff9966");
           await this.playMajorCinematicPrelude(action, attackerEnemy, "none");
           await this.lungePartySprite(attackerEnemy, pt);
-          await this.wait(ACTION_BEAT_MS.preImpact);
+          if (!pe?.battleAction && !attackerEnemy?.battleAction)
+            await this.wait(ACTION_BEAT_MS.preImpact);
         }
 
         playSFX("sfx_slash");
@@ -3581,7 +3637,7 @@ export class BattleScene extends Phaser.Scene {
           );
           await this.playMajorCinematicPrelude(action, pe, "none");
           await this.lungePartySprite(pe, ee);
-          await this.wait(ACTION_BEAT_MS.preImpact);
+          if (!pe?.battleAction) await this.wait(ACTION_BEAT_MS.preImpact);
           const targetKey = `enemy_${targetId}`;
           await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch, dmgType, {
             crit: action.crit,
@@ -4101,7 +4157,8 @@ export class BattleScene extends Phaser.Scene {
                   : ACTION_RETICLE_COLORS.enemyTarget,
             });
             await this.lungePartySprite(actorEntry, ee);
-            await this.wait(ACTION_BEAT_MS.preImpact);
+            if (!actorEntry?.battleAction)
+              await this.wait(ACTION_BEAT_MS.preImpact);
             const targetKey = `enemy_${action.target_id}`;
             await this.hitFx(
               ee.x,
@@ -4168,7 +4225,7 @@ export class BattleScene extends Phaser.Scene {
     const afterTitle = now();
     await this.lungePartySprite(actorEntry, targetEntry);
     const lungePeak = now();
-    await this.wait(ACTION_BEAT_MS.preImpact);
+    if (!actorEntry.battleAction) await this.wait(ACTION_BEAT_MS.preImpact);
     const impactStart = now();
     playSFX("sfx_slash");
     await this.hitFx(

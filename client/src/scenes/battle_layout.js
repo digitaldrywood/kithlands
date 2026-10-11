@@ -1,8 +1,8 @@
 import { monsterBattleSize } from "../data/monsterSprites.js";
 
 const PARTY_LAYOUT = {
-  desktop: { frontX: 548, backX: 630, slotStartY: 110, slotGapY: 88 },
-  mobile: { frontX: 552, backX: 628, slotStartY: 88, slotGapY: 140 },
+  desktop: { frontX: 550, backX: 680, slotStartY: 244, slotGapY: 54 },
+  mobile: { frontX: 550, backX: 680, slotStartY: 378, slotGapY: 54 },
   arrowOffsetX: -42,
   floatingTextLift: 12,
 };
@@ -83,17 +83,23 @@ export function buildEnemyBattleLayout(
       width: cellWidth,
       height: cellHeight,
     };
+    const spriteSize = Math.min(
+      monsterBattleSize(enemy),
+      cellWidth - 24,
+      cellHeight - 56,
+    );
+    const groundTop = bounds.groundTop ?? 205;
+    const groundBottom = bounds.groundBottom ?? 414;
+    const feetY =
+      groundTop + ((row + 0.75) / rows) * (groundBottom - groundTop);
     return {
       lane,
       x: lane.x + lane.width / 2,
-      y: lane.y + lane.height * 0.56,
-      nameY: lane.y + 8,
+      y: feetY - spriteSize / 2,
+      nameY: feetY - spriteSize - 14,
       numberY: lane.y + lane.height - 10,
-      spriteSize: Math.min(
-        monsterBattleSize(enemy),
-        cellWidth - 24,
-        cellHeight - 56,
-      ),
+      spriteSize,
+      feetY,
     };
   });
 }

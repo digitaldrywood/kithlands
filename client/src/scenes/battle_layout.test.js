@@ -57,8 +57,8 @@ describe("buildPartyBattleLayout", () => {
 
     expect(layout[0].x).toBeLessThan(layout[1].x);
     expect(layout[3].x).toBeLessThan(layout[2].x);
-    expect(Math.abs(layout[0].y - layout[1].y)).toBe(88);
-    expect(Math.abs(layout[2].y - layout[3].y)).toBe(88);
+    expect(Math.abs(layout[0].y - layout[1].y)).toBe(54);
+    expect(Math.abs(layout[2].y - layout[3].y)).toBe(54);
     expect(layout[2].y).toBeGreaterThan(layout[1].y);
     expect(layout[3].y).toBeGreaterThan(layout[0].y);
   });
@@ -74,7 +74,7 @@ describe("buildPartyBattleLayout", () => {
 
   it("uses full-height portrait lanes without crowding combatants", () => {
     const layout = buildPartyBattleLayout([{}, {}, {}, {}], { compact: true });
-    expect(layout.map((entry) => entry.y)).toEqual([88, 228, 368, 508]);
+    expect(layout.map((entry) => entry.y)).toEqual([378, 432, 486, 540]);
     expect(
       layout.at(-1).lane.y + layout.at(-1).lane.height,
     ).toBeLessThanOrEqual(584);

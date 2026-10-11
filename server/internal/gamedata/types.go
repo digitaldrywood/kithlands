@@ -65,6 +65,7 @@ type BareHand struct {
 // rules; Go loads and validates it so shared content remains the single source
 // of truth while Phaser consumes the same JSON at build time.
 type BattleCharactersData struct {
+	FeetAnchor     []float64                    `json:"feet_anchor"`
 	FrameSize      int                          `json:"frame_size"`
 	RequiredStates []string                     `json:"required_states"`
 	StateRecipes   map[string]BattleStateRecipe `json:"state_recipes"`
@@ -96,6 +97,7 @@ type BattleStateRecipe struct {
 }
 
 type BattleStateRecipeDefinition struct {
+	CueFrame           *int                     `json:"cue_frame,omitempty"`
 	HoldLastFrame      bool                     `json:"hold_last_frame,omitempty"`
 	AttachmentsVisible *bool                    `json:"attachments_visible,omitempty"`
 	Frames             []BattleStateRecipeFrame `json:"frames"`
@@ -112,6 +114,7 @@ type BattleAttachmentDefinition struct {
 }
 
 type BattleStateDefinition struct {
+	CueFrame      *int               `json:"cue_frame,omitempty"`
 	BodyKey       string             `json:"body_key"`
 	BodyPath      string             `json:"body_path"`
 	HoldLastFrame bool               `json:"hold_last_frame,omitempty"`
