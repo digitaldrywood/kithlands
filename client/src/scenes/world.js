@@ -1,5 +1,10 @@
 import { updateWorldTerrainVisibility } from "./worldTerrainVisibility.js";
 import { beginWalkStep } from "./walkPlayback.js";
+import {
+  drawMeadowDetails,
+  meadowGroundPlan,
+  updateMeadowDepth,
+} from "./meadowPresentation.js";
 import { explorationHUD } from "../ui/exploration_hud.js";
 import { drawPanel, drawButton } from "../ui/panel.js";
 import { gameAction, autosaveGame } from "../api.js";
@@ -353,6 +358,14 @@ export class WorldScene extends Phaser.Scene {
     }
 
     // Vehicle indicator circle behind player (T2+)
+    this.fieldShadow = this.add
+      .ellipse(playerPos.x, playerPos.y - 2, 23, 7, 0x24382c, 0.3)
+      .setDepth(3);
+    const groundPlayer = () => updateMeadowDepth(this);
+    this.events.on("postupdate", groundPlayer);
+    this.events.once("shutdown", () =>
+      this.events.off("postupdate", groundPlayer),
+    );
     this.vehicleIndicator = null;
     this.updateVehicleIndicator();
 
@@ -882,7 +895,12 @@ export class WorldScene extends Phaser.Scene {
         const py = y * RENDERED_TILE;
         const spriteKey = ensureTerrainRenderTexture(
           this,
-          buildTerrainRenderPlan(this.tileData, x, y),
+          meadowGroundPlan(
+            this,
+            buildTerrainRenderPlan(this.tileData, x, y),
+            x,
+            y,
+          ),
         );
 
         if (spriteKey) {
@@ -894,7 +912,11 @@ export class WorldScene extends Phaser.Scene {
         } else if (isStructureTile(tile)) {
           if (this.textures.exists("tile_grass")) {
             const img = this.add
-              .image(px, py, "tile_grass")
+              .image(
+                px,
+                py,
+                meadowGroundPlan(this, { baseKey: "tile_grass" }, x, y).baseKey,
+              )
               .setOrigin(0, 0)
               .setDisplaySize(RENDERED_TILE, RENDERED_TILE);
             this.tileSprites.add(img);
@@ -914,6 +936,7 @@ export class WorldScene extends Phaser.Scene {
     // Legacy building footprints render as walkable grass; spawn data still
     // drives destination interactions.
     renderWorldLandmarks(this, this.spawns, this.gameState);
+    drawMeadowDetails(this, RENDERED_TILE);
   }
 
   drawMinimap() {

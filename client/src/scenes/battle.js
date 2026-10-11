@@ -1,4 +1,5 @@
 import { beginBattleAction } from "./battle_action_playback.js";
+import fieldPresentation from "../../../shared/field_presentation.json";
 import { roundedRectangle } from "../ui/theme.js";
 import { claimChest, gameAction, getGame } from "../api.js";
 import { createBattleCharacterSprite } from "../sprites/battleCharacterSprite.js";
@@ -889,10 +890,18 @@ export class BattleScene extends Phaser.Scene {
     const key = (this.battlePresentation.backgroundKey ??=
       (gs.final_encounter?.active && gs.final_encounter.battle_background) ||
       gs.dungeon?.battle_background ||
+      (theme.motif === "plains" ? fieldPresentation.meadow.battle.key : null) ||
       pickBackgroundKey(theme.motif, seedParts, this.buildingType));
     if (key && this.textures.exists(key)) {
       const bg = this.add
-        .image(0, 0, key, battleBackdropFrame(this.textures.get(key)))
+        .image(
+          0,
+          0,
+          key,
+          key === fieldPresentation.meadow.battle.key
+            ? undefined
+            : battleBackdropFrame(this.textures.get(key)),
+        )
         .setOrigin(0, 0)
         .setDepth(-5)
         .setDisplaySize(

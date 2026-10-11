@@ -1,5 +1,183 @@
 {
   "walk_cycles": {
-    "warrior": { "tiles": 2 }
+    "warrior": {
+      "tiles": 2
+    }
+  },
+  "meadow": {
+    "ground": {
+      "tile_grass": ["#70864e", "#7e9357", "#637b45", "#899b60"],
+      "tile_dark_grass": ["#4f683d", "#5c7444", "#445d37", "#637b49"]
+    },
+    "props": {
+      "key": "meadow_props",
+      "path": "/environment/meadow-props.png",
+      "cell": 96
+    },
+    "battle": {
+      "key": "bg_meadow",
+      "path": "/environment/meadow-battle.png"
+    },
+    "vignette": {
+      "type": "map",
+      "version": "1.10",
+      "orientation": "orthogonal",
+      "tilewidth": 32,
+      "tileheight": 32,
+      "width": 12,
+      "height": 10,
+      "layers": [
+        {
+          "type": "objectgroup",
+          "name": "terrain-detail",
+          "objects": [
+            {
+              "id": 1,
+              "x": -128,
+              "y": 64,
+              "properties": [
+                {
+                  "name": "frame",
+                  "type": "int",
+                  "value": 2
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "x": -96,
+              "y": 64,
+              "properties": [
+                {
+                  "name": "frame",
+                  "type": "int",
+                  "value": 3
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "x": -64,
+              "y": 96,
+              "properties": [
+                {
+                  "name": "frame",
+                  "type": "int",
+                  "value": 4
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "x": 64,
+              "y": 64,
+              "properties": [
+                {
+                  "name": "frame",
+                  "type": "int",
+                  "value": 2
+                }
+              ]
+            },
+            {
+              "id": 5,
+              "x": 96,
+              "y": 64,
+              "properties": [
+                {
+                  "name": "frame",
+                  "type": "int",
+                  "value": 3
+                }
+              ]
+            },
+            {
+              "id": 6,
+              "x": 128,
+              "y": 96,
+              "properties": [
+                {
+                  "name": "frame",
+                  "type": "int",
+                  "value": 4
+                }
+              ]
+            },
+            {
+              "id": 7,
+              "x": -128,
+              "y": 160,
+              "properties": [
+                {
+                  "name": "frame",
+                  "type": "int",
+                  "value": 3
+                }
+              ]
+            },
+            {
+              "id": 8,
+              "x": -96,
+              "y": 192,
+              "properties": [
+                {
+                  "name": "frame",
+                  "type": "int",
+                  "value": 2
+                }
+              ]
+            },
+            {
+              "id": 9,
+              "x": 96,
+              "y": 160,
+              "properties": [
+                {
+                  "name": "frame",
+                  "type": "int",
+                  "value": 3
+                }
+              ]
+            },
+            {
+              "id": 10,
+              "x": 128,
+              "y": 192,
+              "properties": [
+                {
+                  "name": "frame",
+                  "type": "int",
+                  "value": 2
+                }
+              ]
+            },
+            {
+              "id": 11,
+              "x": -32,
+              "y": 224,
+              "properties": [
+                {
+                  "name": "frame",
+                  "type": "int",
+                  "value": 4
+                }
+              ]
+            },
+            {
+              "id": 12,
+              "x": 64,
+              "y": 256,
+              "properties": [
+                {
+                  "name": "frame",
+                  "type": "int",
+                  "value": 4
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
   }
 }

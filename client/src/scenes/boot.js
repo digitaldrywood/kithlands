@@ -279,6 +279,13 @@ export class BootScene extends Phaser.Scene {
     // BattleScene (lazy-loaded on first battle) so the overworld boot is
     // lighter on slow connections.
     const bgKeys = new Set();
+    const meadow = fieldPresentation.meadow;
+    this.load.spritesheet(meadow.props.key, meadow.props.path, {
+      frameWidth: meadow.props.cell,
+      frameHeight: meadow.props.cell,
+    });
+    this.load.image(meadow.battle.key, meadow.battle.path);
+    bgKeys.add(meadow.battle.key);
     for (const bg of enumerateBackgrounds()) {
       bgKeys.add(bg.key);
       this.load.image(bg.key, `/${bg.path}`);
@@ -308,3 +315,4 @@ export class BootScene extends Phaser.Scene {
     this.scene.start("Title");
   }
 }
+import fieldPresentation from "../../../shared/field_presentation.json";
