@@ -43,6 +43,10 @@ type DungeonEntryState struct {
 	NodeID       string   `json:"node_id"`
 	RouteNodeIDs []string `json:"route_node_ids,omitempty"`
 	Completed    bool     `json:"completed"`
+	Started      bool     `json:"started"`
+	Objective    string   `json:"objective"`
+	Journal      []string `json:"journal,omitempty"`
+	RewardGold   int      `json:"reward_gold,omitempty"`
 }
 type DungeonActionState struct {
 	ID        string `json:"id"`
@@ -254,8 +258,19 @@ func (g *Game) fillDungeonState(s *GameState) {
 			continue
 		}
 		entry := DungeonEntryState{ID: def.ID, Title: g.dungeonText(def.Title), Label: def.EntryLabel, Description: g.dungeonText(def.Description), NodeID: node.ID, RouteNodeIDs: g.worldNodeRoute(node.ID)}
+		entry.RewardGold = def.Payoff.Gold
+		flags := map[string]bool{}
 		if progress := g.dungeonProgress(def.ID); progress != nil {
 			entry.Completed = progress.PayoffClaimed
+			entry.Started = len(progress.Visited) > 0
+			entry.Journal = slices.Clone(progress.Journal)
+			flags = progress.Flags
+		}
+		for _, objective := range def.Objectives {
+			if objective.Until == "" || !flags[objective.Until] {
+				entry.Objective = g.dungeonText(objective.Text)
+				break
+			}
 		}
 		s.DungeonEntries = append(s.DungeonEntries, entry)
 	}

@@ -166,6 +166,15 @@ func TestDungeonEntranceRoomExitAndSave(t *testing.T) {
 	if got := loaded.State(); !reflect.DeepEqual(got.Dungeon, before.Dungeon) || got.CurrentLocation.Kind != LocationDungeon {
 		t.Fatalf("checkpoint not restored: %+v", got.Dungeon)
 	}
+	entry := dungeonEntryByID(t, loaded, before.Dungeon.ID)
+	if !entry.Started || entry.Objective != before.Dungeon.Objective || !reflect.DeepEqual(entry.Journal, before.Dungeon.Journal) {
+		t.Fatalf("journal summary differs from restored adventure: %+v", entry)
+	}
+	entry.Journal[0] = "mutated client view"
+	if loaded.State().Dungeon.Journal[0] == entry.Journal[0] {
+		t.Fatal("journal summary aliases authoritative progress")
+	}
+
 	if _, err := loaded.ProcessDungeon(DungeonRequest{Type: "interact", ActionID: "ledger"}); err == nil {
 		t.Fatal("reloaded flag replay accepted")
 	}
