@@ -1,5 +1,6 @@
 import { beginBattleAction } from "./battle_action_playback.js";
 import fieldPresentation from "../../../shared/field_presentation.json";
+import abilityDefinitions from "../../../shared/abilities.json";
 import { roundedRectangle } from "../ui/theme.js";
 import { claimChest, gameAction, getGame } from "../api.js";
 import { createBattleCharacterSprite } from "../sprites/battleCharacterSprite.js";
@@ -2434,6 +2435,91 @@ export class BattleScene extends Phaser.Scene {
     actor?.battleAction?.followThrough();
   }
 
+  spawnAbilityCue(actorEntry, targetEntry, color) {
+    const point = this.resolveVisualEntry(targetEntry || actorEntry);
+    if (!point) return;
+    const cue = this.add.graphics().setPosition(point.x, point.y).setDepth(20);
+    cue._combatFxTag = "ability-cue";
+    cue.lineStyle(2, color, 0.9);
+    cue.strokePoints(
+      [
+        { x: 0, y: -10 },
+        { x: 8, y: 0 },
+        { x: 0, y: 10 },
+        { x: -8, y: 0 },
+      ],
+      true,
+    );
+    this.tweens.add({
+      targets: cue,
+      alpha: 0,
+      duration: this.scaledMs(180),
+      onComplete: () => cue.destroy(),
+    });
+  }
+
+  async playUtilityAbility(actorEntry, action) {
+    if (!actorEntry?.sprite) return;
+    const presentation = abilityDefinitions.find(
+      (ability) => ability.id === action.action_id,
+    )?.choreography;
+    const stateID = presentation?.state || "cast_class_ability";
+    const sprite = actorEntry.sprite;
+    const state = sprite.battleStates?.[stateID];
+    if (!state) return;
+    const target =
+      presentation?.motion === "reach"
+        ? this.enemySprites[action.target_id]
+        : null;
+    if (target) this.showActionFocus(actorEntry, target);
+    const path =
+      target &&
+      buildAttackMotionPath(
+        this.resolveVisualEntry(actorEntry),
+        this.resolveVisualEntry(target),
+        this.reducedBattleMotion(),
+      );
+    const cueIndex =
+      state.cue_frame == null
+        ? Math.floor(state.frames.length / 2)
+        : state.frames.findIndex((pose) => pose.frame === state.cue_frame);
+    await sprite.playBattleState(stateID, {
+      reducedMotion: this.reducedBattleMotion(),
+      speedMultiplier: battleSpeedMul(),
+      onFrame: ({ index, duration }) => {
+        if (presentation?.hide_weapon)
+          for (const layer of sprite.battleAttachmentLayers) {
+            if (layer.channel === "weapon") {
+              layer.front.setVisible(false);
+              layer.back.setVisible(false);
+            }
+          }
+        if (index === cueIndex)
+          this.spawnAbilityCue(
+            actorEntry,
+            target,
+            Number.parseInt((presentation?.color || "#f1d58a").slice(1), 16),
+          );
+        if (!path) return;
+        if (index === cueIndex)
+          this.setSpritePosition(sprite, path.strike.x, path.strike.y);
+        const destination =
+          index < cueIndex
+            ? path.strike
+            : index === state.frames.length - 1
+              ? path.origin
+              : null;
+        if (destination)
+          return this.tweenP(sprite, {
+            ...destination,
+            duration,
+            ease: "Sine.InOut",
+          });
+      },
+    });
+    this.setSpritePosition(sprite, actorEntry.x, actorEntry.y);
+  }
+
   launchSpellProjectile(actorEntry, targetEntry, element = "none", opts = {}) {
     const visual = this.resolveVisualEntry(actorEntry);
     const actor = visual && { ...visual, ...battleCastOrigin(visual) };
@@ -4198,11 +4284,7 @@ export class BattleScene extends Phaser.Scene {
           await this.resetPartySprite(actorEntry);
           this.hideGroupTargetCursor();
         } else if (!(action.damage > 0)) {
-          await this.playCastAnticipation(actorEntry, "none");
-          actorEntry?.battleAction?.followThrough();
-          this.spawnSpellImpact(actorEntry, "none");
-          await this.wait(100);
-          await this.resetPartySprite(actorEntry);
+          await this.playUtilityAbility(actorEntry, action);
         }
         // Backstab with damage gets hit effect
         if (action.damage > 0) {
