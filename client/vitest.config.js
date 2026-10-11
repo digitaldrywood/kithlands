@@ -7,6 +7,8 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
+    // Scene imports expand large shared catalogs; cap workers on shared CI hosts.
+    maxWorkers: 2,
     exclude: ["node_modules/**", "dist/**", "e2e/**"],
   },
 });
