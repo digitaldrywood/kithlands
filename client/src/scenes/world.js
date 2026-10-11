@@ -1,3 +1,7 @@
+import {
+  renderWorldResources,
+  gatherNearbyResource,
+} from "./world_gathering.js";
 import { trackedObjective } from "./questJournalModel.js";
 import { updateWorldTerrainVisibility } from "./worldTerrainVisibility.js";
 import { beginWalkStep } from "./walkPlayback.js";
@@ -412,6 +416,8 @@ export class WorldScene extends Phaser.Scene {
     this.codexGroup = null;
 
     // Enter interacts with nearby locations. Space cycles the party leader.
+    renderWorldResources(this, RENDERED_TILE);
+    this.currentResource = null;
     this.currentDoorSpawn = null;
     this.currentNaturalSpawn = null;
     this.naturalInteractionActive = false;
@@ -604,6 +610,7 @@ export class WorldScene extends Phaser.Scene {
 
   handleAction() {
     if (isWorldInputLocked(this)) return;
+    if (this.currentResource) return gatherNearbyResource(this);
     if (this.currentNaturalSpawn) return interactWithNaturalNode(this);
     return interactWithDoor(this);
   }

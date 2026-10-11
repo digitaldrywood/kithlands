@@ -414,3 +414,12 @@ export async function deleteEquipmentBuild(gameId, slot, buildId) {
     build_id: buildId,
   });
 }
+
+export function gatherResource(gameId, resourceId) {
+  return apiCall("POST", `/game/${gameId}/gather`, { resource_id: resourceId });
+}
+export function craftFieldRecipe(gameId, recipeId) {
+  return apiCall("POST", `/game/${gameId}/field-craft`, {
+    recipe_id: recipeId,
+  });
+}

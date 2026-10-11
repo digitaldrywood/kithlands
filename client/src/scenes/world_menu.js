@@ -1,3 +1,4 @@
+import { showFieldCrafting } from "./field_crafting.js";
 import { element, viewportDialog } from "../ui/viewport_dialog.js";
 import { roundedRectangle } from "../ui/theme.js";
 import { showObjectiveQuestLog } from "./objective_quest_log.js";
@@ -70,6 +71,15 @@ export function toggleMenu(scene) {
   const gemsEnabled = gemWorkshopEnabled(gs);
   const readyGemRecipes = craftableRecipeCount(gs);
   const primaryActions = [
+    {
+      label: "CRAFTING",
+      hotkey: "R",
+      enabled: !!gs.field_recipes?.length,
+      onClick: () => {
+        closeMenu(scene);
+        showFieldCrafting(scene, { onClose: () => toggleMenu(scene) });
+      },
+    },
     {
       label: "CHARACTER",
       hotkey: "C",
