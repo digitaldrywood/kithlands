@@ -700,7 +700,7 @@ func (g *Game) logResolvedCombatAction(
 				ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Damage: r.TotalDmg, Killed: r.Killed,
 				Initiative: r.Initiative})
 	case combat.ActionCounter:
-		if r.TotalDmg > 0 {
+		if r.TotalDmg > 0 || len(r.Hits) > 0 {
 			targetName := g.findCombatantName(combatants, r.TargetID)
 			status := ""
 			if r.Killed {
@@ -758,7 +758,7 @@ func (g *Game) logResolvedCombatAction(
 				g.abilityCombatAction(abilityID, CombatActionEntry{Kind: "ability", ActorID: r.ActorID, ActorName: r.ActorName, Initiative: r.Initiative}))
 		}
 	default:
-		if r.TotalDmg > 0 {
+		if r.TotalDmg > 0 || len(r.Hits) > 0 {
 			targetName := g.findCombatantName(combatants, r.TargetID)
 			status := ""
 			if r.Killed {
@@ -1029,7 +1029,7 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 	if len(enemyActions) > 0 {
 		results := combat.ResolveTurn(combatants, g.enemies, enemyActions, &g.gd.Stats.Combat, g.rng)
 		for _, r := range results {
-			if r.TotalDmg > 0 {
+			if r.TotalDmg > 0 || len(r.Hits) > 0 {
 				name := g.findCombatantName(combatants, r.TargetID)
 				status := ""
 				if r.Killed {
@@ -1172,7 +1172,7 @@ func (g *Game) processCombatItem(req GameActionRequest) (*GameState, error) {
 	if len(enemyActions) > 0 {
 		results := combat.ResolveTurn(combatants, g.enemies, enemyActions, &g.gd.Stats.Combat, g.rng)
 		for _, r := range results {
-			if r.TotalDmg > 0 {
+			if r.TotalDmg > 0 || len(r.Hits) > 0 {
 				name := g.findCombatantName(combatants, r.TargetID)
 				g.logCombat(
 					fmt.Sprintf("%s attacks %s for %d", r.ActorName, name, r.TotalDmg),
