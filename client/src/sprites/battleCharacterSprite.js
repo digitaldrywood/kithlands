@@ -91,6 +91,8 @@ function runtimeDefinition(scene, composition) {
     if (!textureKey || !scene.textures.exists(textureKey)) return null;
     attachmentLayers.push({
       channel: "weapon",
+      emissionPoint: weaponAssetsByVisualID.get(composition.weapon_visual_id)
+        ?.emission_point,
       attachmentID,
       attachment,
       textureKey,

@@ -65,6 +65,7 @@ import { TILE_COLORS, TILE_IDS } from "./tileConstants.js";
 import { battleBackdropFrame, pickBackgroundKey } from "./battleBackgrounds.js";
 import {
   battleElementStyle,
+  battleCastOrigin,
   buildAttackMotionPath,
   cinematicActionKey,
   prefersReducedBattleMotion,
@@ -2071,12 +2072,14 @@ export class BattleScene extends Phaser.Scene {
           speedMultiplier: battleSpeedMul(),
           holdRecovery: true,
           onFrame: ({ frame, duration, cueFrame }) => {
-            if (frame === cueFrame)
+            if (frame === cueFrame) {
               this.setSpritePosition(
                 actor.sprite,
                 path.strike.x,
                 path.strike.y,
               );
+              this.spawnMeleeSwing(actorEntry);
+            }
             const dest =
               frame < cueFrame
                 ? frame === 0
@@ -2113,6 +2116,30 @@ export class BattleScene extends Phaser.Scene {
 
   reducedBattleMotion() {
     return this._forceReducedMotion ?? prefersReducedBattleMotion();
+  }
+
+  spawnMeleeSwing(actorEntry) {
+    if (this.reducedBattleMotion()) return;
+    const sprite = actorEntry.sprite;
+    const layer = sprite.battleAttachmentLayers?.find(
+      (entry) => entry.channel === "weapon",
+    );
+    const weapon = layer && (layer.front.visible ? layer.front : layer.back);
+    if (!weapon) return;
+    const arc = this.add.graphics().setPosition(weapon.x, weapon.y);
+    arc._combatFxTag = "melee-swing";
+    arc.lineStyle(5, 0xf4e4b0, 0.75);
+    arc.beginPath();
+    arc.arc(0, 0, weapon.height * 0.42, Math.PI * 0.65, Math.PI * 1.35);
+    arc.strokePath();
+    sprite.add(arc);
+    this.tweens.add({
+      targets: arc,
+      alpha: 0,
+      angle: 18,
+      duration: this.scaledMs(140),
+      onComplete: () => arc.destroy(),
+    });
   }
 
   majorCinematicsSeen() {
@@ -2336,6 +2363,7 @@ export class BattleScene extends Phaser.Scene {
   async playCastAnticipation(actorEntry, element = "none") {
     const actor = this.resolveVisualEntry(actorEntry);
     if (!actor) return;
+    actor.sprite.battleCastSource = null;
     const reducedMotion = this.reducedBattleMotion();
     this.spawnCastAura(actorEntry, element);
     if (actor.sprite.playBattleState) {
@@ -2350,6 +2378,9 @@ export class BattleScene extends Phaser.Scene {
         },
       );
       await actorEntry.battleAction.cue;
+      actor.sprite.battleCastSource = battleCastOrigin(
+        this.resolveVisualEntry(actorEntry),
+      );
     } else {
       await this.wait(reducedMotion ? 80 : ACTION_BEAT_MS.spellCharge);
     }
@@ -2393,8 +2424,19 @@ export class BattleScene extends Phaser.Scene {
     return impact;
   }
 
+  continueCastMotion(actorEntry) {
+    const actor = actorEntry?.battleAction
+      ? actorEntry
+      : [
+          ...Object.values(this.partySprites),
+          ...Object.values(this.enemySprites),
+        ].find((entry) => entry.sprite === actorEntry?.sprite);
+    actor?.battleAction?.followThrough();
+  }
+
   launchSpellProjectile(actorEntry, targetEntry, element = "none", opts = {}) {
-    const actor = this.resolveVisualEntry(actorEntry);
+    const visual = this.resolveVisualEntry(actorEntry);
+    const actor = visual && { ...visual, ...battleCastOrigin(visual) };
     const target = this.resolveVisualEntry(targetEntry);
     if (!actor || !target) return Promise.resolve();
     const style = battleElementStyle(element);
@@ -2476,6 +2518,7 @@ export class BattleScene extends Phaser.Scene {
       ease: "Power1",
     });
     actorEntry.sprite.resetBattlePose?.();
+    actorEntry.sprite.battleCastSource = null;
   }
 
   drawActions(gs, slot) {

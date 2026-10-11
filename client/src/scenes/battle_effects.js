@@ -52,6 +52,8 @@ function tagEffect(object, presentation, stage, legacyTag) {
 
 export function playBattleEffectRelease(scene, actor, presentation) {
   if (!presentation || !actor) return null;
+  scene.continueCastMotion?.(actor);
+  const origin = battleCastOrigin(actor);
   const reducedMotion = scene.reducedBattleMotion();
   if (presentation.motion === "projectile") {
     const direction = actor.x > 400 ? -1 : 1;
@@ -59,10 +61,7 @@ export function playBattleEffectRelease(scene, actor, presentation) {
       scene.add
         .graphics()
         .setDepth(19)
-        .setPosition(
-          actor.x + direction * actor.width * 0.34,
-          actor.y + actor.height * 0.08,
-        )
+        .setPosition(origin.x, origin.y)
         .setAlpha(0),
       presentation,
       "release",
@@ -88,7 +87,7 @@ export function playBattleEffectRelease(scene, actor, presentation) {
     });
   }
   if (presentation.motion !== "field") return null;
-  const y = actor.y + actor.height * 0.34;
+  const y = actor.feetY ?? actor.y + actor.height * 0.34;
   const release = tagEffect(
     scene.add.graphics().setDepth(18).setPosition(actor.x, y).setAlpha(0),
     presentation,
@@ -122,12 +121,14 @@ export function playBattleEffectToTarget(scene, actor, target, presentation) {
   const motion = battleEffectMotion(presentation, reducedMotion);
   if (presentation.motion === "projectile") {
     if (!actor) return null;
+    const origin = battleCastOrigin(actor);
+    scene.continueCastMotion?.(actor);
     const destinationY = target.y + target.height * 0.2;
     const projectile = tagEffect(
       scene.add
         .container(
-          reducedMotion ? target.x : actor.x,
-          reducedMotion ? destinationY : actor.y,
+          reducedMotion ? target.x : origin.x,
+          reducedMotion ? destinationY : origin.y,
         )
         .setDepth(20),
       presentation,
@@ -146,7 +147,7 @@ export function playBattleEffectToTarget(scene, actor, target, presentation) {
     flame.fillCircle(-20, 5, 2);
     projectile.add(flame);
     projectile.setRotation(
-      Math.atan2(destinationY - actor.y, target.x - actor.x),
+      Math.atan2(destinationY - origin.y, target.x - origin.x),
     );
     const duration = reducedMotion ? 90 : 230 + presentation.intensityTier * 35;
     return new Promise((resolve) => {
@@ -184,6 +185,7 @@ export function playBattleEffectToTarget(scene, actor, target, presentation) {
           impact.lineStyle(2, presentation.accent, 0.72);
           impact.lineBetween(-radius * 0.45, 8, 0, -radius * 0.65);
           impact.lineBetween(0, -radius * 0.65, radius * 0.45, 8);
+          resolve();
           scene.tweens.add({
             targets: impact,
             alpha: 0,
@@ -193,7 +195,6 @@ export function playBattleEffectToTarget(scene, actor, target, presentation) {
             ease: "Quad.Out",
             onComplete: () => {
               impact.destroy();
-              resolve();
             },
           });
         },
@@ -201,7 +202,7 @@ export function playBattleEffectToTarget(scene, actor, target, presentation) {
     });
   }
   if (presentation.motion !== "field") return null;
-  const y = target.y + target.height * 0.36;
+  const y = target.feetY ?? target.y + target.height * 0.36;
   const field = tagEffect(
     scene.add.graphics().setDepth(18).setPosition(target.x, y).setAlpha(0),
     presentation,
@@ -239,6 +240,7 @@ export function playBattleEffectToTarget(scene, actor, target, presentation) {
         field.lineBetween(radius, -4, radius * 0.72, -34);
         field.lineBetween(-8, -20, 8, -20);
         field.lineBetween(0, -28, 0, -12);
+        resolve();
         scene.tweens.add({
           targets: field,
           alpha: 0,
@@ -247,10 +249,10 @@ export function playBattleEffectToTarget(scene, actor, target, presentation) {
           ease: "Sine.Out",
           onComplete: () => {
             field.destroy();
-            resolve();
           },
         });
       },
     });
   });
 }
+import { battleCastOrigin } from "./battle_cinematics.js";
