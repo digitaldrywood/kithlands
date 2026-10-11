@@ -353,28 +353,28 @@
           "frames": [
             {
               "frame": 0,
-              "duration": 90,
+              "duration": 180,
               "attachments": {
                 "sword": { "x": -48, "y": -7, "angle": -135, "front": true }
               }
             },
             {
               "frame": 1,
-              "duration": 80,
+              "duration": 120,
               "attachments": {
                 "sword": { "x": 31, "y": -7, "angle": 55, "front": false }
               }
             },
             {
               "frame": 2,
-              "duration": 85,
+              "duration": 95,
               "attachments": {
                 "sword": { "x": 0, "y": -57, "angle": -18, "front": true }
               }
             },
             {
               "frame": 3,
-              "duration": 95,
+              "duration": 70,
               "attachments": {
                 "sword": { "x": -49, "y": -13, "angle": -90, "front": true }
               }
@@ -388,7 +388,7 @@
             },
             {
               "frame": 5,
-              "duration": 90,
+              "duration": 190,
               "attachments": {
                 "sword": { "x": -38, "y": 1, "angle": -52, "front": true }
               }

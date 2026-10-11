@@ -104,7 +104,7 @@ describe("Warrior battle runtime contract", () => {
   });
 
   it("scales body-frame pacing with the battle-speed preference", () => {
-    const pose = WARRIOR_SWORD_ATTACK_FRAMES[0];
+    const pose = { duration: 90 };
     expect(battleFrameDelay(pose, false, 0.33)).toBeCloseTo(29.7);
     expect(battleFrameDelay(pose, false, 3)).toBe(270);
     expect(battleFrameDelay(pose, true, 0.66)).toBeCloseTo(29.7);

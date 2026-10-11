@@ -2,6 +2,29 @@ import { describe, expect, it } from "vitest";
 import { beginBattleAction } from "./battle_action_playback.js";
 
 describe("authored action cue", () => {
+  it("allows follow-through during hit feedback but waits to retreat until feedback finishes", async () => {
+    const observed = [];
+    const sprite = {
+      battleStates: { physical_attack: { frames: Array(6) } },
+      async playBattleState(state, { onCue, onFrame }) {
+        await onCue();
+        await onFrame({ index: 4 });
+        await onFrame({ index: 5 });
+        observed.push("home");
+      },
+    };
+    const action = beginBattleAction(sprite, "physical_attack", {
+      holdRecovery: true,
+      onFrame: ({ index }) => observed.push(index),
+    });
+    await action.cue;
+    action.followThrough();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(observed).toEqual([4]);
+    action.resume();
+    await action.finished;
+    expect(observed).toEqual([4, 5, "home"]);
+  });
   it("holds the impact pose until the result is displayed, then recovers", async () => {
     const observed = [];
     const sprite = {

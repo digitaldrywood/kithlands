@@ -2069,6 +2069,7 @@ export class BattleScene extends Phaser.Scene {
         {
           reducedMotion,
           speedMultiplier: battleSpeedMul(),
+          holdRecovery: true,
           onFrame: ({ frame, duration, cueFrame }) => {
             if (frame === cueFrame)
               this.setSpritePosition(
@@ -2079,11 +2080,13 @@ export class BattleScene extends Phaser.Scene {
             const dest =
               frame < cueFrame
                 ? frame === 0
-                  ? path.origin
+                  ? path.approach
                   : frame === 1 && !reducedMotion
-                    ? path.anticipation
+                    ? path.windup
                     : path.strike
-                : frame > cueFrame
+                : frame ===
+                    actor.sprite.battleStates.physical_attack.frames.at(-1)
+                      .frame
                   ? { x: actorEntry.x, y: actorEntry.y }
                   : null;
             if (dest)
@@ -2343,6 +2346,7 @@ export class BattleScene extends Phaser.Scene {
         {
           reducedMotion,
           speedMultiplier: battleSpeedMul(),
+          holdRecovery: true,
         },
       );
       await actorEntry.battleAction.cue;
@@ -2394,6 +2398,7 @@ export class BattleScene extends Phaser.Scene {
     const target = this.resolveVisualEntry(targetEntry);
     if (!actor || !target) return Promise.resolve();
     const style = battleElementStyle(element);
+    actorEntry?.battleAction?.followThrough();
     const reducedMotion = this.reducedBattleMotion();
     if (reducedMotion) {
       const cue = this.add
@@ -4149,6 +4154,12 @@ export class BattleScene extends Phaser.Scene {
           );
           await this.resetPartySprite(actorEntry);
           this.hideGroupTargetCursor();
+        } else if (!(action.damage > 0)) {
+          await this.playCastAnticipation(actorEntry, "none");
+          actorEntry?.battleAction?.followThrough();
+          this.spawnSpellImpact(actorEntry, "none");
+          await this.wait(100);
+          await this.resetPartySprite(actorEntry);
         }
         // Backstab with damage gets hit effect
         if (action.damage > 0) {
@@ -4420,6 +4431,20 @@ export class BattleScene extends Phaser.Scene {
   }
 
   hitFx(x, y, dmg, isParty, defeated, damageType, opts = {}) {
+    for (const actor of [
+      ...Object.values(this.partySprites),
+      ...Object.values(this.enemySprites),
+    ]) {
+      if (
+        actor.battleAction &&
+        actor.sprite.battleState === "physical_attack"
+      ) {
+        const action = actor.battleAction;
+        this.scaledDelay(this.reducedBattleMotion() ? 0 : 55, () =>
+          action.followThrough(),
+        );
+      }
+    }
     return new Promise((resolve) => {
       if (opts.missed) {
         playSFX("sfx_miss");

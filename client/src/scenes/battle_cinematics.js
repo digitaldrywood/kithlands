@@ -84,9 +84,19 @@ export function buildAttackMotionPath(
     : clamp(distance - clearance, 0, distance * 0.76);
   const strikeX = actor.x + ux * travel;
   const strikeY = actor.y + uy * travel;
+  const approachGap = reducedMotion ? 0 : Math.min(24, travel * 0.15);
+  const approach = {
+    x: strikeX - ux * approachGap,
+    y: strikeY - uy * approachGap,
+  };
 
   return {
     origin: { x: actor.x, y: actor.y },
+    approach,
+    windup: {
+      x: approach.x - ux * (reducedMotion ? 0 : 8),
+      y: approach.y - uy * (reducedMotion ? 0 : 8),
+    },
     anticipation: {
       x: actor.x - ux * anticipationDistance,
       y: actor.y - uy * anticipationDistance + (reducedMotion ? 0 : 3),
