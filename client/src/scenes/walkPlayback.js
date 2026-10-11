@@ -1,10 +1,13 @@
 import { WALK_FRAME_COUNT } from "./walkFrame.js";
+import fieldPresentation from "../../../shared/field_presentation.json";
 // Advance the gait with distance, not a second timer racing the movement tween.
 // Three tiles per six-pose cycle keeps poses readable at every walk speed.
 export const WALK_CYCLE_TILES = 3;
 export const WALK_IDLE_DELAY_MS = 80;
 
 export function beginWalkStep(scene, setFrame, tileSize = 32) {
+  const cycleTiles =
+    fieldPresentation.walk_cycles[scene.leaderClass]?.tiles || WALK_CYCLE_TILES;
   let state = scene.walkPlayback;
   if (
     !state ||
@@ -27,8 +30,7 @@ export function beginWalkStep(scene, setFrame, tileSize = 32) {
   const startX = scene.player.x;
   const startY = scene.player.y;
   const update = (progress) => {
-    state.phase =
-      (start + Math.max(0, Math.min(1, progress)) / WALK_CYCLE_TILES) % 1;
+    state.phase = (start + Math.max(0, Math.min(1, progress)) / cycleTiles) % 1;
     setFrame(
       Math.floor(state.phase * WALK_FRAME_COUNT + 1e-9) % WALK_FRAME_COUNT,
     );

@@ -1,0 +1,31 @@
+{
+  "status": "candidate_in_game_review",
+  "tool": "built-in image_gen",
+  "cell_size": 64,
+  "columns": 6,
+  "rows": 8,
+  "feet_baseline": 62,
+  "source_identity": "original Warrior walk atlas and improved east strip",
+  "row_sources": [
+    "south",
+    "south",
+    "east",
+    "north",
+    "north",
+    "north",
+    "west",
+    "south"
+  ],
+  "diagonals": "Cardinal duplicates; no diagonal movement is shipped.",
+  "pose_order": [
+    "contact_a",
+    "down_a",
+    "passing_a",
+    "high_a",
+    "contact_b",
+    "down_b"
+  ],
+  "runtime_cycle_tiles": 2,
+  "normalization": "normalize_character64_row.py; shared scale per row, helmet registration, nearest sampling, clean alpha",
+  "prompt": "One direction and six separated sequential walk poses. Preserve silver plate, gold trim, blue plume, blue cape and sword. Clear alternate foot reach, knee passing, planted-leg support, subtle body bob, counterrotation and trailing cape. Stable head dimensions, common scale and feet baseline, transparent padding, no text, scenery, grid or baked shadow. South front, north back, east/west true profiles."
+}

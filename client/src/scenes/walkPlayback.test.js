@@ -5,7 +5,7 @@ function fixture() {
   const pending = [];
   const scene = {
     player: { x: 0, y: 0 },
-    leaderClass: "warrior",
+    leaderClass: "cinder",
     playerDir: "right",
     time: {
       delayedCall: (_, callback) => {
@@ -24,6 +24,14 @@ function fixture() {
   return { scene, pending, setFrame: vi.fn() };
 }
 describe("distance-driven walk playback", () => {
+  it("fits the Warrior's shorter stride to two tiles without changing other classes", () => {
+    const { scene, setFrame } = fixture();
+    scene.leaderClass = "warrior";
+    beginWalkStep(scene, setFrame).update(0.5);
+    expect(setFrame).toHaveBeenLastCalledWith(1);
+    beginWalkStep(scene, setFrame).complete();
+    expect(scene.walkPlayback.phase).toBeCloseTo(0.75);
+  });
   it("preserves phase while a completed tile awaits server acknowledgement", () => {
     const { scene, pending, setFrame } = fixture();
     scene.animating = true;
