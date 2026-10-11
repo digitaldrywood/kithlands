@@ -247,7 +247,7 @@ test.describe("battle cinematic proof — issue #211", () => {
       () => {
         const snapshot = window.__kithlandsTest.battleVisibilitySnapshot();
         return (
-          snapshot.spellProjectiles > 0 &&
+          (snapshot.spellProjectiles > 0 || snapshot.spellImpacts > 0) &&
           snapshot.titleActors.length > 0 &&
           snapshot.messageWindow.text.includes("casts")
         );

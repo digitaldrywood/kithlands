@@ -664,14 +664,19 @@ export class WorldScene extends Phaser.Scene {
     const walk = beginWalkStep(this, (frame) =>
       setPlayerWalkFrame(this, frame),
     );
+    // Send this single authoritative step while the tile tween is running.
+    // Unlock, rollback, and encounters still wait for BOTH completions.
+    const arrival = syncWorldArrival(this, {
+      step: true,
+      debugNoEncounters: randomEncountersDisabledForDebug(),
+    }).catch((error) => ({
+      error: error instanceof Error ? error.message : String(error),
+    }));
     const finishStepAnimation = () => {
       walk.complete();
       let accepted = true;
       let encounterResult = null;
-      void syncWorldArrival(this, {
-        step: true,
-        debugNoEncounters: randomEncountersDisabledForDebug(),
-      })
+      void arrival
         .then((result) => {
           if (shouldStartBattle(result)) encounterResult = result;
           if (result?.error && this.scene?.isActive()) {
