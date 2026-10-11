@@ -1,3 +1,4 @@
+import { trackedObjective } from "./questJournalModel.js";
 import { updateWorldTerrainVisibility } from "./worldTerrainVisibility.js";
 import { beginWalkStep } from "./walkPlayback.js";
 import {
@@ -59,7 +60,6 @@ import {
   buildTerrainRenderPlan,
   ensureTerrainRenderTexture,
 } from "./terrainAutotile.js";
-import { questObjectiveText, questKindLabel } from "./quest_text.js";
 import { walkAuditHUDText } from "./walkAuditMode.js";
 import { applyGameplayViewport } from "../systems/gameplayViewport.js";
 import { updateDungeonEntry } from "./dungeonEntry.js";
@@ -1095,22 +1095,8 @@ export class WorldScene extends Phaser.Scene {
       this.questCard.fillRect(12, 14, 4, height - 12);
     };
 
-    if (gs.current_quest < gs.quests.length) {
-      const q = gs.quests[gs.current_quest];
-      if (q?.hidden) {
-        drawCard(
-          "Explore the world",
-          "No new objective has been revealed yet.",
-          0x88d47a,
-        );
-        return;
-      }
-      const title = `${questKindLabel(q)}: ${q.name}`;
-      const detail = questObjectiveText(q);
-      drawCard(title, detail);
-    } else {
-      drawCard("Campaign Complete", "All quests complete.", 0x88d47a);
-    }
+    const objective = trackedObjective(this);
+    drawCard(objective.title, objective.detail);
   }
 
   showMessage(text) {

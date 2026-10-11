@@ -1,3 +1,5 @@
+import { objectiveTracker } from "./objective_tracker.js";
+import { showObjectiveQuestLog } from "../scenes/objective_quest_log.js";
 import { element } from "./viewport_dialog.js";
 import { activeWorldLocks } from "../systems/modalLock.js";
 import { isTouchDevice } from "../systems/input.js";
@@ -8,34 +10,10 @@ import "../styles/exploration-hud.css";
 export function explorationHUD(scene, { menu, help, mute, isMuted, colors }) {
   const root = element("section", "exploration-hud");
   root.setAttribute("aria-label", "Exploration controls");
-  const objective = element("div", "explore-objective explore-surface");
-  const title = element("strong");
-  const detail = element("p");
+  const tracker = objectiveTracker(() => showObjectiveQuestLog(scene));
+  const objective = tracker.root;
   const saveStatus = element("span", "explore-save-status");
   saveStatus.setAttribute("role", "status");
-  const objectiveToggle = element(
-    "button",
-    "explore-disclosure",
-    "Objective ▾",
-  );
-  objectiveToggle.type = "button";
-  objectiveToggle.setAttribute("aria-expanded", "false");
-  objectiveToggle.setAttribute("aria-controls", "explore-objective-details");
-  const objectiveDetails = element("div", "explore-objective-details");
-  objectiveDetails.id = "explore-objective-details";
-  objectiveDetails.hidden = true;
-  objectiveDetails.append(title, detail);
-  objectiveToggle.onclick = () => {
-    objectiveDetails.hidden = !objectiveDetails.hidden;
-    objectiveToggle.setAttribute(
-      "aria-expanded",
-      String(!objectiveDetails.hidden),
-    );
-    objectiveToggle.textContent = objectiveDetails.hidden
-      ? "Objective ▾"
-      : "Objective ▴";
-  };
-  objective.append(objectiveToggle, objectiveDetails);
   const map = element("div", "explore-map explore-surface");
   const canvas = element("canvas");
   canvas.width = 120;
@@ -207,8 +185,7 @@ export function explorationHUD(scene, { menu, help, mute, isMuted, colors }) {
   return {
     root,
     objective(heading, body) {
-      title.textContent = heading;
-      detail.textContent = body;
+      tracker.update(heading, body);
     },
     message(text) {
       notice.textContent = text;

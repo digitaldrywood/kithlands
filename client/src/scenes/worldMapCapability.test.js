@@ -131,6 +131,19 @@ describe("world map scene capability", () => {
     ).toEqual(["grove"]);
   });
 
+  it("uses the journal selection made in another scene", () => {
+    const scene = makeScene();
+    scene.gameState.dungeon_entries = [{ id: "shrine", node_id: "grove" }];
+    scene.registry = {
+      get: () => ({ gameID: scene.gameState.id, id: "dungeon:shrine" }),
+    };
+    expect(
+      worldMapModel(scene)
+        .locations.filter((place) => place.target)
+        .map((place) => place.node_id),
+    ).toEqual(["grove"]);
+  });
+
   it.each([
     ["dungeon without world spawns", { spawns: undefined }],
     ["missing terrain", { tileData: undefined }],

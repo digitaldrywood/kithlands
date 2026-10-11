@@ -78,10 +78,47 @@ for (const viewport of [
     );
     await page.waitForTimeout(400);
     await page
+      .getByRole("button", { name: "Objective ▾", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Quest journal", exact: true })
+      .click();
+    const journal = page.getByRole("dialog", {
+      name: "Quest Log",
+      exact: true,
+    });
+    await expect(
+      journal.getByRole("heading", { name: "Your campaign", exact: true }),
+    ).toBeVisible();
+    await expect(
+      journal.getByRole("heading", { name: "Local stories", exact: true }),
+    ).toBeVisible();
+    await journal.getByRole("button", { name: /Track The Old Mill/ }).click();
+    await capture(page, `${viewport.width}-world-shared-journal`);
+    await page
+      .getByRole("button", { name: "Close Quest Log", exact: true })
+      .click();
+    await expect(page.locator("[data-objective-tracker]")).toContainText(
+      "The Old Mill",
+    );
+    await page
       .getByRole("button", { name: "Old Mill trail", exact: true })
       .click();
     await room(page, "approach");
     await capture(page, `${viewport.width}-approach`);
+    const tracker = page.locator("[data-objective-tracker]");
+    await expect(tracker).toHaveCount(1);
+    const toggle = tracker.getByRole("button", {
+      name: "Objective ▾",
+      exact: true,
+    });
+    expect((await toggle.boundingBox()).height).toBeGreaterThanOrEqual(44);
+    await toggle.click();
+    await expect(tracker).toContainText((await state(page)).dungeon.objective);
+    await capture(page, `${viewport.width}-shared-tracker`);
+    await tracker
+      .getByRole("button", { name: "Objective ▴", exact: true })
+      .click();
     await tapAction(page, "split-oak", viewport);
     await page.waitForFunction(
       () =>
@@ -127,8 +164,22 @@ for (const viewport of [
     await page.evaluate(() =>
       window.__kithlandsTest.clickInteractiveText("Journal", "Dungeon"),
     );
+    const sharedJournal = page.getByRole("dialog", {
+      name: "Quest Log",
+      exact: true,
+    });
+    await expect(sharedJournal).toBeVisible();
+    await expect(sharedJournal).toContainText("Your campaign");
+    await expect(sharedJournal).toContainText(before.dungeon.objective);
+    await expect(sharedJournal).toContainText(before.dungeon.journal.at(-1));
     await capture(page, `${viewport.width}-saved-journal`);
+    await sharedJournal
+      .locator('[data-quest-id="dungeon:old-mill"] details p')
+      .last()
+      .scrollIntoViewIfNeeded();
+    await capture(page, `${viewport.width}-saved-journal-notes`);
     await page.keyboard.press("Escape");
+    await expect(sharedJournal).toHaveCount(0);
     await tapAction(page, "receiving-exit", viewport);
     await room(page, "approach");
     await tapAction(page, "trail-home", viewport);
@@ -136,6 +187,24 @@ for (const viewport of [
       () => window.__kithlandsTest.activeSceneKey() === "World",
     );
     expect((await state(page)).gold).toBe(before.gold);
+    await page
+      .getByRole("button", { name: "Objective ▾", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Quest journal", exact: true })
+      .click();
+    await expect(
+      page.locator('[data-quest-id="dungeon:old-mill"]'),
+    ).toContainText(before.dungeon.journal.at(-1));
+    await page.locator('[data-quest-id="dungeon:old-mill"] summary').click();
+    await page
+      .locator('[data-quest-id="dungeon:old-mill"] details p')
+      .last()
+      .scrollIntoViewIfNeeded();
+    await capture(page, `${viewport.width}-returned-shared-journal`);
+    await page
+      .getByRole("button", { name: "Close Quest Log", exact: true })
+      .click();
     expect(errors).toEqual([]);
   });
 }
@@ -329,6 +398,22 @@ for (const viewport of [
     expect(end.message).toContain("80 gold");
     expect(end.combat_log || []).toEqual([]);
     await capture(page, `${viewport.width}-return-payoff`);
+    await page
+      .getByRole("button", { name: "Objective ▾", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Quest journal", exact: true })
+      .click();
+    await expect(
+      page.locator('[data-quest-id="dungeon:old-mill"]'),
+    ).toContainText("Complete");
+    await expect(
+      page.locator('[data-quest-id="dungeon:old-mill"]'),
+    ).not.toContainText("Track objective");
+    await capture(page, `${viewport.width}-completed-shared-journal`);
+    await page
+      .getByRole("button", { name: "Close Quest Log", exact: true })
+      .click();
     console.log(
       `Old Mill ${viewport.width}: automated actual-combat route ${((Date.now() - started) / 60000).toFixed(2)} minutes; this is not unassisted first-visit duration.`,
     );
