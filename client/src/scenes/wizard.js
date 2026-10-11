@@ -28,6 +28,17 @@ export class WizardScene extends Phaser.Scene {
 
   create() {
     this.step = 0;
+    this.townSearchToken = null;
+    const onEscape = (event) => {
+      if (event.key !== "Escape" || this.step !== 0) return;
+      event.preventDefault();
+      this.goBack();
+    };
+    window.addEventListener("keydown", onEscape);
+    this.events.once("shutdown", () => {
+      window.removeEventListener("keydown", onEscape);
+      this.townSearchToken = null;
+    });
     this.townSearchState = {
       busy: false,
       label: "",
@@ -156,7 +167,11 @@ export class WizardScene extends Phaser.Scene {
   }
 
   goBack() {
-    if (this.step <= 0) return;
+    if (this.step <= 0) {
+      this.townSearchToken = null;
+      this.scene.start("Title");
+      return;
+    }
     if (this.usesStreamlinedOSMFlow() && this.step === 5) {
       this.step = 0;
       this.showStep();
@@ -306,7 +321,6 @@ export class WizardScene extends Phaser.Scene {
   }
 
   addBackButton(y) {
-    if (this.step <= 0) return;
     const button = drawButton(
       this,
       200,
@@ -444,6 +458,7 @@ export class WizardScene extends Phaser.Scene {
     const searchState = this.townSearchState || {};
     if (searchState.busy) {
       this.addLoadingPanel(210, searchState.label || "Searching...");
+      this.addBackButton(300);
       return;
     }
 
@@ -530,6 +545,10 @@ export class WizardScene extends Phaser.Scene {
       this.wizardData.radius_miles = parseFloat(sliderEl.value);
 
       if (useOSM) {
+        const searchToken = Symbol("town-search");
+        this.townSearchToken = searchToken;
+        const isCurrentSearch = () =>
+          this.scene.isActive() && this.townSearchToken === searchToken;
         this.wizardData.osm_preview = null;
         this.wizardData.spawn_node_id = "";
         this.setTownSearchState({
@@ -540,6 +559,7 @@ export class WizardScene extends Phaser.Scene {
         this.showStep();
         try {
           const result = await geocode(townName);
+          if (!isCurrentSearch()) return;
           if (result.error) {
             this.setTownSearchState({
               busy: false,
@@ -559,6 +579,7 @@ export class WizardScene extends Phaser.Scene {
               result.lng,
               this.wizardData.radius_miles,
             );
+            if (!isCurrentSearch()) return;
             if (preview.error) {
               this.wizardData.osm_preview = null;
               this.wizardData.spawn_node_id = "";
@@ -592,6 +613,7 @@ export class WizardScene extends Phaser.Scene {
               }
             }
           } catch {
+            if (!isCurrentSearch()) return;
             this.wizardData.osm_preview = null;
             this.wizardData.spawn_node_id = "";
             this.setTownSearchState({
@@ -604,6 +626,7 @@ export class WizardScene extends Phaser.Scene {
           }
           this.showStep();
         } catch {
+          if (!isCurrentSearch()) return;
           this.setTownSearchState({
             busy: false,
             label: "",
@@ -623,6 +646,7 @@ export class WizardScene extends Phaser.Scene {
         this.showStep();
       }
     };
+    this.addBackButton(300 + formOffset);
     const findButton = this.addButton(
       300 + formOffset,
       "FIND & CONTINUE",
