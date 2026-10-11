@@ -1,5 +1,5 @@
 {
-  "status": "candidate_in_game_review",
+  "status": "agent_visually_reviewed_in_game",
   "tool": "built-in image_gen",
   "cell_size": 64,
   "columns": 6,
@@ -27,5 +27,28 @@
   ],
   "runtime_cycle_tiles": 2,
   "normalization": "normalize_character64_row.py; shared scale per row, helmet registration, nearest sampling, clean alpha",
-  "prompt": "One direction and six separated sequential walk poses. Preserve silver plate, gold trim, blue plume, blue cape and sword. Clear alternate foot reach, knee passing, planted-leg support, subtle body bob, counterrotation and trailing cape. Stable head dimensions, common scale and feet baseline, transparent padding, no text, scenery, grid or baked shadow. South front, north back, east/west true profiles."
+  "prompt": "One direction and six separated sequential walk poses. Preserve silver plate, gold trim, blue plume, blue cape and sword. Clear alternate foot reach, knee passing, planted-leg support, subtle body bob, counterrotation and trailing cape. Stable head dimensions, common scale and feet baseline, transparent padding, no text, scenery, grid or baked shadow. South front, north back, east/west true profiles.",
+  "review": "Native cells, actual four-direction movement and stopping, all-class Space regression, 20/60 FPS at three speeds; user aesthetic acceptance remains separate.",
+  "generated_sources": [
+    {
+      "asset": "warrior-east",
+      "source": "client/tmp/warrior-polish/generated/warrior-east.png",
+      "sha256": "8510238a8b52d621ed7de6a6e1294b931c34d0ceb80c0216447a690a9a4401e3"
+    },
+    {
+      "asset": "warrior-south",
+      "source": "client/tmp/warrior-polish/generated/warrior-south.png",
+      "sha256": "3a17af87fadd698492f8a64469abdf6c51bbb2c90bb9d76fd744c1da2dd4451b"
+    },
+    {
+      "asset": "warrior-north",
+      "source": "client/tmp/warrior-polish/generated/warrior-north.png",
+      "sha256": "f97b60142058883424854ee37e4c1731198e05028f170d4f4b27d4656a142bcf"
+    },
+    {
+      "asset": "warrior-west",
+      "source": "client/tmp/warrior-polish/generated/warrior-west.png",
+      "sha256": "6b4cdb43ce23d20d1772f2be298a94a7dcc94d6336d8dac204947fd0141748ce"
+    }
+  ]
 }

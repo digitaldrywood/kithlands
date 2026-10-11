@@ -73,7 +73,31 @@ for (const [label, width, height, reducedMotion, battleSpeed] of [
     });
     const baseline = await page.evaluate(() => {
       const scene = window.__battleProofGame.scene.getScene("Battle");
-      window.__battleProof = { hits: [], frames: [] };
+      window.__battleProof = { hits: [], casts: [], abilities: [], frames: [] };
+      const abilityCue = scene.spawnAbilityCue.bind(scene);
+      scene.spawnAbilityCue = (actor, target, color) => {
+        window.__battleProof.abilities.push({
+          actor: actor.classId,
+          frame: actor.sprite.battleFrameIndex,
+          x: actor.sprite.x,
+          originX: actor.x,
+          weaponVisible: actor.sprite.battleAttachmentLayers.some(
+            (layer) =>
+              layer.channel === "weapon" &&
+              (layer.front.visible || layer.back.visible),
+          ),
+        });
+        return abilityCue(actor, target, color);
+      };
+      const cast = scene.playCastAnticipation.bind(scene);
+      scene.playCastAnticipation = async (actor, element) => {
+        await cast(actor, element);
+        window.__battleProof.casts.push({
+          actor: actor.classId,
+          frame: actor.sprite.battleFrameIndex,
+          source: actor.sprite.battleCastSource,
+        });
+      };
       const hitFx = scene.hitFx.bind(scene);
       scene.hitFx = (...args) => {
         const actor = Object.values(scene.partySprites).find(
@@ -84,6 +108,9 @@ for (const [label, width, height, reducedMotion, battleSpeed] of [
             actor: actor.classId,
             state: actor.sprite.battleState,
             frame: actor.sprite.battleFrameIndex,
+            impactVisible: scene.children.list.some(
+              (object) => object._combatFxTag === "spell-impact",
+            ),
           });
         return hitFx(...args);
       };
@@ -125,9 +152,17 @@ for (const [label, width, height, reducedMotion, battleSpeed] of [
       const scene = window.__battleProofGame.scene.getScene("Battle");
       scene.memberActions = scene.gameState.party.map((member, slot) => ({
         slot,
-        type: slot === 0 ? "attack" : slot === 1 ? "spell" : "defend",
+        type:
+          slot === 0
+            ? "attack"
+            : slot === 1
+              ? "spell"
+              : slot === 2
+                ? "ability"
+                : "defend",
         target_id: scene.gameState.enemies[Math.min(slot, 2)].id,
         ...(slot === 1 ? { spell_id: "spark" } : {}),
+        ...(slot === 2 ? { ability_id: "steal" } : {}),
       }));
       void scene.submitAllActions();
     });
@@ -155,9 +190,26 @@ for (const [label, width, height, reducedMotion, battleSpeed] of [
       () => !window.__battleProofGame.scene.getScene("Battle").animating,
     );
     const result = await page.evaluate(() => window.__battleProof);
-    for (const hit of result.hits)
+    for (const hit of result.hits.filter((entry) => entry.actor === "warrior"))
       expect(hit.frame, `${hit.actor}/${hit.state} impact`).toBe(3);
+    expect(result.casts.find((entry) => entry.actor === "cinder").frame).toBe(
+      3,
+    );
+    expect(
+      result.hits.find((entry) => entry.actor === "cinder").impactVisible,
+    ).toBe(true);
     const samples = result.frames.flat();
+    expect(
+      rounds
+        .flatMap((round) => round.combat_actions || [])
+        .some((action) => action.action_id === "steal"),
+    ).toBe(true);
+    const ability = result.abilities.find((entry) => entry.actor === "rogue");
+    expect(ability.frame).toBe(2);
+    expect(ability.weaponVisible).toBe(false);
+    if (reducedMotion === "reduce")
+      expect(Math.abs(ability.x - ability.originX)).toBeLessThanOrEqual(14);
+    else expect(ability.x).toBeLessThan(ability.originX - 100);
     for (const sample of samples) {
       expect(sample.shadowX).toBeCloseTo(sample.x, 4);
       expect(sample.shadowY).toBeCloseTo(sample.y, 4);

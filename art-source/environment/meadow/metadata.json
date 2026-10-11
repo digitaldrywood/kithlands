@@ -1,0 +1,24 @@
+{
+  "tool": "built-in image_gen",
+  "status": "agent_visually_reviewed_in_game",
+  "runtime_assets": [
+    "client/public/environment/meadow-battle.png",
+    "client/public/environment/meadow-props.png"
+  ],
+  "generated_sources": [
+    {
+      "asset": "meadow-battle",
+      "source": "client/tmp/warrior-polish/generated/meadow-battle.png",
+      "sha256": "732b511a8d879f39b02e56cb9a9c81fea49fc28c0354ee003d9389220530e933"
+    },
+    {
+      "asset": "meadow-props",
+      "source": "client/tmp/warrior-polish/generated/meadow-props.png",
+      "sha256": "121337e1badaf666e2d479354f3c0024069b852823e0ea5277897637be9efc3d"
+    }
+  ],
+  "battle_normalization": "1536x1024 source normalized with nearest sampling to 800x534, full art frame; no old background crop",
+  "props_normalization": "Six connected objects, common scale, native 96x96 cells, 576x96 RGBA strip, clean alpha",
+  "data": "shared/field_presentation.json",
+  "review": "Actual desktop and portrait meadow-to-battle flow; separate ground shadow, depth ordering and canopy visibility."
+}
