@@ -44,6 +44,7 @@ type DialoguePool struct {
 
 // GameData holds all loaded game data from shared/.
 type GameData struct {
+	Gathering          GatheringData
 	EncounterPacing    EncounterPacing
 	Campaign           generator.CampaignConfig
 	FinalEncounter     FinalEncounter
@@ -107,6 +108,7 @@ func Load(sharedDir string) *GameData {
 	gd.Stats = loadJSON[StatsConfig](sharedDir, "stats.json")
 	gd.Items = loadJSON[ItemsData](sharedDir, "items.json")
 	gd.Loot = loadJSON[LootData](sharedDir, "loot.json")
+	gd.Gathering = loadJSON[GatheringData](sharedDir, "gathering.json")
 	gd.Abilities = loadJSON[[]Ability](sharedDir, "abilities.json")
 	gd.Chests = loadJSON[ChestCatalog](sharedDir, "chests.json")
 	gd.Spells = loadJSON[SpellsData](sharedDir, "spells.json")
@@ -387,6 +389,9 @@ func cloneIntMap(source map[string]int) map[string]int {
 
 func (gd *GameData) validate() {
 	gd.validateLoot()
+	if err := gd.ValidateGathering(); err != nil {
+		panic(fmt.Sprintf("gamedata: %v", err))
+	}
 	gd.validateNaturalDiscoveries()
 
 	if len(gd.Classes) == 0 {

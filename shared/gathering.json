@@ -1,0 +1,71 @@
+{
+  "nodes_per_route": 4,
+  "max_routes": 3,
+  "resources": [
+    {
+      "id": "meadow_herbs",
+      "name": "Meadow herbs",
+      "material_id": "meadow_herb",
+      "material_name": "Meadow herb",
+      "quantity": 3,
+      "visual": "herb"
+    },
+    {
+      "id": "iron_outcrop",
+      "name": "Ember iron outcrop",
+      "material_id": "ember_ore",
+      "material_name": "Ember iron ore",
+      "quantity": 4,
+      "visual": "mineral"
+    }
+  ],
+  "recipes": [
+    {
+      "id": "brew_potion",
+      "name": "Brew Potion",
+      "description": "Brew trail herbs into a healing potion for your next battle.",
+      "inputs": [
+        {
+          "material_id": "meadow_herb",
+          "count": 2
+        }
+      ],
+      "output_id": "potion",
+      "output_count": 1
+    },
+    {
+      "id": "refine_ember",
+      "name": "Refine Ember Shards",
+      "description": "Separate the ember crystals from iron ore. Transmute three shards into a gem in the gem workshop.",
+      "inputs": [
+        {
+          "material_id": "ember_ore",
+          "count": 3
+        }
+      ],
+      "output_id": "ember_shard",
+      "output_count": 3
+    },
+    {
+      "id": "forge_iron_sword",
+      "name": "Forge Iron Sword",
+      "description": "Forge a reliable sword with one open gem socket. Equip it through Character to compare its stats.",
+      "inputs": [
+        {
+          "material_id": "ember_ore",
+          "count": 5
+        },
+        {
+          "material_id": "meadow_herb",
+          "count": 1
+        }
+      ],
+      "output_id": "iron_sword",
+      "output_count": 1,
+      "item_level": 1,
+      "sockets": 1,
+      "rarity_id": "common"
+    }
+  ],
+  "spacing_tiles": 6
+}

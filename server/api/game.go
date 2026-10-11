@@ -115,6 +115,9 @@ type MemberActionReq struct {
 
 // GameState is the full state sent to the client.
 type GameState struct {
+	Resources           []ResourceNodeState           `json:"resources,omitempty"`
+	Materials           []MaterialState               `json:"materials,omitempty"`
+	FieldRecipes        []FieldRecipeState            `json:"field_recipes,omitempty"`
 	EquipmentBuilds     [4][]inventory.EquipmentBuild `json:"equipment_builds"`
 	EquipmentBuildLimit int                           `json:"equipment_build_limit"`
 	BattleRewards       *BattleRewardsState           `json:"battle_rewards,omitempty"`
@@ -592,6 +595,8 @@ type QuestRewardState struct {
 
 // Game holds the live state of one game session.
 type Game struct {
+	resourceMap            *locality.TileMap
+	resourceNodeCache      []ResourceNodeState
 	savedInteriorTemplates map[string]string
 
 	dungeon             *DungeonProgress
@@ -702,6 +707,7 @@ func (g *Game) State() GameState {
 	g.fillNaturalDiscoveryState(&state)
 	state.PendingChestClaim = clonePendingChestClaimState(g.pendingChestClaim)
 	g.fillInventoryState(&state)
+	g.fillGatheringState(&state)
 	g.fillExtras(&state)
 	g.fillBattleRewardsState(&state)
 

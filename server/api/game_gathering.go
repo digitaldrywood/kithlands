@@ -1,0 +1,290 @@
+package api
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"math"
+	"net/http"
+
+	"github.com/digitaldrywood/kithlands/internal/gamedata"
+	"github.com/digitaldrywood/kithlands/internal/inventory"
+	"github.com/digitaldrywood/kithlands/internal/locality"
+)
+
+type ResourceNodeState struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	MaterialID string `json:"material_id"`
+	Quantity   int    `json:"quantity"`
+	Visual     string `json:"visual"`
+	X          int    `json:"x"`
+	Y          int    `json:"y"`
+	Gathered   bool   `json:"gathered"`
+}
+type MaterialState struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Count int    `json:"count"`
+}
+type FieldRecipeState struct {
+	gamedata.FieldRecipe
+	OutputName  string         `json:"output_name"`
+	OutputStats map[string]int `json:"output_stats,omitempty"`
+	Craftable   bool           `json:"craftable"`
+	BlockReason string         `json:"block_reason,omitempty"`
+}
+
+// Resource identities depend on saved map coordinates, not the active quest.
+// A harvested patch remains depleted across quest changes and save/load.
+func (g *Game) resourceNodes() []ResourceNodeState {
+	if g.resourceMap == g.tileMap && g.resourceNodeCache != nil {
+		return g.resourceNodeSnapshot()
+	}
+	cfg := g.gd.Gathering
+	if g.tileMap == nil || len(cfg.Resources) == 0 {
+		return nil
+	}
+	start := WorldPosition{X: g.tileMap.PlayerX, Y: g.tileMap.PlayerY}
+	targets := []string{}
+	var stories GameState
+	g.fillDungeonState(&stories)
+	for _, entry := range stories.DungeonEntries {
+		targets = append(targets, entry.NodeID)
+	}
+	for _, quest := range g.quests {
+		targets = append(targets, quest.TargetNodeID)
+	}
+	for _, spawn := range g.tileMap.Spawns {
+		targets = append(targets, spawn.NodeID)
+	}
+	visited, occupied := map[string]bool{}, map[WorldPosition]bool{}
+	nodes := []ResourceNodeState{}
+	routes := 0
+	for _, target := range targets {
+		if visited[target] {
+			continue
+		}
+		visited[target] = true
+		spawn := worldSpawn(g.tileMap, target)
+		if spawn == nil {
+			continue
+		}
+		path := gatheringPath(g.tileMap, start, WorldPosition{X: spawn.X, Y: spawn.Y})
+		if len(path) < cfg.NodesPerRoute*2+3 {
+			continue
+		}
+		added := 0
+		for step := 3; step < len(path)-2 && added < cfg.NodesPerRoute; step += cfg.SpacingTiles {
+			position := path[step]
+			if occupied[position] {
+				continue
+			}
+			nearDoor := false
+			for _, door := range g.tileMap.Spawns {
+				if checkpointAbs(position.X-door.X)+checkpointAbs(position.Y-door.Y) < 2 {
+					nearDoor = true
+					break
+				}
+			}
+			if nearDoor {
+				continue
+			}
+			resource := cfg.Resources[len(nodes)%len(cfg.Resources)]
+			id := fmt.Sprintf("%s:%d:%d", resource.ID, position.X, position.Y)
+			nodes = append(nodes, ResourceNodeState{ID: id, Name: resource.Name, MaterialID: resource.MaterialID, Quantity: resource.Quantity, Visual: resource.Visual, X: position.X, Y: position.Y, Gathered: g.inv.GatheredResources[id]})
+			occupied[position] = true
+			added++
+		}
+		if added > 0 {
+			routes++
+		}
+		if routes >= cfg.MaxRoutes {
+			break
+		}
+	}
+	g.resourceMap, g.resourceNodeCache = g.tileMap, nodes
+	return g.resourceNodeSnapshot()
+}
+
+func (g *Game) resourceNodeSnapshot() []ResourceNodeState {
+	nodes := append([]ResourceNodeState(nil), g.resourceNodeCache...)
+	for i := range nodes {
+		nodes[i].Gathered = g.inv.GatheredResources[nodes[i].ID]
+	}
+	return nodes
+}
+
+// Paths use the same basic foot traversal as world movement, never water or
+// blocked terrain. Resources therefore do not require a later transport unlock.
+func gatheringPath(tileMap *locality.TileMap, start, target WorldPosition) []WorldPosition {
+	queue := []WorldPosition{start}
+	previous := map[WorldPosition]WorldPosition{start: start}
+	for index := 0; index < len(queue); index++ {
+		current := queue[index]
+		if current == target {
+			path := []WorldPosition{current}
+			for current != start {
+				current = previous[current]
+				path = append(path, current)
+			}
+			for a, b := 0, len(path)-1; a < b; a, b = a+1, b-1 {
+				path[a], path[b] = path[b], path[a]
+			}
+			return path
+		}
+		for _, direction := range []WorldPosition{{X: 1}, {Y: 1}, {X: -1}, {Y: -1}} {
+			next := WorldPosition{X: current.X + direction.X, Y: current.Y + direction.Y}
+			if _, found := previous[next]; found || !worldPositionInBounds(tileMap, next) {
+				continue
+			}
+			if !worldTileTraversable(locality.TileType(tileMap.Tiles[next.Y][next.X]), worldTraversal{}) {
+				continue
+			}
+			previous[next] = current
+			queue = append(queue, next)
+		}
+	}
+	return nil
+}
+
+func (g *Game) fieldRecipeBlockReason(recipe gamedata.FieldRecipe) string {
+	if err := g.checkEquipmentMutationLocked(); err != nil {
+		return "Finish the battle before crafting."
+	}
+	for _, input := range recipe.Inputs {
+		if g.inv.Materials[input.MaterialID] < input.Count {
+			name := input.MaterialID
+			for _, resource := range g.gd.Gathering.Resources {
+				if resource.MaterialID == input.MaterialID {
+					name = resource.MaterialName
+				}
+			}
+			return fmt.Sprintf("Need %d %s; have %d.", input.Count, name, g.inv.Materials[input.MaterialID])
+		}
+	}
+	return ""
+}
+
+func (g *Game) fillGatheringState(state *GameState) {
+	state.Resources = g.resourceNodes()
+	for _, resource := range g.gd.Gathering.Resources {
+		state.Materials = append(state.Materials, MaterialState{ID: resource.MaterialID, Name: resource.MaterialName, Count: g.inv.Materials[resource.MaterialID]})
+	}
+	for _, recipe := range g.gd.Gathering.Recipes {
+		preview := FieldRecipeState{FieldRecipe: recipe, BlockReason: g.fieldRecipeBlockReason(recipe)}
+		preview.Craftable = preview.BlockReason == ""
+		if base := g.gd.EquipmentBaseByID(recipe.OutputID); base != nil {
+			preview.OutputName = base.Name
+			preview.OutputStats = cloneStats(base.Stats)
+		} else if gem := g.gd.GemByID(recipe.OutputID); gem != nil {
+			preview.OutputName = gem.Name
+		} else if item := g.gd.ConsumableByID(recipe.OutputID); item != nil {
+			preview.OutputName = item.Name
+		}
+		state.FieldRecipes = append(state.FieldRecipes, preview)
+	}
+}
+
+func (g *Game) Gather(resourceID string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.phase != "world" || g.location.Kind != LocationWorld || g.inDungeon() {
+		return fmt.Errorf("gathering requires the overworld outside battle")
+	}
+	for _, resource := range g.resourceNodes() {
+		if resource.ID != resourceID {
+			continue
+		}
+		if resource.Gathered {
+			return fmt.Errorf("this resource has already been gathered")
+		}
+		checkpoint := g.worldCheckpoint
+		if checkpoint == nil || checkpointAbs(checkpoint.X-resource.X)+checkpointAbs(checkpoint.Y-resource.Y) > 1 {
+			return fmt.Errorf("walk next to the resource before gathering")
+		}
+		if g.inv.Materials[resource.MaterialID] > math.MaxInt-resource.Quantity {
+			return fmt.Errorf("too many materials")
+		}
+		g.inv.Normalize()
+		g.inv.Materials[resource.MaterialID] += resource.Quantity
+		g.inv.GatheredResources[resource.ID] = true
+		g.message = fmt.Sprintf("Gathered %d materials from %s. Open Crafting from the party menu.", resource.Quantity, resource.Name)
+		return nil
+	}
+	return fmt.Errorf("resource not found")
+}
+
+func (g *Game) CraftFieldRecipe(recipeID string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	for _, recipe := range g.gd.Gathering.Recipes {
+		if recipe.ID != recipeID {
+			continue
+		}
+		if reason := g.fieldRecipeBlockReason(recipe); reason != "" {
+			return fmt.Errorf("%s", reason)
+		}
+		working := g.inv.Clone()
+		working.Normalize()
+		for _, input := range recipe.Inputs {
+			working.Materials[input.MaterialID] -= input.Count
+		}
+		if base := g.gd.EquipmentBaseByID(recipe.OutputID); base != nil {
+			instance := &inventory.EquipmentInstance{BaseID: base.ID, Kind: base.Kind, Category: base.Category, ItemLevel: recipe.ItemLevel, RequiredLevel: base.RequiredLevel, RarityID: recipe.RarityID, Sockets: make([]inventory.ItemSocket, recipe.Sockets)}
+			if _, err := working.AddInstance(*instance); err != nil {
+				return err
+			}
+		} else if g.gd.GemByID(recipe.OutputID) != nil {
+			if working.Gems[recipe.OutputID] > math.MaxInt-recipe.OutputCount {
+				return fmt.Errorf("too many gems")
+			}
+			working.Gems[recipe.OutputID] += recipe.OutputCount
+			working.DiscoverGemRecipes(g.gd)
+		} else {
+			if working.Consumables[recipe.OutputID] > math.MaxInt-recipe.OutputCount {
+				return fmt.Errorf("too many consumables")
+			}
+			working.Consumables[recipe.OutputID] += recipe.OutputCount
+		}
+		g.inv = working
+		g.message = fmt.Sprintf("%s complete. Your inventory has been updated.", recipe.Name)
+		return nil
+	}
+	return fmt.Errorf("recipe not found")
+}
+
+func (s *Server) handleGather(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ResourceID string `json:"resource_id"`
+	}
+	s.handleGatheringMutation(w, r, &req, func(g *Game) error { return g.Gather(req.ResourceID) })
+}
+func (s *Server) handleFieldCraft(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		RecipeID string `json:"recipe_id"`
+	}
+	s.handleGatheringMutation(w, r, &req, func(g *Game) error { return g.CraftFieldRecipe(req.RecipeID) })
+}
+func (s *Server) handleGatheringMutation(w http.ResponseWriter, r *http.Request, req any, mutation func(*Game) error) {
+	game := s.games.GetGame(r.PathValue("id"))
+	if game == nil {
+		httpError(w, "game not found", http.StatusNotFound)
+		return
+	}
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(req); err != nil {
+		httpError(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if decoder.Decode(&struct{}{}) != io.EOF {
+		httpError(w, "expected one request", http.StatusBadRequest)
+		return
+	}
+	if err := mutation(game); err != nil {
+		httpError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	jsonResp(w, game.State())
+}
