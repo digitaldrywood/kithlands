@@ -31,7 +31,8 @@
         }
       ],
       "output_id": "potion",
-      "output_count": 1
+      "output_count": 1,
+      "output_visual": "potion"
     },
     {
       "id": "refine_ember",
@@ -44,7 +45,8 @@
         }
       ],
       "output_id": "ember_shard",
-      "output_count": 3
+      "output_count": 3,
+      "output_visual": "gem"
     },
     {
       "id": "forge_iron_sword",
@@ -64,7 +66,8 @@
       "output_count": 1,
       "item_level": 1,
       "sockets": 1,
-      "rarity_id": "common"
+      "rarity_id": "common",
+      "output_visual": "sword"
     }
   ],
   "spacing_tiles": 6

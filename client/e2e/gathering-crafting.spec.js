@@ -175,6 +175,7 @@ async function menu(page) {
 
 for (const [width, height] of [
   [1440, 900],
+  [610, 837],
   [390, 844],
   [800, 600],
 ]) {
@@ -224,9 +225,14 @@ for (const [width, height] of [
       name: "Crafting",
       exact: true,
     });
-    await expect(
-      crafting.getByRole("button", { name: "Forge Iron Sword", exact: true }),
-    ).toBeDisabled();
+    await crafting
+      .getByRole("button", { name: "Forge Iron Sword", exact: true })
+      .click();
+    await expect(crafting.locator(".craft-confirm")).toBeDisabled();
+    await expect(crafting.locator(".craft-ingredient.is-missing")).toHaveCount(
+      2,
+    );
+    await assertWorkbenchFits(page, crafting);
     await capture(page, `${width}-locked-recipe`);
     await crafting.getByRole("button", { name: "Close", exact: true }).click();
     await page.keyboard.press("Escape");
@@ -273,6 +279,9 @@ for (const [width, height] of [
         r.url().endsWith("/field-craft"),
       );
       await crafting.getByRole("button", { name: label, exact: true }).click();
+      await assertWorkbenchFits(page, crafting);
+      await capture(page, `${width}-${label.replaceAll(" ", "-")}-ready`);
+      await crafting.locator(".craft-confirm").click();
       expect((await (await response).json()).error).toBeFalsy();
       await expect(crafting.getByRole("status")).toContainText(
         `${label} complete`,
@@ -301,6 +310,9 @@ for (const [width, height] of [
     );
     await capture(page, `${width}-gathered-mineral-to-gem`);
     await page.getByRole("button", { name: "Close", exact: true }).click();
+    await expect(
+      crafting.getByRole("button", { name: "Forge Iron Sword", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
     await crafting.getByRole("button", { name: "Close", exact: true }).click();
     await page.evaluate(() =>
       window.__kithlandsTest.clickMenuButton("CHARACTER", "World"),
@@ -482,4 +494,31 @@ for (const [width, height] of [
     await capture(page, `${width}-returned-to-story`);
     expect(errors).toEqual([]);
   });
+}
+
+async function assertWorkbenchFits(page, crafting) {
+  const bounds = await crafting.evaluate((root) => {
+    const panel = root.querySelector(".viewport-dialog-panel");
+    const body = root.querySelector(".viewport-dialog-body");
+    const action = root.querySelector(".craft-confirm").getBoundingClientRect();
+    return {
+      overflow: panel.scrollWidth > panel.clientWidth,
+      bodyScroll: body.scrollHeight - body.clientHeight,
+      top: action.top,
+      bottom: action.bottom,
+    };
+  });
+  expect(bounds.overflow).toBe(false);
+  expect(bounds.bodyScroll).toBeLessThanOrEqual(1);
+  expect(bounds.top).toBeGreaterThanOrEqual(0);
+  expect(bounds.bottom).toBeLessThanOrEqual(page.viewportSize().height);
+  await expect(
+    crafting.getByRole("button", { name: "Brew Potion", exact: true }),
+  ).toBeVisible();
+  await expect(
+    crafting.getByRole("button", { name: "Refine Ember Shards", exact: true }),
+  ).toBeVisible();
+  await expect(
+    crafting.getByRole("button", { name: "Forge Iron Sword", exact: true }),
+  ).toBeVisible();
 }

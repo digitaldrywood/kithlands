@@ -22,15 +22,16 @@ type FieldIngredient struct {
 	Count      int    `json:"count"`
 }
 type FieldRecipe struct {
-	ID          string            `json:"id"`
-	Name        string            `json:"name"`
-	Description string            `json:"description"`
-	Inputs      []FieldIngredient `json:"inputs"`
-	OutputID    string            `json:"output_id"`
-	OutputCount int               `json:"output_count"`
-	ItemLevel   int               `json:"item_level,omitempty"`
-	Sockets     int               `json:"sockets,omitempty"`
-	RarityID    string            `json:"rarity_id,omitempty"`
+	ID           string            `json:"id"`
+	Name         string            `json:"name"`
+	Description  string            `json:"description"`
+	Inputs       []FieldIngredient `json:"inputs"`
+	OutputVisual string            `json:"output_visual,omitempty"`
+	OutputID     string            `json:"output_id"`
+	OutputCount  int               `json:"output_count"`
+	ItemLevel    int               `json:"item_level,omitempty"`
+	Sockets      int               `json:"sockets,omitempty"`
+	RarityID     string            `json:"rarity_id,omitempty"`
 }
 
 func (gd *GameData) ValidateGathering() error {
@@ -49,6 +50,9 @@ func (gd *GameData) ValidateGathering() error {
 	for _, r := range cfg.Recipes {
 		if r.ID == "" || ids[r.ID] || r.Name == "" || r.Description == "" || len(r.Inputs) == 0 || r.OutputCount < 1 || r.OutputCount > 20 {
 			return fmt.Errorf("invalid field recipe %q", r.ID)
+		}
+		if r.OutputVisual != "" && r.OutputVisual != "potion" && r.OutputVisual != "gem" && r.OutputVisual != "sword" && r.OutputVisual != "shield" {
+			return fmt.Errorf("invalid output visual in %q", r.ID)
 		}
 		ids[r.ID] = true
 		seen := map[string]bool{}
