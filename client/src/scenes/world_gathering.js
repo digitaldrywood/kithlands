@@ -23,14 +23,26 @@ export function renderWorldResources(scene, tileSize) {
         .fillEllipse(-5, -9, 10, 5)
         .fillEllipse(5, -13, 10, 5);
       art.fillStyle(0xeee3b1).fillCircle(0, -17, 3).fillCircle(3, -15, 2);
+    } else if (node.visual === "wood") {
+      art.fillStyle(0x614228).fillRoundedRect(-13, -9, 26, 11, 3);
+      art
+        .lineStyle(2, 0xb08858)
+        .lineBetween(-9, -7, 8, -7)
+        .lineBetween(-7, -3, 11, -3);
+      art.fillStyle(0xc9a777).fillEllipse(12, -4, 6, 11);
+      art.lineStyle(1, 0x775632).strokeEllipse(12, -4, 3, 6);
     } else {
       art
         .fillStyle(0x5c6366)
         .fillTriangle(-13, 1, -6, -13, 5, 1)
         .fillTriangle(-2, 2, 5, -17, 14, 2);
       art.fillStyle(0x768584).fillTriangle(-7, -10, -6, -13, -1, -1);
-      art.fillStyle(0xb97747).fillTriangle(2, -4, 5, -14, 9, -3);
-      art.lineStyle(1, 0xffd49a).lineBetween(5, -14, 5, -5);
+      art
+        .fillStyle(node.required_level ? 0x6aade0 : 0xb97747)
+        .fillTriangle(2, -4, 5, -14, 9, -3);
+      art
+        .lineStyle(1, node.required_level ? 0xc5f2ff : 0xffd49a)
+        .lineBetween(5, -14, 5, -5);
     }
     art.lineStyle(1, 0xe8d49a, 0.8).strokeEllipse(0, 2, 28, 12);
     group.add(art);

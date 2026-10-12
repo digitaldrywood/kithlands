@@ -1,3 +1,4 @@
+import { verifyCraftingProgression } from "./helpers/crafting-progression.js";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
@@ -339,7 +340,14 @@ for (const viewport of [
   test(`complete authored Old Mill route with real combat ${viewport.width}x${viewport.height}`, async ({
     page,
   }) => {
-    test.setTimeout(420_000);
+    test.setTimeout(600_000);
+    await page.route("**/src/main.js*", async (r) => {
+      const response = await r.fetch();
+      await r.fulfill({
+        response,
+        body: `${await response.text()}\nwindow.__gatherGame = game;`,
+      });
+    });
     await page.setViewportSize(viewport);
     const errors = [];
     page.on("pageerror", (e) => errors.push(e.message));
@@ -387,6 +395,7 @@ for (const viewport of [
     expect(seen.size).toBe(12);
     expect(end.dungeon_entry.completed).toBe(true);
     expect(end.gold).toBe(prePayoff + 80);
+    expect(end.materials.find((m) => m.id === "mill_core").count).toBe(1);
     expect(end.message).toContain("80 gold");
     expect(end.combat_log || []).toEqual([]);
     await capture(page, `${viewport.width}-return-payoff`);
@@ -428,6 +437,10 @@ for (const viewport of [
       () => window.__kithlandsTest.activeSceneKey() === "World",
     );
     expect((await state(page)).gold).toBe(end.gold);
+    expect(
+      (await state(page)).materials.find((m) => m.id === "mill_core").count,
+    ).toBe(1);
+    await verifyCraftingProgression(page, viewport, proof);
     expect(errors).toEqual([]);
   });
 }
@@ -588,9 +601,7 @@ for (const viewport of [
         () => window.__kithlandsTest.sceneFlags("Dungeon").modalLocks,
       ),
     ).toEqual(["party_menu", "party_menu_view"]);
-    await page
-      .getByRole("button", { name: "Back to game", exact: true })
-      .click();
+    await page.locator(".party-dismiss").click();
     await page.waitForFunction(
       () => !window.__kithlandsTest.sceneFlags("Dungeon").menuOpen,
     );

@@ -1,3 +1,4 @@
+import { walkTo } from "./helpers/crafting-progression.js";
 import { test, expect } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 
@@ -123,51 +124,6 @@ test("keyboard harvest restores movement after the crafting menu closes", async 
   await capture(page, "keyboard-harvest-movement-restored");
 });
 
-// Walk every tile through the normal scene and authoritative world-step API.
-async function walkTo(page, destination) {
-  await page.evaluate(async (target) => {
-    const scene = window.__gatherGame.scene.getScene("World");
-    const start = { x: scene.playerX, y: scene.playerY };
-    const key = (p) => `${p.x},${p.y}`;
-    const queue = [start];
-    const previous = new Map([[key(start), null]]);
-    for (let i = 0; i < queue.length && !previous.has(key(target)); i++) {
-      const p = queue[i];
-      for (const [dx, dy] of [
-        [1, 0],
-        [0, 1],
-        [-1, 0],
-        [0, -1],
-      ]) {
-        const next = { x: p.x + dx, y: p.y + dy };
-        const tile = scene.tileData[next.y]?.[next.x];
-        if (
-          previous.has(key(next)) ||
-          !Number.isInteger(tile) ||
-          !scene.canWalkTile(tile)
-        )
-          continue;
-        previous.set(key(next), p);
-        queue.push(next);
-      }
-    }
-    if (!previous.has(key(target)))
-      throw new Error("Resource has no walkable route");
-    const path = [];
-    for (let p = target; previous.get(key(p)); p = previous.get(key(p)))
-      path.unshift(p);
-    for (const p of path) {
-      while (scene.animating) await new Promise(requestAnimationFrame);
-      scene.tryMove(p.x - scene.playerX, p.y - scene.playerY);
-      await scene.worldStepDone;
-      while (scene.animating) await new Promise(requestAnimationFrame);
-      if (scene.playerX !== p.x || scene.playerY !== p.y)
-        throw new Error("Authoritative walking rejected step");
-    }
-    scene.updateInteractionTarget();
-  }, destination);
-}
-
 async function menu(page) {
   await page.keyboard.press("m");
   await expect(page.getByRole("button", { name: /Crafting/i })).toBeVisible();
@@ -210,7 +166,10 @@ for (const [width, height] of [
     );
     const before = await state(page);
     expect(before.resources.length).toBeGreaterThanOrEqual(4);
-    const nodes = before.resources.slice(0, 4);
+    const nodes = [
+      ...before.resources.slice(0, 4),
+      before.resources.find((r) => r.material_id === "hardwood"),
+    ];
     const distant = await page.evaluate(async (id) => {
       const api = await import("/src/api.js");
       return api.gatherResource(
@@ -368,6 +327,9 @@ for (const [width, height] of [
     await page.waitForFunction(
       () => window.__kithlandsTest.activeSceneKey() === "World",
     );
+    await page.evaluate(() =>
+      window.__kithlandsTest.waitForSceneReady("World"),
+    );
     await page.keyboard.press("Tab");
     await page
       .getByRole("button", { name: /Follow route to The Old Mill/ })
@@ -503,13 +465,14 @@ async function assertWorkbenchFits(page, crafting) {
     const action = root.querySelector(".craft-confirm").getBoundingClientRect();
     return {
       overflow: panel.scrollWidth > panel.clientWidth,
-      bodyScroll: body.scrollHeight - body.clientHeight,
+      bodyOverflow: body.scrollWidth > body.clientWidth,
       top: action.top,
       bottom: action.bottom,
     };
   });
   expect(bounds.overflow).toBe(false);
-  expect(bounds.bodyScroll).toBeLessThanOrEqual(1);
+  // Source hints and five recipes may scroll; the action footer stays visible.
+  expect(bounds.bodyOverflow).toBe(false);
   expect(bounds.top).toBeGreaterThanOrEqual(0);
   expect(bounds.bottom).toBeLessThanOrEqual(page.viewportSize().height);
   await expect(

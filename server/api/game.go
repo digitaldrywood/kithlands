@@ -673,69 +673,16 @@ type Game struct {
 func (g *Game) State() GameState {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	g.prepareFinalQuest()
-
-	state := GameState{
-		ID:                   g.id,
-		Phase:                g.phase,
-		CurrentQ:             g.currentQ,
-		Gold:                 g.inv.Gold,
-		Potions:              g.inv.Consumables["potion"],
-		Ethers:               g.inv.Consumables["ether"],
-		HiEthers:             g.inv.Consumables["hi_ether"],
-		XEthers:              g.inv.Consumables["x_ether"],
-		Message:              g.message,
-		CombatLog:            g.combatLog,
-		CombatActions:        g.combatActions,
-		LastRoundActions:     cloneMemberActionReqs(g.lastRoundActions),
-		ShowcaseMode:         g.showcaseMode,
-		ShowcaseTitle:        g.showcaseTitle,
-		ShowcaseTips:         append([]string(nil), g.showcaseTips...),
-		BattleCharacterAudit: cloneBattleCharacterAudit(g.battleAudit),
-	}
-
+	// All response paths share the same projection. Only full snapshots carry
+	// the map and developer presentation payloads.
+	state := g.stateUnlocked()
 	if g.loc != nil {
-		state.Location = g.loc.Name
 		state.TileMap = g.tileMap
 	}
-	state.WorldCheckpoint = cloneWorldCheckpoint(g.worldCheckpoint)
-	g.fillLocationState(&state)
-
-	state.Transport = g.buildTransportInfo()
-	state.CollectedHiddenItems = g.collectedHiddenItems
-	state.TriggeredFlags = cloneBoolMap(g.triggeredFlags)
-	g.fillNaturalDiscoveryState(&state)
-	state.PendingChestClaim = clonePendingChestClaimState(g.pendingChestClaim)
-	g.fillInventoryState(&state)
-	g.fillGatheringState(&state)
-	g.fillExtras(&state)
-	g.fillBattleRewardsState(&state)
-
-	for i, c := range g.party {
-		state.Party = append(state.Party, g.buildPartyMemberState(c, i))
-	}
-
-	for _, e := range g.enemies {
-		if e.CurrentHP > 0 {
-			state.Enemies = append(state.Enemies, g.buildEnemyState(e))
-		}
-	}
-	if g.phase == "combat" {
-		state.Formation = g.formation
-		// Only advertise the opening surprise outcome on round 0 — the
-		// client's battle scene triggers the banner + auto-wait handler
-		// whenever encounter_start is populated, so leaking it into
-		// round 1+ loops into infinite ambushes (issue raised by player).
-		if g.combatRound == 0 && g.encounterStart != combat.EncounterStartNormal {
-			state.EncounterStart = string(g.encounterStart)
-		}
-	}
-
-	for _, q := range g.quests {
-		state.Quests = append(state.Quests, questToState(&q))
-	}
-	g.fillBuildingSideQuestState(&state)
-
+	state.ShowcaseMode = g.showcaseMode
+	state.ShowcaseTitle = g.showcaseTitle
+	state.ShowcaseTips = append([]string(nil), g.showcaseTips...)
+	state.BattleCharacterAudit = cloneBattleCharacterAudit(g.battleAudit)
 	return state
 }
 
@@ -1125,6 +1072,7 @@ func (g *Game) stateUnlocked() GameState {
 	g.fillNaturalDiscoveryState(&state)
 	state.PendingChestClaim = clonePendingChestClaimState(g.pendingChestClaim)
 	g.fillInventoryState(&state)
+	g.fillGatheringState(&state)
 	g.fillExtras(&state)
 	g.fillBattleRewardsState(&state)
 	for i, c := range g.party {

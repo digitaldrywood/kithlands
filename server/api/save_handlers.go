@@ -304,6 +304,10 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		},
 	}
 
+	if err := game.reconcileDungeonMaterialRewards(); err != nil {
+		return nil, fmt.Errorf("restore crafting rewards: %w", err)
+	}
+
 	// Saves written before the transport pipeline landed have no transport
 	// block. Reconcile by replaying unlock checks against the quest state so
 	// the player doesn't get forced back to T1 on a mid/late-game load.

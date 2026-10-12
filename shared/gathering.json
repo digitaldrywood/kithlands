@@ -8,7 +8,8 @@
       "material_id": "meadow_herb",
       "material_name": "Meadow herb",
       "quantity": 3,
-      "visual": "herb"
+      "visual": "herb",
+      "source": "Gather along quest trails"
     },
     {
       "id": "iron_outcrop",
@@ -16,7 +17,31 @@
       "material_id": "ember_ore",
       "material_name": "Ember iron ore",
       "quantity": 4,
-      "visual": "mineral"
+      "visual": "mineral",
+      "source": "Gather along quest trails"
+    },
+    {
+      "id": "fallen_hardwood",
+      "name": "Fallen hardwood",
+      "material_id": "hardwood",
+      "material_name": "Hardwood",
+      "quantity": 2,
+      "visual": "wood",
+      "source": "Gather fallen wood near quest-route destinations",
+      "placement": "route_end",
+      "max_per_map": 3
+    },
+    {
+      "id": "mythril_seam",
+      "name": "Deep mythril seam",
+      "material_id": "mythril_ore",
+      "material_name": "Mythril ore",
+      "quantity": 2,
+      "visual": "mineral",
+      "source": "Rare seam near a quest-route destination \u00b7 party level 8",
+      "placement": "route_end",
+      "max_per_map": 1,
+      "required_level": 8
     }
   ],
   "recipes": [
@@ -51,14 +76,14 @@
     {
       "id": "forge_iron_sword",
       "name": "Forge Iron Sword",
-      "description": "Forge a reliable sword with one open gem socket. Equip it through Character to compare its stats.",
+      "description": "Smelt and forge an iron blade, fit a hardwood handle, and leave one open gem socket.",
       "inputs": [
         {
           "material_id": "ember_ore",
           "count": 5
         },
         {
-          "material_id": "meadow_herb",
+          "material_id": "hardwood",
           "count": 1
         }
       ],
@@ -68,7 +93,104 @@
       "sockets": 1,
       "rarity_id": "common",
       "output_visual": "sword"
+    },
+    {
+      "id": "forge_steel_sword",
+      "name": "Forge Steel Sword",
+      "description": "Use charcoal to harden the iron, flux to remove impurities, and a leather wrap for a secure grip. Party level 4 unlocks this recipe.",
+      "inputs": [
+        {
+          "material_id": "ember_ore",
+          "count": 8
+        },
+        {
+          "material_id": "hardwood",
+          "count": 1
+        },
+        {
+          "material_id": "charcoal",
+          "count": 2
+        },
+        {
+          "material_id": "forge_flux",
+          "count": 1
+        },
+        {
+          "material_id": "leather_wrap",
+          "count": 1
+        }
+      ],
+      "output_id": "steel_sword",
+      "output_count": 1,
+      "output_visual": "sword",
+      "item_level": 1,
+      "required_level": 4,
+      "sockets": 1,
+      "rarity_id": "common"
+    },
+    {
+      "id": "forge_mythril_sword",
+      "name": "Forge Runic Mythril Sword",
+      "description": "Forge rare mythril into a light blade and bind Old Mill\u2019s runic core into its hilt. Two gem sockets make this a long-term project. Party level 8 required.",
+      "inputs": [
+        {
+          "material_id": "mythril_ore",
+          "count": 2
+        },
+        {
+          "material_id": "hardwood",
+          "count": 1
+        },
+        {
+          "material_id": "forge_flux",
+          "count": 2
+        },
+        {
+          "material_id": "leather_wrap",
+          "count": 1
+        },
+        {
+          "material_id": "mill_core",
+          "count": 1
+        }
+      ],
+      "output_id": "mythril_sword",
+      "output_count": 1,
+      "output_visual": "sword",
+      "item_level": 1,
+      "required_level": 8,
+      "sockets": 2,
+      "rarity_id": "rare"
     }
   ],
-  "spacing_tiles": 6
+  "spacing_tiles": 6,
+  "materials": [
+    {
+      "id": "charcoal",
+      "name": "Smithing charcoal",
+      "visual": "mineral",
+      "source": "Buy from a town shop \u00b7 smelting fuel",
+      "buy_price": 6
+    },
+    {
+      "id": "leather_wrap",
+      "name": "Leather grip wrap",
+      "visual": "wood",
+      "source": "Buy from a town shop \u00b7 sword grip",
+      "buy_price": 8
+    },
+    {
+      "id": "forge_flux",
+      "name": "Forge flux",
+      "visual": "mineral",
+      "source": "Buy from a town shop \u00b7 removes impurities",
+      "buy_price": 12
+    },
+    {
+      "id": "mill_core",
+      "name": "Millwright runic core",
+      "visual": "gem",
+      "source": "Quest reward \u00b7 restore Old Mill and return to the trail"
+    }
+  ]
 }

@@ -165,7 +165,7 @@
 }
 .craft-ingredients {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 8px;
   margin-top: 9px;
 }
@@ -367,5 +367,61 @@
     grid-row: 1;
     width: 100%;
     margin: 0;
+  }
+}
+
+.craft-icon-wood svg {
+  fill: #88613d;
+  stroke: #d6b98a;
+}
+.field-crafting .craft-ingredient .craft-source {
+  color: var(--menu-muted);
+  margin-top: 5px;
+  line-height: 1.35;
+}
+.craft-ingredient > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 500px) {
+  .craft-library {
+    display: flex;
+    overflow-x: auto;
+  }
+  .craft-library > h2 {
+    display: none;
+  }
+  .field-crafting .craft-recipe {
+    flex: 0 0 110px;
+  }
+}
+@media (max-height: 650px) and (min-width: 501px) {
+  .craft-library {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .field-crafting .craft-recipe {
+    padding: 5px;
+    margin-bottom: 3px;
+  }
+  .craft-recipe .craft-icon {
+    width: 26px;
+    height: 26px;
+  }
+}
+
+@media (max-width: 500px) {
+  .craft-library {
+    position: relative;
+    padding-top: 27px;
+  }
+  .craft-library::before {
+    content: "RECIPES · SCROLL FOR MORE →";
+    position: absolute;
+    top: 8px;
+    left: 14px;
+    color: var(--menu-muted);
+    font-size: 9px;
+    letter-spacing: 1px;
   }
 }

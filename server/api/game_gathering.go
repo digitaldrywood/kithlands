@@ -13,19 +13,22 @@ import (
 )
 
 type ResourceNodeState struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	MaterialID string `json:"material_id"`
-	Quantity   int    `json:"quantity"`
-	Visual     string `json:"visual"`
-	X          int    `json:"x"`
-	Y          int    `json:"y"`
-	Gathered   bool   `json:"gathered"`
+	RequiredLevel int    `json:"required_level,omitempty"`
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	MaterialID    string `json:"material_id"`
+	Quantity      int    `json:"quantity"`
+	Visual        string `json:"visual"`
+	X             int    `json:"x"`
+	Y             int    `json:"y"`
+	Gathered      bool   `json:"gathered"`
 }
 type MaterialState struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Count int    `json:"count"`
+	Visual string `json:"visual"`
+	Source string `json:"source"`
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Count  int    `json:"count"`
 }
 type FieldRecipeState struct {
 	gamedata.FieldRecipe
@@ -60,6 +63,15 @@ func (g *Game) resourceNodes() []ResourceNodeState {
 	}
 	visited, occupied := map[string]bool{}, map[WorldPosition]bool{}
 	nodes := []ResourceNodeState{}
+	primary := []gamedata.GatheringResource{}
+	counts := map[string]int{}
+	for _, r := range cfg.Resources {
+		if r.Placement == "" {
+			primary = append(primary, r)
+		}
+	}
+	routePaths := [][]WorldPosition{}
+	primaryCount := 0
 	routes := 0
 	for _, target := range targets {
 		if visited[target] {
@@ -90,19 +102,52 @@ func (g *Game) resourceNodes() []ResourceNodeState {
 			if nearDoor {
 				continue
 			}
-			resource := cfg.Resources[len(nodes)%len(cfg.Resources)]
+			resource := primary[primaryCount%len(primary)]
+			primaryCount++
 			id := fmt.Sprintf("%s:%d:%d", resource.ID, position.X, position.Y)
 			nodes = append(nodes, ResourceNodeState{ID: id, Name: resource.Name, MaterialID: resource.MaterialID, Quantity: resource.Quantity, Visual: resource.Visual, X: position.X, Y: position.Y, Gathered: g.inv.GatheredResources[id]})
 			occupied[position] = true
 			added++
 		}
 		if added > 0 {
+			routePaths = append(routePaths, path)
 			routes++
 		}
 		if routes >= cfg.MaxRoutes {
 			break
 		}
 	}
+	for _, path := range routePaths {
+		// Supplemental wood and scarce seams use route ends without changing
+		// existing herb/iron coordinates or their saved depletion identities.
+		for _, resource := range cfg.Resources {
+			if resource.Placement != "route_end" || (resource.MaxPerMap > 0 && counts[resource.ID] >= resource.MaxPerMap) {
+				continue
+			}
+			for step := len(path) - 3; step > 2; step-- {
+				position := path[step]
+				if occupied[position] {
+					continue
+				}
+				nearDoor := false
+				for _, door := range g.tileMap.Spawns {
+					if checkpointAbs(position.X-door.X)+checkpointAbs(position.Y-door.Y) < 2 {
+						nearDoor = true
+						break
+					}
+				}
+				if nearDoor {
+					continue
+				}
+				id := fmt.Sprintf("%s:%d:%d", resource.ID, position.X, position.Y)
+				nodes = append(nodes, ResourceNodeState{ID: id, Name: resource.Name, MaterialID: resource.MaterialID, Quantity: resource.Quantity, Visual: resource.Visual, X: position.X, Y: position.Y, Gathered: g.inv.GatheredResources[id], RequiredLevel: resource.RequiredLevel})
+				occupied[position] = true
+				counts[resource.ID]++
+				break
+			}
+		}
+	}
+
 	g.resourceMap, g.resourceNodeCache = g.tileMap, nodes
 	return g.resourceNodeSnapshot()
 }
@@ -152,13 +197,14 @@ func (g *Game) fieldRecipeBlockReason(recipe gamedata.FieldRecipe) string {
 	if err := g.checkEquipmentMutationLocked(); err != nil {
 		return "Finish the battle before crafting."
 	}
+	if g.maxPartyLevel() < recipe.RequiredLevel {
+		return fmt.Sprintf("Party level %d required.", recipe.RequiredLevel)
+	}
 	for _, input := range recipe.Inputs {
 		if g.inv.Materials[input.MaterialID] < input.Count {
 			name := input.MaterialID
-			for _, resource := range g.gd.Gathering.Resources {
-				if resource.MaterialID == input.MaterialID {
-					name = resource.MaterialName
-				}
+			if material := g.gd.CraftMaterialByID(input.MaterialID); material != nil {
+				name = material.Name
 			}
 			return fmt.Sprintf("Need %d %s; have %d.", input.Count, name, g.inv.Materials[input.MaterialID])
 		}
@@ -169,7 +215,10 @@ func (g *Game) fieldRecipeBlockReason(recipe gamedata.FieldRecipe) string {
 func (g *Game) fillGatheringState(state *GameState) {
 	state.Resources = g.resourceNodes()
 	for _, resource := range g.gd.Gathering.Resources {
-		state.Materials = append(state.Materials, MaterialState{ID: resource.MaterialID, Name: resource.MaterialName, Count: g.inv.Materials[resource.MaterialID]})
+		state.Materials = append(state.Materials, MaterialState{ID: resource.MaterialID, Name: resource.MaterialName, Count: g.inv.Materials[resource.MaterialID], Visual: resource.Visual, Source: resource.Source})
+	}
+	for _, m := range g.gd.Gathering.Materials {
+		state.Materials = append(state.Materials, MaterialState{ID: m.ID, Name: m.Name, Count: g.inv.Materials[m.ID], Visual: m.Visual, Source: m.Source})
 	}
 	for _, recipe := range g.gd.Gathering.Recipes {
 		preview := FieldRecipeState{FieldRecipe: recipe, BlockReason: g.fieldRecipeBlockReason(recipe)}
@@ -203,6 +252,9 @@ func (g *Game) Gather(resourceID string) error {
 		if checkpoint == nil || checkpointAbs(checkpoint.X-resource.X)+checkpointAbs(checkpoint.Y-resource.Y) > 1 {
 			return fmt.Errorf("walk next to the resource before gathering")
 		}
+		if g.maxPartyLevel() < resource.RequiredLevel {
+			return fmt.Errorf("party level %d required to gather %s", resource.RequiredLevel, resource.Name)
+		}
 		if g.inv.Materials[resource.MaterialID] > math.MaxInt-resource.Quantity {
 			return fmt.Errorf("too many materials")
 		}
@@ -231,7 +283,7 @@ func (g *Game) CraftFieldRecipe(recipeID string) error {
 			working.Materials[input.MaterialID] -= input.Count
 		}
 		if base := g.gd.EquipmentBaseByID(recipe.OutputID); base != nil {
-			instance := &inventory.EquipmentInstance{BaseID: base.ID, Kind: base.Kind, Category: base.Category, ItemLevel: recipe.ItemLevel, RequiredLevel: base.RequiredLevel, RarityID: recipe.RarityID, Sockets: make([]inventory.ItemSocket, recipe.Sockets)}
+			instance := &inventory.EquipmentInstance{BaseID: base.ID, Kind: base.Kind, Category: base.Category, ItemLevel: recipe.ItemLevel, RequiredLevel: max(base.RequiredLevel, recipe.RequiredLevel), RarityID: recipe.RarityID, Sockets: make([]inventory.ItemSocket, recipe.Sockets)}
 			if _, err := working.AddInstance(*instance); err != nil {
 				return err
 			}

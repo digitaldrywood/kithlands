@@ -79,7 +79,7 @@ func TestFieldCraftingAtomicOutputAndCombatGuard(t *testing.T) {
 	if !reflect.DeepEqual(before, g.inv) {
 		t.Fatal("failed recipe consumed items")
 	}
-	g.inv.Materials["meadow_herb"], g.inv.Materials["ember_ore"] = 6, 8
+	g.inv.Materials["meadow_herb"], g.inv.Materials["ember_ore"], g.inv.Materials["hardwood"] = 6, 8, 1
 	for _, id := range []string{"brew_potion", "refine_ember", "forge_iron_sword"} {
 		if err := g.CraftFieldRecipe(id); err != nil {
 			t.Fatal(err)
@@ -88,7 +88,7 @@ func TestFieldCraftingAtomicOutputAndCombatGuard(t *testing.T) {
 	if g.inv.Consumables["potion"] != before.Consumables["potion"]+1 || g.inv.Gems["ember_shard"] != before.Gems["ember_shard"]+3 {
 		t.Fatal("wrong potion/gem output")
 	}
-	if g.inv.Materials["meadow_herb"] != 3 || g.inv.Materials["ember_ore"] != 0 {
+	if g.inv.Materials["meadow_herb"] != 4 || g.inv.Materials["ember_ore"] != 0 {
 		t.Fatal("wrong material cost")
 	}
 	found := false
@@ -132,5 +132,123 @@ func TestGatheringSnapshotAndInventoryCloneAreIndependent(t *testing.T) {
 	clone.GatheredResources["fake"] = true
 	if g.inv.Materials["meadow_herb"] != 0 || g.inv.GatheredResources["fake"] {
 		t.Fatal("clone aliases live gathering state")
+	}
+}
+
+func TestCraftingProgressionAndRareGathering(t *testing.T) {
+	g, _ := newChestTestGame(t)
+	g.inv.Normalize()
+	for _, m := range g.State().Materials {
+		g.inv.Materials[m.ID] = 20
+	}
+	before := g.inv.Clone()
+	if err := g.CraftFieldRecipe("forge_steel_sword"); err == nil {
+		t.Fatal("bypassed level gate")
+	}
+	if !reflect.DeepEqual(before, g.inv) {
+		t.Fatal("locked recipe consumed materials")
+	}
+	for _, scenario := range []struct {
+		recipe, base   string
+		level, sockets int
+	}{{"forge_steel_sword", "steel_sword", 4, 1}, {"forge_mythril_sword", "mythril_sword", 8, 2}} {
+		for _, member := range g.party {
+			member.Level = scenario.level
+		}
+		if err := g.CraftFieldRecipe(scenario.recipe); err != nil {
+			t.Fatal(err)
+		}
+		found := false
+		for _, item := range g.inv.Instances {
+			if item.BaseID == scenario.base {
+				found = true
+				if item.RequiredLevel != scenario.level || len(item.Sockets) != scenario.sockets {
+					t.Fatalf("bad progression output %+v", item)
+				}
+			}
+		}
+		if !found {
+			t.Fatal("missing advanced output")
+		}
+	}
+	rare := []ResourceNodeState{}
+	for _, node := range g.State().Resources {
+		if node.MaterialID == "mythril_ore" {
+			rare = append(rare, node)
+		}
+	}
+	if len(rare) != 1 {
+		t.Fatalf("want one rare seam, got %d", len(rare))
+	}
+	for _, member := range g.party {
+		member.Level = 1
+	}
+	g.setWorldCheckpointLocked(WorldPosition{X: rare[0].X, Y: rare[0].Y}, g.location.WorldNodeID)
+	before = g.inv.Clone()
+	if err := g.Gather(rare[0].ID); err == nil {
+		t.Fatal("bypassed rare gathering level")
+	}
+	if !reflect.DeepEqual(before, g.inv) {
+		t.Fatal("locked gathering changed inventory")
+	}
+	for _, member := range g.party {
+		member.Level = 8
+	}
+	if err := g.Gather(rare[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.Gather(rare[0].ID); err == nil {
+		t.Fatal("rare seam duplicated")
+	}
+}
+
+func TestSupplementalResourcesPreserveExistingNodes(t *testing.T) {
+	g, _ := newChestTestGame(t)
+	nodes := g.resourceNodes()
+	primary := []ResourceNodeState{}
+	for _, node := range nodes {
+		if node.MaterialID == "meadow_herb" || node.MaterialID == "ember_ore" {
+			primary = append(primary, node)
+		}
+	}
+	cfg := g.gd.Gathering
+	defer func() { g.gd.Gathering = cfg }()
+	g.gd.Gathering.Resources = cfg.Resources[:2]
+	g.resourceMap = nil
+	if !reflect.DeepEqual(primary, g.resourceNodes()) {
+		t.Fatal("new resources moved saved herb/iron nodes")
+	}
+}
+
+func TestGatheringPersistsThroughDungeonResponse(t *testing.T) {
+	g := newTownTestGame(t)
+	initial := g.State()
+	entered := enterTestDungeon(t, g)
+	if !reflect.DeepEqual(initial.Materials, entered.Materials) || len(entered.FieldRecipes) != len(initial.FieldRecipes) {
+		t.Fatal("dungeon response omitted crafting state")
+	}
+	def := g.dungeonDefinition()
+	g.dungeon.Flags[def.CompleteFlag] = true
+	returned, err := g.ProcessDungeon(DungeonRequest{Type: "retreat"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(returned.Resources) == 0 || len(returned.FieldRecipes) != len(initial.FieldRecipes) {
+		t.Fatal("return lost gathering state")
+	}
+	found := false
+	for _, m := range returned.Materials {
+		if m.ID == "mill_core" {
+			found = true
+			if m.Count != 1 {
+				t.Fatal("return omitted earned core")
+			}
+		}
+	}
+	if !found {
+		t.Fatal("material registry missing from response")
+	}
+	if !reflect.DeepEqual(returned.Materials, g.State().Materials) {
+		t.Fatal("locked and full state disagree")
 	}
 }

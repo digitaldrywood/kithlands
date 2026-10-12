@@ -183,6 +183,16 @@ func (g *Game) BuyItem(nodeID, offerID string) error {
 	}
 
 	switch entry.Type {
+	case "material":
+		material := g.gd.CraftMaterialByID(entry.ItemID)
+		if material == nil || material.BuyPrice <= 0 {
+			return fmt.Errorf("unknown smithing supply")
+		}
+		working.Normalize()
+		if working.Materials[entry.ItemID] >= int(^uint(0)>>1) {
+			return fmt.Errorf("material pouch is full")
+		}
+		working.Materials[entry.ItemID]++
 	case "consumable":
 		if g.findConsumable(entry.ItemID) == nil {
 			return fmt.Errorf("consumable not found: %s", entry.ItemID)

@@ -10,11 +10,12 @@
       "y": 12
     },
     "complete_flag": "mill-reward",
-    "return_text": "The millrace sings again. The people of {locality} thank you with 80 gold. Your Ember Gem can be fitted to a socketed weapon or armor from the Party menu; the restored trail remains open.",
+    "return_text": "The millrace sings again. The people of {locality} thank you with 80 gold and a Millwright runic core for advanced smithing. Your Ember Gem can be fitted to a socketed weapon or armor from the Party menu; the restored trail remains open.",
     "retreat_text": "You return to {locality}. Your discoveries and opened routes are remembered.",
     "defeat_text": "The trail keeper brings your party back to the split oak. Rested and safe, you can try again; your discoveries remain.",
     "payoff": {
-      "gold": 80
+      "gold": 80,
+      "materials": { "mill_core": 1 }
     },
     "objectives": [
       {

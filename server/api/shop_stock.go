@@ -76,6 +76,7 @@ func (g *Game) currentStockEntryLocked(nodeID, offerID string) (*ShopStockEntry,
 
 func (g *Game) ensureShopStockLocked(nodeID string) (*ShopStock, error) {
 	if stock := g.shopStocks[nodeID]; stock != nil {
+		g.appendCraftingSupplies(stock)
 		return stock, nil
 	}
 	if g.shopStocks == nil {
@@ -133,8 +134,28 @@ func (g *Game) ensureShopStockLocked(nodeID string) (*ShopStock, error) {
 			add(spell.ID, "spell", spell.SpellLevel*100, true)
 		}
 	}
+	g.appendCraftingSupplies(stock)
 	g.shopStocks[nodeID] = stock
 	return stock, nil
+}
+
+// Append to saved stocks so old offer indices and equipment rolls remain stable.
+func (g *Game) appendCraftingSupplies(stock *ShopStock) {
+	for _, material := range g.gd.Gathering.Materials {
+		if material.BuyPrice <= 0 {
+			continue
+		}
+		found := false
+		for _, entry := range stock.Entries {
+			if entry.Type == "material" && entry.ItemID == material.ID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			stock.Entries = append(stock.Entries, ShopStockEntry{ItemID: material.ID, Type: "material", Price: material.BuyPrice, Version: 1, Reusable: true})
+		}
+	}
 }
 
 func shopStockStream(nodeID string, index int, itemID string) uint64 {
@@ -186,6 +207,12 @@ func (g *Game) shopItemStateLocked(nodeID string, index int, entry *ShopStockEnt
 		item.Affixes = append([]ItemAffixState(nil), view.Affixes...)
 		item.Sockets = append([]ItemSocketState(nil), view.Sockets...)
 		item.Classes, item.ClassIDs = formatShopClasses(view.AllowedClasses)
+	case "material":
+		base := g.gd.CraftMaterialByID(entry.ItemID)
+		if base == nil || base.BuyPrice <= 0 {
+			return ShopItemState{}, fmt.Errorf("unknown shop supply %q", entry.ItemID)
+		}
+		item.Name = base.Name
 	case "consumable":
 		base := g.findConsumable(entry.ItemID)
 		if base == nil {

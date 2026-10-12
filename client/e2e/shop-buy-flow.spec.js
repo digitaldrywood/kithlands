@@ -88,6 +88,43 @@ for (const width of [1440, 720]) {
     await page.screenshot({
       path: new URL(`${width}-purchased.png`, proof).pathname,
     });
+
+    await page.evaluate(() =>
+      window.__kithlandsTest.clickInteractiveText("Supplies", "Town"),
+    );
+    const supplyBefore = await page.evaluate(() =>
+      window.__kithlandsTest.gameState("Town"),
+    );
+    let supplyRequests = 0;
+    await page.route("**/buy", async (route) => {
+      supplyRequests++;
+      const response = await route.fetch();
+      // Delayed acknowledgement reproduces rapid-repeat purchase input.
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await route.fulfill({ response });
+    });
+    const supplyReceipt = page.waitForResponse((r) => r.url().endsWith("/buy"));
+    const supplyKey = await page.evaluate(
+      () =>
+        window.__keyboardGame.scene
+          .getScene("Town")
+          .canvasMenuKeyboard.entries.find(
+            (e) => e.label.text === "Smithing charcoal" && e.enabled(),
+          ).bg.__kithlandsKeyboard.shortcut,
+    );
+    await page.keyboard.press(supplyKey);
+    await page.keyboard.press(supplyKey);
+    const supplied = await (await supplyReceipt).json();
+    await page.waitForFunction(
+      () => !window.__keyboardGame.scene.getScene("Town").shopPurchasePending,
+    );
+    expect(supplied.error).toBeFalsy();
+    expect(supplyRequests).toBe(1);
+    expect(supplied.gold).toBe(supplyBefore.gold - 6);
+    expect(supplied.materials.find((m) => m.id === "charcoal").count).toBe(1);
+    await page.screenshot({
+      path: new URL(`${width}-supplies-keyboard-purchase.png`, proof).pathname,
+    });
     const leaveKey = await page.evaluate(
       () =>
         window.__keyboardGame.scene

@@ -96,6 +96,7 @@ export function groupShopItems(items = []) {
     consumables: items.filter(
       (item) => item.type === "consumable" || item.type === "key_item",
     ),
+    supplies: items.filter((item) => item.type === "material"),
     spells: items.filter((item) => item.type === "spell"),
   };
 }
@@ -184,11 +185,13 @@ export async function openShop(scene, spawn) {
   const pickerGroup = [];
   const catalogErrorGroup = [];
   const tabButtons = [];
+  scene.shopPurchasePending = false;
   const tabs = [
     { label: "Weapons", key: "weapons" },
     { label: "Armor", key: "armor" },
     { label: "Items", key: "consumables" },
     { label: "Spells", key: "spells" },
+    { label: "Supplies", key: "supplies" },
   ];
   let currentTab = "weapons";
   let selectedItemId = null;
@@ -591,6 +594,40 @@ export async function openShop(scene, spawn) {
     detailGroup.push(buyBtn, buyForBtn);
   };
 
+  const purchaseSupply = async (item) => {
+    if (scene.shopPurchasePending) return;
+    if (item.type === "spell") {
+      showSpellPicker(item);
+      return;
+    }
+    scene.shopPurchasePending = true;
+    for (const control of listGroup) control?.setEnabled?.(false);
+    for (const tab of tabButtons) tab.button.setEnabled(false);
+    try {
+      const result = await buyItem(
+        scene.gameState.id,
+        spawn.node_id,
+        item.stock_id,
+      );
+      if (result?.error) {
+        await recoverPurchaseError(result.error);
+        return;
+      }
+      scene.gameState = result;
+      updateGold();
+      scene.updateHUD?.();
+      await refreshAfterPurchase(`Bought: ${item.name}!`);
+      autosaveAfterPurchase(result);
+    } catch (error) {
+      await recoverPurchaseError(
+        error.message || "Purchase could not be completed.",
+      );
+    } finally {
+      scene.shopPurchasePending = false;
+      for (const tab of tabButtons) tab.button.setEnabled(true);
+    }
+  };
+
   const renderList = (tabItems) => {
     destroyPicker();
     destroyGroup(listGroup);
@@ -695,34 +732,15 @@ export async function openShop(scene, spawn) {
           indicatorX += 16;
         }
       } else if (affordable) {
-        const triggerPurchase = async () => {
-          if (item.type === "spell") {
-            showSpellPicker(item);
-            return;
-          }
-          const result = await buyItem(
-            scene.gameState.id,
-            spawn.node_id,
-            item.stock_id,
-          );
-          if (result?.error) {
-            await recoverPurchaseError(result.error);
-            return;
-          }
-          scene.gameState = result;
-          updateGold();
-          scene.updateHUD?.();
-          await refreshAfterPurchase(`Bought: ${item.name}!`);
-          autosaveAfterPurchase(result);
-        };
+        const triggerPurchase = () => purchaseSupply(item);
         registerCanvasButton(scene, {
           bg: rowBg,
           label,
           width: LIST_ROW_WIDTH,
           height: LIST_ROW_HEIGHT,
           inline: true,
-          enabled: () => true,
-          activate: selectRow,
+          enabled: () => !scene.shopPurchasePending,
+          activate: triggerPurchase,
           focus: () => rowBg.setStrokeStyle(2, 0xc9b589),
           blur: () => rowBg.setStrokeStyle(1, 0x384859),
         });
@@ -733,26 +751,7 @@ export async function openShop(scene, spawn) {
       }
 
       if (affordable && !equippable) {
-        const triggerPurchase = async () => {
-          if (item.type === "spell") {
-            showSpellPicker(item);
-            return;
-          }
-          const result = await buyItem(
-            scene.gameState.id,
-            spawn.node_id,
-            item.stock_id,
-          );
-          if (result?.error) {
-            await recoverPurchaseError(result.error);
-            return;
-          }
-          scene.gameState = result;
-          updateGold();
-          scene.updateHUD?.();
-          await refreshAfterPurchase(`Bought: ${item.name}!`);
-          autosaveAfterPurchase(result);
-        };
+        const triggerPurchase = () => purchaseSupply(item);
         const buyBtn = drawButton(
           scene,
           522,
@@ -1078,6 +1077,7 @@ export async function openShop(scene, spawn) {
   overlay.push(leaveBtn);
 
   function closeShop() {
+    if (scene.shopPurchasePending) return;
     scene.events.off("postupdate", positionPortraitShop);
     destroyPicker();
     destroyDetail();

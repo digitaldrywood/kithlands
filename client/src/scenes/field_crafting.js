@@ -22,15 +22,20 @@ function icon(kind) {
             "M24 29C9 30 7 20 8 14C19 13 25 19 24 29Z",
             "M24 22C24 11 31 6 40 7C40 17 35 24 24 22Z",
           ]
-        : kind === "mineral"
+        : kind === "wood"
           ? [
-              "M7 35L13 20L28 12L40 21L43 36L30 41L14 40Z",
-              "M13 20L26 28L28 12M26 28L40 21M26 28L30 41M7 35L26 28",
+              "M8 16L33 7L42 16L17 27L8 16Z",
+              "M8 16V31L17 41L42 29V16M17 27V41M22 24L37 18",
             ]
-          : [
-              "M24 5L40 18L34 35L24 44L13 35L8 18Z",
-              "M8 18H40M24 5L17 18L24 44L31 18Z",
-            ];
+          : kind === "mineral"
+            ? [
+                "M7 35L13 20L28 12L40 21L43 36L30 41L14 40Z",
+                "M13 20L26 28L28 12M26 28L40 21M26 28L30 41M7 35L26 28",
+              ]
+            : [
+                "M24 5L40 18L34 35L24 44L13 35L8 18Z",
+                "M8 18H40M24 5L17 18L24 44L31 18Z",
+              ];
     for (const d of shapes) {
       const path = document.createElementNS(svg.namespaceURI, "path");
       path.setAttribute("d", d);
@@ -113,7 +118,7 @@ export function showFieldCrafting(scene, { onClose, selectedRecipe } = {}) {
     const recipe = recipes.find((r) => r.id === selected) || recipes[0];
     selected = recipe?.id;
     const materialKind = (id) =>
-      gs.resources?.find((r) => r.material_id === id)?.visual || "mineral";
+      materials.find((m) => m.id === id)?.visual || "mineral";
     dialog.root.setAttribute("aria-busy", String(busy));
     dialog.body.replaceChildren();
     const workbench = element("div", "craft-workbench");
@@ -144,7 +149,11 @@ export function showFieldCrafting(scene, { onClose, selectedRecipe } = {}) {
         element(
           "small",
           r.craftable ? "is-ready" : "",
-          r.craftable ? "Ready to craft" : "Missing materials",
+          r.craftable
+            ? "Ready to craft"
+            : r.block_reason?.startsWith("Party level")
+              ? `Level ${r.required_level}`
+              : "Missing materials",
         ),
       );
       row.append(icon(r.output_visual || "gem"), text);
@@ -160,7 +169,7 @@ export function showFieldCrafting(scene, { onClose, selectedRecipe } = {}) {
         element(
           "p",
           "craft-yield",
-          `${recipe.output_count} ${recipe.output_count === 1 ? "item" : "items"} per craft${recipe.item_level ? ` · Item level ${recipe.item_level}` : ""}`,
+          `${recipe.output_count} ${recipe.output_count === 1 ? "item" : "items"} per craft${recipe.required_level ? ` · Requires level ${recipe.required_level}` : ""}`,
         ),
       );
       result.append(icon(recipe.output_visual || "gem"), identity);
@@ -186,7 +195,7 @@ export function showFieldCrafting(scene, { onClose, selectedRecipe } = {}) {
           element(
             "span",
             "craft-socket",
-            `◇ ${recipe.sockets} open gem socket`,
+            `◇ ${recipe.sockets} open gem socket${recipe.sockets === 1 ? "" : "s"}`,
           ),
         );
       if (stats.childElementCount) preview.append(stats);
@@ -213,6 +222,8 @@ export function showFieldCrafting(scene, { onClose, selectedRecipe } = {}) {
             enough ? "Enough" : `Need ${input.count - owned} more`,
           ),
         );
+        if (material?.source)
+          text.append(element("small", "craft-source", material.source));
         tile.append(icon(materialKind(input.material_id)), text);
         ingredients.append(tile);
       }
@@ -221,7 +232,7 @@ export function showFieldCrafting(scene, { onClose, selectedRecipe } = {}) {
     workbench.append(library, preview);
     const bag = element("div", "craft-bag");
     bag.append(element("span", "craft-label", "MATERIAL POUCH"));
-    for (const m of materials) {
+    for (const m of materials.filter((m) => m.count > 0)) {
       const chip = element("span", "craft-material");
       chip.append(
         icon(materialKind(m.id)),
@@ -264,6 +275,9 @@ export function showFieldCrafting(scene, { onClose, selectedRecipe } = {}) {
     );
     confirm.disabled = busy || !recipe?.craftable;
     dialog.footer.append(actions);
+    library
+      .querySelector('[aria-pressed="true"]')
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }
   render();
   return dialog;

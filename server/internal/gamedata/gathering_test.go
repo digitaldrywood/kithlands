@@ -7,6 +7,14 @@ func TestGatheringRejectsInvalidContent(t *testing.T) {
 		name   string
 		change func(*GameData)
 	}{
+		{"no primary resources", func(gd *GameData) {
+			for i := range gd.Gathering.Resources {
+				gd.Gathering.Resources[i].Placement = "route_end"
+			}
+		}},
+		{"negative supply price", func(gd *GameData) { gd.Gathering.Materials[0].BuyPrice = -1 }},
+		{"duplicate material", func(gd *GameData) { gd.Gathering.Materials[0].ID = gd.Gathering.Resources[0].MaterialID }},
+		{"invalid level gate", func(gd *GameData) { gd.Gathering.Recipes[0].RequiredLevel = 99 }},
 		{"unbounded nodes", func(gd *GameData) { gd.Gathering.NodesPerRoute = 999 }},
 		{"unknown material", func(gd *GameData) { gd.Gathering.Recipes[0].Inputs[0].MaterialID = "unknown" }},
 		{"negative yield", func(gd *GameData) { gd.Gathering.Resources[0].Quantity = -1 }},

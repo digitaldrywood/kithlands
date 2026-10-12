@@ -684,6 +684,9 @@ func TestDungeonFullRouteSaveShortcutAndRepeatSafety(t *testing.T) {
 			}
 		}
 	}
+	if g.inv.Materials["mill_core"] != 1 {
+		t.Fatal("missing mill crafting reward")
+	}
 	if !g.dungeon.PayoffClaimed || len(g.dungeon.Visited) != 12 {
 		t.Fatalf("incomplete expedition: %+v", g.dungeon)
 	}
@@ -705,7 +708,7 @@ func TestDungeonFullRouteSaveShortcutAndRepeatSafety(t *testing.T) {
 	if _, err := g.ProcessDungeon(DungeonRequest{Type: "retreat"}); err != nil {
 		t.Fatal(err)
 	}
-	if g.inv.Gold != gold || g.inv.Gems["ember_gem"] != 1 {
+	if g.inv.Gold != gold || g.inv.Gems["ember_gem"] != 1 || g.inv.Materials["mill_core"] != 1 {
 		t.Fatal("repeat entry duplicated rewards")
 	}
 }
@@ -868,5 +871,63 @@ func TestDungeonTopLevelItemTurnRecoversDefeat(t *testing.T) {
 	}
 	if g.phase != "world" || !g.party[0].IsAlive() || g.dungeon.Flags["trail-bats-cleared"] {
 		t.Fatal("item defeat stranded party or cleared encounter")
+	}
+}
+
+func TestCompletedSaveGetsCraftingCoreOnce(t *testing.T) {
+	g := newTownTestGame(t)
+	enterTestDungeon(t, g)
+	def := g.dungeonDefinition()
+	g.dungeon.Flags[def.CompleteFlag] = true
+	g.dungeon.PayoffClaimed = true // legacy save: no separate material claims
+	saved, err := g.ToSaveState("legacy completed mill", "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := FromSaveState(saved, g.gd, g.loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restored.inv.Materials["mill_core"] != 1 || restored.inv.Gold != g.inv.Gold {
+		t.Fatal("incorrect legacy material-only reward")
+	}
+	restored.inv.Materials["mill_core"] = 0 // consumed by crafting
+	saved, err = restored.ToSaveState("spent core", "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err = FromSaveState(saved, g.gd, g.loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restored.inv.Materials["mill_core"] != 0 {
+		t.Fatal("save/load duplicated spent reward")
+	}
+}
+
+func TestDungeonMaterialRewardFailureIsAtomic(t *testing.T) {
+	g := newTownTestGame(t)
+	g.inv.Normalize()
+	original := g.inv
+	before, err := json.Marshal(g.inv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seq := g.lootRollSeq
+	for _, reward := range []dungeon.Reward{
+		{Gold: 10, Materials: map[string]int{"unknown": 1}},
+		{Gold: 10, Materials: map[string]int{"mill_core": -1}},
+		{ItemID: "unknown", Count: 1, Gold: 10, Materials: map[string]int{"mill_core": 1}},
+	} {
+		if err := g.grantDungeonReward(reward); err == nil {
+			t.Fatal("invalid reward accepted")
+		}
+		after, err := json.Marshal(g.inv)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if original != g.inv || string(before) != string(after) || seq != g.lootRollSeq {
+			t.Fatal("failed reward partially granted")
+		}
 	}
 }
