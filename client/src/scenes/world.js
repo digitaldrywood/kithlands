@@ -1084,7 +1084,6 @@ export class WorldScene extends Phaser.Scene {
   updateQuestDisplay() {
     const gs = this.gameState;
     const drawCard = (title, detail, accent = 0xd7b45c) => {
-      this.explorationHUD?.objective(title, detail);
       const lines = [title, detail].filter(Boolean);
       this.questText.setText(lines.join("\n"));
       const bounds = this.questText.getBounds();

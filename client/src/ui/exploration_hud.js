@@ -1,5 +1,3 @@
-import { objectiveTracker } from "./objective_tracker.js";
-import { showObjectiveQuestLog } from "../scenes/objective_quest_log.js";
 import { element } from "./viewport_dialog.js";
 import { activeWorldLocks } from "../systems/modalLock.js";
 import { isTouchDevice } from "../systems/input.js";
@@ -7,11 +5,9 @@ import "../styles/exploration-hud.css";
 
 // This is a presentation layer only. Actions continue through the scene's
 // existing input handlers and authoritative server transitions.
-export function explorationHUD(scene, { menu, help, mute, isMuted, colors }) {
+export function explorationHUD(scene, { menu, colors }) {
   const root = element("section", "exploration-hud");
   root.setAttribute("aria-label", "Exploration controls");
-  const tracker = objectiveTracker(() => showObjectiveQuestLog(scene));
-  const objective = tracker.root;
   const saveStatus = element("span", "explore-save-status");
   saveStatus.setAttribute("role", "status");
   const map = element("div", "explore-map explore-surface");
@@ -51,44 +47,12 @@ export function explorationHUD(scene, { menu, help, mute, isMuted, colors }) {
   notice.setAttribute("role", "status");
   notice.hidden = true;
   const footer = element("div", "explore-footer explore-surface");
-  const partyDetails = element("div", "explore-party-details");
-  partyDetails.id = "explore-party-details";
-  partyDetails.hidden = true;
-  const dock = element("div", "explore-dock");
-  const partyToggle = element("button", "explore-disclosure", "Party ▴");
-  partyToggle.type = "button";
-  partyToggle.setAttribute("aria-expanded", "false");
-  partyToggle.setAttribute("aria-controls", partyDetails.id);
-  partyToggle.onclick = () => {
-    partyDetails.hidden = !partyDetails.hidden;
-    footer.classList.toggle("is-expanded", !partyDetails.hidden);
-    partyToggle.setAttribute("aria-expanded", String(!partyDetails.hidden));
-    partyToggle.textContent = partyDetails.hidden ? "Party ▴" : "Party ▾";
-  };
-  const party = element("div", "explore-party");
-  const toolbar = element("div", "explore-toolbar");
-  const resources = element("span", "explore-resources");
-  const buttons = element("div", "explore-actions");
-  const button = (text, callback) => {
-    const item = element("button", "", text);
-    item.type = "button";
-    item.onclick = callback;
-    buttons.append(item);
-    return item;
-  };
-  const sound = button(isMuted() ? "Unmute" : "Mute", () => {
-    mute();
-    sound.textContent = isMuted() ? "Unmute" : "Mute";
-  });
-  button("Help", help);
-  const menuButton = button("Menu", menu);
-  menuButton.classList.add("explore-menu-button");
-  dock.append(partyToggle, menuButton);
-  toolbar.append(resources, buttons);
-  partyDetails.append(party, toolbar);
-  footer.append(partyDetails, dock);
-  bottom.append(notice, interaction, prompts, footer);
-  root.append(objective, map, saveStatus, bottom);
+  const menuButton = element("button", "explore-menu-button", "Menu");
+  menuButton.type = "button";
+  menuButton.onclick = menu;
+  footer.append(menuButton);
+  bottom.append(interaction, prompts, footer);
+  root.append(map, saveStatus, notice, bottom);
   document.body.append(root);
   // DOM controls must never also become a world click/tap.
   for (const event of ["pointerdown", "pointerup", "click", "wheel"])
@@ -106,7 +70,13 @@ export function explorationHUD(scene, { menu, help, mute, isMuted, colors }) {
   observer.observe(scene.game.canvas);
   window.addEventListener("resize", position);
   position();
-  let previous = "";
+  let noticeFade = null;
+  let noticeExpiry = null;
+  const clearNotice = () => {
+    clearTimeout(noticeFade);
+    clearTimeout(noticeExpiry);
+    notice.hidden = true;
+  };
   let suspended = false;
   const update = () => {
     root.hidden =
@@ -117,38 +87,6 @@ export function explorationHUD(scene, { menu, help, mute, isMuted, colors }) {
     saveStatus.hidden = !saveStatus.textContent;
     dot.style.left = `${(scene.playerX / scene.mapW) * 100}%`;
     dot.style.top = `${(scene.playerY / scene.mapH) * 100}%`;
-    const gs = scene.gameState;
-    const state = JSON.stringify([
-      gs.party,
-      gs.gold,
-      gs.potions,
-      gs.ethers,
-      gs.hi_ethers,
-      gs.x_ethers,
-      gs.transport?.tier_name,
-    ]);
-    if (state === previous) return;
-    previous = state;
-    party.replaceChildren();
-    for (const member of gs.party || []) {
-      const card = element("div", "explore-member");
-      const portrait = element("img");
-      portrait.src = `/sprites/${member.sprite_id || member.class_id}.png`;
-      portrait.alt = "";
-      const info = element("div");
-      const name = element("strong", "", member.name);
-      const hp = element("span", "", `${member.hp}/${member.max_hp} HP`);
-      const bar = element("progress");
-      bar.max = Math.max(1, member.max_hp || 1);
-      bar.value = member.hp || 0;
-      bar.setAttribute("aria-label", `${member.name} health`);
-      info.append(name, hp, bar);
-      if (member.max_mp > 0)
-        info.append(element("small", "", `${member.mp}/${member.max_mp} MP`));
-      card.append(portrait, info);
-      party.append(card);
-    }
-    resources.textContent = `${gs.transport?.tier_name || "On foot"} · ${gs.gold || 0} Gold · ${gs.potions || 0} Potions · ${(gs.ethers || 0) + (gs.hi_ethers || 0) + (gs.x_ethers || 0)} Ether`;
   };
   // Paused/sleeping scenes stop updating, while their DOM remains mounted.
   // Hide immediately so another scene never inherits the World controls.
@@ -177,6 +115,7 @@ export function explorationHUD(scene, { menu, help, mute, isMuted, colors }) {
     scene.events.off("update", update);
     observer.disconnect();
     window.removeEventListener("resize", position);
+    clearNotice();
     root.remove();
     scene.explorationHUD = null;
   };
@@ -184,12 +123,14 @@ export function explorationHUD(scene, { menu, help, mute, isMuted, colors }) {
   scene.events.once("destroy", dispose);
   return {
     root,
-    objective(heading, body) {
-      tracker.update(heading, body);
-    },
     message(text) {
+      clearNotice();
+      if (!text) return;
       notice.textContent = text;
-      notice.hidden = !text;
+      notice.classList.remove("is-fading");
+      notice.hidden = false;
+      noticeFade = setTimeout(() => notice.classList.add("is-fading"), 2600);
+      noticeExpiry = setTimeout(clearNotice, 3400);
     },
     interaction(text) {
       interaction.textContent = text;

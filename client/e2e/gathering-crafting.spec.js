@@ -8,6 +8,56 @@ const state = (page, scene = "World") =>
 const capture = (page, label) =>
   page.screenshot({ path: new URL(`${label}.png`, proof).pathname });
 
+for (const width of [610, 390]) {
+  test(`gathering receipt fades at the edge at ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: width === 610 ? 837 : 844 });
+    await page.route("**/src/main.js*", async (route) => {
+      const response = await route.fetch();
+      await route.fulfill({
+        response,
+        body: `${await response.text()}\nwindow.__gatherGame = game;`,
+      });
+    });
+    await page.goto("/?noEncounters=1");
+    await page.waitForFunction(
+      () => window.__kithlandsTest?.activeSceneKey() === "Title",
+    );
+    await page.evaluate(() => window.__kithlandsTest.startQuickGame());
+    await page.evaluate(() =>
+      window.__kithlandsTest.waitForSceneReady("World"),
+    );
+    const nodes = (await state(page)).resources.slice(0, 2);
+    const hud = page.locator(".exploration-hud");
+    const receipt = hud.locator(".explore-notice");
+    for (const node of nodes) {
+      await walkTo(page, { x: node.x, y: node.y });
+      await hud.getByRole("button", { name: /^Gather/ }).click();
+      await expect(receipt).toBeVisible();
+      await expect(receipt).toHaveText(new RegExp(`^\\+${node.quantity} `));
+      const box = await receipt.boundingBox();
+      const field = await hud.boundingBox();
+      expect(box.x - field.x).toBeLessThan(20);
+      expect(box.width).toBeLessThanOrEqual(300);
+      await capture(page, `${width}-${node.visual}-edge-receipt`);
+      await expect(receipt).toHaveClass(/is-fading/, { timeout: 4000 });
+      await expect(receipt).toBeHidden({ timeout: 2000 });
+    }
+    await capture(page, `${width}-clear-field`);
+    await hud.getByRole("button", { name: "Menu", exact: true }).click();
+    await page.getByRole("button", { name: /Quest journal/i }).click();
+    await expect(
+      page.getByRole("dialog", { name: "Quest Log", exact: true }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(receipt).toBeHidden();
+    await hud.getByRole("button", { name: "Menu", exact: true }).click();
+    await page.getByRole("button", { name: /World Map/i }).click();
+    await expect(
+      page.getByRole("button", { name: /Follow route/ }).first(),
+    ).toBeVisible();
+  });
+}
+
 test("keyboard harvest restores movement after the crafting menu closes", async ({
   page,
 }) => {

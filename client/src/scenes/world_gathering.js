@@ -63,7 +63,10 @@ export async function gatherNearbyResource(scene) {
     scene.gameState = next;
     renderWorldResources(scene, scene.resourceTileSize);
     scene.updateHUD?.();
-    scene.showMessage?.(next.message);
+    const material = next.materials?.find((m) => m.id === resource.material_id);
+    scene.showMessage?.(
+      `+${resource.quantity} ${material?.name || resource.name}`,
+    );
     scene.updateInteractionTarget?.();
   } catch (error) {
     if (scene.scene.isActive())

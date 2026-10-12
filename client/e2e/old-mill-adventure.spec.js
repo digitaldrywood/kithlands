@@ -77,12 +77,8 @@ for (const viewport of [
       () => window.__kithlandsTest.activeSceneKey() === "World",
     );
     await page.waitForTimeout(400);
-    await page
-      .getByRole("button", { name: "Objective ▾", exact: true })
-      .click();
-    await page
-      .getByRole("button", { name: "Quest journal", exact: true })
-      .click();
+    await page.getByRole("button", { name: "Menu", exact: true }).click();
+    await page.getByRole("button", { name: /Quest journal/i }).click();
     const journal = page.getByRole("dialog", {
       name: "Quest Log",
       exact: true,
@@ -98,9 +94,9 @@ for (const viewport of [
     await page
       .getByRole("button", { name: "Close Quest Log", exact: true })
       .click();
-    await expect(page.locator("[data-objective-tracker]")).toContainText(
-      "The Old Mill",
-    );
+    await expect(
+      page.locator(".exploration-hud [data-objective-tracker]"),
+    ).toHaveCount(0);
     await page
       .getByRole("button", { name: "Old Mill trail", exact: true })
       .click();
@@ -187,12 +183,8 @@ for (const viewport of [
       () => window.__kithlandsTest.activeSceneKey() === "World",
     );
     expect((await state(page)).gold).toBe(before.gold);
-    await page
-      .getByRole("button", { name: "Objective ▾", exact: true })
-      .click();
-    await page
-      .getByRole("button", { name: "Quest journal", exact: true })
-      .click();
+    await page.getByRole("button", { name: "Menu", exact: true }).click();
+    await page.getByRole("button", { name: /Quest journal/i }).click();
     await expect(
       page.locator('[data-quest-id="dungeon:old-mill"]'),
     ).toContainText(before.dungeon.journal.at(-1));
@@ -398,12 +390,8 @@ for (const viewport of [
     expect(end.message).toContain("80 gold");
     expect(end.combat_log || []).toEqual([]);
     await capture(page, `${viewport.width}-return-payoff`);
-    await page
-      .getByRole("button", { name: "Objective ▾", exact: true })
-      .click();
-    await page
-      .getByRole("button", { name: "Quest journal", exact: true })
-      .click();
+    await page.getByRole("button", { name: "Menu", exact: true }).click();
+    await page.getByRole("button", { name: /Quest journal/i }).click();
     await expect(
       page.locator('[data-quest-id="dungeon:old-mill"]'),
     ).toContainText("Complete");
@@ -590,29 +578,19 @@ for (const viewport of [
     await page.waitForFunction(
       () => window.__kithlandsTest.sceneFlags("Dungeon").menuOpen,
     );
-    const summary = await page.evaluate(() =>
-      window.__kithlandsTest.partyMenuSummary("Dungeon"),
-    );
-    const mapButton = summary.actionIcons.find(
-      (action) => action.label === "WORLD MAP" && action.kind === "button",
-    );
-    expect(mapButton.interactive).toBe(false);
+    const mapButton = page.getByRole("button", { name: /World map/i });
+    await expect(mapButton).toBeDisabled();
     await capture(page, `${viewport.width}-party-map-disabled`);
-    await tapLogical(
-      page,
-      (mapButton.bounds.left + mapButton.bounds.right) / 2,
-      (mapButton.bounds.top + mapButton.bounds.bottom) / 2,
-      summary.logicalSize.width,
-      summary.logicalSize.height,
-    );
+    const box = await mapButton.boundingBox();
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
     expect(
       await page.evaluate(
         () => window.__kithlandsTest.sceneFlags("Dungeon").modalLocks,
       ),
-    ).toEqual(["party_menu"]);
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("CLOSE", "Dungeon"),
-    );
+    ).toEqual(["party_menu", "party_menu_view"]);
+    await page
+      .getByRole("button", { name: "Back to game", exact: true })
+      .click();
     await page.waitForFunction(
       () => !window.__kithlandsTest.sceneFlags("Dungeon").menuOpen,
     );
@@ -659,9 +637,7 @@ for (const viewport of [
     await page.waitForFunction(
       () => window.__kithlandsTest.sceneFlags("World").menuOpen,
     );
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("WORLD MAP", "World"),
-    );
+    await page.getByRole("button", { name: /World map/i }).click();
     expect(
       await page.evaluate(
         () => window.__kithlandsTest.sceneFlags("World").modalLocks,

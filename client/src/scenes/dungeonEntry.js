@@ -90,7 +90,8 @@ export function updateDungeonEntry(scene) {
     }
   }
 
-  const route = dungeonRouteForScene(scene);
+  // World route navigation lives in the map, not a permanent field prompt.
+  const route = scene.explorationHUD ? null : dungeonRouteForScene(scene);
   if (!route) {
     scene.dungeonRouteButton?.destroy();
     scene.dungeonRouteButton = null;
