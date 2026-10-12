@@ -1,3 +1,4 @@
+import { itemArtURL } from "../ui/item_art.js";
 import { registerCanvasButton } from "../ui/canvas_menu_keyboard.js";
 import { roundedRectangle } from "../ui/theme.js";
 import {
@@ -169,6 +170,21 @@ export async function openShop(scene, spawn) {
     catalogError = catalogFailure(e);
   }
 
+  const artItems = items.filter((item) => itemArtURL(item.icon_key));
+  const missingArt = artItems.filter(
+    (item) => !scene.textures.exists(`item-art:${item.icon_key}`),
+  );
+  if (missingArt.length) {
+    await new Promise((resolve) => {
+      for (const item of missingArt)
+        scene.load.image(
+          `item-art:${item.icon_key}`,
+          itemArtURL(item.icon_key),
+        );
+      scene.load.once("complete", resolve);
+      scene.load.start();
+    });
+  }
   if (!catalogError && items.length === 0) {
     scene.showMessage(`${spawn.name} has nothing for sale.`);
     scene.time.delayedCall(1500, () => {
@@ -194,6 +210,7 @@ export async function openShop(scene, spawn) {
     { label: "Supplies", key: "supplies" },
   ];
   let currentTab = "weapons";
+  let stockPage = 0;
   let selectedItemId = null;
   let focusedMemberIndex = 0;
   let escHandler = null;
@@ -633,7 +650,9 @@ export async function openShop(scene, spawn) {
     destroyGroup(listGroup);
 
     const selected = currentSelectedItem();
-    const displayItems = tabItems.slice(0, 10);
+    const pageCount = Math.max(1, Math.ceil(tabItems.length / 10));
+    stockPage = Math.min(stockPage, pageCount - 1);
+    const displayItems = tabItems.slice(stockPage * 10, (stockPage + 1) * 10);
     const currentGold = scene.gameState?.gold ?? 0;
 
     let y = 154;
@@ -657,6 +676,16 @@ export async function openShop(scene, spawn) {
         .setDepth(MAIN_PANEL.depth + 1);
       listGroup.push(rowBg);
 
+      const artKey = `item-art:${item.icon_key}`;
+      const hasArt = itemArtURL(item.icon_key) && scene.textures.exists(artKey);
+      if (hasArt)
+        listGroup.push(
+          scene.add
+            .image(LIST_LEFT + 35, y, artKey)
+            .setDisplaySize(24, 24)
+            .setScrollFactor(0)
+            .setDepth(MAIN_PANEL.depth + 2),
+        );
       let desc = item.name;
       if (item.type === "spell" && item.school) {
         desc += ` (${item.school} ${item.spell_level})`;
@@ -667,7 +696,7 @@ export async function openShop(scene, spawn) {
 
       const textColor = affordable || equippable ? "#e9eef7" : "#777777";
       const label = scene.add
-        .text(LIST_LEFT, y + LIST_TEXT_Y_OFFSET, desc, {
+        .text(LIST_LEFT + (hasArt ? 30 : 0), y + LIST_TEXT_Y_OFFSET, desc, {
           fontSize: "11px",
           color: textColor,
           fontFamily: "Arial",
@@ -774,6 +803,41 @@ export async function openShop(scene, spawn) {
       y += LIST_ROW_GAP;
     }
 
+    if (pageCount > 1) {
+      const changePage = (delta) => {
+        if (scene.shopPurchasePending) return;
+        stockPage = Math.max(0, Math.min(pageCount - 1, stockPage + delta));
+        selectedItemId = shopSelectionID(tabItems[stockPage * 10]);
+        renderCatalogView();
+      };
+      for (const [x, label, delta, enabled] of [
+        [160, "Previous Stock", -1, stockPage > 0],
+        [402, "Next Stock", 1, stockPage + 1 < pageCount],
+      ]) {
+        const button = drawButton(
+          scene,
+          x,
+          504,
+          130,
+          26,
+          label,
+          () => changePage(delta),
+          { depth: MAIN_PANEL.depth + 2, fontSize: "10px" },
+        );
+        button.setEnabled(enabled);
+        listGroup.push(button);
+      }
+      listGroup.push(
+        scene.add
+          .text(282, 504, `${stockPage + 1} / ${pageCount}`, {
+            fontSize: "11px",
+            color: "#c9b589",
+          })
+          .setOrigin(0.5)
+          .setScrollFactor(0)
+          .setDepth(MAIN_PANEL.depth + 2),
+      );
+    }
     if (displayItems.length === 0) {
       const empty = scene.add
         .text(280, 205, "Nothing in this category.", {
@@ -1043,6 +1107,7 @@ export async function openShop(scene, spawn) {
       tab.label,
       () => {
         currentTab = tab.key;
+        stockPage = 0;
         renderCatalogView();
       },
       {

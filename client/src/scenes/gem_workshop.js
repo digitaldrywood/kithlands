@@ -1,3 +1,4 @@
+import { itemArtURL } from "../ui/item_art.js";
 import { menuKeyboard } from "../ui/menu_keyboard.js";
 import { changeGem, craftGem, getGame } from "../api.js";
 import { playSFX } from "../systems/audio.js";
@@ -276,10 +277,10 @@ function button(label, action, key, disabled = false) {
 function workshopIcon(item, gear = false) {
   const icon = element("span", gear ? "gem-art is-equipment" : "gem-art");
   icon.setAttribute("aria-hidden", "true");
-  if (gear) {
+  if (gear || itemArtURL(item?.icon_key)) {
     const image = element("img");
     image.src = item?.icon_key
-      ? `/sprites/items/${item.icon_key}.png`
+      ? itemArtURL(item.icon_key)
       : `/sprites/ui/icon_${itemKind(item) === "armor" ? "shield" : "sword"}.png`;
     image.alt = "";
     image.addEventListener("error", () => {
@@ -571,7 +572,11 @@ export function showGemWorkshop(
         element("span", entry.muted ? "gem-muted" : "gem-ready", entry.detail),
       );
       row.append(
-        workshopIcon(role === "recipe" ? { id: entry.output?.gem_id } : entry),
+        workshopIcon(
+          role === "recipe"
+            ? { id: entry.output?.gem_id, icon_key: entry.output?.icon_key }
+            : entry,
+        ),
         copy,
       );
       list.append(row);
@@ -635,7 +640,10 @@ export function showGemWorkshop(
         ),
       );
       outputCard.append(
-        workshopIcon({ id: selected.output.gem_id }),
+        workshopIcon({
+          id: selected.output.gem_id,
+          icon_key: selected.output.icon_key,
+        }),
         outputCopy,
       );
       preview.append(outputCard, element("h3", "", selected.name));
@@ -789,6 +797,8 @@ export function showGemWorkshop(
         "aria-pressed",
         String(index === selectedSocket),
       );
+      if (candidate.icon_key)
+        socketChoice.prepend(workshopIcon({ icon_key: candidate.icon_key }));
       socketList.append(socketChoice);
     }
     if (!item?.sockets?.length)

@@ -1,3 +1,4 @@
+import { startWalkMotion } from "./walkMotion.js";
 import {
   renderWorldResources,
   gatherNearbyResource,
@@ -523,9 +524,6 @@ export class WorldScene extends Phaser.Scene {
       }
     }
 
-    this.lastMoveTime = 0;
-    this.moveCooldown = 150;
-
     // Autosave timer
     this.autosaveTimer = null;
     this.startAutosaveTimer();
@@ -589,12 +587,11 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
-  update(time) {
+  update() {
     if (isWorldInputLocked(this)) return;
     if (this.dungeonRouteRunning) return;
     if (!this.hudText || !this.player) return; // scene destroyed
     if (this.animating) return;
-    if (time - this.lastMoveTime < this.moveCooldown) return;
 
     let dx = 0,
       dy = 0;
@@ -605,7 +602,6 @@ export class WorldScene extends Phaser.Scene {
 
     if (dx !== 0 || dy !== 0) {
       this.tryMove(dx, dy);
-      this.lastMoveTime = time;
     }
   }
 
@@ -685,57 +681,48 @@ export class WorldScene extends Phaser.Scene {
     const walk = beginWalkStep(this, (frame) =>
       setPlayerWalkFrame(this, frame),
     );
-    // Send this single authoritative step while the tile tween is running.
+    // Send this single authoritative step while the tile motion is running.
     // Unlock, rollback, and encounters still wait for BOTH completions.
-    const arrival = syncWorldArrival(this, {
+    let arrivalDone = false;
+    let animationDone = false;
+    let arrivalResult;
+    const finishAcknowledgedStep = () => {
+      if (!arrivalDone || !animationDone) return;
+      const accepted = !arrivalResult?.error;
+      if (this.scene?.isActive()) {
+        if (!accepted)
+          this.restoreRejectedWorldStep(origin, arrivalResult.error);
+        this.animating = false;
+        this.updateHUD();
+      }
+      settleWorldStep(accepted);
+      if (
+        accepted &&
+        shouldStartBattle(arrivalResult) &&
+        this.scene?.isActive()
+      ) {
+        void this.triggerRandomEncounter(tile, arrivalResult);
+      }
+    };
+    void syncWorldArrival(this, {
       step: true,
       debugNoEncounters: randomEncountersDisabledForDebug(),
-    }).catch((error) => ({
-      error: error instanceof Error ? error.message : String(error),
-    }));
+    })
+      .catch((error) => ({
+        error: error instanceof Error ? error.message : String(error),
+      }))
+      .then((result) => {
+        arrivalResult = result;
+        arrivalDone = true;
+        finishAcknowledgedStep();
+      });
     const finishStepAnimation = () => {
       walk.complete();
-      let accepted = true;
-      let encounterResult = null;
-      void arrival
-        .then((result) => {
-          if (shouldStartBattle(result)) encounterResult = result;
-          if (result?.error && this.scene?.isActive()) {
-            accepted = false;
-            this.restoreRejectedWorldStep(origin, result.error);
-          }
-        })
-        .catch((error) => {
-          if (this.scene?.isActive()) {
-            accepted = false;
-            this.restoreRejectedWorldStep(
-              origin,
-              error instanceof Error ? error.message : String(error),
-            );
-          }
-        })
-        .finally(() => {
-          if (this.scene?.isActive()) {
-            this.animating = false;
-            this.updateHUD();
-          }
-          settleWorldStep(accepted);
-          if (accepted && encounterResult && this.scene?.isActive()) {
-            void this.triggerRandomEncounter(tile, encounterResult);
-          }
-        });
+      animationDone = true;
+      // An early acknowledgement must not schedule another idle render tick.
+      finishAcknowledgedStep();
     };
-    this.tweens.add({
-      targets: this.player,
-      x: dest.x,
-      y: dest.y,
-      duration: stepMs,
-      ease: "Linear",
-      onUpdate: () => {
-        walk.updatePosition();
-      },
-      onComplete: finishStepAnimation,
-    });
+    startWalkMotion(this, dest, stepMs, walk, finishStepAnimation);
     if (this.vehicleIndicator) {
       this.tweens.add({
         targets: this.vehicleIndicator,

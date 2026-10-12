@@ -279,6 +279,7 @@ type ItemAffixState struct {
 }
 
 type ItemSocketState struct {
+	IconKey   string `json:"icon_key,omitempty"`
 	Index     int    `json:"index"`
 	GemID     string `json:"gem_id,omitempty"`
 	GemName   string `json:"gem_name,omitempty"`
@@ -289,6 +290,7 @@ type ItemSocketState struct {
 }
 
 type GemState struct {
+	IconKey       string           `json:"icon_key,omitempty"`
 	ID            string           `json:"id"`
 	Name          string           `json:"name"`
 	Count         int              `json:"count"`
@@ -320,6 +322,7 @@ type GemRecipeState struct {
 }
 
 type GemAmountState struct {
+	IconKey       string           `json:"icon_key,omitempty"`
 	GemID         string           `json:"gem_id"`
 	GemName       string           `json:"gem_name"`
 	Count         int              `json:"count"`

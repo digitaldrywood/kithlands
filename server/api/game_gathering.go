@@ -38,6 +38,7 @@ type MaterialState struct {
 	Count  int    `json:"count"`
 }
 type FieldRecipeState struct {
+	OutputIconKey string `json:"output_icon_key,omitempty"`
 	gamedata.FieldRecipe
 	OutputName  string         `json:"output_name"`
 	OutputStats map[string]int `json:"output_stats,omitempty"`
@@ -263,9 +264,11 @@ func (g *Game) fillGatheringState(state *GameState) {
 		preview := FieldRecipeState{FieldRecipe: recipe, BlockReason: g.fieldRecipeBlockReason(recipe)}
 		preview.Craftable = preview.BlockReason == ""
 		if base := g.gd.EquipmentBaseByID(recipe.OutputID); base != nil {
+			preview.OutputIconKey = base.IconKey
 			preview.OutputName = base.Name
 			preview.OutputStats = cloneStats(base.Stats)
 		} else if gem := g.gd.GemByID(recipe.OutputID); gem != nil {
+			preview.OutputIconKey = gem.IconKey
 			preview.OutputName = gem.Name
 		} else if item := g.gd.ConsumableByID(recipe.OutputID); item != nil {
 			preview.OutputName = item.Name

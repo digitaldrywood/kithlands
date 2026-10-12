@@ -1,15 +1,16 @@
+import { itemArtURL } from "../ui/item_art.js";
 import { craftFieldRecipe } from "../api.js";
 import { element, viewportDialog } from "../ui/viewport_dialog.js";
 import { showGemWorkshop } from "./gem_workshop.js";
 import "../styles/field-crafting.css";
 
 // Presentation only: availability, costs, rewards and mutations come from Go.
-function icon(kind) {
+function icon(kind, key) {
   const slot = element("span", `craft-icon craft-icon-${kind}`);
   slot.setAttribute("aria-hidden", "true");
-  if (["sword", "shield", "potion"].includes(kind)) {
+  if (itemArtURL(key) || ["sword", "shield", "potion"].includes(kind)) {
     const img = element("img");
-    img.src = `/sprites/ui/icon_${kind}.png`;
+    img.src = itemArtURL(key) || `/sprites/ui/icon_${kind}.png`;
     img.alt = "";
     slot.append(img);
   } else {
@@ -156,7 +157,7 @@ export function showFieldCrafting(scene, { onClose, selectedRecipe } = {}) {
               : "Missing materials",
         ),
       );
-      row.append(icon(r.output_visual || "gem"), text);
+      row.append(icon(r.output_visual || "gem", r.output_icon_key), text);
     }
     const preview = element("section", "craft-preview");
     preview.setAttribute("aria-label", "Recipe preview");
@@ -172,7 +173,10 @@ export function showFieldCrafting(scene, { onClose, selectedRecipe } = {}) {
           `${recipe.output_count} ${recipe.output_count === 1 ? "item" : "items"} per craft${recipe.required_level ? ` · Requires level ${recipe.required_level}` : ""}`,
         ),
       );
-      result.append(icon(recipe.output_visual || "gem"), identity);
+      result.append(
+        icon(recipe.output_visual || "gem", recipe.output_icon_key),
+        identity,
+      );
       preview.append(result);
       const stats = element("div", "craft-stats");
       for (const [stat, value] of Object.entries(

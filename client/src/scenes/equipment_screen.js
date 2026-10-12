@@ -1,3 +1,4 @@
+import { itemArtURL } from "../ui/item_art.js";
 import { menuKeyboard } from "../ui/menu_keyboard.js";
 import {
   applyRecommendedEquipment,
@@ -1663,6 +1664,15 @@ function renderSocketPips(item) {
       `equipment-socket-pip ${filled ? "is-filled" : "is-open"}`,
       filled ? "◆" : "◇",
     );
+    if (filled && itemArtURL(socket.icon_key)) {
+      pip.textContent = "";
+      const art = element("img");
+      art.src = itemArtURL(socket.icon_key);
+      art.alt = "";
+      art.style.cssText =
+        "width:16px;height:16px;object-fit:contain;vertical-align:middle";
+      pip.append(art);
+    }
     if (filled) {
       pip.style.setProperty("--pip-color", socket.color || "#ff9f43");
       pip.style.setProperty(
@@ -1721,7 +1731,7 @@ function renderItemIcon(item, fallback, small = false) {
   }
   const image = document.createElement("img");
   image.className = "equipment-item-art";
-  image.src = `/sprites/items/${item.icon_key}.png`;
+  image.src = itemArtURL(item.icon_key);
   image.alt = "";
   image.setAttribute("aria-hidden", "true");
   image.addEventListener("error", () => {

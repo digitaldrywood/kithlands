@@ -487,6 +487,7 @@ type LootModifier struct {
 }
 
 type Gem struct {
+	IconKey       string      `json:"icon_key,omitempty"`
 	Family        string      `json:"family"`
 	MaterialValue int         `json:"material_value"`
 	ID            string      `json:"id"`

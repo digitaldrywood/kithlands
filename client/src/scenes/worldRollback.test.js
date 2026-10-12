@@ -1,3 +1,4 @@
+import { EventEmitter } from "node:events";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const apiMocks = vi.hoisted(() => ({
@@ -218,10 +219,19 @@ function fixture() {
       phase: "world",
       current_location: { kind: "world", world_node_id: "grove" },
     },
-    player: { x: 48, y: 64, setTexture: vi.fn() },
+    player: {
+      x: 48,
+      y: 64,
+      setTexture: vi.fn(),
+      setPosition(x, y) {
+        this.x = x;
+        this.y = y;
+      },
+    },
     scene: { isActive: () => true },
     time: { delayedCall: () => ({ remove() {} }) },
-    tweens: { add: vi.fn() },
+    tweens: { add: vi.fn(), timeScale: 1 },
+    events: new EventEmitter(),
     canWalkTile: () => true,
     updateHUD: vi.fn(),
     updateMinimap: vi.fn(),
@@ -246,7 +256,9 @@ describe("world step animation and authority", () => {
       expect(apiMocks.transitionLocation).toHaveBeenCalledOnce(),
     );
     expect(WorldScene.prototype.tryMove.call(scene, 1, 0)).toBe(false);
-    scene.tweens.add.mock.calls[0][0].onComplete();
+    vi.spyOn(performance, "now").mockReturnValue(performance.now() + 1000);
+    scene.events.emit("update");
+    vi.restoreAllMocks();
     expect(scene.animating).toBe(true);
     acknowledge({ ...scene.gameState });
     await expect(done).resolves.toBe(true);
@@ -270,7 +282,9 @@ describe("world step animation and authority", () => {
       expect(scene.animating).toBe(true);
       expect(scene.restoreRejectedWorldStep).not.toHaveBeenCalled();
       expect(scene.triggerRandomEncounter).not.toHaveBeenCalled();
-      scene.tweens.add.mock.calls[0][0].onComplete();
+      vi.spyOn(performance, "now").mockReturnValue(performance.now() + 1000);
+      scene.events.emit("update");
+      vi.restoreAllMocks();
       await expect(done).resolves.toBe(mode === "encounter");
       if (mode === "encounter")
         expect(scene.triggerRandomEncounter).toHaveBeenCalledWith(0, result);

@@ -1,3 +1,4 @@
+import { startWalkMotion } from "./walkMotion.js";
 import { beginWalkStep } from "./walkPlayback.js";
 import { initAudio, playSFX, playMusic } from "../systems/audio.js";
 import {
@@ -788,8 +789,6 @@ export class TownScene extends Phaser.Scene {
     // Input
     this.cursors = this.input.keyboard.createCursorKeys();
     this.wasd = this.input.keyboard.addKeys("W,A,S,D");
-    this.lastMoveTime = 0;
-    this.moveCooldown = 150;
     this.menuOpen = false;
     this.menuGroup = null;
     this._modalLocks = new Set();
@@ -1118,11 +1117,10 @@ export class TownScene extends Phaser.Scene {
     this.helpStrip = { panel, text };
   }
 
-  update(time) {
+  update() {
     syncTownObjectiveVisibility(this);
     if (isWorldInputLocked(this)) return;
     if (this.animating) return;
-    if (time - this.lastMoveTime < this.moveCooldown) return;
 
     let dx = 0,
       dy = 0;
@@ -1133,7 +1131,6 @@ export class TownScene extends Phaser.Scene {
 
     if (dx !== 0 || dy !== 0) {
       this.tryMove(dx, dy);
-      this.lastMoveTime = time;
     }
   }
 
@@ -1142,6 +1139,7 @@ export class TownScene extends Phaser.Scene {
   }
 
   tryMove(dx, dy) {
+    if (this.animating || isWorldInputLocked(this)) return;
     const nx = this.playerX + dx;
     const ny = this.playerY + dy;
     if (nx < 0 || nx >= this.roomW || ny < 0 || ny >= this.roomH) return;
@@ -1186,17 +1184,7 @@ export class TownScene extends Phaser.Scene {
       walk.complete();
       this.animating = false;
     };
-    this.tweens.add({
-      targets: this.player,
-      x: dest.x,
-      y: dest.y,
-      duration: stepMs,
-      ease: "Linear",
-      onUpdate: () => {
-        walk.updatePosition();
-      },
-      onComplete: finishStepAnimation,
-    });
+    startWalkMotion(this, dest, stepMs, walk, finishStepAnimation);
 
     const stair = this.stairsByPosition?.get(`${nx},${ny}`);
     if (stair) {

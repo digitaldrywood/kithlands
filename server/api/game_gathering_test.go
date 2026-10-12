@@ -386,3 +386,47 @@ func TestEveryGatheringResourceRenews(t *testing.T) {
 		t.Fatal("missing a resource habitat")
 	}
 }
+
+func TestCanonicalCraftAndGemArtwork(t *testing.T) {
+	g, _ := newChestTestGame(t)
+	state := g.State()
+	for _, id := range []string{"steel_sword", "mythril_sword"} {
+		base := g.gd.EquipmentBaseByID(id)
+		if base.IconKey == "" {
+			t.Fatalf("missing art for %s", id)
+		}
+		found := false
+		for _, recipe := range state.FieldRecipes {
+			if recipe.OutputID == id {
+				found = true
+				if recipe.OutputIconKey != base.IconKey {
+					t.Fatalf("recipe art differs from inventory art: %+v", recipe)
+				}
+			}
+		}
+		if !found {
+			t.Fatalf("no recipe for %s", id)
+		}
+		if baseItemState(base).IconKey != base.IconKey {
+			t.Fatal("base inventory drops art")
+		}
+		offer, err := g.shopItemStateLocked("art-proof-shop", 0, &ShopStockEntry{ItemID: id, Type: "weapon", Price: 100})
+		if err != nil || offer.IconKey != base.IconKey {
+			t.Fatalf("shop art differs for %s: %+v %v", id, offer, err)
+		}
+
+	}
+	for _, gem := range g.gd.Loot.Gems {
+		g.inv.Gems[gem.ID] = 1
+		if gem.IconKey == "" || g.gemAmountState(gem.ID, 1).IconKey != gem.IconKey {
+			t.Fatalf("missing gem recipe art: %s", gem.ID)
+		}
+	}
+	var projected GameState
+	g.fillGemState(&projected)
+	for _, gem := range projected.Gems {
+		if gem.IconKey != g.gd.GemByID(gem.ID).IconKey {
+			t.Fatalf("owned gem art differs: %s", gem.ID)
+		}
+	}
+}

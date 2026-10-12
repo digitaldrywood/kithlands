@@ -197,6 +197,9 @@
   gap: 8px;
 }
 .gem-socket-list button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex: 1;
   text-align: left;
 }
@@ -464,4 +467,10 @@
     bottom: 4px;
     right: 7px;
   }
+}
+
+.gem-socket-list .gem-art {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
 }
