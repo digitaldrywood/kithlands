@@ -3,6 +3,7 @@ package api
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/digitaldrywood/kithlands/internal/locality"
 )
@@ -250,5 +251,134 @@ func TestGatheringPersistsThroughDungeonResponse(t *testing.T) {
 	}
 	if !reflect.DeepEqual(returned.Materials, g.State().Materials) {
 		t.Fatal("locked and full state disagree")
+	}
+}
+
+func TestResourceCooldownPersistsExpiresAndMigrates(t *testing.T) {
+	g, _ := newChestTestGame(t)
+	n := g.State().Resources[0]
+	g.setWorldCheckpointLocked(WorldPosition{X: n.X, Y: n.Y}, g.location.WorldNodeID)
+	if err := g.Gather(n.ID); err != nil {
+		t.Fatal(err)
+	}
+	deadline := g.inv.ResourceReadyAt[n.ID]
+	if deadline < time.Now().Unix()+int64(n.RespawnSeconds)-1 {
+		t.Fatal("missing deadline")
+	}
+	saved, err := g.ToSaveState("Cooldown", "test-user")
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := FromSaveState(saved, g.gd, g.loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restored.inv.ResourceReadyAt[n.ID] != deadline {
+		t.Fatal("load restarted cooldown")
+	}
+	restored.setWorldCheckpointLocked(WorldPosition{X: n.X, Y: n.Y}, restored.location.WorldNodeID)
+	if err := restored.Gather(n.ID); err == nil {
+		t.Fatal("early harvest accepted")
+	}
+	restored.inv.ResourceReadyAt[n.ID] = time.Now().Unix() - 1
+	expired, err := restored.ToSaveState("Expired", "test-user")
+	if err != nil {
+		t.Fatal(err)
+	}
+	offline, err := FromSaveState(expired, g.gd, g.loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	offline.setWorldCheckpointLocked(WorldPosition{X: n.X, Y: n.Y}, offline.location.WorldNodeID)
+	if err := offline.Gather(n.ID); err != nil {
+		t.Fatal("offline expired harvest", err)
+	}
+	if offline.inv.Materials[n.MaterialID] != n.Quantity*2 {
+		t.Fatal("wrong second yield")
+	}
+	if err := offline.Gather(n.ID); err == nil {
+		t.Fatal("second cooldown missing")
+	}
+	clone := offline.inv.Clone()
+	clone.ResourceReadyAt[n.ID] = 1
+	if offline.inv.ResourceReadyAt[n.ID] == 1 {
+		t.Fatal("inventory clone shared timer")
+	}
+	legacy, _ := newChestTestGame(t)
+	legacy.inv.Normalize()
+	legacy.inv.GatheredResources[n.ID] = true
+	for _, node := range legacy.resourceNodes() {
+		if node.ID == n.ID && (!node.Gathered || node.RemainingSeconds < 1) {
+			t.Fatal("legacy depletion not migrated")
+		}
+	}
+	first := legacy.inv.ResourceReadyAt[n.ID]
+	legacy.resourceNodes()
+	if legacy.inv.ResourceReadyAt[n.ID] != first {
+		t.Fatal("legacy migration restarted timer")
+	}
+}
+func TestResourceHabitatTerritories(t *testing.T) {
+	g, _ := newChestTestGame(t)
+	positions := map[WorldPosition]bool{}
+	for _, n := range g.State().Resources {
+		p := WorldPosition{X: n.X, Y: n.Y}
+		if positions[p] {
+			t.Fatal("overlapping resource nodes")
+		}
+		positions[p] = true
+		h, ok := g.gd.Gathering.Habitats[n.Habitat]
+		if !ok || len(n.HabitatTiles) == 0 || n.RespawnSeconds == 0 {
+			t.Fatalf("missing habitat: %+v", n)
+		}
+		if !hasHabitatTile(h.GroundTiles, g.tileMap.Tiles[n.Y][n.X]) {
+			t.Fatalf("resource on wrong ground %+v", n)
+		}
+		for _, tile := range n.HabitatTiles {
+			if !hasHabitatTile(h.GroundTiles, g.tileMap.Tiles[tile.Y][tile.X]) {
+				t.Fatal("habitat paints road/water/structure")
+			}
+		}
+	}
+	tiles := make([][]int, 15)
+	for y := range tiles {
+		tiles[y] = make([]int, 15)
+	}
+	tiles[7][10] = int(locality.TileMountain)
+	g.tileMap = &locality.TileMap{Tiles: tiles, PlayerX: 2, PlayerY: 2, Width: 15, Height: 15}
+	probe := []ResourceNodeState{{ID: "stable-legacy-id", MaterialID: "ember_ore", X: 7, Y: 7}}
+	g.placeResourceHabitats(probe)
+	if probe[0].X < 8 || probe[0].ID != "stable-legacy-id" {
+		t.Fatal("ore ignored nearby rocky terrain or changed identity")
+	}
+}
+
+func TestEveryGatheringResourceRenews(t *testing.T) {
+	g, _ := newChestTestGame(t)
+	g.party[0].Level = 8
+	seen := map[string]bool{}
+	for _, n := range g.State().Resources {
+		if seen[n.MaterialID] {
+			continue
+		}
+		seen[n.MaterialID] = true
+		g.setWorldCheckpointLocked(WorldPosition{X: n.X, Y: n.Y}, g.location.WorldNodeID)
+		if err := g.Gather(n.ID); err != nil {
+			t.Fatal(err)
+		}
+		deadline := g.inv.ResourceReadyAt[n.ID]
+		if delta := deadline - time.Now().Unix(); delta < int64(n.RespawnSeconds)-1 || delta > int64(n.RespawnSeconds) {
+			t.Fatal("wrong resource-specific cooldown")
+		}
+		g.inv.ResourceReadyAt[n.ID] = time.Now().Unix() - 1
+		if err := g.Gather(n.ID); err != nil {
+			t.Fatal("resource did not renew", err)
+		}
+		if g.inv.Materials[n.MaterialID] != n.Quantity*2 {
+			t.Fatal("wrong renewed yield")
+		}
+	}
+	if len(seen) != len(g.gd.Gathering.Resources) {
+		t.Fatal("missing a resource habitat")
 	}
 }

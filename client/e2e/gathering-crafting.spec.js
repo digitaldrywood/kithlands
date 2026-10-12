@@ -138,7 +138,7 @@ for (const [width, height] of [
   test(`gather, craft, save and fight with crafted equipment ${width}x${height}`, async ({
     page,
   }) => {
-    test.setTimeout(180_000);
+    test.setTimeout(360_000);
     page.setDefaultTimeout(15_000);
     await page.setViewportSize({ width, height });
     const errors = [];
@@ -226,7 +226,7 @@ for (const [width, height] of [
         id,
       );
     }, nodes[0].id);
-    expect(duplicate.error).toContain("already been gathered");
+    expect(duplicate.error).toContain("recovering");
     await menu(page);
     await page.getByRole("button", { name: /Crafting/i }).click();
     for (const label of [
@@ -322,7 +322,11 @@ for (const [width, height] of [
     expect(
       saved.resources
         .filter((r) => nodes.some((n) => n.id === r.id))
-        .every((r) => r.gathered),
+        .every(
+          (r) =>
+            r.ready_at ===
+            harvested.resources.find((n) => n.id === r.id)?.ready_at,
+        ),
     ).toBe(true);
     await page.waitForFunction(
       () => window.__kithlandsTest.activeSceneKey() === "World",

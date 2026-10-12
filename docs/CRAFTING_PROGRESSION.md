@@ -32,9 +32,11 @@ full profession systems. Existing server equipment stats remain authoritative.
 | Steel Sword, 1 socket | Party level 4 | 8 ember iron ore, 1 hardwood | 2 charcoal, 1 flux, 1 leather wrap (32g total) | — |
 | Rare Mythril Sword, 2 sockets | Party level 8 | 2 mythril ore, 1 hardwood | 2 flux, 1 leather wrap (32g total) | 1 Millwright runic core |
 
-Wood appears near the ends of quest routes. A map has at most one mythril seam;
-it requires party level 8 and can be harvested once. Existing herb and iron
-nodes retain their positions and save identities. The material pouch and
+Wood favors reachable woodland edges near quest routes. A map has at most one
+mythril seam; it requires party level 8 and renews after 30 minutes. Herbs renew
+after 3 minutes, wood after 5, and iron after 10. Resource positions favor suitable
+terrain; stable route-anchor IDs preserve existing save identities. See
+`RESOURCE_HABITATS_RESPAWN.md` for saved deadlines and habitat rules. The material pouch and
 harvested nodes persist on the server.
 
 Town shops expose a Supplies tab. Charcoal costs 6g, flux 12g, and grip wrap 8g

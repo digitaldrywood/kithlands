@@ -9,6 +9,7 @@ import (
 
 // Inventory holds a party's items and equipment state.
 type Inventory struct {
+	ResourceReadyAt   map[string]int64              `json:"resource_ready_at,omitempty"`
 	Materials         map[string]int                `json:"materials,omitempty"`
 	GatheredResources map[string]bool               `json:"gathered_resources,omitempty"`
 	KnownGemRecipes   map[string]bool               `json:"known_gem_recipes,omitempty"`

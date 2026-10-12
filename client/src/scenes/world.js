@@ -1,6 +1,7 @@
 import {
   renderWorldResources,
   gatherNearbyResource,
+  resourceTerrain,
 } from "./world_gathering.js";
 import { trackedObjective } from "./questJournalModel.js";
 import { updateWorldTerrainVisibility } from "./worldTerrainVisibility.js";
@@ -887,6 +888,7 @@ export class WorldScene extends Phaser.Scene {
 
   drawMap() {
     this.tileGraphics.clear();
+    const terrain = resourceTerrain(this.tileData, this.gameState.resources);
 
     // Destroy any prior sprite container so re-draws are clean.
     if (this.tileSprites) {
@@ -902,12 +904,7 @@ export class WorldScene extends Phaser.Scene {
         const py = y * RENDERED_TILE;
         const spriteKey = ensureTerrainRenderTexture(
           this,
-          meadowGroundPlan(
-            this,
-            buildTerrainRenderPlan(this.tileData, x, y),
-            x,
-            y,
-          ),
+          meadowGroundPlan(this, buildTerrainRenderPlan(terrain, x, y), x, y),
         );
 
         if (spriteKey) {

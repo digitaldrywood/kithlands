@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"time"
 
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
 	"github.com/digitaldrywood/kithlands/internal/inventory"
@@ -13,15 +14,21 @@ import (
 )
 
 type ResourceNodeState struct {
-	RequiredLevel int    `json:"required_level,omitempty"`
-	ID            string `json:"id"`
-	Name          string `json:"name"`
-	MaterialID    string `json:"material_id"`
-	Quantity      int    `json:"quantity"`
-	Visual        string `json:"visual"`
-	X             int    `json:"x"`
-	Y             int    `json:"y"`
-	Gathered      bool   `json:"gathered"`
+	SurfaceTile      int             `json:"surface_tile"`
+	HabitatTiles     []WorldPosition `json:"habitat_tiles"`
+	Habitat          string          `json:"habitat"`
+	RespawnSeconds   int             `json:"respawn_seconds"`
+	ReadyAt          int64           `json:"ready_at,omitempty"`
+	RemainingSeconds int64           `json:"remaining_seconds,omitempty"`
+	RequiredLevel    int             `json:"required_level,omitempty"`
+	ID               string          `json:"id"`
+	Name             string          `json:"name"`
+	MaterialID       string          `json:"material_id"`
+	Quantity         int             `json:"quantity"`
+	Visual           string          `json:"visual"`
+	X                int             `json:"x"`
+	Y                int             `json:"y"`
+	Gathered         bool            `json:"gathered"`
 }
 type MaterialState struct {
 	Visual string `json:"visual"`
@@ -39,7 +46,7 @@ type FieldRecipeState struct {
 }
 
 // Resource identities depend on saved map coordinates, not the active quest.
-// A harvested patch remains depleted across quest changes and save/load.
+// Harvest deadlines persist across quest changes and save/load.
 func (g *Game) resourceNodes() []ResourceNodeState {
 	if g.resourceMap == g.tileMap && g.resourceNodeCache != nil {
 		return g.resourceNodeSnapshot()
@@ -148,16 +155,48 @@ func (g *Game) resourceNodes() []ResourceNodeState {
 		}
 	}
 
+	g.placeResourceHabitats(nodes)
+	valid := nodes[:0]
+	for _, node := range nodes {
+		if len(node.HabitatTiles) > 0 {
+			valid = append(valid, node)
+		}
+	}
+	nodes = valid
 	g.resourceMap, g.resourceNodeCache = g.tileMap, nodes
 	return g.resourceNodeSnapshot()
 }
 
 func (g *Game) resourceNodeSnapshot() []ResourceNodeState {
 	nodes := append([]ResourceNodeState(nil), g.resourceNodeCache...)
+	now := time.Now().Unix()
+	g.inv.Normalize()
 	for i := range nodes {
-		nodes[i].Gathered = g.inv.GatheredResources[nodes[i].ID]
+		node := &nodes[i]
+		// Legacy permanent depletion gets one cooldown, started only once.
+		if g.inv.GatheredResources[node.ID] && g.inv.ResourceReadyAt[node.ID] == 0 {
+			g.inv.ResourceReadyAt[node.ID] = now + int64(node.RespawnSeconds)
+		}
+		node.ReadyAt = g.inv.ResourceReadyAt[node.ID]
+		node.RemainingSeconds = max(0, node.ReadyAt-now)
+		node.Gathered = node.RemainingSeconds > 0
 	}
 	return nodes
+}
+
+// Resource refresh is intentionally separate from full game state: an idle
+// respawn cannot replace a newer movement, inventory or battle response.
+func (s *Server) handleResourceStatus(w http.ResponseWriter, r *http.Request) {
+	g := s.games.GetGame(r.PathValue("id"))
+	if g == nil {
+		httpError(w, "game not found", http.StatusNotFound)
+		return
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	jsonResp(w, struct {
+		Resources []ResourceNodeState `json:"resources"`
+	}{g.resourceNodes()})
 }
 
 // Paths use the same basic foot traversal as world movement, never water or
@@ -246,7 +285,7 @@ func (g *Game) Gather(resourceID string) error {
 			continue
 		}
 		if resource.Gathered {
-			return fmt.Errorf("this resource has already been gathered")
+			return fmt.Errorf("this resource is recovering; ready in %d seconds", resource.RemainingSeconds)
 		}
 		checkpoint := g.worldCheckpoint
 		if checkpoint == nil || checkpointAbs(checkpoint.X-resource.X)+checkpointAbs(checkpoint.Y-resource.Y) > 1 {
@@ -260,7 +299,8 @@ func (g *Game) Gather(resourceID string) error {
 		}
 		g.inv.Normalize()
 		g.inv.Materials[resource.MaterialID] += resource.Quantity
-		g.inv.GatheredResources[resource.ID] = true
+		g.inv.ResourceReadyAt[resource.ID] = time.Now().Unix() + int64(resource.RespawnSeconds)
+		delete(g.inv.GatheredResources, resource.ID)
 		g.message = fmt.Sprintf("Gathered %d materials from %s. Open Crafting from the party menu.", resource.Quantity, resource.Name)
 		return nil
 	}

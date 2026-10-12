@@ -1,5 +1,5 @@
 import { nearbyResource } from "./gatheringModel.js";
-import { gatherResource } from "../api.js";
+import { gatherResource, getResourceStatus } from "../api.js";
 import { checkpointWorldPosition } from "./world_interact.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 
@@ -7,11 +7,30 @@ export function renderWorldResources(scene, tileSize) {
   scene.resourceTileSize = tileSize;
   const group = scene.add.group();
   for (const node of scene.gameState.resources || []) {
-    if (node.gathered) continue;
+    renderHabitat(scene, group, node, tileSize);
     const x = (node.x + 0.5) * tileSize;
     const y = (node.y + 0.7) * tileSize;
     const art = scene.add.graphics().setPosition(x, y).setDepth(2);
     art.fillStyle(0x071c16, 0.5).fillEllipse(0, 2, 24, 9);
+    if (node.gathered) {
+      if (node.visual === "mineral") {
+        art
+          .fillStyle(0x50575a)
+          .fillTriangle(-12, 1, -4, -8, 6, 1)
+          .fillTriangle(0, 2, 7, -6, 14, 2);
+        art.lineStyle(1, 0x222e30).lineBetween(-5, -4, 5, 0);
+      } else if (node.visual === "wood") {
+        art.fillStyle(0x75604b).fillEllipse(1, 0, 15, 7);
+        art.lineStyle(1, 0xa69368).strokeEllipse(1, 0, 9, 4);
+      } else {
+        art
+          .lineStyle(1, 0x88794c)
+          .lineBetween(-4, 0, -3, -4)
+          .lineBetween(3, 0, 4, -5);
+      }
+      group.add(art);
+      continue;
+    }
     if (node.visual === "herb") {
       art.lineStyle(2, 0x6e9852).lineBetween(0, 1, 0, -15);
       art
@@ -54,6 +73,23 @@ export function renderWorldResources(scene, tileSize) {
     });
   scene.resourceArt?.destroy(true);
   scene.resourceArt = group;
+  const waits = (scene.gameState.resources || [])
+    .filter((n) => n.gathered)
+    .map((n) => n.remaining_seconds);
+  scene.resourceRefreshAt = waits.length
+    ? performance.now() + Math.max(1, Math.min(...waits)) * 1000
+    : Infinity;
+  if (!scene.resourceRespawnTimer) {
+    scene.resourceRespawnTimer = scene.time.addEvent({
+      delay: 1000,
+      loop: true,
+      callback: () => refreshExpiredResources(scene),
+    });
+    scene.events.once("shutdown", () => {
+      scene.resourceRespawnTimer?.remove();
+      scene.resourceRespawnTimer = null;
+    });
+  }
 }
 
 export async function gatherNearbyResource(scene) {
@@ -87,4 +123,90 @@ export async function gatherNearbyResource(scene) {
     scene.gatheringPending = false;
     resumeWorldFor(scene, "gathering");
   }
+}
+
+// A local timer requests Go's confirmation; it never decides availability.
+export async function refreshExpiredResources(scene) {
+  if (
+    performance.now() < scene.resourceRefreshAt ||
+    scene.resourceRefreshPending ||
+    scene.gatheringPending ||
+    scene.animating ||
+    scene.menuOpen
+  )
+    return;
+  const snapshot = scene.gameState;
+  scene.resourceRefreshPending = true;
+  try {
+    const result = await getResourceStatus(snapshot.id);
+    if (!scene.scene.isActive() || scene.gameState !== snapshot) return;
+    if (result.error || !Array.isArray(result.resources))
+      throw new Error("Resource refresh failed");
+    scene.gameState.resources = result.resources;
+    renderWorldResources(scene, scene.resourceTileSize);
+    scene.updateInteractionTarget?.();
+  } catch {
+    scene.resourceRefreshAt = performance.now() + 5000;
+  } finally {
+    scene.resourceRefreshPending = false;
+  }
+}
+
+function renderHabitat(scene, group, node, tileSize) {
+  const ground = scene.add.graphics().setDepth(0.6);
+  for (const p of node.habitat_tiles || []) {
+    const x = (p.x + 0.5) * tileSize,
+      y = (p.y + 0.5) * tileSize;
+    const seed = (p.x * 17 + p.y * 31) >>> 0;
+    if (node.habitat === "rocky") {
+      for (let i = 0; i < 4; i++) {
+        const ox = ((seed + i * 13) % 27) - 13,
+          oy = ((seed + i * 7) % 19) - 9;
+        ground
+          .fillStyle(i % 2 ? 0x697269 : 0x969987, 0.85)
+          .fillRoundedRect(x + ox - 3, y + oy - 2, 7, 4, 2);
+      }
+    } else if (node.habitat === "woodland") {
+      ground
+        .fillStyle(0x38482c, 0.25)
+        .fillEllipse(x, y, tileSize * 1.25, tileSize);
+      for (let i = 0; i < 5; i++) {
+        const ox = ((seed + i * 11) % 27) - 13,
+          oy = ((seed + i * 9) % 23) - 11;
+        ground
+          .fillStyle(i % 2 ? 0x97704b : 0x70834b, 0.65)
+          .fillEllipse(x + ox, y + oy, 5, 2);
+      }
+    } else {
+      ground
+        .fillStyle(0x60864c, 0.2)
+        .fillEllipse(x, y, tileSize * 1.2, tileSize);
+      for (let i = 0; i < 3; i++) {
+        const ox = ((seed + i * 11) % 27) - 13,
+          oy = ((seed + i * 9) % 23) - 11;
+        ground
+          .lineStyle(1, 0x345b36, 0.8)
+          .lineBetween(x + ox, y + oy, x + ox - 2, y + oy - 5)
+          .lineBetween(x + ox, y + oy, x + ox + 3, y + oy - 4);
+        ground.fillStyle(0xd9d199, 0.75).fillCircle(x + ox - 2, y + oy - 5, 1);
+      }
+    }
+  }
+  group.add(ground);
+}
+
+// Visual-only ground details share existing terrain blending. Traversal still
+// reads the canonical tile map; paths, water and structures stay untouched.
+export function resourceTerrain(tiles, nodes) {
+  const result = tiles.map((row) => row.slice());
+  for (const node of nodes || []) {
+    for (const p of node.habitat_tiles || []) {
+      if (
+        [0, 9, 11, 12].includes(tiles[p.y]?.[p.x]) &&
+        [0, 9, 11].includes(node.surface_tile)
+      )
+        result[p.y][p.x] = node.surface_tile;
+    }
+  }
+  return result;
 }

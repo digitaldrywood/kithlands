@@ -12,6 +12,13 @@ func TestGatheringRejectsInvalidContent(t *testing.T) {
 				gd.Gathering.Resources[i].Placement = "route_end"
 			}
 		}},
+		{"missing habitat", func(gd *GameData) { delete(gd.Gathering.Habitats, "rocky") }},
+		{"invalid cooldown", func(gd *GameData) { gd.Gathering.Resources[0].RespawnSeconds = 0 }},
+		{"invalid habitat radius", func(gd *GameData) {
+			h := gd.Gathering.Habitats["meadow"]
+			h.SearchRadius = 99
+			gd.Gathering.Habitats["meadow"] = h
+		}},
 		{"negative supply price", func(gd *GameData) { gd.Gathering.Materials[0].BuyPrice = -1 }},
 		{"duplicate material", func(gd *GameData) { gd.Gathering.Materials[0].ID = gd.Gathering.Resources[0].MaterialID }},
 		{"invalid level gate", func(gd *GameData) { gd.Gathering.Recipes[0].RequiredLevel = 99 }},
