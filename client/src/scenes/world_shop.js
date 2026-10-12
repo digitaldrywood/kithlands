@@ -1,3 +1,4 @@
+import { registerCanvasButton } from "../ui/canvas_menu_keyboard.js";
 import { roundedRectangle } from "../ui/theme.js";
 import {
   autosaveGame,
@@ -656,6 +657,17 @@ export async function openShop(scene, spawn) {
           renderList(itemsForTab(currentTab));
           renderDetail();
         };
+        registerCanvasButton(scene, {
+          bg: rowBg,
+          label,
+          width: LIST_ROW_WIDTH,
+          height: LIST_ROW_HEIGHT,
+          inline: true,
+          enabled: () => true,
+          activate: selectRow,
+          focus: () => rowBg.setStrokeStyle(2, 0xc9b589),
+          blur: () => rowBg.setStrokeStyle(1, 0x384859),
+        });
         rowBg.setInteractive({ useHandCursor: true });
         label.setInteractive({ useHandCursor: true });
         rowBg.on("pointerover", selectRow);
@@ -703,6 +715,17 @@ export async function openShop(scene, spawn) {
           await refreshAfterPurchase(`Bought: ${item.name}!`);
           autosaveAfterPurchase(result);
         };
+        registerCanvasButton(scene, {
+          bg: rowBg,
+          label,
+          width: LIST_ROW_WIDTH,
+          height: LIST_ROW_HEIGHT,
+          inline: true,
+          enabled: () => true,
+          activate: selectRow,
+          focus: () => rowBg.setStrokeStyle(2, 0xc9b589),
+          blur: () => rowBg.setStrokeStyle(1, 0x384859),
+        });
         rowBg.setInteractive({ useHandCursor: true });
         label.setInteractive({ useHandCursor: true });
         rowBg.on("pointerdown", triggerPurchase);

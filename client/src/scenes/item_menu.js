@@ -331,7 +331,7 @@ export function showItemMenu(scene, opts = {}) {
       panel.x,
       panelBottom -
         (layout.mode === "mobile" ? layout.footer.hintBottomInset : 22),
-      "↑↓ move    Enter/click use    Esc close",
+      "↑↓ / Tab move · 1–9 select · Enter use · Esc back",
       {
         fontSize: `${layout.footer.hintFontSize}px`,
         color: "#94a8bd",
@@ -393,7 +393,7 @@ function rebuildRows(state) {
   state.selectedItem = null;
   state.targets = [];
   state.stageText?.setText("CHOOSE AN ITEM");
-  state.hintText?.setText("↑↓ move    Enter/click use    Esc close");
+  state.hintText?.setText("↑↓ / Tab move · 1–9 select · Enter use · Esc back");
   const list = buildItemList(state.scene.gameState, state.mode);
   state.items = list;
   state.countText?.setText(
@@ -433,7 +433,7 @@ function rebuildRows(state) {
     };
     const color = item.greyed ? "#697888" : "#e9eef7";
     const label = state.scene.add
-      .text(panelLeft + layout.list.labelInset, y, item.name, {
+      .text(panelLeft + layout.list.labelInset, y, `${i + 1}. ${item.name}`, {
         fontSize: `${layout.list.labelFontSize}px`,
         color,
         fontFamily: "Arial, sans-serif",
@@ -512,7 +512,31 @@ function refreshCursor(state) {
 }
 
 function onKey(state, ev) {
-  if (state.closed) return;
+  if (state.closed || ev.altKey || ev.ctrlKey || ev.metaKey) return;
+  if (ev.repeat && (["Enter", " "].includes(ev.key) || /^[1-9]$/.test(ev.key)))
+    return;
+  if (/^[1-9]$/.test(ev.key)) {
+    const index = Number(ev.key) - 1;
+    if (state.view === "targets") {
+      const target = state.targets[index];
+      if (target?.valid) useItem(state, state.selectedItem, target.slot);
+    } else if (state.items[state.scrollTop + index]) {
+      state.cursor = state.scrollTop + index;
+      confirmSelection(state);
+    }
+    return;
+  }
+  if (ev.key === "Tab") {
+    ev.preventDefault();
+    if (state.view === "targets") {
+      if (state.targets.length)
+        state.cursor =
+          (state.cursor + (ev.shiftKey ? -1 : 1) + state.targets.length) %
+          state.targets.length;
+      refreshTargetCursor(state);
+    } else if (state.items.length) moveItemCursor(state, ev.shiftKey ? -1 : 1);
+    return;
+  }
   if (state.view === "targets") {
     onTargetKey(state, ev);
     return;
@@ -664,7 +688,7 @@ function showTargetPicker(state, item) {
       .text(
         x - cardW / 2 + layout.targets.labelInsetX,
         y + layout.targets.labelOffsetY,
-        t.name,
+        `${i + 1}. ${t.name}`,
         {
           fontSize: `${layout.targets.labelFontSize}px`,
           color: t.valid ? "#e9eef7" : "#667788",

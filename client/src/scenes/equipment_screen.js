@@ -1,3 +1,4 @@
+import { menuKeyboard } from "../ui/menu_keyboard.js";
 import {
   applyRecommendedEquipment,
   equipItem,
@@ -5,7 +6,11 @@ import {
   recommendEquipment,
   unequipItem,
 } from "../api.js";
-import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
+import {
+  pauseWorldFor,
+  resumeWorldFor,
+  topWorldLock,
+} from "../systems/modalLock.js";
 import { renderEquipmentBuilds } from "./equipment_builds.js";
 import { showGemWorkshop } from "./gem_workshop.js";
 
@@ -123,9 +128,16 @@ export function showEquipmentScreen(scene, partyIndex = 0, options = {}) {
   window.addEventListener("resize", state.resizeHandler);
   scene.equipmentScreenState = state;
 
-  root.addEventListener("keydown", (event) =>
-    handleOverlayKeydown(state, event),
-  );
+  state.menuKeys = menuKeyboard(root, {
+    scope: () => root.querySelector(".equipment-build-dialog") || root,
+  });
+  state.keyHandler = (event) => {
+    if (topWorldLock(scene) !== LOCK_NAME) return;
+    event.stopImmediatePropagation();
+    if (event.key === "Escape" || !state.menuKeys.handle(event))
+      handleOverlayKeydown(state, event);
+  };
+  window.addEventListener("keydown", state.keyHandler, true);
   renderEquipmentScreen(state);
   requestAnimationFrame(() => {
     if (state.selectedSlotID) focusSelectedSlot(state);
@@ -141,6 +153,8 @@ export function closeEquipmentScreen(scene, { callOnClose = true } = {}) {
   if (state.scene.input && state.previousPhaserInputEnabled != null) {
     state.scene.input.enabled = state.previousPhaserInputEnabled;
   }
+  window.removeEventListener("keydown", state.keyHandler, true);
+  state.menuKeys?.destroy();
   state.dom?.destroy();
   resumeWorldFor(scene, LOCK_NAME);
   if (state.previousFocus?.isConnected) state.previousFocus.focus();

@@ -403,7 +403,7 @@ export function showFieldMagicMenu(scene, opts = {}) {
     .text(
       panelLeft + layout.detail.horizontalInset,
       panelBottom - layout.footer.hintBottomInset,
-      "↑↓ move    Enter/click select",
+      "↑↓ / Tab move · 1–9 select    Enter/click select",
       {
         fontSize: `${layout.footer.hintFontSize}px`,
         color: "#94a8bd",
@@ -434,7 +434,9 @@ export function showFieldMagicMenu(scene, opts = {}) {
 
 function rebuildRows(state) {
   clearRows(state);
-  state.hintText?.setText("↑↓ move · Enter/click select · Done to finish");
+  state.hintText?.setText(
+    "↑↓ / Tab move · 1–9 select · Enter/click select · Done to finish",
+  );
 
   if (state.casterSlot == null) {
     state.titleText.setText("FIELD MAGIC");
@@ -610,7 +612,7 @@ function renderRows(state, rows, emptyText) {
       .text(
         panelLeft + layout.list.labelInset,
         y - lineOffset,
-        row.target ? row.target.name : row.label,
+        `${i + 1}. ${row.target ? row.target.name : row.label}`,
         {
           fontSize: `${layout.list.labelFontSize}px`,
           color: baseColor,
@@ -736,7 +738,18 @@ function refreshCursor(state) {
 }
 
 function onKey(state, ev) {
-  if (state.closed || state.busy) return;
+  if (state.closed || state.busy || ev.altKey || ev.ctrlKey || ev.metaKey)
+    return;
+  if (ev.key === "Tab") {
+    ev.preventDefault();
+    if (state.rows?.length) moveCursor(state, ev.shiftKey ? -1 : 1);
+    return;
+  }
+  if (/^[1-9]$/.test(ev.key) && !ev.repeat) {
+    const row = state.rows?.[state.scrollTop + Number(ev.key) - 1];
+    if (row && !row.greyed) row.onSelect?.();
+    return;
+  }
   if (ev.repeat && ["Enter", " "].includes(ev.key)) return;
   switch (ev.key) {
     case "ArrowDown":

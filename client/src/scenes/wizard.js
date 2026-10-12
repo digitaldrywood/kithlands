@@ -1,3 +1,4 @@
+import { registerCanvasButton } from "../ui/canvas_menu_keyboard.js";
 import { roundedRectangle } from "../ui/theme.js";
 import { drawButton, drawPanel } from "../ui/panel.js";
 import { newGame, geocode, osmPreview } from "../api.js";
@@ -21,6 +22,34 @@ function sortPOIsByImportance(pois = []) {
   return [...pois].sort((a, b) => (b.importance || 0) - (a.importance || 0));
 }
 
+// Keep select navigation deterministic while Phaser owns the game keyboard.
+function selectKeyboard(select) {
+  select.addEventListener("keydown", (event) => {
+    if (["Tab", "Escape"].includes(event.key)) return;
+    event.stopPropagation();
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const last = select.options.length - 1;
+    const index =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? last
+          : Math.max(
+              0,
+              Math.min(
+                last,
+                select.selectedIndex + (event.key === "ArrowDown" ? 1 : -1),
+              ),
+            );
+    if (index !== select.selectedIndex) {
+      select.selectedIndex = index;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  });
+}
+
 export class WizardScene extends Phaser.Scene {
   constructor() {
     super("Wizard");
@@ -30,9 +59,17 @@ export class WizardScene extends Phaser.Scene {
     this.step = 0;
     this.townSearchToken = null;
     const onEscape = (event) => {
-      if (event.key !== "Escape" || this.step !== 0) return;
+      if (event.key !== "Escape") return;
       event.preventDefault();
-      this.goBack();
+      if (event.repeat) return;
+      const cancel = this.canvasMenuKeyboard?.entries.find(
+        (entry) =>
+          entry.bg.active &&
+          entry.bg.visible &&
+          /^cancel$/i.test(entry.label.text),
+      );
+      if (cancel) cancel.activate();
+      else this.goBack();
     };
     window.addEventListener("keydown", onEscape);
     this.events.once("shutdown", () => {
@@ -536,6 +573,16 @@ export class WizardScene extends Phaser.Scene {
       slider.setVisible(useOSM);
     });
 
+    registerCanvasButton(this, {
+      bg: osmToggle,
+      label: osmToggle,
+      width: 460,
+      height: 28,
+      enabled: () => !this.townSearchState?.busy,
+      activate: () => osmToggle.emit("pointerdown"),
+      focus: () => osmToggle.setColor("#e9eef7"),
+      blur: () => osmToggle.setColor(useOSM ? "#94a8bd" : "#697888"),
+    });
     const submitTown = async () => {
       if (!findButton.input?.enabled) return;
 
@@ -692,47 +739,30 @@ export class WizardScene extends Phaser.Scene {
       if (idx >= 0 && idx < maxShow) selectedIdx = idx;
     }
 
-    const items = [];
-    for (let i = 0; i < maxShow; i++) {
-      const poi = pois[i];
-      const kindLabel =
-        poi.kind === "business"
-          ? "BIZ"
-          : poi.kind === "landmark"
-            ? "LMK"
-            : poi.kind === "natural"
-              ? "NAT"
-              : "LOC";
-      const label = `[${kindLabel}] ${poi.name}`;
-      const color = i === selectedIdx ? "#8ac7aa" : "#aaaaaa";
-
-      const t = this.add
-        .text(this.cx, 110 + i * 22, label, {
-          fontSize: "13px",
-          color,
-          fontFamily: "Arial, sans-serif",
-          wordWrap: { width: 500 },
-        })
-        .setOrigin(0.5)
-        .setInteractive({ useHandCursor: true });
-
-      t.on("pointerover", () => {
-        if (i !== selectedIdx) t.setColor("#94a8bd");
-      });
-      t.on("pointerout", () => {
-        t.setColor(i === selectedIdx ? "#8ac7aa" : "#aaaaaa");
-      });
-      t.on("pointerdown", () => {
-        // Deselect old
-        if (items[selectedIdx]) items[selectedIdx].setColor("#aaaaaa");
-        selectedIdx = i;
-        t.setColor("#8ac7aa");
-        this.wizardData.spawn_node_id = pois[i].id;
-      });
-
-      items.push(t);
-      this.contentGroup.add(t);
-    }
+    const picker = document.createElement("select");
+    picker.setAttribute("aria-label", "Starting location");
+    picker.size = Math.min(maxShow, 6);
+    picker.style.cssText =
+      "width:460px;padding:8px;background:#1c2a3a;color:#e9eef7;border:1px solid #94a8bd;border-radius:8px;font:13px Arial;";
+    pois.slice(0, maxShow).forEach((poi, i) => {
+      const option = document.createElement("option");
+      option.value = String(i);
+      option.textContent = poi.name;
+      picker.append(option);
+    });
+    picker.value = String(selectedIdx);
+    picker.addEventListener("change", () => {
+      selectedIdx = Number(picker.value);
+      this.wizardData.spawn_node_id = pois[selectedIdx].id;
+    });
+    selectKeyboard(picker);
+    this.contentGroup.add(
+      this.add.dom(this.cx, 110 + Math.min(maxShow, 6) * 11, picker),
+    );
+    this.addLabel(
+      110 + Math.min(maxShow, 6) * 22 + 25,
+      "↑↓ choose a location · Tab to actions",
+    );
 
     // Set initial spawn
     this.wizardData.spawn_node_id = pois[selectedIdx].id;
@@ -744,7 +774,7 @@ export class WizardScene extends Phaser.Scene {
       );
     }
 
-    const btnY = Math.min(110 + (maxShow + 1) * 22 + 20, 440);
+    const btnY = Math.min(110 + (maxShow + 1) * 22 + 60, 440);
     this.addBackButton(btnY);
     this.addButton(btnY, "NEXT", () => {
       this.step++;
@@ -826,52 +856,24 @@ export class WizardScene extends Phaser.Scene {
   }
 
   addClassPicker(x, y, initialClassId, classList, onChange) {
-    let idx = Math.max(0, classList.indexOf(initialClassId));
-    if (idx < 0) idx = 0;
-
-    const labelStyle = {
-      fontSize: "14px",
-      color: "#8ac7aa",
-      fontFamily: "Arial, sans-serif",
-    };
-    const arrowStyle = {
-      fontSize: "18px",
-      color: "#aaaaaa",
-      fontFamily: "Arial, sans-serif",
-    };
-
-    const leftArrow = this.add
-      .text(x - 70, y, "<", arrowStyle)
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    const label = this.add
-      .text(x, y, classList[idx], labelStyle)
-      .setOrigin(0.5);
-    const rightArrow = this.add
-      .text(x + 70, y, ">", arrowStyle)
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-
-    leftArrow.on("pointerover", () => leftArrow.setColor("#e9eef7"));
-    leftArrow.on("pointerout", () => leftArrow.setColor("#aaaaaa"));
-    rightArrow.on("pointerover", () => rightArrow.setColor("#e9eef7"));
-    rightArrow.on("pointerout", () => rightArrow.setColor("#aaaaaa"));
-
-    const cycle = (delta) => {
-      idx = (idx + delta + classList.length) % classList.length;
-      label.setText(classList[idx]);
-      if (onChange) onChange(classList[idx]);
-    };
-    leftArrow.on("pointerdown", () => cycle(-1));
-    rightArrow.on("pointerdown", () => cycle(1));
-
-    this.contentGroup.add(leftArrow);
-    this.contentGroup.add(label);
-    this.contentGroup.add(rightArrow);
-
-    return {
-      getClassId: () => classList[idx],
-    };
+    const select = document.createElement("select");
+    select.setAttribute("aria-label", "Character class");
+    select.style.cssText =
+      "width:160px;padding:6px;color:#e9eef7;background:#1c2736;border:1px solid #94a8bd;border-radius:6px;font:14px Arial,sans-serif";
+    for (const id of classList) {
+      const option = document.createElement("option");
+      option.value = id;
+      option.textContent = id;
+      select.append(option);
+    }
+    select.value = classList.includes(initialClassId)
+      ? initialClassId
+      : classList[0];
+    select.addEventListener("change", () => onChange?.(select.value));
+    selectKeyboard(select);
+    const picker = this.add.dom(x, y, select);
+    this.contentGroup.add(picker);
+    return { getClassId: () => select.value };
   }
 
   addPartyRow(rowY, slot, classList) {
@@ -907,7 +909,7 @@ export class WizardScene extends Phaser.Scene {
     this.addTitle("PICK YOUR PARTY");
     this.addLabel(
       60,
-      "Choose up to 4 party members.\n< and > cycle class. Leave a name blank to skip.",
+      "Choose up to 4 party members.\n↑↓ select class; Tab moves between fields. Leave a name blank to skip.",
     );
 
     const classList = [

@@ -1,3 +1,4 @@
+import { menuKeyboard } from "../ui/menu_keyboard.js";
 import { changeGem, craftGem, getGame } from "../api.js";
 import { playSFX } from "../systems/audio.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
@@ -336,6 +337,7 @@ export function showGemWorkshop(
   root.setAttribute("aria-labelledby", "gem-workshop-title");
   root.tabIndex = -1;
   (document.querySelector("#game-ui") || document.body).append(root);
+  const menuKeys = menuKeyboard(root);
   let mode = initialMode;
   let selectedGearID = preselectedInstanceID;
   let selectedSocket = -1;
@@ -357,6 +359,7 @@ export function showGemWorkshop(
     closed = true;
     pendingController?.abort();
     window.removeEventListener("keydown", keydown, true);
+    menuKeys.destroy();
     root.remove();
     scene.events?.off("shutdown", shutdown);
     scene.gemWorkshopState = null;
@@ -388,27 +391,7 @@ export function showGemWorkshop(
       close();
       return;
     }
-    if (event.key !== "Tab") return;
-    const controls = [
-      ...root.querySelectorAll("button:not(:disabled), select:not(:disabled)"),
-    ];
-    const first = controls[0],
-      last = controls.at(-1);
-    if (
-      event.shiftKey &&
-      (document.activeElement === first || document.activeElement === root)
-    ) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      last?.focus();
-    } else if (
-      !event.shiftKey &&
-      (document.activeElement === last || document.activeElement === root)
-    ) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      first?.focus();
-    }
+    if (menuKeys.handle(event)) event.stopImmediatePropagation();
   };
   window.addEventListener("keydown", keydown, true);
 
