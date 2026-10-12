@@ -62,7 +62,7 @@ export function menuKeyboard(root, { scope = () => root } = {}) {
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ["disabled", "hidden"],
+    attributeFilter: ["disabled", "hidden", "open"],
   });
   refresh();
   function handle(event) {
