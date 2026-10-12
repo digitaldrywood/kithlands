@@ -581,6 +581,7 @@
     {
       "id": "iron_sword",
       "name": "Iron Sword",
+      "icon_key": "crafted/iron-sword",
       "type": "sword",
       "tier": 2,
       "power": 12,

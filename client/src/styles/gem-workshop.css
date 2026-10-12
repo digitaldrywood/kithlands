@@ -7,15 +7,15 @@
     max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom))
     max(12px, env(safe-area-inset-left));
   margin: auto;
-  max-width: 1120px;
-  max-height: 810px;
+  max-width: 1020px;
+  max-height: 740px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   color: var(--menu-text);
   background: var(--menu-panel);
   border: 1px solid var(--menu-line);
-  border-radius: 24px;
+  border-radius: 18px;
   box-shadow: 0 14px 80px #000c;
   font:
     15px/1.45 system-ui,
@@ -33,26 +33,23 @@
   margin: 0;
 }
 .kith-gem-workshop h1 {
-  font:
-    700 26px/1.2 system-ui,
-    sans-serif;
+  font-size: 24px;
   color: var(--menu-accent);
 }
 .kith-gem-workshop h2 {
-  font-size: 19px;
+  font-size: 18px;
   line-height: 1.3;
 }
 .kith-gem-workshop h3 {
   font-size: 15px;
-  color: var(--menu-text);
 }
 .kith-gem-workshop button,
 .kith-gem-workshop select {
   min-height: 44px;
   max-width: 100%;
-  padding: 9px 12px;
+  padding: 8px 10px;
   border: 1px solid var(--menu-line);
-  border-radius: 12px;
+  border-radius: 8px;
   background: var(--menu-card);
   color: var(--menu-text);
   font: inherit;
@@ -61,7 +58,7 @@
   touch-action: manipulation;
 }
 .kith-gem-workshop button:hover:not(:disabled) {
-  background: var(--menu-line);
+  border-color: var(--menu-accent);
 }
 .kith-gem-workshop button:disabled {
   opacity: 0.6;
@@ -69,7 +66,7 @@
 }
 .kith-gem-workshop :focus-visible {
   outline: 3px solid var(--menu-accent);
-  outline-offset: 2px;
+  outline-offset: -3px;
 }
 .kith-gem-workshop [aria-pressed="true"] {
   background: var(--menu-line);
@@ -80,52 +77,127 @@
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  padding: 18px 22px 12px;
+  padding: 14px 20px 10px;
+  flex-shrink: 0;
 }
 .gem-tabs {
   display: flex;
-  gap: 10px;
-  padding: 0 22px 14px;
+  gap: 8px;
+  padding: 0 20px 12px;
   border-bottom: 1px solid var(--menu-line);
+  flex-shrink: 0;
 }
 .gem-tabs button {
   flex: 1;
   font-weight: 650;
 }
 .gem-body {
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 330px minmax(0, 1fr);
-  align-items: start;
-  gap: 22px;
-  padding: 22px;
+  grid-template-columns: minmax(250px, 0.85fr) minmax(0, 1.3fr);
+  overflow: hidden;
 }
-.gem-choices,
-.gem-preview {
+.gem-choices {
   min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  padding: 18px;
+  border-right: 1px solid var(--menu-line);
+}
+.gem-choices > label {
+  font-size: 12px;
 }
 .gem-preview {
-  padding: 20px;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #101e2ddd;
+}
+.gem-preview-content {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+}
+.gem-actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 18px;
   background: var(--menu-panel);
+  border-top: 1px solid var(--menu-line);
+  box-shadow: 0 -6px 18px #0002;
+}
+.gem-item-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  background: var(--menu-card);
+  border-radius: 8px;
+}
+.gem-item-card > div {
+  min-width: 0;
+}
+.gem-item-card .gem-muted {
+  font-size: 13px;
+}
+.gem-art {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  display: grid;
+  place-items: center;
   border: 1px solid var(--menu-line);
-  border-radius: 12px;
+  border-radius: 7px;
+  background: #0c1728;
+  color: #b994e8;
+}
+.gem-art svg {
+  width: 34px;
+  height: 34px;
+  fill: currentColor;
+  stroke: #f5e4bd;
+  stroke-width: 1.4;
+}
+.gem-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.gem-tone-ember {
+  color: #cf7440;
+}
+.gem-tone-ward {
+  color: #639ad8;
+}
+.gem-tone-keen {
+  color: #71b99b;
 }
 .gem-choice-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
 }
 .gem-socket-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
-.kith-gem-workshop .gem-socket-list button {
+.gem-socket-list button {
+  flex: 1;
   text-align: left;
 }
 .kith-gem-workshop .gem-choice {
@@ -133,11 +205,21 @@
   flex: 0 0 auto;
   text-align: left;
   display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.gem-choice-copy {
+  min-width: 0;
+  display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 3px;
 }
-.gem-choice span {
-  font-size: 14px;
+.gem-choice-copy > span {
+  font-size: 12px;
+}
+.gem-choice kbd {
+  flex-shrink: 0;
 }
 .gem-pages {
   display: flex;
@@ -146,12 +228,12 @@
   justify-content: space-between;
 }
 .gem-pages span {
-  font-size: 13px;
+  font-size: 12px;
   text-align: center;
 }
 .gem-pages button {
-  font-size: 14px;
-  padding: 8px;
+  font-size: 13px;
+  padding: 6px;
 }
 .gem-muted {
   color: var(--menu-muted);
@@ -164,33 +246,26 @@
 }
 .gem-eyebrow {
   color: var(--menu-muted);
-  font-size: 13px;
-}
-.gem-output {
-  color: #b5efd9;
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.13em;
 }
 .gem-costs {
-  padding: 12px;
+  padding: 10px;
   border: 1px solid var(--menu-line);
-  border-radius: 12px;
+  border-radius: 8px;
 }
 .gem-costs h3 {
   margin-bottom: 6px;
 }
-.gem-effect {
-  text-transform: none;
-}
 .gem-stat-changes table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 15px;
-  margin-top: 6px;
+  font-size: 14px;
+  margin-top: 4px;
 }
 .gem-stat-changes th,
 .gem-stat-changes td {
-  padding: 6px 4px;
+  padding: 5px 4px;
   text-align: right;
   border-bottom: 1px solid var(--menu-card);
 }
@@ -199,40 +274,55 @@
   font-weight: 500;
 }
 .gem-stat-changes thead th {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--menu-muted);
+}
+.gem-stat-changes tbody td:last-child {
+  font-weight: 650;
+}
+.gem-details summary {
+  cursor: pointer;
+  color: var(--menu-muted);
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.gem-details summary::before {
+  content: "▸";
+  margin-right: 6px;
+}
+.gem-details[open] summary::before {
+  content: "▾";
 }
 .kith-gem-workshop .gem-confirm {
   width: 100%;
-  background: #285b49;
-  border-color: #8ed4b3;
-  font-weight: 650;
+  background: var(--menu-accent);
+  color: #101e2d;
+  border-color: var(--menu-accent);
+  font-weight: 700;
 }
-.gem-recovery {
+.gem-recovery,
+.gem-recovery-info {
   display: flex;
   flex-direction: column;
-  gap: 9px;
-  margin-top: 6px;
-  padding-top: 16px;
+  gap: 8px;
+  padding-top: 12px;
   border-top: 1px solid var(--menu-line);
 }
 .kith-gem-workshop .gem-recover {
   width: 100%;
-  background: #5a4326;
   border-color: var(--menu-accent);
-  font-weight: 650;
 }
 .gem-notice {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 22px;
+  gap: 10px;
+  padding: 8px 20px;
   background: #1d483d;
   color: #dcfff1;
-}
-.gem-notice button {
-  flex: 0 0 auto;
+  font-size: 13px;
 }
 .gem-notice.is-error {
   background: #5b3039;
@@ -244,45 +334,134 @@
     border-radius: 10px;
     max-height: none;
   }
-  .kith-gem-workshop h1 {
-    font-size: 22px;
-  }
   .gem-header {
-    padding: 12px 12px 10px;
+    padding: 10px 12px 8px;
+  }
+  .kith-gem-workshop h1 {
+    font-size: 21px;
   }
   .gem-tabs {
-    padding: 0 12px 10px;
+    padding: 0 12px 8px;
     gap: 6px;
   }
-  .gem-tabs button {
-    padding: 8px;
-  }
   .gem-body {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  }
+  .gem-choices {
+    padding: 10px 12px;
+    gap: 7px;
+    border-right: 0;
+    border-bottom: 1px solid var(--menu-line);
+  }
+  .gem-choices > h2:first-child,
+  .gem-choices > label {
+    display: none;
+  }
+  .gem-item-card {
+    padding: 7px 9px;
+  }
+  .gem-preview-content {
     padding: 12px;
+    gap: 7px;
   }
-  .gem-choices,
-  .gem-preview {
-    width: 100%;
-  }
-  .gem-preview {
-    padding: 14px;
+  .gem-actions {
+    padding: 10px 12px;
   }
   .gem-choice-list {
-    max-height: 180px;
-    overflow-y: auto;
-    padding: 3px;
-    overscroll-behavior: contain;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
   }
-  .gem-socket-list {
-    grid-template-columns: 1fr;
+  .kith-gem-workshop .gem-choice {
+    padding: 7px;
+    gap: 6px;
+    align-items: flex-start;
+  }
+  .gem-choice .gem-art {
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+  }
+  .gem-choice .gem-art svg {
+    width: 28px;
+    height: 28px;
+  }
+  .gem-choice kbd {
+    font-size: 10px;
+  }
+  .gem-choice-copy strong {
+    font-size: 13px;
   }
   .gem-notice {
-    align-items: stretch;
-    flex-direction: column;
-    padding: 8px 12px;
-    font-size: 14px;
+    padding: 7px 12px;
+  }
+  .gem-notice button {
+    flex-shrink: 0;
+  }
+  .kith-gem-workshop[data-mode="transmute"] .gem-body {
+    grid-template-rows: minmax(0, 0.65fr) minmax(0, 1.35fr);
+  }
+}
+
+.gem-equipment-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.gem-equipment-picker select {
+  flex: 1;
+  min-width: 0;
+}
+.gem-choices > * {
+  flex-shrink: 0;
+}
+
+.gem-actions .gem-recovery {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.gem-actions .gem-confirm[hidden] {
+  display: none;
+}
+@media (max-width: 700px) {
+  .gem-body {
+    grid-template-rows: minmax(0, auto) minmax(0, 1fr);
+  }
+  .gem-choices {
+    max-height: 38vh;
+  }
+  .kith-gem-workshop[data-mode="transmute"] .gem-body {
+    grid-template-rows: minmax(0, auto) minmax(0, 1fr);
+  }
+  .kith-gem-workshop[data-mode="transmute"] .gem-choices {
+    max-height: 29vh;
+  }
+}
+
+.gem-loss {
+  color: #f2a7a7;
+}
+
+.gem-replacement-warning {
+  font-size: 12px;
+}
+@media (max-width: 440px) {
+  .gem-selected-name {
+    display: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .kith-gem-workshop .gem-choice {
+    position: relative;
+    padding-bottom: 24px;
+  }
+  .gem-choice kbd {
+    position: absolute;
+    bottom: 4px;
+    right: 7px;
   }
 }

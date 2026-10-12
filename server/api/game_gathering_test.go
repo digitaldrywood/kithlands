@@ -96,6 +96,10 @@ func TestFieldCraftingAtomicOutputAndCombatGuard(t *testing.T) {
 	for id, item := range g.inv.Instances {
 		if before.Instances[id] == nil && item.BaseID == "iron_sword" {
 			found = true
+			view, err := g.rolledItemState(id, item)
+			if err != nil || view.IconKey != "crafted/iron-sword" {
+				t.Fatalf("crafted sword lost its item art: %q, %v", view.IconKey, err)
+			}
 			if len(item.Sockets) != 1 || item.Sockets[0].GemID != "" || len(item.Affixes) != 0 {
 				t.Fatal("incorrect crafted sword")
 			}

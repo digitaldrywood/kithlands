@@ -254,6 +254,7 @@ for (const [width, height] of [
       (item) => item.name === "Iron Sword" && item.instance_id,
     );
     expect(sword).toBeTruthy();
+    expect(sword.icon_key).toBe("crafted/iron-sword");
     expect(sword.sockets).toHaveLength(1);
     await crafting
       .getByRole("button", { name: "Gem workshop", exact: true })
@@ -287,6 +288,18 @@ for (const [width, height] of [
     await expect(page.locator('[data-slot-id="main_hand"]')).toContainText(
       "Iron Sword",
     );
+    const swordArt = page.locator(
+      '[data-slot-id="main_hand"] img.equipment-item-art',
+    );
+    await expect(swordArt).toHaveAttribute(
+      "src",
+      "/sprites/items/crafted/iron-sword.png",
+    );
+    await expect
+      .poll(() =>
+        swordArt.evaluate((img) => img.complete && img.naturalWidth > 0),
+      )
+      .toBe(true);
     await capture(page, `${width}-crafted-sword-equipped`);
     await page.getByRole("button", { name: "Socket", exact: true }).click();
     const socketPreview = page.getByRole("region", { name: "Socket preview" });
