@@ -11,7 +11,8 @@ import {
   isGroupTargetMode,
   targetModeSide,
 } from "../systems/battleSpellTargeting.js";
-import { showItemMenu } from "./item_menu.js";
+import { buildItemList, canUseOnTarget, itemUseContext } from "./item_menu.js";
+import { battleChoicePanel } from "../ui/battle_choice_panel.js";
 import {
   closeEquipmentScreen,
   showEquipmentScreen,
@@ -363,6 +364,7 @@ export class BattleScene extends Phaser.Scene {
       label: "TARGET",
     });
     this.events.once("shutdown", () => {
+      this.closePicker();
       this.floatingText?.destroy();
       this.messageWindow?.destroy();
       this.actorCursor?.destroy();
@@ -2781,7 +2783,13 @@ export class BattleScene extends Phaser.Scene {
   }
 
   handleActionButton(button, member, gs, slot) {
-    if (this.animating) return;
+    if (
+      this.animating ||
+      this.pickerOverlay ||
+      this.targetingMode ||
+      slot !== this.livingMembers[this.currentMemberIdx]
+    )
+      return;
     if (button.type !== "repeat" && button.type !== "auto" && this.autoMode) {
       this.autoMode = false;
     }
@@ -2872,6 +2880,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   recordAction(slot, action) {
+    this.closePicker();
     const member = this.gameState.party[slot];
     const actionName =
       action.type === "spell"
@@ -3013,6 +3022,7 @@ export class BattleScene extends Phaser.Scene {
     }
 
     this.updateTargetHighlight();
+    this.showBattleTargets("enemy");
   }
 
   enterPartyTargetingMode() {
@@ -3027,6 +3037,54 @@ export class BattleScene extends Phaser.Scene {
     );
     this.selectedPartyIdx = casterIdx >= 0 ? casterIdx : 0;
     this.updatePartyTargetHighlight();
+    this.showBattleTargets("party");
+  }
+
+  showBattleTargets(side) {
+    const slot = this.livingMembers[this.currentMemberIdx];
+    const actor = this.gameState.party[slot];
+    const kind = this.pendingAction;
+    const targets =
+      side === "enemy" ? this.livingEnemies : this.livingPartyTargets;
+    this.showBattleChoices(
+      `${actor.name} · Choose ${side === "enemy" ? "enemy" : "ally"}`,
+      targets.map((target, index) => ({
+        label: target.name,
+        detail:
+          side === "party"
+            ? `${target.hp}/${target.max_hp} HP · ${target.mp ?? 0}/${target.max_mp ?? 0} MP`
+            : `${kind === "spell" ? "Cast magic" : kind === "ability" ? "Use ability" : "Attack"} on ${target.name}`,
+        onInspect: () => {
+          if (side === "enemy") {
+            this.selectedTargetIdx = index;
+            this.updateTargetHighlight();
+          } else {
+            this.selectedPartyIdx = index;
+            this.updatePartyTargetHighlight();
+          }
+        },
+        action: () => {
+          this.closePicker();
+          if (side === "enemy") this.onEnemyClick(target.id);
+          else this.onPartyClick(target.slot);
+        },
+      })),
+      () => {
+        this.closePicker();
+        this.exitTargetingMode();
+        this.pendingAction = null;
+        this.pendingSpellId = null;
+        this.pendingSpellEffect = null;
+        this.pendingSpellTargetMode = null;
+        this.pendingAbilityId = null;
+        if (kind === "spell") this.showSpellPicker(slot);
+        else if (kind === "ability") this.showAbilityPicker(slot);
+        else
+          this.promptText
+            .setText(`${actor.name}\'s turn — choose an action`)
+            .setColor("#ffff44");
+      },
+    );
   }
 
   exitTargetingMode() {
@@ -3107,168 +3165,33 @@ export class BattleScene extends Phaser.Scene {
       .setColor("#8888ff");
   }
 
+  showBattleChoices(title, choices, onBack = () => this.closePicker()) {
+    this.closePicker();
+    this.pickerItems = choices.map((choice) => ({
+      action: () => {
+        if (!choice.disabled) choice.action();
+      },
+    }));
+    this.pickerOverlay = [battleChoicePanel(this, { title, choices, onBack })];
+  }
+
   showSpellPicker(slot) {
-    const gs = this.gameState;
-    const member = gs.party[slot];
-    if (!member?.spells) return;
-
-    const currentMP = member.mp ?? 0;
-    const spells = member.spells.filter((s) => currentMP >= (s.mp_cost ?? 0));
-    if (!spells.length) return;
-
-    const ol = [];
-    const rowHeight = 34;
-    const h = 136 + spells.length * rowHeight;
-    const centerY = 365;
-    const top = centerY - h / 2;
-    const bottom = centerY + h / 2;
-    const frame = drawPanel(this, 400, centerY, 430, h, {
-      variant: "ff6",
-      radius: 10,
-      innerInset: 5,
-      outerFill: 0x384859,
-      innerTop: 0x1c2736,
-      innerBottom: 0x151e2b,
-      outerStroke: 0xcfe8ff,
-      innerStroke: 0x384859,
-      depth: 50,
-      interactive: false,
-    });
-    frame.bg._combatFxTag = "spell-picker-panel";
-    ol.push(frame.bg);
-
-    const heading = this.add
-      .text(220, top + 23, "MAGIC", {
-        fontSize: "12px",
-        color: "#8fc9f0",
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold",
-      })
-      .setDepth(52);
-    const actor = this.add
-      .text(580, top + 23, `${member.name}  ·  MP ${currentMP}`, {
-        fontSize: "11px",
-        color: "#dcecff",
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold",
-      })
-      .setOrigin(1, 0)
-      .setDepth(52);
-    const detailLabel = this.add
-      .text(220, bottom - 74, "EFFECT", {
-        fontSize: "9px",
-        color: "#82b9df",
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold",
-      })
-      .setDepth(52);
-    const detailText = this.add
-      .text(220, bottom - 58, "", {
-        fontSize: "11px",
-        color: "#dce8f4",
-        fontFamily: "Arial, sans-serif",
-        wordWrap: { width: 360, useAdvancedWrap: true },
-        lineSpacing: 2,
-      })
-      .setDepth(52);
-    ol.push(heading, actor, detailLabel, detailText);
-
-    const targetLabel = (spell) => {
-      const target = spell.target || spell.target_modes?.[0];
-      if (target === "all_enemies") return "all enemies";
-      if (target === "all_allies") return "all allies";
-      if (target === "single_ally") return "one ally";
-      if (target === "self") return "self";
-      return "one enemy";
-    };
-    const spellDetail = (spell) =>
-      `${spell.description || "Combat magic"}  ·  ${spell.mp_cost} MP  ·  ${targetLabel(spell)}`;
-    detailText.setText(spellDetail(spells[0]));
-
-    this.pickerItems = [];
-    const pickerRows = [];
-    const focusRow = (selectedIndex) => {
-      for (let index = 0; index < pickerRows.length; index++) {
-        const entry = pickerRows[index];
-        const selected = index === selectedIndex;
-        entry.row
-          .setFillStyle(selected ? 0x384859 : 0x1c2736)
-          .setStrokeStyle(1, selected ? 0xf1cb66 : 0x384859);
-        entry.name.setColor(selected ? "#ffffff" : "#b9cee2");
-        entry.cost.setColor(selected ? "#ffe093" : "#8fc9f0");
-      }
-      detailText.setText(spellDetail(spells[selectedIndex]));
-    };
-
-    for (let i = 0; i < spells.length; i++) {
-      const sp = spells[i];
-      const y = top + 54 + i * rowHeight;
-      const row = roundedRectangle(this, 400, y, 390, 29, 0x1c2736)
-        .setStrokeStyle(1, 0x384859)
-        .setInteractive({ useHandCursor: true })
-        .setDepth(51);
-      const nameText = this.add
-        .text(220, y, `${i + 1}.  ${sp.name}`, {
-          fontSize: "11px",
-          color: "#b9cee2",
-          fontFamily: "Arial, sans-serif",
-          fontStyle: "bold",
-        })
-        .setOrigin(0, 0.5)
-        .setDepth(52);
-      const costText = this.add
-        .text(580, y, `${sp.mp_cost} MP`, {
-          fontSize: "10px",
-          color: "#8fc9f0",
-          fontFamily: "Arial, sans-serif",
-        })
-        .setOrigin(1, 0.5)
-        .setDepth(52);
-      ol.push(row, nameText, costText);
-      pickerRows.push({ row, name: nameText, cost: costText });
-
-      const selectSpell = () => {
-        this.closePicker();
-        // The server marks each spell with castable_in_combat based on
-        // whether the combat dispatch switch handles its effect. Reject
-        // any spell that flag rules out (Light, Resurrect, ...) so a
-        // utility cast does not silently consume a charge.
-        if (sp.castable_in_combat === false) {
-          this.pendingAction = null;
-          this.pendingSpellId = null;
-          this.pendingSpellEffect = null;
-          this.promptText
-            .setText(`${sp.name} cannot be cast in combat.`)
-            .setColor("#ff8888");
-          return;
-        }
-        this.beginSpellTargeting(slot, member, sp);
-      };
-
-      this.pickerItems.push({ action: selectSpell });
-
-      row.on("pointerover", () => focusRow(i));
-      row.on("pointerout", () => focusRow(0));
-      row.on("pointerdown", selectSpell);
-    }
-    focusRow(0);
-
-    const cancel = this.add
-      .text(580, bottom - 22, "ESC  BACK", {
-        fontSize: "10px",
-        color: "#8fc9f0",
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold",
-      })
-      .setOrigin(1, 1)
-      .setDepth(51)
-      .setInteractive({ useHandCursor: true });
-    cancel.on("pointerover", () => cancel.setColor("#ffe093"));
-    cancel.on("pointerout", () => cancel.setColor("#8fc9f0"));
-    cancel.on("pointerdown", () => this.closePicker());
-    ol.push(cancel);
-
-    this.pickerOverlay = ol;
+    const member = this.gameState.party[slot];
+    if (!member?.spells?.length) return;
+    this.showBattleChoices(
+      `${member.name} · Magic · ${member.mp ?? 0} MP`,
+      member.spells.map((spell) => ({
+        label: `${spell.name} · ${spell.mp_cost ?? 0} MP`,
+        detail: `${spell.description || "Combat magic"}${spell.castable_in_combat === false ? " · Field only" : ""}`,
+        disabled:
+          (member.mp ?? 0) < (spell.mp_cost ?? 0) ||
+          spell.castable_in_combat === false,
+        action: () => {
+          this.closePicker();
+          this.beginSpellTargeting(slot, member, spell);
+        },
+      })),
+    );
   }
 
   showAbilityPicker(slot) {
@@ -3302,113 +3225,65 @@ export class BattleScene extends Phaser.Scene {
       steal: { label: "Steal", desc: "Enemy: steal an item", targeted: true },
     };
 
-    const ol = [];
-    const h = 60 + abilities.length * 36;
-    const bg = roundedRectangle(this, 400, 370, 360, h, 0x1c2736, 0.95)
-      .setStrokeStyle(2, 0xaa44aa)
-      .setDepth(50)
-      .setInteractive();
-    ol.push(bg);
-
-    ol.push(
-      this.add
-        .text(400, 370 - h / 2 + 16, `${member.name}'s abilities:`, {
-          fontSize: "12px",
-          color: "#ffffff",
-          fontFamily: "Arial, sans-serif",
-        })
-        .setOrigin(0.5)
-        .setDepth(51),
+    this.showBattleChoices(
+      `${member.name} · Abilities`,
+      abilities.map((id) => {
+        const ability = meta[id] || { label: id, desc: "", targeted: true };
+        return {
+          label: ability.label,
+          detail: ability.desc,
+          action: () => {
+            this.closePicker();
+            this.pendingAbilityId = id;
+            if (ability.targeted) {
+              this.pendingAction = "ability";
+              this.enterTargetingMode();
+              this.promptText
+                .setText(`${member.name}: ${ability.label} — select a target`)
+                .setColor("#ff88ff");
+            } else {
+              this.recordAction(slot, {
+                slot,
+                type: "ability",
+                target_id: 0,
+                ability_id: id,
+              });
+            }
+          },
+        };
+      }),
     );
-
-    this.pickerItems = [];
-    for (let i = 0; i < abilities.length; i++) {
-      const id = abilities[i];
-      const m = meta[id] || { label: id, desc: "", targeted: true };
-      const y = 370 - h / 2 + 46 + i * 36;
-      const row = roundedRectangle(this, 400, y, 320, 30, 0x1c2736)
-        .setInteractive({ useHandCursor: true })
-        .setDepth(51);
-      const txt = this.add
-        .text(400, y, `${i + 1}. ${m.label} - ${m.desc}`, {
-          fontSize: "11px",
-          color: "#ffaaff",
-          fontFamily: "Arial, sans-serif",
-        })
-        .setOrigin(0.5)
-        .setDepth(52);
-      ol.push(row, txt);
-
-      const selectAbility = () => {
-        this.closePicker();
-        this.pendingAbilityId = id;
-        if (m.targeted) {
-          this.pendingAction = "ability";
-          this.enterTargetingMode();
-          this.promptText
-            .setText(`${member.name}: ${m.label} -- select a target!`)
-            .setColor("#ff88ff");
-        } else {
-          // Self/party target: send action immediately with target_id=0.
-          this.recordAction(slot, {
-            slot,
-            type: "ability",
-            target_id: 0,
-            ability_id: id,
-          });
-        }
-      };
-
-      this.pickerItems.push({ action: selectAbility });
-
-      row.on("pointerover", () => {
-        row.setFillStyle(0x384859);
-        txt.setColor("#ffffff");
-      });
-      row.on("pointerout", () => {
-        row.setFillStyle(0x1c2736);
-        txt.setColor("#ffaaff");
-      });
-      row.on("pointerdown", selectAbility);
-    }
-
-    const cancel = this.add
-      .text(400, 370 + h / 2 - 15, "[ CANCEL / ESC ]", {
-        fontSize: "10px",
-        color: "#888888",
-        fontFamily: "Arial, sans-serif",
-      })
-      .setOrigin(0.5)
-      .setDepth(51)
-      .setInteractive({ useHandCursor: true });
-    cancel.on("pointerdown", () => this.closePicker());
-    ol.push(cancel);
-
-    this.pickerOverlay = ol;
   }
 
   showItemPicker(slot) {
-    // Delegate to the shared FF-style Item menu (issue #144). It renders
-    // the scrollable list + filter tabs + description line + target picker,
-    // then calls back once the player has committed a choice. We pipe that
-    // into recordAction so the existing per-member submit flow below is
-    // untouched.
-    this.pickerItems = [];
-    const handle = showItemMenu(this, {
-      mode: "combat",
-      onConfirm: (item, targetSlot) => {
-        this.recordAction(slot, {
-          slot,
-          type: item.id === "phoenix_down" ? "revive" : "item",
-          target_id: targetSlot,
-          item_id: item.id,
-        });
-      },
-    });
-    // Route closePicker() through the overlay handle so ESC/cancel paths
-    // upstream of this method still tear it down. closePicker walks
-    // pickerOverlay with .forEach((o) => o.destroy()).
-    this.pickerOverlay = [{ destroy: () => handle.close() }];
+    const member = this.gameState.party[slot];
+    this.showBattleChoices(
+      `${member.name} · Items`,
+      buildItemList(this.gameState, "combat").map((item) => ({
+        label: `${item.name} ×${item.count}`,
+        detail: `${item.description} · ${itemUseContext(item, "combat")}`,
+        disabled: item.greyed,
+        action: () =>
+          this.showBattleChoices(
+            `${item.name} · Choose ally`,
+            this.gameState.party.map((target, targetSlot) => ({
+              label: `${target.name} · ${target.hp}/${target.max_hp} HP`,
+              detail: `${item.description} · ${target.mp ?? 0}/${target.max_mp ?? 0} MP`,
+              disabled: !canUseOnTarget(item, target),
+              action: () => {
+                this.closePicker();
+                this.recordAction(slot, {
+                  slot,
+                  type: item.id === "phoenix_down" ? "revive" : "item",
+                  target_id: targetSlot,
+                  item_id: item.id,
+                });
+              },
+            })),
+            () => this.showItemPicker(slot),
+          ),
+      })),
+    );
   }
 
   closePicker() {

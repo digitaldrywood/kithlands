@@ -1,0 +1,69 @@
+.battle-choice-panel {
+  position: fixed;
+  z-index: 950;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 8px;
+  color: #dce8f4;
+  background: #151e2b;
+  border: 1px solid #647e94;
+  border-radius: 8px;
+  font:
+    12px/1.3 Arial,
+    sans-serif;
+}
+.battle-choice-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.battle-choice-panel header strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.battle-choice-panel button {
+  font: inherit;
+  color: inherit;
+  background: #263344;
+  border: 1px solid #536c84;
+  border-radius: 6px;
+  cursor: pointer;
+  min-height: 32px;
+  padding: 4px 8px;
+}
+.battle-choice-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  align-content: start;
+}
+.battle-choice-list button {
+  min-height: 44px;
+  text-align: left;
+}
+.battle-choice-panel button:disabled {
+  color: #99a6b7;
+  background: #192333;
+  cursor: default;
+}
+.battle-choice-panel button:focus-visible,
+.battle-choice-panel button.is-selected {
+  outline: 1px solid #f1cb66;
+  outline-offset: -2px;
+  background: #384859;
+}
+.battle-choice-detail {
+  margin: 0;
+  font-size: 11px;
+  min-height: 14px;
+  max-height: 28px;
+  overflow-y: auto;
+  color: #c9d8e5;
+}
