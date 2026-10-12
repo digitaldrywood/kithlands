@@ -131,7 +131,14 @@ describe("TargetCursor", () => {
       label: "ACTING",
     });
 
-    cursor.showFor({ x: 200, y: 220, width: 64, height: 80 });
+    cursor.showFor({ x: 200, y: 220, width: 64, height: 80, feetY: 270 });
+    expect(cursor.graphics.commands).toContainEqual([
+      "strokeEllipse",
+      0,
+      50,
+      78,
+      16,
+    ]);
 
     expect(cursor.label.text).toBe("ACTING");
     expect(

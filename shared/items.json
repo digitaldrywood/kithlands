@@ -581,6 +581,7 @@
     {
       "id": "iron_sword",
       "name": "Iron Sword",
+      "icon_key": "crafted/iron-sword",
       "type": "sword",
       "tier": 2,
       "power": 12,
@@ -667,6 +668,7 @@
     },
     {
       "id": "steel_sword",
+      "icon_key": "crafted/steel-sword.svg",
       "name": "Steel Sword",
       "type": "sword",
       "tier": 3,
@@ -712,6 +714,7 @@
     },
     {
       "id": "mythril_sword",
+      "icon_key": "crafted/mythril-sword.svg",
       "name": "Mythril Sword",
       "type": "sword",
       "tier": 4,

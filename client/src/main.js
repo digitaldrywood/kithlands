@@ -1,3 +1,4 @@
+import { useCanvasRenderer } from "./systems/renderMode.js";
 import Phaser from "phaser";
 import { BootScene } from "./scenes/boot.js";
 import { TitleScene } from "./scenes/title.js";
@@ -10,7 +11,7 @@ import { DungeonScene } from "./scenes/dungeon.js";
 import "./styles/equipment-screen.css";
 
 const config = {
-  type: Phaser.AUTO,
+  type: useCanvasRenderer() ? Phaser.CANVAS : Phaser.AUTO,
   parent: "game",
   width: 800,
   height: 600,

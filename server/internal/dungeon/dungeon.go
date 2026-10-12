@@ -17,11 +17,12 @@ type Point struct {
 	Y int `json:"y"`
 }
 type Reward struct {
-	ItemID  string `json:"item_id,omitempty"`
-	Count   int    `json:"count,omitempty"`
-	Level   int    `json:"level,omitempty"`
-	Sockets int    `json:"sockets,omitempty"`
-	Gold    int    `json:"gold,omitempty"`
+	Materials map[string]int `json:"materials,omitempty"`
+	ItemID    string         `json:"item_id,omitempty"`
+	Count     int            `json:"count,omitempty"`
+	Level     int            `json:"level,omitempty"`
+	Sockets   int            `json:"sockets,omitempty"`
+	Gold      int            `json:"gold,omitempty"`
 }
 type Encounter struct {
 	Monsters  []string `json:"monsters"`

@@ -115,6 +115,10 @@ export async function getGame(id, options) {
   return apiCall("GET", `/game/${id}`, undefined, options);
 }
 
+export async function getResourceStatus(id, options) {
+  return apiCall("GET", `/game/${id}/resources`, undefined, options);
+}
+
 export async function gameAction(gameId, action) {
   return apiCall("POST", `/game/${gameId}/action`, action);
 }
@@ -412,5 +416,14 @@ export async function deleteEquipmentBuild(gameId, slot, buildId) {
   return apiCall("POST", `/game/${gameId}/equipment/builds/delete`, {
     slot,
     build_id: buildId,
+  });
+}
+
+export function gatherResource(gameId, resourceId) {
+  return apiCall("POST", `/game/${gameId}/gather`, { resource_id: resourceId });
+}
+export function craftFieldRecipe(gameId, recipeId) {
+  return apiCall("POST", `/game/${gameId}/field-craft`, {
+    recipe_id: recipeId,
   });
 }

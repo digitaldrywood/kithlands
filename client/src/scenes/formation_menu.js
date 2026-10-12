@@ -706,8 +706,8 @@ export function showFormationMenu(scene) {
             ? "TAP a hero to pick • tap another to swap • tap FRONT/BACK to change row"
             : "TAP a target to swap • tap FRONT/BACK to change row • BACK cancels"
           : state.pickedIdx == null
-            ? "UP/DOWN move  ENTER pick  LEFT/RIGHT row  ESC save"
-            : "UP/DOWN target  ENTER swap  LEFT/RIGHT row  ESC cancel pick",
+            ? "1–4 / Tab / ↑↓ choose · Enter/Space pick · ←→ row · Esc save"
+            : "1–4 / Tab / ↑↓ target · Enter/Space swap · ←→ row · Esc cancel",
       );
     }
     syncBridgeState();
@@ -717,12 +717,15 @@ export function showFormationMenu(scene) {
     clearDynamic();
     destroyObjects(staticObjects);
     if (scene.formationMenuState?.keyHandlers) {
-      const { up, down, left, right, enter, esc } =
+      const { up, down, left, right, enter, esc, tab, space, numbers } =
         scene.formationMenuState.keyHandlers;
       scene.input.keyboard.off("keydown-UP", up);
       scene.input.keyboard.off("keydown-DOWN", down);
       scene.input.keyboard.off("keydown-LEFT", left);
       scene.input.keyboard.off("keydown-RIGHT", right);
+      scene.input.keyboard.off("keydown-TAB", tab);
+      scene.input.keyboard.off("keydown-SPACE", space);
+      scene.input.keyboard.off("keydown", numbers);
       scene.input.keyboard.off("keydown-ENTER", enter);
       scene.input.keyboard.off("keydown-ESC", esc);
     }
@@ -802,7 +805,9 @@ export function showFormationMenu(scene) {
   };
   const onLeft = () => state.setRow(state.focusedIdx, "front");
   const onRight = () => state.setRow(state.focusedIdx, "back");
-  const onEnter = () => state.activateFocused();
+  const onEnter = (event) => {
+    if (!event?.repeat) state.activateFocused();
+  };
   const onEsc = () => {
     if (!state.cancelPick()) {
       void closeAndSave();
@@ -812,6 +817,17 @@ export function showFormationMenu(scene) {
   scene.input.keyboard.on("keydown-DOWN", onDown);
   scene.input.keyboard.on("keydown-LEFT", onLeft);
   scene.input.keyboard.on("keydown-RIGHT", onRight);
+  const onTab = (event) => {
+    event.preventDefault();
+    event.shiftKey ? onUp() : onDown();
+  };
+  scene.input.keyboard.on("keydown-TAB", onTab);
+  scene.input.keyboard.on("keydown-SPACE", onEnter);
+  const onNumber = (event) => {
+    if (event.altKey || event.ctrlKey || event.metaKey || event.repeat) return;
+    if (/^[1-4]$/.test(event.key)) state.focusSlot(Number(event.key) - 1);
+  };
+  scene.input.keyboard.on("keydown", onNumber);
   scene.input.keyboard.on("keydown-ENTER", onEnter);
   scene.input.keyboard.on("keydown-ESC", onEsc);
 
@@ -846,6 +862,9 @@ export function showFormationMenu(scene) {
       down: onDown,
       left: onLeft,
       right: onRight,
+      tab: onTab,
+      space: onEnter,
+      numbers: onNumber,
       enter: onEnter,
       esc: onEsc,
     },

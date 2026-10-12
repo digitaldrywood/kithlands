@@ -1,3 +1,5 @@
+import { itemArtURL } from "../ui/item_art.js";
+import { menuKeyboard } from "../ui/menu_keyboard.js";
 import {
   applyRecommendedEquipment,
   equipItem,
@@ -5,7 +7,11 @@ import {
   recommendEquipment,
   unequipItem,
 } from "../api.js";
-import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
+import {
+  pauseWorldFor,
+  resumeWorldFor,
+  topWorldLock,
+} from "../systems/modalLock.js";
 import { renderEquipmentBuilds } from "./equipment_builds.js";
 import { showGemWorkshop } from "./gem_workshop.js";
 
@@ -123,9 +129,16 @@ export function showEquipmentScreen(scene, partyIndex = 0, options = {}) {
   window.addEventListener("resize", state.resizeHandler);
   scene.equipmentScreenState = state;
 
-  root.addEventListener("keydown", (event) =>
-    handleOverlayKeydown(state, event),
-  );
+  state.menuKeys = menuKeyboard(root, {
+    scope: () => root.querySelector(".equipment-build-dialog") || root,
+  });
+  state.keyHandler = (event) => {
+    if (topWorldLock(scene) !== LOCK_NAME) return;
+    event.stopImmediatePropagation();
+    if (event.key === "Escape" || !state.menuKeys.handle(event))
+      handleOverlayKeydown(state, event);
+  };
+  window.addEventListener("keydown", state.keyHandler, true);
   renderEquipmentScreen(state);
   requestAnimationFrame(() => {
     if (state.selectedSlotID) focusSelectedSlot(state);
@@ -141,6 +154,8 @@ export function closeEquipmentScreen(scene, { callOnClose = true } = {}) {
   if (state.scene.input && state.previousPhaserInputEnabled != null) {
     state.scene.input.enabled = state.previousPhaserInputEnabled;
   }
+  window.removeEventListener("keydown", state.keyHandler, true);
+  state.menuKeys?.destroy();
   state.dom?.destroy();
   resumeWorldFor(scene, LOCK_NAME);
   if (state.previousFocus?.isConnected) state.previousFocus.focus();
@@ -1649,6 +1664,15 @@ function renderSocketPips(item) {
       `equipment-socket-pip ${filled ? "is-filled" : "is-open"}`,
       filled ? "◆" : "◇",
     );
+    if (filled && itemArtURL(socket.icon_key)) {
+      pip.textContent = "";
+      const art = element("img");
+      art.src = itemArtURL(socket.icon_key);
+      art.alt = "";
+      art.style.cssText =
+        "width:16px;height:16px;object-fit:contain;vertical-align:middle";
+      pip.append(art);
+    }
     if (filled) {
       pip.style.setProperty("--pip-color", socket.color || "#ff9f43");
       pip.style.setProperty(
@@ -1707,7 +1731,7 @@ function renderItemIcon(item, fallback, small = false) {
   }
   const image = document.createElement("img");
   image.className = "equipment-item-art";
-  image.src = `/sprites/items/${item.icon_key}.png`;
+  image.src = itemArtURL(item.icon_key);
   image.alt = "";
   image.setAttribute("aria-hidden", "true");
   image.addEventListener("error", () => {

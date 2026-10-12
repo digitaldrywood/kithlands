@@ -9,16 +9,19 @@ import (
 
 // Inventory holds a party's items and equipment state.
 type Inventory struct {
-	KnownGemRecipes map[string]bool               `json:"known_gem_recipes,omitempty"`
-	SchemaVersion   int                           `json:"schema_version,omitempty"`
-	Gold            int                           `json:"gold"`
-	Consumables     map[string]int                `json:"consumables"`
-	Gems            map[string]int                `json:"gems,omitempty"`
-	Instances       map[string]*EquipmentInstance `json:"instances,omitempty"`
-	NextInstance    uint64                        `json:"next_instance,omitempty"`
-	KeyItems        []string                      `json:"key_items"`
-	Equipment       [4]EquipmentSlots             `json:"equipment"` // indexed by party slot
-	EquipmentBuilds [4][]EquipmentBuild           `json:"equipment_builds,omitempty"`
+	ResourceReadyAt   map[string]int64              `json:"resource_ready_at,omitempty"`
+	Materials         map[string]int                `json:"materials,omitempty"`
+	GatheredResources map[string]bool               `json:"gathered_resources,omitempty"`
+	KnownGemRecipes   map[string]bool               `json:"known_gem_recipes,omitempty"`
+	SchemaVersion     int                           `json:"schema_version,omitempty"`
+	Gold              int                           `json:"gold"`
+	Consumables       map[string]int                `json:"consumables"`
+	Gems              map[string]int                `json:"gems,omitempty"`
+	Instances         map[string]*EquipmentInstance `json:"instances,omitempty"`
+	NextInstance      uint64                        `json:"next_instance,omitempty"`
+	KeyItems          []string                      `json:"key_items"`
+	Equipment         [4]EquipmentSlots             `json:"equipment"` // indexed by party slot
+	EquipmentBuilds   [4][]EquipmentBuild           `json:"equipment_builds,omitempty"`
 }
 
 // EquipmentSlots tracks what a single character has equipped.

@@ -1,3 +1,4 @@
+import { showFieldCrafting } from "./field_crafting.js";
 import { element, viewportDialog } from "../ui/viewport_dialog.js";
 import { roundedRectangle } from "../ui/theme.js";
 import { showObjectiveQuestLog } from "./objective_quest_log.js";
@@ -25,12 +26,7 @@ import {
 import { renderPartyMenu } from "../ui/party_menu.js";
 import { drawButton } from "../ui/panel.js";
 import { combatantConditionLabel } from "../systems/hpBar.js";
-import {
-  questKindLabel,
-  questObjectiveText,
-  questRewardText,
-  questCustodyText,
-} from "./quest_text.js";
+import { questObjectiveText } from "./quest_text.js";
 import {
   filterEquippableItems,
   computeEquipDelta,
@@ -75,6 +71,15 @@ export function toggleMenu(scene) {
   const gemsEnabled = gemWorkshopEnabled(gs);
   const readyGemRecipes = craftableRecipeCount(gs);
   const primaryActions = [
+    {
+      label: "CRAFTING",
+      hotkey: "R",
+      enabled: !!gs.field_recipes?.length,
+      onClick: () => {
+        closeMenu(scene);
+        showFieldCrafting(scene, { onClose: () => toggleMenu(scene) });
+      },
+    },
     {
       label: "CHARACTER",
       hotkey: "C",
@@ -403,82 +408,6 @@ export function buildLegacyQuestLogModel(quests, currentIdx) {
 }
 
 export function showQuestLog(scene) {
-  // Close the party menu first so the overlay sits cleanly on its own.
   closeMenu(scene);
-
-  const gs = scene.gameState;
-  const quests = Array.isArray(gs.quests) ? gs.quests : [];
-  const buildingSideQuests = Array.isArray(gs.building_side_quests)
-    ? gs.building_side_quests
-    : [];
-  const currentIdx = gs.current_quest ?? 0;
-  if (quests[currentIdx]?.objectives) {
-    showObjectiveQuestLog(scene);
-    return;
-  }
-  const model = buildLegacyQuestLogModel(quests, currentIdx);
-  let dialog;
-  const close = () => dialog.dispose();
-  dialog = viewportDialog(scene, {
-    key: "quest_log",
-    title: "Quest Log",
-    onEscape: close,
-  });
-  dialog.root.classList.add("objective-quest-log");
-  dialog.header.append(
-    element(
-      "p",
-      "",
-      `${model.completeCount} complete · ${model.remainingCount} remaining`,
-    ),
-  );
-  const add = (tag, value, className = "") =>
-    dialog.body.append(element(tag, className, value));
-  add("h2", "Current objective");
-  if (model.current) {
-    const quest = model.current;
-    add("h3", `${questKindLabel(quest)}: ${quest.name}`);
-    add("p", questObjectiveText(quest));
-    if (quest.description)
-      add("p", quest.description, "objective-quest-description");
-    const custody = questCustodyText(quest);
-    if (custody) add("p", custody, "objective-quest-custody");
-    const reward = questRewardText(quest);
-    if (reward) add("p", `Reward: ${reward}`, "objective-quest-reward");
-  } else
-    add(
-      "p",
-      model.currentHidden
-        ? "Explore to uncover your next objective."
-        : "No active quests.",
-    );
-  if (buildingSideQuests.length) {
-    add("h3", "Local errands");
-    for (const quest of buildingSideQuests)
-      add(
-        "p",
-        `${quest.name} · ${quest.status === "completed" ? "Complete" : quest.status === "ready_to_turn_in" ? "Ready to turn in" : "Active"}${quest.target_name ? ` · ${quest.target_name}` : ""}`,
-      );
-  }
-  if (model.upcoming.length) {
-    add("h3", "Up next");
-    for (const quest of model.upcoming)
-      add(
-        "p",
-        `${questKindLabel(quest)}: ${quest.template_id === "Q12" || quest.name?.toLowerCase().startsWith("defeat") ? "Final encounter" : quest.name}`,
-        "objective-quest-secondary",
-      );
-  }
-  const completed = quests
-    .slice(0, currentIdx)
-    .filter((quest) => quest && !quest.hidden);
-  if (completed.length) {
-    add("h3", "Completed");
-    for (const quest of completed)
-      add("p", quest.name, "objective-quest-secondary");
-  }
-  const button = element("button", "primary", "Close");
-  button.addEventListener("click", close);
-  dialog.footer.append(button);
-  return dialog;
+  return showObjectiveQuestLog(scene);
 }

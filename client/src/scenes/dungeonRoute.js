@@ -1,3 +1,5 @@
+import { trackQuest } from "./questJournalModel.js";
+
 const WAYPOINT_RADIUS = 2;
 const RENDERED_TILE = 32;
 
@@ -144,7 +146,7 @@ export async function followDungeonRoute(scene, entry) {
   scene.dungeonRouteToken = token;
   scene.dungeonRouteRunning = true;
   scene.currentDungeonRouteID = entry.id;
-  scene.trackedDungeonID = entry.id;
+  trackQuest(scene, `dungeon:${entry.id}`);
   scene.updateHUD?.();
   try {
     for (const nodeID of [entry.node_id]) {

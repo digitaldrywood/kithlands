@@ -5,6 +5,13 @@ mkdirSync(proof, { recursive: true });
 for (const width of [1440, 720]) {
   test(`shop catalog and purchase at ${width}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
+    await page.route("**/src/main.js", async (route) => {
+      const response = await route.fetch();
+      await route.fulfill({
+        response,
+        body: (await response.text()) + "\nwindow.__keyboardGame = game;",
+      });
+    });
     await page.goto("/?noEncounters=1");
     await page.waitForFunction(
       () => window.__kithlandsTest?.activeSceneKey() === "Title",
@@ -60,9 +67,15 @@ for (const width of [1440, 720]) {
     const response = page.waitForResponse(
       (r) => r.url().endsWith("/buy") && r.request().method() === "POST",
     );
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("Buy", "Town"),
+    const buyKey = await page.evaluate(
+      () =>
+        window.__keyboardGame.scene
+          .getScene("Town")
+          .canvasMenuKeyboard.entries.find(
+            (e) => e.label.text === "Buy" && e.enabled(),
+          ).bg.__kithlandsKeyboard.shortcut,
     );
+    await page.keyboard.press(buyKey);
     const receipt = await response;
     const request = receipt.request().postDataJSON();
     const offer = catalog.shop_items.find(
@@ -75,9 +88,51 @@ for (const width of [1440, 720]) {
     await page.screenshot({
       path: new URL(`${width}-purchased.png`, proof).pathname,
     });
+
     await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("Leave Shop", "Town"),
+      window.__kithlandsTest.clickInteractiveText("Supplies", "Town"),
     );
+    const supplyBefore = await page.evaluate(() =>
+      window.__kithlandsTest.gameState("Town"),
+    );
+    let supplyRequests = 0;
+    await page.route("**/buy", async (route) => {
+      supplyRequests++;
+      const response = await route.fetch();
+      // Delayed acknowledgement reproduces rapid-repeat purchase input.
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await route.fulfill({ response });
+    });
+    const supplyReceipt = page.waitForResponse((r) => r.url().endsWith("/buy"));
+    const supplyKey = await page.evaluate(
+      () =>
+        window.__keyboardGame.scene
+          .getScene("Town")
+          .canvasMenuKeyboard.entries.find(
+            (e) => e.label.text === "Smithing charcoal" && e.enabled(),
+          ).bg.__kithlandsKeyboard.shortcut,
+    );
+    await page.keyboard.press(supplyKey);
+    await page.keyboard.press(supplyKey);
+    const supplied = await (await supplyReceipt).json();
+    await page.waitForFunction(
+      () => !window.__keyboardGame.scene.getScene("Town").shopPurchasePending,
+    );
+    expect(supplied.error).toBeFalsy();
+    expect(supplyRequests).toBe(1);
+    expect(supplied.gold).toBe(supplyBefore.gold - 6);
+    expect(supplied.materials.find((m) => m.id === "charcoal").count).toBe(1);
+    await page.screenshot({
+      path: new URL(`${width}-supplies-keyboard-purchase.png`, proof).pathname,
+    });
+    const leaveKey = await page.evaluate(
+      () =>
+        window.__keyboardGame.scene
+          .getScene("Town")
+          .canvasMenuKeyboard.entries.find((e) => e.label.text === "Leave Shop")
+          .bg.__kithlandsKeyboard.shortcut,
+    );
+    await page.keyboard.press(leaveKey);
     await page.waitForFunction(
       () =>
         !window.__kithlandsTest.sceneFlags("Town").modalLocks.includes("shop"),

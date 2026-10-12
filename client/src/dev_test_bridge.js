@@ -2184,10 +2184,9 @@ export function installDevTestBridge(game) {
       scene.pendingSpellTargetMode = null;
       scene.closePicker();
       scene.showSpellPicker(slot);
-      const eligible = member.spells.filter(
-        (entry) => (member.mp ?? 0) >= (entry.mp_cost ?? 0),
+      const spellIndex = member.spells.findIndex(
+        (entry) => entry.id === spellID,
       );
-      const spellIndex = eligible.findIndex((entry) => entry.id === spellID);
       const pickerLabels = (scene.pickerOverlay || [])
         .filter((entry) => typeof entry?.text === "string")
         .map((entry) => entry.text);

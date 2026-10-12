@@ -19,19 +19,10 @@ test("touch exploration retains usable controls and trail action", async ({
   const hud = page.locator(".exploration-hud");
   await expect(hud).toHaveClass(/explore-touch/);
   await page.screenshot({ path: new URL("touch-world.png", proof).pathname });
-  const party = hud.getByRole("button", { name: /^Party/ });
-  const objective = hud.getByRole("button", { name: /^Objective/ });
-  await party.tap();
-  await objective.tap();
-  await expect(party).toHaveAttribute("aria-expanded", "true");
-  await expect(objective).toHaveAttribute("aria-expanded", "true");
-  await page.screenshot({
-    path: new URL("touch-expanded.png", proof).pathname,
-  });
-  await party.tap();
-  await objective.tap();
-  await expect(hud.locator(".explore-party-details")).toBeHidden();
-  await expect(hud.locator(".explore-objective-details")).toBeHidden();
+  await expect(
+    hud.getByRole("button", { name: /^Party|^Objective/ }),
+  ).toHaveCount(0);
+  await expect(hud.locator('[data-route="true"]')).toHaveCount(0);
   await hud.getByRole("button", { name: "Menu", exact: true }).tap();
   await expect(
     page.getByRole("dialog", { name: "Your party", exact: true }),

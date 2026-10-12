@@ -284,3 +284,18 @@ identity clothing, but the body contains no staff, sidearm, star, spell, or
 effect. Shared `war_staff` metadata selects the equipment layer, with the grip
 authored in the image-right hand. Its aggregate-review status is
 `approved_runtime`.
+
+## Ground registration and effect cues
+
+The runtime container position is the character's feet, using `feet_anchor`
+(currently `[96, 184]`) from `shared/battle_characters.json`. Body images and
+held attachments subtract the same offset from their centered atlas coordinates.
+Formation lanes, floor shadows, movement destinations, and acting rings use this
+feet position; target effects use the body center.
+
+Attack and cast states declare `cue_frame` as an authored atlas frame ID. The
+renderer reaches that pose before handing the authoritative server result to
+scene effects, and holds it through impact before playing recovery. Movement
+advances alongside the same authored frame durations. Reduced motion must retain
+the cue even when other poses are skipped. Recipe expansion and server content
+validation preserve and validate the cue against the actual frame sequence.

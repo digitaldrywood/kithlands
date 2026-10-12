@@ -10,7 +10,7 @@ for (const fps of [60, 20]) {
     }) => {
       // Expose the game only in this intercepted development module so sampling
       // observes postrender output, not calls to setFrame that may be overwritten.
-      await page.route("**/src/main.js", async (route) => {
+      await page.route("**/src/main.js*", async (route) => {
         const response = await route.fetch();
         await route.fulfill({
           response,

@@ -1,3 +1,5 @@
+import { itemArtURL } from "../ui/item_art.js";
+import { menuKeyboard } from "../ui/menu_keyboard.js";
 import { changeGem, craftGem, getGame } from "../api.js";
 import { playSFX } from "../systems/audio.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
@@ -270,6 +272,67 @@ function button(label, action, key, disabled = false) {
   return node;
 }
 
+// Decorative silhouettes use the same item art as the loadout. Gem shapes are
+// presentation only; their effects and availability always come from the server.
+function workshopIcon(item, gear = false) {
+  const icon = element("span", gear ? "gem-art is-equipment" : "gem-art");
+  icon.setAttribute("aria-hidden", "true");
+  if (gear || itemArtURL(item?.icon_key)) {
+    const image = element("img");
+    image.src = item?.icon_key
+      ? itemArtURL(item.icon_key)
+      : `/sprites/ui/icon_${itemKind(item) === "armor" ? "shield" : "sword"}.png`;
+    image.alt = "";
+    image.addEventListener("error", () => {
+      icon.textContent = "◇";
+    });
+    icon.append(image);
+  } else {
+    icon.classList.add(`gem-tone-${item?.id?.split("_")[0] || "neutral"}`);
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 48 48");
+    for (const d of [
+      "M24 5L40 18L34 35L24 44L13 35L8 18Z",
+      "M8 18H40M24 5L17 18L24 44L31 18Z",
+    ]) {
+      const path = document.createElementNS(svg.namespaceURI, "path");
+      path.setAttribute("d", d);
+      svg.append(path);
+    }
+    icon.append(svg);
+  }
+  return icon;
+}
+
+function pinActions(preview) {
+  const content = element("div", "gem-preview-content");
+  const actions = element("footer", "gem-actions");
+  for (const child of [...preview.children]) {
+    if (
+      child.matches(
+        ".gem-confirm, .gem-replacement-warning, [data-focus-key='socket-crafted']",
+      )
+    )
+      actions.append(child);
+    else if (child.matches(".gem-recovery")) {
+      const recoverButton = child.querySelector(".gem-recover");
+      const recoveryAction = element("section", "gem-recovery");
+      const reason = child.querySelector(".gem-lock");
+      if (recoverButton.disabled && reason)
+        recoveryAction.append(reason.cloneNode(true));
+      recoveryAction.append(recoverButton);
+      actions.append(recoveryAction);
+      const details = element("details", "gem-details");
+      child.className = "gem-recovery-info";
+      details.append(element("summary", "", "Recovery preview"), child);
+      content.append(details);
+    } else content.append(child);
+  }
+  const warning = actions.querySelector(".gem-replacement-warning");
+  if (warning) actions.prepend(warning);
+  preview.append(content, actions);
+}
+
 function changedStats(parent, title, before = {}, after = {}) {
   const rows = [
     ...new Set([...Object.keys(before), ...Object.keys(after)]),
@@ -287,10 +350,16 @@ function changedStats(parent, title, before = {}, after = {}) {
   const body = element("tbody");
   for (const key of rows) {
     const row = element("tr");
+    const delta = (after[key] || 0) - (before[key] || 0);
+    const improves = key === "evade_penalty" ? delta < 0 : delta > 0;
     row.append(
       element("th", "", statName(key)),
       element("td", "", before[key] || 0),
-      element("td", "", after[key] || 0),
+      element(
+        "td",
+        inactiveStat(key) ? "gem-muted" : improves ? "gem-ready" : "gem-loss",
+        after[key] || 0,
+      ),
     );
     body.append(row);
   }
@@ -336,6 +405,7 @@ export function showGemWorkshop(
   root.setAttribute("aria-labelledby", "gem-workshop-title");
   root.tabIndex = -1;
   (document.querySelector("#game-ui") || document.body).append(root);
+  const menuKeys = menuKeyboard(root);
   let mode = initialMode;
   let selectedGearID = preselectedInstanceID;
   let selectedSocket = -1;
@@ -357,6 +427,7 @@ export function showGemWorkshop(
     closed = true;
     pendingController?.abort();
     window.removeEventListener("keydown", keydown, true);
+    menuKeys.destroy();
     root.remove();
     scene.events?.off("shutdown", shutdown);
     scene.gemWorkshopState = null;
@@ -388,27 +459,7 @@ export function showGemWorkshop(
       close();
       return;
     }
-    if (event.key !== "Tab") return;
-    const controls = [
-      ...root.querySelectorAll("button:not(:disabled), select:not(:disabled)"),
-    ];
-    const first = controls[0],
-      last = controls.at(-1);
-    if (
-      event.shiftKey &&
-      (document.activeElement === first || document.activeElement === root)
-    ) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      last?.focus();
-    } else if (
-      !event.shiftKey &&
-      (document.activeElement === last || document.activeElement === root)
-    ) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      first?.focus();
-    }
+    if (menuKeys.handle(event)) event.stopImmediatePropagation();
   };
   window.addEventListener("keydown", keydown, true);
 
@@ -499,7 +550,7 @@ export function showGemWorkshop(
         busy || page + 1 === pages,
       ),
     );
-    parent.append(nav);
+    if (pages > 1) parent.append(nav);
     const list = element("div", "gem-choice-list");
     list.dataset.list = role;
     for (const entry of entries.slice(
@@ -515,9 +566,18 @@ export function showGemWorkshop(
       row.dataset[role + "Id"] = entry.id;
       row.setAttribute("aria-pressed", String(entry.id === selected));
       row.className = "gem-choice";
-      row.append(
+      const copy = element("span", "gem-choice-copy");
+      copy.append(
         element("strong", "", entry.name),
         element("span", entry.muted ? "gem-muted" : "gem-ready", entry.detail),
+      );
+      row.append(
+        workshopIcon(
+          role === "recipe"
+            ? { id: entry.output?.gem_id, icon_key: entry.output?.icon_key }
+            : entry,
+        ),
+        copy,
       );
       list.append(row);
     }
@@ -569,14 +629,24 @@ export function showGemWorkshop(
     const preview = element("section", "gem-preview");
     preview.setAttribute("aria-label", "Recipe preview");
     if (selected) {
-      preview.append(
+      const outputCard = element("div", "gem-item-card");
+      const outputCopy = element("div");
+      outputCopy.append(
+        element("p", "gem-eyebrow", "YOU WILL CREATE"),
         element(
-          "p",
-          "gem-eyebrow",
-          "Preview · ingredients are only spent on confirmation",
+          "h2",
+          "",
+          `${selected.output.count} × ${selected.output.gem_name}`,
         ),
-        element("h2", "", selected.name),
       );
+      outputCard.append(
+        workshopIcon({
+          id: selected.output.gem_id,
+          icon_key: selected.output.icon_key,
+        }),
+        outputCopy,
+      );
+      preview.append(outputCard, element("h3", "", selected.name));
       preview.append(
         element(
           "p",
@@ -598,15 +668,7 @@ export function showGemWorkshop(
         );
       }
       preview.append(costs);
-      preview.append(
-        element("h3", "", "Creates"),
-        element(
-          "p",
-          "gem-output",
-          `${selected.output.count} × ${selected.output.gem_name}`,
-        ),
-        element("p", "gem-muted", selected.description),
-      );
+      preview.append(element("p", "gem-muted", selected.description));
       preview.append(element("h3", "", "Socket effect per output gem"));
       for (const effect of selected.output.effects || [])
         preview.append(
@@ -620,7 +682,7 @@ export function showGemWorkshop(
         element(
           "p",
           "gem-muted",
-          "The output stays in your bag. Socketing is a separate action.",
+          "Created gems go into your bag, ready to socket.",
         ),
       );
       const reason = recipeReadiness(selected, gs);
@@ -657,6 +719,7 @@ export function showGemWorkshop(
           ),
         );
     }
+    pinActions(preview);
     body.append(choices, preview);
   }
 
@@ -685,8 +748,8 @@ export function showGemWorkshop(
     const resolved = gemChangePreview(item, selectedSocket, gem);
     const recovery = gemRecoveryPreview(item, selectedSocket);
     const choices = element("section", "gem-choices");
-    choices.append(element("h2", "", "1. Choose equipment"));
-    const label = element("label", "gem-muted", "Equipment and equipped owner");
+    choices.append(element("h2", "", "Equipment"));
+    const label = element("label", "gem-muted", "Item to improve");
     label.htmlFor = "gem-equipment";
     const select = element("select");
     select.id = "gem-equipment";
@@ -696,7 +759,7 @@ export function showGemWorkshop(
       const option = element(
         "option",
         "",
-        `${candidate.name} · ${candidate.equipped_by ? `${candidate.equipped_by}, ${candidate.equipped_kind}` : "In bag"} · ${candidate.sockets.filter((s) => !s.gem_id).length} open, ${candidate.sockets.filter((s) => s.gem_id).length} filled`,
+        `${candidate.name} · ${candidate.equipped_by || "In bag"}`,
       );
       option.value = candidate.instance_id;
       option.selected = candidate.instance_id === selectedGearID;
@@ -710,7 +773,9 @@ export function showGemWorkshop(
       notice = "";
       render();
     });
-    choices.append(label, select, element("h2", "", "2. Choose a socket"));
+    const picker = element("div", "gem-equipment-picker");
+    picker.append(workshopIcon(item, true), select);
+    choices.append(label, picker);
     const socketList = element("div", "gem-socket-list");
     socketList.setAttribute("role", "group");
     socketList.setAttribute("aria-label", "Equipment sockets");
@@ -732,14 +797,13 @@ export function showGemWorkshop(
         "aria-pressed",
         String(index === selectedSocket),
       );
+      if (candidate.icon_key)
+        socketChoice.prepend(workshopIcon({ icon_key: candidate.icon_key }));
       socketList.append(socketChoice);
     }
     if (!item?.sockets?.length)
       socketList.append(element("p", "gem-muted", "This item has no sockets."));
-    choices.append(
-      socketList,
-      element("h2", "", "3. Choose a loose gem to socket or replace"),
-    );
+    choices.append(socketList, element("h2", "", "Loose gems"));
     pagedChoices(
       choices,
       gems.map((g) => {
@@ -772,9 +836,7 @@ export function showGemWorkshop(
     );
     const preview = element("section", "gem-preview");
     preview.setAttribute("aria-label", "Socket preview");
-    preview.append(
-      element("p", "gem-eyebrow", "4. Review · select first, confirm below"),
-    );
+    preview.append(element("p", "gem-eyebrow", "RESULT PREVIEW"));
     if (!item) {
       preview.append(
         element("h2", "", "No socketed equipment yet"),
@@ -785,40 +847,21 @@ export function showGemWorkshop(
         ),
       );
     } else {
-      preview.append(
-        element("h2", "", item.name),
-        element(
-          "p",
-          "gem-muted",
-          item.equipped_by
-            ? `${item.equipped_by} · ${item.equipped_kind}`
-            : "In your bag",
-        ),
-      );
-      preview.append(
-        element("h3", "", `Selected socket ${selectedSocket + 1}`),
-        element(
-          "p",
-          "gem-effect",
-          socket?.gem_id
-            ? `${socket.gem_name} · +${socket.value} ${statName(socket.stat)}`
-            : "Open",
-        ),
-      );
+      preview.append(element("h2", "", item.name));
       if (gem && resolved?.allowed) {
         const replacing = resolved.action === "replace";
         preview.append(
           element(
             "h3",
-            "",
+            replacing ? "" : "gem-selected-name",
             `${replacing ? "Replacement" : "Proposed"}: ${gem.name}`,
           ),
           element(
             "p",
             "gem-muted",
             replacing
-              ? `Consumes 1 loose ${gem.name} (${gem.count} owned). ${resolved.installed_gem_name} is removed and not recovered.`
-              : `Consumes 1 loose ${gem.name} (${gem.count} owned). Fills socket ${resolved.socket + 1}.`,
+              ? `Uses 1 ${gem.name}. Replaces ${resolved.installed_gem_name}.`
+              : `Uses 1 ${gem.name} · Socket ${resolved.socket + 1}`,
           ),
           element(
             "p",
@@ -834,24 +877,27 @@ export function showGemWorkshop(
           resolved.before,
           resolved.after,
         );
+        const details = element("details", "gem-details");
+        details.append(element("summary", "", "Character stat breakdown"));
         changedStats(
-          preview,
+          details,
           `${item.equipped_by || "Character"} · total from gear`,
           resolved.gear_before,
           resolved.gear_after,
         );
         changedStats(
-          preview,
+          details,
           `${item.equipped_by || "Character"} · effective values`,
           resolved.character_before,
           resolved.character_after,
         );
+        preview.append(details);
         if (replacing)
           preview.append(
             element(
               "p",
-              "gem-lock",
-              `Replacement permanently consumes the installed ${resolved.installed_gem_name}. Use Recover below first if you want it returned.`,
+              "gem-lock gem-replacement-warning",
+              `The installed ${resolved.installed_gem_name} will be destroyed. Recover it first to keep it.`,
             ),
           );
       } else
@@ -897,6 +943,7 @@ export function showGemWorkshop(
         busy || needsRefresh || !resolved?.allowed || !resolved?.token,
       );
       confirm.className = "gem-confirm";
+      confirm.hidden = !!recovery && !resolved?.allowed;
       preview.append(confirm);
 
       if (recovery) {
@@ -960,6 +1007,7 @@ export function showGemWorkshop(
         preview.append(recover);
       }
     }
+    pinActions(preview);
     body.append(choices, preview);
   }
 
@@ -971,6 +1019,7 @@ export function showGemWorkshop(
     const scroll = root.querySelector(".gem-body")?.scrollTop || 0;
     const gs = scene.gameState;
     root.replaceChildren();
+    root.dataset.mode = mode;
     const header = element("header", "gem-header");
     const title = element("h1", "", "Gem Workshop");
     title.id = "gem-workshop-title";
@@ -1023,6 +1072,10 @@ export function showGemWorkshop(
     if (mode === "transmute") renderRecipe(gs, body);
     else renderSocket(gs, body);
     root.append(body);
+    if (busy)
+      root.querySelectorAll("summary").forEach((summary) => {
+        summary.tabIndex = -1;
+      });
     body.scrollTop = scroll;
     if (focusKey) {
       const focused = [...root.querySelectorAll("[data-focus-key]")].find(

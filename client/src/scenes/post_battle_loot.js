@@ -1,3 +1,4 @@
+import { itemArtURL } from "../ui/item_art.js";
 import { resolveBattleLoot } from "../api.js";
 import { element, viewportDialog } from "../ui/viewport_dialog.js";
 import "../styles/post-battle-loot.css";
@@ -99,7 +100,7 @@ function itemIcon(item = {}) {
     return frame;
   }
   const image = document.createElement("img");
-  image.src = `/sprites/items/${item.icon_key}.png`;
+  image.src = itemArtURL(item.icon_key);
   image.alt = "";
   image.addEventListener("error", () => {
     image.remove();

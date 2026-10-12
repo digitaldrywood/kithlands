@@ -453,3 +453,18 @@ func TestLoadPanicsOnMissingDir(t *testing.T) {
 	}()
 	gamedata.Load("/nonexistent/path")
 }
+
+func TestBattlePresentationCuesLoadAndExpand(t *testing.T) {
+	gd := gamedata.Load("../../../shared")
+	if !slices.Equal(gd.BattleCharacters.FeetAnchor, []float64{96, 184}) {
+		t.Fatalf("feet anchor = %v", gd.BattleCharacters.FeetAnchor)
+	}
+	for _, id := range []string{"warrior", "cinder", "knight"} {
+		for _, state := range []string{"physical_attack", "cast_class_ability"} {
+			cue := gd.BattleCharacterByID(id).States[state].CueFrame
+			if cue == nil {
+				t.Errorf("%s %s lost authored cue during load/recipe expansion", id, state)
+			}
+		}
+	}
+}

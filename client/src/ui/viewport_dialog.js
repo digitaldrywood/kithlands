@@ -1,5 +1,6 @@
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 import "../styles/viewport-dialog.css";
+import { menuKeyboard } from "./menu_keyboard.js";
 
 export function element(tag, className, text) {
   const node = document.createElement(tag);
@@ -36,6 +37,7 @@ export function viewportDialog(scene, { key, title, onEscape, onKey }) {
   scene.input.enabled = false;
   if (scene.input.keyboard) scene.input.keyboard.enabled = false;
   let disposed = false;
+  const menuKeys = menuKeyboard(root);
 
   for (const type of ["pointerdown", "pointerup", "click", "wheel"]) {
     root.addEventListener(type, (event) => event.stopPropagation());
@@ -46,20 +48,7 @@ export function viewportDialog(scene, { key, title, onEscape, onKey }) {
     if (event.key === "Escape") {
       event.preventDefault();
       onEscape?.();
-    } else if (event.key === "Tab") {
-      const targets = [
-        ...root.querySelectorAll("button:not(:disabled), [tabindex='0']"),
-      ];
-      const index = targets.indexOf(document.activeElement);
-      if (
-        index < 0 ||
-        (!event.shiftKey && index === targets.length - 1) ||
-        (event.shiftKey && index === 0)
-      ) {
-        event.preventDefault();
-        (event.shiftKey ? targets.at(-1) : targets[0])?.focus();
-      }
-    } else {
+    } else if (!menuKeys.handle(event)) {
       onKey?.(event);
     }
   }
@@ -71,6 +60,7 @@ export function viewportDialog(scene, { key, title, onEscape, onKey }) {
   function dispose() {
     if (disposed) return;
     disposed = true;
+    menuKeys.destroy();
     window.removeEventListener("keydown", keydown, true);
     scene.events.off("shutdown", shutdown);
     root.remove();

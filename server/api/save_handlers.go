@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -303,6 +304,10 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		},
 	}
 
+	if err := game.reconcileDungeonMaterialRewards(); err != nil {
+		return nil, fmt.Errorf("restore crafting rewards: %w", err)
+	}
+
 	// Saves written before the transport pipeline landed have no transport
 	// block. Reconcile by replaying unlock checks against the quest state so
 	// the player doesn't get forced back to T1 on a mid/late-game load.
@@ -554,6 +559,16 @@ func (s *Server) handleAutosave(w http.ResponseWriter, r *http.Request) {
 	jsonResp(w, map[string]string{"status": "autosaved", "name": saveName})
 }
 
+// A campaign's seed survives save/load and distinguishes separate runs in the
+// same locality. Names, party levels and save type can change between snapshots.
+func saveAdventureID(state *save.SaveState) string {
+	if state.RNGSeed == 0 || state.LocalityID == "" {
+		return state.ID // Do not merge legacy saves with incomplete identity.
+	}
+	identity := fmt.Sprintf("%s/%s/%d", state.UserID, state.LocalityID, state.RNGSeed)
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(identity)))
+}
+
 func (s *Server) handleListSaves(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
@@ -570,6 +585,7 @@ func (s *Server) handleListSaves(w http.ResponseWriter, r *http.Request) {
 
 	// Build summary list
 	type SaveSummary struct {
+		AdventureID  string    `json:"adventure_id"`
 		ID           string    `json:"id"`
 		Name         string    `json:"name"`
 		SaveType     string    `json:"save_type"`
@@ -593,6 +609,7 @@ func (s *Server) handleListSaves(w http.ResponseWriter, r *http.Request) {
 
 		summaries = append(summaries, SaveSummary{
 			ID:           sv.ID,
+			AdventureID:  saveAdventureID(&sv),
 			Name:         sv.Name,
 			SaveType:     sv.SaveType,
 			TriggerEvent: sv.TriggerEvent,

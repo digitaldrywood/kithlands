@@ -49,18 +49,17 @@ describe("dungeon entrance presentation", () => {
     };
     updateDungeonEntry(current);
     const first = current.dungeonEntryButton;
-    const firstRoute = current.dungeonRouteButton;
+
     expect(first).toBeTruthy();
-    expect(firstRoute).toBeTruthy();
+    expect(current.dungeonRouteButton).toBeNull();
     for (const callback of shutdown) callback();
     expect(first.destroy).toHaveBeenCalledOnce();
     expect(current.dungeonEntryButton).toBeNull();
-    expect(firstRoute.destroy).toHaveBeenCalledOnce();
     expect(current.dungeonRouteButton).toBeNull();
     updateDungeonEntry(current);
     expect(current.dungeonEntryButton).not.toBe(first);
-    expect(current.dungeonRouteButton).not.toBe(firstRoute);
-    expect(current.explorationHUD.trail).toHaveBeenCalledTimes(4);
+    expect(current.dungeonRouteButton).toBeNull();
+    expect(current.explorationHUD.trail).toHaveBeenCalledTimes(2);
   });
 
   it("offers the trail only near the home locality entrance", () => {

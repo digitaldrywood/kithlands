@@ -1,5 +1,17 @@
+import { startWalkMotion } from "./walkMotion.js";
+import {
+  renderWorldResources,
+  gatherNearbyResource,
+  resourceTerrain,
+} from "./world_gathering.js";
+import { trackedObjective } from "./questJournalModel.js";
 import { updateWorldTerrainVisibility } from "./worldTerrainVisibility.js";
 import { beginWalkStep } from "./walkPlayback.js";
+import {
+  drawMeadowDetails,
+  meadowGroundPlan,
+  updateMeadowDepth,
+} from "./meadowPresentation.js";
 import { explorationHUD } from "../ui/exploration_hud.js";
 import { drawPanel, drawButton } from "../ui/panel.js";
 import { gameAction, autosaveGame } from "../api.js";
@@ -54,7 +66,6 @@ import {
   buildTerrainRenderPlan,
   ensureTerrainRenderTexture,
 } from "./terrainAutotile.js";
-import { questObjectiveText, questKindLabel } from "./quest_text.js";
 import { walkAuditHUDText } from "./walkAuditMode.js";
 import { applyGameplayViewport } from "../systems/gameplayViewport.js";
 import { updateDungeonEntry } from "./dungeonEntry.js";
@@ -353,6 +364,14 @@ export class WorldScene extends Phaser.Scene {
     }
 
     // Vehicle indicator circle behind player (T2+)
+    this.fieldShadow = this.add
+      .ellipse(playerPos.x, playerPos.y - 2, 23, 7, 0x24382c, 0.3)
+      .setDepth(3);
+    const groundPlayer = () => updateMeadowDepth(this);
+    this.events.on("postupdate", groundPlayer);
+    this.events.once("shutdown", () =>
+      this.events.off("postupdate", groundPlayer),
+    );
     this.vehicleIndicator = null;
     this.updateVehicleIndicator();
 
@@ -399,6 +418,8 @@ export class WorldScene extends Phaser.Scene {
     this.codexGroup = null;
 
     // Enter interacts with nearby locations. Space cycles the party leader.
+    renderWorldResources(this, RENDERED_TILE);
+    this.currentResource = null;
     this.currentDoorSpawn = null;
     this.currentNaturalSpawn = null;
     this.naturalInteractionActive = false;
@@ -503,9 +524,6 @@ export class WorldScene extends Phaser.Scene {
       }
     }
 
-    this.lastMoveTime = 0;
-    this.moveCooldown = 150;
-
     // Autosave timer
     this.autosaveTimer = null;
     this.startAutosaveTimer();
@@ -569,12 +587,11 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
-  update(time) {
+  update() {
     if (isWorldInputLocked(this)) return;
     if (this.dungeonRouteRunning) return;
     if (!this.hudText || !this.player) return; // scene destroyed
     if (this.animating) return;
-    if (time - this.lastMoveTime < this.moveCooldown) return;
 
     let dx = 0,
       dy = 0;
@@ -585,12 +602,12 @@ export class WorldScene extends Phaser.Scene {
 
     if (dx !== 0 || dy !== 0) {
       this.tryMove(dx, dy);
-      this.lastMoveTime = time;
     }
   }
 
   handleAction() {
     if (isWorldInputLocked(this)) return;
+    if (this.currentResource) return gatherNearbyResource(this);
     if (this.currentNaturalSpawn) return interactWithNaturalNode(this);
     return interactWithDoor(this);
   }
@@ -664,52 +681,48 @@ export class WorldScene extends Phaser.Scene {
     const walk = beginWalkStep(this, (frame) =>
       setPlayerWalkFrame(this, frame),
     );
+    // Send this single authoritative step while the tile motion is running.
+    // Unlock, rollback, and encounters still wait for BOTH completions.
+    let arrivalDone = false;
+    let animationDone = false;
+    let arrivalResult;
+    const finishAcknowledgedStep = () => {
+      if (!arrivalDone || !animationDone) return;
+      const accepted = !arrivalResult?.error;
+      if (this.scene?.isActive()) {
+        if (!accepted)
+          this.restoreRejectedWorldStep(origin, arrivalResult.error);
+        this.animating = false;
+        this.updateHUD();
+      }
+      settleWorldStep(accepted);
+      if (
+        accepted &&
+        shouldStartBattle(arrivalResult) &&
+        this.scene?.isActive()
+      ) {
+        void this.triggerRandomEncounter(tile, arrivalResult);
+      }
+    };
+    void syncWorldArrival(this, {
+      step: true,
+      debugNoEncounters: randomEncountersDisabledForDebug(),
+    })
+      .catch((error) => ({
+        error: error instanceof Error ? error.message : String(error),
+      }))
+      .then((result) => {
+        arrivalResult = result;
+        arrivalDone = true;
+        finishAcknowledgedStep();
+      });
     const finishStepAnimation = () => {
       walk.complete();
-      let accepted = true;
-      let encounterResult = null;
-      void syncWorldArrival(this, {
-        step: true,
-        debugNoEncounters: randomEncountersDisabledForDebug(),
-      })
-        .then((result) => {
-          if (shouldStartBattle(result)) encounterResult = result;
-          if (result?.error && this.scene?.isActive()) {
-            accepted = false;
-            this.restoreRejectedWorldStep(origin, result.error);
-          }
-        })
-        .catch((error) => {
-          if (this.scene?.isActive()) {
-            accepted = false;
-            this.restoreRejectedWorldStep(
-              origin,
-              error instanceof Error ? error.message : String(error),
-            );
-          }
-        })
-        .finally(() => {
-          if (this.scene?.isActive()) {
-            this.animating = false;
-            this.updateHUD();
-          }
-          settleWorldStep(accepted);
-          if (accepted && encounterResult && this.scene?.isActive()) {
-            void this.triggerRandomEncounter(tile, encounterResult);
-          }
-        });
+      animationDone = true;
+      // An early acknowledgement must not schedule another idle render tick.
+      finishAcknowledgedStep();
     };
-    this.tweens.add({
-      targets: this.player,
-      x: dest.x,
-      y: dest.y,
-      duration: stepMs,
-      ease: "Linear",
-      onUpdate: () => {
-        walk.updatePosition();
-      },
-      onComplete: finishStepAnimation,
-    });
+    startWalkMotion(this, dest, stepMs, walk, finishStepAnimation);
     if (this.vehicleIndicator) {
       this.tweens.add({
         targets: this.vehicleIndicator,
@@ -862,6 +875,7 @@ export class WorldScene extends Phaser.Scene {
 
   drawMap() {
     this.tileGraphics.clear();
+    const terrain = resourceTerrain(this.tileData, this.gameState.resources);
 
     // Destroy any prior sprite container so re-draws are clean.
     if (this.tileSprites) {
@@ -877,7 +891,7 @@ export class WorldScene extends Phaser.Scene {
         const py = y * RENDERED_TILE;
         const spriteKey = ensureTerrainRenderTexture(
           this,
-          buildTerrainRenderPlan(this.tileData, x, y),
+          meadowGroundPlan(this, buildTerrainRenderPlan(terrain, x, y), x, y),
         );
 
         if (spriteKey) {
@@ -889,7 +903,11 @@ export class WorldScene extends Phaser.Scene {
         } else if (isStructureTile(tile)) {
           if (this.textures.exists("tile_grass")) {
             const img = this.add
-              .image(px, py, "tile_grass")
+              .image(
+                px,
+                py,
+                meadowGroundPlan(this, { baseKey: "tile_grass" }, x, y).baseKey,
+              )
               .setOrigin(0, 0)
               .setDisplaySize(RENDERED_TILE, RENDERED_TILE);
             this.tileSprites.add(img);
@@ -909,6 +927,7 @@ export class WorldScene extends Phaser.Scene {
     // Legacy building footprints render as walkable grass; spawn data still
     // drives destination interactions.
     renderWorldLandmarks(this, this.spawns, this.gameState);
+    drawMeadowDetails(this, RENDERED_TILE);
   }
 
   drawMinimap() {
@@ -1049,7 +1068,6 @@ export class WorldScene extends Phaser.Scene {
   updateQuestDisplay() {
     const gs = this.gameState;
     const drawCard = (title, detail, accent = 0xd7b45c) => {
-      this.explorationHUD?.objective(title, detail);
       const lines = [title, detail].filter(Boolean);
       this.questText.setText(lines.join("\n"));
       const bounds = this.questText.getBounds();
@@ -1067,22 +1085,8 @@ export class WorldScene extends Phaser.Scene {
       this.questCard.fillRect(12, 14, 4, height - 12);
     };
 
-    if (gs.current_quest < gs.quests.length) {
-      const q = gs.quests[gs.current_quest];
-      if (q?.hidden) {
-        drawCard(
-          "Explore the world",
-          "No new objective has been revealed yet.",
-          0x88d47a,
-        );
-        return;
-      }
-      const title = `${questKindLabel(q)}: ${q.name}`;
-      const detail = questObjectiveText(q);
-      drawCard(title, detail);
-    } else {
-      drawCard("Campaign Complete", "All quests complete.", 0x88d47a);
-    }
+    const objective = trackedObjective(this);
+    drawCard(objective.title, objective.detail);
   }
 
   showMessage(text) {

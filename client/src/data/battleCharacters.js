@@ -16,6 +16,9 @@ function expandRecipeState(profile, recipeState) {
   return {
     body_key: signature.body_key,
     body_path: signature.body_path,
+    ...(recipeState.cue_frame != null
+      ? { cue_frame: recipeState.cue_frame }
+      : {}),
     ...(recipeState.hold_last_frame ? { hold_last_frame: true } : {}),
     frames: recipeState.frames.map((recipeFrame) => {
       const sourceFrame = signatureFrames.get(recipeFrame.frame);

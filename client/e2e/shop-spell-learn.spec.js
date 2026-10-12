@@ -56,17 +56,32 @@ async function startSpellShopGame(page) {
 }
 
 async function visitShop(page) {
-  await page.evaluate(() =>
-    window.__kithlandsTest.startTownScene({
-      node_id: "shop",
-      name: "General Store",
-      tags: ["commerce", "shop"],
-    }),
-  );
-  await page.waitForFunction(() =>
-    window.__kithlandsTest.sceneIsActive("Town"),
-  );
-  await page.waitForTimeout(200);
+  await page.evaluate(async () => {
+    const api = await import("/src/api.js");
+    let gs = window.__kithlandsTest.gameState("World");
+    gs = await api.transitionLocation(
+      gs.id,
+      "enter-settlement",
+      gs.settlement_entry_node_id,
+    );
+    if (gs.error) throw new Error(gs.error);
+    const door = gs.settlement_map.layers
+      .flatMap((layer) => layer.objects || [])
+      .find((object) =>
+        object.properties?.some(
+          (property) =>
+            property.name === "building_type" && property.value === "shop",
+        ),
+      );
+    if (!door) throw new Error("Settlement has no shop entrance");
+    gs = await api.transitionLocation(gs.id, door.name);
+    if (gs.error) throw new Error(gs.error);
+    window.__kithlandsTest.startScene("Town", {
+      gameState: gs,
+      spawn: gs.current_location.interior,
+    });
+  });
+  await page.evaluate(() => window.__kithlandsTest.waitForSceneReady("Town"));
 
   const npc = await page.evaluate(
     () => window.__kithlandsTest.townNpcPositions("Town")[0],
@@ -81,7 +96,7 @@ async function visitShop(page) {
   await page.waitForFunction(() =>
     window.__kithlandsTest
       .visibleTexts("Town")
-      .some((entry) => entry.interactive && entry.text.includes("[BUY]")),
+      .some((entry) => entry.text === "Leave Shop"),
   );
 }
 
@@ -101,7 +116,7 @@ async function addProofOverlay(page, label) {
           text.includes("Mira") ||
           text.includes("wrong class") ||
           text.includes("level too low") ||
-          text.includes("[LEARN]") ||
+          text === "Learn" ||
           text.includes("Heal"),
       );
 
@@ -168,7 +183,7 @@ test.describe("shop spell learning flow", () => {
       return (
         texts.some((entry) => entry.text.includes("wrong class")) &&
         texts.some((entry) => entry.text.includes("level too low")) &&
-        texts.some((entry) => entry.text.includes("[LEARN]"))
+        texts.some((entry) => entry.text === "Learn")
       );
     });
 
@@ -224,7 +239,7 @@ test.describe("shop spell learning flow", () => {
     expect(learnRequests).toHaveLength(1);
     expect(JSON.parse(learnRequests[0].body)).toMatchObject({
       char_name: "Mira",
-      spell_id: "heal",
+      stock_id: expect.any(String),
     });
     expect(buyRequests).toHaveLength(0);
     expect(learnBody.error).toBeFalsy();
@@ -240,5 +255,29 @@ test.describe("shop spell learning flow", () => {
       false,
     );
     expect(toast).toContain("Mira learned Heal!");
+    await page.evaluate(() =>
+      window.__kithlandsTest.clickInteractiveText("Leave Shop", "Town"),
+    );
+    await page.keyboard.press("m");
+    await page.evaluate(() =>
+      window.__kithlandsTest.clickMenuButton("QUEST LOG", "Town"),
+    );
+    const journal = page.getByRole("dialog", { name: "Quest Log" });
+    await expect(journal).toBeVisible();
+    await expect(
+      journal.getByRole("heading", { name: "Your campaign" }),
+    ).toBeVisible();
+    await expect(
+      journal.getByRole("heading", { name: "Local stories" }),
+    ).toHaveCount(1);
+    await page.evaluate(() =>
+      document.getElementById("shop-spell-proof")?.remove(),
+    );
+    await page.screenshot({
+      path: path.join(PROOF_DIR, `town-shared-journal-${RUN_ID}.png`),
+      fullPage: true,
+    });
+    await journal.getByRole("button", { name: "Close Quest Log" }).click();
+    await expect(journal).toHaveCount(0);
   });
 });

@@ -1,12 +1,12 @@
+import { objectiveTracker } from "../ui/objective_tracker.js";
+import { trackedObjective } from "./questJournalModel.js";
+import { showObjectiveQuestLog } from "./objective_quest_log.js";
+import "../styles/exploration-hud.css";
 import { beginWalkStep } from "./walkPlayback.js";
 import { dungeonAction, saveGame } from "../api.js";
 import { initAudio, playMusic, playSFX } from "../systems/audio.js";
 import { applyGameplayViewport } from "../systems/gameplayViewport.js";
-import {
-  isWorldInputLocked,
-  pauseWorldFor,
-  resumeWorldFor,
-} from "../systems/modalLock.js";
+import { activeWorldLocks, isWorldInputLocked } from "../systems/modalLock.js";
 import { walkStepMs } from "../systems/prefs.js";
 import { drawButton, drawPanel } from "../ui/panel.js";
 import { getLeaderIndex } from "./world.js";
@@ -53,7 +53,7 @@ export class DungeonScene extends Phaser.Scene {
     this.path = [];
     this.pendingAction = null;
     this.actionPage = 0;
-    this.journalGroup = null;
+    this.journalDialog = null;
     this.hudGroup = [];
     this.markers = [];
   }
@@ -260,7 +260,7 @@ export class DungeonScene extends Phaser.Scene {
       this.handleAction();
     });
     this.input.keyboard.on("keydown-ESC", () => {
-      if (this.journalGroup) this.closeJournal();
+      if (this.journalDialog) this.closeJournal();
       else if (!this.animating) this.openParty();
     });
     this.input.keyboard.on("keydown-J", () => this.openJournal());
@@ -625,16 +625,32 @@ export class DungeonScene extends Phaser.Scene {
     }
     this.mapRoot.add(this.markers);
     this.mapRoot.sort("depth");
-    const objectiveY = portrait ? height - 300 : height - 69;
-    add(
-      this.text(
-        24,
-        objectiveY,
-        d.objective,
-        bodySize,
-        "#d5dfbd",
-      ).setWordWrapWidth(width - 48),
-    );
+    if (!this.objectiveHUD) {
+      this.objectiveHUD = objectiveTracker(() => this.openJournal());
+      this.objectiveHUD.root.classList.add("dungeon-objective-hud");
+      document.body.append(this.objectiveHUD.root);
+      const position = () => {
+        const rect = this.game.canvas.getBoundingClientRect();
+        this.objectiveHUD.root.style.left = `${rect.left + 16}px`;
+        this.objectiveHUD.root.style.top = `${rect.top + ((height - (portrait ? 300 : 76)) / height) * rect.height}px`;
+        this.objectiveHUD.root.style.maxWidth = `${Math.min(500, rect.width - 32)}px`;
+      };
+      position();
+      const updateVisibility = () => {
+        this.objectiveHUD.root.hidden =
+          this.menuOpen || activeWorldLocks(this).length > 0;
+      };
+      this.events.on("update", updateVisibility);
+      window.addEventListener("resize", position);
+      this.events.once("shutdown", () => {
+        window.removeEventListener("resize", position);
+        this.events.off("update", updateVisibility);
+        this.objectiveHUD?.root.remove();
+        this.objectiveHUD = null;
+      });
+    }
+    const objective = trackedObjective(this);
+    this.objectiveHUD.update(objective.title, objective.detail);
     const navY = portrait ? height - 60 : height - 22;
     const nav = [
       ["Party", () => this.openParty()],
@@ -696,7 +712,7 @@ export class DungeonScene extends Phaser.Scene {
   openParty() {
     if (
       this.animating ||
-      this.journalGroup ||
+      this.journalDialog ||
       (!this.menuOpen && isWorldInputLocked(this))
     )
       return;
@@ -727,102 +743,20 @@ export class DungeonScene extends Phaser.Scene {
     }
   }
 
-  openJournal(page = 0) {
+  openJournal() {
     if (isWorldInputLocked(this)) return;
     this.path = [];
     this.pendingAction = null;
-    pauseWorldFor(this, "dungeon_journal");
-    const { width, height, portrait, bodySize } = this.layout;
-    const d = this.gameState.dungeon;
-    const group = [];
-    this.journalGroup = group;
-    group.push(
-      drawPanel(
-        this,
-        width / 2,
-        height / 2,
-        width - 48,
-        portrait ? Math.min(height - 140, 1280) : height - 50,
-        { depth: 60, fill: 0x102326, stroke: 0xc9bd85 },
-      ).bg,
-    );
-    const top = portrait ? Math.max(90, height / 2 - 560) : 52;
-    group.push(
-      this.text(52, top, "Trail journal", portrait ? 38 : 27, "#fff1c8", 61),
-    );
-    group.push(
-      this.text(
-        52,
-        top + (portrait ? 62 : 44),
-        d.objective,
-        bodySize,
-        "#d5dfbd",
-        61,
-      ).setWordWrapWidth(width - 104),
-    );
-    const bottom = portrait
-      ? Math.min(height - 100, height / 2 + 560)
-      : height - 66;
-    const journalY = top + (portrait ? 180 : 116);
-    const journalText = this.text(52, journalY, "M", bodySize, "#e2e8db", 61)
-      .setWordWrapWidth(width - 104)
-      .setLineSpacing(portrait ? 5 : 3);
-    // Page by rendered lines, so authored notes stay readable at either size
-    // and even a single long note cannot cover the journal controls.
-    const lineHeight = journalText.height + (portrait ? 5 : 3);
-    const linesPerPage = Math.max(
-      1,
-      Math.floor((bottom - (portrait ? 126 : 86) - journalY) / lineHeight),
-    );
-    const lines = [...(d.journal || [])]
-      .reverse()
-      .flatMap((entry) => [...journalText.getWrappedText(`• ${entry}`), ""]);
-    const pages = Math.max(1, Math.ceil(lines.length / linesPerPage));
-    page = Math.min(page, pages - 1);
-    journalText.setText(
-      lines.slice(page * linesPerPage, (page + 1) * linesPerPage).join("\n"),
-    );
-    group.push(journalText);
-    group.push(
-      this.text(
-        52,
-        bottom - (portrait ? 94 : 60),
-        `${d.visited?.length || 0} places explored · Page ${page + 1} of ${pages}`,
-        bodySize,
-        "#a6baad",
-        61,
-      ),
-    );
-    if (pages > 1)
-      group.push(
-        this.button(
-          185,
-          bottom,
-          248,
-          "Earlier notes",
-          () => {
-            this.closeJournal();
-            this.openJournal((page + 1) % pages);
-          },
-          62,
-        ),
-      );
-    group.push(
-      this.button(
-        width - 175,
-        bottom,
-        248,
-        "Return to trail",
-        () => this.closeJournal(),
-        62,
-      ),
-    );
+    this.journalDialog = showObjectiveQuestLog(this, {
+      onClose: () => {
+        this.journalDialog = null;
+      },
+    });
   }
 
   closeJournal() {
-    this.journalGroup?.forEach((object) => object.destroy());
-    this.journalGroup = null;
-    resumeWorldFor(this, "dungeon_journal");
+    this.journalDialog?.dispose();
+    this.journalDialog = null;
   }
 
   showMessage(message) {

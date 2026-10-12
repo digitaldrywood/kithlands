@@ -6,6 +6,7 @@
 
 import { MENU_THEME, roundedRectangle } from "./theme.js";
 import { barFillWidth, barLabel } from "../systems/hpBar.js";
+import { registerCanvasButton } from "./canvas_menu_keyboard.js";
 
 const DEFAULT_BUTTON_STYLE = {
   fontSize: "12px",
@@ -170,6 +171,20 @@ export function drawButton(scene, x, y, w, h, label, onClick, opts = {}) {
   text.on("pointerout", onPointerOut);
   text.on("pointerdown", onPointerDown);
   text.on("pointerup", onPointerUp);
+
+  registerCanvasButton(scene, {
+    bg,
+    label: text,
+    shortcut: String(label).match(/\[([A-Z0-9])\]/)?.[1],
+    width: w,
+    height: h,
+    enabled: () => state.enabled,
+    activate: () => {
+      if (state.enabled) onClick?.();
+    },
+    focus: onPointerOver,
+    blur: onPointerOut,
+  });
 
   return {
     bg,

@@ -74,3 +74,16 @@ export function enumerateBackgrounds() {
   }
   return out;
 }
+
+// These shipped paintings reserve their bottom fifth for a baked HUD filler.
+// Frame only the playable painting; never expose that footer as terrain.
+export function battleBackdropFrame(texture) {
+  const key = "battle-ground";
+  if (!texture.has(key)) {
+    const { width, height } = texture.getSourceImage();
+    const top = Math.round(height * 0.4);
+    const bottom = Math.round(height * 0.79);
+    texture.add(key, 0, 0, top, width, bottom - top);
+  }
+  return key;
+}

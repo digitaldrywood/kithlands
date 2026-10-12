@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   battleElementStyle,
+  battleCastOrigin,
   buildAttackMotionPath,
   cinematicActionKey,
   prefersReducedBattleMotion,
@@ -9,6 +10,35 @@ import {
 } from "./battle_cinematics.js";
 
 describe("battle cinematic motion", () => {
+  it("registers spell emission to the rotated staff tip at actor scale", () => {
+    const image = {
+      visible: true,
+      x: 20,
+      y: -80,
+      displayOriginX: 96,
+      displayOriginY: 96,
+      scaleX: 1,
+      scaleY: 1,
+      rotation: Math.PI / 2,
+    };
+    const actor = {
+      x: 500,
+      y: 200,
+      sprite: {
+        x: 500,
+        y: 300,
+        scaleX: 0.5,
+        scaleY: 0.5,
+        battleAttachmentLayers: [
+          { emissionPoint: [96, 16], front: image, back: { visible: false } },
+        ],
+      },
+    };
+    expect(battleCastOrigin(actor)).toEqual({ x: 550, y: 260 });
+    actor.sprite.battleCastSource = { x: 530, y: 210 };
+    expect(battleCastOrigin(actor)).toEqual({ x: 530, y: 210 });
+    expect(battleCastOrigin({ x: 80, y: 90 })).toEqual({ x: 80, y: 90 });
+  });
   it("moves either side close enough to make the attacker unmistakable", () => {
     const hero = { x: 540, y: 220, width: 72 };
     const monster = { x: 160, y: 230, width: 58 };

@@ -2,11 +2,11 @@ import { expect, test } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 const proof = new URL(`../tmp/exploration-hud-${Date.now()}/`, import.meta.url);
 mkdirSync(proof, { recursive: true });
-for (const width of [1440, 720, 645, 390]) {
+for (const width of [1440, 610, 390]) {
   test(`exploration controls and exit at ${width}`, async ({ page }) => {
     await page.setViewportSize({
       width,
-      height: width === 1440 ? 900 : width === 390 ? 844 : 847,
+      height: width === 1440 ? 900 : width === 390 ? 844 : 837,
     });
     await page.goto("/?noEncounters=1");
     await page.waitForFunction(
@@ -18,23 +18,13 @@ for (const width of [1440, 720, 645, 390]) {
     );
     const hud = page.getByRole("region", { name: "Exploration controls" });
     await expect(hud).toBeVisible();
-    await expect(hud.locator(".explore-member")).toHaveCount(4);
-    const objectiveToggle = hud.getByRole("button", { name: /^Objective/ });
-    const partyToggle = hud.getByRole("button", { name: /^Party/ });
-    await expect(objectiveToggle).toHaveAttribute("aria-expanded", "false");
-    await expect(partyToggle).toHaveAttribute("aria-expanded", "false");
-    await expect(hud.locator(".explore-party-details")).toBeHidden();
-    await expect(hud.locator(".explore-objective-details")).toBeHidden();
-    await page.screenshot({
-      path: new URL(`collapsed-${width}.png`, proof).pathname,
-    });
-    await objectiveToggle.click();
-    await expect(hud.locator(".explore-objective-details")).toBeVisible();
-    await expect(hud.locator(".explore-party-details")).toBeHidden();
-    await partyToggle.focus();
-    await page.keyboard.press("Enter");
-    await expect(hud.locator(".explore-party-details")).toBeVisible();
-    await expect(partyToggle).toHaveAttribute("aria-expanded", "true");
+    await expect(
+      hud.getByRole("button", { name: /^Objective|^Party/ }),
+    ).toHaveCount(0);
+    await expect(hud.locator('[data-route="true"]')).toHaveCount(0);
+    await expect(
+      hud.getByRole("button", { name: "Menu", exact: true }),
+    ).toHaveCount(1);
     await page.screenshot({
       path: new URL(`world-${width}.png`, proof).pathname,
     });
@@ -61,12 +51,6 @@ for (const width of [1440, 720, 645, 390]) {
       .getByRole("button", { name: "Keep playing", exact: true })
       .click();
     await expect(hud).toBeVisible();
-    await expect(partyToggle).toHaveAttribute("aria-expanded", "true");
-    await objectiveToggle.click();
-    await expect(hud.locator(".explore-objective-details")).toBeHidden();
-    await expect(hud.locator(".explore-party-details")).toBeVisible();
-    await partyToggle.click();
-    await expect(hud.locator(".explore-party-details")).toBeHidden();
     await hud.getByRole("button", { name: "Menu", exact: true }).click();
     await exit.click();
     await page

@@ -1,3 +1,5 @@
+import { itemArtURL } from "../ui/item_art.js";
+import { registerCanvasButton } from "../ui/canvas_menu_keyboard.js";
 import { roundedRectangle } from "../ui/theme.js";
 import {
   autosaveGame,
@@ -95,6 +97,7 @@ export function groupShopItems(items = []) {
     consumables: items.filter(
       (item) => item.type === "consumable" || item.type === "key_item",
     ),
+    supplies: items.filter((item) => item.type === "material"),
     spells: items.filter((item) => item.type === "spell"),
   };
 }
@@ -167,6 +170,21 @@ export async function openShop(scene, spawn) {
     catalogError = catalogFailure(e);
   }
 
+  const artItems = items.filter((item) => itemArtURL(item.icon_key));
+  const missingArt = artItems.filter(
+    (item) => !scene.textures.exists(`item-art:${item.icon_key}`),
+  );
+  if (missingArt.length) {
+    await new Promise((resolve) => {
+      for (const item of missingArt)
+        scene.load.image(
+          `item-art:${item.icon_key}`,
+          itemArtURL(item.icon_key),
+        );
+      scene.load.once("complete", resolve);
+      scene.load.start();
+    });
+  }
   if (!catalogError && items.length === 0) {
     scene.showMessage(`${spawn.name} has nothing for sale.`);
     scene.time.delayedCall(1500, () => {
@@ -183,13 +201,16 @@ export async function openShop(scene, spawn) {
   const pickerGroup = [];
   const catalogErrorGroup = [];
   const tabButtons = [];
+  scene.shopPurchasePending = false;
   const tabs = [
     { label: "Weapons", key: "weapons" },
     { label: "Armor", key: "armor" },
     { label: "Items", key: "consumables" },
     { label: "Spells", key: "spells" },
+    { label: "Supplies", key: "supplies" },
   ];
   let currentTab = "weapons";
+  let stockPage = 0;
   let selectedItemId = null;
   let focusedMemberIndex = 0;
   let escHandler = null;
@@ -590,12 +611,48 @@ export async function openShop(scene, spawn) {
     detailGroup.push(buyBtn, buyForBtn);
   };
 
+  const purchaseSupply = async (item) => {
+    if (scene.shopPurchasePending) return;
+    if (item.type === "spell") {
+      showSpellPicker(item);
+      return;
+    }
+    scene.shopPurchasePending = true;
+    for (const control of listGroup) control?.setEnabled?.(false);
+    for (const tab of tabButtons) tab.button.setEnabled(false);
+    try {
+      const result = await buyItem(
+        scene.gameState.id,
+        spawn.node_id,
+        item.stock_id,
+      );
+      if (result?.error) {
+        await recoverPurchaseError(result.error);
+        return;
+      }
+      scene.gameState = result;
+      updateGold();
+      scene.updateHUD?.();
+      await refreshAfterPurchase(`Bought: ${item.name}!`);
+      autosaveAfterPurchase(result);
+    } catch (error) {
+      await recoverPurchaseError(
+        error.message || "Purchase could not be completed.",
+      );
+    } finally {
+      scene.shopPurchasePending = false;
+      for (const tab of tabButtons) tab.button.setEnabled(true);
+    }
+  };
+
   const renderList = (tabItems) => {
     destroyPicker();
     destroyGroup(listGroup);
 
     const selected = currentSelectedItem();
-    const displayItems = tabItems.slice(0, 10);
+    const pageCount = Math.max(1, Math.ceil(tabItems.length / 10));
+    stockPage = Math.min(stockPage, pageCount - 1);
+    const displayItems = tabItems.slice(stockPage * 10, (stockPage + 1) * 10);
     const currentGold = scene.gameState?.gold ?? 0;
 
     let y = 154;
@@ -619,6 +676,16 @@ export async function openShop(scene, spawn) {
         .setDepth(MAIN_PANEL.depth + 1);
       listGroup.push(rowBg);
 
+      const artKey = `item-art:${item.icon_key}`;
+      const hasArt = itemArtURL(item.icon_key) && scene.textures.exists(artKey);
+      if (hasArt)
+        listGroup.push(
+          scene.add
+            .image(LIST_LEFT + 35, y, artKey)
+            .setDisplaySize(24, 24)
+            .setScrollFactor(0)
+            .setDepth(MAIN_PANEL.depth + 2),
+        );
       let desc = item.name;
       if (item.type === "spell" && item.school) {
         desc += ` (${item.school} ${item.spell_level})`;
@@ -629,7 +696,7 @@ export async function openShop(scene, spawn) {
 
       const textColor = affordable || equippable ? "#e9eef7" : "#777777";
       const label = scene.add
-        .text(LIST_LEFT, y + LIST_TEXT_Y_OFFSET, desc, {
+        .text(LIST_LEFT + (hasArt ? 30 : 0), y + LIST_TEXT_Y_OFFSET, desc, {
           fontSize: "11px",
           color: textColor,
           fontFamily: "Arial",
@@ -656,6 +723,17 @@ export async function openShop(scene, spawn) {
           renderList(itemsForTab(currentTab));
           renderDetail();
         };
+        registerCanvasButton(scene, {
+          bg: rowBg,
+          label,
+          width: LIST_ROW_WIDTH,
+          height: LIST_ROW_HEIGHT,
+          inline: true,
+          enabled: () => true,
+          activate: selectRow,
+          focus: () => rowBg.setStrokeStyle(2, 0xc9b589),
+          blur: () => rowBg.setStrokeStyle(1, 0x384859),
+        });
         rowBg.setInteractive({ useHandCursor: true });
         label.setInteractive({ useHandCursor: true });
         rowBg.on("pointerover", selectRow);
@@ -683,26 +761,18 @@ export async function openShop(scene, spawn) {
           indicatorX += 16;
         }
       } else if (affordable) {
-        const triggerPurchase = async () => {
-          if (item.type === "spell") {
-            showSpellPicker(item);
-            return;
-          }
-          const result = await buyItem(
-            scene.gameState.id,
-            spawn.node_id,
-            item.stock_id,
-          );
-          if (result?.error) {
-            await recoverPurchaseError(result.error);
-            return;
-          }
-          scene.gameState = result;
-          updateGold();
-          scene.updateHUD?.();
-          await refreshAfterPurchase(`Bought: ${item.name}!`);
-          autosaveAfterPurchase(result);
-        };
+        const triggerPurchase = () => purchaseSupply(item);
+        registerCanvasButton(scene, {
+          bg: rowBg,
+          label,
+          width: LIST_ROW_WIDTH,
+          height: LIST_ROW_HEIGHT,
+          inline: true,
+          enabled: () => !scene.shopPurchasePending,
+          activate: triggerPurchase,
+          focus: () => rowBg.setStrokeStyle(2, 0xc9b589),
+          blur: () => rowBg.setStrokeStyle(1, 0x384859),
+        });
         rowBg.setInteractive({ useHandCursor: true });
         label.setInteractive({ useHandCursor: true });
         rowBg.on("pointerdown", triggerPurchase);
@@ -710,26 +780,7 @@ export async function openShop(scene, spawn) {
       }
 
       if (affordable && !equippable) {
-        const triggerPurchase = async () => {
-          if (item.type === "spell") {
-            showSpellPicker(item);
-            return;
-          }
-          const result = await buyItem(
-            scene.gameState.id,
-            spawn.node_id,
-            item.stock_id,
-          );
-          if (result?.error) {
-            await recoverPurchaseError(result.error);
-            return;
-          }
-          scene.gameState = result;
-          updateGold();
-          scene.updateHUD?.();
-          await refreshAfterPurchase(`Bought: ${item.name}!`);
-          autosaveAfterPurchase(result);
-        };
+        const triggerPurchase = () => purchaseSupply(item);
         const buyBtn = drawButton(
           scene,
           522,
@@ -752,6 +803,41 @@ export async function openShop(scene, spawn) {
       y += LIST_ROW_GAP;
     }
 
+    if (pageCount > 1) {
+      const changePage = (delta) => {
+        if (scene.shopPurchasePending) return;
+        stockPage = Math.max(0, Math.min(pageCount - 1, stockPage + delta));
+        selectedItemId = shopSelectionID(tabItems[stockPage * 10]);
+        renderCatalogView();
+      };
+      for (const [x, label, delta, enabled] of [
+        [160, "Previous Stock", -1, stockPage > 0],
+        [402, "Next Stock", 1, stockPage + 1 < pageCount],
+      ]) {
+        const button = drawButton(
+          scene,
+          x,
+          504,
+          130,
+          26,
+          label,
+          () => changePage(delta),
+          { depth: MAIN_PANEL.depth + 2, fontSize: "10px" },
+        );
+        button.setEnabled(enabled);
+        listGroup.push(button);
+      }
+      listGroup.push(
+        scene.add
+          .text(282, 504, `${stockPage + 1} / ${pageCount}`, {
+            fontSize: "11px",
+            color: "#c9b589",
+          })
+          .setOrigin(0.5)
+          .setScrollFactor(0)
+          .setDepth(MAIN_PANEL.depth + 2),
+      );
+    }
     if (displayItems.length === 0) {
       const empty = scene.add
         .text(280, 205, "Nothing in this category.", {
@@ -1021,6 +1107,7 @@ export async function openShop(scene, spawn) {
       tab.label,
       () => {
         currentTab = tab.key;
+        stockPage = 0;
         renderCatalogView();
       },
       {
@@ -1055,6 +1142,7 @@ export async function openShop(scene, spawn) {
   overlay.push(leaveBtn);
 
   function closeShop() {
+    if (scene.shopPurchasePending) return;
     scene.events.off("postupdate", positionPortraitShop);
     destroyPicker();
     destroyDetail();

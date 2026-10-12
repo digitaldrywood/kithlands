@@ -5,6 +5,10 @@ repo_root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$repo_root"
 
 source scripts/worktree-env.sh
+# Match direnv: worktree-local database and port overrides apply to proof runs.
+if [ -f .envrc.local ]; then
+  source .envrc.local
+fi
 
 spec_args=("$@")
 if [ ${#spec_args[@]} -eq 0 ]; then

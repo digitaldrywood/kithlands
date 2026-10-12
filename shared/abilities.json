@@ -1,15 +1,18 @@
 [
   {
     "id": "focus",
-    "name": "Focus"
+    "name": "Focus",
+    "choreography": { "motion": "stance", "state": "cast_class_ability", "color": "#f1d58a" }
   },
   {
     "id": "counter",
-    "name": "Counter"
+    "name": "Counter",
+    "choreography": { "motion": "stance", "state": "defend", "color": "#9ed9f1" }
   },
   {
     "id": "steal",
-    "name": "Steal"
+    "name": "Steal",
+    "choreography": { "motion": "reach", "state": "cast_class_ability", "hide_weapon": true, "color": "#f1d58a" }
   },
   {
     "id": "backstab",

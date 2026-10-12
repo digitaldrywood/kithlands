@@ -1,3 +1,4 @@
+import { menuKeyboard } from "./menu_keyboard.js";
 import { element } from "./viewport_dialog.js";
 import "../styles/title-screen.css";
 
@@ -33,7 +34,14 @@ export function titleScreen(scene, mode = "main") {
     ),
   );
   (document.querySelector("#game-ui") || document.body).append(root);
+  const menuKeys = menuKeyboard(root);
+  const keydown = (event) => {
+    if (menuKeys.handle(event)) event.stopImmediatePropagation();
+  };
+  window.addEventListener("keydown", keydown, true);
   const dispose = () => {
+    menuKeys.destroy();
+    window.removeEventListener("keydown", keydown, true);
     root.remove();
     scene.events.off("shutdown", dispose);
   };

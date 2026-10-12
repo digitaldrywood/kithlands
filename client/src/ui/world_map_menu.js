@@ -1,3 +1,4 @@
+import { trackedQuestID, trackQuest } from "../scenes/questJournalModel.js";
 import { element, viewportDialog } from "./viewport_dialog.js";
 import {
   cancelDungeonRoute,
@@ -15,7 +16,7 @@ export function worldMapModel(scene) {
     }),
   );
   const tracked = adventures.find(
-    (entry) => entry.id === scene.trackedDungeonID,
+    (entry) => `dungeon:${entry.id}` === trackedQuestID(scene),
   );
   return {
     adventures,
@@ -118,7 +119,7 @@ export function showWorldMapDialog(scene) {
       follow.setAttribute("aria-label", `Follow route to ${adventure.title}`);
       follow.disabled = !adventure.entrance;
       follow.addEventListener("click", async () => {
-        scene.trackedDungeonID = adventure.id;
+        trackQuest(scene, `dungeon:${adventure.id}`);
         cancelDungeonRoute(scene);
         close();
         if (scene.animating) await scene.worldStepDone;

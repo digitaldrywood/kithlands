@@ -1,3 +1,4 @@
+import { nearbyResource } from "./gatheringModel.js";
 import { buildWalkAuditParty } from "./walkAuditMode.js";
 import { showWorldMapDialog } from "../ui/world_map_menu.js";
 import { playSFX } from "../systems/audio.js";
@@ -53,6 +54,18 @@ export function updateWorldInteractionTarget(scene, playerX, playerY) {
         scene.gameState.current_location.world_node_id === spawn.node_id),
   );
   const spawn = nearbyWorldInteraction(spawns, playerX, playerY);
+  scene.currentResource = nearbyResource(
+    scene.gameState?.resources,
+    playerX,
+    playerY,
+  );
+  if (scene.currentResource) {
+    scene.currentDoorSpawn = null;
+    scene.currentNaturalSpawn = null;
+    hideInteractPrompt(scene);
+    scene.explorationHUD?.interaction(`Gather — ${scene.currentResource.name}`);
+    return scene.currentResource;
+  }
   scene.currentDoorSpawn = spawn && !isNaturalSpawn(spawn) ? spawn : null;
   scene.currentNaturalSpawn = spawn && isNaturalSpawn(spawn) ? spawn : null;
   if (spawn) showInteractPrompt(scene, spawn);

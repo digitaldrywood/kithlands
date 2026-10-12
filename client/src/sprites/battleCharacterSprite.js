@@ -91,6 +91,8 @@ function runtimeDefinition(scene, composition) {
     if (!textureKey || !scene.textures.exists(textureKey)) return null;
     attachmentLayers.push({
       channel: "weapon",
+      emissionPoint: weaponAssetsByVisualID.get(composition.weapon_visual_id)
+        ?.emission_point,
       attachmentID,
       attachment,
       textureKey,
@@ -162,13 +164,17 @@ function waitForScene(scene, ms) {
   );
 }
 
-function frameIndices(frameCount, reducedMotion) {
+function frameIndices(frameCount, reducedMotion, cueIndex) {
   if (!reducedMotion || frameCount <= 3) {
     return Array.from({ length: frameCount }, (_, index) => index);
   }
-  return [...new Set([1, Math.floor(frameCount / 2), frameCount - 1])].filter(
-    (index) => index >= 0 && index < frameCount,
-  );
+  return [
+    ...new Set([
+      1,
+      cueIndex >= 0 ? cueIndex : Math.floor(frameCount / 2),
+      frameCount - 1,
+    ]),
+  ].filter((index) => index >= 0 && index < frameCount);
 }
 
 function applyStateFrame(container, stateID, index) {
@@ -190,7 +196,7 @@ function applyStateFrame(container, stateID, index) {
     angle: manifestFrame.body?.angle || 0,
   };
   container.battleBody
-    .setPosition(bodyPose.x, bodyPose.y)
+    .setPosition(bodyPose.x, bodyPose.y - container.battleFeetOffset)
     .setAngle(bodyPose.angle);
   const radians = (bodyPose.angle * Math.PI) / 180;
   const cos = Math.cos(radians);
@@ -202,7 +208,8 @@ function applyStateFrame(container, stateID, index) {
         index
       ] || stateFrames(container.battleProfile, stateID, layer.attachmentID)[0];
     const attachmentX = bodyPose.x + pose.x * cos - pose.y * sin;
-    const attachmentY = bodyPose.y + pose.x * sin + pose.y * cos;
+    const attachmentY =
+      bodyPose.y - container.battleFeetOffset + pose.x * sin + pose.y * cos;
     for (const image of [layer.back, layer.front]) {
       image
         .setPosition(attachmentX, attachmentY)
@@ -215,7 +222,7 @@ function applyStateFrame(container, stateID, index) {
 
   container.battleState = stateID;
   container.battleFrameIndex = manifestFrame.frame;
-  return { duration: manifestFrame.duration };
+  return { duration: manifestFrame.duration, frame: manifestFrame.frame };
 }
 
 export function createBattleCharacterSprite(
@@ -227,7 +234,10 @@ export function createBattleCharacterSprite(
 ) {
   const definition = runtimeDefinition(scene, composition);
   if (!definition) {
-    return createComposedSprite(scene, x, y, composition, opts);
+    const sprite = createComposedSprite(scene, x, y, composition, opts);
+    sprite.setOrigin(0.5, 1);
+    sprite.feetAnchored = true;
+    return sprite;
   }
 
   const frameSize = BATTLE_CHARACTER_CATALOG.frame_size;
@@ -257,6 +267,9 @@ export function createBattleCharacterSprite(
   container.setSize(frameSize, frameSize);
   container.setScale(targetSize / frameSize);
 
+  container.feetAnchored = true;
+  container.battleFeetOffset =
+    BATTLE_CHARACTER_CATALOG.feet_anchor[1] - frameSize / 2;
   container.battleBody = body;
   container.battleAttachmentLayers = attachmentLayers;
   const weaponLayer = attachmentLayers.find(
@@ -300,18 +313,38 @@ export function createBattleCharacterSprite(
   };
   container.playBattleState = async (
     stateID,
-    { reducedMotion = false, speedMultiplier = 1 } = {},
+    { reducedMotion = false, speedMultiplier = 1, onFrame, onCue } = {},
   ) => {
     const state = container.battleStates[stateID];
     if (!state) return false;
     const token = ++container._battleAnimationToken;
-    for (const index of frameIndices(state.frames.length, reducedMotion)) {
+    let cueReached = false;
+    for (const index of frameIndices(
+      state.frames.length,
+      reducedMotion,
+      state.frames.findIndex((pose) => pose.frame === state.cue_frame),
+    )) {
       if (token !== container._battleAnimationToken) return false;
       const pose = applyStateFrame(container, stateID, index);
-      await waitForScene(
-        scene,
-        battleFrameDelay(pose, reducedMotion, speedMultiplier),
-      );
+      const movement = onFrame?.({
+        index,
+        frame: pose.frame,
+        duration: pose.duration,
+        reducedMotion,
+        cueFrame: state.cue_frame,
+      });
+      if (!cueReached && pose.frame === state.cue_frame) {
+        cueReached = true;
+        await onCue?.();
+      }
+      if (token !== container._battleAnimationToken) return false;
+      await Promise.all([
+        movement,
+        waitForScene(
+          scene,
+          battleFrameDelay(pose, reducedMotion, speedMultiplier),
+        ),
+      ]);
     }
     if (token === container._battleAnimationToken && !state.hold_last_frame) {
       container.resetBattlePose();

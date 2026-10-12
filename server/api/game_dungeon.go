@@ -12,7 +12,6 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/combat"
 	"github.com/digitaldrywood/kithlands/internal/dungeon"
-	"github.com/digitaldrywood/kithlands/internal/inventory"
 	"github.com/digitaldrywood/kithlands/internal/locality"
 	"github.com/digitaldrywood/kithlands/internal/settlements"
 )
@@ -22,17 +21,18 @@ const LocationDungeon = "dungeon"
 // DungeonProgress is additive JSONB save state. Combat is deliberately not
 // checkpointed: saves are taken before an encounter or after its resolution.
 type DungeonProgress struct {
-	RecoveredFromDefeat bool            `json:"-"`
-	ID                  string          `json:"id"`
-	RoomID              string          `json:"room_id"`
-	Position            dungeon.Point   `json:"position"`
-	Flags               map[string]bool `json:"flags"`
-	Visited             []string        `json:"visited"`
-	Journal             []string        `json:"journal"`
-	Active              bool            `json:"active"`
-	Origin              LocationState   `json:"origin"`
-	PayoffClaimed       bool            `json:"payoff_claimed"`
-	EncounterID         string          `json:"-"`
+	RecoveredFromDefeat    bool            `json:"-"`
+	ID                     string          `json:"id"`
+	RoomID                 string          `json:"room_id"`
+	Position               dungeon.Point   `json:"position"`
+	Flags                  map[string]bool `json:"flags"`
+	Visited                []string        `json:"visited"`
+	Journal                []string        `json:"journal"`
+	Active                 bool            `json:"active"`
+	Origin                 LocationState   `json:"origin"`
+	ClaimedPayoffMaterials map[string]bool `json:"claimed_payoff_materials,omitempty"`
+	PayoffClaimed          bool            `json:"payoff_claimed"`
+	EncounterID            string          `json:"-"`
 }
 
 type DungeonEntryState struct {
@@ -43,6 +43,10 @@ type DungeonEntryState struct {
 	NodeID       string   `json:"node_id"`
 	RouteNodeIDs []string `json:"route_node_ids,omitempty"`
 	Completed    bool     `json:"completed"`
+	Started      bool     `json:"started"`
+	Objective    string   `json:"objective"`
+	Journal      []string `json:"journal,omitempty"`
+	RewardGold   int      `json:"reward_gold,omitempty"`
 }
 type DungeonActionState struct {
 	ID        string `json:"id"`
@@ -254,8 +258,19 @@ func (g *Game) fillDungeonState(s *GameState) {
 			continue
 		}
 		entry := DungeonEntryState{ID: def.ID, Title: g.dungeonText(def.Title), Label: def.EntryLabel, Description: g.dungeonText(def.Description), NodeID: node.ID, RouteNodeIDs: g.worldNodeRoute(node.ID)}
+		entry.RewardGold = def.Payoff.Gold
+		flags := map[string]bool{}
 		if progress := g.dungeonProgress(def.ID); progress != nil {
 			entry.Completed = progress.PayoffClaimed
+			entry.Started = len(progress.Visited) > 0
+			entry.Journal = slices.Clone(progress.Journal)
+			flags = progress.Flags
+		}
+		for _, objective := range def.Objectives {
+			if objective.Until == "" || !flags[objective.Until] {
+				entry.Objective = g.dungeonText(objective.Text)
+				break
+			}
 		}
 		s.DungeonEntries = append(s.DungeonEntries, entry)
 	}
@@ -435,12 +450,20 @@ func (g *Game) interactDungeon(def *dungeon.Definition, a *dungeon.Action) error
 	return nil
 }
 func (g *Game) grantDungeonReward(r dungeon.Reward) error {
+	for id, count := range r.Materials {
+		if g.gd.CraftMaterialByID(id) == nil || count <= 0 || count > 100 || g.inv.Materials[id] > int(^uint(0)>>1)-count {
+			return fmt.Errorf("invalid material reward %q", id)
+		}
+	}
+
 	// A failed multi-item grant must neither partially grant loot nor consume
 	// its once-only claim. Preserve the isolated loot sequence too.
-	before, err := json.Marshal(g.inv)
-	if err != nil {
-		return err
+	before := g.inv
+	working := g.inv.Clone()
+	if working == nil {
+		return fmt.Errorf("inventory is unavailable")
 	}
+	g.inv = working
 	seq := g.lootRollSeq
 	count := r.Count
 	if r.ItemID != "" && count == 0 {
@@ -448,14 +471,14 @@ func (g *Game) grantDungeonReward(r dungeon.Reward) error {
 	}
 	for i := 0; i < count; i++ {
 		if _, err := g.grantLoot(r.ItemID, max(r.Level, 1), r.Sockets); err != nil {
-			var restored inventory.Inventory
-			if restoreErr := json.Unmarshal(before, &restored); restoreErr != nil {
-				return fmt.Errorf("restore reward transaction: %w", restoreErr)
-			}
-			g.inv = &restored
+			g.inv = before
 			g.lootRollSeq = seq
 			return err
 		}
+	}
+	g.inv.Normalize()
+	for id, count := range r.Materials {
+		g.inv.Materials[id] += count
 	}
 	g.inv.Gold += r.Gold
 	return nil
@@ -467,6 +490,12 @@ func (g *Game) leaveDungeon(def *dungeon.Definition) error {
 			return err
 		}
 		p.PayoffClaimed = true
+		if p.ClaimedPayoffMaterials == nil {
+			p.ClaimedPayoffMaterials = map[string]bool{}
+		}
+		for id := range def.Payoff.Materials {
+			p.ClaimedPayoffMaterials[id] = true
+		}
 		g.message = g.dungeonText(def.ReturnText)
 		p.Journal = append(p.Journal, g.message)
 	} else {
@@ -631,4 +660,38 @@ func (s *Server) handleDungeonArt(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	http.NotFound(w, r)
+}
+
+// Old completed adventures receive newly introduced material rewards once.
+// Claims are independent of remaining quantities so spending a core never
+// causes it to be issued again on the next load.
+func (g *Game) reconcileDungeonMaterialRewards() error {
+	for _, progress := range g.dungeons {
+		if progress == nil {
+			continue
+		}
+		def := g.dungeonDefinitionByID(progress.ID)
+		if def == nil || !progress.PayoffClaimed || !progress.Flags[def.CompleteFlag] {
+			continue
+		}
+		missing := map[string]int{}
+		for id, count := range def.Payoff.Materials {
+			if !progress.ClaimedPayoffMaterials[id] {
+				missing[id] = count
+			}
+		}
+		if len(missing) == 0 {
+			continue
+		}
+		if err := g.grantDungeonReward(dungeon.Reward{Materials: missing}); err != nil {
+			return err
+		}
+		if progress.ClaimedPayoffMaterials == nil {
+			progress.ClaimedPayoffMaterials = map[string]bool{}
+		}
+		for id := range missing {
+			progress.ClaimedPayoffMaterials[id] = true
+		}
+	}
+	return nil
 }
