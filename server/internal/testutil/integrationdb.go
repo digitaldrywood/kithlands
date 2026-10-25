@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -110,19 +109,27 @@ func databaseURLWithSearchPath(t *testing.T, baseURL, schema string) string {
 func migrationFiles(t *testing.T) []string {
 	t.Helper()
 
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("resolve integration helper path")
-	}
-
-	paths, err := filepath.Glob(filepath.Join(filepath.Dir(filename), "..", "db", "migrations", "*.sql"))
+	workingDir, err := os.Getwd()
 	if err != nil {
-		t.Fatalf("list migrations: %v", err)
+		t.Fatalf("resolve integration working directory: %v", err)
 	}
-	if len(paths) == 0 {
-		t.Fatal("no migration files found")
+	// Go runs each package's tests in its source directory. Source locations
+	// from runtime.Caller are not filesystem paths when built with -trimpath.
+	for dir := workingDir; ; dir = filepath.Dir(dir) {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			paths, err := filepath.Glob(filepath.Join(dir, "internal", "db", "migrations", "*.sql"))
+			if err != nil {
+				t.Fatalf("list migrations: %v", err)
+			}
+			if len(paths) > 0 {
+				sort.Strings(paths)
+				return paths
+			}
+		}
+		if filepath.Dir(dir) == dir {
+			break
+		}
 	}
-
-	sort.Strings(paths)
-	return paths
+	t.Fatalf("no migration files found above %s", workingDir)
+	return nil
 }
