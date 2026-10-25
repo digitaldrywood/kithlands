@@ -17,6 +17,8 @@ Updated 2026-10-25. This file records work; it does not schedule unattended runs
 
 ## Current slice: readability and CI
 
+- Development dependency patches update Vite 6.4.3 → 6.4.5 and Vitest 4.1.11 → 4.1.12 within the existing ranges. `npm audit --audit-level=moderate` reports zero vulnerabilities; all 778 client tests, build, formatting and six repeated-Cure/Heron real-game viewport flows pass. The running Vite server was restarted on port 3609; API and saves were retained.
+
 - Larger, outlined combat numbers; brighter elemental text; slower, smaller rise.
 - Full-opacity hold before fading: regular numbers 1.2 seconds, crits 1.5 seconds.
 - Explicit CRITICAL label; no flashing; reduced-motion text stays still.
