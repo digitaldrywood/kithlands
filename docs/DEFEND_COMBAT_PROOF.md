@@ -102,3 +102,19 @@ choreography and the full normal fifteen-minute route remain unfinished.
 
 The API was reloaded on 8689 using the existing saved database; Vite remains on
 3609. No database reset, schema change, new paid service, merge or deployment.
+
+## Follow-up: desktop and portrait boundary regression
+
+Remote run `40213425092` on `42aa539` passes walking, interiors and the Defend
+cases, but fails three desktop submenu checks. The final phone-only spacing pass
+had added a boundary using party status's top edge. Desktop status sits beside
+the command area, so that phone assumption incorrectly rejected the desktop
+layout. The assertion now requires containment in the command/message region
+and actual rectangle non-overlap with party status in either arrangement.
+
+All five cases pass with `npx playwright test --config=e2e/playwright.config.js e2e/battle-context-choices.spec.js --output=tmp/context-boundaries-1792947500`
+using the root worktree environment and isolated browser state. Inspected all
+four viewport review sheets and constituent submenu/result screens under
+`client/tmp/battle-context-1792948200314/`, including touch targets and Back.
+No gameplay/input assertion was removed. Remote confirmation of the correction
+remains pending.

@@ -61,13 +61,43 @@ for (const [width, height] of [
               scene.hudLayout.gameWidth,
           bottom:
             rect.y +
-            (scene.hudLayout.party.y * rect.height) /
+            (Math.max(
+              scene.hudLayout.command.y + scene.hudLayout.command.height,
+              scene.hudLayout.message.y + scene.hudLayout.message.height,
+            ) *
+              rect.height) /
               scene.hudLayout.gameHeight,
+          party: {
+            left:
+              rect.x +
+              (scene.hudLayout.party.x * rect.width) /
+                scene.hudLayout.gameWidth,
+            right:
+              rect.x +
+              ((scene.hudLayout.party.x + scene.hudLayout.party.width) *
+                rect.width) /
+                scene.hudLayout.gameWidth,
+            top:
+              rect.y +
+              (scene.hudLayout.party.y * rect.height) /
+                scene.hudLayout.gameHeight,
+            bottom:
+              rect.y +
+              ((scene.hudLayout.party.y + scene.hudLayout.party.height) *
+                rect.height) /
+                scene.hudLayout.gameHeight,
+          },
         };
       });
       expect(Math.abs(bounds.y - expected.y)).toBeLessThan(2);
       expect(bounds.x + bounds.width).toBeLessThanOrEqual(expected.right + 2);
       expect(bounds.y + bounds.height).toBeLessThanOrEqual(expected.bottom + 2);
+      expect(
+        bounds.x + bounds.width <= expected.party.left + 2 ||
+          bounds.x >= expected.party.right - 2 ||
+          bounds.y + bounds.height <= expected.party.top + 2 ||
+          bounds.y >= expected.party.bottom - 2,
+      ).toBe(true);
       await expect(panel).toBeInViewport();
       await expect(
         panel.getByRole("button", { name: "Back", exact: true }),
