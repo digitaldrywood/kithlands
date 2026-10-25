@@ -446,6 +446,9 @@ func (gd *GameData) validate() {
 	if gd.Stats.Combat.MinDamagePerHit <= 0 {
 		panic("gamedata: stats.json combat.min_damage_per_hit must be > 0")
 	}
+	if gd.Stats.Combat.DefendDamagePct < 1 || gd.Stats.Combat.DefendDamagePct >= 100 {
+		panic("gamedata: stats.json combat.defend_damage_pct must be between 1 and 99")
+	}
 
 	validateEquipmentSlots(gd.Items.EquipmentSlots)
 

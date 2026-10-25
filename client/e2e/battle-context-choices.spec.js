@@ -48,17 +48,26 @@ for (const [width, height] of [
         return {
           y:
             rect.y +
-            (scene.hudLayout.message.y * rect.height) /
+            (Math.min(scene.hudLayout.command.y, scene.hudLayout.message.y) *
+              rect.height) /
               scene.hudLayout.gameHeight,
           right:
             rect.x +
-            ((scene.hudLayout.message.x + scene.hudLayout.message.width) *
+            (Math.max(
+              scene.hudLayout.command.x + scene.hudLayout.command.width,
+              scene.hudLayout.message.x + scene.hudLayout.message.width,
+            ) *
               rect.width) /
               scene.hudLayout.gameWidth,
+          bottom:
+            rect.y +
+            (scene.hudLayout.party.y * rect.height) /
+              scene.hudLayout.gameHeight,
         };
       });
       expect(Math.abs(bounds.y - expected.y)).toBeLessThan(2);
       expect(bounds.x + bounds.width).toBeLessThanOrEqual(expected.right + 2);
+      expect(bounds.y + bounds.height).toBeLessThanOrEqual(expected.bottom + 2);
       await expect(panel).toBeInViewport();
       await expect(
         panel.getByRole("button", { name: "Back", exact: true }),

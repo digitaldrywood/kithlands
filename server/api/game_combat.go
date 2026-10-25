@@ -186,6 +186,19 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 	// round (e.g. the first round of an ambush). The party contributes no
 	// actions; enemies act normally.
 	skipParty := req.Type == "wait" || req.Type == "flee"
+	if !skipParty {
+		seenSlots := make(map[int]bool, len(req.Actions))
+		for _, action := range req.Actions {
+			if action.Slot < 0 || action.Slot >= len(g.party) {
+				continue
+			}
+			if seenSlots[action.Slot] {
+				state := g.stateUnlocked()
+				return &state, fmt.Errorf("choose only one action for party slot %d", action.Slot+1)
+			}
+			seenSlots[action.Slot] = true
+		}
+	}
 
 	combatants := g.makeCombatants()
 
@@ -492,6 +505,13 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 	}
 
 	sortScheduledRoundActions(roundActions, combatants, g.enemies)
+	defenses := make([]combat.Action, 0, len(roundActions))
+	for _, action := range roundActions {
+		if action.kind == scheduledRoundActionCombat {
+			defenses = append(defenses, action.combatAction)
+		}
+	}
+	combat.PrepareRoundDefenses(combatants, g.enemies, defenses)
 
 	for _, r := range combat.ResolveRoundStart(combatants, g.enemies) {
 		g.logResolvedCombatAction(combatants, abilityByActor, r)
@@ -678,7 +698,7 @@ func (g *Game) logResolvedCombatAction(
 		g.logCombat(
 			fmt.Sprintf("%s takes %d poison damage%s", r.ActorName, r.TotalDmg, status),
 			CombatActionEntry{Kind: "poison_tick",
-				ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Damage: r.TotalDmg, Killed: r.Killed})
+				ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Damage: r.TotalDmg, DamagePrevented: r.DamagePrevented, Killed: r.Killed})
 	case combat.ActionConfusion:
 		targetName := g.findCombatantName(combatants, r.TargetID)
 		if targetName == "?" {
@@ -697,7 +717,7 @@ func (g *Game) logResolvedCombatAction(
 			fmt.Sprintf("%s is confused and attacks %s[%d] for %d damage%s",
 				r.ActorName, targetName, r.TargetID, r.TotalDmg, status),
 			CombatActionEntry{Kind: "confusion", DamageType: "physical",
-				ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Damage: r.TotalDmg, Killed: r.Killed,
+				ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, Damage: r.TotalDmg, DamagePrevented: r.DamagePrevented, Killed: r.Killed,
 				Initiative: r.Initiative})
 	case combat.ActionCounter:
 		if r.TotalDmg > 0 || len(r.Hits) > 0 {
@@ -711,7 +731,7 @@ func (g *Game) logResolvedCombatAction(
 					r.ActorName, targetName, r.TargetID, r.TotalDmg, status),
 				CombatActionEntry{Kind: "counter", DamageType: "physical",
 					ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, TargetName: targetName,
-					Damage: r.TotalDmg, Killed: r.Killed, Crit: anyCrit(r.Hits), Missed: allMissed(r.Hits), Hits: toHitEntries(r.Hits),
+					Damage: r.TotalDmg, DamagePrevented: r.DamagePrevented, Killed: r.Killed, Crit: anyCrit(r.Hits), Missed: allMissed(r.Hits), Hits: toHitEntries(r.Hits),
 					Initiative: r.Initiative})
 		}
 	case combat.ActionAbility:
@@ -740,7 +760,7 @@ func (g *Game) logResolvedCombatAction(
 					r.ActorName, targetName, r.TotalDmg, status),
 				g.abilityCombatAction(abilityID, CombatActionEntry{Kind: "ability", DamageType: "physical",
 					ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, TargetName: targetName,
-					Damage: r.TotalDmg, Killed: r.Killed, Crit: anyCrit(r.Hits), Hits: toHitEntries(r.Hits),
+					Damage: r.TotalDmg, DamagePrevented: r.DamagePrevented, Killed: r.Killed, Crit: anyCrit(r.Hits), Hits: toHitEntries(r.Hits),
 					Initiative: r.Initiative}))
 		case "steal":
 			if _, itemName, ok := g.tryStealFrom(r.TargetID); ok {
@@ -769,7 +789,7 @@ func (g *Game) logResolvedCombatAction(
 					r.ActorName, targetName, r.TargetID, r.TotalDmg, status),
 				CombatActionEntry{Kind: "attack", DamageType: "physical",
 					ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, TargetName: targetName,
-					Damage: r.TotalDmg, Killed: r.Killed, Crit: anyCrit(r.Hits), Missed: allMissed(r.Hits), Hits: toHitEntries(r.Hits),
+					Damage: r.TotalDmg, DamagePrevented: r.DamagePrevented, Killed: r.Killed, Crit: anyCrit(r.Hits), Missed: allMissed(r.Hits), Hits: toHitEntries(r.Hits),
 					Initiative: r.Initiative})
 		}
 	}
@@ -1039,7 +1059,7 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 					fmt.Sprintf("%s attacks %s for %d%s", r.ActorName, name, r.TotalDmg, status),
 					CombatActionEntry{Kind: "attack", DamageType: "physical",
 						ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, TargetName: name,
-						Damage: r.TotalDmg, Killed: r.Killed, Crit: anyCrit(r.Hits), Missed: allMissed(r.Hits), Hits: toHitEntries(r.Hits),
+						Damage: r.TotalDmg, DamagePrevented: r.DamagePrevented, Killed: r.Killed, Crit: anyCrit(r.Hits), Missed: allMissed(r.Hits), Hits: toHitEntries(r.Hits),
 						Initiative: r.Initiative})
 			}
 		}
@@ -1178,7 +1198,7 @@ func (g *Game) processCombatItem(req GameActionRequest) (*GameState, error) {
 					fmt.Sprintf("%s attacks %s for %d", r.ActorName, name, r.TotalDmg),
 					CombatActionEntry{Kind: "attack", DamageType: "physical",
 						ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, TargetName: name,
-						Damage: r.TotalDmg, Killed: r.Killed, Crit: anyCrit(r.Hits), Missed: allMissed(r.Hits), Hits: toHitEntries(r.Hits),
+						Damage: r.TotalDmg, DamagePrevented: r.DamagePrevented, Killed: r.Killed, Crit: anyCrit(r.Hits), Missed: allMissed(r.Hits), Hits: toHitEntries(r.Hits),
 						Initiative: r.Initiative})
 			}
 		}

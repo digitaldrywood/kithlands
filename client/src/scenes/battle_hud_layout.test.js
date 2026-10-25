@@ -36,7 +36,12 @@ describe("battleHudLayout", () => {
     expect(layout.mode).toBe("mobile");
     expect(layout.gameHeight).toBe(1600);
     expect(rectsOverlap(layout.command, layout.message)).toBe(false);
-    expect(layout.party.y).toBeGreaterThan(layout.command.y);
+    expect(layout.message.y).toBeGreaterThan(
+      layout.command.y + layout.command.height,
+    );
+    expect(layout.party.y).toBeGreaterThan(
+      layout.message.y + layout.message.height,
+    );
     expect(layout.party.width).toBe(768);
     [layout.command, layout.message, layout.party].forEach((rect) =>
       expectContained(rect, layout.gameHeight),

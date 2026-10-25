@@ -148,6 +148,33 @@ beforeEach(() => {
 });
 
 describe("BattleScene repeat memory", () => {
+  it("advances once when rapid party choices finish before delayed callbacks", () => {
+    const scene = new BattleScene();
+    scene.gameState = {
+      party: ["Hero", "Sparks", "Mercy", "Shade"].map((name) => ({ name })),
+    };
+    scene.closePicker = vi.fn();
+    scene.promptText = {
+      setText() {
+        return this;
+      },
+      setColor() {
+        return this;
+      },
+    };
+    scene.memberActions = [];
+    scene.currentMemberIdx = 0;
+    scene.animating = false;
+    const callbacks = [];
+    scene.scaledDelay = (_, callback) => callbacks.push(callback);
+    scene.showCurrentMemberTurn = vi.fn();
+    for (let slot = 0; slot < 4; slot++)
+      scene.recordAction(slot, { slot, type: "defend" });
+    callbacks.forEach((callback) => callback());
+    expect(scene.memberActions).toHaveLength(4);
+    expect(scene.showCurrentMemberTurn).toHaveBeenCalledTimes(1);
+  });
+
   it("loads the saved round from authoritative game state", () => {
     const actions = [{ slot: 0, type: "attack", target_id: 7 }];
     const scene = new BattleScene();

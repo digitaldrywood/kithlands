@@ -190,6 +190,7 @@ type CombatConfig struct {
 	BaseHitChance      int       `json:"base_hit_chance"`
 	CritMultiplier     int       `json:"crit_multiplier"`
 	MinDamagePerHit    int       `json:"min_damage_per_hit"`
+	DefendDamagePct    int       `json:"defend_damage_pct"`
 	EnemyTargetWeights []float64 `json:"enemy_targeting_weights"`
 }
 

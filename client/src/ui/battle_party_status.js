@@ -36,13 +36,14 @@ export function partyStatusRowLayout(rect, count, compact = false) {
 }
 
 function addMeter(scene, row, y, label, current, maximum, compact) {
+  const dense = compact && row.height < 210;
   const labelX = row.x + (compact ? 16 : 80);
   const numberX = row.x + (compact ? 72 : 100);
   const barX = row.x + (compact ? 16 : 151);
-  const barY = compact ? y + 40 : y + 5;
+  const barY = compact ? y + (dense ? 36 : 40) : y + 5;
   const barWidth = Math.max(54, row.width - (compact ? 32 : 163));
   const fontSize = compact ? "24px" : "8px";
-  const meterHeight = compact ? 18 : 6;
+  const meterHeight = compact ? (dense ? 12 : 18) : 6;
   const bg = roundedRectangle(
     scene,
     barX,
@@ -186,7 +187,7 @@ export function drawBattlePartyStatus(
       const hp = addMeter(
         scene,
         bounds,
-        bounds.y + (compact ? 70 : 3),
+        bounds.y + (compact ? (bounds.height < 210 ? 48 : 70) : 3),
         "HP",
         member.hp,
         member.max_hp,
@@ -195,7 +196,7 @@ export function drawBattlePartyStatus(
       const mp = addMeter(
         scene,
         bounds,
-        bounds.y + (compact ? 146 : 15),
+        bounds.y + (compact ? (bounds.height < 210 ? 96 : 146) : 15),
         "MP",
         member.mp || 0,
         member.max_mp || 0,

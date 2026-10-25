@@ -52,14 +52,23 @@ export function battleChoicePanel(scene, { title, choices, onBack }) {
   const position = () => {
     const canvas = scene.game.canvas.getBoundingClientRect();
     const layout = scene.hudLayout;
-    const x = layout.command.x;
-    const y = layout.message.y;
-    const width = layout.message.x + layout.message.width - x;
+    const x = Math.min(layout.command.x, layout.message.x);
+    const y = Math.min(layout.command.y, layout.message.y);
+    const width =
+      Math.max(
+        layout.command.x + layout.command.width,
+        layout.message.x + layout.message.width,
+      ) - x;
+    const height =
+      Math.max(
+        layout.command.y + layout.command.height,
+        layout.message.y + layout.message.height,
+      ) - y;
     Object.assign(root.style, {
       left: `${canvas.left + (x * canvas.width) / layout.gameWidth}px`,
       top: `${canvas.top + (y * canvas.height) / layout.gameHeight}px`,
       width: `${(width * canvas.width) / layout.gameWidth}px`,
-      height: `${(layout.message.height * canvas.height) / layout.gameHeight}px`,
+      height: `${(height * canvas.height) / layout.gameHeight}px`,
     });
   };
   const observer = new ResizeObserver(position);

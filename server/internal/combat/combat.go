@@ -34,6 +34,8 @@ type Combatant struct {
 	// Countering is set when a Brawler uses the counter ability this turn;
 	// next hit they take triggers a reactive attack, then it clears.
 	Countering bool
+	// Defending lasts only for the chosen round, including faster attackers.
+	Defending bool
 
 	MonsterID string // source monster ID for lookups
 	Size      string // small, medium, large, boss
@@ -82,15 +84,16 @@ const (
 
 // ResolvedAction is a single combat action after server resolution.
 type ResolvedAction struct {
-	ActorID    int        `json:"actor_id"`
-	ActorName  string     `json:"actor_name"`
-	Kind       ActionKind `json:"kind"`
-	TargetID   int        `json:"target_id"`
-	Hits       []Hit      `json:"hits"`
-	TotalDmg   int        `json:"total_damage"`
-	TargetHP   int        `json:"target_hp"`
-	Killed     bool       `json:"killed"`
-	Initiative int        `json:"initiative,omitempty"`
+	ActorID         int        `json:"actor_id"`
+	ActorName       string     `json:"actor_name"`
+	Kind            ActionKind `json:"kind"`
+	TargetID        int        `json:"target_id"`
+	Hits            []Hit      `json:"hits"`
+	TotalDmg        int        `json:"total_damage"`
+	DamagePrevented int        `json:"damage_prevented,omitempty"`
+	TargetHP        int        `json:"target_hp"`
+	Killed          bool       `json:"killed"`
+	Initiative      int        `json:"initiative,omitempty"`
 }
 
 type Hit struct {
@@ -165,6 +168,7 @@ func ResolveTurn(
 		allCombatants[c.ID] = c
 	}
 
+	PrepareRoundDefenses(party, enemies, actions)
 	results := ResolveRoundStart(party, enemies)
 
 	// Roll a weighted initiative for each acting combatant once per round,
@@ -285,6 +289,7 @@ func ResolveAction(
 		}
 		return results
 	case ActionDefend:
+		actor.Defending = canDefend(actor)
 		return []ResolvedAction{{
 			ActorID:    actor.ID,
 			ActorName:  actor.Name,
@@ -333,6 +338,7 @@ func TickBuffs(party, enemies []*Combatant) {
 				continue
 			}
 			c.Countering = false
+			c.Defending = false
 			if len(c.Buffs) == 0 {
 				continue
 			}
@@ -346,6 +352,42 @@ func TickBuffs(party, enemies []*Combatant) {
 			c.Buffs = kept
 		}
 	}
+}
+
+// PrepareRoundDefenses applies the chosen guard before initiative, so a slow
+// defender can protect against fast attackers. Callers supply only accepted
+// actions (after ambush/preemptive filtering); end-of-round cleanup clears it.
+func PrepareRoundDefenses(party, enemies []*Combatant, actions []Action) {
+	for _, group := range [][]*Combatant{party, enemies} {
+		for _, actor := range group {
+			if actor == nil {
+				continue
+			}
+			actor.Defending = false
+			if !canDefend(actor) {
+				continue
+			}
+			for _, action := range actions {
+				if action.ActorID == actor.ID && action.Kind == ActionDefend {
+					actor.Defending = true
+					break
+				}
+			}
+		}
+	}
+}
+
+func canDefend(actor *Combatant) bool {
+	return actor.CurrentHP > 0 && actor.Status != character.StatusSleep &&
+		actor.Status != character.StatusStone && actor.Status != character.StatusDeath &&
+		actor.Status != character.StatusConfuse
+}
+
+func guardedPhysicalDamage(damage int, defender *Combatant, stats *gamedata.CombatConfig) int {
+	if defender.Defending && canDefend(defender) && stats.DefendDamagePct > 0 {
+		return max(stats.MinDamagePerHit, damage*stats.DefendDamagePct/100)
+	}
+	return damage
 }
 
 // ResolveAbility dispatches a class ability. Returns a ResolvedAction describing
@@ -506,6 +548,7 @@ func resolveAttack(attacker, defender *Combatant, stats *gamedata.CombatConfig, 
 
 	var hits []Hit
 	totalDmg := 0
+	prevented := 0
 
 	for i := 0; i < numHits; i++ {
 		// Hit check per Section 6.3
@@ -534,6 +577,9 @@ func resolveAttack(attacker, defender *Combatant, stats *gamedata.CombatConfig, 
 			isCrit = true
 		}
 
+		beforeGuard := dmg
+		dmg = guardedPhysicalDamage(dmg, defender, stats)
+		prevented += beforeGuard - dmg
 		totalDmg += dmg
 		hits = append(hits, Hit{Damage: dmg, Crit: isCrit})
 	}
@@ -547,14 +593,15 @@ func resolveAttack(attacker, defender *Combatant, stats *gamedata.CombatConfig, 
 	}
 
 	return ResolvedAction{
-		ActorID:   attacker.ID,
-		ActorName: attacker.Name,
-		Kind:      ActionAttack,
-		TargetID:  defender.ID,
-		Hits:      hits,
-		TotalDmg:  totalDmg,
-		TargetHP:  defender.CurrentHP,
-		Killed:    killed,
+		ActorID:         attacker.ID,
+		ActorName:       attacker.Name,
+		Kind:            ActionAttack,
+		TargetID:        defender.ID,
+		Hits:            hits,
+		TotalDmg:        totalDmg,
+		DamagePrevented: prevented,
+		TargetHP:        defender.CurrentHP,
+		Killed:          killed,
 	}
 }
 
@@ -575,6 +622,8 @@ func resolveBackstab(attacker, defender *Combatant, ignoreRow bool, stats *gamed
 		isCrit = true
 	}
 
+	beforeGuard := dmg
+	dmg = guardedPhysicalDamage(dmg, defender, stats)
 	defender.CurrentHP -= dmg
 	killed := false
 	if defender.CurrentHP <= 0 {
@@ -584,14 +633,15 @@ func resolveBackstab(attacker, defender *Combatant, ignoreRow bool, stats *gamed
 	}
 
 	return ResolvedAction{
-		ActorID:   attacker.ID,
-		ActorName: attacker.Name,
-		Kind:      ActionAbility,
-		TargetID:  defender.ID,
-		Hits:      []Hit{{Damage: dmg, Crit: isCrit}},
-		TotalDmg:  dmg,
-		TargetHP:  defender.CurrentHP,
-		Killed:    killed,
+		ActorID:         attacker.ID,
+		ActorName:       attacker.Name,
+		Kind:            ActionAbility,
+		TargetID:        defender.ID,
+		Hits:            []Hit{{Damage: dmg, Crit: isCrit}},
+		TotalDmg:        dmg,
+		DamagePrevented: beforeGuard - dmg,
+		TargetHP:        defender.CurrentHP,
+		Killed:          killed,
 	}
 }
 

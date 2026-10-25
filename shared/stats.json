@@ -92,6 +92,7 @@
     "base_hit_chance": 84,
     "crit_multiplier": 2,
     "min_damage_per_hit": 1,
+    "defend_damage_pct": 50,
     "enemy_targeting_weights": [50, 25, 12.5, 12.5]
   }
 }

@@ -14,8 +14,11 @@ Updated 2026-10-25. This file records work; it does not schedule unattended runs
 - Warrior/Cinder grounding, animation contact cues, following shadows and spell release.
 - Shaped fire projectiles, ember trails, dispersing contact cinders, tapered melee contact and miss distinction.
 - Warrior critical strikes now add a heavier anticipation, lean and longer recovery using the approved body atlas, selected from Go's critical result. Desktop, portrait and reduced-motion real battle proof verifies contact, shadow following, recovery and separated critical/defeat labels. Other classes retain their existing physical attack. See `WARRIOR_CRITICAL_STRIKE_PROOF.md`.
+- Defend now provides real round-long physical protection, including against faster attackers, with visible D/Tab/Enter/touch input, preserved Repeat plans and server-confirmed GUARD feedback. Duplicate member actions are rejected before spending resources. Phone commands use a full-width three-column layout; the nine-command fixture has 46.8px touch targets, clear meters and contextual menus above party status. See `DEFEND_COMBAT_PROOF.md` for inspected real-game evidence and limits.
 
 ## Current slice: readability and CI
+
+- Latest Defend/HUD validation passes 785 client tests, build, formatting, full ordinary Go tests, data validation, default balance simulation, vet/build and targeted API race checks. Full race testing reaches a ten-minute API timeout during initial gathering-route placement in the 1,000-seed first-encounter test; full lint retains two G703 reports in unchanged dungeon/dashboard file handlers. These gates remain open despite clean changed-code lint. Exact evidence is in `DEFEND_COMBAT_PROOF.md`.
 
 - Development dependency patches update Vite 6.4.3 → 6.4.5 and Vitest 4.1.11 → 4.1.12 within the existing ranges. `npm audit --audit-level=moderate` reports zero vulnerabilities; all 778 client tests, build, formatting and six repeated-Cure/Heron real-game viewport flows pass. The running Vite server was restarted on port 3609; API and saves were retained.
 
@@ -26,8 +29,8 @@ Updated 2026-10-25. This file records work; it does not schedule unattended runs
 - CI checksum corrected for the already approved Warrior image.
 - Visual workflow pinned to supported Ubuntu 24.04.
 - Interior proof corrected to await actual completed Town steps, retaining exact destination checks.
-- The retained failing CI trace diagnosed repeated delivery of the same native ArrowUp event by Phaser. Field magic now handles each native event once while preserving distinct presses. The new event-replay regression fails before the fix and passes afterward; all four viewport flows pass locally. Remote confirmation remains required. See `FIELD_MAGIC_INPUT_DIAGNOSTICS.md` for the trace, engine behavior, exact tests and inspected screenshots.
-- Remote run `40202414864` passed all three visual suites; later runs exposed the intermittent Cure input failure. Run `40207076015` supplied the failing trace now covered by the replay regression. New remote verification remains pending; the protected `walking` summary also fails when gameplay fails, even when the actual walking suite passes.
+- The retained failing CI trace diagnosed repeated delivery of the same native ArrowUp event by Phaser. Field magic now handles each native event once while preserving distinct presses. The new event-replay regression fails before the fix and passes afterward; all four viewport flows and five throttled repeats pass locally. Remote run `40209842181` on `e217cba` passes gameplay, walking, interiors and the protected summary, including the Cure regression and Warrior critical proof. See `FIELD_MAGIC_INPUT_DIAGNOSTICS.md` for diagnosis and local evidence.
+- Historical visual failures led to the retained Cure trace in run `40207076015`. The corrected head `e217cba` is green in run `40209842181`. Further gameplay changes still need their own gate; general self-hosted CI remains pending.
 - Integration migration discovery now works with `GOFLAGS=-trimpath`: the helper locates the server module from the working directory. The regression fails before the fix and passes afterward with/without trimpath. Full `make test-e2e` passes against a separate disposable database, which teardown removed; the live save database remains available. See `INTEGRATION_MIGRATION_PROOF.md`.
 - General CI run `40202414785` is queued for `[self-hosted, linux, personal]`; GitHub's repository runner API reports zero registered runners. Local checks cannot substitute for a completed remote gate. Preserve the existing runner configuration pending an infrastructure decision.
 - Corrected the fifteen-minute walkthrough to include hardwood, current recipes and saved respawn timers. It still explicitly requires a timed normal fresh-player verification; the document is not proof of the complete loop.
@@ -49,6 +52,7 @@ The Heron Pool detour now connects an optional visible threat → guarded smithi
 - [x] Winning connects to useful smithing supplies and a power/accuracy crafting choice; the cleared bank persists as a rest stop.
 - [ ] Retreat, defeat, repeated visits, saving/loading and reward replay are verified for the new route.
 - [ ] Enemy tactical roles and any intent preview match the actual server-resolved action, including interrupted or invalidated actions.
+- [ ] Profile initial gathering-route generation and complete full Go race/lint gates without reducing seed coverage or suppressing unreviewed findings.
 - [ ] Warrior/Cinder action-specific choreography covers critical attacks, defense, abilities, healing/status, victory and KO; other-class expansion follows reference acceptance.
 - [ ] Inspect current melee and elemental spell anticipation/release/contact/recovery at normal and reduced motion, with readable action text and unobscured targets.
 - [ ] Inspect resource habitat terrain and meadow landmarks on the actual quest route; check saved respawn deadlines after closing/reopening.

@@ -227,7 +227,13 @@ export class FloatingTextPool {
     let displayText = style.text;
     if (!displayText) {
       displayText =
-        (type === "crit" ? "CRITICAL\n" : "") +
+        (type === "crit"
+          ? opts.guarded
+            ? "CRIT · GUARD\n"
+            : "CRITICAL\n"
+          : opts.guarded
+            ? "GUARD\n"
+            : "") +
         (style.prefix || "") +
         value +
         (style.suffix || "");
@@ -235,6 +241,7 @@ export class FloatingTextPool {
 
     // Determine color (element override for magical)
     let color = style.color;
+    if (opts.guarded && type !== "crit") color = "#9edcff";
     if (
       type === "magical" &&
       opts.element &&
@@ -252,7 +259,9 @@ export class FloatingTextPool {
         x + offset.dx + Phaser.Math.Between(-5, 5),
         // Defeat has its own lower status lane; damage fan-out must not pull
         // it back into a two-line critical number on the same target.
-        y - (type === "crit" ? 30 : 10) + (type === "defeated" ? 0 : offset.dy),
+        y -
+          (type === "crit" || opts.guarded ? 30 : 10) +
+          (type === "defeated" ? 0 : offset.dy),
       )
       .setAlpha(1)
       .setActive(true)

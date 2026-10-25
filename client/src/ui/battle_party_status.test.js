@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { partyStatusRowLayout } from "./battle_party_status.js";
+import { battleHudLayout } from "../scenes/battle_hud_layout.js";
 
 describe("partyStatusRowLayout", () => {
   it("gives each desktop member a dedicated full-width row", () => {
@@ -16,11 +17,12 @@ describe("partyStatusRowLayout", () => {
 
   it("uses two readable columns in the portrait mobile layout", () => {
     const rows = partyStatusRowLayout(
-      { x: 8, y: 462, width: 784, height: 130 },
+      battleHudLayout({ viewportWidth: 390, viewportHeight: 844 }).party,
       4,
       true,
     );
     expect(rows).toHaveLength(4);
+    expect(rows.every((row) => row.height >= 140)).toBe(true);
     expect(rows[1].x).toBeGreaterThan(rows[0].x + rows[0].width);
     expect(rows[2].y).toBeGreaterThan(rows[0].y + rows[0].height);
   });

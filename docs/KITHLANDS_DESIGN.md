@@ -586,6 +586,15 @@ A round of combat:
 5. Client animates them in sequence.
 6. New round, or victory/defeat screen.
 
+Defend trades the member's action for protection during that round. A conscious,
+unconfused member establishes their guard before initiative, so faster attackers
+cannot bypass the choice. Physical hits (including criticals and physical
+abilities) use `combat.defend_damage_pct` after armor/critical calculations,
+retaining the minimum damage per landed hit. Guard ends with the round; poison
+and magic are unaffected. An ambush strips the party's guard with its other
+first-round actions. Dead, sleeping, stoned or confused members cannot prepare
+a guard. This makes defense a useful response to telegraphed physical threats.
+
 ## 6.2 The damage formula
 
 A long-running argument in RPG design is whether to use **subtractive** (damage = attack − defense) or **multiplicative** (damage = attack × (100/(100+defense))) damage. Subtractive is more readable and creates a stronger "I outgrew this enemy" feel. Multiplicative keeps damage scaling smooth across the whole game.

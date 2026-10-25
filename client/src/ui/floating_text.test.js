@@ -158,6 +158,15 @@ describe("FloatingTextPool", () => {
     expect(defeated.y - critical.y).toBeGreaterThan(64);
   });
 
+  it("labels server-confirmed guards without hiding critical results", async () => {
+    const pool = new FloatingTextPool(makeScene());
+    await pool.spawn(100, 100, 12, "party_hit", "hero", { guarded: true });
+    expect(pool.active[0].text).toBe("GUARD\n-12");
+    expect(pool.active[0].color).toBe("#9edcff");
+    await pool.spawn(200, 100, 24, "crit", "ally", { guarded: true });
+    expect(pool.active[1].text).toBe("CRIT · GUARD\n-24!");
+  });
+
   it("reduced motion holds text still without a bounce", async () => {
     const scene = makeScene();
     scene.reducedBattleMotion = () => true;

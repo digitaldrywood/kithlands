@@ -34,3 +34,5 @@ The regression retains the real ArrowUp event and re-delivers that exact object 
 Targeted unit tests exercise interleaved replay, distinct presses, native repeats, callback context and arguments. `npx vitest run src/systems/keyboard_events.test.js src/scenes/field_magic.test.js` passes 10 tests. The full working-tree client suite passes 782 tests and the production build passes. A new remote run is still required before claiming the remote gate is restored.
 
 Five additional 800px repeats with `KITHLANDS_INPUT_STRESS=6` pass, including deliberate replay, in `tmp/cure-dedup-stress-1792942800`. Full client Prettier check passes. These runs reuse the live server with isolated worktree-local browser HOME/XDG/cache directories and do not reset saves.
+
+Remote confirmation: visual run `40209842181` on `e217cba` passes gameplay (including all Cure viewport/replay cases), walking, interiors and the protected summary. This closes the observed Cure input failure; general CI's unavailable self-hosted runner is a separate infrastructure gate.

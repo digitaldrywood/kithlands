@@ -1,4 +1,5 @@
 import { combatReadTime } from "../ui/combat_read_time.js";
+import { oncePerKeyEvent } from "../systems/keyboard_events.js";
 import { meleeContactDetails } from "./battle_contact_fx.js";
 import {
   beginBattleAction,
@@ -349,7 +350,10 @@ export class BattleScene extends Phaser.Scene {
     const messageBounds = this.hudLayout.message;
     this.messageWindow = new MessageWindow(this, {
       ...messageBounds,
-      minHeight: this.hudLayout.mode === "mobile" ? 360 : 92,
+      minHeight: Math.min(
+        messageBounds.height,
+        this.hudLayout.mode === "mobile" ? 360 : 92,
+      ),
       maxHeight: messageBounds.height,
       anchorBottom: false,
       depth: 20,
@@ -659,6 +663,21 @@ export class BattleScene extends Phaser.Scene {
       const slot = this.livingMembers[this.currentMemberIdx];
       this.showAbilityPicker(slot);
     });
+
+    this.input.keyboard.on(
+      "keydown-D",
+      oncePerKeyEvent((event) => {
+        if (event.repeat) return;
+        const slot = this.livingMembers[this.currentMemberIdx];
+        if (slot === undefined) return;
+        this.handleActionButton(
+          { type: "defend" },
+          this.gameState.party[slot],
+          this.gameState,
+          slot,
+        );
+      }),
+    );
 
     this.input.keyboard.on("keydown-F", () => {
       if (this.animating || this.targetingMode || this.pickerOverlay) return;
@@ -983,6 +1002,7 @@ export class BattleScene extends Phaser.Scene {
     if (!identity || !equipment || !entry) return null;
 
     if (rebuildSprite) {
+      const shadow = entry.sprite?.battleShadow;
       entry.sprite?.removeInteractive?.();
       entry.sprite?.destroy?.();
       const sprite = createBattleCharacterSprite(
@@ -996,6 +1016,7 @@ export class BattleScene extends Phaser.Scene {
           fallbackKey: CLASS_SPRITES[identity.id] || identity.id,
         },
       );
+      sprite.battleShadow = shadow;
       sprite.setDepth(4);
       if (entry.alive) {
         sprite.setInteractive({ useHandCursor: true });
@@ -2624,14 +2645,16 @@ export class BattleScene extends Phaser.Scene {
     const portraitY = bounds.y + (compact ? 90 : 52);
     const portraitFrameSize = compact ? 100 : 54;
     const portraitSize = portraitFrameSize - 8;
-    const buttonColumns = 2;
+    const buttonColumns = compact ? 3 : 2;
     const buttonGapX = compact ? 16 : 6;
-    const buttonGapY = compact ? 12 : 6;
+    const denseCommands = btns.length > 8;
+    const buttonGapY = compact ? 12 : denseCommands ? 3 : 6;
     const buttonAreaX = bounds.x + (compact ? 130 : 76);
     const buttonAreaWidth = bounds.width - (compact ? 146 : 84);
-    const buttonWidth = (buttonAreaWidth - buttonGapX) / buttonColumns;
-    const buttonHeight = compact ? 64 : 25;
-    const buttonStartY = bounds.y + (compact ? 70 : 39);
+    const buttonWidth =
+      (buttonAreaWidth - buttonGapX * (buttonColumns - 1)) / buttonColumns;
+    const buttonHeight = compact ? 96 : denseCommands ? 21 : 25;
+    const buttonStartY = bounds.y + (compact ? 100 : 39);
     const frame = drawPanel(
       this,
       bounds.x + bounds.width / 2,
@@ -2738,7 +2761,7 @@ export class BattleScene extends Phaser.Scene {
         () => this.handleActionButton(button, member, gs, slot),
         {
           depth: 17,
-          fontSize: compact ? "22px" : "9px",
+          fontSize: compact ? "28px" : "10px",
           fontFamily: "Arial, sans-serif",
           textColor: button.color,
           textColorDisabled: "#6e7d91",
@@ -2801,6 +2824,8 @@ export class BattleScene extends Phaser.Scene {
       this.showAbilityPicker(slot);
     } else if (button.type === "item") {
       this.showItemPicker(slot);
+    } else if (button.type === "defend") {
+      this.recordAction(slot, { slot, type: "defend" });
     } else if (button.type === "smart") {
       this.executeSmartAttack();
     } else if (button.type === "flee") {
@@ -2883,7 +2908,9 @@ export class BattleScene extends Phaser.Scene {
         ? "casts spell"
         : action.type === "item"
           ? "uses potion"
-          : "attacks";
+          : action.type === "defend"
+            ? "defends"
+            : "attacks";
     this.promptText
       .setText(`${member.name} ${actionName}!`)
       .setColor("#44ff44");
@@ -2892,7 +2919,11 @@ export class BattleScene extends Phaser.Scene {
     this.currentMemberIdx++;
 
     // Brief pause then show next member's turn
-    this.scaledDelay(400, () => this.showCurrentMemberTurn());
+    const nextMemberIdx = this.currentMemberIdx;
+    this.scaledDelay(400, () => {
+      if (!this.animating && this.currentMemberIdx === nextMemberIdx)
+        this.showCurrentMemberTurn();
+    });
   }
 
   executeSmartAttack() {
@@ -3559,6 +3590,7 @@ export class BattleScene extends Phaser.Scene {
           playSFX(defeatMatch ? "sfx_death" : "sfx_hit");
           await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch, dmgType, {
             crit: action.crit,
+            guarded: action.damage_prevented > 0,
             missed: action.missed,
             targetKey,
             entry: ee,
@@ -3590,6 +3622,7 @@ export class BattleScene extends Phaser.Scene {
           playSFX("sfx_party_hit");
           await this.hitFx(pt.x, pt.y, dmg, true, false, dmgType, {
             crit: action.crit,
+            guarded: action.damage_prevented > 0,
             missed: action.missed,
             targetKey,
             entry: pt,
@@ -3656,6 +3689,7 @@ export class BattleScene extends Phaser.Scene {
           const targetKey = `enemy_${targetId}`;
           await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch, dmgType, {
             crit: action.crit,
+            guarded: action.damage_prevented > 0,
             missed: action.missed,
             targetKey,
             entry: ee,
@@ -4184,7 +4218,12 @@ export class BattleScene extends Phaser.Scene {
               false,
               defeatMatch,
               action.damage_type || "physical",
-              { crit: action.crit, targetKey, entry: ee },
+              {
+                crit: action.crit,
+                guarded: action.damage_prevented > 0,
+                targetKey,
+                entry: ee,
+              },
             );
             if (ee.hpBar) {
               const newHP = applyDamage(ee.hpBar.currentHP, action.damage);
@@ -4498,6 +4537,7 @@ export class BattleScene extends Phaser.Scene {
           dmg,
           "crit",
           targetKey,
+          { guarded: opts.guarded },
         );
       } else if (isParty) {
         this.floatingText.spawn(
@@ -4506,6 +4546,7 @@ export class BattleScene extends Phaser.Scene {
           dmg,
           "party_hit",
           targetKey,
+          { guarded: opts.guarded },
         );
       } else if (damageType === "magical") {
         this.floatingText.spawn(
