@@ -29,7 +29,9 @@ describe("shared battle character catalog", () => {
     for (const profile of BATTLE_CHARACTER_CATALOG.classes) {
       expect(profile.state_recipe, profile.id).toBeTruthy();
       expect(Object.keys(profile.states), profile.id).toEqual(
-        BATTLE_CHARACTER_CATALOG.required_states,
+        profile.id === "warrior"
+          ? [...BATTLE_CHARACTER_CATALOG.required_states, "critical_attack"]
+          : BATTLE_CHARACTER_CATALOG.required_states,
       );
       const signature = profile.states[profile.default_state];
       for (const stateID of BATTLE_CHARACTER_CATALOG.required_states) {

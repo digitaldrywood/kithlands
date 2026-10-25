@@ -150,6 +150,14 @@ describe("FloatingTextPool", () => {
     expect(pool.active).toHaveLength(0);
   });
 
+  it("keeps defeat below a simultaneous two-line critical on the same target", async () => {
+    const pool = new FloatingTextPool(makeScene());
+    await pool.spawn(100, 100, 169, "crit", "enemy_1");
+    await pool.spawn(100, 152, "DEFEATED!", "defeated", "enemy_1");
+    const [critical, defeated] = pool.active;
+    expect(defeated.y - critical.y).toBeGreaterThan(64);
+  });
+
   it("reduced motion holds text still without a bounce", async () => {
     const scene = makeScene();
     scene.reducedBattleMotion = () => true;

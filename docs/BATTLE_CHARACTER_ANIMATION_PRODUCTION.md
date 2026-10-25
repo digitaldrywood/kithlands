@@ -299,3 +299,18 @@ scene effects, and holds it through impact before playing recovery. Movement
 advances alongside the same authored frame durations. Reduced motion must retain
 the cue even when other poses are skipped. Recipe expansion and server content
 validation preserve and validate the cue against the actual frame sequence.
+
+### Optional Warrior critical strike
+
+`optional_states` declares identity-specific presentation states without making
+them a requirement for every class or expanding them through shared recipes.
+Warrior now authors `critical_attack` using the same approved six body images,
+hand sockets and frame-3 contact cue as its sword attack. Longer anticipation
+and recovery plus a modest shared body/attachment lean distinguish the strike.
+The authoritative action's `crit` flag selects it; other identities retain their
+normal physical attack until their own critical choreography is accepted.
+
+Normal and reduced-motion playback must both retain contact, following shadows
+and a return home. Critical damage and defeat text must remain separate. The
+actual server-resolved three-round proof, inspected frame sequences, exact
+commands and current limits are in `WARRIOR_CRITICAL_STRIKE_PROOF.md`.

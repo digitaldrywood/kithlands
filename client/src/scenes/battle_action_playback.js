@@ -1,5 +1,11 @@
 // Own the hand-off between authored body poses and scene effects. The scene
 // displays the server result at the cue, then resumes follow-through/recovery.
+export function physicalAttackState(sprite, critical) {
+  return critical && sprite?.battleStates?.critical_attack
+    ? "critical_attack"
+    : "physical_attack";
+}
+
 export function beginBattleAction(sprite, stateID, options = {}) {
   let release, releaseRecovery, signalCue;
   const gate = new Promise((resolve) => {

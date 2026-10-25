@@ -1,6 +1,9 @@
 import { combatReadTime } from "../ui/combat_read_time.js";
 import { meleeContactDetails } from "./battle_contact_fx.js";
-import { beginBattleAction } from "./battle_action_playback.js";
+import {
+  beginBattleAction,
+  physicalAttackState,
+} from "./battle_action_playback.js";
 import fieldPresentation from "../../../shared/field_presentation.json";
 import abilityDefinitions from "../../../shared/abilities.json";
 import { roundedRectangle } from "../ui/theme.js";
@@ -2059,7 +2062,7 @@ export class BattleScene extends Phaser.Scene {
     return this.wait(ACTION_BEAT_MS.titleLead);
   }
 
-  async lungePartySprite(actorEntry, targetEntry) {
+  async lungePartySprite(actorEntry, targetEntry, { crit = false } = {}) {
     if (!actorEntry?.sprite || !targetEntry) return;
     const actor = this.resolveVisualEntry(actorEntry);
     const target = this.resolveVisualEntry(targetEntry);
@@ -2068,44 +2071,35 @@ export class BattleScene extends Phaser.Scene {
     const path = buildAttackMotionPath(actor, target, reducedMotion);
     this.tweens.killTweensOf(actor.sprite);
     if (actor.sprite.playBattleState) {
+      const stateID = physicalAttackState(actor.sprite, crit);
       actorEntry.battleAction?.resume();
-      actorEntry.battleAction = beginBattleAction(
-        actor.sprite,
-        "physical_attack",
-        {
-          reducedMotion,
-          speedMultiplier: battleSpeedMul(),
-          holdRecovery: true,
-          onFrame: ({ frame, duration, cueFrame }) => {
-            if (frame === cueFrame) {
-              this.setSpritePosition(
-                actor.sprite,
-                path.strike.x,
-                path.strike.y,
-              );
-              this.spawnMeleeSwing(actorEntry);
-            }
-            const dest =
-              frame < cueFrame
-                ? frame === 0
-                  ? path.approach
-                  : frame === 1 && !reducedMotion
-                    ? path.windup
-                    : path.strike
-                : frame ===
-                    actor.sprite.battleStates.physical_attack.frames.at(-1)
-                      .frame
-                  ? { x: actorEntry.x, y: actorEntry.y }
-                  : null;
-            if (dest)
-              return this.tweenP(actor.sprite, {
-                ...dest,
-                duration,
-                ease: "Sine.InOut",
-              });
-          },
+      actorEntry.battleAction = beginBattleAction(actor.sprite, stateID, {
+        reducedMotion,
+        speedMultiplier: battleSpeedMul(),
+        holdRecovery: true,
+        onFrame: ({ frame, duration, cueFrame }) => {
+          if (frame === cueFrame) {
+            this.setSpritePosition(actor.sprite, path.strike.x, path.strike.y);
+            this.spawnMeleeSwing(actorEntry);
+          }
+          const dest =
+            frame < cueFrame
+              ? frame === 0
+                ? path.approach
+                : frame === 1 && !reducedMotion
+                  ? path.windup
+                  : path.strike
+              : frame === actor.sprite.battleStates[stateID].frames.at(-1).frame
+                ? { x: actorEntry.x, y: actorEntry.y }
+                : null;
+          if (dest)
+            return this.tweenP(actor.sprite, {
+              ...dest,
+              duration,
+              ease: "Sine.InOut",
+            });
         },
-      );
+      });
       await actorEntry.battleAction.cue;
       return;
     }
@@ -3537,7 +3531,7 @@ export class BattleScene extends Phaser.Scene {
           this.revealLine(`${attacker} attacks ${ee.name}!`, "#ff8844");
           await this.showActionTitle(pe, attackTitle, "#ffcc66");
           await this.playMajorCinematicPrelude(action, pe, "none");
-          await this.lungePartySprite(pe, ee);
+          await this.lungePartySprite(pe, ee, { crit: action.crit });
           if (!pe?.battleAction && !attackerEnemy?.battleAction)
             await this.wait(ACTION_BEAT_MS.preImpact);
         } else if (pe) {
@@ -3657,7 +3651,7 @@ export class BattleScene extends Phaser.Scene {
             "#ffcc66",
           );
           await this.playMajorCinematicPrelude(action, pe, "none");
-          await this.lungePartySprite(pe, ee);
+          await this.lungePartySprite(pe, ee, { crit: action.crit });
           if (!pe?.battleAction) await this.wait(ACTION_BEAT_MS.preImpact);
           const targetKey = `enemy_${targetId}`;
           await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch, dmgType, {
@@ -4179,7 +4173,7 @@ export class BattleScene extends Phaser.Scene {
                   ? ACTION_RETICLE_COLORS.magicalTarget
                   : ACTION_RETICLE_COLORS.enemyTarget,
             });
-            await this.lungePartySprite(actorEntry, ee);
+            await this.lungePartySprite(actorEntry, ee, { crit: action.crit });
             if (!actorEntry?.battleAction)
               await this.wait(ACTION_BEAT_MS.preImpact);
             const targetKey = `enemy_${action.target_id}`;
@@ -4537,7 +4531,7 @@ export class BattleScene extends Phaser.Scene {
       if (defeated) {
         this.floatingText.spawn(
           textAnchor.x,
-          textAnchor.y + 30,
+          textAnchor.y + 52,
           0,
           "defeated",
           targetKey,

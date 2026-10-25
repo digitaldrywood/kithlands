@@ -806,6 +806,13 @@ func (gd *GameData) validateBattleCharacters(baseClassIDs map[string]bool) {
 	if len(cfg.StateRecipes) == 0 {
 		panic("gamedata: battle_characters.json has no state_recipes")
 	}
+	optionalStates := make(map[string]bool, len(cfg.OptionalStates))
+	for _, state := range cfg.OptionalStates {
+		if strings.TrimSpace(state) == "" || requiredStates[state] || optionalStates[state] {
+			panic(fmt.Sprintf("gamedata: battle_characters.json has invalid optional state %q", state))
+		}
+		optionalStates[state] = true
+	}
 	for recipeID, recipe := range cfg.StateRecipes {
 		if strings.TrimSpace(recipeID) == "" || len(recipe.States) == 0 {
 			panic(fmt.Sprintf("gamedata: battle_characters.json has invalid state recipe %q", recipeID))
@@ -923,7 +930,7 @@ func (gd *GameData) validateBattleCharacters(baseClassIDs map[string]bool) {
 			}
 		}
 		for stateID, state := range profile.States {
-			if !requiredStates[stateID] {
+			if !requiredStates[stateID] && !optionalStates[stateID] {
 				panic(fmt.Sprintf("gamedata: battle character %q has unknown state %q", profile.ID, stateID))
 			}
 			if state.HoldLastFrame && stateID != "ko_defeated" {

@@ -13,7 +13,7 @@ Updated 2026-10-25. This file records work; it does not schedule unattended runs
 - Shared World/Town movement continuity, native walk atlases for all twelve classes.
 - Warrior/Cinder grounding, animation contact cues, following shadows and spell release.
 - Shaped fire projectiles, ember trails, dispersing contact cinders, tapered melee contact and miss distinction.
-- Critical presentation currently differs through gold numbers, larger bounce, extra sparks, critical sound and optional shake; it uses the normal authored character attack poses. Separate critical body choreography remains future art work.
+- Warrior critical strikes now add a heavier anticipation, lean and longer recovery using the approved body atlas, selected from Go's critical result. Desktop, portrait and reduced-motion real battle proof verifies contact, shadow following, recovery and separated critical/defeat labels. Other classes retain their existing physical attack. See `WARRIOR_CRITICAL_STRIKE_PROOF.md`.
 
 ## Current slice: readability and CI
 
@@ -27,7 +27,7 @@ Updated 2026-10-25. This file records work; it does not schedule unattended runs
 - Visual workflow pinned to supported Ubuntu 24.04.
 - Interior proof corrected to await actual completed Town steps, retaining exact destination checks.
 - The retained failing CI trace diagnosed repeated delivery of the same native ArrowUp event by Phaser. Field magic now handles each native event once while preserving distinct presses. The new event-replay regression fails before the fix and passes afterward; all four viewport flows pass locally. Remote confirmation remains required. See `FIELD_MAGIC_INPUT_DIAGNOSTICS.md` for the trace, engine behavior, exact tests and inspected screenshots.
-- Remote run `40202414864` on `e2fd42c` passes all three visual suites. The subsequent documentation-head run `40203229574` passes walking/interiors but exposes an intermittent second-Cure keyboard failure at 800px (`field-magic-repeat.spec.js:142`). Investigate that input path; do not claim stable remote CI from one green run.
+- Remote run `40202414864` passed all three visual suites; later runs exposed the intermittent Cure input failure. Run `40207076015` supplied the failing trace now covered by the replay regression. New remote verification remains pending; the protected `walking` summary also fails when gameplay fails, even when the actual walking suite passes.
 - Integration migration discovery now works with `GOFLAGS=-trimpath`: the helper locates the server module from the working directory. The regression fails before the fix and passes afterward with/without trimpath. Full `make test-e2e` passes against a separate disposable database, which teardown removed; the live save database remains available. See `INTEGRATION_MIGRATION_PROOF.md`.
 - General CI run `40202414785` is queued for `[self-hosted, linux, personal]`; GitHub's repository runner API reports zero registered runners. Local checks cannot substitute for a completed remote gate. Preserve the existing runner configuration pending an infrastructure decision.
 - Corrected the fifteen-minute walkthrough to include hardwood, current recipes and saved respawn timers. It still explicitly requires a timed normal fresh-player verification; the document is not proof of the complete loop.
@@ -63,7 +63,7 @@ The active goal is the complete user-pasted request, not only this checklist. Ex
 ## Subsequent work
 
 - Meaningful enemy roles and server-owned intent previews, tied to the action actually resolved.
-- Stronger action-specific body choreography for crits, melee weapons and class abilities.
+- Further action-specific body choreography for melee weapons and class abilities; Warrior's critical variation is verified, other identities still require their own acceptance.
 - Distinct elemental spell motion and status feedback, using the verified release/contact/recovery contract.
 - Original higher-quality enemy, effect and environment assets, installed only after an inspected playable slice.
 - Expand accepted combat/art patterns to remaining classes after Warrior/Cinder acceptance.

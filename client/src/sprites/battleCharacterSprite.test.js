@@ -35,9 +35,10 @@ describe("Warrior battle runtime contract", () => {
 
   it("authors every required battle state and holds the final KO pose", () => {
     const warrior = battleProfileFor("warrior");
-    expect(Object.keys(warrior.states)).toEqual(
-      BATTLE_CHARACTER_CATALOG.required_states,
-    );
+    expect(Object.keys(warrior.states)).toEqual([
+      ...BATTLE_CHARACTER_CATALOG.required_states,
+      "critical_attack",
+    ]);
     expect(warrior.states.hit_reaction.frames[2]).toMatchObject({
       frame: 5,
       body: { x: 13, y: 5, angle: 7 },
@@ -116,7 +117,9 @@ describe("all-class battle state runtime contract", () => {
   it("exposes the complete method-backed state vocabulary for every identity", () => {
     for (const profile of BATTLE_CHARACTER_CATALOG.classes) {
       expect(Object.keys(profile.states), profile.id).toEqual(
-        BATTLE_CHARACTER_CATALOG.required_states,
+        profile.id === "warrior"
+          ? [...BATTLE_CHARACTER_CATALOG.required_states, "critical_attack"]
+          : BATTLE_CHARACTER_CATALOG.required_states,
       );
       expect(profile.states.ko_defeated.hold_last_frame, profile.id).toBe(true);
       expect(

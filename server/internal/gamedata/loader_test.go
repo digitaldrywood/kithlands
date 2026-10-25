@@ -119,8 +119,12 @@ func TestBattleCharacterManifestLoadsEveryRuntimeIdentity(t *testing.T) {
 		if profile.StateRecipe == "" {
 			t.Fatalf("%s battle profile has no state recipe", profile.ID)
 		}
-		if got := len(profile.States); got != len(gd.BattleCharacters.RequiredStates) {
-			t.Fatalf("%s battle states = %d, want %d", profile.ID, got, len(gd.BattleCharacters.RequiredStates))
+		wantStates := len(gd.BattleCharacters.RequiredStates)
+		if profile.ID == "warrior" {
+			wantStates++
+		}
+		if got := len(profile.States); got != wantStates {
+			t.Fatalf("%s battle states = %d, want %d", profile.ID, got, wantStates)
 		}
 		signature := profile.States[profile.DefaultState]
 		for _, stateID := range gd.BattleCharacters.RequiredStates {
@@ -465,6 +469,39 @@ func TestBattlePresentationCuesLoadAndExpand(t *testing.T) {
 			if cue == nil {
 				t.Errorf("%s %s lost authored cue during load/recipe expansion", id, state)
 			}
+		}
+	}
+}
+
+func TestWarriorCriticalStateKeepsTheApprovedAtlas(t *testing.T) {
+	gd := gamedata.Load("../../../shared")
+	if !slices.Equal(gd.BattleCharacters.OptionalStates, []string{"critical_attack"}) {
+		t.Fatal("unexpected optional battle states")
+	}
+	for _, profile := range gd.BattleCharacters.Classes {
+		critical, ok := profile.States["critical_attack"]
+		if profile.ID != "warrior" {
+			if ok {
+				t.Fatalf("unreviewed critical choreography expanded to %s", profile.ID)
+			}
+			continue
+		}
+		normal := profile.States["physical_attack"]
+		if !ok || critical.BodyKey != normal.BodyKey || critical.BodyPath != normal.BodyPath {
+			t.Fatal("critical changed the accepted identity atlas")
+		}
+		cueCount, normalTime, criticalTime := 0, 0, 0
+		for _, frame := range normal.Frames {
+			normalTime += frame.Duration
+		}
+		for _, frame := range critical.Frames {
+			criticalTime += frame.Duration
+			if critical.CueFrame != nil && frame.Frame == *critical.CueFrame {
+				cueCount++
+			}
+		}
+		if cueCount != 1 || criticalTime <= normalTime || len(critical.Frames) != 6 {
+			t.Fatal("critical lacks one contact cue and deliberate six-pose timing")
 		}
 	}
 }

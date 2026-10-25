@@ -68,6 +68,7 @@ type BattleCharactersData struct {
 	FeetAnchor     []float64                    `json:"feet_anchor"`
 	FrameSize      int                          `json:"frame_size"`
 	RequiredStates []string                     `json:"required_states"`
+	OptionalStates []string                     `json:"optional_states,omitempty"`
 	StateRecipes   map[string]BattleStateRecipe `json:"state_recipes"`
 	WeaponAssets   []BattleWeaponAsset          `json:"weapon_assets"`
 	OffHandAssets  []BattleWeaponAsset          `json:"off_hand_assets"`

@@ -11,6 +11,7 @@
     "victory",
     "ko_defeated"
   ],
+  "optional_states": ["critical_attack"],
   "state_recipes": {
     "unarmed": {
       "states": {
@@ -392,6 +393,105 @@
               "duration": 190,
               "attachments": {
                 "sword": { "x": -38, "y": 1, "angle": -52, "front": true }
+              }
+            }
+          ]
+        },
+        "critical_attack": {
+          "cue_frame": 3,
+          "body_key": "battle_warrior_sword_attack_body",
+          "body_path": "/sprites/battle/warrior/sword-attack-body.png",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 100,
+              "attachments": {
+                "sword": {
+                  "x": -48,
+                  "y": -7,
+                  "angle": -135,
+                  "front": true
+                }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 240,
+              "attachments": {
+                "sword": {
+                  "x": 31,
+                  "y": -7,
+                  "angle": 55,
+                  "front": false
+                }
+              },
+              "body": {
+                "x": 4,
+                "angle": 6
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 170,
+              "attachments": {
+                "sword": {
+                  "x": 0,
+                  "y": -57,
+                  "angle": -18,
+                  "front": true
+                }
+              },
+              "body": {
+                "x": 1,
+                "angle": 2
+              }
+            },
+            {
+              "frame": 3,
+              "duration": 90,
+              "attachments": {
+                "sword": {
+                  "x": -49,
+                  "y": -13,
+                  "angle": -90,
+                  "front": true
+                }
+              },
+              "body": {
+                "x": -4,
+                "angle": -5
+              }
+            },
+            {
+              "frame": 4,
+              "duration": 180,
+              "attachments": {
+                "sword": {
+                  "x": -48,
+                  "y": 2,
+                  "angle": -132,
+                  "front": true
+                }
+              },
+              "body": {
+                "x": -5,
+                "angle": -8
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 240,
+              "attachments": {
+                "sword": {
+                  "x": -38,
+                  "y": 1,
+                  "angle": -52,
+                  "front": true
+                }
+              },
+              "body": {
+                "x": -1,
+                "angle": -2
               }
             }
           ]

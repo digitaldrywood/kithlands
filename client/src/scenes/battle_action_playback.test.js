@@ -1,7 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { beginBattleAction } from "./battle_action_playback.js";
+import {
+  beginBattleAction,
+  physicalAttackState,
+} from "./battle_action_playback.js";
 
 describe("authored action cue", () => {
+  it("uses a critical state only for a reported crit with an authored variant", () => {
+    const warrior = {
+      battleStates: { physical_attack: {}, critical_attack: {} },
+    };
+    expect(physicalAttackState(warrior, true)).toBe("critical_attack");
+    expect(physicalAttackState(warrior, false)).toBe("physical_attack");
+    expect(
+      physicalAttackState({ battleStates: { physical_attack: {} } }, true),
+    ).toBe("physical_attack");
+  });
   it("allows follow-through during hit feedback but waits to retreat until feedback finishes", async () => {
     const observed = [];
     const sprite = {

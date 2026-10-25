@@ -250,7 +250,9 @@ export class FloatingTextPool {
       .setFontStyle(style.fontStyle || "bold")
       .setPosition(
         x + offset.dx + Phaser.Math.Between(-5, 5),
-        y - (type === "crit" ? 30 : 10) + offset.dy,
+        // Defeat has its own lower status lane; damage fan-out must not pull
+        // it back into a two-line critical number on the same target.
+        y - (type === "crit" ? 30 : 10) + (type === "defeated" ? 0 : offset.dy),
       )
       .setAlpha(1)
       .setActive(true)
