@@ -1,4 +1,16 @@
 import { expect, test } from "@playwright/test";
+import {
+  installFieldInputTrace,
+  traceFieldKeyboard,
+  attachFieldInputTrace,
+} from "./helpers/field-input-trace.js";
+const traces = new WeakMap();
+test.beforeEach(async ({ page }) => {
+  traces.set(page, await installFieldInputTrace(page));
+});
+test.afterEach(async ({ page }, info) => {
+  await attachFieldInputTrace(page, info, traces.get(page));
+});
 const run = Date.now();
 for (const viewport of [
   { width: 1440, height: 900 },
@@ -54,6 +66,7 @@ for (const viewport of [
     await page.getByRole("button", { name: /^Magic/ }).click();
     await click("fieldMagicRowPosition", before[caster].name);
     await click("fieldMagicRowPosition", "Cure");
+    await traceFieldKeyboard(page);
     await page.screenshot({
       path: info.outputPath(`field-repeat-${run}-${viewport.width}-before.png`),
     });
