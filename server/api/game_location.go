@@ -24,6 +24,7 @@ type LocationState struct {
 	Anchor      string             `json:"anchor,omitempty"`
 	WorldNodeID string             `json:"world_node_id,omitempty"`
 	Interior    *locality.MapSpawn `json:"interior,omitempty"`
+	ReturnKind  string             `json:"return_kind,omitempty"`
 }
 
 type LocationTransitionRequest struct {
@@ -33,9 +34,8 @@ type LocationTransitionRequest struct {
 	WorldPosition     *WorldPosition `json:"world_position,omitempty"`
 }
 
-// ProcessLocationTransition applies only transitions authored in the active
-// settlement map. The two protocol transitions bridge the world and an
-// interior back to that content-driven graph.
+// ProcessLocationTransition applies validated world navigation, generated
+// building entrances, and transitions authored in the active settlement map.
 func (g *Game) ProcessLocationTransition(req LocationTransitionRequest) (GameState, error) {
 	g.mu.Lock()
 	// A retried step that started combat must return the same result without rolling again.
@@ -57,6 +57,8 @@ func (g *Game) ProcessLocationTransition(req LocationTransitionRequest) (GameSta
 			err = g.processWorldStepLocked(req)
 		case "arrive-world-node":
 			err = g.arriveWorldNodeLocked(req.WorldNodeID, req.WorldPosition)
+		case "enter-world-interior":
+			err = g.enterWorldInteriorLocked(req)
 		default:
 			err = g.enterSettlementLocked(req)
 		}
@@ -148,6 +150,34 @@ func (g *Game) enterSettlementLocked(req LocationTransitionRequest) error {
 	return nil
 }
 
+// Direct world buildings use the same authoritative interior/stock contract as
+// settlement doors. Arrival must already have been validated by world travel;
+// metadata comes from the generated map, never from the client.
+func (g *Game) enterWorldInteriorLocked(req LocationTransitionRequest) error {
+	if req.WorldNodeID == "" || req.WorldNodeID != g.location.WorldNodeID || g.tileMap == nil {
+		return fmt.Errorf("interior entry must use the current world arrival")
+	}
+	if g.settlementMap != nil && g.walk != nil && req.WorldNodeID == g.walk.Spawn.ID {
+		return fmt.Errorf("use the authored settlement entrance here")
+	}
+	if req.WorldPosition != nil {
+		if err := validateWorldArrivalPosition(g.tileMap, g.loc, g.worldTraversal(), *req.WorldPosition, req.WorldNodeID); err != nil {
+			return err
+		}
+	}
+	for _, spawn := range g.tileMap.Spawns {
+		if spawn.NodeID != req.WorldNodeID || spawn.Kind == "natural" || spawn.Interior == nil {
+			continue
+		}
+		g.location = LocationState{
+			Kind: LocationInterior, MapID: spawn.NodeID, WorldNodeID: spawn.NodeID,
+			Interior: cloneMapSpawn(&spawn), ReturnKind: LocationWorld,
+		}
+		return nil
+	}
+	return fmt.Errorf("world node %q has no enterable interior", req.WorldNodeID)
+}
+
 func (g *Game) followSettlementTransitionLocked(transitionID string) error {
 	interaction := g.settlementMap.Layer("interactions").Object(transitionID)
 	if interaction == nil {
@@ -182,6 +212,10 @@ func (g *Game) followSettlementTransitionLocked(transitionID string) error {
 func (g *Game) exitInteriorLocked(transitionID string) error {
 	if transitionID != "exit-interior" {
 		return fmt.Errorf("transition %q is not available from an interior", transitionID)
+	}
+	if g.location.ReturnKind == LocationWorld {
+		g.location = LocationState{Kind: LocationWorld, WorldNodeID: g.location.WorldNodeID}
+		return nil
 	}
 	g.location = LocationState{
 		Kind:        LocationSettlement,

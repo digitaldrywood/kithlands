@@ -174,38 +174,34 @@ export async function chooseStoryAction(page, id) {
   return result;
 }
 
-export async function openNormalMerchant(page) {
-  await walkNormally(page, "Town", { x: 7, y: 5 });
-  await page.keyboard.press("Enter");
-  await page.waitForFunction(() =>
-    window.__kithlandsTest
-      .visibleTexts("Town")
-      .some(
-        (t) => t.text === "Enter" || t.text === "Tap" || t.text === "Close",
-      ),
-  );
-  for (let index = 0; index < 16; index++) {
+export async function openNormalMerchant(page, approach = { x: 7, y: 5 }) {
+  await walkNormally(page, "Town", approach);
+  // A proprietor can finish a quest interaction before offering the shop.
+  // Wait for each actual dialogue or released interaction lock, then confirm.
+  for (let index = 0; index < 32; index++) {
+    await page.waitForFunction(() => {
+      const scene = window.__normalRouteGame.scene.getScene("Town");
+      return (
+        scene.shopDialog ||
+        scene._modalLocks?.has("dialogue") ||
+        (!scene.animating && !scene._modalLocks?.size)
+      );
+    });
     const before = await page.evaluate(() =>
       window.__kithlandsTest.visibleTexts("Town").map((t) => t.text),
     );
     if (before.includes("Leave Shop")) return;
     await page.keyboard.press("Enter");
-    if (before.includes("Close")) {
-      await page.waitForFunction(() =>
-        window.__kithlandsTest
-          .visibleTexts("Town")
-          .some((t) => t.text === "Leave Shop"),
-      );
-      return;
-    }
-    await page.waitForFunction(
-      (previous) =>
+    await page.waitForFunction((previous) => {
+      const scene = window.__normalRouteGame.scene.getScene("Town");
+      return (
         window.__kithlandsTest
           .visibleTexts("Town")
           .map((t) => t.text)
-          .join("\n") !== previous,
-      before.join("\n"),
-    );
+          .join("\n") !== previous ||
+        (!scene.animating && !scene._modalLocks?.size)
+      );
+    }, before.join("\n"));
   }
   throw new Error("Merchant dialogue did not finish");
 }

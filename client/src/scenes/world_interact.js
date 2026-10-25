@@ -220,10 +220,10 @@ export async function interactWithDoor(scene) {
   const entersAuthoredSettlement =
     scene.gameState?.settlement_map &&
     scene.gameState?.settlement_entry_node_id === spawn.node_id;
-  if (entersAuthoredSettlement) {
+  try {
     const result = await transitionLocation(
       scene.gameState.id,
-      "enter-settlement",
+      entersAuthoredSettlement ? "enter-settlement" : "enter-world-interior",
       spawn.node_id,
       currentWorldPosition(scene),
     );
@@ -233,6 +233,12 @@ export async function interactWithDoor(scene) {
       return;
     }
     scene.gameState = result;
+  } catch (error) {
+    scene.animating = false;
+    scene.showMessage?.(
+      `Could not enter: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return;
   }
 
   // Transition to the authored exterior or the existing direct interior.

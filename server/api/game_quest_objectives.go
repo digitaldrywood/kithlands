@@ -12,8 +12,14 @@ import (
 // adjacent-node transition. Client-submitted node IDs alone never establish
 // interaction context, item ownership, or quest completion.
 func (g *Game) validQuestVisit(nodeID string) bool {
-	if nodeID == "" || g.loc == nil || g.walk == nil || g.location.Kind != LocationWorld {
+	if nodeID == "" || g.loc == nil || g.walk == nil {
 		return false
+	}
+	if g.location.Kind != LocationWorld {
+		if g.location.Kind != LocationInterior || g.location.ReturnKind != LocationWorld ||
+			g.location.Interior == nil || g.location.Interior.NodeID != nodeID || g.location.MapID != nodeID {
+			return false
+		}
 	}
 	node := g.loc.NodeByID(nodeID)
 	if node == nil || node.Kind == locality.NodeNatural {
