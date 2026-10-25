@@ -6,16 +6,26 @@ import "github.com/digitaldrywood/kithlands/internal/locality"
 // Only rendered/interactive positions move to nearby reachable habitat ground.
 func (g *Game) placeResourceHabitats(nodes []ResourceNodeState) {
 	start := WorldPosition{X: g.tileMap.PlayerX, Y: g.tileMap.PlayerY}
-	reachable := map[WorldPosition]bool{start: true}
-	queue := []WorldPosition{start}
+	if !worldPositionInBounds(g.tileMap, start) {
+		return
+	}
+	reachable := make([][]bool, len(g.tileMap.Tiles))
+	cells := 0
+	for y, row := range g.tileMap.Tiles {
+		reachable[y] = make([]bool, len(row))
+		cells += len(row)
+	}
+	reachable[start.Y][start.X] = true
+	queue := make([]WorldPosition, 1, cells)
+	queue[0] = start
 	for i := 0; i < len(queue); i++ {
 		p := queue[i]
 		for _, d := range []WorldPosition{{X: 1}, {X: -1}, {Y: 1}, {Y: -1}} {
 			n := WorldPosition{X: p.X + d.X, Y: p.Y + d.Y}
-			if reachable[n] || !worldPositionInBounds(g.tileMap, n) || !worldTileTraversable(locality.TileType(g.tileMap.Tiles[n.Y][n.X]), worldTraversal{}) {
+			if !worldPositionInBounds(g.tileMap, n) || reachable[n.Y][n.X] || !worldTileTraversable(locality.TileType(g.tileMap.Tiles[n.Y][n.X]), worldTraversal{}) {
 				continue
 			}
-			reachable[n] = true
+			reachable[n.Y][n.X] = true
 			queue = append(queue, n)
 		}
 	}
@@ -40,7 +50,7 @@ func (g *Game) placeResourceHabitats(nodes []ResourceNodeState) {
 			for dx := -h.SearchRadius; dx <= h.SearchRadius; dx++ {
 				p := WorldPosition{X: anchor.X + dx, Y: anchor.Y + dy}
 				distance := checkpointAbs(dx) + checkpointAbs(dy)
-				if distance > h.SearchRadius || !reachable[p] || occupied[p] {
+				if distance > h.SearchRadius || !worldPositionInBounds(g.tileMap, p) || !reachable[p.Y][p.X] || occupied[p] {
 					continue
 				}
 				tooClose := false

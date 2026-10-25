@@ -203,14 +203,32 @@ func (s *Server) handleResourceStatus(w http.ResponseWriter, r *http.Request) {
 // Paths use the same basic foot traversal as world movement, never water or
 // blocked terrain. Resources therefore do not require a later transport unlock.
 func gatheringPath(tileMap *locality.TileMap, start, target WorldPosition) []WorldPosition {
-	queue := []WorldPosition{start}
-	previous := map[WorldPosition]WorldPosition{start: start}
+	if !worldPositionInBounds(tileMap, start) || !worldPositionInBounds(tileMap, target) {
+		return nil
+	}
+	if start == target {
+		return []WorldPosition{start}
+	}
+	// Index actual rows rather than metadata dimensions, including ragged test
+	// maps. Zero means unseen; parent indices are stored plus one. Keep the
+	// original neighbor order because route coordinates identify saved nodes.
+	width := 0
+	for _, row := range tileMap.Tiles {
+		width = max(width, len(row))
+	}
+	previous := make([]int, width*len(tileMap.Tiles))
+	startIndex := start.Y*width + start.X
+	previous[startIndex] = startIndex + 1
+	queue := make([]int, 1, len(previous))
+	queue[0] = startIndex
 	for index := 0; index < len(queue); index++ {
-		current := queue[index]
+		currentIndex := queue[index]
+		current := WorldPosition{X: currentIndex % width, Y: currentIndex / width}
 		if current == target {
 			path := []WorldPosition{current}
-			for current != start {
-				current = previous[current]
+			for currentIndex != startIndex {
+				currentIndex = previous[currentIndex] - 1
+				current = WorldPosition{X: currentIndex % width, Y: currentIndex / width}
 				path = append(path, current)
 			}
 			for a, b := 0, len(path)-1; a < b; a, b = a+1, b-1 {
@@ -220,14 +238,18 @@ func gatheringPath(tileMap *locality.TileMap, start, target WorldPosition) []Wor
 		}
 		for _, direction := range []WorldPosition{{X: 1}, {Y: 1}, {X: -1}, {Y: -1}} {
 			next := WorldPosition{X: current.X + direction.X, Y: current.Y + direction.Y}
-			if _, found := previous[next]; found || !worldPositionInBounds(tileMap, next) {
+			if !worldPositionInBounds(tileMap, next) {
+				continue
+			}
+			nextIndex := next.Y*width + next.X
+			if previous[nextIndex] != 0 {
 				continue
 			}
 			if !worldTileTraversable(locality.TileType(tileMap.Tiles[next.Y][next.X]), worldTraversal{}) {
 				continue
 			}
-			previous[next] = current
-			queue = append(queue, next)
+			previous[nextIndex] = currentIndex + 1
+			queue = append(queue, nextIndex)
 		}
 	}
 	return nil
