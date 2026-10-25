@@ -1,6 +1,6 @@
 import { element } from "./viewport_dialog.js";
 import { activeWorldLocks } from "../systems/modalLock.js";
-import { isTouchDevice } from "../systems/input.js";
+import { isTouchDevice, touchControlsTop } from "../systems/input.js";
 import "../styles/exploration-hud.css";
 
 // This is a presentation layer only. Actions continue through the scene's
@@ -51,8 +51,8 @@ export function explorationHUD(scene, { menu, colors }) {
   menuButton.type = "button";
   menuButton.onclick = menu;
   footer.append(menuButton);
-  bottom.append(interaction, prompts, footer);
-  root.append(map, saveStatus, notice, bottom);
+  bottom.append(notice, interaction, prompts, footer);
+  root.append(map, saveStatus, bottom);
   document.body.append(root);
   // DOM controls must never also become a world click/tap.
   for (const event of ["pointerdown", "pointerup", "click", "wheel"])
@@ -76,12 +76,34 @@ export function explorationHUD(scene, { menu, colors }) {
     clearTimeout(noticeFade);
     clearTimeout(noticeExpiry);
     notice.hidden = true;
+    notice.style.marginBottom = "";
   };
   let suspended = false;
   const update = () => {
     root.hidden =
       suspended || activeWorldLocks(scene).length > 0 || !!scene.gameOver;
     root.classList.toggle("explore-touch", isTouchDevice());
+    if (!root.hidden && !notice.hidden) {
+      const top = touchControlsTop(scene);
+      const canvasRect = scene.game.canvas.getBoundingClientRect();
+      const safeBottom =
+        top === null
+          ? Infinity
+          : canvasRect.top +
+            (top * canvasRect.height) / scene.scale.gameSize.height -
+            8;
+      const current = parseFloat(notice.style.marginBottom) || 0;
+      const margin = Math.max(
+        0,
+        current +
+          bottom.getBoundingClientRect().top +
+          notice.offsetTop +
+          notice.offsetHeight -
+          safeBottom,
+      );
+      if (Math.abs(current - margin) > 0.5)
+        notice.style.marginBottom = `${margin}px`;
+    }
     saveStatus.textContent =
       scene.saveIcon?.alpha > 0 ? scene.saveIcon.text : "";
     saveStatus.hidden = !saveStatus.textContent;

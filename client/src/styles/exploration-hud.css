@@ -147,9 +147,7 @@
   order: -1;
 }
 .explore-notice {
-  position: absolute;
-  left: 12px;
-  bottom: 76px;
+  align-self: flex-start;
   padding: 8px 12px;
   max-width: min(300px, calc(100% - 100px));
   text-align: left;

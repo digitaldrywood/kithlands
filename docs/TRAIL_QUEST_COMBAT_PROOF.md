@@ -111,6 +111,7 @@ campaign matrix job so it has an independent budget and retains its evidence.
 
 Q05 Lost Person still has legacy arrival completion and requires proper escort
 mechanics. This change does not claim to fix it. These phone routes use mixed
-keyboard/pointer input, not touch-only travel. The phone recovery screenshot exposes an existing exploration notice overlapping
-the interaction prompt. Its layout remains a separate cleanup item. Broader
+keyboard/pointer input, not touch-only travel. The phone recovery screenshot exposed an existing exploration notice overlapping
+the interaction prompt. That layout has since been repaired; see
+`EXPLORATION_NOTICE_PROOF.md`. Broader
 integrated retreat/defeat acceptance stays tracked in `PLAYABILITY_TRACKER.md`. Automated route time is not human pacing evidence.

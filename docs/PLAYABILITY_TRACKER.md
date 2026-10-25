@@ -5,6 +5,8 @@ Updated 2026-10-25. This file records work; it does not schedule unattended runs
 
 ## Verified locally
 
+- Exploration notices now stack above entrance/trail/menu controls at the left edge and expire without shifting those controls. Desktop/default/phone cases cover real saves, herb gathering and a clearly simulated long save-error response. Shop fixture inputs now separate touch activation from door confirmation; the world-shop route reproduces the crowded household layout and checks that the proprietor is actually selected. Presentation/touch, catalog and world-shop cases, 799 client tests/build/format and inspected captures pass locally. Painted D-pad bounds now include the square arrow edges, and a native edge tap verifies one tile without map auto-walk. See `EXPLORATION_NOTICE_PROOF.md`; the new remote gate remains pending.
+
 - Q04 Bandit Clearing now requires its authored trail-approach fight and a separate return/report. The entrance warns about the fight; unrelated travel encounters never clear it. Pending victory reports survive save/load, recovery allows ordinary travel and retry, and completed saves remain completed. See `TRAIL_QUEST_COMBAT_PROOF.md`. Q05 escort mechanics remain open.
 
 - Native fresh campaign audits now verify actual level-ups through normal quest actions, including fetch collection/return and delivery pickup/handoff, with encounters enabled and no grants. Campaign rewards can raise a fresh party from level one to three under the current XP curve. The old World-only reward message vanished on building entry; a temporary corner receipt now survives that transition and shows the server-confirmed quest, XP, gold and actual level changes. It holds for eight seconds, fades, supports dismissal without confirming the NPC underneath, and clears at Title. See `CAMPAIGN_PROGRESSION_PROOF.md` for final gates and limits.
@@ -84,8 +86,10 @@ The Heron Pool detour now connects an optional visible threat → guarded smithi
 - [ ] Verify unassisted first-visit pacing and the intended reward curve; automated route duration is not a human timing estimate.
 - [x] Repair Q04 arrival-only completion with an authored quest fight, return/report, reward replay guards and pending-report save/load proof.
 - [ ] Repair Q05 Lost Person arrival-only completion with proper server-owned escort conditions, travel/recovery and save/replay proof before calling campaign pacing complete.
-- [ ] Fix the exploration notice overlapping the interaction prompt on phone (seen in the native Q04 recovery screenshot).
-- [ ] Diagnose the hosted merchant-stock-authority phone revisit timeout on 370dfc4; do not treat its gameplay gate as passing.
+- [x] Fix the exploration notice overlapping the interaction prompt on phone (seen in the native Q04 recovery screenshot).
+- [x] Diagnose the hosted merchant-stock-authority phone revisit timeout on 370dfc4: separate mobile activation from one entrance confirmation and wait for the actual destination. Local catalog cases pass; remote acceptance remains open.
+- [x] Reproduce and correct the 5c448c3 world-shop fixture talking to the nearby Blacksmith instead of the proprietor. Seed 24 covers the crowded room with a runtime NPC-selection assertion.
+- [ ] Improve stock-label wrapping at the intermediate 774px width; long names currently break inside a word.
 - [ ] Inspect unique screenshots and motion evidence; run required local gates and obtain passing relevant remote CI.
 
 The active goal is the complete user-pasted request, not only this checklist. Existing local proof should be reused where valid; a check stays open when its remaining acceptance depends on the new connected route or final integrated verification.

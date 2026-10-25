@@ -42,7 +42,8 @@ for (const width of [1440, 774, 390]) {
     test.setTimeout(240000);
     page.setDefaultTimeout(15000);
     await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
-    await startNormalRoute(page);
+    // Seed 24 retains the crowded household-shop layout from the failing route.
+    await startNormalRoute(page, 24);
     const shop = await page.evaluate(() => {
       const s = window.__normalRouteGame.scene.getScene("World");
       return s.spawns.find(
@@ -52,6 +53,7 @@ for (const width of [1440, 774, 390]) {
       );
     });
     expect(shop).toBeTruthy();
+    expect(shop.interior_template.id).toBe("shop_household_shop_01");
     while ((await walkNormally(page, "World", shop)) === "Battle")
       await fightNormally(page);
     await page.getByRole("button", { name: /^(Shop|Enter) —/ }).click();
@@ -72,7 +74,16 @@ for (const width of [1440, 774, 390]) {
           id = `${p.x},${p.y}`;
         if (seen.has(id)) continue;
         seen.add(id);
-        if (Math.abs(p.x - npc.x) + Math.abs(p.y - npc.y) <= 2) return p;
+        const distance = (n) => Math.abs(p.x - n.x) + Math.abs(p.y - n.y);
+        if (
+          distance(npc) <= 2 &&
+          !s.npcs.some((n) => n !== npc && distance(n) <= distance(npc)) &&
+          !(s.chests || []).some((n) => distance(n) <= 1) &&
+          !(s.hiddenItems || []).some(
+            (n) => Math.abs(p.x - n.tileX) + Math.abs(p.y - n.tileY) <= 1,
+          )
+        )
+          return p;
         for (const [dx, dy] of [
           [1, 0],
           [0, 1],
@@ -91,6 +102,14 @@ for (const width of [1440, 774, 390]) {
       }
       throw Error("No proprietor route");
     });
+    await walkNormally(page, "Town", approach);
+    expect(
+      await page.evaluate(() => {
+        const s = window.__normalRouteGame.scene.getScene("Town");
+        return s.npcs[s.nearNpcIndex]?.isProprietor;
+      }),
+      "the planned tile selects the proprietor, not a nearby NPC",
+    ).toBe(true);
     await openNormalMerchant(page, approach);
     await expect(page.locator(".kith-shop")).toBeVisible();
     await page.screenshot({ path: path.join(proof, `${width}-stock.png`) });

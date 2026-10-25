@@ -204,6 +204,13 @@ function touchLayout(scene) {
   };
 }
 
+// Renderer-facing logical boundary; overlays share the painted control geometry.
+export function touchControlsTop(scene) {
+  if (!_isTouch) return null;
+  const area = touchLayout(scene).controlArea;
+  return Math.min(area.dpadTop, area.actionTop);
+}
+
 function isControlArea(scene, x, y) {
   if (!_isTouch) return false;
   const area = touchLayout(scene).controlArea;

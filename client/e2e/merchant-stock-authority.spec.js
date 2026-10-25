@@ -3,6 +3,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 
+// Retain the first failure, including input/scene timing, without a retry.
+test.use({ trace: "retain-on-failure" });
+
 const RUN_ID = Date.now();
 const SPEC_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PROOF_DIR = path.join(
@@ -95,6 +98,32 @@ async function tapActionButton(page, sceneKey) {
   );
   const box = await page.locator("#game > canvas").boundingBox();
   if (!box) throw new Error("game canvas is missing");
+  // Canvas scenes reserve their first real touch for revealing controls.
+  // Activate that mode explicitly; it is separate from confirming a door.
+  const actionVisible = await page.evaluate(
+    (key) =>
+      window.__kithlandsTest
+        .visibleTexts(key)
+        .some((entry) => entry.text === "A"),
+    sceneKey,
+  );
+  if (!actionVisible) {
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    await page.waitForFunction(
+      (key) =>
+        window.__kithlandsTest
+          .visibleTexts(key)
+          .some((entry) => entry.text === "A"),
+      sceneKey,
+    );
+  }
+  // Phaser registers the freshly revealed hit areas on its next input frame.
+  await page.evaluate(
+    () =>
+      new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+      ),
+  );
   await page.touchscreen.tap(
     box.x + (layout.action.x / size.width) * box.width,
     box.y + (layout.action.y / size.height) * box.height,
@@ -102,6 +131,15 @@ async function tapActionButton(page, sceneKey) {
 }
 
 async function startQuickGame(page) {
+  // This catalog fixture exercises shops, not a randomly chosen quest fight.
+  await page.route("**/api/game/new", (route) =>
+    route.continue({
+      postData: JSON.stringify({
+        ...route.request().postDataJSON(),
+        rng_seed: 4,
+      }),
+    }),
+  );
   const openTitle = async () => {
     await page.goto("/?noEncounters=1");
     await page.waitForFunction(() => !!window.__kithlandsTest);
@@ -125,13 +163,7 @@ async function startQuickGame(page) {
 async function triggerSceneAction(page, viewport, sceneKey) {
   if (viewport.mobile) {
     await tapActionButton(page, sceneKey);
-    await page.waitForTimeout(200);
-    if (
-      (await page.evaluate(() => window.__kithlandsTest.activeSceneKey())) ===
-      sceneKey
-    ) {
-      await tapActionButton(page, sceneKey);
-    }
+    // Callers await the destination scene. A second tap can race its fade.
   } else {
     await page.evaluate(
       (key) => window.__kithlandsTest.pressKey("Enter", key),

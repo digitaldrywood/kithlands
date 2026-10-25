@@ -9,6 +9,13 @@ test("touch exploration retains usable controls and trail action", async ({
     import.meta.url,
   );
   mkdirSync(proof, { recursive: true });
+  await page.route("**/src/main.js*", async (route) => {
+    const response = await route.fetch();
+    await route.fulfill({
+      response,
+      body: `${await response.text()}\nwindow.__touchProofGame=game;`,
+    });
+  });
   await page.goto("/?noEncounters=1");
   await page.waitForFunction(
     () => window.__kithlandsTest?.activeSceneKey() === "Title",
@@ -18,6 +25,44 @@ test("touch exploration retains usable controls and trail action", async ({
   await page.touchscreen.tap(195, 300);
   const hud = page.locator(".exploration-hud");
   await expect(hud).toHaveClass(/explore-touch/);
+  // Tap inside the painted top edge, outside the former circular reserve.
+  const edge = await page.evaluate(() => {
+    const s = window.__touchProofGame.scene.getScene("World");
+    const upper = s.children.list
+      .filter(
+        (o) =>
+          o.type === "Rectangle" &&
+          o.input?.enabled &&
+          o.scrollFactorX === 0 &&
+          o.scrollFactorY === 0,
+      )
+      .sort((a, b) => a.getBounds().top - b.getBounds().top)[0];
+    const bounds = upper.getBounds(),
+      rect = s.game.canvas.getBoundingClientRect();
+    return {
+      x: rect.x + (bounds.centerX * rect.width) / s.scale.gameSize.width,
+      y: rect.y + ((bounds.top + 4) * rect.height) / s.scale.gameSize.height,
+      playerX: s.playerX,
+      playerY: s.playerY,
+    };
+  });
+  await page.evaluate(
+    () =>
+      new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+      ),
+  );
+  await page.touchscreen.tap(edge.x, edge.y);
+  await page.waitForTimeout(200); // Cover the map tap's 80ms deferral and one step.
+  const moved = await page.evaluate(() => {
+    const s = window.__touchProofGame.scene.getScene("World");
+    return { x: s.playerX, y: s.playerY, autoWalk: !!s._autoWalk };
+  });
+  expect(moved).toEqual({
+    x: edge.playerX,
+    y: edge.playerY - 1,
+    autoWalk: false,
+  });
   await page.screenshot({ path: new URL("touch-world.png", proof).pathname });
   await expect(
     hud.getByRole("button", { name: /^Party|^Objective/ }),
