@@ -653,6 +653,7 @@ func (g *Game) resolveCombatOutcome(combatants []*combat.Combatant) {
 		g.recoverDungeonDefeat()
 		g.leaveFinalEncounter(true)
 		g.leaveObjectiveEncounter(true)
+		g.recoverEscortDefeat()
 		g.spellBuffs = nil
 		g.clearPendingChestClaimUnlocked()
 		g.resetEncounterStartState()

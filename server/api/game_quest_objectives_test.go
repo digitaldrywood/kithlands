@@ -150,7 +150,7 @@ func TestQuestObjectivesIsolationAndInvalidVisits(t *testing.T) {
 			t.Fatal("invalid visit advanced objectives")
 		}
 	}
-	for _, template := range []string{"Q12", "promotion", "Q05"} {
+	for _, template := range []string{"Q12", "promotion", "Q08"} {
 		clone := *q
 		clone.TemplateID = template
 		if g.advanceObjectiveArrival(&clone, q.TargetNodeID) {

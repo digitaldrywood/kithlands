@@ -55,7 +55,8 @@
       "goto",
       "escort"
     ],
-    "act": 2
+    "act": 2,
+    "objective_definition": "Q05"
   },
   {
     "id": "Q08",

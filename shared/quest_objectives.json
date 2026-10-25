@@ -156,5 +156,59 @@
         "result": "You report the victory and the safe trail approach."
       }
     ]
+  },
+  "Q05": {
+    "name": "Lost Traveler",
+    "item": "lost traveler",
+    "description": "Ask the keeper at {giver} where the lost traveler was last seen. Find them at {target}, then escort them back to {giver}. They take cover during battles; keep your party standing.",
+    "completion": "The traveler is safely reunited with the keeper at {giver}.",
+    "companion": {
+      "sprite": "wayfarer",
+      "defeat": "The traveler takes cover and returns to {target} while your party regroups. Find them there to resume the escort; no quest reward has been paid."
+    },
+    "steps": [
+      {
+        "type": "goto",
+        "at": "giver",
+        "text": "Ask the keeper at {giver} about the missing traveler.",
+        "prompt": "",
+        "result": ""
+      },
+      {
+        "type": "learn",
+        "at": "giver",
+        "text": "Learn where the traveler was last seen.",
+        "prompt": "Ask about the lost traveler",
+        "result": "The keeper last saw the traveler sheltering at {target}."
+      },
+      {
+        "type": "goto",
+        "at": "target",
+        "text": "Find the lost traveler at {target}.",
+        "prompt": "",
+        "result": ""
+      },
+      {
+        "type": "escort",
+        "at": "target",
+        "text": "Offer to escort the traveler back to {giver}.",
+        "prompt": "Escort the traveler home",
+        "result": "The traveler joins you. Return to {giver}; they will take cover during battles. If your party falls, look for them again at {target}."
+      },
+      {
+        "type": "goto",
+        "at": "giver",
+        "text": "Escort the traveler back to {giver}.",
+        "prompt": "",
+        "result": ""
+      },
+      {
+        "type": "report",
+        "at": "giver",
+        "text": "Reunite the traveler with the keeper at {giver}.",
+        "prompt": "Reunite the traveler",
+        "result": "The keeper welcomes the traveler home and thanks your party."
+      }
+    ]
   }
 }

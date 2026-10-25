@@ -73,16 +73,32 @@ func (g *Game) processQuestObjective(req GameActionRequest) (*GameState, error) 
 			return nil, fmt.Errorf("clue already recorded")
 		}
 		progress.Clue = step.Result
+	case generator.ActionEscort:
+		if progress.Clue == "" || progress.Companion != "" {
+			return nil, fmt.Errorf("learn the traveler location before offering an escort")
+		}
+		d := g.gd.QuestObjectives[q.TemplateID].Companion
+		if d == nil {
+			return nil, fmt.Errorf("the escort is unavailable; your progress is safe")
+		}
+		progress.Companion, progress.CompanionSprite = step.Target, d.Sprite
+		progress.Recovery = ""
 	case generator.ActionGive:
 		if progress.Item == "" || progress.Item != step.Target {
 			return nil, fmt.Errorf("the quest item is required")
 		}
 		progress.Item = ""
 	case generator.ActionReport:
+		if q.TemplateID == "Q05" {
+			if progress.Companion == "" || progress.Companion != step.Target {
+				return nil, fmt.Errorf("bring the traveler home before reporting")
+			}
+		}
 		if progress.Clue == "" {
 			return nil, fmt.Errorf("inspect the clue before reporting")
 		}
 		progress.Clue = ""
+		progress.Companion, progress.CompanionSprite = "", ""
 	default:
 		return nil, fmt.Errorf("travel to the objective before interacting")
 	}

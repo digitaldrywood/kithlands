@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/digitaldrywood/kithlands/internal/balance"
 	"github.com/digitaldrywood/kithlands/internal/character"
@@ -107,5 +108,27 @@ func (g *Game) leaveObjectiveEncounter(defeat bool) {
 		}
 		g.message = d.Defeat
 	}
+	g.phase, g.enemies, g.formation = "world", nil, ""
+}
+
+// Ordinary world travel protects a following civilian through the party. Flee
+// keeps the escort; defeat sends them back to the search site without a payout.
+// Dungeon/finale recovery owns those locations and does not reset the escort.
+func (g *Game) recoverEscortDefeat() {
+	q := g.activeObjectiveQuest()
+	if g.phase != "defeat" || g.location.Kind != LocationWorld || q == nil || q.TemplateID != "Q05" || q.Objectives.Companion == "" {
+		return
+	}
+	d := g.gd.QuestObjectives[q.TemplateID].Companion
+	if d == nil {
+		return
+	}
+	p := q.Objectives
+	p.Companion, p.CompanionSprite, p.Recovery = "", "", "defeat"
+	p.Step = 2 // Return to the authored search location; the learned clue persists.
+	for _, c := range g.party {
+		c.CurrentHP, c.CurrentMP, c.Status = c.MaxHP, c.MaxMP, character.StatusNone
+	}
+	g.message = strings.NewReplacer("{target}", q.TargetName, "{giver}", q.GiverName).Replace(d.Defeat)
 	g.phase, g.enemies, g.formation = "world", nil, ""
 }

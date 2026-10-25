@@ -1,3 +1,4 @@
+import { installEscortFollower } from "./escortFollower.js";
 import { startWalkMotion } from "./walkMotion.js";
 import { beginWalkStep } from "./walkPlayback.js";
 import { initAudio, playSFX, playMusic } from "../systems/audio.js";
@@ -787,6 +788,8 @@ export class TownScene extends Phaser.Scene {
           : fallbackWalkSpriteScale(RENDERED_TILE),
       );
     }
+
+    installEscortFollower(this, RENDERED_TILE);
 
     // Input
     this.cursors = this.input.keyboard.createCursorKeys();

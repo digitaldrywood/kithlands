@@ -1,3 +1,4 @@
+import { installEscortFollower } from "./escortFollower.js";
 import { startWalkMotion } from "./walkMotion.js";
 import {
   renderWorldResources,
@@ -363,6 +364,8 @@ export class WorldScene extends Phaser.Scene {
             : fallbackWalkSpriteScale(RENDERED_TILE),
         );
     }
+
+    installEscortFollower(this, RENDERED_TILE);
 
     // Vehicle indicator circle behind player (T2+)
     this.fieldShadow = this.add

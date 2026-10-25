@@ -21,7 +21,7 @@ func objectiveWorldAction(gs *api.GameState) (api.GameActionRequest, bool) {
 		return api.GameActionRequest{}, false
 	}
 	action := q.Actions[step]
-	if action.Type == "goto" || gs.QuestVisitNodeID != action.Location {
+	if (action.Type == "goto" || action.Type == "kill") || gs.QuestVisitNodeID != action.Location {
 		return api.GameActionRequest{Type: "quest_advance", NodeID: action.Location}, true
 	}
 	return api.GameActionRequest{Type: "quest_action", QuestID: q.ID, ObjectiveIndex: step, NodeID: action.Location}, true
@@ -40,17 +40,29 @@ func questTravelLeg(gs *api.GameState) string {
 	return key
 }
 
-// Keep the CLI's per-quest budget fixed while accounting for each outbound and
-// return leg. An odd remainder belongs to the first journey.
+// Split the fixed per-quest budget among authored journeys. Q05 has three
+// legs (learn, search, reunion); collecting or reporting never adds a leg.
 func questLegRolls(gs *api.GameState, budget int) int {
 	budget = scaledEncounterBudget(gs, budget)
 	if gs.CurrentQ >= 0 && gs.CurrentQ < len(gs.Quests) {
 		q := gs.Quests[gs.CurrentQ]
 		if q.Objectives != nil {
-			if q.Objectives.Step < 2 {
-				return (budget + 1) / 2
+			legs, leg := 0, -1
+			for i, a := range q.Actions {
+				if a.Type == "goto" {
+					legs++
+					if i <= q.Objectives.Step {
+						leg++
+					}
+				}
 			}
-			return budget / 2
+			if legs > 0 {
+				rolls := budget / legs
+				if leg < budget%legs {
+					rolls++
+				}
+				return rolls
+			}
 		}
 	}
 	return budget

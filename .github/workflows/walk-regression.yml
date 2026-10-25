@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [walking, gameplay, interiors, campaign]
+        suite: [walking, gameplay, interiors, campaign, escort]
     timeout-minutes: 30
     env:
       PGHOST: localhost
@@ -62,6 +62,9 @@ jobs:
       - name: Verify natural campaign progression and quest recovery
         if: matrix.suite == 'campaign'
         run: ./scripts/run_playwright_local.sh e2e/campaign-first-level.spec.js
+      - name: Verify lost-traveler escort and save continuity
+        if: matrix.suite == 'escort'
+        run: ./scripts/run_playwright_local.sh e2e/escort-journey.spec.js
       - name: Verify complete interior library and playable entrances
         if: matrix.suite == 'interiors'
         run: ./scripts/run_playwright_local.sh e2e/interior-library-gallery.spec.js e2e/elder-house-visit.spec.js e2e/interior-door-access.spec.js e2e/interior-templates-proof.spec.js
@@ -78,6 +81,7 @@ jobs:
             client/tmp/opening-integration-*/
             client/tmp/first-session-*/
             client/tmp/campaign-first-level-*/
+            client/tmp/escort-journey-*/
             client/tmp/world-shop-entry-*/
             client/tmp/dev-artifact-isolation-*/
             client/tmp/exploration-notice-*/

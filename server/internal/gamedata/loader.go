@@ -133,6 +133,9 @@ func Load(sharedDir string) *GameData {
 	gd.validateDungeons()
 	gd.validateFinalEncounter()
 	for id, def := range gd.QuestObjectives {
+		if def.Companion != nil && gd.ClassByID(def.Companion.Sprite) == nil {
+			panic(fmt.Sprintf("gamedata: quest %s companion sprite %q missing", id, def.Companion.Sprite))
+		}
 		if def.Encounter == nil {
 			continue
 		}
