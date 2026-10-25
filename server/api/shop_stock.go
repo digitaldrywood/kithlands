@@ -95,12 +95,12 @@ func (g *Game) ensureShopStockLocked(nodeID string) (*ShopStock, error) {
 		})
 	}
 	for _, item := range g.gd.Items.Weapons {
-		if item.Tier <= maxTier {
+		if item.Tier <= maxTier && item.BuyPrice > 0 {
 			add(item.ID, "weapon", item.BuyPrice, true)
 		}
 	}
 	for _, item := range g.gd.Items.Armor {
-		if item.Tier <= maxTier {
+		if item.Tier <= maxTier && item.BuyPrice > 0 {
 			add(item.ID, "armor", item.BuyPrice, true)
 		}
 	}

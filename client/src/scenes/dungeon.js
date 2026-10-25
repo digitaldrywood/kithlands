@@ -1,4 +1,6 @@
 import { objectiveTracker } from "../ui/objective_tracker.js";
+import { showDungeonEncounter } from "../ui/dungeon_encounter.js";
+import { monsterSpriteKey } from "../data/monsterSprites.js";
 import { trackedObjective } from "./questJournalModel.js";
 import { showObjectiveQuestLog } from "./objective_quest_log.js";
 import "../styles/exploration-hud.css";
@@ -371,6 +373,12 @@ export class DungeonScene extends Phaser.Scene {
       );
       return;
     }
+    if (action.encounter?.optional) {
+      showDungeonEncounter(this, action, () =>
+        this.sendAction({ type: "interact", action_id: action.id }),
+      );
+      return;
+    }
     return this.sendAction({ type: "interact", action_id: action.id });
   }
 
@@ -606,11 +614,22 @@ export class DungeonScene extends Phaser.Scene {
         )
           this.selectAction(action);
       });
+      const threatKey = action.encounter?.optional
+        ? monsterSpriteKey(action.encounter.enemies[0])
+        : null;
+      if (threatKey && this.textures.exists(threatKey)) {
+        const threat = this.add.image(x, y, threatKey).setDepth(14);
+        threat.setScale((tile * 1.8) / Math.max(threat.width, threat.height));
+        threat.setOrigin(0.5, 0.85);
+        this.markers.push(threat);
+      }
       const glyph = action.completed
         ? "✓"
-        : ["exit", "transition", "door"].includes(action.kind)
-          ? "›"
-          : "!";
+        : threatKey
+          ? `Lv ${action.encounter.level}`
+          : ["exit", "transition", "door"].includes(action.kind)
+            ? "›"
+            : "!";
       this.markers.push(
         marker,
         this.text(

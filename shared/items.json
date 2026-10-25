@@ -596,6 +596,26 @@
       "sell_price": 40
     },
     {
+      "id": "trail_sword",
+      "name": "Balanced Trail Sword",
+      "icon_key": "crafted/iron-sword",
+      "type": "sword",
+      "tier": 2,
+      "power": 11,
+      "hit_pct": 15,
+      "crit_pct": 0,
+      "element": "none",
+      "classes": [
+        "warrior",
+        "wayfarer"
+      ],
+      "visual_id": "iron_sword",
+      "animation_set": "sword",
+      "special": "Balanced bronze pommel: accuracy in exchange for blade weight.",
+      "buy_price": 0,
+      "sell_price": 40
+    },
+    {
       "id": "iron_dagger",
       "name": "Iron Dagger",
       "type": "dagger",

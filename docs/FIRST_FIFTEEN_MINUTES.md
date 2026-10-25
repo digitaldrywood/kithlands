@@ -5,6 +5,18 @@ Warrior, Cinder, Rogue and Mender. This route samples the current normal game;
 it does not use the disposable developer showcase or grant extra levels/items.
 Times are a suggested budget, not a guarantee of first-visit completion.
 
+For the most connected early detour, take **Old Mill trail → Explore the
+optional Heron Pool**. The marked reed-bank herd offers an encounter preview
+with level and tactics; Back leaves without fighting. Win, recover the
+millwright supplies, then open Party → Crafting. The box contains 8 ore,
+2 hardwood and a unique balanced bronze pommel. Choose the normal Iron Sword
+(12 Power, 5% Hit Chance) or Balanced Trail Sword (11 Power, 15% Hit Chance).
+Either leaves 3 ore for gem shards. The precision blade consumes the one-time
+pommel. Equip your choice, rest at the now-safe bank, return to the split oak,
+and test it against the mill bats. You can still explore/gather independently.
+The cleared bank and claimed supplies persist through saving/loading; the
+encounter and supply box do not reset on repeat visits.
+
 | Time | What to do | What to notice |
 | --- | --- | --- |
 | 0–2 min | Open Menu, then Quest journal. Read the campaign objective and track The Old Mill under Local stories. | One journal contains both campaign progress and the mill. Tracking a story selects its route on the map; entering it shows its current step. |
@@ -19,8 +31,8 @@ not an artificial guaranteed level at a particular minute. The mill is a longer
 story with twelve locations. A fifteen-minute first visit need not finish its
 puzzles or boss. Completing it awards 80 gold and its authored keepsake reward.
 
-Crafting includes **potions, gem shards, Iron Sword, Steel Sword and Runic
-Mythril Sword**, plus gem transmutation and socketing. Iron is the starting
+Crafting includes **potions, gem shards, Iron Sword, Balanced Trail Sword,
+Steel Sword and Runic Mythril Sword**, plus gem transmutation and socketing. Iron is the starting
 recipe; Steel requires party level 4 and purchased charcoal, flux and a leather
 wrap. Runic Mythril requires party level 8, rare mythril ore, shop supplies and
 the mill's runic core. Those advanced recipes are longer-term goals, not

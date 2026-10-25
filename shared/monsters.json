@@ -884,5 +884,48 @@
     "encounter_weight": 14,
     "min_group": 1,
     "max_group": 3
+  },
+  {
+    "id": "reedbank_bramblehog",
+    "name": "Reed-bank Bramblehog",
+    "field_note": "An older bramblehog holding a sheltered reed bank. Its thick quills protect the herd\u2019s quiet resting place.",
+    "habitats": [
+      "Forests",
+      "Dark grass",
+      "Woodland margins"
+    ],
+    "tactics": "Fire catches its dry quills. Focus one target at a time; its thick hide withstands a quick opening volley.",
+    "tier": 1,
+    "size": "small",
+    "stats": {
+      "str": 6,
+      "agi": 3,
+      "int": 1,
+      "vit": 4,
+      "lck": 2,
+      "hit_pct": 3
+    },
+    "hp": 48,
+    "armor_absorb": 1,
+    "xp_reward": 24,
+    "gold_reward": 10,
+    "weaknesses": [
+      "fire"
+    ],
+    "resistances": [],
+    "absorbs": [],
+    "drops": [
+      {
+        "item_id": "potion",
+        "chance_pct": 12
+      },
+      {
+        "item_id": "antidote",
+        "chance_pct": 8
+      }
+    ],
+    "encounter_weight": 0,
+    "min_group": 1,
+    "max_group": 2
   }
 ]

@@ -49,14 +49,26 @@ type DungeonEntryState struct {
 	RewardGold   int      `json:"reward_gold,omitempty"`
 }
 type DungeonActionState struct {
-	ID        string `json:"id"`
-	Label     string `json:"label"`
-	Kind      string `json:"kind"`
-	X         int    `json:"x"`
-	Y         int    `json:"y"`
-	Available bool   `json:"available"`
-	Reason    string `json:"reason,omitempty"`
-	Completed bool   `json:"completed"`
+	Encounter *DungeonEncounterPreview `json:"encounter,omitempty"`
+	ID        string                   `json:"id"`
+	Label     string                   `json:"label"`
+	Kind      string                   `json:"kind"`
+	X         int                      `json:"x"`
+	Y         int                      `json:"y"`
+	Available bool                     `json:"available"`
+	Reason    string                   `json:"reason,omitempty"`
+	Completed bool                     `json:"completed"`
+}
+type DungeonEnemyPreview struct {
+	MonsterID string `json:"monster_id"`
+	Name      string `json:"name"`
+	Tactics   string `json:"tactics"`
+}
+type DungeonEncounterPreview struct {
+	Optional    bool                  `json:"optional"`
+	Level       int                   `json:"level"`
+	Enemies     []DungeonEnemyPreview `json:"enemies"`
+	Description string                `json:"description"`
 }
 type DungeonState struct {
 	RecoveredFromDefeat bool                 `json:"recovered_from_defeat,omitempty"`
@@ -291,7 +303,7 @@ func (g *Game) fillDungeonState(s *GameState) {
 	if r == nil {
 		return
 	}
-	s.Dungeon = &DungeonState{ID: def.ID, Title: g.dungeonText(def.Title), LocalityName: g.dungeonText("{locality}"), RoomID: r.ID, RoomName: r.Name, Description: g.dungeonText(r.Description), Map: r.Presentation(p.Flags), BattleBackground: r.BattleBackground, RecoveredFromDefeat: p.RecoveredFromDefeat, Position: p.Position, Visited: slices.Clone(p.Visited), Journal: slices.Clone(p.Journal), Complete: p.Flags[def.CompleteFlag]}
+	s.Dungeon = &DungeonState{ID: def.ID, Title: g.dungeonText(def.Title), LocalityName: g.dungeonText("{locality}"), RoomID: r.ID, RoomName: r.Name, Description: g.dungeonText(r.DescriptionFor(p.Flags)), Map: r.Presentation(p.Flags), BattleBackground: r.BattleBackground, RecoveredFromDefeat: p.RecoveredFromDefeat, Position: p.Position, Visited: slices.Clone(p.Visited), Journal: slices.Clone(p.Journal), Complete: p.Flags[def.CompleteFlag]}
 	for _, o := range def.Objectives {
 		if o.Until == "" || !p.Flags[o.Until] {
 			s.Dungeon.Objective = g.dungeonText(o.Text)
@@ -309,7 +321,16 @@ func (g *Game) fillDungeonState(s *GameState) {
 		if completed && !a.Repeatable {
 			available = false
 		}
-		s.Dungeon.Actions = append(s.Dungeon.Actions, DungeonActionState{ID: a.ID, Label: a.Label, Kind: a.Kind, X: a.Position.X, Y: a.Position.Y, Available: available, Reason: g.dungeonText(a.Reason), Completed: completed})
+		view := DungeonActionState{ID: a.ID, Label: a.Label, Kind: a.Kind, X: a.Position.X, Y: a.Position.Y, Available: available, Reason: g.dungeonText(a.Reason), Completed: completed}
+		if a.Kind == "encounter" && a.Encounter != nil && !completed {
+			view.Encounter = &DungeonEncounterPreview{Optional: a.Optional, Level: a.Encounter.Level, Description: g.dungeonText(a.Text)}
+			for _, id := range g.dungeonEncounterIDs(a.Encounter) {
+				if m := g.gd.MonsterByID(id); m != nil {
+					view.Encounter.Enemies = append(view.Encounter.Enemies, DungeonEnemyPreview{MonsterID: id, Name: m.Name, Tactics: m.Tactics})
+				}
+			}
+		}
+		s.Dungeon.Actions = append(s.Dungeon.Actions, view)
 	}
 }
 
@@ -514,15 +535,19 @@ func (g *Game) leaveDungeon(def *dungeon.Definition) error {
 	g.phase = "world"
 	return nil
 }
+func (g *Game) dungeonEncounterIDs(e *dungeon.Encounter) []string {
+	if len(g.party) >= 4 && len(e.FullParty) > 0 {
+		return e.FullParty
+	}
+	return e.Monsters
+}
+
 func (g *Game) startDungeonEncounter(a *dungeon.Action) error {
 	if a.Encounter == nil {
 		return fmt.Errorf("encounter is unavailable")
 	}
 	e := a.Encounter
-	ids := e.Monsters
-	if len(g.party) >= 4 && len(e.FullParty) > 0 {
-		ids = e.FullParty
-	}
+	ids := g.dungeonEncounterIDs(e)
 	enemies := make([]*combat.Combatant, 0, len(ids))
 	for i, id := range ids {
 		m := g.gd.MonsterByID(id)

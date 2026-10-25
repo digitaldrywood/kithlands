@@ -15,7 +15,9 @@
     "defeat_text": "The trail keeper brings your party back to the split oak. Rested and safe, you can try again; your discoveries remain.",
     "payoff": {
       "gold": 80,
-      "materials": { "mill_core": 1 }
+      "materials": {
+        "mill_core": 1
+      }
     },
     "objectives": [
       {
@@ -99,7 +101,7 @@
           },
           {
             "id": "heron-trail",
-            "label": "Follow the narrow fishing trail",
+            "label": "Explore the optional Heron Pool",
             "kind": "door",
             "position": {
               "x": 6,
@@ -109,7 +111,8 @@
             "arrival": {
               "x": 12,
               "y": 13
-            }
+            },
+            "text": "The western trail leads to a bramblehog guarding a millwright supply box. Its balanced bronze pommel can make a more accurate sword. You can leave the main mill route for later."
           },
           {
             "id": "mill-door",
@@ -237,7 +240,7 @@
       {
         "id": "heron-pool",
         "name": "The Heron Pool",
-        "description": "Reeds shelter a still pool off the busy wagon road. The miller left a small cache beside a stone heron.",
+        "description": "An optional detour from the mill road. A rooting herd guards a millwright supply box. Clear the reed bank for smithing supplies and a safe place to rest, or return to the main trail.",
         "map_file": "heron-pool.json",
         "actions": [
           {
@@ -280,9 +283,74 @@
               "level": 1
             },
             "text": "Two Antidotes remain dry in the fishing satchel. Cure poison from the Party menu or during battle."
+          },
+          {
+            "id": "pool-bramblehog",
+            "label": "Challenge the reed-bank herd",
+            "kind": "encounter",
+            "optional": true,
+            "position": {
+              "x": 12,
+              "y": 8
+            },
+            "flag": "pool-bank-cleared",
+            "text": "An optional level-2 woodland threat guards the millwright supply box. Clearing the bank opens a free rest stop and supplies for a Balanced Trail Sword: more accuracy, slightly less power than an Iron Sword. You can leave without fighting.",
+            "encounter": {
+              "monsters": [
+                "reedbank_bramblehog"
+              ],
+              "level": 2,
+              "full_party": [
+                "reedbank_bramblehog",
+                "reedbank_bramblehog"
+              ]
+            }
+          },
+          {
+            "id": "pool-smithing-cache",
+            "label": "Recover the millwright supplies",
+            "kind": "treasure",
+            "position": {
+              "x": 10,
+              "y": 4
+            },
+            "requires": [
+              "pool-bank-cleared"
+            ],
+            "reason": "The bramblehog is still guarding the supply box. Challenge it or return to the main trail.",
+            "flag": "pool-smithing-claimed",
+            "reward": {
+              "materials": {
+                "ember_ore": 8,
+                "hardwood": 2,
+                "bronze_pommel": 1
+              }
+            },
+            "text": "Recovered 8 ember iron ore, 2 hardwood and a balanced bronze pommel. Craft a Balanced Trail Sword for accuracy or an Iron Sword for power. Both accept a gem. The reed bank is now a safe rest stop."
+          },
+          {
+            "id": "pool-rest",
+            "label": "Rest at the cleared reed bank",
+            "kind": "rest",
+            "position": {
+              "x": 10,
+              "y": 11
+            },
+            "requires": [
+              "pool-bank-cleared"
+            ],
+            "reason": "The bramblehog makes this bank unsafe. Clear it to open a free rest stop.",
+            "repeatable": true,
+            "text": "The cleared reed bank is quiet. Your party rests beside the pool; HP, MP and conditions are restored. The mill road is close by."
           }
         ],
-        "battle_background": "bg_forest_1"
+        "battle_background": "bg_forest_1",
+        "description_variants": [
+          {
+            "requires": "pool-bank-cleared",
+            "text": "The reed bank is quiet after your victory. The millwright supply box is accessible, and the sheltered bank is now a free rest stop on the road to the mill."
+          }
+        ]
       },
       {
         "id": "grain-store",

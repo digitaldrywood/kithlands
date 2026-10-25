@@ -25,25 +25,26 @@ Updated 2026-10-25. This file records work; it does not schedule unattended runs
 - Visual workflow pinned to supported Ubuntu 24.04.
 - Interior proof corrected to await actual completed Town steps, retaining exact destination checks.
 - Repeated field-magic keyboard proof corrected to await menu readiness and visible cursor selection; all four viewport flows pass locally.
-- Remote walking suite previously passed all 24 checks. On head `e2fd42c`, gameplay and interior jobs now pass; the fresh walking job is still running.
+- Remote run `40202414864` on `e2fd42c` passes all three visual suites. The subsequent documentation-head run `40203229574` passes walking/interiors but exposes an intermittent second-Cure keyboard failure at 800px (`field-magic-repeat.spec.js:142`). Investigate that input path; do not claim stable remote CI from one green run.
+- `make test-e2e` currently fails migration discovery in `server/internal/testutil/integrationdb.go` (`no migration files found`). It was run only against a disposable database, which teardown removed; the live game database remains available. Investigate this helper before claiming the integration gate passes.
 - General CI run `40202414785` is queued for `[self-hosted, linux, personal]`; GitHub's repository runner API reports zero registered runners. Local checks cannot substitute for a completed remote gate. Preserve the existing runner configuration pending an infrastructure decision.
 - Corrected the fifteen-minute walkthrough to include hardwood, current recipes and saved respawn timers. It still explicitly requires a timed normal fresh-player verification; the document is not proof of the complete loop.
 
-## Next playable feature, after CI stability
+## Current playable slice and remaining stability work
 
-One short meadow-to-Old-Mill loop: visible optional threat → useful resource/reward → crafted sidegrade → changed location. See `GAME_FEEL_NEXT_SLICE.md` for research, acceptance criteria, persistence and balancing requirements. This feature is not yet implemented.
+The Heron Pool detour now connects an optional visible threat → guarded smithing supplies → power/accuracy sword choice → a saved safe rest stop and changed room description. Its desktop/phone proof and exact limits are recorded in `HERON_PLAYABILITY_PROOF.md`. It reuses the normal party, inventory, journal, crafting and combat. See `GAME_FEEL_NEXT_SLICE.md` for the broader exploration/pacing follow-up; the complete fifteen-minute acceptance remains open.
 
 ### Audit of reusable mechanics
 
-- `shared/dungeons/adventures.json` already defines visible authored encounters, the mill's restoration, shortcut and payoff. The entrance bats gate the mill doorway; that required encounter alone does not meet the optional-threat goal.
+- `shared/dungeons/adventures.json` defines authored encounters, the mill's restoration, shortcut and payoff. The entrance bats still gate the mill doorway; the optional Heron Pool encounter can be declined and is not required for the main mill route.
 - `server/api/game_dungeon_test.go` already exercises full-route persistence, shortcut return, reward replay rejection and defeat/flee recovery. Extend these mechanics rather than introduce another expedition inventory or journal.
 - `server/api/game_encounter_pacing.go` owns saved travel-based encounter intervals; `shared/encounter_pacing.json` currently sets 60–100 weighted grass steps with 12 safe steps. Route pacing changes belong here and in shared data, not client random rolls.
 - `client/e2e/gathering-crafting.spec.js` starts with `?noEncounters=1`. It verifies collection/crafting/equipment interactions, but does not establish ordinary travel pacing or an uninterrupted first-fifteen-minute experience.
 
 ### Remaining acceptance checklist
 
-- [ ] A normal fresh game presents a recognizable optional encounter and honest difficulty information before engagement.
-- [ ] Winning connects to useful resources and a meaningful crafted choice; returning shows a persistent consequence.
+- [x] A normal fresh game presents a recognizable optional encounter and honest enemy/level information before engagement.
+- [x] Winning connects to useful smithing supplies and a power/accuracy crafting choice; the cleared bank persists as a rest stop.
 - [ ] Retreat, defeat, repeated visits, saving/loading and reward replay are verified for the new route.
 - [ ] Enemy tactical roles and any intent preview match the actual server-resolved action, including interrupted or invalidated actions.
 - [ ] Warrior/Cinder action-specific choreography covers critical attacks, defense, abilities, healing/status, victory and KO; other-class expansion follows reference acceptance.

@@ -103,6 +103,31 @@
       "output_visual": "sword"
     },
     {
+      "id": "forge_trail_sword",
+      "name": "Forge Balanced Trail Sword",
+      "description": "Balance an iron blade with the millwright\u2019s bronze pommel and a hardwood grip. Trades 1 Power for 10% Hit Chance against the Iron Sword. One gem socket. Recover the unique pommel at the optional Heron Pool.",
+      "inputs": [
+        {
+          "material_id": "ember_ore",
+          "count": 5
+        },
+        {
+          "material_id": "hardwood",
+          "count": 1
+        },
+        {
+          "material_id": "bronze_pommel",
+          "count": 1
+        }
+      ],
+      "output_id": "trail_sword",
+      "output_count": 1,
+      "output_visual": "sword",
+      "item_level": 1,
+      "sockets": 1,
+      "rarity_id": "common"
+    },
+    {
       "id": "forge_steel_sword",
       "name": "Forge Steel Sword",
       "description": "Use charcoal to harden the iron, flux to remove impurities, and a leather wrap for a secure grip. Party level 4 unlocks this recipe.",
@@ -199,6 +224,12 @@
       "name": "Millwright runic core",
       "visual": "gem",
       "source": "Quest reward \u00b7 restore Old Mill and return to the trail"
+    },
+    {
+      "id": "bronze_pommel",
+      "name": "Balanced bronze pommel",
+      "visual": "mineral",
+      "source": "One-time millwright supply box at Heron Pool, guarded by an optional bramblehog"
     }
   ],
   "habitats": {
