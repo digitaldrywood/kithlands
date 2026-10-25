@@ -24,6 +24,60 @@ func writePNG(t *testing.T, path string) {
 	}
 }
 
+func approvedPathsForTest(t *testing.T, paths ...string) map[string]string {
+	t.Helper()
+	allowed := map[string]string{}
+	for _, path := range paths {
+		canonical, err := filepath.EvalSymlinks(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		allowed[path], allowed[canonical] = canonical, canonical
+	}
+	return allowed
+}
+
+func TestHandleImageRejectsScannedFileRetargetedToUnscannedPNG(t *testing.T) {
+	root := t.TempDir()
+	scanned, unscanned := filepath.Join(root, "shown.png"), filepath.Join(root, "private.png")
+	writePNG(t, scanned)
+	writePNG(t, unscanned)
+	s := &scanner{allowPaths: approvedPathsForTest(t, scanned)}
+	if err := os.Remove(scanned); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(unscanned, scanned); err != nil {
+		t.Fatal(err)
+	}
+	w := httptest.NewRecorder()
+	s.handleImage(w, httptest.NewRequest(http.MethodGet, "/img?path="+scanned, nil))
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("retargeted scan path returned %d", w.Code)
+	}
+}
+
+func TestHandleImageAcceptsScannedParentDirectoryAliasAndCanonicalPath(t *testing.T) {
+	root, aliases := t.TempDir(), t.TempDir()
+	writePNG(t, filepath.Join(root, "art.png"))
+	alias := filepath.Join(aliases, "images")
+	if err := os.Symlink(root, alias); err != nil {
+		t.Fatal(err)
+	}
+	scanned := filepath.Join(alias, "art.png")
+	s := &scanner{allowPaths: approvedPathsForTest(t, scanned)}
+	canonical, err := filepath.EvalSymlinks(scanned)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{scanned, canonical} {
+		w := httptest.NewRecorder()
+		s.handleImage(w, httptest.NewRequest(http.MethodGet, "/img?path="+path, nil))
+		if w.Code != http.StatusOK {
+			t.Fatalf("approved path %q returned %d", path, w.Code)
+		}
+	}
+}
+
 func TestWalkPNGsSkipsNonPNGsAndMissingDirs(t *testing.T) {
 	dir := t.TempDir()
 	writePNG(t, filepath.Join(dir, "a.png"))
@@ -65,7 +119,7 @@ func TestIsAllowedOnlyAcceptsScannedPaths(t *testing.T) {
 	writePNG(t, scanned)
 	writePNG(t, unscanned)
 
-	s := &scanner{allowPaths: map[string]struct{}{scanned: {}}}
+	s := &scanner{allowPaths: approvedPathsForTest(t, scanned)}
 	if !s.isAllowed(scanned) {
 		t.Errorf("expected scanned path %q to be allowed", scanned)
 	}
@@ -81,7 +135,7 @@ func TestHandleImageRejectsUnscannedFileUnderScannedDirectory(t *testing.T) {
 	writePNG(t, scanned)
 	writePNG(t, sibling)
 
-	s := &scanner{allowPaths: map[string]struct{}{scanned: {}}}
+	s := &scanner{allowPaths: approvedPathsForTest(t, scanned)}
 	req := httptest.NewRequest(http.MethodGet, "/img?path="+sibling, nil)
 	w := httptest.NewRecorder()
 	s.handleImage(w, req)
@@ -95,7 +149,7 @@ func TestHandleImageServesExactScanPath(t *testing.T) {
 	target := filepath.Join(root, "ok.png")
 	writePNG(t, target)
 
-	s := &scanner{allowPaths: map[string]struct{}{target: {}}}
+	s := &scanner{allowPaths: approvedPathsForTest(t, target)}
 	req := httptest.NewRequest(http.MethodGet, "/img?path="+target, nil)
 	w := httptest.NewRecorder()
 	s.handleImage(w, req)
@@ -114,7 +168,7 @@ func TestHandleImageRejectsNonPNG(t *testing.T) {
 	if err := os.WriteFile(target, []byte("hi"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	s := &scanner{allowPaths: map[string]struct{}{target: {}}}
+	s := &scanner{allowPaths: approvedPathsForTest(t, target)}
 	req := httptest.NewRequest(http.MethodGet, "/img?path="+target, nil)
 	w := httptest.NewRecorder()
 	s.handleImage(w, req)

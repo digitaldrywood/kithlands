@@ -12,6 +12,7 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/character"
 	"github.com/digitaldrywood/kithlands/internal/combat"
 	"github.com/digitaldrywood/kithlands/internal/dungeon"
+	"github.com/digitaldrywood/kithlands/internal/httpasset"
 	"github.com/digitaldrywood/kithlands/internal/locality"
 	"github.com/digitaldrywood/kithlands/internal/settlements"
 )
@@ -678,7 +679,8 @@ func (s *Server) handleDungeonArt(w http.ResponseWriter, r *http.Request) {
 			for _, layer := range images {
 				if layer.Image == "/api/data/dungeons/art/"+file {
 					w.Header().Set("X-Content-Type-Options", "nosniff")
-					http.ServeFile(w, r, filepath.Join(s.games.sharedDir, "dungeons", "art", file))
+					asset := strings.TrimPrefix(layer.Image, "/api/data/dungeons/art/")
+					httpasset.ServeApprovedFile(w, r, filepath.Join(s.games.sharedDir, "dungeons", "art"), asset)
 					return
 				}
 			}

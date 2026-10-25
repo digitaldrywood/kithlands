@@ -88,7 +88,7 @@ and real request/guard counts remain checked.
   HOME/XDG/cache, `npx playwright test --config=e2e/playwright.config.js e2e/battle-defend.spec.js e2e/warrior-critical.spec.js e2e/battle-context-choices.spec.js --output=tmp/defend-final-1792946000` passes eleven cases before the phone reflow.
 - The same files with `--grep 'Defend|battle choices|touch item|strike 390' --output=tmp/defend-accessible-1792946100` pass nine cases after reflow. The final meter-spacing and submenu-bottom checks pass all three phone cases with `--grep '390' --output=tmp/defend-phone-spacing-1792946200`.
 
-Full `go test -race ./...` does **not** pass: the API package reaches its default
+At `42aa539`, full `go test -race ./...` did **not** pass: the API package reaches its default
 ten-minute timeout during the 1,000-seed first-encounter test. The live stack is
 in initial gathering-route placement; ordinary complete tests pass. Investigate
 and profile that cost without reducing coverage. Full lint also still reports
@@ -118,3 +118,11 @@ four viewport review sheets and constituent submenu/result screens under
 `client/tmp/battle-context-1792948200314/`, including touch targets and Back.
 No gameplay/input assertion was removed. Remote confirmation of the correction
 remains pending.
+
+## Follow-up: full local gates resolved
+
+The gathering search optimization preserves the full seed coverage and passes
+`go test -race ./...` with the unchanged timeout (API: 519.330 seconds).
+The bounded asset-serving repair clears both G703 findings; full lint reports
+zero issues. See `GATHERING_SEARCH_PERFORMANCE_PROOF.md` and
+`ASSET_SERVING_PROOF.md`. These are local results; remote confirmation is separate.

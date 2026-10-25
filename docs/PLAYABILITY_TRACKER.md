@@ -20,7 +20,7 @@ Updated 2026-10-25. This file records work; it does not schedule unattended runs
 
 - Remote run `40213425092` verifies Defend, walking and interiors but exposes a test mistake: the last phone-only submenu boundary assumed desktop status was also below commands. Corrected the assertion to require command-region containment and rectangle non-overlap in both arrangements. All five native-game viewport/touch cases pass with inspected proof in `client/tmp/battle-context-1792948200314/`; remote reconfirmation remains pending.
 
-- Latest client baseline remains 785 tests, build and formatting. Profiling reduced initial resource placement from 7.993ms to 1.587ms and allocated bytes by 78.75%, with identical seeded resource/terrain fingerprints. Full ordinary Go tests, data validation, balance smoke and **full race testing** pass; the API race package completes in 519.330 seconds without changing its 600-second timeout or seed coverage. See `GATHERING_SEARCH_PERFORMANCE_PROOF.md`. Full lint's separate asset-serving repair is recorded next.
+- Latest client baseline remains 785 tests, build and formatting. Profiling reduced initial resource placement from 7.993ms to 1.587ms and allocated bytes by 78.75%, with identical seeded resource/terrain fingerprints. Full ordinary Go tests, data validation, balance smoke and **full race testing** pass; the API race package completes in 519.330 seconds without changing its 600-second timeout or seed coverage. See `GATHERING_SEARCH_PERFORMANCE_PROOF.md`. The separate bounded asset-serving repair clears both G703 findings; full lint reports zero issues. See `ASSET_SERVING_PROOF.md` for registered-image and dashboard allowlist coverage.
 
 - Development dependency patches update Vite 6.4.3 → 6.4.5 and Vitest 4.1.11 → 4.1.12 within the existing ranges. `npm audit --audit-level=moderate` reports zero vulnerabilities; all 778 client tests, build, formatting and six repeated-Cure/Heron real-game viewport flows pass. The running Vite server was restarted on port 3609; API and saves were retained.
 
@@ -54,7 +54,7 @@ The Heron Pool detour now connects an optional visible threat → guarded smithi
 - [x] Winning connects to useful smithing supplies and a power/accuracy crafting choice; the cleared bank persists as a rest stop.
 - [ ] Retreat, defeat, repeated visits, saving/loading and reward replay are verified for the new route.
 - [ ] Enemy tactical roles and any intent preview match the actual server-resolved action, including interrupted or invalidated actions.
-- [ ] Profile initial gathering-route generation and complete full Go race/lint gates without reducing seed coverage or suppressing unreviewed findings.
+- [x] Profile initial gathering-route generation and complete full Go race/lint gates without reducing seed coverage or suppressing unreviewed findings.
 - [ ] Warrior/Cinder action-specific choreography covers critical attacks, defense, abilities, healing/status, victory and KO; other-class expansion follows reference acceptance.
 - [ ] Inspect current melee and elemental spell anticipation/release/contact/recovery at normal and reduced motion, with readable action text and unobscured targets.
 - [ ] Inspect resource habitat terrain and meadow landmarks on the actual quest route; check saved respawn deadlines after closing/reopening.
