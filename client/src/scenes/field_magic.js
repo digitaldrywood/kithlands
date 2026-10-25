@@ -1,5 +1,6 @@
 import { roundedRectangle } from "../ui/theme.js";
 import { gameAction } from "../api.js";
+import { oncePerKeyEvent } from "../systems/keyboard_events.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 import { drawButton, drawPanel } from "../ui/panel.js";
 import {
@@ -415,7 +416,7 @@ export function showFieldMagicMenu(scene, opts = {}) {
     .setDepth(DEPTH_TEXT);
   state.overlay.push(state.hintText);
 
-  state.keyHandler = (ev) => onKey(state, ev);
+  state.keyHandler = oncePerKeyEvent((ev) => onKey(state, ev));
   scene.input?.keyboard?.on("keydown", state.keyHandler);
 
   if (state.casterSlot != null && opts.spellId) {

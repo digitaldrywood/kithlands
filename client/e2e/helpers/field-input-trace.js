@@ -58,9 +58,10 @@ export async function traceFieldKeyboard(page) {
     const scene = window.__cureInputGame.scene.getScene("World");
     // Registered after the menu listener, so this records the selected row
     // and busy state immediately after the real handler processes a key.
-    scene.input.keyboard.on("keydown", (event) =>
-      window.__cureInputSnapshot("phaser-key", event),
-    );
+    scene.input.keyboard.on("keydown", (event) => {
+      window.__cureLastKeyEvent = event;
+      window.__cureInputSnapshot("phaser-key", event);
+    });
     scene.input.on("gameobjectover", () =>
       window.__cureInputSnapshot("pointer-over"),
     );

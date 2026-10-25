@@ -146,6 +146,26 @@ for (const viewport of [
       await selected(before[1].name);
       await page.keyboard.press("ArrowUp");
       await selected(before[0].name);
+      // CI exposed Phaser replaying the same native event while its queue
+      // contains interleaved keydown/keyup entries. Reproduce that delivery.
+      await page.evaluate(() => {
+        const scene = window.__cureInputGame.scene.getScene("World");
+        const event = window.__cureLastKeyEvent;
+        if (event?.key !== "ArrowUp") throw new Error("Missing native ArrowUp");
+        scene.input.keyboard.emit("keydown", event);
+        scene.input.keyboard.emit("keydown", event);
+      });
+      await expect
+        .poll(
+          () =>
+            page.evaluate(
+              () =>
+                window.__kithlandsTest.menuOverlaySummary("magic", "World")
+                  .cursorLabel,
+            ),
+          { timeout: 2000 },
+        )
+        .toContain(before[0].name);
       await page.keyboard.press("ArrowDown");
       await selected(before[1].name);
       await page.keyboard.press("Enter");
