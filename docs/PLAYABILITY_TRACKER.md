@@ -5,6 +5,8 @@ Updated 2026-10-25. This file records work; it does not schedule unattended runs
 
 ## Verified locally
 
+- Native fresh campaign audits now verify actual level-ups through normal quest actions, including fetch collection/return and delivery pickup/handoff, with encounters enabled and no grants. Campaign rewards can raise a fresh party from level one to three under the current XP curve. The old World-only reward message vanished on building entry; a temporary corner receipt now survives that transition and shows the server-confirmed quest, XP, gold and actual level changes. It holds for eight seconds, fades, supports dismissal without confirming the NPC underneath, and clears at Title. See `CAMPAIGN_PROGRESSION_PROOF.md` for final gates and limits.
+
 - Development watcher excludes temporary proof/test/report directories. A native regression observes Vite's actual `vite:beforeFullReload` events: rewriting a trace HTML file sends a notification with the old configuration and sends none with the ignore rule; the same playable game remains loaded. This proves artifact/HMR isolation, not the cause of the earlier trace teardown timeout. See `DEV_ARTIFACT_WATCHER_PROOF.md`.
 
 - Direct world-shop entry regression: legacy world buildings opened Town visually without entering a server-owned interior, so stock failed with “enter a shop before buying.” World entrances now validate the recorded arrival, use generated interior metadata and return to their actual world entrance. The existing settlement route is preserved. Explicit quest actions retain the same validated visit inside direct world interiors; remote visits, mismatched interiors and objective replay remain rejected. See `WORLD_SHOP_ENTRY_PROOF.md` for the before/after native gate and saved-player continuity.
@@ -76,7 +78,9 @@ The Heron Pool detour now connects an optional visible threat → guarded smithi
 - [ ] Verify crafting, shops, inventory, equipment comparison and all gem operations with consistent icons and keyboard/touch input at desktop and phone sizes.
 - [x] Verify newest save selection and optional history with multiple snapshots of one adventure.
 - [x] Play and time an automated normal fresh route with encounters enabled, no debug grants, real starting money and levels; document what shopping/spell purchasing/XP is actually reachable.
-- [ ] Verify natural campaign level-up and unassisted first-visit pacing; two opening fights currently yield 24 XP per member, below the level-two threshold of 70.
+- [x] Verify a natural campaign level-up through normal travel and quest interactions; the campaign reward currently supplies 180 XP per living member and can reach level three. The two-fight Old Mill detour alone still yields only 24 XP per member.
+- [ ] Verify unassisted first-visit pacing and the intended reward curve; automated route duration is not a human timing estimate.
+- [ ] Repair arrival-only completion of legacy threat/escort quests. The native Q04 Bandit Clearing audit awarded the quest reward on entering its target with no quest fight; travel encounters are unrelated. Q05 also still uses the legacy arrival path. Add proper server-owned completion conditions and save/replay/recovery proof before calling campaign pacing complete.
 - [ ] Inspect unique screenshots and motion evidence; run required local gates and obtain passing relevant remote CI.
 
 The active goal is the complete user-pasted request, not only this checklist. Existing local proof should be reused where valid; a check stays open when its remaining acceptance depends on the new connected route or final integrated verification.

@@ -13,6 +13,7 @@ import {
   updateMeadowDepth,
 } from "./meadowPresentation.js";
 import { explorationHUD } from "../ui/exploration_hud.js";
+import { showQuestMilestone } from "../ui/quest_milestone.js";
 import { drawPanel, drawButton } from "../ui/panel.js";
 import { gameAction, autosaveGame } from "../api.js";
 import { showCampaignEnding, showFinalRecovery } from "./campaignEnding.js";
@@ -844,12 +845,13 @@ export class WorldScene extends Phaser.Scene {
         type: "quest_advance",
         node_id: nodeId,
       });
+      const milestoneShown = showQuestMilestone(this, this.gameState, result);
       this.gameState = result;
       this.updateHUD();
       this.updateQuestDisplay();
       this.updateVehicleIndicator();
 
-      if (result.message) {
+      if (result.message && !milestoneShown) {
         this.showMessage(result.message);
         this.time.delayedCall(3000, () => this.hideMessage());
       }

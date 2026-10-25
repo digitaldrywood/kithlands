@@ -16,6 +16,19 @@ shows a receipt and keeps the selected item in view.
 
 Times are a suggested budget, not a guarantee of first-visit completion.
 
+To experience a **level-up**, follow the campaign errand in Menu → Quest
+journal before the mill detour. Fetch quests require collecting the keepsake
+from its keeper and returning it; deliveries require picking up the parcel
+and handing it to the destination's keeper. Approach the NPC and use the
+shown interaction prompt at each step. Native normal-game checks completed
+these interactions and observed the party reach level three from level one
+with the current 180-XP quest reward. The reward receipt shows XP, gold and
+new levels in a corner, stays readable through scene changes, then fades.
+This is an alternative first-session emphasis; completing an errand plus the
+entire mill sample within fifteen minutes has not been timed with a new human
+player. Older threat/escort quest completion still needs repair; see the
+tracker's Q04/Q05 findings.
+
 For the most connected early detour, take **Old Mill trail → Explore the
 optional Heron Pool**. The marked reed-bank herd offers an encounter preview
 with level and tactics; Back leaves without fighting. Win, recover the
@@ -72,8 +85,9 @@ real progression, not a level-up. See `FIRST_SESSION_ROUTE_PROOF.md`.
 The scripted route knows every destination and selects commands immediately;
 its elapsed time is a regression measurement, not an unassisted first-time
 player timing estimate. The table remains a suggested human playtest budget.
-Natural level-up timing, complete campaign integration and perceived pacing
-still require acceptance.
+Natural level-up availability is now verified separately through native campaign
+errands. Human timing, intended reward pacing and complete campaign integration
+still require acceptance; see `CAMPAIGN_PROGRESSION_PROOF.md`.
 
 ## Gathering and professions recommendation
 

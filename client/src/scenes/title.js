@@ -19,6 +19,7 @@ import { buildWalkAuditParty, walkAuditRequested } from "./walkAuditMode.js";
 import { renderSaveAdventures } from "../ui/title_saves.js";
 import { titleScreen, titleAccount } from "../ui/title_screen.js";
 import { element } from "../ui/viewport_dialog.js";
+import { clearQuestMilestones } from "../ui/quest_milestone.js";
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -26,6 +27,7 @@ export class TitleScene extends Phaser.Scene {
   }
 
   create() {
+    clearQuestMilestones();
     // World and party menus can use a tall portrait canvas.
     this.scale.setGameSize(800, 600);
     this.showMainMenu();

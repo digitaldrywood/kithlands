@@ -1,6 +1,7 @@
 import { gameAction, autosaveGame } from "../api.js";
 import { openDialogue } from "./town_dialogue.js";
 import { questObjectiveText, questCustodyText } from "./quest_text.js";
+import { showQuestMilestone } from "../ui/quest_milestone.js";
 import {
   activeWorldLocks,
   pauseWorldFor,
@@ -79,6 +80,7 @@ export async function performQuestObjective(scene) {
       scene.time.delayedCall(2200, () => scene.hideMessage());
       return true;
     }
+    showQuestMilestone(scene, scene.gameState, result);
     Object.assign(scene.gameState, result);
     drawTownObjective(scene);
     await autosaveGame(result.id, "quest_progress").catch((error) =>
