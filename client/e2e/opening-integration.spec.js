@@ -87,7 +87,7 @@ for (const width of [1440, 390]) {
       });
       await openNormalMerchant(page);
       await clickRouteText(page, "Spells", "Town", width === 390);
-      await clickRouteText(page, "Frost (black 1)", "Town", width === 390);
+      await clickRouteText(page, "Frost", "Town", width === 390);
       await page.waitForFunction(() =>
         window.__kithlandsTest
           .visibleTexts("Town")
@@ -110,6 +110,7 @@ for (const width of [1440, 390]) {
       await page.waitForFunction(
         () => window.__kithlandsTest.gameState("Town").gold === 0,
       );
+      await expect(page.locator(".shop-preview h2")).toHaveText("Learn Frost");
       await page.screenshot({
         path: path.join(proof, `${width}-frost-learned.png`),
       });

@@ -9,6 +9,11 @@ Existing saves keep every spell they already learned. Spending the starting
 100 gold on a spell means earning more before buying other gear. Gathering and
 crafting can supply early potions and a sword without spending that gold.
 
+In the store, choose a category and item, inspect its preview, then confirm
+Buy, Buy for a party member, or Learn. On phones, Back to stock returns to the
+list; Escape backs out of the preview, then closes the shop. Each purchase
+shows a receipt and keeps the selected item in view.
+
 Times are a suggested budget, not a guarantee of first-visit completion.
 
 For the most connected early detour, take **Old Mill trail → Explore the

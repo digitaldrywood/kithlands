@@ -179,6 +179,16 @@ function findMenuButtonAt(scene, label, occurrence = 0) {
   return null;
 }
 
+function shopControl(scene, text) {
+  const controls = [
+    ...(scene?.shopDialog?.root?.querySelectorAll("button") || []),
+  ].filter((node) => !node.disabled && node.getClientRects().length);
+  return (
+    controls.find((node) => node.dataset.shopLabel === text) ||
+    controls.find((node) => node.dataset.shopLabel?.includes(text))
+  );
+}
+
 function findInteractiveText(scene, text) {
   const normalize = (value) =>
     String(value)
@@ -1607,6 +1617,24 @@ export function installDevTestBridge(game) {
 
     visibleTexts(sceneKey) {
       const scene = getScene(game, sceneKey);
+      const root = scene?.shopDialog?.root;
+      if (root?.isConnected) {
+        return [
+          ...root.querySelectorAll(
+            "button, h1, h2, h3, p, span, small, strong, dt, dd",
+          ),
+        ]
+          .filter((node) => node.getClientRects().length)
+          .map((node) => ({
+            text: [...node.childNodes]
+              .filter((child) => child.nodeType === Node.TEXT_NODE)
+              .map((child) => child.textContent)
+              .join("")
+              .trim(),
+            interactive: node.tagName === "BUTTON" && !node.disabled,
+          }))
+          .filter((entry) => entry.text);
+      }
       return (scene?.children?.list || [])
         .filter((child) => typeof child?.text === "string")
         .map((child) => ({
@@ -2408,6 +2436,11 @@ export function installDevTestBridge(game) {
 
     clickInteractiveText(text, sceneKey) {
       const scene = getScene(game, sceneKey);
+      const native = shopControl(scene, text);
+      if (native) {
+        native.click();
+        return;
+      }
       const target = findInteractiveText(scene, text);
       if (!target) throw new Error(`Interactive text not found: ${text}`);
       clickGameObject(target);
@@ -2415,6 +2448,11 @@ export function installDevTestBridge(game) {
 
     interactiveTextPosition(text, sceneKey) {
       const scene = getScene(game, sceneKey);
+      const native = shopControl(scene, text);
+      if (native) {
+        const rect = native.getBoundingClientRect();
+        return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+      }
       return gameObjectCenter(game, findInteractiveText(scene, text));
     },
 

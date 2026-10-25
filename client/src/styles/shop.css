@@ -1,0 +1,230 @@
+.kith-shop {
+  background: #09121be8;
+}
+.kith-shop .viewport-dialog-panel {
+  width: min(100%, 1040px);
+  height: min(850px, 100%);
+}
+.kith-shop .viewport-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.kith-shop .viewport-dialog-header h1 {
+  font-size: 25px;
+}
+.kith-shop p,
+.kith-shop h2,
+.kith-shop h3,
+.kith-shop dl,
+.kith-shop dd {
+  margin: 0;
+}
+.kith-shop .shop-gold,
+.kith-shop .shop-price {
+  color: var(--menu-accent);
+  white-space: nowrap;
+}
+.kith-shop .shop-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+.shop-categories {
+  display: flex;
+  gap: 8px;
+  padding: 12px 20px;
+  flex-shrink: 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--menu-line);
+}
+.kith-shop [aria-pressed="true"] {
+  border-color: var(--menu-accent);
+  background: var(--menu-line);
+}
+.shop-workbench {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.85fr) minmax(0, 1.3fr);
+  min-height: 0;
+  flex: 1;
+}
+.shop-stock,
+.shop-preview {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px;
+  min-width: 0;
+}
+.shop-stock {
+  border-right: 1px solid var(--menu-line);
+}
+.kith-shop .shop-stock-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 8px;
+  min-height: 72px;
+  padding: 10px;
+}
+.shop-item-art {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border: 1px solid var(--menu-line);
+  border-radius: 10px;
+  background: #0c1523;
+}
+.shop-stock-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.shop-stock-name small,
+.shop-member small {
+  display: block;
+  font-size: 14px;
+  font-weight: normal;
+  color: var(--menu-muted);
+  margin-top: 4px;
+}
+.shop-preview-heading {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.shop-preview-heading .shop-item-art {
+  width: 72px;
+  height: 72px;
+}
+.shop-preview h2 {
+  color: var(--menu-accent);
+  font-size: 25px;
+  overflow-wrap: anywhere;
+}
+.shop-preview h3 {
+  font-size: 16px;
+  margin: 18px 0 10px;
+}
+.shop-description {
+  margin-bottom: 16px !important;
+}
+.shop-members {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.kith-shop .shop-member {
+  text-align: left;
+  padding: 10px;
+  font-size: 15px;
+}
+.shop-comparison {
+  padding: 14px;
+  border: 1px solid var(--menu-line);
+  border-radius: 12px;
+  margin-top: 16px;
+  background: #101a28;
+}
+.shop-stat-delta {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+.shop-secondary {
+  font-size: 14px;
+  color: var(--menu-muted);
+}
+.shop-error {
+  color: #ffd0c9;
+  padding-block: 12px;
+}
+.kith-shop .viewport-dialog-footer {
+  padding: 12px 20px;
+}
+.shop-status {
+  margin-bottom: 10px !important;
+}
+.shop-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.shop-actions .primary {
+  margin-left: auto;
+}
+.kith-shop .shop-back {
+  display: none;
+}
+@media (max-width: 620px) {
+  .kith-shop {
+    padding: max(6px, env(safe-area-inset-top)) 6px
+      max(6px, env(safe-area-inset-bottom));
+  }
+  .kith-shop .viewport-dialog-panel {
+    height: 100%;
+    border-radius: 16px;
+  }
+  .kith-shop .viewport-dialog-header {
+    padding: 14px;
+  }
+  .kith-shop .viewport-dialog-header h1 {
+    font-size: 21px;
+  }
+  .shop-categories {
+    padding: 10px;
+  }
+  .shop-categories button {
+    padding: 8px 12px;
+  }
+  .shop-workbench {
+    display: flex;
+    flex-direction: column;
+  }
+  .shop-stock,
+  .shop-preview {
+    padding: 12px;
+  }
+  .shop-stock {
+    border: 0;
+  }
+  .kith-shop:not(.shop-detail-open) .shop-preview,
+  .kith-shop:not(.shop-detail-open) .shop-purchase,
+  .kith-shop:not(.shop-detail-open) .shop-equip,
+  .kith-shop.shop-detail-open .shop-stock,
+  .kith-shop.shop-detail-open .shop-categories {
+    display: none;
+  }
+  .kith-shop .shop-back {
+    display: block;
+    margin-bottom: 16px;
+  }
+  .kith-shop .viewport-dialog-footer {
+    padding: 12px;
+  }
+  .shop-actions {
+    gap: 8px;
+  }
+  .shop-actions button {
+    flex: 1;
+  }
+  .shop-actions .shop-equip {
+    flex-basis: 100%;
+  }
+  .shop-preview h2 {
+    font-size: 23px;
+  }
+}
+
+.kith-shop .shop-member:disabled {
+  opacity: 1;
+  color: var(--menu-muted);
+  background: var(--menu-panel);
+}

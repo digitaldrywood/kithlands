@@ -38,7 +38,7 @@ const DETAIL_SPECS = {
     },
     {
       key: "evade_penalty",
-      label: "Evade",
+      label: "Evade penalty",
       equippedKey: "armor_evade_penalty",
     },
   ],
@@ -55,7 +55,7 @@ const GENERIC_STAT_LABELS = {
   hit_pct: "Hit%",
   crit_pct: "Crit%",
   magic_defense: "MagicDef",
-  evade_penalty: "Evade",
+  evade_penalty: "Evade penalty",
 };
 
 function statSpecs(item) {

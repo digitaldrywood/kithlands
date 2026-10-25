@@ -203,6 +203,7 @@ test.describe("shop spell learning flow", () => {
       window.__kithlandsTest.clickInteractiveText("Mira", "Town"),
     );
 
+    await page.getByRole("button", { name: /^Learn(?: Alt|$)/ }).click();
     const learnResponse = await learnResponsePromise;
     const learnBody = await learnResponse.json();
 
@@ -217,9 +218,7 @@ test.describe("shop spell learning flow", () => {
     const after = await page.evaluate(() =>
       window.__kithlandsTest.gameState("Town"),
     );
-    const toast = await page.evaluate(
-      () => window.__kithlandsTest.messageState("Town").text,
-    );
+    const toast = await page.locator(".shop-status").innerText();
     await addProofOverlay(
       page,
       "AFTER: Heal learned by Mira, not stored as an item",

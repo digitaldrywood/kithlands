@@ -80,6 +80,11 @@ async function moveSettlement(page, directions) {
 }
 
 async function tapActionButton(page, sceneKey) {
+  const control = page.locator(".explore-interaction:visible");
+  if (await control.count()) {
+    await control.tap();
+    return;
+  }
   const layout = await page.evaluate(
     (key) => window.__kithlandsTest.gameplayViewportSnapshot(key),
     sceneKey,
@@ -88,7 +93,7 @@ async function tapActionButton(page, sceneKey) {
     (key) => window.__kithlandsTest.logicalGameSize(key),
     sceneKey,
   );
-  const box = await page.locator("canvas").boundingBox();
+  const box = await page.locator("#game > canvas").boundingBox();
   if (!box) throw new Error("game canvas is missing");
   await page.touchscreen.tap(
     box.x + (layout.action.x / size.width) * box.width,

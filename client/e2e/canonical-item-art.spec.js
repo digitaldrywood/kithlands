@@ -233,43 +233,15 @@ for (const width of [1440, 610, 390]) {
         .some((t) => t.text === "Leave Shop"),
     );
     expect(catalog.shop_items.some((i) => i.id === "steel_sword")).toBe(true);
-    for (let pageIndex = 0; pageIndex < 4; pageIndex++) {
-      const seen = await page.evaluate(() =>
-        window.__artGame.scene
-          .getScene("Town")
-          .children.list.some(
-            (o) =>
-              o.type === "Image" &&
-              o.texture.key === "item-art:crafted/steel-sword.svg",
-          ),
-      );
-      if (seen) break;
-      const shortcut = await page.evaluate(
-        () =>
-          window.__artGame.scene
-            .getScene("Town")
-            .canvasMenuKeyboard.entries.find(
-              (e) => e.label.text === "Next Stock" && e.enabled(),
-            ).bg.__kithlandsKeyboard.shortcut,
-      );
-      await page.keyboard.press(shortcut);
-    }
-    const art = await page.evaluate(() =>
-      window.__artGame.scene
-        .getScene("Town")
-        .children.list.filter(
-          (o) => o.type === "Image" && o.texture.key.startsWith("item-art:"),
-        )
-        .map((o) => o.texture.key),
+    const steelIcon = page.locator(
+      '.shop-stock img[src="/sprites/items/crafted/steel-sword.svg"]',
     );
-    expect(art).toContain("item-art:crafted/steel-sword.svg");
-    const size = await page.evaluate(() => {
-      const img = window.__artGame.scene
-        .getScene("Town")
-        .textures.get("item-art:crafted/steel-sword.svg")
-        .getSourceImage();
-      return [img.naturalWidth, img.naturalHeight];
-    });
+    await steelIcon.scrollIntoViewIfNeeded();
+    await expect(steelIcon).toBeVisible();
+    const size = await steelIcon.evaluate((img) => [
+      img.naturalWidth,
+      img.naturalHeight,
+    ]);
     expect(size).toEqual([64, 64]);
     for (const offer of catalog.shop_items.filter(
       (i) => i.id === "steel_sword" || i.id === "mythril_sword",

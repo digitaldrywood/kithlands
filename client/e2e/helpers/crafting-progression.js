@@ -149,11 +149,14 @@ export async function verifyCraftingProgression(page, viewport, proof) {
     "Leather grip wrap",
     "Leather grip wrap",
   ]) {
+    if (await page.locator(".shop-back").isVisible())
+      await page.locator(".shop-back").click();
     const receipt = page.waitForResponse((r) => r.url().endsWith("/buy"));
     await page.evaluate(
       (label) => window.__kithlandsTest.clickInteractiveText(label, "Town"),
       name,
     );
+    await page.getByRole("button", { name: /^Buy(?: Alt|$)/ }).click();
     expect((await (await receipt).json()).error).toBeFalsy();
     await page.waitForFunction(
       () => !window.__gatherGame.scene.getScene("Town").shopPurchasePending,

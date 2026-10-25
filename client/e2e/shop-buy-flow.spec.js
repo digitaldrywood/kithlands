@@ -67,14 +67,9 @@ for (const width of [1440, 720]) {
     const response = page.waitForResponse(
       (r) => r.url().endsWith("/buy") && r.request().method() === "POST",
     );
-    const buyKey = await page.evaluate(
-      () =>
-        window.__keyboardGame.scene
-          .getScene("Town")
-          .canvasMenuKeyboard.entries.find(
-            (e) => e.label.text === "Buy" && e.enabled(),
-          ).bg.__kithlandsKeyboard.shortcut,
-    );
+    const buyKey = await page
+      .locator(".shop-purchase")
+      .getAttribute("aria-keyshortcuts");
     await page.keyboard.press(buyKey);
     const receipt = await response;
     const request = receipt.request().postDataJSON();
@@ -104,19 +99,16 @@ for (const width of [1440, 720]) {
       await route.fulfill({ response });
     });
     const supplyReceipt = page.waitForResponse((r) => r.url().endsWith("/buy"));
-    const supplyKey = await page.evaluate(
-      () =>
-        window.__keyboardGame.scene
-          .getScene("Town")
-          .canvasMenuKeyboard.entries.find(
-            (e) => e.label.text === "Smithing charcoal" && e.enabled(),
-          ).bg.__kithlandsKeyboard.shortcut,
-    );
+    await page.getByRole("button", { name: /^Smithing charcoal/ }).click();
+    const supplyKey = await page
+      .locator(".shop-purchase")
+      .getAttribute("aria-keyshortcuts");
     await page.keyboard.press(supplyKey);
     await page.keyboard.press(supplyKey);
     const supplied = await (await supplyReceipt).json();
-    await page.waitForFunction(
-      () => !window.__keyboardGame.scene.getScene("Town").shopPurchasePending,
+    await expect(page.locator(".kith-shop")).toHaveAttribute(
+      "aria-busy",
+      "false",
     );
     expect(supplied.error).toBeFalsy();
     expect(supplyRequests).toBe(1);
@@ -125,14 +117,20 @@ for (const width of [1440, 720]) {
     await page.screenshot({
       path: new URL(`${width}-supplies-keyboard-purchase.png`, proof).pathname,
     });
-    const leaveKey = await page.evaluate(
-      () =>
-        window.__keyboardGame.scene
-          .getScene("Town")
-          .canvasMenuKeyboard.entries.find((e) => e.label.text === "Leave Shop")
-          .bg.__kithlandsKeyboard.shortcut,
+    // Reusable supplies must keep their selection while receiving a fresh quote.
+    await page.getByRole("button", { name: /^Forge flux/ }).click();
+    const fluxReceipt = page.waitForResponse((r) => r.url().endsWith("/buy"));
+    await page.locator(".shop-purchase").click();
+    const flux = await (await fluxReceipt).json();
+    expect(flux.error).toBeFalsy();
+    expect(flux.gold).toBe(supplied.gold - 12);
+    await expect(page.locator(".kith-shop")).toHaveAttribute(
+      "aria-busy",
+      "false",
     );
-    await page.keyboard.press(leaveKey);
+    await expect(page.locator(".shop-preview h2")).toHaveText("Forge flux");
+    expect(flux.materials.find((m) => m.id === "forge_flux").count).toBe(1);
+    await page.getByRole("button", { name: /^Leave Shop/ }).click();
     await page.waitForFunction(
       () =>
         !window.__kithlandsTest.sceneFlags("Town").modalLocks.includes("shop"),

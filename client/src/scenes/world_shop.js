@@ -1,6 +1,6 @@
+import spellCatalog from "../../../shared/spells.json";
 import { itemArtURL } from "../ui/item_art.js";
-import { registerCanvasButton } from "../ui/canvas_menu_keyboard.js";
-import { roundedRectangle } from "../ui/theme.js";
+import { element, viewportDialog } from "../ui/viewport_dialog.js";
 import {
   autosaveGame,
   buyItem,
@@ -9,84 +9,13 @@ import {
   learnSpell,
 } from "../api.js";
 import { getAutosaveEnabled } from "../systems/prefs.js";
-import {
-  pauseWorldFor,
-  resumeWorldFor,
-  topWorldLock,
-} from "../systems/modalLock.js";
-import { drawButton, drawPanel } from "../ui/panel.js";
+import { topWorldLock } from "../systems/modalLock.js";
 import {
   buildFocusedMemberCompare,
-  buildItemStatBlock,
-  buildMemberIndicators,
-  buyForMemberLabel,
   canPartyMemberEquip,
-  cycleMemberIndex,
   isEquipmentShopItem,
 } from "./shopCompare.js";
-
-const MAIN_PANEL = {
-  x: 400,
-  y: 300,
-  w: 740,
-  h: 520,
-  depth: 1800,
-};
-
-const LIST_LEFT = 90;
-const LIST_RIGHT = 495;
-const LIST_ROW_CENTER_X = 282;
-const LIST_ROW_WIDTH = 410;
-const LIST_ROW_HEIGHT = 30;
-const LIST_ROW_GAP = 35;
-const LIST_TEXT_Y_OFFSET = 3;
-const DETAIL_X = 615;
-const DETAIL_Y = 325;
-const DETAIL_W = 240;
-const DETAIL_H = 370;
-
-function drawCycleControl(scene, x, y, label, onClick, depth) {
-  const bg = roundedRectangle(scene, x, y, 64, 38, 0x1c2736, 1)
-    .setStrokeStyle(2, 0x66a7ff)
-    .setScrollFactor(0)
-    .setDepth(depth)
-    .setInteractive({ useHandCursor: true });
-  const text = scene.add
-    .text(x, y + 1, label, {
-      fontSize: "16px",
-      color: "#dceaff",
-      fontFamily: "Arial, sans-serif",
-      fontStyle: "bold",
-    })
-    .setOrigin(0.5)
-    .setScrollFactor(0)
-    .setDepth(depth + 1)
-    .setInteractive({ useHandCursor: true });
-  const press = () => {
-    if (typeof onClick === "function") onClick();
-  };
-  const over = () => bg.setFillStyle(0x384859, 1);
-  const out = () => bg.setFillStyle(0x1c2736, 1);
-  bg.on("pointerover", over);
-  bg.on("pointerout", out);
-  bg.on("pointerdown", press);
-  text.on("pointerover", over);
-  text.on("pointerout", out);
-  text.on("pointerdown", press);
-  return {
-    bg,
-    label: text,
-    destroy() {
-      bg.destroy();
-      text.destroy();
-    },
-  };
-}
-
-function destroyGroup(group) {
-  group.forEach((entry) => entry?.destroy?.());
-  group.length = 0;
-}
+import "../styles/shop.css";
 
 export function groupShopItems(items = []) {
   return {
@@ -156,1047 +85,449 @@ function shopSelectionID(item) {
   return item?.stock_id || `${item?.type || "item"}:${item?.id || ""}`;
 }
 
+// Browser-sized controls keep the shop legible independently of canvas scale.
+// Offers, prices, eligibility and all transactions still come from Go.
 export async function openShop(scene, spawn) {
-  pauseWorldFor(scene, "shop");
-  scene.animating = true;
-
-  let items = [];
-  let catalogError = "";
-  try {
-    const shopData = await getShop(scene.gameState.id, spawn.node_id);
-    ({ items, error: catalogError } = resolveShopCatalog(shopData));
-  } catch (e) {
-    console.error("[World] shop fetch failed:", e);
-    catalogError = catalogFailure(e);
-  }
-
-  const artItems = items.filter((item) => itemArtURL(item.icon_key));
-  const missingArt = artItems.filter(
-    (item) => !scene.textures.exists(`item-art:${item.icon_key}`),
-  );
-  if (missingArt.length) {
-    await new Promise((resolve) => {
-      for (const item of missingArt)
-        scene.load.image(
-          `item-art:${item.icon_key}`,
-          itemArtURL(item.icon_key),
-        );
-      scene.load.once("complete", resolve);
-      scene.load.start();
-    });
-  }
-  if (!catalogError && items.length === 0) {
-    scene.showMessage(`${spawn.name} has nothing for sale.`);
-    scene.time.delayedCall(1500, () => {
-      scene.hideMessage();
-      scene.animating = false;
-      resumeWorldFor(scene, "shop");
-    });
-    return;
-  }
-
-  const overlay = [];
-  const listGroup = [];
-  const detailGroup = [];
-  const pickerGroup = [];
-  const catalogErrorGroup = [];
-  const tabButtons = [];
+  if (scene.shopDialog && !scene.shopDialog.disposed) return;
+  let items = [],
+    catalogError = "",
+    selectedId = null,
+    category = "weapons";
+  let memberIndex = 0,
+    detailOpen = false,
+    notice = "Loading stock…";
   scene.shopPurchasePending = false;
-  const tabs = [
-    { label: "Weapons", key: "weapons" },
-    { label: "Armor", key: "armor" },
-    { label: "Items", key: "consumables" },
-    { label: "Spells", key: "spells" },
-    { label: "Supplies", key: "supplies" },
-  ];
-  let currentTab = "weapons";
-  let stockPage = 0;
-  let selectedItemId = null;
-  let focusedMemberIndex = 0;
-  let escHandler = null;
-  let cycleHandler = null;
-  const shopOffsetY = scene.gameplayLayout?.portrait
-    ? Math.round((scene.gameplayLayout.height - 600) / 2)
-    : 0;
-  const positionPortraitShop = () => {
-    if (shopOffsetY === 0) return;
-    for (const entry of scene.children.list) {
-      if (
-        entry?.depth >= MAIN_PANEL.depth &&
-        Number.isFinite(entry.y) &&
-        !entry.__kithlandsShopOffsetApplied
-      ) {
-        entry.y += shopOffsetY;
-        entry.__kithlandsShopOffsetApplied = true;
+  scene.animating = true;
+  const dialog = viewportDialog(scene, {
+    key: "shop",
+    title: spawn.name,
+    onEscape: back,
+    onKey(event) {
+      const target = event.target?.closest?.("button");
+      if (["Enter", " "].includes(event.key) && target) {
+        event.preventDefault();
+        if (!event.repeat && !target.disabled) target.click();
+        return;
       }
+      if (
+        !["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(event.key)
+      )
+        return;
+      const current = document.activeElement;
+      const group = current?.closest("[data-shop-keys]");
+      if (!group) return;
+      const controls = [...group.querySelectorAll("button:not(:disabled)")];
+      const index = controls.indexOf(current);
+      if (index < 0) return;
+      event.preventDefault();
+      const delta = ["ArrowDown", "ArrowRight"].includes(event.key) ? 1 : -1;
+      controls[(index + delta + controls.length) % controls.length]?.focus();
+    },
+  });
+  scene.shopDialog = dialog;
+  dialog.root.classList.add("kith-shop");
+  const gold = element("p", "shop-gold");
+  dialog.header.append(gold);
+  dialog.body.classList.add("shop-body");
+  const status = element("p", "shop-status");
+  status.setAttribute("role", "status");
+  status.setAttribute("aria-live", "polite");
+  const actions = element("div", "shop-actions");
+  dialog.footer.append(status, actions);
+  const categories = [
+    ["weapons", "Weapons"],
+    ["armor", "Armor"],
+    ["consumables", "Items"],
+    ["spells", "Spells"],
+    ["supplies", "Supplies"],
+  ];
+
+  function button(label, action, className = "") {
+    const node = element("button", className, label);
+    node.type = "button";
+    node.dataset.shopLabel = label;
+    node.disabled = scene.shopPurchasePending;
+    node.addEventListener("click", () => {
+      if (!scene.shopPurchasePending && !dialog.disposed) action();
+    });
+    return node;
+  }
+  function text(parent, tag, value, className = "") {
+    const node = element(tag, className, value);
+    parent.append(node);
+    return node;
+  }
+  function art(parent, item) {
+    const url = itemArtURL(item.icon_key);
+    if (!url) return;
+    const img = element("img", "shop-item-art");
+    img.src = url;
+    img.alt = "";
+    img.width = img.height = 64;
+    parent.append(img);
+  }
+  function close() {
+    if (scene.shopPurchasePending || dialog.disposed) return;
+    dialog.dispose();
+    scene.animating = false;
+    if (scene.shopDialog === dialog) scene.shopDialog = null;
+  }
+  function back() {
+    if (scene.shopPurchasePending) return;
+    if (detailOpen && window.matchMedia("(max-width: 620px)").matches) {
+      detailOpen = false;
+      render("selected");
+    } else close();
+  }
+  function selected() {
+    return items.find((item) => shopSelectionID(item) === selectedId) || null;
+  }
+  async function catalog() {
+    const previous = selected();
+    try {
+      const response = await getShop(scene.gameState.id, spawn.node_id);
+      if (dialog.disposed) return;
+      ({ items, error: catalogError } = resolveShopCatalog(response));
+      // A refreshed quote has a new stock ID. Keep the same reusable item
+      // selected without retaining its stale offer token.
+      if (previous) {
+        const replacement = items.find(
+          (item) =>
+            item.id === previous.id &&
+            item.type === previous.type &&
+            item.instance_id === previous.instance_id,
+        );
+        selectedId = replacement ? shopSelectionID(replacement) : null;
+      }
+    } catch (error) {
+      if (dialog.disposed) return;
+      items = [];
+      catalogError = catalogFailure(error);
     }
-  };
-  scene.events.on("postupdate", positionPortraitShop);
-
-  const destroyPicker = () => destroyGroup(pickerGroup);
-  const destroyDetail = () => destroyGroup(detailGroup);
-  const itemsForTab = (tabKey) => groupShopItems(items)[tabKey] || [];
-
-  const currentSelectedItem = () =>
-    itemsForTab(currentTab).find(
-      (item) => shopSelectionID(item) === selectedItemId,
-    ) || null;
-
-  const showToast = (message, ms = 1200) => {
-    scene.showMessage(message);
-    scene.time.delayedCall(ms, () => scene.hideMessage());
-  };
-
-  const autosaveAfterPurchase = (result) => {
+  }
+  function save(result) {
     if (!getAutosaveEnabled() || !result?.id) return;
     autosaveGame(result.id, "purchase")
-      .then(() => {
-        if (scene.flashSaveIcon) scene.flashSaveIcon();
-      })
-      .catch((e) => console.error("[Shop] autosave failed:", e));
-  };
-
-  const refreshCatalog = async () => {
-    try {
-      const refreshed = await getShop(scene.gameState.id, spawn.node_id);
-      const resolved = resolveShopCatalog(refreshed);
-      items = resolved.items;
-      catalogError = resolved.error;
-      if (catalogError) {
-        console.error("[Shop] refresh failed:", catalogError);
-        return false;
-      }
-      return true;
-    } catch (e) {
-      console.error("[Shop] refresh failed:", e);
-      items = [];
-      catalogError = catalogFailure(e);
-      return false;
-    }
-  };
-
-  const syncSelection = () => {
-    const tabItems = itemsForTab(currentTab);
-    const current = tabItems.find(
-      (item) => shopSelectionID(item) === selectedItemId,
-    );
-    if (current && isEquipmentShopItem(current)) {
-      return current;
-    }
-    const fallback = tabItems.find((item) => isEquipmentShopItem(item)) || null;
-    selectedItemId = fallback ? shopSelectionID(fallback) : null;
-    const partyCount = Math.min(scene.gameState?.party?.length || 0, 4);
-    if (focusedMemberIndex >= partyCount) focusedMemberIndex = 0;
-    return fallback;
-  };
-
-  const updateGold = () => {
-    goldText.setText(`Gold: ${scene.gameState.gold}`);
-  };
-
-  const updateTabButtons = () => {
-    tabButtons.forEach(({ key, button }) =>
-      button.setActive(key === currentTab),
-    );
-  };
-
-  const renderDetail = () => {
-    destroyDetail();
-    if (currentTab !== "weapons" && currentTab !== "armor") return;
-
-    const item = currentSelectedItem();
-    if (!item || !isEquipmentShopItem(item)) return;
-
-    const party = (scene.gameState.party || []).slice(0, 4);
-    if (party.length === 0) return;
-    if (focusedMemberIndex >= party.length) focusedMemberIndex = 0;
-
-    const member = party[focusedMemberIndex];
-    const equipped = scene.gameState.equipment?.[focusedMemberIndex] || {};
-    const compare = buildFocusedMemberCompare(item, member, equipped);
-    const statBlock = buildItemStatBlock(item);
-    const indicators = buildMemberIndicators(
-      item,
-      scene.gameState.party,
-      scene.gameState.equipment,
-    );
-    const affordable = (scene.gameState.gold || 0) >= (item.price || 0);
-
-    const panel = drawPanel(scene, DETAIL_X, DETAIL_Y, DETAIL_W, DETAIL_H, {
-      depth: MAIN_PANEL.depth + 2,
-      fill: 0x151e2b,
-      stroke: 0x6699ff,
-    });
-    detailGroup.push(panel.bg);
-
-    const title = scene.add
-      .text(DETAIL_X, DETAIL_Y - 165, item.name, {
-        fontSize: "16px",
-        color: "#fff5c2",
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(MAIN_PANEL.depth + 3);
-    detailGroup.push(title);
-
-    const cyclePrev = () => {
-      focusedMemberIndex = cycleMemberIndex(
-        focusedMemberIndex,
-        party.length,
-        -1,
-      );
-      renderDetail();
-    };
-    const cycleNext = () => {
-      focusedMemberIndex = cycleMemberIndex(
-        focusedMemberIndex,
-        party.length,
-        1,
-      );
-      renderDetail();
-    };
-
-    const prevBtn = drawCycleControl(
-      scene,
-      DETAIL_X - 100,
-      DETAIL_Y - 135,
-      "<",
-      cyclePrev,
-      MAIN_PANEL.depth + 5,
-    );
-    const nextBtn = drawCycleControl(
-      scene,
-      DETAIL_X + 100,
-      DETAIL_Y - 135,
-      ">",
-      cycleNext,
-      MAIN_PANEL.depth + 5,
-    );
-    detailGroup.push(prevBtn, nextBtn);
-
-    const focusedCanEquip = canPartyMemberEquip(item, member);
-    const focusText = scene.add
-      .text(
-        DETAIL_X,
-        DETAIL_Y - 136,
-        `${member.name} · ${member.class_name} · Lv.${member.level}`,
-        {
-          fontSize: "11px",
-          color: focusedCanEquip ? "#d7e8ff" : "#dda866",
-          fontFamily: "Arial",
-        },
-      )
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(MAIN_PANEL.depth + 3);
-    detailGroup.push(focusText);
-
-    if (!focusedCanEquip) {
-      const lockedBadge = scene.add
-        .text(DETAIL_X, DETAIL_Y - 120, "Ill suited to this path", {
-          fontSize: "9px",
-          color: "#dda866",
-          fontFamily: "Arial",
-        })
-        .setOrigin(0.5)
-        .setScrollFactor(0)
-        .setDepth(MAIN_PANEL.depth + 3);
-      detailGroup.push(lockedBadge);
-    }
-
-    let indicatorX = DETAIL_X - 52;
-    for (const indicator of indicators) {
-      const marker = scene.add
-        .text(indicatorX, DETAIL_Y - 110, indicator.symbol, {
-          fontSize: indicator.slot === focusedMemberIndex ? "16px" : "13px",
-          color: indicator.color,
-          fontFamily: "Arial, sans-serif",
-        })
-        .setOrigin(0.5)
-        .setScrollFactor(0)
-        .setDepth(MAIN_PANEL.depth + 3);
-      detailGroup.push(marker);
-      indicatorX += 34;
-    }
-
-    const currentLine = scene.add
-      .text(DETAIL_X - 98, DETAIL_Y - 90, `Current: ${compare.currentName}`, {
-        fontSize: "10px",
-        color: "#e9eef7",
-        fontFamily: "Arial",
-      })
-      .setScrollFactor(0)
-      .setDepth(MAIN_PANEL.depth + 3);
-    const nextLine = scene.add
-      .text(DETAIL_X - 98, DETAIL_Y - 76, `Preview: ${compare.nextName}`, {
-        fontSize: "10px",
-        color: "#ffffaa",
-        fontFamily: "Arial",
-      })
-      .setScrollFactor(0)
-      .setDepth(MAIN_PANEL.depth + 3);
-    detailGroup.push(currentLine, nextLine);
-
-    const lockText = scene.add
-      .text(
-        DETAIL_X - 98,
-        DETAIL_Y - 58,
-        compare.canEquip ? "May equip" : "May not wield",
-        {
-          fontSize: "10px",
-          color: compare.canEquip ? "#8ac7aa" : "#ddaa66",
-          fontFamily: "Arial",
-        },
-      )
-      .setScrollFactor(0)
-      .setDepth(MAIN_PANEL.depth + 3);
-    detailGroup.push(lockText);
-
-    let statY = DETAIL_Y - 34;
-    const statHeader = scene.add
-      .text(DETAIL_X - 98, statY, "Item Stats", {
-        fontSize: "11px",
-        color: "#c9b589",
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold",
-      })
-      .setScrollFactor(0)
-      .setDepth(MAIN_PANEL.depth + 3);
-    detailGroup.push(statHeader);
-    statY += 18;
-    for (const stat of statBlock) {
-      const line = scene.add
-        .text(DETAIL_X - 98, statY, `${stat.label}: ${stat.value}`, {
-          fontSize: "10px",
-          color: "#dddddd",
-          fontFamily: "Arial",
-        })
-        .setScrollFactor(0)
-        .setDepth(MAIN_PANEL.depth + 3);
-      detailGroup.push(line);
-      statY += 14;
-    }
-
-    statY += 8;
-    const compareHeader = scene.add
-      .text(DETAIL_X - 98, statY, "Member Compare", {
-        fontSize: "11px",
-        color: "#c9b589",
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold",
-      })
-      .setScrollFactor(0)
-      .setDepth(MAIN_PANEL.depth + 3);
-    detailGroup.push(compareHeader);
-    statY += 18;
-
-    for (const line of compare.lines) {
-      const base = scene.add
-        .text(
-          DETAIL_X - 98,
-          statY,
-          `${line.label}: ${line.currentValue} to ${line.nextValue}`,
-          {
-            fontSize: "10px",
-            color: "#dddddd",
-            fontFamily: "Arial",
-          },
-        )
-        .setScrollFactor(0)
-        .setDepth(MAIN_PANEL.depth + 3);
-      const delta = scene.add
-        .text(DETAIL_X + 18, statY, line.deltaText, {
-          fontSize: "10px",
-          color: line.color,
-          fontFamily: "Arial",
-        })
-        .setScrollFactor(0)
-        .setDepth(MAIN_PANEL.depth + 3);
-      detailGroup.push(base, delta);
-      statY += 14;
-    }
-
-    const elementLine = scene.add
-      .text(
-        DETAIL_X - 98,
-        statY,
-        `Element: ${compare.currentElement} to ${compare.nextElement}`,
-        {
-          fontSize: "10px",
-          color: "#dddddd",
-          fontFamily: "Arial",
-        },
-      )
-      .setScrollFactor(0)
-      .setDepth(MAIN_PANEL.depth + 3);
-    detailGroup.push(elementLine);
-
-    const buyStandard = async () => {
-      const result = await buyItem(
-        scene.gameState.id,
-        spawn.node_id,
-        item.stock_id,
-      );
-      if (result?.error) {
-        await recoverPurchaseError(result.error);
-        return;
-      }
-      scene.gameState = result;
-      updateGold();
-      scene.updateHUD?.();
-      await refreshAfterPurchase(`Bought: ${item.name}!`);
-      autosaveAfterPurchase(result);
-    };
-
-    const buyForMember = async () => {
-      const purchase = await buyItem(
-        scene.gameState.id,
-        spawn.node_id,
-        item.stock_id,
-      );
-      if (purchase?.error) {
-        await recoverPurchaseError(purchase.error);
-        return;
-      }
-
-      const equipResult = await equipItem(
-        purchase.id,
-        focusedMemberIndex,
-        item.instance_id || item.id,
-        item.type,
-      );
-      const finalResult = equipResult?.error ? purchase : equipResult;
-      scene.gameState = finalResult;
-      updateGold();
-      scene.updateHUD?.();
-      await refreshAfterPurchase(
-        equipResult?.error
-          ? `Bought ${item.name}, but equip failed: ${equipResult.error}`
-          : `${member.name} equipped ${item.name}!`,
-      );
-      autosaveAfterPurchase(finalResult);
-    };
-
-    const buyBtn = drawButton(
-      scene,
-      DETAIL_X - 55,
-      DETAIL_Y + 153,
-      86,
-      30,
-      "Buy",
-      buyStandard,
-      { depth: MAIN_PANEL.depth + 3, fontSize: "11px", fill: 0x1c2736 },
-    );
-    const buyForBtn = drawButton(
-      scene,
-      DETAIL_X + 50,
-      DETAIL_Y + 153,
-      150,
-      30,
-      buyForMemberLabel(member),
-      buyForMember,
-      { depth: MAIN_PANEL.depth + 3, fontSize: "10px", fill: 0x1c2736 },
-    );
-    if (!affordable) {
-      buyBtn.setEnabled(false);
-      buyForBtn.setEnabled(false);
-    } else if (
-      item.type === "equipment" ||
-      !canPartyMemberEquip(item, member)
-    ) {
-      buyForBtn.setEnabled(false);
-    }
-    detailGroup.push(buyBtn, buyForBtn);
-  };
-
-  const purchaseSupply = async (item) => {
-    if (scene.shopPurchasePending) return;
-    if (item.type === "spell") {
-      showSpellPicker(item);
-      return;
-    }
+      .then(() => scene.flashSaveIcon?.())
+      .catch((error) => console.error("[Shop] autosave failed:", error));
+  }
+  async function purchase(equip = false) {
+    const item = selected();
+    if (!item || catalogError || scene.shopPurchasePending) return;
+    const member = scene.gameState.party?.[memberIndex];
     scene.shopPurchasePending = true;
-    for (const control of listGroup) control?.setEnabled?.(false);
-    for (const tab of tabButtons) tab.button.setEnabled(false);
+    notice = "Completing purchase…";
+    render();
+    let succeeded = false;
     try {
-      const result = await buyItem(
-        scene.gameState.id,
-        spawn.node_id,
-        item.stock_id,
-      );
-      if (result?.error) {
-        await recoverPurchaseError(result.error);
-        return;
-      }
-      scene.gameState = result;
-      updateGold();
-      scene.updateHUD?.();
-      await refreshAfterPurchase(`Bought: ${item.name}!`);
-      autosaveAfterPurchase(result);
-    } catch (error) {
-      await recoverPurchaseError(
-        error.message || "Purchase could not be completed.",
-      );
-    } finally {
-      scene.shopPurchasePending = false;
-      for (const tab of tabButtons) tab.button.setEnabled(true);
-    }
-  };
-
-  const renderList = (tabItems) => {
-    destroyPicker();
-    destroyGroup(listGroup);
-
-    const selected = currentSelectedItem();
-    const pageCount = Math.max(1, Math.ceil(tabItems.length / 10));
-    stockPage = Math.min(stockPage, pageCount - 1);
-    const displayItems = tabItems.slice(stockPage * 10, (stockPage + 1) * 10);
-    const currentGold = scene.gameState?.gold ?? 0;
-
-    let y = 154;
-    for (const item of displayItems) {
-      const affordable = currentGold >= item.price;
-      const equippable = isEquipmentShopItem(item);
-      const selectedRow =
-        selected && shopSelectionID(selected) === shopSelectionID(item);
-
-      const rowBg = roundedRectangle(
-        scene,
-        LIST_ROW_CENTER_X,
-        y,
-        LIST_ROW_WIDTH,
-        LIST_ROW_HEIGHT,
-        selectedRow ? 0x1c2736 : 0x151e2b,
-        0.95,
-      )
-        .setStrokeStyle(1, selectedRow ? 0xc9b589 : 0x384859)
-        .setScrollFactor(0)
-        .setDepth(MAIN_PANEL.depth + 1);
-      listGroup.push(rowBg);
-
-      const artKey = `item-art:${item.icon_key}`;
-      const hasArt = itemArtURL(item.icon_key) && scene.textures.exists(artKey);
-      if (hasArt)
-        listGroup.push(
-          scene.add
-            .image(LIST_LEFT + 35, y, artKey)
-            .setDisplaySize(24, 24)
-            .setScrollFactor(0)
-            .setDepth(MAIN_PANEL.depth + 2),
-        );
-      let desc = item.name;
-      if (item.type === "spell" && item.school) {
-        desc += ` (${item.school} ${item.spell_level})`;
-      }
-      if (item.type === "key_item") {
-        desc += " [Key]";
-      }
-
-      const textColor = affordable || equippable ? "#e9eef7" : "#777777";
-      const label = scene.add
-        .text(LIST_LEFT + (hasArt ? 30 : 0), y + LIST_TEXT_Y_OFFSET, desc, {
-          fontSize: "11px",
-          color: textColor,
-          fontFamily: "Arial",
-        })
-        .setOrigin(0, 0.5)
-        .setScrollFactor(0)
-        .setDepth(MAIN_PANEL.depth + 2);
-      listGroup.push(label);
-
-      const price = scene.add
-        .text(455, y + LIST_TEXT_Y_OFFSET, `${item.price}g`, {
-          fontSize: "11px",
-          color: affordable ? "#c9b589" : "#777777",
-          fontFamily: "Arial",
-        })
-        .setOrigin(1, 0.5)
-        .setScrollFactor(0)
-        .setDepth(MAIN_PANEL.depth + 2);
-      listGroup.push(price);
-
-      if (equippable) {
-        const selectRow = () => {
-          selectedItemId = shopSelectionID(item);
-          renderList(itemsForTab(currentTab));
-          renderDetail();
-        };
-        registerCanvasButton(scene, {
-          bg: rowBg,
-          label,
-          width: LIST_ROW_WIDTH,
-          height: LIST_ROW_HEIGHT,
-          inline: true,
-          enabled: () => true,
-          activate: selectRow,
-          focus: () => rowBg.setStrokeStyle(2, 0xc9b589),
-          blur: () => rowBg.setStrokeStyle(1, 0x384859),
-        });
-        rowBg.setInteractive({ useHandCursor: true });
-        label.setInteractive({ useHandCursor: true });
-        rowBg.on("pointerover", selectRow);
-        label.on("pointerover", selectRow);
-        rowBg.on("pointerdown", selectRow);
-        label.on("pointerdown", selectRow);
-
-        const indicators = buildMemberIndicators(
-          item,
-          scene.gameState.party,
-          scene.gameState.equipment,
-        );
-        let indicatorX = 390;
-        for (const indicator of indicators) {
-          const marker = scene.add
-            .text(indicatorX, y, indicator.symbol, {
-              fontSize: "12px",
-              color: indicator.color,
-              fontFamily: "Arial, sans-serif",
-            })
-            .setOrigin(0.5)
-            .setScrollFactor(0)
-            .setDepth(MAIN_PANEL.depth + 2);
-          listGroup.push(marker);
-          indicatorX += 16;
+      const result =
+        item.type === "spell"
+          ? await learnSpell(
+              scene.gameState.id,
+              spawn.node_id,
+              item.stock_id,
+              member?.name,
+            )
+          : await buyItem(scene.gameState.id, spawn.node_id, item.stock_id);
+      if (result?.error) throw new Error(result.error);
+      let final = result;
+      notice =
+        item.type === "spell"
+          ? `${member.name} learned ${item.name}!`
+          : `Bought: ${item.name}!`;
+      if (equip) {
+        // Purchase is committed even if the separate equip request fails.
+        try {
+          const equipped = await equipItem(
+            result.id,
+            memberIndex,
+            item.instance_id || item.id,
+            item.type,
+          );
+          if (equipped?.error) throw new Error(equipped.error);
+          final = equipped;
+          notice = `${member.name} equipped ${item.name}!`;
+        } catch (error) {
+          notice = `Bought ${item.name}; equip separately: ${error.message}`;
         }
-      } else if (affordable) {
-        const triggerPurchase = () => purchaseSupply(item);
-        registerCanvasButton(scene, {
-          bg: rowBg,
-          label,
-          width: LIST_ROW_WIDTH,
-          height: LIST_ROW_HEIGHT,
-          inline: true,
-          enabled: () => !scene.shopPurchasePending,
-          activate: triggerPurchase,
-          focus: () => rowBg.setStrokeStyle(2, 0xc9b589),
-          blur: () => rowBg.setStrokeStyle(1, 0x384859),
-        });
-        rowBg.setInteractive({ useHandCursor: true });
-        label.setInteractive({ useHandCursor: true });
-        rowBg.on("pointerdown", triggerPurchase);
-        label.on("pointerdown", triggerPurchase);
       }
-
-      if (affordable && !equippable) {
-        const triggerPurchase = () => purchaseSupply(item);
-        const buyBtn = drawButton(
-          scene,
-          522,
-          y,
-          58,
-          22,
-          "Buy",
-          triggerPurchase,
-          {
-            depth: MAIN_PANEL.depth + 2,
-            fontSize: "10px",
-            fill: 0x1c2736,
-            fillHover: 0x384859,
-            stroke: 0x9cdfb4,
-          },
-        );
-        listGroup.push(buyBtn);
-      }
-
-      y += LIST_ROW_GAP;
-    }
-
-    if (pageCount > 1) {
-      const changePage = (delta) => {
-        if (scene.shopPurchasePending) return;
-        stockPage = Math.max(0, Math.min(pageCount - 1, stockPage + delta));
-        selectedItemId = shopSelectionID(tabItems[stockPage * 10]);
-        renderCatalogView();
-      };
-      for (const [x, label, delta, enabled] of [
-        [160, "Previous Stock", -1, stockPage > 0],
-        [402, "Next Stock", 1, stockPage + 1 < pageCount],
-      ]) {
-        const button = drawButton(
-          scene,
-          x,
-          504,
-          130,
-          26,
-          label,
-          () => changePage(delta),
-          { depth: MAIN_PANEL.depth + 2, fontSize: "10px" },
-        );
-        button.setEnabled(enabled);
-        listGroup.push(button);
-      }
-      listGroup.push(
-        scene.add
-          .text(282, 504, `${stockPage + 1} / ${pageCount}`, {
-            fontSize: "11px",
-            color: "#c9b589",
-          })
-          .setOrigin(0.5)
-          .setScrollFactor(0)
-          .setDepth(MAIN_PANEL.depth + 2),
-      );
-    }
-    if (displayItems.length === 0) {
-      const empty = scene.add
-        .text(280, 205, "Nothing in this category.", {
-          fontSize: "12px",
-          color: "#697888",
-          fontFamily: "Arial, sans-serif",
-        })
-        .setOrigin(0.5)
-        .setScrollFactor(0)
-        .setDepth(MAIN_PANEL.depth + 2);
-      listGroup.push(empty);
-    }
-  };
-
-  const renderCatalogError = () => {
-    destroyPicker();
-    destroyDetail();
-    destroyGroup(listGroup);
-    destroyGroup(catalogErrorGroup);
-    selectedItemId = null;
-
-    const message = scene.add
-      .text(400, 245, `${catalogError}\nNo stale offers are being shown.`, {
-        fontSize: "14px",
-        color: "#ffd2a8",
-        fontFamily: "Arial",
-        align: "center",
-        wordWrap: { width: 560 },
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(MAIN_PANEL.depth + 3);
-    catalogErrorGroup.push(message);
-
-    const retry = drawButton(
-      scene,
-      400,
-      320,
-      150,
-      34,
-      "Retry Stock",
-      async () => {
-        await refreshCatalog();
-        renderCatalogView();
-        if (!catalogError) showToast("Stock refreshed.");
-      },
-      {
-        depth: MAIN_PANEL.depth + 3,
-        fontSize: "12px",
-        fill: 0x1c2736,
-        fillHover: 0x384859,
-        stroke: 0x9cdfb4,
-      },
-    );
-    catalogErrorGroup.push(retry);
-  };
-
-  function renderCatalogView() {
-    destroyGroup(catalogErrorGroup);
-    if (catalogError) {
-      renderCatalogError();
-      return;
-    }
-    syncSelection();
-    renderList(itemsForTab(currentTab));
-    renderDetail();
-    updateTabButtons();
-  }
-
-  async function recoverPurchaseError(message) {
-    const refreshed = await refreshCatalog();
-    renderCatalogView();
-    showToast(
-      refreshed
-        ? `${message} Stock refreshed.`
-        : `${message} Use Retry Stock to reload offers.`,
-      2400,
-    );
-  }
-
-  async function refreshAfterPurchase(successMessage) {
-    const refreshed = await refreshCatalog();
-    renderCatalogView();
-    showToast(
-      refreshed
-        ? successMessage
-        : `${successMessage} Stock refresh failed; use Retry Stock.`,
-      refreshed ? 1200 : 2600,
-    );
-  }
-
-  const showSpellPicker = (item) => {
-    destroyPicker();
-
-    const panel = drawPanel(scene, 400, 305, 470, 250, {
-      fill: 0x151e2b,
-      stroke: 0x88aaff,
-      depth: MAIN_PANEL.depth + 10,
-    });
-    pickerGroup.push(panel.bg);
-
-    const titleText = scene.add
-      .text(400, 205, `Learn ${item.name}`, {
-        fontSize: "16px",
-        color: "#ffff88",
-        fontFamily: "Arial, sans-serif",
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(MAIN_PANEL.depth + 11);
-    pickerGroup.push(titleText);
-
-    const subtitle = scene.add
-      .text(400, 228, "Choose a party member.", {
-        fontSize: "11px",
-        color: "#aaccee",
-        fontFamily: "Arial, sans-serif",
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(MAIN_PANEL.depth + 11);
-    pickerGroup.push(subtitle);
-
-    const choices = buildSpellLearnerChoices(item, scene.gameState.party || []);
-    let y = 258;
-    for (const choice of choices) {
-      const triggerLearn = async () => {
-        const result = await learnSpell(
-          scene.gameState.id,
-          spawn.node_id,
-          item.stock_id,
-          choice.name,
-        );
-        if (result?.error) {
-          await recoverPurchaseError(result.error);
-          return;
-        }
-        scene.gameState = result;
-        updateGold();
+      if (!dialog.disposed) {
+        scene.gameState = final;
         scene.updateHUD?.();
-        await refreshAfterPurchase(`${choice.name} learned ${item.name}!`);
-        destroyPicker();
-        autosaveAfterPurchase(result);
-      };
-
-      const label = scene.add
-        .text(210, y, choice.label, {
-          fontSize: "11px",
-          color: choice.canLearn ? "#e9eef7" : "#777777",
-          fontFamily: "Arial, sans-serif",
-        })
-        .setScrollFactor(0)
-        .setDepth(MAIN_PANEL.depth + 11);
-      if (choice.canLearn) {
-        label.setInteractive({ useHandCursor: true });
-        label.on("pointerdown", triggerLearn);
       }
-      pickerGroup.push(label);
-
-      if (choice.canLearn) {
-        const status = drawButton(
-          scene,
-          530,
-          y + 6,
-          82,
-          22,
-          "Learn",
-          triggerLearn,
-          {
-            depth: MAIN_PANEL.depth + 11,
-            fontSize: "10px",
-            fill: 0x1c2736,
-            fillHover: 0x384859,
-            stroke: 0x9cdfb4,
-          },
+      save(final);
+      succeeded = true;
+    } catch (error) {
+      notice = error.message || "Purchase could not be completed.";
+    }
+    await catalog();
+    if (dialog.disposed) return;
+    if (catalogError) notice += " Use Retry Stock to reload offers.";
+    else if (!succeeded) notice += " Stock refreshed.";
+    scene.shopPurchasePending = false;
+    render("purchase");
+  }
+  function render(focus) {
+    if (dialog.disposed) return;
+    const oldScroll = dialog.body.scrollTop;
+    gold.textContent = `Gold: ${scene.gameState.gold}`;
+    status.textContent = notice;
+    dialog.body.replaceChildren();
+    actions.replaceChildren();
+    dialog.root.classList.toggle("shop-detail-open", detailOpen);
+    dialog.root.setAttribute("aria-busy", String(scene.shopPurchasePending));
+    const leave = button("Leave Shop", close);
+    actions.append(leave);
+    if (catalogError) {
+      text(dialog.body, "p", catalogError, "shop-error");
+      const retry = button("Retry Stock", async () => {
+        scene.shopPurchasePending = true;
+        notice = "Loading stock…";
+        render();
+        await catalog();
+        scene.shopPurchasePending = false;
+        notice = catalogError
+          ? "Stock could not be loaded."
+          : "Stock refreshed.";
+        render("category");
+      });
+      dialog.body.append(retry);
+      return;
+    }
+    const nav = element("nav", "shop-categories");
+    nav.setAttribute("aria-label", "Shop categories");
+    nav.dataset.shopKeys = "categories";
+    for (const [key, label] of categories) {
+      const tab = button(label, () => {
+        category = key;
+        selectedId = null;
+        detailOpen = false;
+        render("category");
+      });
+      tab.setAttribute("aria-pressed", String(category === key));
+      nav.append(tab);
+    }
+    const layout = element("div", "shop-workbench");
+    const stock = element("section", "shop-stock");
+    stock.setAttribute("aria-label", "Stock");
+    stock.dataset.shopKeys = "stock";
+    const offers = groupShopItems(items)[category] || [];
+    if (!offers.some((item) => shopSelectionID(item) === selectedId))
+      selectedId = offers[0] ? shopSelectionID(offers[0]) : null;
+    for (const item of offers) {
+      const row = button(
+        item.name,
+        () => {
+          selectedId = shopSelectionID(item);
+          detailOpen = true;
+          notice =
+            item.type === "spell"
+              ? "Choose a learner, then confirm Learn."
+              : "Compare the item before buying.";
+          // Only change learner automatically when choosing another spell.
+          if (item.type === "spell") {
+            const eligible = buildSpellLearnerChoices(
+              item,
+              scene.gameState.party,
+            ).find((choice) => choice.canLearn);
+            memberIndex = eligible?.slot ?? 0;
+          }
+          render("detail");
+        },
+        "shop-stock-row",
+      );
+      row.replaceChildren();
+      row.setAttribute(
+        "aria-pressed",
+        String(selectedId === shopSelectionID(item)),
+      );
+      art(row, item);
+      const name = element("span", "shop-stock-name", item.name);
+      if (item.type === "spell")
+        text(name, "small", `${item.school} · Level ${item.spell_level}`);
+      row.append(name, element("span", "shop-price", `${item.price}g`));
+      stock.append(row);
+    }
+    if (!offers.length) text(stock, "p", "Nothing in this category.");
+    const preview = element("section", "shop-preview");
+    preview.setAttribute("aria-label", "Item preview");
+    const item = selected();
+    if (item) {
+      const backButton = button(
+        "Back to stock",
+        () => {
+          detailOpen = false;
+          render("selected");
+        },
+        "shop-back",
+      );
+      preview.append(backButton);
+      const hero = element("div", "shop-preview-heading");
+      art(hero, item);
+      const heading = element("div");
+      text(
+        heading,
+        "h2",
+        item.type === "spell" ? `Learn ${item.name}` : item.name,
+      );
+      text(heading, "p", `${item.price} gold`, "shop-price");
+      hero.append(heading);
+      preview.append(hero);
+      const description =
+        item.description ||
+        (item.type === "spell"
+          ? spellCatalog.spells.find((spell) => spell.id === item.id)
+              ?.description
+          : "");
+      if (description) text(preview, "p", description, "shop-description");
+      if (item.required_level)
+        text(
+          preview,
+          "p",
+          `${item.rarity || "Common"} · Item level ${item.item_level || 1} · Requires level ${item.required_level}`,
+          "shop-secondary",
         );
-        pickerGroup.push(status);
-      } else {
-        const status = scene.add
-          .text(492, y, choice.reason || "blocked", {
-            fontSize: "11px",
-            color: "#ddaa66",
-            fontFamily: "Arial",
-          })
-          .setScrollFactor(0)
-          .setDepth(MAIN_PANEL.depth + 11);
-        pickerGroup.push(status);
+      const party = scene.gameState.party || [];
+      if (memberIndex >= party.length) memberIndex = 0;
+      if (isEquipmentShopItem(item)) {
+        renderEquipment(preview, item, party);
+      } else if (item.type === "spell") {
+        text(preview, "p", `${item.school} magic · Level ${item.spell_level}`);
+        text(preview, "h3", "Choose a learner");
+        const learners = element("div", "shop-members");
+        learners.dataset.shopKeys = "learners";
+        for (const choice of buildSpellLearnerChoices(item, party)) {
+          const choose = button(
+            choice.label,
+            () => {
+              memberIndex = choice.slot;
+              render("member");
+            },
+            "shop-member",
+          );
+          choose.setAttribute(
+            "aria-pressed",
+            String(memberIndex === choice.slot),
+          );
+          choose.disabled ||= !choice.canLearn;
+          text(
+            choose,
+            "small",
+            choice.canLearn ? "Can learn" : choice.reason || "unavailable",
+          );
+          learners.append(choose);
+        }
+        preview.append(learners);
       }
-
-      y += 24;
-    }
-
-    const cancel = drawButton(
-      scene,
-      400,
-      392,
-      120,
-      28,
-      "Cancel",
-      destroyPicker,
-      { depth: MAIN_PANEL.depth + 11, fontSize: "11px" },
-    );
-    pickerGroup.push(cancel);
-  };
-
-  const mainPanel = drawPanel(
-    scene,
-    MAIN_PANEL.x,
-    MAIN_PANEL.y,
-    MAIN_PANEL.w,
-    MAIN_PANEL.h,
-    {
-      depth: MAIN_PANEL.depth,
-      variant: "ff6",
-      radius: 10,
-      innerTop: 0x1c2736,
-      innerBottom: 0x151e2b,
-      outerFill: 0x384859,
-    },
-  );
-  const scrim = roundedRectangle(
-    scene,
-    scene.gameplayLayout?.centerX || 400,
-    scene.gameplayLayout?.centerY || 300,
-    scene.gameplayLayout?.width || 800,
-    scene.gameplayLayout?.height || 600,
-    0x151e2b,
-    0.94,
-  )
-    .setScrollFactor(0)
-    .setDepth(MAIN_PANEL.depth - 1)
-    .setInteractive();
-  overlay.push(scrim);
-  overlay.push(mainPanel.bg);
-
-  const title = scene.add
-    .text(400, 64, `${spawn.name}`, {
-      fontSize: "20px",
-      color: "#f5efe0",
-      fontFamily: "Arial, sans-serif",
-      fontStyle: "bold",
-    })
-    .setOrigin(0.5)
-    .setScrollFactor(0)
-    .setDepth(MAIN_PANEL.depth + 1);
-  overlay.push(title);
-
-  const goldText = scene.add
-    .text(400, 90, `Gold: ${scene.gameState.gold}`, {
-      fontSize: "13px",
-      color: "#f0d77a",
-      fontFamily: "Arial, sans-serif",
-    })
-    .setOrigin(0.5)
-    .setScrollFactor(0)
-    .setDepth(MAIN_PANEL.depth + 1);
-  overlay.push(goldText);
-
-  let tabX = 144;
-  for (const tab of tabs) {
-    const tabBtn = drawButton(
-      scene,
-      tabX,
-      120,
-      96,
-      28,
-      tab.label,
-      () => {
-        currentTab = tab.key;
-        stockPage = 0;
-        renderCatalogView();
-      },
-      {
-        depth: MAIN_PANEL.depth + 1,
-        fontSize: "11px",
-        fill: 0x1c2736,
-        fillHover: 0x384859,
-        stroke: 0x9cc8ff,
-      },
-    );
-    overlay.push(tabBtn);
-    tabButtons.push({ key: tab.key, button: tabBtn });
-    tabX += 108;
-  }
-
-  const leaveBtn = drawButton(
-    scene,
-    400,
-    536,
-    190,
-    32,
-    "Leave Shop",
-    closeShop,
-    {
-      depth: MAIN_PANEL.depth + 1,
-      fontSize: "12px",
-      fill: 0x2d2535,
-      fillHover: 0x384859,
-      stroke: 0xd7b45c,
-    },
-  );
-  overlay.push(leaveBtn);
-
-  function closeShop() {
-    if (scene.shopPurchasePending) return;
-    scene.events.off("postupdate", positionPortraitShop);
-    destroyPicker();
-    destroyDetail();
-    destroyGroup(listGroup);
-    destroyGroup(catalogErrorGroup);
-    destroyGroup(overlay);
-    if (escHandler) {
-      scene.input.keyboard.off("keydown-ESC", escHandler);
-      escHandler = null;
-    }
-    if (cycleHandler) {
-      scene.input.keyboard.off("keydown", cycleHandler);
-      cycleHandler = null;
-    }
-    scene.animating = false;
-    resumeWorldFor(scene, "shop");
-  }
-
-  escHandler = () => {
-    if (scene._skipShopEscapeOnce) {
-      scene._skipShopEscapeOnce = false;
-      return;
-    }
-    if (!shouldHandleShopEscape(scene)) return;
-    closeShop();
-  };
-  cycleHandler = (event) => {
-    if (!shouldHandleShopEscape(scene)) return;
-    if (!currentSelectedItem() || !isEquipmentShopItem(currentSelectedItem())) {
-      return;
-    }
-    if (event.key === "[" || event.key === "l" || event.key === "L") {
-      focusedMemberIndex = cycleMemberIndex(
-        focusedMemberIndex,
-        Math.min(scene.gameState?.party?.length || 0, 4),
-        -1,
+      const affordable = scene.gameState.gold >= item.price;
+      if (!affordable)
+        text(
+          preview,
+          "p",
+          `Need ${item.price - scene.gameState.gold} more gold.`,
+          "shop-error",
+        );
+      const buy = button(
+        item.type === "spell" ? "Learn" : "Buy",
+        () => purchase(),
+        "primary shop-purchase",
       );
-      renderDetail();
+      buy.dataset.shopPurchase = "true";
+      buy.disabled ||= !affordable;
+      if (item.type === "spell")
+        buy.disabled ||= !buildSpellLearnerChoices(item, party)[memberIndex]
+          ?.canLearn;
+      actions.append(buy);
+      if (
+        isEquipmentShopItem(item) &&
+        item.type !== "equipment" &&
+        party[memberIndex]
+      ) {
+        const equip = button(
+          `Buy for ${party[memberIndex].name}`,
+          () => purchase(true),
+          "shop-equip",
+        );
+        equip.disabled ||=
+          !affordable || !canPartyMemberEquip(item, party[memberIndex]);
+        actions.append(equip);
+      }
     }
-    if (event.key === "]" || event.key === "r" || event.key === "R") {
-      focusedMemberIndex = cycleMemberIndex(
-        focusedMemberIndex,
-        Math.min(scene.gameState?.party?.length || 0, 4),
-        1,
+    layout.append(stock, preview);
+    dialog.body.append(nav, layout);
+    dialog.body.scrollTop = oldScroll;
+    if (focus === "category")
+      nav.querySelector('[aria-pressed="true"]')?.focus();
+    if (focus === "selected")
+      stock.querySelector('[aria-pressed="true"]')?.focus();
+    if (focus === "detail") {
+      preview.tabIndex = -1;
+      preview.focus();
+      dialog.body.scrollTop = 0;
+    }
+    if (focus === "member")
+      preview.querySelector('.shop-member[aria-pressed="true"]')?.focus();
+    if (focus === "purchase")
+      (actions.querySelector(".shop-purchase:not(:disabled)") || leave).focus();
+  }
+  function renderEquipment(preview, item, party) {
+    text(preview, "h3", "Compare for");
+    const members = element("div", "shop-members");
+    members.dataset.shopKeys = "members";
+    for (const [index, member] of party.entries()) {
+      const choose = button(
+        `${member.name} · ${member.class_name} · Lv.${member.level}`,
+        () => {
+          memberIndex = index;
+          render("member");
+        },
+        "shop-member",
       );
-      renderDetail();
+      choose.setAttribute("aria-pressed", String(memberIndex === index));
+      text(
+        choose,
+        "small",
+        canPartyMemberEquip(item, member) ? "May equip" : "May not wield",
+      );
+      members.append(choose);
     }
-  };
-  scene.input.keyboard.on("keydown-ESC", escHandler);
-  scene.input.keyboard.on("keydown", cycleHandler);
-  scene.events.once("shutdown", () => {
-    scene.events.off("postupdate", positionPortraitShop);
-  });
-
-  renderCatalogView();
-  positionPortraitShop();
+    preview.append(members);
+    const member = party[memberIndex];
+    if (!member) return;
+    const compare = buildFocusedMemberCompare(
+      item,
+      member,
+      scene.gameState.equipment?.[memberIndex],
+    );
+    const comparison = element("div", "shop-comparison");
+    text(comparison, "p", `Current: ${compare.currentName}`);
+    text(comparison, "p", `Preview: ${compare.nextName}`);
+    if (!compare.canEquip)
+      text(comparison, "p", "Ill suited to this path", "shop-error");
+    for (const line of compare.lines) {
+      const row = element("div", "shop-stat-delta");
+      text(
+        row,
+        "span",
+        `${line.label}: ${line.currentValue} to ${line.nextValue}`,
+      );
+      const delta = text(row, "strong", line.deltaText);
+      delta.style.color = line.color;
+      comparison.append(row);
+    }
+    text(
+      comparison,
+      "p",
+      `Element: ${compare.currentElement} to ${compare.nextElement}`,
+      "shop-secondary",
+    );
+    preview.append(comparison);
+  }
+  render();
+  await catalog();
+  if (dialog.disposed) return;
+  notice = catalogError
+    ? "Stock could not be loaded."
+    : "Select an item to inspect before buying.";
+  render("category");
 }
