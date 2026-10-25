@@ -821,7 +821,7 @@ export class BattleScene extends Phaser.Scene {
         const slot = this.livingMembers[this.currentMemberIdx];
         const member = this.gameState.party[slot];
         this.promptText
-          .setText(`${member.name}'s turn -- choose an action`)
+          .setText(this.memberTurnPrompt(member))
           .setColor("#ffff44");
         return;
       }
@@ -859,6 +859,18 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
+  memberTurnPrompt(member) {
+    const plans = new Map();
+    for (const enemy of this.gameState.enemies || []) {
+      if (enemy.hp <= 0 || !enemy.intent?.label) continue;
+      // Group equal plans without claiming a target or predicting damage.
+      const label = enemy.intent.label.replace(/^Plans: /, "").split(":")[0];
+      plans.set(label, (plans.get(label) || 0) + 1);
+    }
+    if (!plans.size) return `${member.name}'s turn -- choose an action`;
+    return `${member.name}'s turn -- choose an action\nEnemy plans: ${[...plans].map(([label, count]) => `${label}${count > 1 ? ` ×${count}` : ""}`).join(" · ")}`;
+  }
+
   showCurrentMemberTurn() {
     const gs = this.gameState;
     if (this.currentMemberIdx >= this.livingMembers.length) {
@@ -876,9 +888,7 @@ export class BattleScene extends Phaser.Scene {
     const slot = this.livingMembers[this.currentMemberIdx];
     const member = gs.party[slot];
 
-    this.promptText
-      .setText(`${member.name}'s turn -- choose an action`)
-      .setColor("#ffff44");
+    this.promptText.setText(this.memberTurnPrompt(member)).setColor("#ffff44");
     this.pendingAction = null;
     this.pendingSpellId = null;
     this.pendingSpellEffect = null;
@@ -1418,7 +1428,9 @@ export class BattleScene extends Phaser.Scene {
             e.is_undead,
           )
         ) {
-          this.promptText.setText(`Target: ${e.name}`);
+          this.promptText.setText(
+            [`Target: ${e.name}`, e.intent?.label].filter(Boolean).join("\n"),
+          );
         }
       });
       sprite.on("pointerout", () => {
@@ -1443,6 +1455,8 @@ export class BattleScene extends Phaser.Scene {
         .text(x, placement.nameY, e.name, {
           fontSize: "11px",
           color: "#ffffff",
+          stroke: "#101820",
+          strokeThickness: 3,
           fontFamily: "Arial, sans-serif",
           fontStyle: "bold",
         })
@@ -2485,7 +2499,14 @@ export class BattleScene extends Phaser.Scene {
     const stateID = presentation?.state || "cast_class_ability";
     const sprite = actorEntry.sprite;
     const state = sprite.battleStates?.[stateID];
-    if (!state) return;
+    if (!state) {
+      // Monsters have their own sprite pipeline; still show resolved preparation.
+      if (action.action_id === "focus" && this.enemySprites[action.actor_id]) {
+        this.spawnAbilityCue(actorEntry, null, 0xf1d58a);
+        await this.wait(ACTION_BEAT_MS.briefStatus);
+      }
+      return;
+    }
     const target =
       presentation?.motion === "reach"
         ? this.enemySprites[action.target_id]
@@ -2784,7 +2805,7 @@ export class BattleScene extends Phaser.Scene {
             handle?.setActive(false);
             defaultCommandHandle?.setActive(true);
             this.promptText
-              ?.setText(`${member.name}'s turn -- choose an action`)
+              ?.setText(this.memberTurnPrompt(member))
               .setColor("#ffffff");
           },
         },
@@ -3080,7 +3101,8 @@ export class BattleScene extends Phaser.Scene {
         detail:
           side === "party"
             ? `${target.hp}/${target.max_hp} HP · ${target.mp ?? 0}/${target.max_mp ?? 0} MP`
-            : `${kind === "spell" ? "Cast magic" : kind === "ability" ? "Use ability" : "Attack"} on ${target.name}`,
+            : target.intent?.label ||
+              `${kind === "spell" ? "Cast magic" : kind === "ability" ? "Use ability" : "Attack"} on ${target.name}`,
         onInspect: () => {
           if (side === "enemy") {
             this.selectedTargetIdx = index;
@@ -3108,7 +3130,7 @@ export class BattleScene extends Phaser.Scene {
         else if (kind === "ability") this.showAbilityPicker(slot);
         else
           this.promptText
-            .setText(`${actor.name}\'s turn — choose an action`)
+            .setText(this.memberTurnPrompt(actor))
             .setColor("#ffff44");
       },
     );
@@ -3140,7 +3162,11 @@ export class BattleScene extends Phaser.Scene {
 
     // Show the position number from the full enemy list (matches displayed number)
     const fullIdx = this.gameState.enemies.findIndex((e) => e.id === enemy.id);
-    this.promptText.setText(`Target: ${enemy.name} [${fullIdx + 1}]`);
+    this.promptText.setText(
+      [`Target: ${enemy.name} [${fullIdx + 1}]`, enemy.intent?.label]
+        .filter(Boolean)
+        .join("\n"),
+    );
     this.promptText.setColor("#ff6666");
   }
 

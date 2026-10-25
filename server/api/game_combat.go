@@ -178,14 +178,15 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 	}
 
 	// Handle item (potion) -- use and then enemies attack
-	if req.Type == "item" {
+	if req.Type == "item" && (g.combatRound != 0 || g.encounterStart != combat.EncounterStartAmbush) {
 		return g.processCombatItem(req)
 	}
 
 	// "wait" is submitted by the client when the party is stunned for a
 	// round (e.g. the first round of an ambush). The party contributes no
 	// actions; enemies act normally.
-	skipParty := req.Type == "wait" || req.Type == "flee"
+	skipParty := req.Type == "wait" || req.Type == "flee" ||
+		(g.combatRound == 0 && g.encounterStart == combat.EncounterStartAmbush)
 	if !skipParty {
 		seenSlots := make(map[int]bool, len(req.Actions))
 		for _, action := range req.Actions {
@@ -469,35 +470,16 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 		roundActions = roundActions[:0]
 	}
 
-	// Preemptive round: enemies take zero actions on round 1.
-	skipEnemies := g.combatRound == 0 && g.encounterStart == combat.EncounterStartPreemptive
-
-	// Enemy attacks
-	if !skipEnemies {
-		for _, e := range g.enemies {
-			if e.CurrentHP <= 0 || e.Status == character.StatusSleep || e.Status == character.StatusStone || e.Status == character.StatusDeath {
-				continue
-			}
-			target := combat.SelectEnemyTarget(combatants, g.rng)
-			if target != nil {
-				initiative := combat.RollInitiative(e.AGI, g.rng)
-				roundActions = append(roundActions, scheduledRoundAction{
-					kind:       scheduledRoundActionCombat,
-					initiative: initiative,
-					combatAction: combat.Action{
-						ActorID:    e.ID,
-						Kind:       combat.ActionAttack,
-						TargetID:   target.ID,
-						Initiative: initiative,
-					},
-				})
-			}
-		}
+	for _, action := range g.planEnemyActions(combatants) {
+		action.Initiative = combat.RollInitiative(g.enemyAgility(action.ActorID), g.rng)
+		roundActions = append(roundActions, scheduledRoundAction{
+			kind: scheduledRoundActionCombat, initiative: action.Initiative, combatAction: action,
+		})
 	}
 
 	// Remember which slot issued which ability so we can attribute steal
 	// outcomes and ability log lines after ResolveTurn.
-	abilityByActor := make(map[int]string, len(req.Actions))
+	abilityByActor := g.enemyAbilityPlans()
 	for _, ma := range req.Actions {
 		if ma.Type == "ability" && ma.Slot >= 0 && ma.Slot < len(combatants) {
 			abilityByActor[combatants[ma.Slot].ID] = ma.AbilityID
@@ -1034,40 +1016,7 @@ func (g *Game) processCombatSpell(req GameActionRequest) (*GameState, error) { /
 		}
 	}
 
-	// Enemy turn after spell
-	combatants := g.makeCombatants()
-	var enemyActions []combat.Action
-	for _, e := range g.enemies {
-		if e.CurrentHP <= 0 {
-			continue
-		}
-		target := combat.SelectEnemyTarget(combatants, g.rng)
-		if target != nil {
-			enemyActions = append(enemyActions, combat.Action{ActorID: e.ID, Kind: combat.ActionAttack, TargetID: target.ID})
-		}
-	}
-	if len(enemyActions) > 0 {
-		results := combat.ResolveTurn(combatants, g.enemies, enemyActions, &g.gd.Stats.Combat, g.rng)
-		for _, r := range results {
-			if r.TotalDmg > 0 || len(r.Hits) > 0 {
-				name := g.findCombatantName(combatants, r.TargetID)
-				status := ""
-				if r.Killed {
-					status = " - DEFEATED!"
-				}
-				g.logCombat(
-					fmt.Sprintf("%s attacks %s for %d%s", r.ActorName, name, r.TotalDmg, status),
-					CombatActionEntry{Kind: "attack", DamageType: "physical",
-						ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, TargetName: name,
-						Damage: r.TotalDmg, DamagePrevented: r.DamagePrevented, Killed: r.Killed, Crit: anyCrit(r.Hits), Missed: allMissed(r.Hits), Hits: toHitEntries(r.Hits),
-						Initiative: r.Initiative})
-			}
-		}
-		for i, pc := range combatants {
-			g.party[i].CurrentHP = pc.CurrentHP
-			g.party[i].Status = pc.Status
-		}
-	}
+	combatants := g.resolveLegacyEnemyTurn()
 
 	if g.finalEncounterActive() {
 		g.resolveCombatOutcome(combatants)
@@ -1177,36 +1126,7 @@ func (g *Game) processCombatItem(req GameActionRequest) (*GameState, error) {
 		}
 	}
 
-	// Enemy turn
-	combatants := g.makeCombatants()
-	var enemyActions []combat.Action
-	for _, e := range g.enemies {
-		if e.CurrentHP <= 0 {
-			continue
-		}
-		t := combat.SelectEnemyTarget(combatants, g.rng)
-		if t != nil {
-			enemyActions = append(enemyActions, combat.Action{ActorID: e.ID, Kind: combat.ActionAttack, TargetID: t.ID})
-		}
-	}
-	if len(enemyActions) > 0 {
-		results := combat.ResolveTurn(combatants, g.enemies, enemyActions, &g.gd.Stats.Combat, g.rng)
-		for _, r := range results {
-			if r.TotalDmg > 0 || len(r.Hits) > 0 {
-				name := g.findCombatantName(combatants, r.TargetID)
-				g.logCombat(
-					fmt.Sprintf("%s attacks %s for %d", r.ActorName, name, r.TotalDmg),
-					CombatActionEntry{Kind: "attack", DamageType: "physical",
-						ActorID: r.ActorID, ActorName: r.ActorName, TargetID: r.TargetID, TargetName: name,
-						Damage: r.TotalDmg, DamagePrevented: r.DamagePrevented, Killed: r.Killed, Crit: anyCrit(r.Hits), Missed: allMissed(r.Hits), Hits: toHitEntries(r.Hits),
-						Initiative: r.Initiative})
-			}
-		}
-		for i, pc := range combatants {
-			g.party[i].CurrentHP = pc.CurrentHP
-			g.party[i].Status = pc.Status
-		}
-	}
+	combatants := g.resolveLegacyEnemyTurn()
 
 	g.resolveCombatOutcome(combatants)
 

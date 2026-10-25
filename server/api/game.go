@@ -449,17 +449,23 @@ type SpellState struct {
 	Castable     bool                               `json:"castable_in_combat"`
 }
 
+type EnemyIntentState struct {
+	Kind  string `json:"kind"`
+	Label string `json:"label"`
+}
+
 type EnemyState struct {
-	ID          int      `json:"id"`
-	MonsterID   string   `json:"monster_id,omitempty"`
-	Name        string   `json:"name"`
-	HP          int      `json:"hp"`
-	MaxHP       int      `json:"max_hp"`
-	Size        string   `json:"size"`
-	Status      string   `json:"status"`
-	IsUndead    bool     `json:"is_undead"`
-	Weaknesses  []string `json:"weaknesses,omitempty"`
-	Resistances []string `json:"resistances,omitempty"`
+	Intent      *EnemyIntentState `json:"intent,omitempty"`
+	ID          int               `json:"id"`
+	MonsterID   string            `json:"monster_id,omitempty"`
+	Name        string            `json:"name"`
+	HP          int               `json:"hp"`
+	MaxHP       int               `json:"max_hp"`
+	Size        string            `json:"size"`
+	Status      string            `json:"status"`
+	IsUndead    bool              `json:"is_undead"`
+	Weaknesses  []string          `json:"weaknesses,omitempty"`
+	Resistances []string          `json:"resistances,omitempty"`
 }
 
 // isMonsterUndead looks up a live enemy name against the loaded monster
@@ -493,6 +499,7 @@ func (g *Game) buildEnemyState(e *combat.Combatant) EnemyState {
 		Size:      e.Size,
 		Status:    string(e.Status),
 		IsUndead:  g.isMonsterUndead(e.Name),
+		Intent:    g.enemyIntent(e),
 	}
 	if m := g.monsterByName(e.Name); m != nil {
 		state.Weaknesses = append([]string(nil), m.Weaknesses...)

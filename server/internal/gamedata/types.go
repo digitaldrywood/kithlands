@@ -584,28 +584,35 @@ type Spell struct {
 
 // Monsters
 
+// MonsterAction is one step in a repeating server-owned battle pattern.
+type MonsterAction struct {
+	Kind  string `json:"kind"`
+	Label string `json:"label"`
+}
+
 type Monster struct {
-	ID              string       `json:"id"`
-	Name            string       `json:"name"`
-	FieldNote       string       `json:"field_note"`
-	Habitats        []string     `json:"habitats"`
-	Tactics         string       `json:"tactics"`
-	Tier            int          `json:"tier"`
-	Size            string       `json:"size"` // small, medium, large, boss
-	IsBoss          bool         `json:"is_boss"`
-	IsUndead        bool         `json:"is_undead,omitempty"`
-	Stats           MonsterStats `json:"stats"`
-	HP              int          `json:"hp"`
-	ArmorAbsorb     int          `json:"armor_absorb"`
-	XPReward        int          `json:"xp_reward"`
-	GoldReward      int          `json:"gold_reward"`
-	Weaknesses      []string     `json:"weaknesses"`
-	Resistances     []string     `json:"resistances"`
-	Absorbs         []string     `json:"absorbs"`
-	Drops           []Drop       `json:"drops"`
-	EncounterWeight int          `json:"encounter_weight"`
-	MinGroup        int          `json:"min_group"`
-	MaxGroup        int          `json:"max_group"`
+	BattlePattern   []MonsterAction `json:"battle_pattern,omitempty"`
+	ID              string          `json:"id"`
+	Name            string          `json:"name"`
+	FieldNote       string          `json:"field_note"`
+	Habitats        []string        `json:"habitats"`
+	Tactics         string          `json:"tactics"`
+	Tier            int             `json:"tier"`
+	Size            string          `json:"size"` // small, medium, large, boss
+	IsBoss          bool            `json:"is_boss"`
+	IsUndead        bool            `json:"is_undead,omitempty"`
+	Stats           MonsterStats    `json:"stats"`
+	HP              int             `json:"hp"`
+	ArmorAbsorb     int             `json:"armor_absorb"`
+	XPReward        int             `json:"xp_reward"`
+	GoldReward      int             `json:"gold_reward"`
+	Weaknesses      []string        `json:"weaknesses"`
+	Resistances     []string        `json:"resistances"`
+	Absorbs         []string        `json:"absorbs"`
+	Drops           []Drop          `json:"drops"`
+	EncounterWeight int             `json:"encounter_weight"`
+	MinGroup        int             `json:"min_group"`
+	MaxGroup        int             `json:"max_group"`
 }
 
 type MonsterStats struct {

@@ -766,7 +766,12 @@
     "name": "Bramblehog",
     "field_note": "A sturdy forest forager whose leaf-covered quills scatter seeds wherever it roots for bulbs.",
     "habitats": ["Forests", "Dark grass", "Woodland margins"],
-    "tactics": "Fire catches its dry quills; focused attacks prevent a rooting herd from controlling the field.",
+    "tactics": "It prepares before two stronger attacks. Defend during the rush or burn its dry quills before it can strike.",
+    "battle_pattern": [
+      { "kind": "focus", "label": "Prepare rush" },
+      { "kind": "attack", "label": "Quill rush" },
+      { "kind": "attack", "label": "Quill rush" }
+    ],
     "tier": 1,
     "size": "small",
     "stats": {
@@ -894,7 +899,12 @@
       "Dark grass",
       "Woodland margins"
     ],
-    "tactics": "Fire catches its dry quills. Focus one target at a time; its thick hide withstands a quick opening volley.",
+    "tactics": "It prepares before two stronger attacks. Defend during the rush or burn its dry quills before it can strike.",
+    "battle_pattern": [
+      { "kind": "focus", "label": "Prepare rush" },
+      { "kind": "attack", "label": "Quill rush" },
+      { "kind": "attack", "label": "Quill rush" }
+    ],
     "tier": 1,
     "size": "small",
     "stats": {
