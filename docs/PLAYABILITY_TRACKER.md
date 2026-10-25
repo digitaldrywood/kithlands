@@ -25,11 +25,37 @@ Updated 2026-10-25. This file records work; it does not schedule unattended runs
 - Visual workflow pinned to supported Ubuntu 24.04.
 - Interior proof corrected to await actual completed Town steps, retaining exact destination checks.
 - Repeated field-magic keyboard proof corrected to await menu readiness and visible cursor selection; all four viewport flows pass locally.
-- Remote walking suite passes all 24 checks. Fresh remote gameplay/interior suites must finish successfully before describing PR #339 as merge-ready.
+- Remote walking suite previously passed all 24 checks. On head `e2fd42c`, gameplay and interior jobs now pass; the fresh walking job is still running.
+- General CI run `40202414785` is queued for `[self-hosted, linux, personal]`; GitHub's repository runner API reports zero registered runners. Local checks cannot substitute for a completed remote gate. Preserve the existing runner configuration pending an infrastructure decision.
+- Corrected the fifteen-minute walkthrough to include hardwood, current recipes and saved respawn timers. It still explicitly requires a timed normal fresh-player verification; the document is not proof of the complete loop.
 
 ## Next playable feature, after CI stability
 
 One short meadow-to-Old-Mill loop: visible optional threat → useful resource/reward → crafted sidegrade → changed location. See `GAME_FEEL_NEXT_SLICE.md` for research, acceptance criteria, persistence and balancing requirements. This feature is not yet implemented.
+
+### Audit of reusable mechanics
+
+- `shared/dungeons/adventures.json` already defines visible authored encounters, the mill's restoration, shortcut and payoff. The entrance bats gate the mill doorway; that required encounter alone does not meet the optional-threat goal.
+- `server/api/game_dungeon_test.go` already exercises full-route persistence, shortcut return, reward replay rejection and defeat/flee recovery. Extend these mechanics rather than introduce another expedition inventory or journal.
+- `server/api/game_encounter_pacing.go` owns saved travel-based encounter intervals; `shared/encounter_pacing.json` currently sets 60–100 weighted grass steps with 12 safe steps. Route pacing changes belong here and in shared data, not client random rolls.
+- `client/e2e/gathering-crafting.spec.js` starts with `?noEncounters=1`. It verifies collection/crafting/equipment interactions, but does not establish ordinary travel pacing or an uninterrupted first-fifteen-minute experience.
+
+### Remaining acceptance checklist
+
+- [ ] A normal fresh game presents a recognizable optional encounter and honest difficulty information before engagement.
+- [ ] Winning connects to useful resources and a meaningful crafted choice; returning shows a persistent consequence.
+- [ ] Retreat, defeat, repeated visits, saving/loading and reward replay are verified for the new route.
+- [ ] Enemy tactical roles and any intent preview match the actual server-resolved action, including interrupted or invalidated actions.
+- [ ] Warrior/Cinder action-specific choreography covers critical attacks, defense, abilities, healing/status, victory and KO; other-class expansion follows reference acceptance.
+- [ ] Inspect current melee and elemental spell anticipation/release/contact/recovery at normal and reduced motion, with readable action text and unobscured targets.
+- [ ] Inspect resource habitat terrain and meadow landmarks on the actual quest route; check saved respawn deadlines after closing/reopening.
+- [ ] Recheck locality Back/Cancel, one journal/menu, temporary notifications and scene transitions for stale overlays.
+- [ ] Verify crafting, shops, inventory, equipment comparison and all gem operations with consistent icons and keyboard/touch input at desktop and phone sizes.
+- [ ] Verify newest save selection and optional history with multiple snapshots of one adventure.
+- [ ] Play and time a normal fresh route with encounters enabled, no debug grants, real starting money and levels; document what shopping/spell purchasing/leveling is actually reachable.
+- [ ] Inspect unique screenshots and motion evidence; run required local gates and obtain passing relevant remote CI.
+
+The active goal is the complete user-pasted request, not only this checklist. Existing local proof should be reused where valid; a check stays open when its remaining acceptance depends on the new connected route or final integrated verification.
 
 ## Subsequent work
 
