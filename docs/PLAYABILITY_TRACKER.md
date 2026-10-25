@@ -89,7 +89,7 @@ The Heron Pool detour now connects an optional visible threat → guarded smithi
 - [x] Fix the exploration notice overlapping the interaction prompt on phone (seen in the native Q04 recovery screenshot).
 - [x] Diagnose the hosted merchant-stock-authority phone revisit timeout on 370dfc4: separate mobile activation from one entrance confirmation and wait for the actual destination. Local catalog cases pass; remote acceptance remains open.
 - [x] Reproduce and correct the 5c448c3 world-shop fixture talking to the nearby Blacksmith instead of the proprietor. Seed 24 covers the crowded room with a runtime NPC-selection assertion.
-- [ ] Improve stock-label wrapping at the intermediate 774px width; long names currently break inside a word.
+- [x] Give shop names a full row above price/shortcut; the 774px regression now keeps long words intact. Seven native desktop/default/tablet/phone shop cases pass with 27 inspected captures. See `SHOP_STOCK_LABEL_PROOF.md`.
 - [ ] Inspect unique screenshots and motion evidence; run required local gates and obtain passing relevant remote CI.
 
 The active goal is the complete user-pasted request, not only this checklist. Existing local proof should be reused where valid; a check stays open when its remaining acceptance depends on the new connected route or final integrated verification.

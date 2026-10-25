@@ -61,9 +61,10 @@
   border-right: 1px solid var(--menu-line);
 }
 .kith-shop .shop-stock-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
+  gap: 4px 12px;
   width: 100%;
   text-align: left;
   margin-bottom: 8px;
@@ -79,8 +80,29 @@
   border-radius: 10px;
   background: #0c1523;
 }
+.shop-stock-row .shop-item-art {
+  grid-column: 1;
+  grid-row: 1 / 3;
+}
+.shop-stock-row .shop-price {
+  grid-column: 2;
+  grid-row: 2;
+}
+.shop-stock-row .menu-shortcut {
+  grid-column: 3;
+  grid-row: 2;
+  justify-self: end;
+  margin: 0;
+}
+.shop-stock-row:not(:has(.shop-item-art)) .shop-stock-name {
+  grid-column: 1 / -1;
+}
+.shop-stock-row:not(:has(.shop-item-art)) .shop-price {
+  grid-column: 1 / 3;
+}
 .shop-stock-name {
-  flex: 1;
+  grid-column: 2 / -1;
+  grid-row: 1;
   min-width: 0;
   overflow-wrap: anywhere;
 }

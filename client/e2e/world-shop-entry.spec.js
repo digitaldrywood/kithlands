@@ -113,6 +113,26 @@ for (const width of [1440, 774, 390]) {
     await openNormalMerchant(page, approach);
     await expect(page.locator(".kith-shop")).toBeVisible();
     await page.screenshot({ path: path.join(proof, `${width}-stock.png`) });
+    const brokenWords = await page
+      .locator(".shop-stock-name")
+      .evaluateAll((names) =>
+        names.flatMap((name) => {
+          const text = name.firstChild;
+          if (text?.nodeType !== Node.TEXT_NODE) return [];
+          return [...text.textContent.matchAll(/\S+/g)]
+            .filter((word) => {
+              const range = document.createRange();
+              range.setStart(text, word.index);
+              range.setEnd(text, word.index + word[0].length);
+              return (
+                new Set([...range.getClientRects()].map((r) => r.top)).size > 1
+              );
+            })
+            .map((word) => word[0]);
+        }),
+      );
+    expect(brokenWords, "stock names wrap between words").toEqual([]);
+
     await expect(page.locator(".shop-status")).not.toHaveText(
       "Stock could not be loaded.",
     );

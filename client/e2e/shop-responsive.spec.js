@@ -12,7 +12,8 @@ const proof = path.resolve(`tmp/shop-responsive-${Date.now()}`);
 mkdirSync(proof, { recursive: true });
 
 async function visit(page) {
-  await startNormalRoute(page);
+  // Keep a campaign fight from replacing this catalog-layout fixture.
+  await startNormalRoute(page, 4);
   const home = await page.evaluate(() => {
     const s = window.__normalRouteGame.scene.getScene("World");
     return s.spawns.find(
