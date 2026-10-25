@@ -1,3 +1,4 @@
+import { oncePerKeyEvent } from "../systems/keyboard_events.js";
 import { roundedRectangle } from "../ui/theme.js";
 import { getNpcDialogue } from "../api.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
@@ -145,7 +146,10 @@ export async function openDialogue(scene, spawn, providedDialogue = null) {
   });
 
   return new Promise((resolve) => {
+    let closed = false;
     const closeDialogue = () => {
+      if (closed) return;
+      closed = true;
       overlay.forEach((o) => o.destroy());
       scene.animating = false;
       resumeWorldFor(scene, "dialogue");
@@ -155,6 +159,7 @@ export async function openDialogue(scene, spawn, providedDialogue = null) {
     };
 
     const advanceHandler = () => {
+      if (closed) return;
       lineIndex++;
       if (lineIndex >= lines.length) {
         closeDialogue();
@@ -169,12 +174,12 @@ export async function openDialogue(scene, spawn, providedDialogue = null) {
     const escHandler = () => {
       closeDialogue();
     };
-    const keyHandler = (event) => {
+    const keyHandler = oncePerKeyEvent((event) => {
       if (!isConfirmKey(event)) return;
       event?.preventDefault?.();
       if (event?.repeat) return;
       advanceHandler();
-    };
+    });
 
     scene.input.keyboard.on("keydown", keyHandler);
     scene.input.keyboard.on("keydown-ESC", escHandler);

@@ -3,6 +3,12 @@
 Start with **Quick start** from the title screen. The default Cadott party is
 Warrior, Cinder, Rogue and Mender. This route samples the current normal game;
 it does not use the disposable developer showcase or grant extra levels/items.
+New Cinders start with Spark and Menders with Cure. The first shop sells Frost,
+Sleep, Light and Bless for 100 gold each; those are now actual learning choices.
+Existing saves keep every spell they already learned. Spending the starting
+100 gold on a spell means earning more before buying other gear. Gathering and
+crafting can supply early potions and a sword without spending that gold.
+
 Times are a suggested budget, not a guarantee of first-visit completion.
 
 For the most connected early detour, take **Old Mill trail → Explore the
@@ -19,12 +25,12 @@ encounter and supply box do not reset on repeat visits.
 
 | Time | What to do | What to notice |
 | --- | --- | --- |
-| 0–2 min | Open Menu, then Quest journal. Read the campaign objective and track The Old Mill under Local stories. | One journal contains both campaign progress and the mill. Tracking a story selects its route on the map; entering it shows its current step. |
-| 2–4 min | Walk along the story routes and gather herbs, two ember iron outcrops, and fallen hardwood near a woodland route end when the Gather prompt appears. Open Menu → Crafting; brew a potion, refine Ember Shards and forge an Iron Sword. If travel takes longer, keep exploring rather than racing this budget. | One potion needs 2 herbs; three shards need 3 ore; the sword needs 5 ore and 1 hardwood. Two outcrops supply the combined 8 ore. Check the owned/required preview before crafting. |
-| 4–9 min | Open Character, select the Warrior's weapon slot and equip the crafted Iron Sword. Use Gems → Transmute to make an Ember Gem from three shards, then Socket it into the sword. Take Old Mill trail and fight the bats; use your brewed potion when someone is hurt. | The sword has 12 base Power and one gem socket; the Ember Gem adds 3 Power. Try Warrior Attack, Cinder Spark, Rogue Attack/Steal and Mender healing. Inspect Party after wins to see XP toward the next level. |
-| 9–12 min | Save, return to the world, then enter a settlement and visit its shop. Buy an affordable weapon/armor upgrade or supplies. Compare stats and equip the purchase. | The same party and inventory carry between the mill, world and town. Keep some gold for consumables; new games start with 100 gold. |
-| 12–14 min | At a spell merchant, open Spells and pick a spell your caster can learn. Choose the eligible party member. If that town's shop does not offer a useful spell, spend this time on another battle instead. | Spell purchases teach that character directly. Class, level and already-known checks affect eligibility; stock depends on the generated shop. The tested Heal purchase cost 200 gold, so a fresh 100-gold character needs to earn more first. |
-| 14–15 min | Open the same journal again, inspect your retained mill notes, check the campaign objective, and save. | Returning from a local story preserves discoveries and rewards. The next visit resumes the same story. |
+| 0–2 min | Open Menu → Quest journal, read the campaign objective and track The Old Mill under Local stories. Gather nearby herbs and ore when the prompt appears. | One journal contains campaign progress and the mill. Herbs brew potions; ore can become shards or a blade. |
+| 2–4 min | Enter town through Town Hall, walk to the General Store and talk across its counter. Choose a spell or save your money for gear. | A new Cinder knows Spark; a new Mender knows Cure. Frost, Sleep, Light and Bless each cost 100 gold. Frost provides an ice option for the mill bats. You cannot buy every choice with the starting budget. |
+| 4–9 min | Return to the town's south junction and take Old Mill trail → optional Heron Pool. Inspect the herd's level and tactics, then fight or decline. If you win, recover the millwright supplies. | Bramblehogs prepare before two stronger attacks. Attack their fire weakness or defend the rush. The supply box connects the fight to eight ore, two hardwood and the one-time precision-blade pommel. |
+| 9–12 min | Open Party → Crafting. Brew a potion; choose Iron Sword or Balanced Trail Sword; refine three ore into shards. Equip the blade and use Gem workshop to transmute/socket an Ember Gem. Rest at the cleared bank. | Iron trades accuracy for one more Power; Balanced uses the unique pommel for +10% Hit Chance. Both have one socket. Three Ember Shards make a gem adding three Power. The cleared bank is a persistent safe rest stop. |
+| 12–14 min | Return to the split oak and fight the mill bats with your crafted equipment; use Frost if you bought it, or try your existing actions and potion. Continue the early mill route if time permits. | The same party, inventory and XP persist. Inspect progress toward your next level; a level-up is not guaranteed by this time budget. Further shopping depends on what you spent and earned. |
+| 14–15 min | Check the journal again and save at a safe point. | Retained mill progress, resource deadlines, equipment and learned spells belong to this adventure. The next visit resumes it. |
 
 Level-up timing depends on the encounters and party; the route gives real XP,
 not an artificial guaranteed level at a particular minute. The mill is a longer
@@ -37,10 +43,23 @@ recipe; Steel requires party level 4 and purchased charcoal, flux and a leather
 wrap. Runic Mythril requires party level 8, rare mythril ore, shop supplies and
 the mill's runic core. Those advanced recipes are longer-term goals, not
 promised first-session activities. There is no profession leveling tree or
-broad armor recipe catalog. Spell shopping may require another settlement or
-more levels/gold. The gathering → crafting → equipped battle route was checked
+broad armor recipe catalog. Higher-level spell shopping requires more levels and gold. The gathering → crafting → equipped battle route was checked
 in the actual browser game; the fifteen-minute budget has not been timed as an
 unassisted first-time playtest.
+
+## Opening audit and current limits
+
+A real-keyboard audit with encounters enabled collected herbs and ore, entered
+town through its door, bought armor, and reached the optional Heron battle.
+It exposed a disappearing settlement trail control and replayed battle command
+input, as well as the formerly redundant spell catalog. Those defects have
+specific regression coverage; see `OPENING_ROUTE_RECOVERY_PROOF.md`.
+
+The audit included time spent inspecting/debugging the game, so its 15-minute
+wall-clock record is not a first-time player timing estimate. It did not finish
+the complete crafting/gems/level-up route. That integrated acceptance remains
+open; the numbered time budgets above remain suggestions. The short scripted
+shop round-trip proves legitimate spell availability, not unassisted pacing.
 
 ## Gathering and professions recommendation
 

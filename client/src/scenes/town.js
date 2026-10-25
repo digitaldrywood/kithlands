@@ -78,6 +78,8 @@ import { walkStepMs } from "../systems/prefs.js";
 import { drawPanel } from "../ui/panel.js";
 import {
   hasWorldLock,
+  pauseWorldFor,
+  resumeWorldFor,
   isWorldInputLocked,
   topWorldLock,
 } from "../systems/modalLock.js";
@@ -1203,91 +1205,98 @@ export class TownScene extends Phaser.Scene {
 
   async interact() {
     if (isWorldInputLocked(this)) return;
-    if (await performQuestObjective(this)) return;
-    if (await this.openNearbyChest()) return;
-    // Hidden item pickup takes priority
-    if (this.nearHiddenItem) {
-      this.hideSearchPrompt();
-      const item = this.nearHiddenItem;
-      const result = await collectHiddenItem(
-        this.gameState.id,
-        this.spawn.node_id,
-        item.key,
-        this.spawn.tags || [],
-      );
-      if (result && !result.error) {
-        // Remove from local list so it won't trigger again
-        this.hiddenItems = this.hiddenItems.filter((h) => h.key !== item.key);
-        this.nearHiddenItem = null;
-        // Merge updated game state
-        Object.assign(this.gameState, result);
-        playSFX("sfx_heal");
-        this.showMessage(result.message || "Found an item!");
-        this.time.delayedCall(1500, () => this.hideMessage());
-      }
-      return;
-    }
-
-    if (this.nearNpcIndex < 0) return;
-
-    this.hideInteractPrompt();
-
-    const npc = this.npcs[this.nearNpcIndex];
-    const tags = this.spawn.tags || [];
-    const tagSet = new Set(tags);
-    const nodeId = npc.isProprietor
-      ? this.spawn.node_id
-      : this.spawn.node_id + "_npc" + npc.index;
-    const interaction = await interactWithNpc(this.gameState.id, nodeId);
-    if (interaction?.game_state && !interaction.game_state.error) {
-      Object.assign(this.gameState, interaction.game_state);
-    }
-    const dialogue = interaction?.dialogue || null;
-
-    if (npc.isProprietor) {
-      await openDialogue(this, this.spawn, dialogue);
-
-      if (isRestBuilding(tags)) {
-        const result = await restAtTown(
+    // Reserve the interaction before the first await; two confirmations must
+    // not issue overlapping NPC requests or leave a second dialogue under a shop.
+    pauseWorldFor(this, "interaction");
+    try {
+      if (await performQuestObjective(this)) return;
+      if (await this.openNearbyChest()) return;
+      // Hidden item pickup takes priority
+      if (this.nearHiddenItem) {
+        this.hideSearchPrompt();
+        const item = this.nearHiddenItem;
+        const result = await collectHiddenItem(
           this.gameState.id,
           this.spawn.node_id,
-          tags,
+          item.key,
+          this.spawn.tags || [],
         );
         if (result && !result.error) {
+          // Remove from local list so it won't trigger again
+          this.hiddenItems = this.hiddenItems.filter((h) => h.key !== item.key);
+          this.nearHiddenItem = null;
+          // Merge updated game state
           Object.assign(this.gameState, result);
           playSFX("sfx_heal");
-          autosaveGame(result.id, "inn_rest").catch((e) =>
-            console.error("[Town] autosave failed:", e),
-          );
+          this.showMessage(result.message || "Found an item!");
+          this.time.delayedCall(1500, () => this.hideMessage());
         }
-        this.showMessage(
-          result?.error ? "Could not rest here." : "HP and spells restored!",
-        );
-        this.time.delayedCall(1500, () => this.hideMessage());
-      } else if (tagSet.has("shop") || tagSet.has("commerce")) {
-        openShop(this, this.spawn);
-      } else if (tagSet.has("temple") || tagSet.has("revive")) {
-        const dead = this.gameState.party.filter((p) => p.hp <= 0);
-        if (dead.length > 0) {
-          dead.forEach((p) => {
-            p.hp = 1;
-            p.status = "";
-          });
-        } else {
-          this.gameState.party.forEach((p) => {
-            p.hp = p.max_hp;
-          });
-        }
-        playSFX("sfx_heal");
+        return;
       }
-    } else {
-      const synthSpawn = { ...this.spawn, node_id: nodeId };
-      await openDialogue(this, synthSpawn, dialogue);
-    }
 
-    // Re-show talk prompt if still near an NPC
-    if (this.nearNpcIndex >= 0) {
-      this.showInteractPrompt("Talk");
+      if (this.nearNpcIndex < 0) return;
+
+      this.hideInteractPrompt();
+
+      const npc = this.npcs[this.nearNpcIndex];
+      const tags = this.spawn.tags || [];
+      const tagSet = new Set(tags);
+      const nodeId = npc.isProprietor
+        ? this.spawn.node_id
+        : this.spawn.node_id + "_npc" + npc.index;
+      const interaction = await interactWithNpc(this.gameState.id, nodeId);
+      if (interaction?.game_state && !interaction.game_state.error) {
+        Object.assign(this.gameState, interaction.game_state);
+      }
+      const dialogue = interaction?.dialogue || null;
+
+      if (npc.isProprietor) {
+        await openDialogue(this, this.spawn, dialogue);
+
+        if (isRestBuilding(tags)) {
+          const result = await restAtTown(
+            this.gameState.id,
+            this.spawn.node_id,
+            tags,
+          );
+          if (result && !result.error) {
+            Object.assign(this.gameState, result);
+            playSFX("sfx_heal");
+            autosaveGame(result.id, "inn_rest").catch((e) =>
+              console.error("[Town] autosave failed:", e),
+            );
+          }
+          this.showMessage(
+            result?.error ? "Could not rest here." : "HP and spells restored!",
+          );
+          this.time.delayedCall(1500, () => this.hideMessage());
+        } else if (tagSet.has("shop") || tagSet.has("commerce")) {
+          openShop(this, this.spawn);
+        } else if (tagSet.has("temple") || tagSet.has("revive")) {
+          const dead = this.gameState.party.filter((p) => p.hp <= 0);
+          if (dead.length > 0) {
+            dead.forEach((p) => {
+              p.hp = 1;
+              p.status = "";
+            });
+          } else {
+            this.gameState.party.forEach((p) => {
+              p.hp = p.max_hp;
+            });
+          }
+          playSFX("sfx_heal");
+        }
+      } else {
+        const synthSpawn = { ...this.spawn, node_id: nodeId };
+        await openDialogue(this, synthSpawn, dialogue);
+      }
+
+      // Re-show talk prompt if still near an NPC
+      if (this.nearNpcIndex >= 0) {
+        this.showInteractPrompt("Talk");
+      }
+    } finally {
+      resumeWorldFor(this, "interaction");
     }
   }
 

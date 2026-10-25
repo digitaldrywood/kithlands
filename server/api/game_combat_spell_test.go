@@ -9,7 +9,7 @@ import (
 )
 
 // menderParty returns a two-member party with a Mender (white mage, has Cure
-// and Bless at level 1) and a Warrior tank. Mender is slot 0 unless noted.
+// at level 1) and a Warrior tank. Mender is slot 0 unless noted.
 func menderParty() []api.PartyMemberReq {
 	return []api.PartyMemberReq{
 		{Name: "Mira", ClassID: "mender"},
@@ -376,6 +376,7 @@ func TestSpellDamageTargetModeCanHitAllEnemies(t *testing.T) {
 // buff_stat=hit_pct) installs a combat-duration buff on the chosen ally.
 func TestSpellBlessAppliesHitPctBuff(t *testing.T) {
 	game := newGameWithParty(t, menderParty())
+	api.TeachSpellForTest(game, 0, "bless", 1) // This test isolates the learned spell's buff.
 	enterCombat(t, game)
 
 	if got := findSpellTarget(t, ptrState(game), 0, "bless"); got != "all_allies" {

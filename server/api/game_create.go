@@ -131,12 +131,8 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 		// Spell books for casters (unified MP pool lives on Character, GDD §8.1).
 		if len(cls.Magic.Schools) > 0 {
 			sb := magic.NewSpellBook()
-			for _, spell := range gm.gd.Spells.Spells {
-				for _, school := range cls.Magic.Schools {
-					if spell.School == school && spell.SpellLevel == 1 {
-						_ = sb.LearnSpell(spell.ID, spell.SpellLevel, gm.gd.Spells.ChargeTable.MaxSpellsPerLvl)
-					}
-				}
+			for _, spell := range gm.gd.StartingSpellsForClass(cls) {
+				_ = sb.LearnSpell(spell.ID, spell.SpellLevel, gm.gd.Spells.ChargeTable.MaxSpellsPerLvl)
 			}
 			spellBooks[c.Name] = sb
 		}

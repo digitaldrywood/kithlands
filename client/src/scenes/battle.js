@@ -620,49 +620,69 @@ export class BattleScene extends Phaser.Scene {
 
   setupKeyboard() {
     // Action hotkeys (A/S/I/F) — any manual action cancels auto-mode (#99)
-    this.input.keyboard.on("keydown-A", () => {
-      if (this.animating || this.targetingMode || this.pickerOverlay) return;
-      if (this.currentMemberIdx >= this.livingMembers.length) return;
-      this.autoMode = false;
-      const slot = this.livingMembers[this.currentMemberIdx];
-      const member = this.gameState.party[slot];
-      this.pendingAction = "attack";
-      this.enterTargetingMode();
-      this.promptText
-        .setText(`${member.name}: Select a target to attack!`)
-        .setColor("#ff4444");
-    });
+    this.input.keyboard.on(
+      "keydown-A",
+      oncePerKeyEvent((event) => {
+        if (event.repeat) return;
+        if (this.animating || this.targetingMode || this.pickerOverlay) return;
+        if (this.currentMemberIdx >= this.livingMembers.length) return;
+        this.autoMode = false;
+        const slot = this.livingMembers[this.currentMemberIdx];
+        const member = this.gameState.party[slot];
+        this.pendingAction = "attack";
+        this.enterTargetingMode();
+        this.promptText
+          .setText(`${member.name}: Select a target to attack!`)
+          .setColor("#ff4444");
+      }),
+    );
 
-    this.input.keyboard.on("keydown-S", () => {
-      if (this.animating || this.targetingMode || this.pickerOverlay) return;
-      if (this.currentMemberIdx >= this.livingMembers.length) return;
-      this.autoMode = false;
-      const slot = this.livingMembers[this.currentMemberIdx];
-      this.showSpellPicker(slot);
-    });
+    this.input.keyboard.on(
+      "keydown-S",
+      oncePerKeyEvent((event) => {
+        if (event.repeat) return;
+        if (this.animating || this.targetingMode || this.pickerOverlay) return;
+        if (this.currentMemberIdx >= this.livingMembers.length) return;
+        this.autoMode = false;
+        const slot = this.livingMembers[this.currentMemberIdx];
+        this.showSpellPicker(slot);
+      }),
+    );
 
-    this.input.keyboard.on("keydown-I", () => {
-      if (this.animating || this.targetingMode || this.pickerOverlay) return;
-      if (this.currentMemberIdx >= this.livingMembers.length) return;
-      this.autoMode = false;
-      const slot = this.livingMembers[this.currentMemberIdx];
-      this.showItemPicker(slot);
-    });
+    this.input.keyboard.on(
+      "keydown-I",
+      oncePerKeyEvent((event) => {
+        if (event.repeat) return;
+        if (this.animating || this.targetingMode || this.pickerOverlay) return;
+        if (this.currentMemberIdx >= this.livingMembers.length) return;
+        this.autoMode = false;
+        const slot = this.livingMembers[this.currentMemberIdx];
+        this.showItemPicker(slot);
+      }),
+    );
 
-    this.input.keyboard.on("keydown-M", () => {
-      if (this.animating || this.targetingMode || this.pickerOverlay) return;
-      if (this.currentMemberIdx >= this.livingMembers.length) return;
-      this.autoMode = false;
-      this.executeSmartAttack();
-    });
+    this.input.keyboard.on(
+      "keydown-M",
+      oncePerKeyEvent((event) => {
+        if (event.repeat) return;
+        if (this.animating || this.targetingMode || this.pickerOverlay) return;
+        if (this.currentMemberIdx >= this.livingMembers.length) return;
+        this.autoMode = false;
+        this.executeSmartAttack();
+      }),
+    );
 
-    this.input.keyboard.on("keydown-B", () => {
-      if (this.animating || this.targetingMode || this.pickerOverlay) return;
-      if (this.currentMemberIdx >= this.livingMembers.length) return;
-      this.autoMode = false;
-      const slot = this.livingMembers[this.currentMemberIdx];
-      this.showAbilityPicker(slot);
-    });
+    this.input.keyboard.on(
+      "keydown-B",
+      oncePerKeyEvent((event) => {
+        if (event.repeat) return;
+        if (this.animating || this.targetingMode || this.pickerOverlay) return;
+        if (this.currentMemberIdx >= this.livingMembers.length) return;
+        this.autoMode = false;
+        const slot = this.livingMembers[this.currentMemberIdx];
+        this.showAbilityPicker(slot);
+      }),
+    );
 
     this.input.keyboard.on(
       "keydown-D",
@@ -679,12 +699,16 @@ export class BattleScene extends Phaser.Scene {
       }),
     );
 
-    this.input.keyboard.on("keydown-F", () => {
-      if (this.animating || this.targetingMode || this.pickerOverlay) return;
-      if (this.currentMemberIdx >= this.livingMembers.length) return;
-      this.autoMode = false;
-      this.doFlee();
-    });
+    this.input.keyboard.on(
+      "keydown-F",
+      oncePerKeyEvent((event) => {
+        if (event.repeat) return;
+        if (this.animating || this.targetingMode || this.pickerOverlay) return;
+        if (this.currentMemberIdx >= this.livingMembers.length) return;
+        this.autoMode = false;
+        this.doFlee();
+      }),
+    );
 
     // Major cinematics remain skippable after they begin. SPACE is a no-op
     // during normal battle input so it cannot accidentally select an action.
@@ -693,24 +717,31 @@ export class BattleScene extends Phaser.Scene {
     });
 
     // REPEAT last round's actions (issue #99)
-    this.input.keyboard.on("keydown-R", () => {
-      if (this.animating || this.targetingMode || this.pickerOverlay) return;
-      if (!this.lastRoundActions) return;
-      this.executeRepeat();
-    });
+    this.input.keyboard.on(
+      "keydown-R",
+      oncePerKeyEvent((event) => {
+        if (event.repeat) return;
+        if (this.animating || this.targetingMode || this.pickerOverlay) return;
+        if (!this.lastRoundActions) return;
+        this.executeRepeat();
+      }),
+    );
 
     // Toggle AUTO-BATTLE mode (issue #99)
-    this.input.keyboard.on("keydown-Q", (event) => {
-      if (event.repeat) return;
-      if (this.autoMode) {
-        this.stopAutoAfterRound();
-        return;
-      }
-      if (this.animating || this.targetingMode || this.pickerOverlay) return;
-      if (!this.lastRoundActions) return;
-      this.autoMode = true;
-      this.executeRepeat();
-    });
+    this.input.keyboard.on(
+      "keydown-Q",
+      oncePerKeyEvent((event) => {
+        if (event.repeat) return;
+        if (this.autoMode) {
+          this.stopAutoAfterRound();
+          return;
+        }
+        if (this.animating || this.targetingMode || this.pickerOverlay) return;
+        if (!this.lastRoundActions) return;
+        this.autoMode = true;
+        this.executeRepeat();
+      }),
+    );
 
     // Number keys 1-9 for target/picker selection
     const numKeys = [

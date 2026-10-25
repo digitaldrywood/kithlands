@@ -316,6 +316,7 @@ export class SettlementScene extends Phaser.Scene {
     const finishAnimation = () => {
       walk.complete();
       this.animating = false;
+      this.updateInteractionTargets();
     };
     this.tweens.add({
       targets: this.player,

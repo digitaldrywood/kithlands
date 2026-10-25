@@ -49,6 +49,7 @@ type Equipment struct {
 }
 
 type Magic struct {
+	StartingSpells      []string `json:"starting_spells,omitempty"`
 	Schools             []string `json:"schools"`
 	MaxSpellLevel       int      `json:"max_spell_level"`
 	PromotedSchools     []string `json:"promoted_schools"`

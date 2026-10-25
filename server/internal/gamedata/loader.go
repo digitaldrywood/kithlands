@@ -407,6 +407,7 @@ func (gd *GameData) validate() {
 			panic(fmt.Sprintf("gamedata: duplicate class id %q", c.ID))
 		}
 		classIDs[c.ID] = true
+		gd.validateStartingSpells(c)
 		if c.Name == "" {
 			panic(fmt.Sprintf("gamedata: class %q has empty name", c.ID))
 		}
