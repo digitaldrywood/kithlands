@@ -1,3 +1,4 @@
+import { drawFirebolt, fireContactDetails } from "./battle_contact_fx.js";
 const INTENSITY_TIERS = Object.freeze({
   1: Object.freeze({ scale: 0.82, particleCount: 4, strokeWidth: 2 }),
   2: Object.freeze({ scale: 1, particleCount: 6, strokeWidth: 3 }),
@@ -136,20 +137,13 @@ export function playBattleEffectToTarget(scene, actor, target, presentation) {
       "spell-projectile",
     );
     const flame = scene.add.graphics();
-    flame.fillStyle(presentation.glow, 0.48);
-    flame.fillTriangle(18, 0, -13, -12, -13, 12);
-    flame.fillStyle(presentation.core, 0.96);
-    flame.fillCircle(2, 0, 9 * presentation.scale);
-    flame.lineStyle(2, presentation.accent, 0.8);
-    flame.strokeCircle(2, 0, 6 * presentation.scale);
-    flame.fillStyle(presentation.accent, 0.7);
-    flame.fillCircle(-13, -5, 3);
-    flame.fillCircle(-20, 5, 2);
+    drawFirebolt(flame, presentation, presentation.scale);
     projectile.add(flame);
     projectile.setRotation(
       Math.atan2(destinationY - origin.y, target.x - origin.x),
     );
     const duration = reducedMotion ? 90 : 230 + presentation.intensityTier * 35;
+    let lastEmber = -1;
     return new Promise((resolve) => {
       scene.tweens.add({
         targets: projectile,
@@ -157,7 +151,30 @@ export function playBattleEffectToTarget(scene, actor, target, presentation) {
         y: destinationY,
         alpha: reducedMotion ? 0 : 1,
         duration: scene.scaledMs(duration),
-        ease: "Sine.InOut",
+        ease: "Sine.In",
+        onUpdate: (tween) => {
+          if (reducedMotion) return;
+          const step = Math.floor(tween.progress * 7);
+          flame.setScale(1, 1 + Math.sin(tween.progress * Math.PI * 8) * 0.08);
+          if (step === lastEmber) return;
+          lastEmber = step;
+          const ember = scene.add
+            .graphics()
+            .setDepth(19)
+            .setPosition(projectile.x, projectile.y);
+          ember._combatFxTag = "fire-trail";
+          ember.fillStyle(presentation.core, 0.6);
+          ember.fillCircle(0, 0, 3 + (step % 2));
+          scene.tweens.add({
+            targets: ember,
+            alpha: 0,
+            scaleX: 0.2,
+            scaleY: 0.2,
+            y: ember.y - 10,
+            duration: scene.scaledMs(180),
+            onComplete: () => ember.destroy(),
+          });
+        },
         onComplete: () => {
           projectile.destroy();
           const impact = tagEffect(
@@ -185,6 +202,12 @@ export function playBattleEffectToTarget(scene, actor, target, presentation) {
           impact.lineStyle(2, presentation.accent, 0.72);
           impact.lineBetween(-radius * 0.45, 8, 0, -radius * 0.65);
           impact.lineBetween(0, -radius * 0.65, radius * 0.45, 8);
+          fireContactDetails(
+            scene,
+            { x: target.x, y: destinationY },
+            presentation,
+            presentation.scale,
+          );
           resolve();
           scene.tweens.add({
             targets: impact,

@@ -49,7 +49,7 @@ describe("battle effect presentation", () => {
       tweens[0].onComplete();
       await effect;
       expect(arrived).toBe(true);
-      expect(tweens).toHaveLength(2);
+      expect(tweens.length).toBe(effect_family === "fire" ? 10 : 2);
       // The fading impact's completion has not run yet.
     },
   );

@@ -1,3 +1,4 @@
+import { meleeContactDetails } from "./battle_contact_fx.js";
 import { beginBattleAction } from "./battle_action_playback.js";
 import fieldPresentation from "../../../shared/field_presentation.json";
 import abilityDefinitions from "../../../shared/abilities.json";
@@ -4457,7 +4458,12 @@ export class BattleScene extends Phaser.Scene {
           );
         }
       }
-      if (isParty && !opts.missed) {
+      if (opts.missed) {
+        // A miss must not draw the same contact slash as a landed blow.
+      } else if (damageType === "physical") {
+        meleeContactDetails(this, x, y, opts);
+        if (isParty) this.spawnPartyImpactBurst(x, y);
+      } else if (isParty) {
         this.spawnPartyImpactBurst(x, y);
       } else {
         const g = this.add.graphics().setDepth(20);
