@@ -80,6 +80,9 @@ test.describe("interior templates proof", () => {
     );
     await page.evaluate(() => window.__kithlandsTest.movePlayer("up", "Town"));
     await page.waitForFunction(
+      () => !window.__kithlandsTest.sceneFlags("Town").animating,
+    );
+    await page.waitForFunction(
       () => window.__kithlandsTest.townSnapshot("Town").floorIndex === 1,
     );
     const innUpperSnapshot = await page.evaluate(() =>
@@ -116,7 +119,13 @@ test.describe("interior templates proof", () => {
     expect(templeSnapshot.templateId).toBe("temple_crypt_2f");
     expect(templeSnapshot.secretWallCount).toBeGreaterThan(0);
     await page.evaluate(() => window.__kithlandsTest.movePlayer("up", "Town"));
+    await page.waitForFunction(
+      () => !window.__kithlandsTest.sceneFlags("Town").animating,
+    );
     await page.evaluate(() => window.__kithlandsTest.movePlayer("up", "Town"));
+    await page.waitForFunction(
+      () => !window.__kithlandsTest.sceneFlags("Town").animating,
+    );
     const templeSecretSnapshot = await page.evaluate(() =>
       window.__kithlandsTest.townSnapshot("Town"),
     );

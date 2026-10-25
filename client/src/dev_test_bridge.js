@@ -549,6 +549,8 @@ function menuOverlaySummary(scene, kind) {
   return {
     kind,
     layoutMode: state.layout.mode,
+    busy: !!state.busy,
+    cursorLabel: state.rows?.[state.cursor]?.label || null,
     logicalSize: {
       width: scene?.scale?.gameSize?.width || null,
       height: scene?.scale?.gameSize?.height || null,

@@ -116,9 +116,25 @@ for (const viewport of [
         (name) => window.__kithlandsTest.fieldMagicRowPosition(name, "World"),
         before[1].name,
       );
+      await page.waitForFunction(
+        () =>
+          window.__kithlandsTest.menuOverlaySummary("magic", "World")?.busy ===
+          false,
+      );
       await page.mouse.move(target.x, target.y);
+      const selected = (name) =>
+        page.waitForFunction(
+          (name) =>
+            window.__kithlandsTest
+              .menuOverlaySummary("magic", "World")
+              ?.cursorLabel?.startsWith(name),
+          name,
+        );
+      await selected(before[1].name);
       await page.keyboard.press("ArrowUp");
+      await selected(before[0].name);
       await page.keyboard.press("ArrowDown");
+      await selected(before[1].name);
       await page.keyboard.press("Enter");
     } else {
       await click("fieldMagicRowPosition", before[1].name);
