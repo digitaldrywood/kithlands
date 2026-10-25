@@ -1,6 +1,16 @@
 import { expect } from "@playwright/test";
 
-export async function startNormalRoute(page) {
+export async function startNormalRoute(page, seed) {
+  if (seed !== undefined) {
+    await page.route("**/api/game/new", async (route) => {
+      await route.continue({
+        postData: JSON.stringify({
+          ...route.request().postDataJSON(),
+          rng_seed: seed,
+        }),
+      });
+    });
+  }
   await page.route("**/src/main.js*", async (route) => {
     const response = await route.fetch();
     await route.fulfill({

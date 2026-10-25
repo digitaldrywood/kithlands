@@ -833,9 +833,16 @@ export class WorldScene extends Phaser.Scene {
   }
 
   async triggerQuestAdvance(locationName, nodeId) {
+    const quest = this.gameState.quests?.[this.gameState.current_quest];
+    const step = quest?.objectives?.step;
+    const approachingFight =
+      quest?.actions?.[step]?.type === "kill" ||
+      (quest?.actions?.[step]?.type === "goto" &&
+        quest?.actions?.[step + 1]?.type === "kill");
     if (
-      this.gameState.final_encounter &&
-      !this.gameState.final_encounter.defeated
+      approachingFight ||
+      (this.gameState.final_encounter &&
+        !this.gameState.final_encounter.defeated)
     ) {
       await this.triggerAutosave("pre_combat");
     }

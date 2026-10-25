@@ -44,7 +44,8 @@
       "goto",
       "report"
     ],
-    "act": 1
+    "act": 1,
+    "objective_definition": "Q04"
   },
   {
     "id": "Q05",

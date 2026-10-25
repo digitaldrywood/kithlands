@@ -49,7 +49,7 @@ func (g *Game) ToSaveStateWithWorldPosition(name, userID string, position *World
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	if (g.inDungeon() || g.finalEncounterActive()) && g.phase == "combat" {
+	if (g.inDungeon() || g.finalEncounterActive() || g.objectiveEncounterActive()) && g.phase == "combat" {
 		return nil, fmt.Errorf("finish or flee the encounter before saving")
 	}
 	if position != nil {

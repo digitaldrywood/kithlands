@@ -69,9 +69,9 @@ The initial native Q04 Bandit Clearing run revealed that the legacy handler
 completes it on arrival without a quest fight. Ordinary travel encounters do
 not satisfy the promised encounter. Q05 Lost Person likewise uses legacy
 arrival completion; the final desktop test exercised that existing behavior.
-Neither quest condition is repaired by a presentation change. They remain
-explicitly open in the playability tracker and need server-owned objective,
-combat/recovery, replay and persistence acceptance.
+The receipt change did not repair either condition. Q04 has since been repaired
+with a separate authored fight and return/report; see `TRAIL_QUEST_COMBAT_PROOF.md`.
+Q05 remains open for server-owned escort, recovery, replay and persistence acceptance.
 
 Automated routes know destinations. Their elapsed seconds are not evidence of
 unassisted human pacing or a fifteen-minute integrated route. The jump from

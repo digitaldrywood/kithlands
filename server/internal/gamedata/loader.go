@@ -132,6 +132,18 @@ func Load(sharedDir string) *GameData {
 	}
 	gd.validateDungeons()
 	gd.validateFinalEncounter()
+	for id, def := range gd.QuestObjectives {
+		if def.Encounter == nil {
+			continue
+		}
+		for _, roster := range [][]string{def.Encounter.Monsters, def.Encounter.FullPartyMonsters} {
+			for _, monster := range roster {
+				if gd.MonsterByID(monster) == nil {
+					panic(fmt.Sprintf("gamedata: quest %s monster %q missing", id, monster))
+				}
+			}
+		}
+	}
 
 	return gd
 }

@@ -364,6 +364,22 @@ export function showInteractPrompt(scene, spawn) {
   else if (tags.includes("shop") || tags.includes("commerce")) action = "Shop";
   else if (tags.includes("temple") || tags.includes("revive")) action = "Pray";
 
+  const quest = scene.gameState?.quests?.[scene.gameState?.current_quest];
+  const step = quest?.objectives?.step;
+  const objective = quest?.actions?.[step];
+  const encounter =
+    objective?.type === "kill"
+      ? objective
+      : objective?.type === "goto"
+        ? quest?.actions?.[step + 1]
+        : null;
+  if (
+    !quest?.completed &&
+    encounter?.type === "kill" &&
+    encounter.location === spawn.node_id
+  )
+    action = encounter.prompt;
+
   if (scene.explorationHUD) {
     scene.explorationHUD.interaction(`${action} — ${destination}`);
     return;

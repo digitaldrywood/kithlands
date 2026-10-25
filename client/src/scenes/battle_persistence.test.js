@@ -1,6 +1,27 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearPrefs } from "../systems/prefs.js";
 
+describe("quest encounter defeat handoff", () => {
+  it("returns a recovered quest party to exploration instead of victory results", async () => {
+    const { BattleScene } = await import("./battle.js");
+    const scene = new BattleScene();
+    scene.returnFromBattle = vi.fn();
+    const recovered = {
+      phase: "world",
+      current_quest: 0,
+      quests: [{ objectives: { step: 1, recovery: "defeat" } }],
+    };
+    expect(scene.returnFromDungeonDefeat(recovered)).toBe(true);
+    expect(scene.returnFromBattle).toHaveBeenCalledWith(recovered);
+    // A retained recovery marker must not redirect an unrelated battle result.
+    scene.returnFromBattle.mockClear();
+    expect(
+      scene.returnFromDungeonDefeat({ ...recovered, phase: "quest_complete" }),
+    ).toBe(false);
+    expect(scene.returnFromBattle).not.toHaveBeenCalled();
+  });
+});
+
 const apiMocks = vi.hoisted(() => ({
   claimChest: vi.fn(),
   gameAction: vi.fn(),

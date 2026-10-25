@@ -162,6 +162,7 @@ func (g *Game) processCombatAction(req GameActionRequest) (*GameState, error) {
 			g.phase = "world"
 			g.message = "Got away safely!"
 			g.leaveFinalEncounter(false)
+			g.leaveObjectiveEncounter(false)
 			if g.inDungeon() {
 				g.dungeon.EncounterID = ""
 			}
@@ -623,6 +624,7 @@ func (g *Game) resolveCombatOutcome(combatants []*combat.Combatant) {
 		g.spellBuffs = nil
 
 		g.completeDungeonEncounter()
+		g.completeObjectiveEncounter()
 
 		if g.completeFinalEncounter() {
 			g.resetEncounterStartState()
@@ -636,9 +638,9 @@ func (g *Game) resolveCombatOutcome(combatants []*combat.Combatant) {
 			g.phase = "world"
 			g.resetEncounterStartState()
 		} else {
-			// Combat victory never advances quests (issue #86). Quests only
-			// advance when the party enters the quest's target building via
-			// processWorldAction's "quest_advance" branch in game_world.go.
+			// Ordinary combat never pays a quest reward (issue #86). Authored
+			// objective fights may record victory proof above; their payout
+			// still requires the separate return/report interaction.
 			// The victory screen (phase=quest_complete) is acknowledged by
 			// the client via the "advance" action, which returns the party
 			// to world.
@@ -650,6 +652,7 @@ func (g *Game) resolveCombatOutcome(combatants []*combat.Combatant) {
 		g.message = "Your party has fallen. Game over."
 		g.recoverDungeonDefeat()
 		g.leaveFinalEncounter(true)
+		g.leaveObjectiveEncounter(true)
 		g.spellBuffs = nil
 		g.clearPendingChestClaimUnlocked()
 		g.resetEncounterStartState()

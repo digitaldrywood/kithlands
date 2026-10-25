@@ -5,6 +5,8 @@ Updated 2026-10-25. This file records work; it does not schedule unattended runs
 
 ## Verified locally
 
+- Q04 Bandit Clearing now requires its authored trail-approach fight and a separate return/report. The entrance warns about the fight; unrelated travel encounters never clear it. Pending victory reports survive save/load, recovery allows ordinary travel and retry, and completed saves remain completed. See `TRAIL_QUEST_COMBAT_PROOF.md`. Q05 escort mechanics remain open.
+
 - Native fresh campaign audits now verify actual level-ups through normal quest actions, including fetch collection/return and delivery pickup/handoff, with encounters enabled and no grants. Campaign rewards can raise a fresh party from level one to three under the current XP curve. The old World-only reward message vanished on building entry; a temporary corner receipt now survives that transition and shows the server-confirmed quest, XP, gold and actual level changes. It holds for eight seconds, fades, supports dismissal without confirming the NPC underneath, and clears at Title. See `CAMPAIGN_PROGRESSION_PROOF.md` for final gates and limits.
 
 - Development watcher excludes temporary proof/test/report directories. A native regression observes Vite's actual `vite:beforeFullReload` events: rewriting a trace HTML file sends a notification with the old configuration and sends none with the ignore rule; the same playable game remains loaded. This proves artifact/HMR isolation, not the cause of the earlier trace teardown timeout. See `DEV_ARTIFACT_WATCHER_PROOF.md`.
@@ -80,7 +82,10 @@ The Heron Pool detour now connects an optional visible threat → guarded smithi
 - [x] Play and time an automated normal fresh route with encounters enabled, no debug grants, real starting money and levels; document what shopping/spell purchasing/XP is actually reachable.
 - [x] Verify a natural campaign level-up through normal travel and quest interactions; the campaign reward currently supplies 180 XP per living member and can reach level three. The two-fight Old Mill detour alone still yields only 24 XP per member.
 - [ ] Verify unassisted first-visit pacing and the intended reward curve; automated route duration is not a human timing estimate.
-- [ ] Repair arrival-only completion of legacy threat/escort quests. The native Q04 Bandit Clearing audit awarded the quest reward on entering its target with no quest fight; travel encounters are unrelated. Q05 also still uses the legacy arrival path. Add proper server-owned completion conditions and save/replay/recovery proof before calling campaign pacing complete.
+- [x] Repair Q04 arrival-only completion with an authored quest fight, return/report, reward replay guards and pending-report save/load proof.
+- [ ] Repair Q05 Lost Person arrival-only completion with proper server-owned escort conditions, travel/recovery and save/replay proof before calling campaign pacing complete.
+- [ ] Fix the exploration notice overlapping the interaction prompt on phone (seen in the native Q04 recovery screenshot).
+- [ ] Diagnose the hosted merchant-stock-authority phone revisit timeout on 370dfc4; do not treat its gameplay gate as passing.
 - [ ] Inspect unique screenshots and motion evidence; run required local gates and obtain passing relevant remote CI.
 
 The active goal is the complete user-pasted request, not only this checklist. Existing local proof should be reused where valid; a check stays open when its remaining acceptance depends on the new connected route or final integrated verification.

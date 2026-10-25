@@ -11,7 +11,13 @@ const proof = path.resolve(`tmp/campaign-first-level-${Date.now()}`);
 mkdirSync(proof, { recursive: true });
 test.use({ video: "on", reducedMotion: "no-preference" });
 
-for (const width of [1440, 390]) {
+// Fixed ordinary campaign seeds cover the trail encounter and parcel handoff.
+// Only RNG is selected; starting money, resources, XP and encounters are unchanged.
+for (const { width, seed } of [
+  { width: 1440, seed: 6 },
+  { width: 390, seed: 6 },
+  { width: 800, seed: 4 },
+]) {
   test.describe(`${width} campaign`, () => {
     test.use({
       viewport: { width, height: width === 390 ? 844 : 900 },
@@ -62,6 +68,25 @@ for (const width of [1440, 390]) {
             `${width}-${String(milestones.length).padStart(2, "0")}-${stage}.png`,
           ),
         });
+      };
+      const saveAndResume = async () => {
+        await page.keyboard.press("m");
+        await page
+          .getByRole("button", { name: "Exit to main menu", exact: true })
+          .click();
+        await page
+          .getByRole("button", { name: "Save and exit", exact: true })
+          .click();
+        await expect(
+          page.getByRole("main", { name: "Kithlands main menu" }),
+        ).toBeVisible();
+        await expect(
+          page.getByRole("status", { name: "Quest reward" }),
+        ).toHaveCount(0);
+        await page.getByRole("button", { name: /^Continue/ }).click();
+        await page.locator(".title-adventure > .title-save").click();
+        await routeReady(page, "World");
+        return state();
       };
       const walk = async (key, target) => {
         while ((await walkNormally(page, key, target)) === "Battle") {
@@ -136,7 +161,7 @@ for (const width of [1440, 390]) {
         await walk("Town", target);
       };
       try {
-        await startNormalRoute(page);
+        await startNormalRoute(page, seed);
         const initial = await state(),
           quest = initial.quests[initial.current_quest];
         expect(initial.party.every((p) => p.level === 1)).toBe(true);
@@ -165,10 +190,14 @@ for (const width of [1440, 390]) {
             await walk("World", spawn);
             const gather = page.getByRole("button", { name: /^Gather —/ });
             if (await gather.count()) await gather.click();
-            await page
+            const entrance = page
               .getByRole("button")
-              .filter({ hasText: `— ${spawn.name}` })
-              .click();
+              .filter({ hasText: `— ${spawn.name}` });
+            if (q.template_id === "Q04" && q.objectives.step <= 1) {
+              await expect(entrance).toContainText(q.actions[1].prompt);
+              await capture("trail-approach");
+            }
+            await entrance.click();
             await page.waitForFunction(() =>
               ["Town", "Settlement", "Battle"].includes(
                 window.__kithlandsTest.activeSceneKey(),
@@ -178,8 +207,83 @@ for (const width of [1440, 390]) {
               (await page.evaluate(() =>
                 window.__kithlandsTest.activeSceneKey(),
               )) === "Battle"
-            )
+            ) {
+              const fighting = await state();
+              expect(fighting.quests[0].objectives.step).toBe(1);
+              expect(fighting.quests[0].completed).toBe(false);
+              await capture("trail-quest-fight");
+              if (width === 390) {
+                // Deliberately defend until the real enemies win. No HP fixture.
+                for (let choice = 0; choice < 200; choice++) {
+                  await page.waitForFunction(() => {
+                    if (window.__kithlandsTest.activeSceneKey() !== "Battle")
+                      return true;
+                    const b = window.__normalRouteGame.scene.getScene("Battle");
+                    return (
+                      !b.animating &&
+                      b.promptText?.getText().includes("choose an action")
+                    );
+                  });
+                  if (
+                    (await page.evaluate(() =>
+                      window.__kithlandsTest.activeSceneKey(),
+                    )) !== "Battle"
+                  )
+                    break;
+                  const beforeChoice = await page.evaluate(
+                    () =>
+                      window.__normalRouteGame.scene.getScene("Battle")
+                        .currentMemberIdx,
+                  );
+                  await page.keyboard.press("d");
+                  await page.waitForFunction((before) => {
+                    if (window.__kithlandsTest.activeSceneKey() !== "Battle")
+                      return true;
+                    const b = window.__normalRouteGame.scene.getScene("Battle");
+                    return b.animating || b.currentMemberIdx !== before;
+                  }, beforeChoice);
+                }
+                await routeReady(page, "World");
+                const recovered = await state();
+                expect(recovered.phase).toBe("world");
+                expect(recovered.quests[0].objectives.step).toBe(1);
+                expect(recovered.quests[0].objectives.recovery).toBe("defeat");
+                expect(recovered.quests[0].completed).toBe(false);
+                expect(recovered.party.every((p) => p.hp === p.max_hp)).toBe(
+                  true,
+                );
+                expect(recovered.gold).toBe(fighting.gold);
+                await capture("quest-defeat-recovered");
+                await page
+                  .getByRole("button")
+                  .filter({ hasText: `— ${spawn.name}` })
+                  .click();
+                await routeReady(page, "Battle");
+                expect(
+                  (await state()).quests[0].objectives.recovery,
+                ).toBeUndefined();
+                await capture("quest-retry");
+              }
               await fightNormally(page);
+              const cleared = await state();
+              expect(cleared.quests[0].objectives.step).toBe(2);
+              expect(cleared.quests[0].objectives.clue).toBeTruthy();
+              expect(cleared.quests[0].completed).toBe(false);
+              await capture("trail-cleared-report-pending");
+              if (width === 1440) {
+                const resumed = await saveAndResume();
+                expect(resumed.quests[0].objectives).toEqual(
+                  cleared.quests[0].objectives,
+                );
+                expect(resumed.quests[0].completed).toBe(false);
+                expect(resumed.gold).toBe(cleared.gold);
+                expect(resumed.party.map((p) => [p.level, p.xp])).toEqual(
+                  cleared.party.map((p) => [p.level, p.xp]),
+                );
+                await capture("pending-report-reloaded");
+              }
+              continue;
+            }
             gs = await state();
             if (gs.quests.find((q) => q.id === quest.id)?.completed) {
               await capture("quest-reward-arrival");
@@ -282,21 +386,7 @@ for (const width of [1440, 390]) {
         } else {
           await expect(rewardNotice).toHaveCount(0, { timeout: 10000 });
           await capture("reward-expired");
-          await page.keyboard.press("m");
-          await page
-            .getByRole("button", { name: "Exit to main menu", exact: true })
-            .click();
-          await page
-            .getByRole("button", { name: "Save and exit", exact: true })
-            .click();
-          await expect(
-            page.getByRole("main", { name: "Kithlands main menu" }),
-          ).toBeVisible();
-          await expect(rewardNotice).toHaveCount(0);
-          await page.getByRole("button", { name: /^Continue/ }).click();
-          await page.locator(".title-adventure > .title-save").click();
-          await routeReady(page, "World");
-          const resumed = await state();
+          const resumed = await saveAndResume();
           expect(resumed.party.map((p) => [p.level, p.xp])).toEqual(
             final.party.map((p) => [p.level, p.xp]),
           );

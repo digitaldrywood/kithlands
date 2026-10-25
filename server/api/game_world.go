@@ -92,6 +92,9 @@ func (g *Game) processWorldAction(req GameActionRequest) (*GameState, error) {
 				return g.advanceFinalEncounter(q, req.NodeID)
 			}
 			if g.advanceObjectiveArrival(q, req.NodeID) {
+				if err := g.startObjectiveEncounter(q); err != nil {
+					return nil, err
+				}
 				state := g.stateUnlocked()
 				return &state, nil
 			}

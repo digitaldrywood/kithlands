@@ -3541,7 +3541,14 @@ export class BattleScene extends Phaser.Scene {
     const finalDefeat =
       this.gameState?.final_encounter?.active &&
       gs?.final_encounter?.recovery === "defeat";
-    if (gs?.dungeon?.recovered_from_defeat !== true && !finalDefeat)
+    const questDefeat =
+      gs?.phase === "world" &&
+      gs?.quests?.[gs.current_quest]?.objectives?.recovery === "defeat";
+    if (
+      gs?.dungeon?.recovered_from_defeat !== true &&
+      !finalDefeat &&
+      !questDefeat
+    )
       return false;
     this.gameState = gs;
     this.autoMode = false;

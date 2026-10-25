@@ -88,6 +88,31 @@ function makeScene() {
 }
 
 describe("showInteractPrompt", () => {
+  it("announces the authored quest fight before entering and restores normal use after victory", () => {
+    const scene = makeScene();
+    scene.explorationHUD = { interaction: vi.fn() };
+    scene.gameState.current_quest = 0;
+    scene.gameState.quests = [
+      {
+        objectives: { step: 0 },
+        actions: [
+          { type: "goto", location: "shop" },
+          { type: "kill", location: "shop", prompt: "Clear the blocked trail" },
+          { type: "goto", location: "giver" },
+        ],
+      },
+    ];
+    const spawn = { node_id: "shop", name: "Trading Post", tags: ["shop"] };
+    showInteractPrompt(scene, spawn);
+    expect(scene.explorationHUD.interaction).toHaveBeenLastCalledWith(
+      "Clear the blocked trail — Trading Post",
+    );
+    scene.gameState.quests[0].objectives.step = 2;
+    showInteractPrompt(scene, spawn);
+    expect(scene.explorationHUD.interaction).toHaveBeenLastCalledWith(
+      "Shop — Trading Post",
+    );
+  });
   it("shows Rest for house tags", () => {
     const scene = makeScene();
     showInteractPrompt(scene, { name: "Home", tags: ["house"] });

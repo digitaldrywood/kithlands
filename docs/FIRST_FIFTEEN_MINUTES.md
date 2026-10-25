@@ -26,8 +26,9 @@ with the current 180-XP quest reward. The reward receipt shows XP, gold and
 new levels in a corner, stays readable through scene changes, then fades.
 This is an alternative first-session emphasis; completing an errand plus the
 entire mill sample within fifteen minutes has not been timed with a new human
-player. Older threat/escort quest completion still needs repair; see the
-tracker's Q04/Q05 findings.
+player. Bandit Clearing now requires a trail fight and return/report; use the
+**Clear the blocked trail** prompt at its destination. Lost Person still needs
+proper escort conditions; see the tracker.
 
 For the most connected early detour, take **Old Mill trail → Explore the
 optional Heron Pool**. The marked reed-bank herd offers an encounter preview
