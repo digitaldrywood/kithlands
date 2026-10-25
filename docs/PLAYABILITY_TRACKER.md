@@ -5,6 +5,8 @@ Updated 2026-10-25. This file records work; it does not schedule unattended runs
 
 ## Verified locally
 
+- A fresh level-one native-input route now connects the shared journal, territorial herbs/ore, a legitimate Frost purchase, the optional Heron fight, earned smithing supplies, potion/precision-blade/gem crafting, equipment/socketing, safe-bank rest, mill-bat combat and save/exit/newest-history/reload. Desktop and phone-width mixed-input replays pass; save equality includes absolute resource deadlines and socketed equipment. The observed finish is 28 gold and 24 XP per member, still level one. This verifies availability and continuity, not human first-visit pacing or a natural level-up. See `FIRST_SESSION_ROUTE_PROOF.md`. Campaign progression, broader recovery paths and terrain/motion acceptance remain open.
+
 - Unified campaign/local-story journal and Old Mill return flow.
 - Gatherable herbs, wood and minerals; habitat placement; saved respawn deadlines.
 - Iron/Steel/Mythril crafting progression with purchased supplies and Old Mill's rare core.
@@ -18,7 +20,7 @@ Updated 2026-10-25. This file records work; it does not schedule unattended runs
 
 ## Current slice: the real opening route
 
-- The fixed canvas shop has been replaced with one responsive viewport dialog. Desktop has stock/preview columns; phones have full-width selection/details and fixed actions. Equipment comparisons, server-owned spell eligibility, authored spell descriptions, supply confirmation, pending-request protection, stale-stock recovery and readable receipts are verified with real purchases. Reusable purchases keep their selection with refreshed offer IDs. Lower evade penalties now show as improvements, and redundant zero-value cards no longer hide phone deltas. All 18 final shop/opening native cases, 789 client tests, build and formatting pass. Two authored Old Mill combat/crafting/save routes also pass; their advanced crafting still uses a level fixture. Inspected final phone/desktop captures and retained evidence are in `RESPONSIVE_SHOP_PROOF.md`. The shop slice needs its own remote run; natural first-fifteen-minute acceptance remains next.
+- The fixed canvas shop has been replaced with one responsive viewport dialog. Desktop has stock/preview columns; phones have full-width selection/details and fixed actions. Equipment comparisons, server-owned spell eligibility, authored spell descriptions, supply confirmation, pending-request protection, stale-stock recovery and readable receipts are verified with real purchases. Reusable purchases keep their selection with refreshed offer IDs. Lower evade penalties now show as improvements, and redundant zero-value cards no longer hide phone deltas. All 18 final shop/opening native cases, 789 client tests, build and formatting pass. Two authored Old Mill combat/crafting/save routes also pass; their advanced crafting still uses a level fixture. Inspected final phone/desktop captures and retained evidence are in `RESPONSIVE_SHOP_PROOF.md`. Hosted visual run `40227349724` passes gameplay, walking, interiors and the protected summary on `bb94f6f`. Natural first-fifteen-minute acceptance remains next.
 
 - Historical run `40213425092` verified Defend, walking and interiors but exposed a test mistake: the last phone-only submenu boundary assumed desktop status was also below commands. Corrected the assertion to require command-region containment and rectangle non-overlap in both arrangements. All five native-game viewport/touch cases pass with inspected proof in `client/tmp/battle-context-1792948200314/`; the corrected `1811ed7` visual gate is green below.
 
@@ -42,7 +44,7 @@ Updated 2026-10-25. This file records work; it does not schedule unattended runs
 - The retained failing CI trace diagnosed repeated delivery of the same native ArrowUp event by Phaser. Field magic now handles each native event once while preserving distinct presses. The new event-replay regression fails before the fix and passes afterward; all four viewport flows and five throttled repeats pass locally. Remote run `40209842181` on `e217cba` passes gameplay, walking, interiors and the protected summary, including the Cure regression and Warrior critical proof. See `FIELD_MAGIC_INPUT_DIAGNOSTICS.md` for diagnosis and local evidence.
 - Historical visual failures led to the retained Cure trace in run `40207076015`. The corrected head `e217cba` is green in run `40209842181`. Further gameplay changes still need their own gate; general self-hosted CI remains pending.
 - Integration migration discovery now works with `GOFLAGS=-trimpath`: the helper locates the server module from the working directory. The regression fails before the fix and passes afterward with/without trimpath. Full `make test-e2e` passes against a separate disposable database, which teardown removed; the live save database remains available. See `INTEGRATION_MIGRATION_PROOF.md`.
-- General CI run `40202414785` is queued for `[self-hosted, linux, personal]`; GitHub's repository runner API reports zero registered runners. Local checks cannot substitute for a completed remote gate. Preserve the existing runner configuration pending an infrastructure decision.
+- General CI run `40202414785` is queued for `[self-hosted, linux, personal]`; GitHub's repository runner API reports zero registered runners. Local checks cannot substitute for a completed remote gate. Owner decision: keep self-hosted CI; Cory will restore a runner. Do not migrate this workflow to GitHub-hosted runners. Continue independent gameplay work meanwhile.
 - Corrected the fifteen-minute walkthrough to include hardwood, current recipes and saved respawn timers. It still explicitly requires a timed normal fresh-player verification; the document is not proof of the complete loop.
 
 ## Current playable slice and remaining stability work
@@ -68,8 +70,9 @@ The Heron Pool detour now connects an optional visible threat → guarded smithi
 - [ ] Inspect resource habitat terrain and meadow landmarks on the actual quest route; check saved respawn deadlines after closing/reopening.
 - [ ] Recheck locality Back/Cancel, one journal/menu, temporary notifications and scene transitions for stale overlays.
 - [ ] Verify crafting, shops, inventory, equipment comparison and all gem operations with consistent icons and keyboard/touch input at desktop and phone sizes.
-- [ ] Verify newest save selection and optional history with multiple snapshots of one adventure.
-- [ ] Play and time a normal fresh route with encounters enabled, no debug grants, real starting money and levels; document what shopping/spell purchasing/leveling is actually reachable.
+- [x] Verify newest save selection and optional history with multiple snapshots of one adventure.
+- [x] Play and time an automated normal fresh route with encounters enabled, no debug grants, real starting money and levels; document what shopping/spell purchasing/XP is actually reachable.
+- [ ] Verify natural campaign level-up and unassisted first-visit pacing; two opening fights currently yield 24 XP per member, below the level-two threshold of 70.
 - [ ] Inspect unique screenshots and motion evidence; run required local gates and obtain passing relevant remote CI.
 
 The active goal is the complete user-pasted request, not only this checklist. Existing local proof should be reused where valid; a check stays open when its remaining acceptance depends on the new connected route or final integrated verification.

@@ -60,11 +60,20 @@ It exposed a disappearing settlement trail control and replayed battle command
 input, as well as the formerly redundant spell catalog. Those defects have
 specific regression coverage; see `OPENING_ROUTE_RECOVERY_PROOF.md`.
 
-The audit included time spent inspecting/debugging the game, so its 15-minute
-wall-clock record is not a first-time player timing estimate. It did not finish
-the complete crafting/gems/level-up route. That integrated acceptance remains
-open; the numbered time budgets above remain suggestions. The short scripted
-shop round-trip proves legitimate spell availability, not unassisted pacing.
+A subsequent uninterrupted native-input route connected the journal, herbs,
+ore, a purchased Frost spell, the optional Heron battle, earned smithing
+supplies, a potion, Balanced Trail Sword, an Ember Gem, equipment/socketing,
+the bank rest and the mill-bat fight. It starts with a normal level-one party
+and 100 gold, keeps encounters enabled, and uses no debug grants or direct
+combat submissions. The observed finish was 28 gold and 24 XP per character;
+all four were still level one (level two requires 70 XP). This demonstrates
+real progression, not a level-up. See `FIRST_SESSION_ROUTE_PROOF.md`.
+
+The scripted route knows every destination and selects commands immediately;
+its elapsed time is a regression measurement, not an unassisted first-time
+player timing estimate. The table remains a suggested human playtest budget.
+Natural level-up timing, complete campaign integration and perceived pacing
+still require acceptance.
 
 ## Gathering and professions recommendation
 
