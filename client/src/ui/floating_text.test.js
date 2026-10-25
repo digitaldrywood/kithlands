@@ -122,7 +122,7 @@ describe("FloatingTextPool", () => {
     expect(active.fontSize).toBe(26);
     expect(active.color).toBe("#ff8800");
     expect(active.stroke).toBe("#140808");
-    expect(active.strokeThickness).toBe(2);
+    expect(active.strokeThickness).toBe(4);
     expect(active.scaleX).toBeGreaterThan(1);
     expect(scene.tweenCalls[0]).toMatchObject({
       targets: active,
@@ -132,10 +132,34 @@ describe("FloatingTextPool", () => {
     });
     expect(scene.tweenCalls[1]).toMatchObject({
       targets: active,
-      alpha: 0,
-      duration: 1080,
-      y: 174,
+      duration: 1850,
+      y: 208,
     });
+  });
+
+  it("keeps critical text opaque through a 1.5-second read hold without flashing", async () => {
+    const scene = makeScene();
+    const pool = new FloatingTextPool(scene);
+    await pool.spawn(300, 180, 42, "crit", "enemy_1");
+    expect(pool.active[0].text).toBe("CRITICAL\n-42!");
+    const fades = scene.tweenCalls.filter((t) => t.alpha !== undefined);
+    expect(fades).toHaveLength(1);
+    expect(fades[0]).toMatchObject({ alpha: 0, delay: 1500, duration: 600 });
+    expect(pool.active[0].alpha).toBe(1);
+    fades[0].onComplete();
+    expect(pool.active).toHaveLength(0);
+  });
+
+  it("reduced motion holds text still without a bounce", async () => {
+    const scene = makeScene();
+    scene.reducedBattleMotion = () => true;
+    const pool = new FloatingTextPool(scene);
+    await pool.spawn(100, 100, 33, "physical", "enemy_1");
+    const t = pool.active[0];
+    expect(t.scaleX).toBe(1);
+    expect(scene.tweenCalls).toHaveLength(2);
+    expect(scene.tweenCalls[0].y).toBe(t.y);
+    expect(scene.tweenCalls[1].delay).toBeGreaterThanOrEqual(1200);
   });
 
   it("applies elemental magical colors without dropping the default stroke", async () => {
@@ -148,14 +172,13 @@ describe("FloatingTextPool", () => {
 
     const active = pool.active[0];
     expect(active.text).toBe("-18");
-    expect(active.color).toBe("#ff4444");
+    expect(active.color).toBe("#ffbb80");
     expect(active.stroke).toBe("#111111");
-    expect(active.strokeThickness).toBe(2);
-    expect(scene.tweenCalls).toHaveLength(2);
+    expect(active.strokeThickness).toBe(4);
+    expect(scene.tweenCalls).toHaveLength(3);
     expect(scene.tweenCalls[1]).toMatchObject({
       targets: active,
-      alpha: 0,
-      duration: 960,
+      duration: 1750,
     });
   });
 });

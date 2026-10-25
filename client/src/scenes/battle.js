@@ -1,3 +1,4 @@
+import { combatReadTime } from "../ui/combat_read_time.js";
 import { meleeContactDetails } from "./battle_contact_fx.js";
 import { beginBattleAction } from "./battle_action_playback.js";
 import fieldPresentation from "../../../shared/field_presentation.json";
@@ -3490,6 +3491,7 @@ export class BattleScene extends Phaser.Scene {
 
   async animateCombatLog(log, actions) {
     for (let i = 0; i < log.length; i++) {
+      if (i > 0) await this.waitForCombatRead();
       const line = log[i];
       const action = actions[i] || {};
 
@@ -4208,6 +4210,17 @@ export class BattleScene extends Phaser.Scene {
         await this.wait(ACTION_BEAT_MS.interAction);
       }
     }
+    await this.waitForCombatRead();
+  }
+
+  // The final result also stays readable before victory or command selection.
+  async waitForCombatRead() {
+    const remaining = Math.max(
+      0,
+      (this.combatReadUntil || 0) - performance.now(),
+    );
+    if (remaining)
+      await new Promise((resolve) => this.time.delayedCall(remaining, resolve));
   }
 
   async runCinematicProofDemo() {
@@ -4665,6 +4678,7 @@ export class BattleScene extends Phaser.Scene {
       }
     }
     const charMs = messageCharMs();
+    this.combatReadUntil = performance.now() + combatReadTime(line, charMs);
     this.promptText.setColor(color);
     this.revealLastLine = line || "";
     if (!line || charMs <= 0) {

@@ -4,98 +4,98 @@ import Phaser from "phaser";
 const FLOAT_STYLES = {
   physical: {
     color: "#ffffff",
-    fontSize: "22px",
-    rise: 52,
-    duration: 1040,
+    fontSize: "28px",
+    rise: 22,
+    duration: 1750,
     prefix: "-",
     bounceScale: 1.18,
     stroke: "#111111",
-    strokeThickness: 2,
+    strokeThickness: 4,
   },
   crit: {
     color: "#ffcc00",
-    fontSize: "30px",
-    rise: 60,
-    duration: 980,
+    fontSize: "32px",
+    rise: 24,
+    duration: 2100,
     prefix: "-",
     suffix: "!",
     bounceScale: 1.34,
     stroke: "#1f1300",
-    strokeThickness: 2,
+    strokeThickness: 4,
   },
   magical: {
     color: "#bb88ff",
-    fontSize: "22px",
-    rise: 48,
-    duration: 960,
+    fontSize: "28px",
+    rise: 22,
+    duration: 1750,
     prefix: "-",
     bounceScale: 1.18,
     stroke: "#111111",
-    strokeThickness: 2,
+    strokeThickness: 4,
   },
   heal: {
     color: "#44ff44",
-    fontSize: "20px",
-    rise: 44,
-    duration: 920,
+    fontSize: "28px",
+    rise: 20,
+    duration: 1750,
     prefix: "+",
     bounceScale: 1.12,
     stroke: "#0b1a0b",
-    strokeThickness: 2,
+    strokeThickness: 4,
   },
   miss: {
-    color: "#888888",
-    fontSize: "14px",
-    rise: 28,
-    duration: 680,
+    color: "#eef2fa",
+    fontSize: "24px",
+    rise: 16,
+    duration: 1600,
     text: "MISS",
     fontStyle: "italic",
     bounceScale: 1.1,
     stroke: "#111111",
-    strokeThickness: 2,
+    strokeThickness: 4,
   },
   party_hit: {
     color: "#ff8800",
     fontSize: "26px",
-    rise: 56,
-    duration: 1080,
+    rise: 22,
+    duration: 1850,
     prefix: "-",
     bounceScale: 1.22,
     stroke: "#140808",
-    strokeThickness: 2,
+    strokeThickness: 4,
   },
   defeated: {
     color: "#ff4444",
-    fontSize: "11px",
+    fontSize: "20px",
     rise: 0,
-    duration: 1000,
+    duration: 1750,
     delay: 300,
     text: "DEFEATED!",
     bounceScale: 1.08,
     stroke: "#220808",
-    strokeThickness: 2,
+    strokeThickness: 4,
   },
 };
 
 // Element color overrides for magical damage
 const ELEMENT_TEXT_COLORS = {
-  fire: "#ff4444",
-  ice: "#44aaff",
+  fire: "#ffbb80",
+  ice: "#a4e5ff",
   lightning: "#ffff44",
   holy: "#ffffff",
-  dark: "#cc66ff",
+  dark: "#dab7ff",
 };
 
 const POOL_SIZE = 24;
 const MAX_PER_TARGET = 6;
 const STAGGER_X = 18;
-const STAGGER_Y = 14;
-const STAGGER_WINDOW = 150; // ms
+const STAGGER_Y = 34;
+const STAGGER_WINDOW = 700; // ms
 
 const BASE_STYLE = {
   fontSize: "16px",
   color: "#ffffff",
-  fontFamily: "monospace",
+  fontFamily: "Arial, sans-serif",
   fontStyle: "bold",
 };
 
@@ -217,6 +217,7 @@ export class FloatingTextPool {
    */
   spawn(x, y, value, type, targetKey, opts = {}) {
     const style = FLOAT_STYLES[type] || FLOAT_STYLES.physical;
+    const reducedMotion = this.scene.reducedBattleMotion?.() || false;
 
     this._enforceTargetCap(targetKey);
     const offset = this._getStaggerOffset(targetKey);
@@ -225,7 +226,11 @@ export class FloatingTextPool {
     // Build display text
     let displayText = style.text;
     if (!displayText) {
-      displayText = (style.prefix || "") + value + (style.suffix || "");
+      displayText =
+        (type === "crit" ? "CRITICAL\n" : "") +
+        (style.prefix || "") +
+        value +
+        (style.suffix || "");
     }
 
     // Determine color (element override for magical)
@@ -245,7 +250,7 @@ export class FloatingTextPool {
       .setFontStyle(style.fontStyle || "bold")
       .setPosition(
         x + offset.dx + Phaser.Math.Between(-5, 5),
-        y - 10 + offset.dy,
+        y - (type === "crit" ? 30 : 10) + offset.dy,
       )
       .setAlpha(1)
       .setActive(true)
@@ -257,7 +262,9 @@ export class FloatingTextPool {
     this.active.push(t);
 
     // Brief bounce on spawn so even normal hits read as impact.
-    const startScale = style.bounceScale || 1.12;
+    const startScale = reducedMotion
+      ? 1
+      : Math.min(style.bounceScale || 1.12, 1.16);
     t.setScale(startScale);
 
     if (startScale > 1) {
@@ -270,24 +277,21 @@ export class FloatingTextPool {
       });
     }
 
-    if (type === "crit") {
-      this.scene.tweens.add({
-        targets: t,
-        alpha: { from: 0.75, to: 1 },
-        duration: 90,
-        yoyo: true,
-        repeat: 1,
-      });
-    }
-
-    // Main rise + fade tween
+    // Reading time is independent of battle speed. Hold full opacity first,
+    // then fade; a critical must never blink while the player reads it.
+    const readMs = type === "crit" ? 1500 : 1200;
     this.scene.tweens.add({
       targets: t,
-      y: t.y - style.rise,
-      alpha: 0,
+      y: t.y - (reducedMotion ? 0 : style.rise),
       duration: style.duration,
-      delay: style.delay || 0,
-      ease: "Quad.Out",
+      ease: "Sine.Out",
+    });
+    this.scene.tweens.add({
+      targets: t,
+      alpha: 0,
+      duration: style.duration - readMs,
+      delay: readMs + (style.delay || 0),
+      ease: "Sine.In",
       onComplete: () => this.release(t),
     });
 
