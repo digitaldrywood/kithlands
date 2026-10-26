@@ -55,7 +55,7 @@ jobs:
           python3 skills/kithlands-visual-production/scripts/audit_walk_sheets.py client/public/sprites/walk --columns 6 --rows 8 --mode enforce
       - name: Verify all-class walking and world rendering
         if: matrix.suite == 'walking'
-        run: ./scripts/run_playwright_local.sh e2e/walk-rendered-cadence.spec.js e2e/walk-all-classes.spec.js e2e/world-space-cycle.spec.js e2e/world-walk-audit-party.spec.js e2e/world-terrain-visibility.spec.js
+        run: ./scripts/run_playwright_local.sh e2e/walk-rendered-cadence.spec.js e2e/walk-all-classes.spec.js e2e/world-space-cycle.spec.js e2e/world-walk-audit-party.spec.js e2e/world-terrain-visibility.spec.js e2e/meadow-ground.spec.js e2e/overworld-landmarks.spec.js
       - name: Verify combat controls, presentation, and tactical encounters
         if: matrix.suite == 'combat'
         run: ./scripts/run_playwright_local.sh e2e/battle-continuity.spec.js e2e/battle-stop-auto.spec.js e2e/warrior-critical.spec.js e2e/combat-text-readability.spec.js e2e/battle-crowded-results.spec.js e2e/battle-multi-hit.spec.js e2e/cinder-frost.spec.js e2e/battle-defend.spec.js e2e/battle-context-choices.spec.js e2e/enemy-tactics.spec.js e2e/bandit-guard.spec.js
@@ -86,6 +86,8 @@ jobs:
             client/tmp/battle-defend-*/
             client/tmp/enemy-tactics-*/
             client/tmp/bandit-guard-*/
+            client/tmp/meadow-ground-*/
+            client/tmp/overworld-landmarks/
             client/tmp/opening-integration-*/
             client/tmp/first-session-*/
             client/tmp/campaign-first-level-*/

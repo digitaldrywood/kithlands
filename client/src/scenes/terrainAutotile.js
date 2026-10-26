@@ -370,11 +370,35 @@ export function ensureTerrainRenderTexture(scene, plan) {
     );
     if (plan.overlay.kind === "path") {
       drawPathOverlay(ctx, overlayImage, plan.overlay.mask);
+    } else if (
+      plan.baseKey.startsWith("meadow:") &&
+      plan.overlay.key.startsWith("meadow:")
+    ) {
+      drawMeadowEdge(ctx, overlayImage, plan.overlay.mask);
     } else {
       drawEdgeOverlay(ctx, overlayImage, plan.overlay.mask);
     }
   });
   return addCanvasTexture(scene, textureKey, canvas);
+}
+
+// Pixel coverage, rather than translucent blur, keeps the original palette
+// crisp at integer scale. Only walkable meadow surfaces use this transition;
+// water, forest and blocked terrain retain their readable solid edges.
+function drawMeadowEdge(ctx, image, mask) {
+  const threshold = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  for (let y = 0; y < TILE_SIZE; y++) {
+    for (let x = 0; x < TILE_SIZE; x++) {
+      const distance = Math.min(
+        mask & AUTOTILE_EDGE_NORTH ? y : TILE_SIZE,
+        mask & AUTOTILE_EDGE_EAST ? TILE_SIZE - 1 - x : TILE_SIZE,
+        mask & AUTOTILE_EDGE_SOUTH ? TILE_SIZE - 1 - y : TILE_SIZE,
+        mask & AUTOTILE_EDGE_WEST ? x : TILE_SIZE,
+      );
+      if (threshold[(y % 4) * 4 + (x % 4)] < (8 - distance) * 2)
+        ctx.drawImage(image, x, y, 1, 1, x, y, 1, 1);
+    }
+  }
 }
 
 function noisePixel(seed, x, y, range) {

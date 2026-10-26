@@ -55,7 +55,9 @@ export function adventureBadgesForSpawn(spawn, gameState, source = catalog) {
 export function landmarkMarkerFor(spawn, gameState, source = catalog) {
   const family = landmarkFamilyForSpawn(spawn, source);
   const variants = source.families[family].variants;
-  const stableSeed = `${token(spawn?.node_id)}:${spawn?.interior_seed ?? ""}`;
+  // Interior selection may be regenerated on load; a world landmark's visual
+  // identity belongs to its persistent node, not the room-generation seed.
+  const stableSeed = token(spawn?.node_id);
   return {
     family,
     variant: variants[stableHash(stableSeed) % variants.length],

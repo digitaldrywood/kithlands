@@ -1,5 +1,8 @@
 # Playability work tracker
 
+
+- Meadow sand/path/hill/marsh now share a restrained ground palette and pixel transitions; texture variants no longer depend on map traversal order. The native landmark round trip exposed save/load icon changes, now fixed by stable node selection. Six terrain/landmark cases plus a final three-case phone-touch rerun, four movement/culling cases, 826 client tests/build/format, Go tests and shared-data validation pass. All final captures inspected; see `MEADOW_GROUND_PROOF.md`. Terrain fixtures do not establish resource/respawn or human navigation acceptance. Keep environment work open: repetitive forest edges, remaining seams, sparse route landmarks, a pale grove patch and the tiny portrait settlement exterior need further work.
+
 Active branch: `codex/battle-grounding-walk-lag` · draft PR #339.
 Updated 2026-10-25. This file records work; it does not schedule unattended runs.
 

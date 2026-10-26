@@ -5,8 +5,8 @@ import { TILE_IDS } from "./tileConstants.js";
 export function meadowGroundPlan(scene, plan, x, y) {
   const palette = field.meadow?.ground[plan.baseKey];
   if (!palette) return plan;
-  const variant = ((x * 73856093) ^ (y * 19349663)) >>> 0;
-  const key = `meadow:${plan.baseKey}:${variant % 8}`;
+  const variant = (((x * 73856093) ^ (y * 19349663)) >>> 0) % 8;
+  const key = `meadow:${plan.baseKey}:${variant}`;
   if (!scene.textures.exists(key)) {
     const canvas = document.createElement("canvas");
     canvas.width = canvas.height = 16;

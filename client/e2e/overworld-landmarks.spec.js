@@ -1,6 +1,7 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
+import { startNormalRoute, walkNormally } from "./helpers/normal-route.js";
 
 const RUN_ID = Date.now();
 const PROOF_DIR = path.resolve("tmp", "overworld-landmarks", `proof-${RUN_ID}`);
@@ -22,18 +23,7 @@ test.use({ hasTouch: true });
 test.describe.configure({ mode: "serial", timeout: 120_000 });
 
 async function startGame(page, label) {
-  await page.goto("/?noEncounters=1");
-  await page.waitForFunction(() =>
-    window.__kithlandsTest?.sceneIsActive("Title"),
-  );
-  await page.evaluate(
-    (email) => window.__kithlandsTest.startQuickGame(email),
-    `overworld-landmarks-${label}-${RUN_ID}@kithlands.dev`,
-  );
-  await page.waitForFunction(() =>
-    window.__kithlandsTest.sceneIsActive("World"),
-  );
-  await page.evaluate(() => window.__kithlandsTest.waitForSceneReady("World"));
+  await startNormalRoute(page, 24);
 }
 
 async function capture(page, label, stage) {
@@ -71,31 +61,6 @@ async function focusMarker(page, marker) {
     return window.__kithlandsTest.centerCameraOnPlayer("World");
   }, marker.nodeId);
   await page.waitForTimeout(120);
-}
-
-async function tapLogicalPoint(page, x, y) {
-  const canvas = page.locator("canvas");
-  const [box, size] = await Promise.all([
-    canvas.boundingBox(),
-    page.evaluate(() => window.__kithlandsTest.logicalGameSize("World")),
-  ]);
-  if (!box) throw new Error("Game canvas is missing");
-  await page.touchscreen.tap(
-    box.x + (x / size.width) * box.width,
-    box.y + (y / size.height) * box.height,
-  );
-}
-
-async function activateTouchControls(page) {
-  const layout = await page.evaluate(() =>
-    window.__kithlandsTest.gameplayViewportSnapshot("World"),
-  );
-  await tapLogicalPoint(page, layout.action.x, layout.action.y);
-  await page.waitForFunction(() =>
-    window.__kithlandsTest
-      .visibleTexts("World")
-      .some((entry) => entry.text === "A"),
-  );
 }
 
 test("authored registry renders every family and both adventure badges", async ({
@@ -153,32 +118,33 @@ test("Cadott round trip and save reload preserve landmark identity", async ({
   const central = (await markerSnapshot(page)).find(
     (marker) => marker.nodeId === "central",
   );
-  await focusMarker(page, central);
-  await expect
-    .poll(async () =>
-      page.evaluate(() =>
-        window.__kithlandsTest
-          .visibleTexts("World")
-          .map((entry) => entry.text)
-          .find((text) => text.startsWith("[ ENTER ]")),
-      ),
-    )
-    .toContain(central.name);
+  const entrance = await page.evaluate(() =>
+    window.__normalRouteGame.scene
+      .getScene("World")
+      .spawns.find((s) => s.node_id === "central"),
+  );
+  expect(await walkNormally(page, "World", entrance)).toBe("World");
+  await expect(
+    page.getByRole("button", { name: `Enter — ${central.name}`, exact: true }),
+  ).toBeVisible();
   await capture(page, "800x600", "named-cadott-prompt");
 
-  await page.evaluate(() => window.__kithlandsTest.pressKey("Enter", "World"));
-  await page.waitForFunction(() =>
-    window.__kithlandsTest.sceneIsActive("Settlement"),
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(
+    () => window.__kithlandsTest.sceneIsActive("Settlement"),
+    null,
+    { timeout: 15000 },
   );
+  await page.evaluate(() =>
+    window.__kithlandsTest.waitForSceneReady("Settlement"),
+  );
+  await capture(page, "800x600", "cadott-exterior");
   await page.waitForFunction(
     () =>
       window.__kithlandsTest.settlementSnapshot().currentInteraction ===
       "south-exit",
   );
-  await capture(page, "800x600", "cadott-exterior");
-  await page.evaluate(() =>
-    window.__kithlandsTest.pressKey("Enter", "Settlement"),
-  );
+  await page.keyboard.press("Enter");
   await page.waitForFunction(() =>
     window.__kithlandsTest.sceneIsActive("World"),
   );
@@ -216,25 +182,34 @@ test("phone world shows an authored marker with a named touch prompt", async ({
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 390, height: 844 });
   await startGame(page, "390x844");
-  await activateTouchControls(page);
   const central = (await markerSnapshot(page)).find(
     (marker) => marker.nodeId === "central",
   );
-  await focusMarker(page, central);
-  await expect
-    .poll(async () =>
-      page.evaluate(() =>
-        window.__kithlandsTest
-          .visibleTexts("World")
-          .map((entry) => entry.text)
-          .find((text) => text.startsWith("[ TAP A ]")),
-      ),
-    )
-    .toContain(central.name);
+  const entrance = await page.evaluate(() =>
+    window.__normalRouteGame.scene
+      .getScene("World")
+      .spawns.find((s) => s.node_id === "central"),
+  );
+  expect(await walkNormally(page, "World", entrance)).toBe("World");
+  await expect(
+    page.getByRole("button", { name: `Enter — ${central.name}`, exact: true }),
+  ).toBeVisible();
   expect(
     await page.evaluate(
       () => window.__kithlandsTest.gameplayViewportSnapshot("World").portrait,
     ),
   ).toBe(true);
   await capture(page, "390x844", "named-cadott-touch-prompt");
+  await page
+    .getByRole("button", { name: `Enter — ${central.name}`, exact: true })
+    .tap();
+  await page.waitForFunction(
+    () => window.__kithlandsTest.sceneIsActive("Settlement"),
+    null,
+    { timeout: 15000 },
+  );
+  await page.evaluate(() =>
+    window.__kithlandsTest.waitForSceneReady("Settlement"),
+  );
+  await capture(page, "390x844", "touch-entered-settlement");
 });
