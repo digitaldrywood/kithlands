@@ -3,9 +3,13 @@ import { activeWorldLocks } from "../systems/modalLock.js";
 import "../styles/interior-controls.css";
 
 // One fixed DOM entry point, outside the room camera and its hit areas.
-export function interiorControls(scene, openMenu) {
+export function interiorControls(
+  scene,
+  openMenu,
+  { label = "Interior controls" } = {},
+) {
   const root = element("nav", "interior-controls");
-  root.setAttribute("aria-label", "Interior controls");
+  root.setAttribute("aria-label", label);
   const button = element("button", "interior-menu-button", "Menu ");
   button.type = "button";
   button.setAttribute("aria-keyshortcuts", "M");

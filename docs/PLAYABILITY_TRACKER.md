@@ -1,6 +1,9 @@
 # Playability work tracker
 
 
+- Portrait settlement now uses a larger bounded camera with fixed UI, one accessible Menu, readable interaction captions and a 44px Old Mill trail target. Native keyboard/touch routes verify street walking, menu locks, inn entry/return, world exit and simulated network-failure recovery. All five final viewport cases, eight earlier combined landmark cases, two interior regressions, 831 client tests/build/format pass; final 35 settlement and 13 interior captures inspected. See `PORTRAIT_SETTLEMENT_PROOF.md`. Other doors, foreground/rotation and broad menu acceptance remain open. Prior hosted `32458c3` passed every non-combat suite but exposed a reproduced combat-message timing regression; that repair takes priority next.
+
+
 - Meadow sand/path/hill/marsh now share a restrained ground palette and pixel transitions; texture variants no longer depend on map traversal order. The native landmark round trip exposed save/load icon changes, now fixed by stable node selection. Six terrain/landmark cases plus a final three-case phone-touch rerun, four movement/culling cases, 826 client tests/build/format, Go tests and shared-data validation pass. All final captures inspected; see `MEADOW_GROUND_PROOF.md`. Terrain fixtures do not establish resource/respawn or human navigation acceptance. Keep environment work open: repetitive forest edges, remaining seams, sparse route landmarks, a pale grove patch and the tiny portrait settlement exterior need further work.
 
 Active branch: `codex/battle-grounding-walk-lag` · draft PR #339.
