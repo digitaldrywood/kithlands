@@ -1,4 +1,6 @@
 import spellCatalog from "../../../shared/spells.json";
+import itemCatalog from "../../../shared/items.json";
+import gatheringCatalog from "../../../shared/gathering.json";
 import { itemArtURL } from "../ui/item_art.js";
 import { element, viewportDialog } from "../ui/viewport_dialog.js";
 import {
@@ -16,6 +18,37 @@ import {
   isEquipmentShopItem,
 } from "./shopCompare.js";
 import "../styles/shop.css";
+
+// The stock response owns prices and eligibility. Authored explanation text
+// comes from the same shared catalog used by inventory and item resolution.
+export function shopItemInformation(item) {
+  const entries =
+    item.type === "spell"
+      ? spellCatalog.spells
+      : item.type === "consumable"
+        ? itemCatalog.consumables
+        : item.type === "key_item"
+          ? itemCatalog.key_items
+          : item.type === "material"
+            ? gatheringCatalog.materials
+            : [];
+  const definition = entries.find((entry) => entry.id === item.id);
+  const context =
+    definition?.combat_usable && definition?.world_usable
+      ? "Use in battle or while exploring."
+      : definition?.world_usable
+        ? "Use while exploring; cannot be used in battle."
+        : definition?.combat_usable
+          ? "Use in battle only."
+          : item.type === "material" && definition
+            ? "Crafting ingredient. Use it from Crafting in the party menu."
+            : "";
+  return {
+    description:
+      item.description || definition?.description || definition?.source || "",
+    context,
+  };
+}
 
 export function groupShopItems(items = []) {
   return {
@@ -373,13 +406,10 @@ export async function openShop(scene, spawn) {
       text(heading, "p", `${item.price} gold`, "shop-price");
       hero.append(heading);
       preview.append(hero);
-      const description =
-        item.description ||
-        (item.type === "spell"
-          ? spellCatalog.spells.find((spell) => spell.id === item.id)
-              ?.description
-          : "");
+      const { description, context } = shopItemInformation(item);
       if (description) text(preview, "p", description, "shop-description");
+      if (context)
+        text(preview, "p", context, "shop-use-context shop-secondary");
       if (item.required_level)
         text(
           preview,

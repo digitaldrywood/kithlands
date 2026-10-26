@@ -34,6 +34,98 @@ for (const width of [1440, 800, 610, 390]) {
     const height = width === 800 ? 600 : width === 1440 ? 900 : 844;
     const mobile = width <= 620;
     test.use({ viewport: { width, height }, hasTouch: mobile });
+    test("ordinary item effects and usage are visible before buying", async ({
+      page,
+    }) => {
+      test.setTimeout(90000);
+      await visit(page);
+      const shop = page.locator(".kith-shop");
+      const activate = (locator) => (mobile ? locator.tap() : locator.click());
+      await activate(shop.getByRole("button", { name: /^Items/ }));
+      for (const [name, effect] of [
+        ["Hi-Potion", "120 HP"],
+        ["Potion", "30 HP"],
+        ["Ether", "20 MP"],
+        ["Hi-Ether", "50 MP"],
+        ["X-Ether", "150 MP"],
+        ["Antidote", "Poison"],
+        ["Echo Herb", "Silence"],
+        ["Soft", "Stone"],
+        ["Phoenix Down", "1 HP"],
+        ["Tent", "50%"],
+      ]) {
+        await activate(
+          shop.locator(".shop-stock-row").filter({
+            has: page.locator(".shop-stock-name", {
+              hasText: new RegExp(`^${name}$`),
+            }),
+          }),
+        );
+        const preview = shop.locator(".shop-preview");
+        await expect(preview.locator(".shop-description")).toContainText(
+          effect,
+        );
+        await expect(preview.locator(".shop-use-context")).toHaveText(
+          name === "Tent"
+            ? "Use while exploring; cannot be used in battle."
+            : "Use in battle or while exploring.",
+        );
+        if (name === "Hi-Potion") {
+          await expect(preview).toContainText("cannot revive");
+          await page.screenshot({
+            path: path.join(proof, `${width}-hi-potion-details.png`),
+          });
+        }
+        if (name === "Tent")
+          await page.screenshot({
+            path: path.join(proof, `${width}-tent-details.png`),
+          });
+        if (mobile)
+          await activate(shop.getByRole("button", { name: /^Back to stock/ }));
+      }
+      await activate(shop.getByRole("button", { name: /^Supplies/ }));
+      for (const effect of [
+        "smelting fuel",
+        "sword grip",
+        "removes impurities",
+      ]) {
+        const names = {
+          "smelting fuel": "Smithing charcoal",
+          "sword grip": "Leather grip wrap",
+          "removes impurities": "Forge flux",
+        };
+        await activate(
+          shop.locator(".shop-stock-row").filter({
+            has: page.locator(".shop-stock-name", { hasText: names[effect] }),
+          }),
+        );
+        await expect(shop.locator(".shop-description")).toContainText(effect);
+        await expect(shop.locator(".shop-use-context")).toContainText(
+          "Crafting in the party menu",
+        );
+        if (effect === "removes impurities")
+          await page.screenshot({
+            path: path.join(proof, `${width}-supply-details.png`),
+          });
+        if (mobile)
+          await activate(shop.getByRole("button", { name: /^Back to stock/ }));
+      }
+      await activate(shop.getByRole("button", { name: /^Items/ }));
+      await activate(
+        shop.locator(".shop-stock-row").filter({
+          has: page.locator(".shop-stock-name", {
+            hasText: /^Strange Coin$/,
+          }),
+        }),
+      );
+      await expect(shop.locator(".shop-description")).toContainText(
+        "unknown origin",
+      );
+      await expect(shop.locator(".shop-use-context")).toHaveCount(0);
+      await expect(shop.locator(".shop-gold")).toHaveText("Gold: 100");
+      await activate(shop.getByRole("button", { name: /^Leave Shop/ }));
+      await expect(shop).toHaveCount(0);
+    });
     test("readable stock, comparison, guarded purchase and clean exit", async ({
       page,
     }) => {

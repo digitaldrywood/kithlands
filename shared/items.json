@@ -1549,7 +1549,7 @@
       "value": 30,
       "buy_price": 20,
       "sell_price": 10,
-      "description": "Restores 30 HP to a single ally.",
+      "description": "Restores up to 30 HP to one living ally. HP is health. Useful for light injuries; it cannot revive a knocked-out companion. Healing stops at the ally's maximum HP.",
       "combat_usable": true,
       "world_usable": true
     },
@@ -1560,7 +1560,7 @@
       "value": 120,
       "buy_price": 100,
       "sell_price": 50,
-      "description": "Restores 120 HP to a single ally.",
+      "description": "Restores up to 120 HP to one living ally. A stronger healing potion for serious injuries. It restores health, not magic, and cannot revive a knocked-out companion. Healing stops at the ally's maximum HP.",
       "combat_usable": true,
       "world_usable": true
     },
@@ -1571,7 +1571,7 @@
       "value": 20,
       "buy_price": 60,
       "sell_price": 30,
-      "description": "Restores 20 MP to a single ally.",
+      "description": "Restores up to 20 MP to one living ally. MP powers spells; use Ether when a spellcaster is running low. It does not restore HP or revive a knocked-out companion. MP cannot exceed the ally's maximum.",
       "combat_usable": true,
       "world_usable": true
     },
@@ -1582,7 +1582,7 @@
       "value": 50,
       "buy_price": 180,
       "sell_price": 90,
-      "description": "Restores 50 MP to a single ally.",
+      "description": "Restores up to 50 MP to one living ally. A stronger supply for replenishing the magic used to cast spells. It does not heal injuries or revive a knocked-out companion. MP cannot exceed the ally's maximum.",
       "combat_usable": true,
       "world_usable": true
     },
@@ -1593,7 +1593,7 @@
       "value": 150,
       "buy_price": 500,
       "sell_price": 250,
-      "description": "Restores 150 MP to a single ally.",
+      "description": "Restores up to 150 MP to one living ally. A large magic reserve for spellcasters with substantial MP loss. It does not heal injuries or revive a knocked-out companion. MP cannot exceed the ally's maximum.",
       "combat_usable": true,
       "world_usable": true
     },
@@ -1604,7 +1604,7 @@
       "value": 0,
       "buy_price": 15,
       "sell_price": 7,
-      "description": "Cures Poison from one ally.",
+      "description": "Cures Poison from one ally. Use it to stop poison from draining their health. It removes the condition but does not restore HP already lost.",
       "combat_usable": true,
       "world_usable": true
     },
@@ -1615,7 +1615,7 @@
       "value": 0,
       "buy_price": 30,
       "sell_price": 15,
-      "description": "Cures Silence from one ally.",
+      "description": "Cures Silence from one ally, allowing them to cast spells again. It removes the condition but does not replenish the MP needed to cast those spells.",
       "combat_usable": true,
       "world_usable": true
     },
@@ -1626,7 +1626,7 @@
       "value": 0,
       "buy_price": 200,
       "sell_price": 100,
-      "description": "Cures Stone from one ally.",
+      "description": "Cures Stone from one ally. Use it to free a petrified companion so they can act again. It does not revive a companion knocked out by losing all HP.",
       "combat_usable": true,
       "world_usable": true
     },
@@ -1637,7 +1637,7 @@
       "value": 1,
       "buy_price": 500,
       "sell_price": 250,
-      "description": "Revives a KO'd ally with 1 HP.",
+      "description": "Revives a knocked-out ally with 1 HP. Use this when a companion has fallen; ordinary healing potions cannot revive them. The revived ally is still badly hurt, so follow up with healing.",
       "combat_usable": true,
       "world_usable": true
     },
@@ -1648,7 +1648,7 @@
       "value": 50,
       "buy_price": 50,
       "sell_price": 25,
-      "description": "Restores 50% HP and MP to all living party members. Field use only.",
+      "description": "Restores HP and MP equal to 50% of each living party member's maximum, capped at their maximum. Also clears status conditions on the companions it restores. A party recovery supply for use between battles; it cannot revive knocked-out companions or be used during battle.",
       "combat_usable": false,
       "world_usable": true
     }
