@@ -1,5 +1,7 @@
 # Playability work tracker
 
+- A native ore/wood/herb journey exposed victory returning visually to World while Go still held `quest_complete`, blocking harvests. Continue now awaits an idempotent Go `battle_continue` acknowledgement, preserves the receipt on errors/timeouts, and forwards cancellation to the actual fetch. Desktop/phone rejection, committed-reply loss, actual abort and safe retry pass; real three-minute closed-page resource renewal also passes with unchanged saved identities/deadlines. Main-server opening/receipt regressions pass; 852 client tests/build/format, full Go/race/vet/build/lint/balance/integration gates pass. All ninety final native/owner captures are inspected. Owner fields compare exactly after safe refresh. See `VICTORY_EXPLORATION_HANDOFF_PROOF.md`. Parent `762017e` hosted run `40320535735` is fully green across eleven suites; this new head needs its own gate. The actual habitat pictures still show repetitive forest/green underlay and small/occluded pickup props, so environment-art acceptance stays open.
+
 - Heron recovery now has native desktop Flee and phone natural-defeat proof, normal save/exit/browser reload/Continue, uncleared/cleared reentry, exact one-time supplies and repeatable rest. Selecting a claimed cache correctly reports `Already explored.` instead of repeating the old guarding warning. Both final cases pass (65 actual phone Defend rounds), with all twenty captures inspected; the unchanged normal opening route also passes in 91.084 seconds with all 24 captures inspected. 845 client tests/build/format and five focused Go recovery cases pass. See `HERON_RECOVERY_PROOF.md`. New head CI and the broader goal remain open.
 
 - Hosted status-presentation head `6cf0248` run `40316581987` passes all ten visual suites and the protected summary. General CI remains self-hosted and queued. Subsequent changes require their own gate.
@@ -133,7 +135,7 @@ The Heron Pool detour now connects an optional visible threat → guarded smithi
 - [x] Profile initial gathering-route generation and complete full Go race/lint gates without reducing seed coverage or suppressing unreviewed findings.
 - [ ] Warrior/Cinder action-specific choreography covers critical attacks, defense, abilities, healing/status, victory and KO; other-class expansion follows reference acceptance.
 - [ ] Inspect current melee and elemental spell anticipation/release/contact/recovery at normal and reduced motion, with readable action text and unobscured targets.
-- [ ] Inspect resource habitat terrain and meadow landmarks on the actual quest route; check saved respawn deadlines after closing/reopening.
+- [ ] Finish resource habitat/landmark art acceptance on the actual quest route. Real closed-page herb renewal and saved identities/deadlines now pass at desktop/phone sizes; inspected route captures still show repetitive forest/green underlay and small/occluded resource props (`VICTORY_EXPLORATION_HANDOFF_PROOF.md`).
 - [ ] Recheck locality Back/Cancel, one journal/menu, temporary notifications and scene transitions for stale overlays.
 - [ ] Verify crafting, shops, inventory, equipment comparison and all gem operations with consistent icons and keyboard/touch input at desktop and phone sizes.
 - [x] Verify newest save selection and optional history with multiple snapshots of one adventure.

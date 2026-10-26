@@ -119,8 +119,8 @@ export async function getResourceStatus(id, options) {
   return apiCall("GET", `/game/${id}/resources`, undefined, options);
 }
 
-export async function gameAction(gameId, action) {
-  return apiCall("POST", `/game/${gameId}/action`, action);
+export async function gameAction(gameId, action, options) {
+  return apiCall("POST", `/game/${gameId}/action`, action, options);
 }
 
 export async function dungeonAction(gameId, action) {

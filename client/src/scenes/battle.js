@@ -39,6 +39,7 @@ import { showVictoryReceipt } from "./victory_receipt.js";
 import {
   pendingEquipmentDrops,
   showPostBattleLoot,
+  withBattleLootDeadline,
 } from "./post_battle_loot.js";
 import { FloatingTextPool } from "../ui/floating_text.js";
 import { MessageWindow } from "../ui/message_window.js";
@@ -4876,7 +4877,7 @@ export class BattleScene extends Phaser.Scene {
     }
 
     this.victoryReceipt = showVictoryReceipt(this, gs, {
-      onContinue: () => this.returnFromBattle(this.gameState),
+      onContinue: () => this.continueVictory(),
       onTallyDone: () => {
         this.victoryFastForwarded = true;
       },
@@ -4904,5 +4905,26 @@ export class BattleScene extends Phaser.Scene {
 
   addContinueButton() {
     this.victoryReceipt?.enableContinue();
+  }
+
+  async continueVictory() {
+    let next = this.gameState;
+    if (next.phase === "quest_complete") {
+      next = await withBattleLootDeadline(
+        (signal) =>
+          gameAction(
+            this.gameState.id,
+            { type: "battle_continue" },
+            { signal },
+          ),
+        this.victoryAdvanceTimeoutMs,
+      );
+      if (next?.error) throw new Error(next.error);
+      if (next?.id !== this.gameState.id || next.phase !== "world")
+        throw new Error("The adventure could not be resumed.");
+    }
+    if (this.scene.isActive?.() === false) return;
+    this.gameState = next;
+    this.returnFromBattle(next);
   }
 }

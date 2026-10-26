@@ -16,11 +16,24 @@ export function showVictoryReceipt(scene, gs, { onContinue, onTallyDone }) {
   const rows = [];
   const timers = [];
   const tweens = [];
-  const continueOnce = () => {
+  const continueOnce = async () => {
     if (!ready || continued || dialog.disposed) return;
     continued = true;
     finish();
-    onContinue();
+    button.disabled = true;
+    dialog.root.setAttribute("aria-busy", "true");
+    hint.textContent = "Returning to your adventure…";
+    try {
+      await onContinue();
+    } catch {
+      if (dialog.disposed) return;
+      continued = false;
+      button.disabled = false;
+      dialog.root.removeAttribute("aria-busy");
+      hint.textContent =
+        "Could not return to the adventure. Try Continue again.";
+      button.focus({ preventScroll: true });
+    }
   };
   const dialog = viewportDialog(scene, {
     key: "victory-receipt",
@@ -138,6 +151,7 @@ export function showVictoryReceipt(scene, gs, { onContinue, onTallyDone }) {
     "victory-controls",
     "Enter: continue · Space: finish tally · Esc: continue",
   );
+  hint.setAttribute("role", "status");
   const button = element("button", "primary victory-continue", "Continue");
   button.hidden = true;
   button.addEventListener("click", continueOnce);

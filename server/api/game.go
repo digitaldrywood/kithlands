@@ -794,6 +794,21 @@ func (g *Game) ProcessAction(req GameActionRequest) (result *GameState, err erro
 		}
 	}()
 
+	// A result acknowledgement is safe to retry after a lost response. Keep it
+	// distinct from legacy advance, which starts encounters from the world.
+	if req.Type == "battle_continue" {
+		switch g.phase {
+		case "quest_complete":
+			g.combatLog = nil
+			g.combatActions = nil
+			return g.processAdvance(req)
+		case "world":
+			state := g.stateUnlocked()
+			return &state, nil
+		default:
+			return nil, fmt.Errorf("finish the current encounter before continuing")
+		}
+	}
 	allowedDungeonFieldAction := req.Type == "item" || req.Type == "spell" || g.phase == "quest_complete" && req.Type == "advance"
 	if g.inDungeon() && (g.phase == "world" || g.phase == "quest_complete") && !allowedDungeonFieldAction {
 		return nil, fmt.Errorf("use exploration actions inside the adventure")

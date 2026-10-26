@@ -61,7 +61,7 @@ jobs:
         run: ./scripts/run_playwright_local.sh e2e/walk-rendered-cadence.spec.js e2e/walk-all-classes.spec.js e2e/world-space-cycle.spec.js e2e/world-walk-audit-party.spec.js e2e/world-terrain-visibility.spec.js e2e/meadow-ground.spec.js e2e/overworld-landmarks.spec.js
       - name: Verify combat controls, tactical encounters, and result recovery
         if: matrix.suite == 'combat'
-        run: ./scripts/run_playwright_local.sh e2e/battle-continuity.spec.js e2e/battle-stop-auto.spec.js e2e/battle-defend.spec.js e2e/battle-context-choices.spec.js e2e/enemy-tactics.spec.js e2e/bandit-guard.spec.js e2e/battle-hud-workstream.spec.js e2e/victory-receipt.spec.js e2e/defeat-receipt.spec.js
+        run: ./scripts/run_playwright_local.sh e2e/battle-continuity.spec.js e2e/battle-stop-auto.spec.js e2e/battle-defend.spec.js e2e/battle-context-choices.spec.js e2e/enemy-tactics.spec.js e2e/bandit-guard.spec.js e2e/battle-hud-workstream.spec.js e2e/victory-receipt.spec.js e2e/victory-advance.spec.js e2e/defeat-receipt.spec.js
       - name: Verify physical combat animation and readable per-hit results
         if: matrix.suite == 'combat-effects'
         run: ./scripts/run_playwright_local.sh e2e/warrior-critical.spec.js e2e/combat-text-readability.spec.js e2e/battle-crowded-results.spec.js e2e/battle-multi-hit.spec.js e2e/battle-counter-hits.spec.js e2e/battle-action-title.spec.js
@@ -74,9 +74,9 @@ jobs:
       - name: Verify gathering, crafted equipment and saved resources
         if: matrix.suite == 'crafting'
         run: ./scripts/run_playwright_local.sh e2e/gathering-crafting.spec.js
-      - name: Verify native adventure retreat, defeat, reentry and saved rewards
+      - name: Verify native adventure recovery and saved resource respawns
         if: matrix.suite == 'adventure-recovery'
-        run: ./scripts/run_playwright_local.sh e2e/heron-recovery.spec.js
+        run: ./scripts/run_playwright_local.sh e2e/heron-recovery.spec.js e2e/resource-route-respawn.spec.js
       - name: Verify gems, equipment and locality navigation
         if: matrix.suite == 'menus'
         run: ./scripts/run_playwright_local.sh e2e/crafting-sources-layout.spec.js e2e/gem-workshop.spec.js e2e/equipment-loadout-screen.spec.js e2e/equipment-builds.spec.js e2e/effective-equipment.spec.js e2e/wizard-back.spec.js e2e/wizard-start.spec.js e2e/wizard-responsive.spec.js e2e/save-adventures.spec.js e2e/post-battle-loot.spec.js
@@ -98,6 +98,8 @@ jobs:
             client/tmp/walk-rendered-*/
             client/e2e/tmp/issue-202-*.png
             client/tmp/victory-responsive-*/
+            client/tmp/victory-advance-*/
+            client/tmp/resource-route-*/
             client/tmp/defeat-responsive-*/
             client/tmp/save-adventures-*/
             client/tmp/combat-text-*/
