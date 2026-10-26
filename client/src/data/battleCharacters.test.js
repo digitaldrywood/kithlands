@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 
 import {
   BATTLE_CHARACTER_CATALOG,
@@ -10,6 +11,25 @@ import {
 } from "./battleCharacters.js";
 
 describe("shared battle character catalog", () => {
+  it("keeps casting emission points inside the shipped weapon image", () => {
+    for (const asset of BATTLE_CHARACTER_CATALOG.weapon_assets) {
+      if (!asset.emission_point) continue;
+      const png = readFileSync(
+        new URL(`../../public${asset.path}`, import.meta.url),
+      );
+      expect(png.subarray(1, 4).toString(), asset.visual_id).toBe("PNG");
+      const width = png.readUInt32BE(16),
+        height = png.readUInt32BE(20);
+      const [x, y] = asset.emission_point;
+      expect(Number.isFinite(x) && Number.isFinite(y), asset.visual_id).toBe(
+        true,
+      );
+      expect(x, asset.visual_id).toBeGreaterThanOrEqual(0);
+      expect(x, asset.visual_id).toBeLessThan(width);
+      expect(y, asset.visual_id).toBeGreaterThanOrEqual(0);
+      expect(y, asset.visual_id).toBeLessThan(height);
+    }
+  });
   it("covers every runtime identity and required state name", () => {
     expect(BATTLE_CHARACTER_CATALOG.classes.map(({ id }) => id)).toEqual([
       "warrior",

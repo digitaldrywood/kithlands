@@ -1,4 +1,8 @@
 import { playIceRelease, playIceToTarget } from "./battle_ice_fx.js";
+import {
+  playLightningRelease,
+  playLightningToTarget,
+} from "./battle_lightning_fx.js";
 import { drawFirebolt, fireContactDetails } from "./battle_contact_fx.js";
 const INTENSITY_TIERS = Object.freeze({
   1: Object.freeze({ scale: 0.82, particleCount: 4, strokeWidth: 2 }),
@@ -7,6 +11,13 @@ const INTENSITY_TIERS = Object.freeze({
 });
 
 const EFFECT_FAMILIES = Object.freeze({
+  lightning: Object.freeze({
+    motion: "discharge",
+    core: 0xffef9b,
+    glow: 0x577cc9,
+    accent: 0xffffff,
+    soundHook: "sfx_lightning",
+  }),
   restorative_light: Object.freeze({
     motion: "field",
     core: 0xb9ffe8,
@@ -61,11 +72,14 @@ function tagEffect(object, presentation, stage, legacyTag) {
 
 export function playBattleEffectRelease(scene, actor, presentation) {
   if (!presentation || !actor) return null;
-  scene.continueCastMotion?.(actor);
   const origin = battleCastOrigin(actor);
   const reducedMotion = scene.reducedBattleMotion();
   if (presentation.effectFamily === "ice")
     return playIceRelease(scene, origin, presentation);
+  if (presentation.effectFamily === "lightning")
+    return playLightningRelease(scene, origin, presentation, () =>
+      battleCastOrigin(actor, { live: true }),
+    );
   if (presentation.motion === "projectile") {
     const direction = actor.x > 400 ? -1 : 1;
     const release = tagEffect(
@@ -129,9 +143,21 @@ export function playBattleEffectRelease(scene, actor, presentation) {
 export function playBattleEffectToTarget(scene, actor, target, presentation) {
   if (!presentation || !target) return null;
   const reducedMotion = scene.reducedBattleMotion();
+  // Keep the authored release pose planted throughout the charge. Follow
+  // through when the spell leaves the wand (or the restorative field opens).
+  scene.continueCastMotion?.(actor);
+  if (presentation.effectFamily === "lightning") {
+    if (!actor) return null;
+    return playLightningToTarget(
+      scene,
+      battleCastOrigin(actor),
+      target,
+      presentation,
+      () => battleCastOrigin(actor, { live: true }),
+    );
+  }
   if (presentation.effectFamily === "ice") {
     if (!actor) return null;
-    scene.continueCastMotion?.(actor);
     return playIceToTarget(
       scene,
       battleCastOrigin(actor),
@@ -143,7 +169,6 @@ export function playBattleEffectToTarget(scene, actor, target, presentation) {
   if (presentation.motion === "projectile") {
     if (!actor) return null;
     const origin = battleCastOrigin(actor);
-    scene.continueCastMotion?.(actor);
     const destinationY = target.y + target.height * 0.2;
     const projectile = tagEffect(
       scene.add

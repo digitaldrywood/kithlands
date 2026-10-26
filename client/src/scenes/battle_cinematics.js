@@ -39,9 +39,9 @@ export function battleElementStyle(element) {
 
 // Use the authored attachment tip; body-center emission makes spells detach
 // from the hand/staff as equipment and character proportions change.
-export function battleCastOrigin(actor) {
+export function battleCastOrigin(actor, { live = false } = {}) {
   const sprite = actor?.sprite;
-  if (sprite?.battleCastSource) return { ...sprite.battleCastSource };
+  if (!live && sprite?.battleCastSource) return { ...sprite.battleCastSource };
   const layer = sprite?.battleAttachmentLayers?.find(
     (entry) => entry.emissionPoint,
   );

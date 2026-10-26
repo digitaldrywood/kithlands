@@ -1,5 +1,8 @@
 # Playability work tracker
 
+- Cinder Shock/Thunder now use authored lightning metadata and an original branching discharge with a reduced-motion target charge. Casting holds its cue pose through charge and follows through at departure. Visual inspection exposed an old staff emission point outside its 26px image; shared metadata now places it inside the gem, with a real-PNG bounds regression. See `CINDER_LIGHTNING_PROOF.md` for native contact/HP proof, inspected captures, rejected candidates and the safe live-server refresh still needed for new metadata. Other ice/status identities and body choreography remain open.
+- Hosted run `40298587413` passes all nine visual suites and the required summary on banner head `82c1d0d`. The new lightning head needs its own CI gate; general CI remains self-hosted.
+
 - Action banners now stay in the upper-left, use at least 14/18 CSS-pixel actor/action text, and retain a reading hold at Fast speed. Four native Lv1 Warrior/Cinder keyboard/touch/reduced-motion cases pass; all 20 captures are inspected. See `ACTION_TITLE_READABILITY_PROOF.md`. Other body choreography, spell families and first-visit pacing remain open.
 - Hosted visual run `40294831723` passes all nine suites and the required summary on `c597292`, verifying the combat CI split. General CI remains subject to the existing self-hosted runner decision; newer commits require their own remote gate.
 
@@ -144,7 +147,7 @@ The active goal is the complete user-pasted request, not only this checklist. Ex
 
 - Extend encounter variety from the accepted guard/open Bandit and prepare/rush Bramblehog roles only where the route needs another meaningful decision; current intent/execution contracts are verified.
 - Further action-specific body choreography for melee weapons and class abilities; Warrior's critical variation is verified, other identities still require their own acceptance.
-- Distinct elemental spell motion and status feedback, using the verified release/contact/recovery contract.
+- Complete distinct elemental spell motion and status feedback: Frost and Shock/Thunder have native references; Chill, Iceshard and Blizzard still lack authored ice metadata, while Sleep, Mute and Slow retain generic status presentation. Preserve the verified release/contact/recovery contract.
 - Original higher-quality enemy, effect and environment assets, installed only after an inspected playable slice.
 - Expand accepted combat/art patterns to remaining classes after Warrior/Cinder acceptance.
 - Consider additional professions only when gathering/crafting creates useful decisions rather than more collection chores.

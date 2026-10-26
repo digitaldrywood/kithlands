@@ -98,6 +98,10 @@
       "effect": "damage",
       "element": "lightning",
       "power": 16,
+      "presentation": {
+        "effect_family": "lightning",
+        "intensity_tier": 1
+      },
       "description": "Small lightning damage to one enemy"
     },
     {
@@ -266,6 +270,10 @@
       "effect": "damage",
       "element": "lightning",
       "power": 24,
+      "presentation": {
+        "effect_family": "lightning",
+        "intensity_tier": 2
+      },
       "cinematic_tier": "major",
       "description": "Medium lightning damage to all enemies"
     },

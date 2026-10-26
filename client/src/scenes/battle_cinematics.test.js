@@ -37,6 +37,7 @@ describe("battle cinematic motion", () => {
     expect(battleCastOrigin(actor)).toEqual({ x: 550, y: 260 });
     actor.sprite.battleCastSource = { x: 530, y: 210 };
     expect(battleCastOrigin(actor)).toEqual({ x: 530, y: 210 });
+    expect(battleCastOrigin(actor, { live: true })).toEqual({ x: 550, y: 260 });
     expect(battleCastOrigin({ x: 80, y: 90 })).toEqual({ x: 80, y: 90 });
   });
   it("moves either side close enough to make the attacker unmistakable", () => {

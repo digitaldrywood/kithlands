@@ -309,7 +309,7 @@
     {
       "visual_id": "war_staff",
       "key": "battle_weapon_war_staff",
-      "emission_point": [96, 18],
+      "emission_point": [13, 14],
       "path": "/sprites/battle/weapons/war-staff.png"
     },
     {

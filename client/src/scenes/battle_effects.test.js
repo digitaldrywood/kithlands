@@ -7,7 +7,7 @@ import {
 } from "./battle_effects.js";
 
 describe("battle effect presentation", () => {
-  it.each(["fire", "ice", "restorative_light"])(
+  it.each(["fire", "ice", "lightning", "restorative_light"])(
     "%s applies the result on arrival while the impact fades",
     async (effect_family) => {
       const tweens = [];
