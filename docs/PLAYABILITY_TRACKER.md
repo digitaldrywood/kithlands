@@ -1,7 +1,9 @@
 # Playability work tracker
 
+- Public trails now connect close destinations in generated worlds while preserving imported roads, barriers and hidden discoveries. Old checkpoints, resource identities and harvest deadlines migrate through normal Continue/save/reload. Native trails and old-save flows pass at desktop/default/phone sizes; fresh phone/desktop opening routes and river regressions pass, all captures inspected. 834 client tests, full Go/race/vet/build/lint, isolated DB integration and 600 campaign simulations pass. Main localhost:3609 is updated with the owner’s latest level-5 save restored and supplies intact. See `PUBLIC_TRAILS_PROOF.md`. Natural first-visit pacing, pale grove terrain and broader visual acceptance remain open.
 
-- Fixed the reproduced hosted combat caption regression: multi-hit strike one now appears during anticipation instead of replacing an attack caption after ~200ms. The unchanged 1450ms minimum passes at 1671.6/1669.3/1552.8ms desktop/phone/reduced motion. Seven combined readability/authoritative-hit cases and three final caption captures pass; all 54 multi-hit and nine readability images inspected; 831 client tests/build/format pass. See `COMBAT_MESSAGE_SEQUENCE_PROOF.md`. Full hosted acceptance remains pending on the new head.
+
+- Fixed the reproduced hosted combat caption regression: multi-hit strike one now appears during anticipation instead of replacing an attack caption after ~200ms. The unchanged 1450ms minimum passes at 1671.6/1669.3/1552.8ms desktop/phone/reduced motion. Seven combined readability/authoritative-hit cases and three final caption captures pass; all 54 multi-hit and nine readability images inspected; 831 client tests/build/format pass. See `COMBAT_MESSAGE_SEQUENCE_PROOF.md`. Hosted run `40267331789` passes all six visual suites and protected summary on `03d7d7a`.
 
 
 - Portrait settlement now uses a larger bounded camera with fixed UI, one accessible Menu, readable interaction captions and a 44px Old Mill trail target. Native keyboard/touch routes verify street walking, menu locks, inn entry/return, world exit and simulated network-failure recovery. All five final viewport cases, eight earlier combined landmark cases, two interior regressions, 831 client tests/build/format pass; final 35 settlement and 13 interior captures inspected. See `PORTRAIT_SETTLEMENT_PROOF.md`. Other doors, foreground/rotation and broad menu acceptance remain open. Prior hosted `32458c3` passed every non-combat suite but exposed a reproduced combat-message timing regression; that repair takes priority next.
@@ -10,7 +12,7 @@
 - Meadow sand/path/hill/marsh now share a restrained ground palette and pixel transitions; texture variants no longer depend on map traversal order. The native landmark round trip exposed save/load icon changes, now fixed by stable node selection. Six terrain/landmark cases plus a final three-case phone-touch rerun, four movement/culling cases, 826 client tests/build/format, Go tests and shared-data validation pass. All final captures inspected; see `MEADOW_GROUND_PROOF.md`. Terrain fixtures do not establish resource/respawn or human navigation acceptance. Keep environment work open: repetitive forest edges, remaining seams, sparse route landmarks, a pale grove patch and the tiny portrait settlement exterior need further work.
 
 Active branch: `codex/battle-grounding-walk-lag` · draft PR #339.
-Updated 2026-10-25. This file records work; it does not schedule unattended runs.
+Updated 2026-10-26. This file records work; it does not schedule unattended runs.
 
 ## Verified locally
 

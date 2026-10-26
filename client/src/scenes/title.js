@@ -103,6 +103,7 @@ export class TitleScene extends Phaser.Scene {
         return;
       }
       setToken(result.token);
+      setEmail(email);
       callback();
     } catch (e) {
       this.statusText

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 
 	"github.com/digitaldrywood/kithlands/internal/balance"
@@ -8,7 +9,15 @@ import (
 	"github.com/digitaldrywood/kithlands/internal/combat"
 	"github.com/digitaldrywood/kithlands/internal/gamedata"
 	"github.com/digitaldrywood/kithlands/internal/inventory"
+	"github.com/digitaldrywood/kithlands/internal/locality"
 )
+
+// SetOSMBuilderForTest configures one manager before it receives requests.
+// Unit HTTP tests must not depend on the public Overpass service or mutate a
+// process-wide HTTP transport. Production retains locality.BuildFromOSM.
+func SetOSMBuilderForTest(gm *GameManager, build func(context.Context, float64, float64, int, string) (*locality.Locality, error)) {
+	gm.buildOSM = build
+}
 
 // OverrideFormationsForTest replaces the game's formation pool with a
 // synthetic set so tests can drive GenerateFormationEncounter into edge

@@ -117,6 +117,20 @@ export function buildTerrainRenderPlan(tiles, x, y) {
         isPathTile(neighbor) ||
         (tile === TILE_IDS.bridge && isGroundTile(neighbor)),
     );
+    let corners = 0;
+    for (const [dx, dy, bit] of [
+      [-1, -1, 1],
+      [1, -1, 2],
+      [1, 1, 4],
+      [-1, 1, 8],
+    ]) {
+      if (
+        isPathTile(getTile(tiles, x + dx, y)) &&
+        isPathTile(getTile(tiles, x, y + dy)) &&
+        isPathTile(getTile(tiles, x + dx, y + dy))
+      )
+        corners |= bit;
+    }
     return {
       baseKey:
         TILE_SPRITE_KEYS[baseTile] || TILE_SPRITE_KEYS[PATH_BASE_FALLBACK],
@@ -124,6 +138,7 @@ export function buildTerrainRenderPlan(tiles, x, y) {
         key: spriteKey,
         mask,
         kind: "path",
+        corners,
       },
     };
   }
@@ -239,7 +254,7 @@ function drawEdgeOverlay(ctx, image, mask) {
   }
 }
 
-function drawPathOverlay(ctx, image, mask) {
+function drawPathOverlay(ctx, image, mask, corners = 0) {
   ctx.drawImage(
     image,
     AUTOTILE_CENTER,
@@ -304,6 +319,16 @@ function drawPathOverlay(ctx, image, mask) {
       TILE_SIZE - AUTOTILE_CENTER * 2,
     );
   }
+  // Fill shared corners of a 2x2 road block. Without the diagonal check,
+  // neighboring lanes leave a repeating grid of grass holes at every join.
+  for (const [x, y, bit] of [
+    [0, 0, 1],
+    [TILE_SIZE / 2, 0, 2],
+    [TILE_SIZE / 2, TILE_SIZE / 2, 4],
+    [0, TILE_SIZE / 2, 8],
+  ]) {
+    if (corners & bit) drawQuarter(ctx, image, x, y, x, y);
+  }
 }
 
 function addCanvasTexture(scene, key, canvas) {
@@ -349,7 +374,7 @@ export function ensureTerrainRenderTexture(scene, plan) {
   if (!plan.baseKey) return null;
   if (!plan.overlay) return plan.baseKey;
 
-  const textureKey = `terrain:${plan.baseKey}:${plan.overlay.key}:${plan.overlay.kind}:${plan.overlay.mask}`;
+  const textureKey = `terrain:${plan.baseKey}:${plan.overlay.key}:${plan.overlay.kind}:${plan.overlay.mask}:${plan.overlay.corners || 0}`;
   if (scene.textures.exists(textureKey)) return textureKey;
 
   const baseImage = getTextureImage(scene, plan.baseKey);
@@ -369,7 +394,12 @@ export function ensureTerrainRenderTexture(scene, plan) {
       TILE_SIZE,
     );
     if (plan.overlay.kind === "path") {
-      drawPathOverlay(ctx, overlayImage, plan.overlay.mask);
+      drawPathOverlay(
+        ctx,
+        overlayImage,
+        plan.overlay.mask,
+        plan.overlay.corners,
+      );
     } else if (
       plan.baseKey.startsWith("meadow:") &&
       plan.overlay.key.startsWith("meadow:")

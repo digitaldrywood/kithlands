@@ -132,16 +132,22 @@ func BuildingTypeFromTags(tags []string) string {
 // Map scales with node count. Nodes are spread across the map with
 // wilderness, forests, water, and paths between them.
 func GenerateTileMap(loc *Locality, spawnID string, walk *WalkResult) *TileMap {
-	return generateTileMap(loc, spawnID, walk, true)
+	return generateTileMap(loc, spawnID, walk, true, true)
 }
 
 // GenerateTileMapBeforeFootbridges reproduces the old map only to validate a
 // saved checkpoint during migration. New games must use GenerateTileMap.
 func GenerateTileMapBeforeFootbridges(loc *Locality, spawnID string, walk *WalkResult) *TileMap {
-	return generateTileMap(loc, spawnID, walk, false)
+	return generateTileMap(loc, spawnID, walk, false, false)
 }
 
-func generateTileMap(loc *Locality, spawnID string, walk *WalkResult, footbridges bool) *TileMap {
+// GenerateTileMapBeforePublicTrails reproduces the exact pre-trail signature
+// for checkpoint migration. New games must use GenerateTileMap.
+func GenerateTileMapBeforePublicTrails(loc *Locality, spawnID string, walk *WalkResult) *TileMap {
+	return generateTileMap(loc, spawnID, walk, true, false)
+}
+
+func generateTileMap(loc *Locality, spawnID string, walk *WalkResult, footbridges, publicTrails bool) *TileMap {
 	nodeCount := len(loc.Nodes)
 	mapW := clamp(nodeCount*18, 120, 250)
 	mapH := mapW * 3 / 4
@@ -229,6 +235,9 @@ func generateTileMap(loc *Locality, spawnID string, walk *WalkResult, footbridge
 
 	if footbridges {
 		addRiverFootbridges(tiles, spawns, mapW, mapH)
+	}
+	if publicTrails {
+		addPublicTrails(tiles, loc, walk, spawns, hiddenPath, mapW, mapH)
 	}
 
 	return &TileMap{

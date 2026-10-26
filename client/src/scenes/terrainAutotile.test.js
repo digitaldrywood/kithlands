@@ -109,3 +109,36 @@ describe("buildTerrainRenderPlan", () => {
     },
   );
 });
+
+describe("joined road surfaces", () => {
+  it("fills all four shared corners inside a solid plaza", () => {
+    const tiles = Array.from({ length: 3 }, () => [1, 1, 1]);
+    expect(buildTerrainRenderPlan(tiles, 1, 1).overlay.corners).toBe(15);
+  });
+  it("keeps the outside of an unfilled bend as ground", () => {
+    expect(
+      buildTerrainRenderPlan(
+        [
+          [0, 1, 0],
+          [0, 1, 1],
+          [0, 0, 0],
+        ],
+        1,
+        1,
+      ).overlay.corners,
+    ).toBe(0);
+  });
+  it("does not bridge a diagonal gap between separate paths", () => {
+    expect(
+      buildTerrainRenderPlan(
+        [
+          [1, 0, 0],
+          [0, 1, 0],
+          [0, 0, 1],
+        ],
+        1,
+        1,
+      ).overlay.corners,
+    ).toBe(0);
+  });
+});

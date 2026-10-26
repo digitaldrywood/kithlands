@@ -57,7 +57,7 @@ func TestGatheringPathsKeepOriginalTieOrder(t *testing.T) {
 	}
 }
 
-func TestGatheringPlacementFingerprints(t *testing.T) {
+func TestLegacyGatheringPlacementFingerprints(t *testing.T) {
 	// Captured twice from the original map-backed search before optimization.
 	baseline := map[int64]string{
 		1:   "63da159dde01ec8b1cf3d2c4b23041f470a72cc89fdccc40700cb83835e4a028",
@@ -67,6 +67,9 @@ func TestGatheringPlacementFingerprints(t *testing.T) {
 	}
 	for seed, want := range baseline {
 		g := gatheringPerformanceGame(t, seed)
+		g.tileMap = locality.GenerateTileMapBeforePublicTrails(g.loc, g.walk.Spawn.ID, g.walk)
+		g.resourcePlacementVersion = resourcePlacementLegacy
+		g.resourceMap, g.resourceNodeCache = nil, nil
 		data, err := json.Marshal(struct {
 			Nodes []ResourceNodeState
 			Tiles [][]int

@@ -46,6 +46,11 @@ type FieldRecipeState struct {
 	BlockReason string         `json:"block_reason,omitempty"`
 }
 
+const (
+	resourcePlacementLegacy = 1
+	resourcePlacementTrails = 2
+)
+
 // Resource identities depend on saved map coordinates, not the active quest.
 // Harvest deadlines persist across quest changes and save/load.
 func (g *Game) resourceNodes() []ResourceNodeState {
@@ -56,7 +61,14 @@ func (g *Game) resourceNodes() []ResourceNodeState {
 	if g.tileMap == nil || len(cfg.Resources) == 0 {
 		return nil
 	}
-	start := WorldPosition{X: g.tileMap.PlayerX, Y: g.tileMap.PlayerY}
+	anchorMap := g.tileMap
+	if g.resourcePlacementVersion == resourcePlacementLegacy {
+		if g.resourceAnchorMap == nil {
+			g.resourceAnchorMap = locality.GenerateTileMapBeforePublicTrails(g.loc, g.walk.Spawn.ID, g.walk)
+		}
+		anchorMap = g.resourceAnchorMap
+	}
+	start := WorldPosition{X: anchorMap.PlayerX, Y: anchorMap.PlayerY}
 	targets := []string{}
 	var stories GameState
 	g.fillDungeonState(&stories)
@@ -66,7 +78,7 @@ func (g *Game) resourceNodes() []ResourceNodeState {
 	for _, quest := range g.quests {
 		targets = append(targets, quest.TargetNodeID)
 	}
-	for _, spawn := range g.tileMap.Spawns {
+	for _, spawn := range anchorMap.Spawns {
 		targets = append(targets, spawn.NodeID)
 	}
 	visited, occupied := map[string]bool{}, map[WorldPosition]bool{}
@@ -86,11 +98,11 @@ func (g *Game) resourceNodes() []ResourceNodeState {
 			continue
 		}
 		visited[target] = true
-		spawn := worldSpawn(g.tileMap, target)
+		spawn := worldSpawn(anchorMap, target)
 		if spawn == nil {
 			continue
 		}
-		path := gatheringPath(g.tileMap, start, WorldPosition{X: spawn.X, Y: spawn.Y})
+		path := gatheringPath(anchorMap, start, WorldPosition{X: spawn.X, Y: spawn.Y})
 		if len(path) < cfg.NodesPerRoute*2+3 {
 			continue
 		}

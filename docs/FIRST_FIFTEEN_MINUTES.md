@@ -14,6 +14,13 @@ Buy, Buy for a party member, or Learn. On phones, Back to stock returns to the
 list; Escape backs out of the preview, then closes the shop. Each purchase
 shows a receipt and keeps the selected item in view.
 
+In Quick start and other worlds without mapped roads, tan footpaths now connect
+nearby destinations. Follow those routes to shops and people, then step off the
+trail to gather herbs or inspect mineral outcrops. Off-road travel carries more
+encounter pressure, especially in dark grass. Open Menu → Quest journal to
+check your next destination. Existing saved adventures keep their harvested
+resource identities and respawn deadlines when the trails are added.
+
 Times are a suggested budget, not a guarantee of first-visit completion.
 
 To experience a **level-up**, follow the campaign errand in Menu → Quest

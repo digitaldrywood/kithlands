@@ -606,9 +606,11 @@ type QuestRewardState struct {
 
 // Game holds the live state of one game session.
 type Game struct {
-	resourceMap            *locality.TileMap
-	resourceNodeCache      []ResourceNodeState
-	savedInteriorTemplates map[string]string
+	resourcePlacementVersion int
+	resourceAnchorMap        *locality.TileMap
+	resourceMap              *locality.TileMap
+	resourceNodeCache        []ResourceNodeState
+	savedInteriorTemplates   map[string]string
 
 	dungeon             *DungeonProgress
 	dungeons            map[string]*DungeonProgress

@@ -65,3 +65,9 @@ No Go/content/save schema changes; no new simulator or backend gates warranted
 for this renderer-only timing fix. No new body atlas, class expansion, or broader
 combat presentation acceptance is claimed. Full relevant hosted CI remains
 required on the pushed head; general CI stays self-hosted per owner instruction.
+
+## Hosted result
+
+Hosted visual run `40267331789` passes all six suites and the protected summary
+on pushed head `03d7d7a3541de5d637a8ccced7f0d0bac8e036da`. This resolves the
+remote caption-timing acceptance above. General CI remains self-hosted.

@@ -94,6 +94,7 @@ func (g *Game) ToSaveStateWithWorldPosition(name, userID string, position *World
 		"battle_rewards":             g.battleRewards,
 		"shop_stocks":                g.shopStocks,
 		"world_checkpoint":           g.worldCheckpoint,
+		"resource_placement_version": g.resourcePlacementVersion,
 		"interior_templates":         g.interiorChoices(),
 	}
 	worldJSON, err := json.Marshal(worldState)
@@ -172,9 +173,16 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		BattleRewards            *battleRewardsReceipt                  `json:"battle_rewards"`
 		ShopStocks               map[string]*ShopStock                  `json:"shop_stocks"`
 		WorldCheckpoint          json.RawMessage                        `json:"world_checkpoint"`
+		ResourcePlacementVersion int                                    `json:"resource_placement_version"`
 	}
 	if err := json.Unmarshal(ss.WorldState, &worldState); err != nil {
 		return nil, fmt.Errorf("unmarshaling world state: %w", err)
+	}
+	if worldState.ResourcePlacementVersion == 0 {
+		worldState.ResourcePlacementVersion = resourcePlacementLegacy
+	}
+	if worldState.ResourcePlacementVersion < resourcePlacementLegacy || worldState.ResourcePlacementVersion > resourcePlacementTrails {
+		return nil, fmt.Errorf("unsupported resource placement version %d", worldState.ResourcePlacementVersion)
 	}
 	quests, worldState.CurrentQ = migrateRequiredCampaign(quests, worldState.CurrentQ)
 	refreshPendingCampaignXP(quests, worldState.CurrentQ, gd)
@@ -266,6 +274,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	}
 
 	game := &Game{
+		resourcePlacementVersion: worldState.ResourcePlacementVersion,
 		savedInteriorTemplates:   worldState.InteriorTemplates,
 		finalEncounter:           worldState.FinalEncounter,
 		dungeon:                  activeDungeon,
@@ -330,13 +339,18 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 			}
 		}
 	}
-	// Accept the exact pre-footbridge map signature, then revalidate the
-	// position against the new map. This migration only opens river tiles;
+	// Accept exact historical map signatures, then revalidate the position.
+	// Footbridges and public trails only open traversable connections;
 	// arbitrary stale or corrupt map signatures still use normal recovery.
 	if savedCheckpoint != nil && savedCheckpoint.MapSignature != worldMapSignature(tileMap) {
-		legacyMap := locality.GenerateTileMapBeforeFootbridges(loc, spawnID, walk)
-		if savedCheckpoint.MapSignature == worldMapSignature(legacyMap) {
+		preTrailMap := locality.GenerateTileMapBeforePublicTrails(loc, spawnID, walk)
+		if savedCheckpoint.MapSignature == worldMapSignature(preTrailMap) {
 			savedCheckpoint.MapSignature = worldMapSignature(tileMap)
+		} else {
+			legacyMap := locality.GenerateTileMapBeforeFootbridges(loc, spawnID, walk)
+			if savedCheckpoint.MapSignature == worldMapSignature(legacyMap) {
+				savedCheckpoint.MapSignature = worldMapSignature(tileMap)
+			}
 		}
 	}
 	game.worldCheckpoint = resolveWorldCheckpoint(savedCheckpoint, tileMap, loc, game.worldTraversal(), spawnID, dungeonOriginNodeID)
