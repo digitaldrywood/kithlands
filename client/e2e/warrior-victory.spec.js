@@ -120,11 +120,20 @@ for (const [width, reduced] of [
       expect(won.phase).not.toBe("defeat");
       expect(won.gold).toBeGreaterThan(before.gold);
       expect(won.party[0].xp).toBeGreaterThan(before.party[0].xp);
+      // The authoritative win arrives before normal-motion playback finishes.
+      // Wait for its native handoff, including any equipment-loot choice.
+      await page.waitForFunction(
+        () =>
+          document.querySelector(".battle-loot-keep") ||
+          window.__victoryGame.scene.getScene("Battle").victoryContinueShown,
+        null,
+        { timeout: 15000 },
+      );
+      while (await page.locator(".battle-loot-keep").count())
+        await page.locator(".battle-loot-keep").click();
       await expect(
         page.getByRole("dialog", { name: "VICTORY!", exact: true }),
       ).toBeVisible();
-      while (await page.locator(".battle-loot-keep").count())
-        await page.locator(".battle-loot-keep").click();
       const audit = await page.evaluate(() => window.__victoryAudit);
       expect(audit.receiptDuringPose).toBe(false);
       expect(audit.frames.some((frame) => frame.frame === 2)).toBe(true);
