@@ -163,7 +163,7 @@ export async function clickRouteText(page, label, key, touch = false) {
   else await page.mouse.click(position.x, position.y);
 }
 
-export async function chooseStoryAction(page, id) {
+export async function chooseStoryAction(page, id, touch = false) {
   const action = await page.evaluate(
     (id) =>
       window.__kithlandsTest
@@ -186,16 +186,19 @@ export async function chooseStoryAction(page, id) {
           .find((t) => t.text.startsWith("More routes"))?.text,
     );
     expect(more).toBeTruthy();
-    await clickRouteText(page, more, "Dungeon");
+    await clickRouteText(page, more, "Dungeon", touch);
   }
   const response = page.waitForResponse(
     (r) =>
       r.url().endsWith("/dungeon") &&
       r.request().postDataJSON()?.action_id === id,
   );
-  await clickRouteText(page, action.label, "Dungeon");
-  if (action.encounter?.optional)
-    await page.getByRole("button", { name: "Fight", exact: true }).click();
+  await clickRouteText(page, action.label, "Dungeon", touch);
+  if (action.encounter?.optional) {
+    const fight = page.getByRole("button", { name: "Fight", exact: true });
+    if (touch) await fight.tap();
+    else await fight.click();
+  }
   const result = await (await response).json();
   expect(result.error).toBeUndefined();
   await routeReady(page, result.phase === "combat" ? "Battle" : "Dungeon");

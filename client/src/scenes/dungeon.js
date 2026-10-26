@@ -366,10 +366,9 @@ export class DungeonScene extends Phaser.Scene {
     }
     if (action.available === false) {
       this.showMessage(
-        action.reason ||
-          (action.completed
-            ? "Already explored."
-            : "This way is not open yet."),
+        action.completed
+          ? "Already explored."
+          : action.reason || "This way is not open yet.",
       );
       return;
     }

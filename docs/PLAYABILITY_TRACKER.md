@@ -1,5 +1,9 @@
 # Playability work tracker
 
+- Heron recovery now has native desktop Flee and phone natural-defeat proof, normal save/exit/browser reload/Continue, uncleared/cleared reentry, exact one-time supplies and repeatable rest. Selecting a claimed cache correctly reports `Already explored.` instead of repeating the old guarding warning. Both final cases pass (65 actual phone Defend rounds), with all twenty captures inspected; the unchanged normal opening route also passes in 91.084 seconds with all 24 captures inspected. 845 client tests/build/format and five focused Go recovery cases pass. See `HERON_RECOVERY_PROOF.md`. New head CI and the broader goal remain open.
+
+- Hosted status-presentation head `6cf0248` run `40316581987` passes all ten visual suites and the protected summary. General CI remains self-hosted and queued. Subsequent changes require their own gate.
+
 - Sleep/Mute/Slow now have distinct original sigils, explicit Go applied/resisted receipts, readable contact labels and plain-language messages. Slow uses its persistent icon. Fast reduced-motion cues enforce visible minimum durations after native proof caught a one-frame cue. Six final actual-main-server cases and twelve fire/heal/lightning regressions pass; all 154 final captures inspected. 844 client tests/build/format, full Go/race/vet/build/lint/data and 4000-battle smoke pass. Owner save fields match exactly after normal save/exit/Continue. See `STATUS_SPELL_PRESENTATION_PROOF.md`. Prior icon/ice visual CI is fully green; new status cases use a separate spell-effects suite because the previous combat-effects job took 29/30 minutes. All 66 earlier specs remain plus the new one, and every suite must pass. New head CI and broader goal remain open.
 
 - Chill, Iceshard and Blizzard now select the existing authored ice family at tiers 1/2/3. The unchanged native Iceshard case reproduces missing metadata; six final native spell cases plus four Frost regressions pass with all 156 captures inspected. Main-server Blizzard also passes with twelve inspected captures; normal save/exit/Continue preserves all owner gameplay fields exactly. 841 client tests/build/format, Go tests and data validation pass. See `CINDER_ICE_FAMILY_PROOF.md`. Hosted `178ec27` run 40307581281 passes all nine suites and required summary; icon and ice heads still need their own completed remote gates. Status identities, body choreography and broader goal remain open.
@@ -124,7 +128,7 @@ The Heron Pool detour now connects an optional visible threat → guarded smithi
 
 - [x] A normal fresh game presents a recognizable optional encounter and honest enemy/level information before engagement.
 - [x] Winning connects to useful smithing supplies and a power/accuracy crafting choice; the cleared bank persists as a rest stop.
-- [ ] Retreat, defeat, repeated visits, saving/loading and reward replay are verified for the new route.
+- [x] Retreat, defeat, repeated visits, saving/loading and reward replay are verified for the new route; native recovery/revisit proof plus authoritative duplicate-claim rejection are in `HERON_RECOVERY_PROOF.md`.
 - [x] Current attack/guard/preparation role intents match server resolution, including interruption, preemption and invalidated/dead actor/target cases. Bandit and Bramblehog native references are verified; see `BANDIT_GUARD_PROOF.md`.
 - [x] Profile initial gathering-route generation and complete full Go race/lint gates without reducing seed coverage or suppressing unreviewed findings.
 - [ ] Warrior/Cinder action-specific choreography covers critical attacks, defense, abilities, healing/status, victory and KO; other-class expansion follows reference acceptance.
@@ -149,7 +153,7 @@ The active goal is the complete user-pasted request, not only this checklist. Ex
 
 ## Subsequent work
 
-- A current shared-data audit finds 46 weapon records and only 10 explicit `icon_key` values. Verify the other 36 runtime fallbacks rather than treating the three already observed gaps (Arcane Staff, Hand Axe, Mythril Axe) as the complete artwork backlog.
+- The item-art follow-up leaves 46 weapon records with 13 explicit `icon_key` values and 33 runtime fallbacks still to verify. Arcane Staff, Hand Axe and Mythril Axe now have accepted canonical art; that does not close the rest of the artwork backlog.
 
 - Finish secondary equipment metadata/spell-card fonts. Wizard and ordinary defeat-screen acceptance is recorded above. Victory receipt acceptance is recorded above. Primary Character summary acceptance is recorded above. Verify Arcane Staff, Hand Axe, Mythril Axe and remaining equipment fallback icons rather than accepting letter tiles as finished artwork.
 
@@ -159,7 +163,7 @@ The active goal is the complete user-pasted request, not only this checklist. Ex
 
 - Extend encounter variety from the accepted guard/open Bandit and prepare/rush Bramblehog roles only where the route needs another meaningful decision; current intent/execution contracts are verified.
 - Further action-specific body choreography for melee weapons and class abilities; Warrior's critical variation is verified, other identities still require their own acceptance.
-- Complete distinct elemental spell motion and status feedback: Frost and Shock/Thunder have native references; Chill, Iceshard and Blizzard still lack authored ice metadata, while Sleep, Mute and Slow retain generic status presentation. Preserve the verified release/contact/recovery contract.
+- Preserve the accepted Frost, Shock/Thunder, Chill/Iceshard/Blizzard and Sleep/Mute/Slow references, including Go outcomes and release/contact/recovery. Remaining action-specific body choreography and integrated combat acceptance stay open; spell metadata/status identities are recorded in the current proof documents above.
 - Original higher-quality enemy, effect and environment assets, installed only after an inspected playable slice.
 - Expand accepted combat/art patterns to remaining classes after Warrior/Cinder acceptance.
 - Consider additional professions only when gathering/crafting creates useful decisions rather than more collection chores.

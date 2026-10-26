@@ -115,6 +115,18 @@ describe("DungeonScene authoritative responses", () => {
     );
   });
 
+  it("does not repeat a prerequisite warning for an already completed landmark", () => {
+    const current = scene();
+    Object.assign(current.gameState.dungeon.actions[0], {
+      available: false,
+      completed: true,
+      reason: "The bramblehog is still guarding the supply box.",
+    });
+    current.selectAction({ id: "door" });
+    expect(api.dungeonAction).not.toHaveBeenCalled();
+    expect(current.showMessage).toHaveBeenCalledWith("Already explored.");
+  });
+
   it("rebuilds a new room from Go and returns combat to the dungeon", async () => {
     const current = scene();
     const next = state();

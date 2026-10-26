@@ -14,8 +14,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [walking, combat, combat-effects, spell-effects, gameplay, interiors, campaign, escort, menus, crafting]
-    timeout-minutes: 30
+        suite: [walking, combat, combat-effects, spell-effects, gameplay, interiors, campaign, escort, menus, crafting, adventure-recovery]
+    # The new recovery flow deliberately plays an entire all-Defend loss.
+    # Retain existing suite budgets; allow its native rounds plus installation.
+    timeout-minutes: ${{ matrix.suite == 'adventure-recovery' && 40 || 30 }}
     env:
       PGHOST: localhost
     services:
@@ -72,6 +74,9 @@ jobs:
       - name: Verify gathering, crafted equipment and saved resources
         if: matrix.suite == 'crafting'
         run: ./scripts/run_playwright_local.sh e2e/gathering-crafting.spec.js
+      - name: Verify native adventure retreat, defeat, reentry and saved rewards
+        if: matrix.suite == 'adventure-recovery'
+        run: ./scripts/run_playwright_local.sh e2e/heron-recovery.spec.js
       - name: Verify gems, equipment and locality navigation
         if: matrix.suite == 'menus'
         run: ./scripts/run_playwright_local.sh e2e/crafting-sources-layout.spec.js e2e/gem-workshop.spec.js e2e/equipment-loadout-screen.spec.js e2e/equipment-builds.spec.js e2e/effective-equipment.spec.js e2e/wizard-back.spec.js e2e/wizard-start.spec.js e2e/wizard-responsive.spec.js e2e/save-adventures.spec.js e2e/post-battle-loot.spec.js
@@ -112,6 +117,7 @@ jobs:
             client/tmp/meadow-ground-*/
             client/tmp/public-trails-*/
             client/tmp/gathering-*/
+            client/tmp/heron-recovery-*/
             client/tmp/crafting-sources-*/
             client/tmp/gem-discovery-*/
             client/tmp/post-battle-loot-*/
