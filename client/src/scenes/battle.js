@@ -95,6 +95,7 @@ const ENEMY_COLORS = {
 const STATUS_ICONS = {
   poison: "icon_poison",
   sleep: "icon_sleep",
+  slow: "icon_slow",
   silence: "icon_mute",
   stone: "icon_paralyze",
   confuse: "icon_confuse",
@@ -4194,25 +4195,67 @@ export class BattleScene extends Phaser.Scene {
         await this.wait(ACTION_BEAT_MS.postDamage);
         await this.wait(ACTION_BEAT_MS.interAction);
       } else if (action.kind === "status_effect") {
-        // Status spell landed or resisted
-        this.revealLine(line, "#cc88ff");
         const casterEntry =
           this.partySprites[action.actor_name] ||
           this.findEnemySpriteForAction(action, action.actor_name);
         const targetEntry = this.enemySprites[action.target_id];
+        const presentation = battleEffectPresentation(action);
+        this.revealLine(
+          `${action.actor_name} casts ${action.spell_name || "Status"}!`,
+          "#ccbbff",
+        );
         await this.showActionTitle(
           casterEntry,
           action.spell_name || "STATUS",
-          "#c27aff",
+          "#c6b9ff",
         );
         await this.playMajorCinematicPrelude(action, casterEntry, "dark");
         await this.playCastAnticipation(casterEntry, "dark");
+        await playBattleEffectRelease(
+          this,
+          this.resolveVisualEntry(casterEntry),
+          presentation,
+        );
         this.showActionFocus(casterEntry, targetEntry, {
           targetColor: ACTION_RETICLE_COLORS.magicalTarget,
         });
-        await this.launchSpellProjectile(casterEntry, targetEntry, "dark");
+        playSFX(presentation?.soundHook || "sfx_spell");
+        if (presentation)
+          await playBattleEffectToTarget(
+            this,
+            this.resolveVisualEntry(casterEntry),
+            this.resolveVisualEntry(targetEntry),
+            presentation,
+          );
+        else await this.launchSpellProjectile(casterEntry, targetEntry, "dark");
+        this.revealLine(
+          action.status_outcome === "resisted"
+            ? `${action.target_name} resists ${action.spell_name}.`
+            : action.status_outcome === "applied"
+              ? `${action.spell_name} takes hold on ${action.target_name}.`
+              : line,
+          "#ccbbff",
+        );
+        if (
+          targetEntry &&
+          ["applied", "resisted"].includes(action.status_outcome)
+        ) {
+          const anchor = floatingTextAnchorForEntry(targetEntry, {
+            x: targetEntry.x,
+            y: targetEntry.y,
+          });
+          await this.floatingText.spawn(
+            anchor.x,
+            anchor.y,
+            (action.spell_name || "STATUS").toUpperCase(),
+            action.status_outcome === "applied" ? "status" : "status_resist",
+            `enemy_${action.target_id}`,
+            { still: true, maxBottom: anchor.maxBottom },
+          );
+        }
         await this.resetPartySprite(casterEntry);
-        await this.wait(ACTION_BEAT_MS.briefStatus);
+        // Reading time remains independent of battle speed.
+        await new Promise((resolve) => this.time.delayedCall(1300, resolve));
       } else if (action.kind === "ability") {
         if (this.isDefeatedEnemyActor(action)) {
           continue;

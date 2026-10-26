@@ -80,6 +80,9 @@ func spellCombatAction(spell *gamedata.Spell, action CombatActionEntry) CombatAc
 	action.CinematicTier = spell.CinematicTier
 	action.TargetMode = spell.Target
 	action.Presentation = spell.Presentation
+	if action.Kind == "status_effect" {
+		action.StatusEffect = spell.StatusEffect
+	}
 	if action.SpellName == "" {
 		action.SpellName = spell.Name
 	}
@@ -878,11 +881,11 @@ func (g *Game) resolveScheduledSpell(combatants []*combat.Combatant, ma MemberAc
 				combat.ApplyStatus(e, character.Status(spell.StatusEffect))
 				g.logCombat(
 					fmt.Sprintf("%s casts %s on %s[%d] - %s!", caster.Name, spell.Name, e.Name, e.ID, spell.StatusEffect),
-					spellCombatAction(spell, CombatActionEntry{Kind: "status_effect", ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, SpellName: spell.Name}))
+					spellCombatAction(spell, CombatActionEntry{Kind: "status_effect", ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, TargetName: e.Name, SpellName: spell.Name, StatusOutcome: "applied"}))
 			} else {
 				g.logCombat(
 					fmt.Sprintf("%s casts %s on %s[%d] - resisted!", caster.Name, spell.Name, e.Name, e.ID),
-					spellCombatAction(spell, CombatActionEntry{Kind: "status_effect", ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, SpellName: spell.Name}))
+					spellCombatAction(spell, CombatActionEntry{Kind: "status_effect", ActorID: pc.ID, ActorName: caster.Name, TargetID: e.ID, TargetName: e.Name, SpellName: spell.Name, StatusOutcome: "resisted"}))
 			}
 			if spell.Target == "single_enemy" {
 				break

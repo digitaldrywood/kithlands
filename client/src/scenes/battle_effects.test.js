@@ -7,7 +7,15 @@ import {
 } from "./battle_effects.js";
 
 describe("battle effect presentation", () => {
-  it.each(["fire", "ice", "lightning", "restorative_light"])(
+  it.each([
+    "fire",
+    "ice",
+    "lightning",
+    "restorative_light",
+    "status_sleep",
+    "status_silence",
+    "status_slow",
+  ])(
     "%s applies the result on arrival while the impact fades",
     async (effect_family) => {
       const tweens = [];
@@ -35,6 +43,7 @@ describe("battle effect presentation", () => {
       };
       const presentation = battleEffectPresentation({
         presentation: { effect_family, intensity_tier: 1 },
+        status_outcome: "applied",
       });
       let arrived = false;
       const effect = playBattleEffectToTarget(

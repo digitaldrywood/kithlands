@@ -58,6 +58,10 @@
       "power": 0,
       "status_effect": "sleep",
       "hit_chance": 60,
+      "presentation": {
+        "effect_family": "status_sleep",
+        "intensity_tier": 1
+      },
       "description": "Puts one enemy to sleep"
     },
     {
@@ -176,6 +180,10 @@
       "power": 0,
       "status_effect": "silence",
       "hit_chance": 50,
+      "presentation": {
+        "effect_family": "status_silence",
+        "intensity_tier": 1
+      },
       "description": "Silences one enemy"
     },
     {
@@ -236,6 +244,10 @@
       "status_effect": "slow",
       "hit_chance": 65,
       "cinematic_tier": "major",
+      "presentation": {
+        "effect_family": "status_slow",
+        "intensity_tier": 1
+      },
       "description": "Halves AGI of one enemy"
     },
     {

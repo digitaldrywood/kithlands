@@ -1,3 +1,4 @@
+import { playStatusRelease, playStatusToTarget } from "./battle_status_fx.js";
 import { playIceRelease, playIceToTarget } from "./battle_ice_fx.js";
 import {
   playLightningRelease,
@@ -11,6 +12,27 @@ const INTENSITY_TIERS = Object.freeze({
 });
 
 const EFFECT_FAMILIES = Object.freeze({
+  status_sleep: Object.freeze({
+    motion: "sigil",
+    core: 0xc6b9ff,
+    glow: 0x7768bc,
+    accent: 0xffedbf,
+    soundHook: "sfx_spell",
+  }),
+  status_silence: Object.freeze({
+    motion: "sigil",
+    core: 0x9ce8df,
+    glow: 0x478d96,
+    accent: 0xffffff,
+    soundHook: "sfx_spell",
+  }),
+  status_slow: Object.freeze({
+    motion: "sigil",
+    core: 0xf0cc84,
+    glow: 0xb08745,
+    accent: 0xfff1d0,
+    soundHook: "sfx_spell",
+  }),
   lightning: Object.freeze({
     motion: "discharge",
     core: 0xffef9b,
@@ -48,7 +70,13 @@ export function battleEffectPresentation(action = {}) {
   if (!family) return null;
   const intensityTier = Number(metadata?.intensity_tier) || 1;
   const tier = INTENSITY_TIERS[intensityTier] || INTENSITY_TIERS[1];
-  return { effectFamily, intensityTier, ...family, ...tier };
+  return {
+    effectFamily,
+    intensityTier,
+    ...family,
+    ...tier,
+    statusOutcome: action.status_outcome,
+  };
 }
 
 export function battleEffectMotion(presentation, reducedMotion = false) {
@@ -73,6 +101,8 @@ function tagEffect(object, presentation, stage, legacyTag) {
 export function playBattleEffectRelease(scene, actor, presentation) {
   if (!presentation || !actor) return null;
   const origin = battleCastOrigin(actor);
+  if (presentation.motion === "sigil")
+    return playStatusRelease(scene, origin, presentation);
   const reducedMotion = scene.reducedBattleMotion();
   if (presentation.effectFamily === "ice")
     return playIceRelease(scene, origin, presentation);
@@ -146,6 +176,15 @@ export function playBattleEffectToTarget(scene, actor, target, presentation) {
   // Keep the authored release pose planted throughout the charge. Follow
   // through when the spell leaves the wand (or the restorative field opens).
   scene.continueCastMotion?.(actor);
+  if (presentation.motion === "sigil") {
+    if (!actor) return null;
+    return playStatusToTarget(
+      scene,
+      battleCastOrigin(actor),
+      target,
+      presentation,
+    );
+  }
   if (presentation.effectFamily === "lightning") {
     if (!actor) return null;
     return playLightningToTarget(

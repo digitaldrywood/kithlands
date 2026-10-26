@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [walking, combat, combat-effects, gameplay, interiors, campaign, escort, menus, crafting]
+        suite: [walking, combat, combat-effects, spell-effects, gameplay, interiors, campaign, escort, menus, crafting]
     timeout-minutes: 30
     env:
       PGHOST: localhost
@@ -60,9 +60,12 @@ jobs:
       - name: Verify combat controls, tactical encounters, and result recovery
         if: matrix.suite == 'combat'
         run: ./scripts/run_playwright_local.sh e2e/battle-continuity.spec.js e2e/battle-stop-auto.spec.js e2e/battle-defend.spec.js e2e/battle-context-choices.spec.js e2e/enemy-tactics.spec.js e2e/bandit-guard.spec.js e2e/battle-hud-workstream.spec.js e2e/victory-receipt.spec.js e2e/defeat-receipt.spec.js
-      - name: Verify combat animation, spell motion, and readable per-hit results
+      - name: Verify physical combat animation and readable per-hit results
         if: matrix.suite == 'combat-effects'
-        run: ./scripts/run_playwright_local.sh e2e/warrior-critical.spec.js e2e/combat-text-readability.spec.js e2e/battle-crowded-results.spec.js e2e/battle-multi-hit.spec.js e2e/battle-counter-hits.spec.js e2e/cinder-frost.spec.js e2e/battle-action-title.spec.js e2e/cinder-lightning.spec.js e2e/cinder-ice-family.spec.js
+        run: ./scripts/run_playwright_local.sh e2e/warrior-critical.spec.js e2e/combat-text-readability.spec.js e2e/battle-crowded-results.spec.js e2e/battle-multi-hit.spec.js e2e/battle-counter-hits.spec.js e2e/battle-action-title.spec.js
+      - name: Verify spell release, contact, recovery, and readable status outcomes
+        if: matrix.suite == 'spell-effects'
+        run: ./scripts/run_playwright_local.sh e2e/cinder-frost.spec.js e2e/cinder-lightning.spec.js e2e/cinder-ice-family.spec.js e2e/status-spell-feedback.spec.js
       - name: Verify field magic, exploration, shops, and adventure navigation
         if: matrix.suite == 'gameplay'
         run: ./scripts/run_playwright_local.sh e2e/field-magic-repeat.spec.js e2e/world-encounter-pacing.spec.js e2e/river-footbridges.spec.js e2e/public-trails.spec.js e2e/public-trails-legacy.spec.js e2e/adventure-map-navigation.spec.js e2e/heron-playability-loop.spec.js e2e/opening-integration.spec.js e2e/shop-responsive.spec.js e2e/shop-buy-flow.spec.js e2e/shop-compare.spec.js e2e/shop-spell-learn.spec.js e2e/merchant-stock-authority.spec.js e2e/canonical-item-art.spec.js e2e/weapon-item-art.spec.js e2e/first-session-route.spec.js e2e/world-shop-entry.spec.js e2e/dev-artifact-isolation.spec.js e2e/exploration-notice-layout.spec.js e2e/exploration-touch.spec.js
@@ -100,6 +103,7 @@ jobs:
             client/tmp/warrior-critical-*/
             client/tmp/cinder-frost-*/
             client/tmp/cinder-iceFamily-*/
+            client/tmp/cinder-statusSpell-*/
             client/tmp/cinder-lightning-*/
             client/tmp/weapon-item-art-*/
             client/tmp/battle-defend-*/

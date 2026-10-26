@@ -1216,6 +1216,7 @@ func validateBattleEffectPresentation(kind, id string, presentation *BattleEffec
 	validFamilies := map[string]bool{
 		"restorative_light": true, "ward_blessing": true, "fire": true,
 		"ice": true, "lightning": true, "status_dark": true,
+		"status_sleep": true, "status_silence": true, "status_slow": true,
 		"holy_revival": true, "focus": true, "counter": true,
 		"steal": true, "backstab": true, "inspire": true,
 	}

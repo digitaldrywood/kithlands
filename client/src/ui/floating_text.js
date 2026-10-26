@@ -3,6 +3,25 @@ import Phaser from "phaser";
 
 // ── Style definitions per damage type ──────────────────────────────────
 const FLOAT_STYLES = {
+  status: {
+    color: "#d8caff",
+    fontSize: "28px",
+    rise: 0,
+    duration: 1850,
+    bounceScale: 1,
+    stroke: "#131021",
+    strokeThickness: 4,
+  },
+  status_resist: {
+    color: "#e4eaf2",
+    fontSize: "28px",
+    rise: 0,
+    duration: 1850,
+    text: "RESISTED",
+    bounceScale: 1,
+    stroke: "#11151e",
+    strokeThickness: 4,
+  },
   physical: {
     color: "#ffffff",
     fontSize: "28px",

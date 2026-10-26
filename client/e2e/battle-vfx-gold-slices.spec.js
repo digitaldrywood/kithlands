@@ -111,14 +111,17 @@ test.describe("content-driven battle VFX gold slices", () => {
     await expectNoSave(page);
   });
 
-  test("Mute keeps the approved generic status path before scaling", async ({
+  test("Mute retains its authored status release and recovery", async ({
     page,
   }, testInfo) => {
     const state = await openShowcase(page, { width: 800, height: 600 });
     const mute = state.party
       .flatMap((member) => member.spells || [])
       .find((spell) => spell.id === "mute");
-    expect(mute?.presentation).toBeUndefined();
+    expect(mute?.presentation).toEqual({
+      effect_family: "status_silence",
+      intensity_tier: 1,
+    });
     const trace = [
       {
         label: "before",
@@ -143,9 +146,13 @@ test.describe("content-driven battle VFX gold slices", () => {
       page,
       testInfo,
       trace,
-      "mute-generic-status-800x600-formation",
+      "mute-authored-status-800x600-formation",
     );
-    expect(formation.battleEffects).toHaveLength(0);
+    expect(
+      formation.battleEffects.some(
+        (effect) => effect.family === "status_silence",
+      ),
+    ).toBe(true);
     await page.waitForFunction(
       () =>
         window.__kithlandsTest.battleVisibilitySnapshot().spellProjectiles ===
@@ -155,10 +162,10 @@ test.describe("content-driven battle VFX gold slices", () => {
       page,
       testInfo,
       trace,
-      "mute-generic-status-800x600-result",
+      "mute-authored-status-800x600-result",
       { fullPage: true },
     );
-    await writeTrace(testInfo, "mute-generic-status-800x600", trace);
+    await writeTrace(testInfo, "mute-authored-status-800x600", trace);
     await expectNoSave(page);
   });
 

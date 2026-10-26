@@ -511,9 +511,11 @@ func (g *Game) buildEnemyState(e *combat.Combatant) EnemyState {
 // CombatActionEntry carries structured metadata for a single combat log line.
 // Sent alongside combat_log so the client can drive animations without parsing text.
 type CombatActionEntry struct {
-	Kind            string                             `json:"kind"`                  // attack, spell, ability, heal, item, counter, info
-	Element         string                             `json:"element,omitempty"`     // fire, ice, lightning, holy, dark, none
-	DamageType      string                             `json:"damage_type,omitempty"` // physical, magical
+	StatusEffect    string                             `json:"status_effect,omitempty"`
+	StatusOutcome   string                             `json:"status_outcome,omitempty"` // applied or resisted, decided at resolution
+	Kind            string                             `json:"kind"`                     // attack, spell, ability, heal, item, counter, info
+	Element         string                             `json:"element,omitempty"`        // fire, ice, lightning, holy, dark, none
+	DamageType      string                             `json:"damage_type,omitempty"`    // physical, magical
 	ActorID         int                                `json:"actor_id,omitempty"`
 	ActorName       string                             `json:"actor_name,omitempty"`
 	TargetID        int                                `json:"target_id,omitempty"`
