@@ -86,6 +86,10 @@
       "effect": "damage",
       "element": "ice",
       "power": 12,
+      "presentation": {
+        "effect_family": "ice",
+        "intensity_tier": 1
+      },
       "description": "Small ice damage to all enemies"
     },
     {
@@ -214,6 +218,10 @@
       "element": "ice",
       "power": 20,
       "cinematic_tier": "major",
+      "presentation": {
+        "effect_family": "ice",
+        "intensity_tier": 2
+      },
       "description": "Medium ice damage to one enemy"
     },
     {
@@ -258,6 +266,10 @@
       "element": "ice",
       "power": 24,
       "cinematic_tier": "major",
+      "presentation": {
+        "effect_family": "ice",
+        "intensity_tier": 3
+      },
       "description": "Medium ice damage to all enemies"
     },
     {
