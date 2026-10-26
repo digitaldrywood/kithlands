@@ -76,11 +76,13 @@ describe("shared battle character catalog", () => {
         const itemPoses = profile.states.item_use.frames.flatMap((frame) =>
           Object.values(frame.attachments),
         );
-        if (profile.id === "warrior") {
-          expect(
-            itemPoses.some((pose) => pose.visible === false),
-            "warrior/item_use",
-          ).toBe(true);
+        if (["warrior", "cinder"].includes(profile.id)) {
+          for (const frame of profile.states.item_use.frames)
+            for (const pose of Object.values(frame.attachments))
+              expect(
+                pose.visible !== false,
+                `${profile.id}/item_use/${frame.frame}`,
+              ).toBe(frame.frame === 0);
         } else {
           expect(
             itemPoses.every((pose) => pose.visible === false),
@@ -169,6 +171,7 @@ describe("shared battle character catalog", () => {
       "battle_cinder_staff_cast_body",
       "battle_cinder_staff_defend_body",
       "battle_cinder_staff_hit_body",
+      "battle_cinder_staff_item_body",
       "battle_cinder_staff_ko_body",
       "battle_wayfarer_staff_inspire_body",
       "battle_knight_sword_shield_defend_body",

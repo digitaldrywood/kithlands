@@ -416,3 +416,32 @@ verified in `CINDER_HIT_REACTION_PROOF.md`. New source/prompts/guides live in
 source's stale pending flag is reconciled against the existing accepted cast and
 current Frost proof, without changing its pixels. This accepts surviving-hit
 reactions only; remaining Cinder states retain their separate acceptance gates.
+
+## Cinder grounded KO, Defend and item references (2026-10-26)
+
+Cinder now explicitly overrides three more generic caster states. The accepted
+cast atlas and surviving-hit art remain unchanged. Each new atlas is576×192 with
+three192px RGBA cells at container anchor(96,184), occupied bottom y182; no body
+rotation or translation. Separate original pose guides and exact prompts are
+retained with each source package under
+`art-source/characters/cinder/battle/`.
+
+- `staff-ko`: recoil → knee buckle → settled side-lying fall, terminal frame2 held
+  until revival. The item-selected staff drops beside the pooled robe. Native
+  lethal-hit/held-pose/Phoenix Down evidence is in `CINDER_KO_POSE_PROOF.md`.
+  Two-member vertical spacing keeps rear fallen bodies visible; four-member
+  spacing is unchanged.
+- `staff-defend`: guard → settle → brace → recovery, free palm guarding forward,
+  knees lowered under grounded robes and attached item-selected staff. Three
+  fresh Old Mill guard→win→trail routes and all-class regression proof are in
+  `CINDER_DEFEND_POSE_PROOF.md`.
+- `staff-item`: unchanged guard → retrieve supplies from robe → offer with an
+  open palm → retrieve → guard; durations80/150/260/110/80ms, cue frame2. The
+  item-selected staff hides during retrieval/offering and returns on guard.
+  Existing item-result playback fires once at that cue; consumption/healing
+  remains Go-owned. This is a generic supply gesture with the existing result
+  effect, without a new consumable prop. Native desktop/phone/reduced evidence
+  is in `CINDER_ITEM_USE_PROOF.md`.
+
+These references do not accept Cinder victory/melee, all other identities'
+choreography or the full integrated combat/environment/first-visit backlog.

@@ -1260,6 +1260,76 @@
               }
             }
           ]
+        },
+        "item_use": {
+          "body_key": "battle_cinder_staff_item_body",
+          "body_path": "/sprites/battle/cinder/staff-item-body.png",
+          "cue_frame": 2,
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 80,
+              "attachments": {
+                "staff": {
+                  "x": 27,
+                  "y": 13,
+                  "angle": 8,
+                  "front": false
+                }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 150,
+              "attachments": {
+                "staff": {
+                  "x": 27,
+                  "y": 13,
+                  "angle": 8,
+                  "front": false,
+                  "visible": false
+                }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 260,
+              "attachments": {
+                "staff": {
+                  "x": 27,
+                  "y": 13,
+                  "angle": 8,
+                  "front": false,
+                  "visible": false
+                }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 110,
+              "attachments": {
+                "staff": {
+                  "x": 27,
+                  "y": 13,
+                  "angle": 8,
+                  "front": false,
+                  "visible": false
+                }
+              }
+            },
+            {
+              "frame": 0,
+              "duration": 80,
+              "attachments": {
+                "staff": {
+                  "x": 27,
+                  "y": 13,
+                  "angle": 8,
+                  "front": false
+                }
+              }
+            }
+          ]
         }
       }
     },
