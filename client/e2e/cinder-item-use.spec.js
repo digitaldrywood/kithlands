@@ -5,12 +5,15 @@ import { clickRouteText } from "./helpers/normal-route.js";
 
 const proof = path.resolve(`tmp/cinder-item-use-${Date.now()}`);
 mkdirSync(proof, { recursive: true });
-for (const [width, reduced] of [
-  [1440, false],
-  [390, false],
-  [800, true],
+for (const [width, reduced, itemID, itemName] of [
+  [1440, false, "potion", "Potion"],
+  [390, false, "potion", "Potion"],
+  [800, true, "potion", "Potion"],
+  [1440, false, "ether", "Ether"],
+  [390, false, "ether", "Ether"],
+  [800, true, "ether", "Ether"],
 ]) {
-  test.describe(`${width} Cinder item gesture`, () => {
+  test.describe(`${width} Cinder ${itemName} gesture`, () => {
     test.use({
       viewport: {
         width,
@@ -18,7 +21,7 @@ for (const [width, reduced] of [
       },
       hasTouch: width === 390,
     });
-    test("healing meets the presentation cue and consumes exactly one potion", async ({
+    test("item effect meets the presentation cue and consumes exactly one supply", async ({
       page,
     }) => {
       test.setTimeout(90000);
@@ -52,11 +55,17 @@ for (const [width, reduced] of [
           rng_seed: 6,
         }),
       );
-      await page.evaluate(() =>
-        window.__kithlandsTest.setPartyVitals(
-          [{ slot: 0, hp: 10, mp: 0 }],
-          "World",
-        ),
+      if (itemID === "ether")
+        await page.evaluate(() =>
+          window.__kithlandsTest.debugGiveItem("ether", 1, "World"),
+        );
+      await page.evaluate(
+        (hp) =>
+          window.__kithlandsTest.setPartyVitals(
+            [{ slot: 0, hp, mp: 0 }],
+            "World",
+          ),
+        itemID === "potion" ? 10 : 25,
       );
       const before = await page.evaluate(() =>
         window.__kithlandsTest.forceEncounter(["goblin"], 1, "World"),
@@ -133,7 +142,9 @@ for (const [width, reduced] of [
       });
       if (width === 390) await clickRouteText(page, "ITEMS", "Battle", true);
       else await page.keyboard.press("i");
-      const potion = page.getByRole("button", { name: /^Potion ×/ });
+      const potion = page.getByRole("button", {
+        name: new RegExp(`^${itemName} ×`),
+      });
       if (width === 390) await potion.tap();
       else await potion.click();
       const response = page.waitForResponse(
@@ -141,14 +152,16 @@ for (const [width, reduced] of [
           r.url().endsWith("/action") &&
           r.request().postDataJSON()?.type === "combat_round",
       );
-      const target = page.getByRole("button", { name: /^Hero · 10\// });
+      const target = page.getByRole("button", {
+        name: new RegExp(`^Hero · ${itemID === "potion" ? 10 : 25}/`),
+      });
       if (width === 390) await target.tap();
       else await target.click();
       const after = await (await response).json();
       expect(after.error).toBeUndefined();
       expect(after.phase).toBe("combat");
-      expect(after.items.find((item) => item.id === "potion")?.count || 0).toBe(
-        (before.items.find((item) => item.id === "potion")?.count || 0) - 1,
+      expect(after.items.find((item) => item.id === itemID)?.count || 0).toBe(
+        (before.items.find((item) => item.id === itemID)?.count || 0) - 1,
       );
       expect(after.gold).toBe(before.gold);
       expect(
@@ -163,9 +176,20 @@ for (const [width, reduced] of [
       await ready();
       const audit = await page.evaluate(() => window.__itemAudit);
       expect(audit.events).toHaveLength(1);
-      expect(audit.healing).toEqual([
-        { frame: 2, hp: before.party[0].max_hp, maxHP: before.party[0].max_hp },
-      ]);
+      expect(audit.healing).toEqual(
+        itemID === "potion"
+          ? [
+              {
+                frame: 2,
+                hp: before.party[0].max_hp,
+                maxHP: before.party[0].max_hp,
+              },
+            ]
+          : [],
+      );
+      expect(after.party[0].mp).toBe(
+        itemID === "ether" ? before.party[0].max_mp : before.party[0].mp,
+      );
       expect(audit.events[0]).toMatchObject({
         state: "item_use",
         frame: 2,
@@ -196,24 +220,28 @@ for (const [width, reduced] of [
             staffVisible: !!(
               hero.battleWeaponBack?.visible || hero.battleWeaponFront?.visible
             ),
+            mpShown:
+              window.__itemGame.scene.getScene("Battle").partySprites.Hero.mpBar
+                .currentHP,
           };
         }),
       ).toEqual({
         state: "idle_guard",
         texture: "battle_cinder_staff_cast_body",
         staffVisible: true,
+        mpShown: after.party[0].mp,
       });
       await page.screenshot({
-        path: path.join(proof, `${width}-recovered-guard.png`),
+        path: path.join(proof, `${itemID}-${width}-recovered-guard.png`),
       });
       for (const [name, data] of Object.entries(audit.images))
         writeFileSync(
-          path.join(proof, `${width}-${name}.png`),
+          path.join(proof, `${itemID}-${width}-${name}.png`),
           Buffer.from(data.split(",")[1], "base64"),
         );
       delete audit.images;
       writeFileSync(
-        path.join(proof, `${width}-trace.json`),
+        path.join(proof, `${itemID}-${width}-trace.json`),
         JSON.stringify({ before, after, audit, errors }, null, 2),
       );
       expect(errors).toEqual([]);

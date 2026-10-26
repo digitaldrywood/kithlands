@@ -458,5 +458,7 @@ than shrinking the sprite to simulate a bow.
 Exact source prompts, guides, outputs and rejected normalization are retained in
 `art-source/characters/cinder/battle/staff-victory/metadata.json`.
 Real Spark-win/receipt/World acceptance is in `CINDER_VICTORY_POSE_PROOF.md`.
-Cinder physical melee, resource-HUD reconciliation during playback and the full
-integrated combat/environment/first-visit acceptance remain open.
+Cinder physical melee and the full integrated combat/environment/first-visit
+acceptance remain open. Final authoritative mana HUD reconciliation after action
+playback is now verified in `BATTLE_MANA_HUD_PROOF.md`; per-action MP animation
+is not established by that follow-up.

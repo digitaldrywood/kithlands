@@ -80,6 +80,10 @@ for (const [width, reduced] of [
             at: performance.now(),
             frame: hero.battleFrameIndex,
             texture: hero.battleBody.texture.key,
+            mpShown: scene.partySprites.Hero.mpBar.currentHP,
+            mpMax: scene.partySprites.Hero.mpBar.maxHP,
+            mpLabel: scene.partySprites.Hero.mpBar.label.text,
+            mpColor: scene.partySprites.Hero.mpBar.fill.fillColor,
             staffVisible: !!(
               hero.battleWeaponBack?.visible || hero.battleWeaponFront?.visible
             ),
@@ -153,12 +157,28 @@ for (const [width, reduced] of [
         page.getByRole("dialog", { name: "VICTORY!", exact: true }),
       ).toBeVisible();
       const audit = await page.evaluate(() => window.__victoryAudit);
+      writeFileSync(
+        path.join(proof, `${width}-mana-audit.json`),
+        JSON.stringify(
+          {
+            beforeMP: before.party[0].mp,
+            wonMP: won.party[0].mp,
+            frames: audit.frames,
+          },
+          null,
+          2,
+        ),
+      );
       expect(audit.receiptDuringPose).toBe(false);
       expect(audit.frames.some((frame) => frame.frame === 2)).toBe(true);
       expect(audit.frames.some((frame) => frame.frame === 1)).toBe(true);
       for (const frame of audit.frames) {
         expect(frame.texture).toBe("battle_cinder_staff_victory_body");
         expect(frame.staffVisible).toBe(true);
+        expect(frame.mpShown).toBe(won.party[0].mp);
+        expect(frame.mpMax).toBe(won.party[0].max_mp);
+        expect(frame.mpLabel).toBe(`${won.party[0].mp}/${won.party[0].max_mp}`);
+        expect(frame.mpColor).toBe(0x8faee9);
         for (const key of [
           "xDelta",
           "yDelta",

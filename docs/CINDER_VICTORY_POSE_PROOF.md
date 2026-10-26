@@ -95,3 +95,6 @@ Hosted combat CI includes the new3cases and uploads their evidence. Parent
 4482a14 already passed all11visual suites/protected summary; newer heads still
 require their remote gates. Owner-selected self-hosted general CI stays queued.
 Owner services, sessions, browser and saves preserved; no restart or reset.
+
+Follow-up: `BATTLE_MANA_HUD_PROOF.md` fixes the observed final mana-card mismatch
+with authoritative round-end reconciliation and adds exact native MP assertions.

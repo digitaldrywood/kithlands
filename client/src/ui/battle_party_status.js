@@ -15,6 +15,25 @@ function meterColor(current, maximum, kind) {
   return pct > 0.5 ? 0x8ac7aa : pct > 0.25 ? 0xffb84d : 0xff5f5f;
 }
 
+// Round playback may finish in victory without rebuilding the battle HUD.
+// Reconcile mana from Go's final party snapshot, never inferred spell costs.
+export function reconcilePartyMana(scene, entries = {}, party = []) {
+  for (const member of party) {
+    const meter = entries[member.name]?.mpBar;
+    if (!meter) continue;
+    const maximum = Math.max(0, member.max_mp | 0);
+    const current = Math.max(0, Math.min(maximum, member.mp | 0));
+    const width = hpBarFillWidth(current, maximum, meter.width || 1);
+    scene.tweens?.killTweensOf?.([meter.fill, meter.ghost].filter(Boolean));
+    meter.fill?.setSize(width, meter.fill.height);
+    meter.fill?.setFillStyle(meterColor(current, maximum, "mp"));
+    meter.ghost?.setSize(width, meter.ghost.height);
+    meter.label?.setText(formatHPLabel(current, maximum));
+    meter.currentHP = current;
+    meter.maxHP = maximum;
+  }
+}
+
 export function partyStatusRowLayout(rect, count, compact = false) {
   const columns = compact ? 2 : 1;
   const rows = Math.ceil(Math.max(1, count) / columns);

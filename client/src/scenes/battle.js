@@ -45,7 +45,10 @@ import {
 import { FloatingTextPool } from "../ui/floating_text.js";
 import { MessageWindow } from "../ui/message_window.js";
 import { TargetCursor } from "../ui/target_cursor.js";
-import { drawBattlePartyStatus } from "../ui/battle_party_status.js";
+import {
+  drawBattlePartyStatus,
+  reconcilePartyMana,
+} from "../ui/battle_party_status.js";
 import { monsterSpriteKey } from "../data/monsterSprites.js";
 import {
   battleSpeedMul,
@@ -3399,6 +3402,7 @@ export class BattleScene extends Phaser.Scene {
 
       const finalResult = await this.resolvePendingTownChestClaim(result);
       this.gameState = finalResult;
+      reconcilePartyMana(this, this.partySprites, finalResult.party);
 
       if (finalResult.phase !== "combat" && finalResult.phase !== "defeat") {
         await this.playPartyVictoryBeat();
