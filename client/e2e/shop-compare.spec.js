@@ -235,12 +235,13 @@ test.describe("shop compare flow", () => {
     expect(texts).toContain(
       `Absorb: ${current.armor_absorb} to ${robe.absorb}`,
     );
-    expect(texts).toContain(`Abs +${robe.absorb - current.armor_absorb}`);
+    const absorbDelta = robe.absorb - current.armor_absorb;
+    expect(texts).toContain(`Abs ${absorbDelta > 0 ? "+" : ""}${absorbDelta}`);
     expect(texts).toContain(
       `MagicDef: ${current.armor_magic_defense} to ${robe.magic_defense}`,
     );
     expect(texts).toContain(
-      `MDef +${robe.magic_defense - current.armor_magic_defense}`,
+      `MDef ${robe.magic_defense - current.armor_magic_defense > 0 ? "+" : ""}${robe.magic_defense - current.armor_magic_defense}`,
     );
 
     await addProofOverlay(page, "Compare panel focused on Mira");
