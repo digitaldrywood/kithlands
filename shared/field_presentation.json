@@ -13,6 +13,7 @@
       "tile_sand": ["#b6a276", "#c1ae83", "#a8946b", "#c8b88e"],
       "tile_path": ["#a88a61", "#b69a72", "#957952", "#c0a580"],
       "tile_hill": ["#85816d", "#96917b", "#74735f", "#a49c85"],
+      "tile_snow": ["#c1cbb8", "#dce2d2", "#a9bba5", "#ced8c1"],
       "tile_marsh": ["#637553", "#70815d", "#536747", "#80906a"]
     },
     "path_style": "worn",

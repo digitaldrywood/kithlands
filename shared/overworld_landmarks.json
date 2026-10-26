@@ -109,12 +109,12 @@
         {
           "id": "natural-grove",
           "key": "world_landmark_natural_grove",
-          "path": "/sprites/world/landmarks/natural-grove.png"
+          "path": "/sprites/world/landmarks/natural-grove-canopy.png"
         },
         {
           "id": "natural-spring",
           "key": "world_landmark_natural_spring",
-          "path": "/sprites/world/landmarks/natural-spring.png"
+          "path": "/sprites/world/landmarks/natural-spring-canopy.png"
         }
       ]
     }
