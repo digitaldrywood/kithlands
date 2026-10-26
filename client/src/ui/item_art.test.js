@@ -17,16 +17,19 @@ it("uses canonical content art and preserves legacy PNG keys", () => {
     expect(itemArtURL(key)).toBeNull();
 });
 
-it("every authored weapon has a canonical icon backed by a local asset", () => {
-  const { weapons } = JSON.parse(
+it("every authored equipment item has a canonical icon backed by a local asset", () => {
+  const content = JSON.parse(
     readFileSync(new URL("../../../shared/items.json", import.meta.url)),
   );
-  expect(weapons.length).toBeGreaterThan(0);
-  for (const weapon of weapons) {
-    const url = itemArtURL(weapon.icon_key);
-    expect(url, `${weapon.id} has explicit canonical art`).toBeTruthy();
+  const equipment = ["weapons", "armor", "shields", "helmets", "gear"].flatMap(
+    (group) => content[group],
+  );
+  expect(equipment.length).toBeGreaterThan(0);
+  for (const item of equipment) {
+    const url = itemArtURL(item.icon_key);
+    expect(url, `${item.id} has explicit canonical art`).toBeTruthy();
     const asset = new URL(`../../public${url}`, import.meta.url);
-    expect(existsSync(asset), `${weapon.id} icon exists`).toBe(true);
+    expect(existsSync(asset), `${item.id} icon exists`).toBe(true);
     expect(readFileSync(asset).length).toBeGreaterThan(0);
   }
 });

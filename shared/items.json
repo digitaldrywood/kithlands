@@ -114,6 +114,7 @@
     },
     {
       "id": "patched_mantle",
+      "icon_key": "equipment/catalog/patched-mantle.svg",
       "name": "Patched Mantle",
       "kind": "armor",
       "category": "shoulders",
@@ -133,6 +134,7 @@
     },
     {
       "id": "leather_gloves",
+      "icon_key": "equipment/catalog/leather-gloves.svg",
       "name": "Leather Gloves",
       "kind": "armor",
       "category": "gloves",
@@ -152,6 +154,7 @@
     },
     {
       "id": "traveler_belt",
+      "icon_key": "equipment/catalog/traveler-belt.svg",
       "name": "Traveler's Belt",
       "kind": "armor",
       "category": "belt",
@@ -171,6 +174,7 @@
     },
     {
       "id": "trail_pants",
+      "icon_key": "equipment/catalog/trail-pants.svg",
       "name": "Trail Pants",
       "kind": "armor",
       "category": "pants",
@@ -190,6 +194,7 @@
     },
     {
       "id": "trail_boots",
+      "icon_key": "equipment/catalog/trail-boots.svg",
       "name": "Trail Boots",
       "kind": "armor",
       "category": "boots",
@@ -209,6 +214,7 @@
     },
     {
       "id": "copper_amulet",
+      "icon_key": "equipment/catalog/copper-amulet.svg",
       "name": "Copper Amulet",
       "kind": "accessory",
       "category": "amulet",
@@ -228,6 +234,7 @@
     },
     {
       "id": "copper_ring",
+      "icon_key": "equipment/catalog/copper-ring.svg",
       "name": "Copper Ring",
       "kind": "accessory",
       "category": "ring",
@@ -247,6 +254,7 @@
     },
     {
       "id": "twin_sigil_amulet",
+      "icon_key": "equipment/catalog/twin-sigil-amulet.svg",
       "name": "Twin-Sigil Amulet",
       "kind": "accessory",
       "category": "amulet",
@@ -266,6 +274,7 @@
     },
     {
       "id": "warrior_signet",
+      "icon_key": "equipment/catalog/warrior-signet.svg",
       "name": "Warrior's Signet",
       "kind": "accessory",
       "category": "ring",
@@ -1210,6 +1219,7 @@
     },
     {
       "id": "cloth_robe",
+      "icon_key": "equipment/catalog/cloth-robe.svg",
       "name": "Cloth Robe",
       "type": "robe",
       "tier": 1,
@@ -1223,6 +1233,7 @@
     },
     {
       "id": "leather_armor",
+      "icon_key": "equipment/catalog/leather-armor.svg",
       "name": "Leather Armor",
       "type": "leather",
       "tier": 1,
@@ -1236,6 +1247,7 @@
     },
     {
       "id": "chain_mail",
+      "icon_key": "equipment/catalog/chain-mail.svg",
       "name": "Chain Mail",
       "type": "chain",
       "tier": 2,
@@ -1249,6 +1261,7 @@
     },
     {
       "id": "silk_robe",
+      "icon_key": "equipment/catalog/silk-robe.svg",
       "name": "Silk Robe",
       "type": "robe",
       "tier": 2,
@@ -1262,6 +1275,7 @@
     },
     {
       "id": "studded_leather",
+      "icon_key": "equipment/catalog/studded-leather.svg",
       "name": "Studded Leather",
       "type": "leather",
       "tier": 2,
@@ -1275,6 +1289,7 @@
     },
     {
       "id": "plate_mail",
+      "icon_key": "equipment/catalog/plate-mail.svg",
       "name": "Plate Mail",
       "type": "plate",
       "tier": 3,
@@ -1288,6 +1303,7 @@
     },
     {
       "id": "enchanted_robe",
+      "icon_key": "equipment/catalog/enchanted-robe.svg",
       "name": "Enchanted Robe",
       "type": "robe",
       "tier": 3,
@@ -1301,6 +1317,7 @@
     },
     {
       "id": "war_plate",
+      "icon_key": "equipment/catalog/war-plate.svg",
       "name": "War Plate",
       "type": "plate",
       "tier": 4,
@@ -1314,6 +1331,7 @@
     },
     {
       "id": "mythril_chain",
+      "icon_key": "equipment/catalog/mythril-chain.svg",
       "name": "Mythril Chain",
       "type": "chain",
       "tier": 4,
@@ -1327,6 +1345,7 @@
     },
     {
       "id": "shadow_leather",
+      "icon_key": "equipment/catalog/shadow-leather.svg",
       "name": "Shadow Leather",
       "type": "leather",
       "tier": 4,
@@ -1340,6 +1359,7 @@
     },
     {
       "id": "arcane_robe",
+      "icon_key": "equipment/catalog/arcane-robe.svg",
       "name": "Arcane Robe",
       "type": "robe",
       "tier": 4,
@@ -1353,6 +1373,7 @@
     },
     {
       "id": "dragonscale_plate",
+      "icon_key": "equipment/catalog/dragonscale-plate.svg",
       "name": "Dragonscale Plate",
       "type": "plate",
       "tier": 5,
@@ -1366,6 +1387,7 @@
     },
     {
       "id": "knight_chain",
+      "icon_key": "equipment/catalog/knight-chain.svg",
       "name": "Knight Chain",
       "type": "chain",
       "tier": 5,
@@ -1379,6 +1401,7 @@
     },
     {
       "id": "ranger_leather",
+      "icon_key": "equipment/catalog/ranger-leather.svg",
       "name": "Ranger Leather",
       "type": "leather",
       "tier": 5,
@@ -1392,6 +1415,7 @@
     },
     {
       "id": "sage_robe",
+      "icon_key": "equipment/catalog/sage-robe.svg",
       "name": "Sage Robe",
       "type": "robe",
       "tier": 5,
@@ -1405,6 +1429,7 @@
     },
     {
       "id": "blessed_plate",
+      "icon_key": "equipment/catalog/blessed-plate.svg",
       "name": "Blessed Plate",
       "type": "plate",
       "tier": 6,
@@ -1418,6 +1443,7 @@
     },
     {
       "id": "guardian_chain",
+      "icon_key": "equipment/catalog/guardian-chain.svg",
       "name": "Guardian Chain",
       "type": "chain",
       "tier": 6,
@@ -1431,6 +1457,7 @@
     },
     {
       "id": "hunter_leather",
+      "icon_key": "equipment/catalog/hunter-leather.svg",
       "name": "Hunter Leather",
       "type": "leather",
       "tier": 6,
@@ -1444,6 +1471,7 @@
     },
     {
       "id": "void_robe",
+      "icon_key": "equipment/catalog/void-robe.svg",
       "name": "Void Robe",
       "type": "robe",
       "tier": 6,
@@ -1457,6 +1485,7 @@
     },
     {
       "id": "aegis_plate",
+      "icon_key": "equipment/catalog/aegis-plate.svg",
       "name": "Aegis Plate",
       "type": "plate",
       "tier": 7,
@@ -1470,6 +1499,7 @@
     },
     {
       "id": "titan_chain",
+      "icon_key": "equipment/catalog/titan-chain.svg",
       "name": "Titan Chain",
       "type": "chain",
       "tier": 7,
@@ -1483,6 +1513,7 @@
     },
     {
       "id": "phantom_leather",
+      "icon_key": "equipment/catalog/phantom-leather.svg",
       "name": "Phantom Leather",
       "type": "leather",
       "tier": 7,
@@ -1496,6 +1527,7 @@
     },
     {
       "id": "celestial_robe",
+      "icon_key": "equipment/catalog/celestial-robe.svg",
       "name": "Celestial Robe",
       "type": "robe",
       "tier": 7,
@@ -1511,6 +1543,7 @@
   "shields": [
     {
       "id": "wooden_shield",
+      "icon_key": "equipment/catalog/wooden-shield.svg",
       "name": "Wooden Shield",
       "tier": 1,
       "absorb": 3,
@@ -1521,6 +1554,7 @@
     },
     {
       "id": "iron_shield",
+      "icon_key": "equipment/catalog/iron-shield.svg",
       "name": "Iron Shield",
       "tier": 2,
       "absorb": 8,
@@ -1531,6 +1565,7 @@
     },
     {
       "id": "steel_shield",
+      "icon_key": "equipment/catalog/steel-shield.svg",
       "name": "Steel Shield",
       "tier": 3,
       "visual_id": "steel_shield",
@@ -1545,6 +1580,7 @@
   "helmets": [
     {
       "id": "leather_cap",
+      "icon_key": "equipment/catalog/leather-cap.svg",
       "name": "Leather Cap",
       "type": "cap",
       "tier": 1,
@@ -1555,6 +1591,7 @@
     },
     {
       "id": "iron_helm",
+      "icon_key": "equipment/catalog/iron-helm.svg",
       "name": "Iron Helm",
       "type": "helm",
       "tier": 2,
@@ -1565,6 +1602,7 @@
     },
     {
       "id": "great_helm",
+      "icon_key": "equipment/catalog/great-helm.svg",
       "name": "Great Helm",
       "type": "great_helm",
       "tier": 3,
