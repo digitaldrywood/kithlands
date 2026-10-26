@@ -280,6 +280,9 @@ export class BootScene extends Phaser.Scene {
     // lighter on slow connections.
     const bgKeys = new Set();
     const meadow = fieldPresentation.meadow;
+    for (const prop of Object.values(meadow.resource_props)) {
+      this.load.image(prop.key, prop.path);
+    }
     this.load.spritesheet(meadow.props.key, meadow.props.path, {
       frameWidth: meadow.props.cell,
       frameHeight: meadow.props.cell,

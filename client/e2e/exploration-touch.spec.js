@@ -63,6 +63,36 @@ test("touch exploration retains usable controls and trail action", async ({
     y: edge.playerY - 1,
     autoWalk: false,
   });
+  // Tap back to the original tile through the actual zoomed world camera.
+  // This catches fixed-UI cameras accidentally supplying map coordinates.
+  const mapTap = await page.evaluate(({ playerX, playerY }) => {
+    const s = window.__touchProofGame.scene.getScene("World");
+    const camera = s.cameras.main,
+      rect = s.game.canvas.getBoundingClientRect();
+    const x = (playerX + 0.5) * 32,
+      y = (playerY + 0.5) * 32;
+    return {
+      x:
+        rect.x +
+        (((x - camera.midPoint.x) * camera.zoom + camera.width / 2) *
+          rect.width) /
+          s.scale.gameSize.width,
+      y:
+        rect.y +
+        (((y - camera.midPoint.y) * camera.zoom + camera.height / 2) *
+          rect.height) /
+          s.scale.gameSize.height,
+    };
+  }, edge);
+  await page.touchscreen.tap(mapTap.x, mapTap.y);
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const s = window.__touchProofGame.scene.getScene("World");
+        return { x: s.playerX, y: s.playerY };
+      }),
+    )
+    .toEqual({ x: edge.playerX, y: edge.playerY });
   await page.screenshot({ path: new URL("touch-world.png", proof).pathname });
   await expect(
     hud.getByRole("button", { name: /^Party|^Objective/ }),

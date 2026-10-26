@@ -2,6 +2,7 @@ import { nearbyResource } from "./gatheringModel.js";
 import { gatherResource, getResourceStatus } from "../api.js";
 import { checkpointWorldPosition } from "./world_interact.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
+import field from "../../../shared/field_presentation.json";
 
 export function renderWorldResources(scene, tileSize) {
   scene.resourceTileSize = tileSize;
@@ -29,6 +30,18 @@ export function renderWorldResources(scene, tileSize) {
           .lineBetween(3, 0, 4, -5);
       }
       group.add(art);
+      continue;
+    }
+    const prop = field.meadow.resource_props[node.material_id];
+    if (prop && scene.textures.exists(prop.key)) {
+      const footY = (node.y + 0.95) * tileSize;
+      const sprite = scene.add
+        .image(x, footY, prop.key)
+        .setOrigin(0.5, 1)
+        .setDepth(10 + footY / 10000);
+      sprite.resourceNodeID = node.id;
+      group.add(art);
+      group.add(sprite);
       continue;
     }
     if (node.visual === "herb") {

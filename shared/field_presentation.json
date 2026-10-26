@@ -6,12 +6,32 @@
   },
   "meadow": {
     "ground": {
+      "tile_forest": ["#34462e", "#3c5033", "#2d3e29", "#49583a"],
+      "tile_tree": ["#34462e", "#3c5033", "#2d3e29", "#49583a"],
       "tile_grass": ["#70864e", "#7e9357", "#637b45", "#899b60"],
       "tile_dark_grass": ["#4f683d", "#5c7444", "#445d37", "#637b49"],
       "tile_sand": ["#b6a276", "#c1ae83", "#a8946b", "#c8b88e"],
       "tile_path": ["#a88a61", "#b69a72", "#957952", "#c0a580"],
       "tile_hill": ["#85816d", "#96917b", "#74735f", "#a49c85"],
       "tile_marsh": ["#637553", "#70815d", "#536747", "#80906a"]
+    },
+    "resource_props": {
+      "meadow_herb": {
+        "key": "resource_meadow_herbs",
+        "path": "/environment/resources/meadow-herbs.png"
+      },
+      "hardwood": {
+        "key": "resource_fallen_hardwood",
+        "path": "/environment/resources/fallen-hardwood.png"
+      },
+      "ember_ore": {
+        "key": "resource_iron_outcrop",
+        "path": "/environment/resources/iron-outcrop.png"
+      },
+      "mythril_ore": {
+        "key": "resource_mythril_outcrop",
+        "path": "/environment/resources/mythril-outcrop.png"
+      }
     },
     "props": {
       "key": "meadow_props",

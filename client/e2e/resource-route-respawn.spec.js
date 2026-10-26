@@ -109,7 +109,17 @@ for (const width of [1440, 390]) {
         expect(nodes.every(Boolean)).toBe(true);
         await capture("route-arrival");
         for (const node of nodes) {
-          await walk(node);
+          const approach = await page.evaluate((node) => {
+            const s = window.__normalRouteGame.scene.getScene("World");
+            return (
+              [
+                { x: node.x - 1, y: node.y },
+                { x: node.x + 1, y: node.y },
+                { x: node.x, y: node.y + 1 },
+              ].find((p) => s.canWalkTile(s.tileData[p.y]?.[p.x])) || node
+            );
+          }, node);
+          await walk(approach);
           await capture(`${node.habitat}-before-harvest`);
           await input(
             page.getByRole("button", {

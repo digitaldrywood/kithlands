@@ -87,6 +87,14 @@ export function updateMeadowDepth(scene) {
   scene.player.setDepth(10 + scene.player.y / 10000);
   scene.fieldShadow?.setPosition(scene.player.x, scene.player.y - 2);
   const view = scene.cameras.main.worldView;
+  // Fade foreground leaves around nearby gathering sites as well as the
+  // character. This is presentation only: no node or collision is moved.
+  const nearbySites = (scene.gameState?.resources || []).filter(
+    (node) =>
+      !node.gathered &&
+      Math.abs((node.x + 0.5) * 32 - scene.player.x) < 96 &&
+      Math.abs((node.y + 0.95) * 32 - scene.player.y) < 96,
+  );
   for (const object of scene.meadowDetails || []) {
     object.visible =
       object.x + 96 >= view.x &&
@@ -98,7 +106,12 @@ export function updateMeadowDepth(scene) {
         Math.abs(object.x - scene.player.x) < 38 &&
         object.y > scene.player.y &&
         object.y - scene.player.y < 80;
-      object.setAlpha(behind ? 0.48 : 1);
+      const coversSite = nearbySites.some((node) => {
+        const x = (node.x + 0.5) * 32;
+        const y = (node.y + 0.95) * 32;
+        return Math.abs(object.x - x) < 54 && object.y > y && object.y - y < 92;
+      });
+      object.setAlpha(coversSite ? 0.3 : behind ? 0.48 : 1);
     }
   }
 }

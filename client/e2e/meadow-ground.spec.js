@@ -18,6 +18,23 @@ for (const [width, height] of [
     await startNormalRoute(page, 24);
     const before = await page.evaluate(() => {
       const s = window.__normalRouteGame.scene.getScene("World");
+      if (s.cameras.main.zoom !== (s.gameplayLayout.portrait ? 2 : 1))
+        throw new Error("Unexpected world framing");
+      if (s.worldUICamera && s.worldUICamera.zoom !== 1)
+        throw new Error("World zoom changed fixed-control size");
+      const props = s.resourceArt
+        .getChildren()
+        .filter((object) => object.resourceNodeID);
+      if (
+        props.length !== s.gameState.resources.filter((n) => !n.gathered).length
+      )
+        throw new Error("A live resource is missing its approved prop");
+      for (const prop of props) {
+        if (prop.width !== 64 || prop.height !== 48 || prop.originY !== 1)
+          throw new Error(`Invalid resource bounds: ${prop.resourceNodeID}`);
+        if (!prop.texture.key.startsWith("resource_"))
+          throw new Error(`Resource fallback art: ${prop.resourceNodeID}`);
+      }
       return JSON.stringify({
         tiles: s.tileData,
         resources: s.gameState.resources,
@@ -31,6 +48,9 @@ for (const [width, height] of [
         if (!n) throw new Error(`Missing ${visual} habitat`);
         return { label: visual, x: n.x, y: n.y };
       });
+      const rare = s.gameState.resources.find((n) => n.required_level);
+      if (!rare) throw new Error("Missing rare mineral habitat");
+      resources.push({ label: "rare-mineral", x: rare.x, y: rare.y });
       let sand;
       for (let y = 1; y < s.mapH - 1 && !sand; y++)
         for (let x = 1; x < s.mapW - 1 && !sand; x++)
@@ -52,6 +72,27 @@ for (const [width, height] of [
       await page.screenshot({
         path: path.join(proof, `${width}-${location.label}.png`),
       });
+      if (
+        ["herb", "wood", "mineral", "rare-mineral"].includes(location.label)
+      ) {
+        const adjacent = await page.evaluate(({ x, y }) => {
+          const s = window.__normalRouteGame.scene.getScene("World");
+          return [
+            { x: x - 1, y },
+            { x: x + 1, y },
+            { x, y: y + 1 },
+          ].find((p) => s.canWalkTile(s.tileData[p.y]?.[p.x]));
+        }, location);
+        expect(adjacent).toBeTruthy();
+        await page.evaluate(({ x, y }) => {
+          window.__kithlandsTest.setPlayerTile(x, y, "World");
+          window.__kithlandsTest.centerCameraOnPlayer("World");
+        }, adjacent);
+        await page.waitForTimeout(250);
+        await page.screenshot({
+          path: path.join(proof, `${width}-${location.label}-beside.png`),
+        });
+      }
     }
     const after = await page.evaluate(() => {
       const s = window.__normalRouteGame.scene.getScene("World");

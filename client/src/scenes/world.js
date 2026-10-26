@@ -82,6 +82,7 @@ import {
   worldTileMapForGame,
 } from "./worldMapCache.js";
 import { renderWorldLandmarks } from "./worldLandmarkRenderer.js";
+import { installWorldCamera } from "./worldCamera.js";
 
 const ENEMY_SPRITES = {
   Slime: "monster_slime",
@@ -546,6 +547,7 @@ export class WorldScene extends Phaser.Scene {
       .setAlpha(0)
       .setVisible(false);
 
+    installWorldCamera(this);
     console.log("[World] created, player at", this.playerX, this.playerY);
   }
 
