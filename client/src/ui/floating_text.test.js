@@ -194,6 +194,21 @@ describe("FloatingTextPool", () => {
     );
   });
 
+  it("replaces a sequential target result without clearing another target's text", async () => {
+    const pool = new FloatingTextPool(makeScene());
+    await pool.spawnResult(100, 150, 52, "physical", "enemy_1");
+    await pool.spawnResult(300, 150, 18, "physical", "enemy_2");
+    const other = pool.active.find((t) => t._targetKey === "enemy_2");
+    await pool.spawnResult(100, 150, 65, "physical", "enemy_1", {
+      replaceTarget: true,
+    });
+    expect(pool.active).toHaveLength(2);
+    expect(pool.active).toContain(other);
+    expect(pool.active.find((t) => t._targetKey === "enemy_1").text).toBe(
+      "-65",
+    );
+  });
+
   it("keeps group damage stable and leaves defeat reporting to the shared summary", async () => {
     const scene = makeScene(),
       pool = new FloatingTextPool(scene);

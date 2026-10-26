@@ -89,13 +89,20 @@ for (const [width, height, reducedMotion, speed] of [
           text.text.startsWith("CRITICAL"),
         );
         const defeatLabel = labels.find((text) => text.text === "DEFEATED!");
-        if (criticalLabel && defeatLabel) {
+        if (criticalLabel && !window.__criticalProof.images["critical-labels"])
+          window.__criticalProof.images["critical-labels"] =
+            game.canvas.toDataURL("image/png");
+        const defeatNumber = labels.find(
+          (text) =>
+            text._resultType !== "defeated" &&
+            text._targetKey === defeatLabel?._targetKey,
+        );
+        if (defeatNumber && defeatLabel) {
           window.__criticalProof.labelGaps.push(
-            defeatLabel.getBounds().top - criticalLabel.getBounds().bottom,
+            defeatLabel.getBounds().top - defeatNumber.getBounds().bottom,
           );
-          if (!window.__criticalProof.images["critical-labels"])
-            window.__criticalProof.images["critical-labels"] =
-              game.canvas.toDataURL("image/png");
+          window.__criticalProof.images["defeat-labels"] ||=
+            game.canvas.toDataURL("image/png");
         }
         if (key === previous) return;
         previous = key;
@@ -141,6 +148,7 @@ for (const [width, height, reducedMotion, speed] of [
           if (hero?.battleState === "critical_attack")
             window.__criticalProof.hits.push({
               crit: !!args[6]?.crit,
+              damage: args[2],
               state: hero.battleState,
               frame: hero.battleFrameIndex,
             });
@@ -161,7 +169,12 @@ for (const [width, height, reducedMotion, speed] of [
         (a) => a.actor_name === "Hero" && a.kind === "attack",
       );
       expect(hero).toBeTruthy();
-      authoritative.push({ round, critical: !!hero.crit, damage: hero.damage });
+      authoritative.push({
+        round,
+        critical: !!hero.crit,
+        damage: hero.damage,
+        hits: hero.hits,
+      });
       writeFileSync(
         path.join(caseProof, `${width}-server-${round}.json`),
         JSON.stringify({ hero, errors }, null, 2),
@@ -213,6 +226,11 @@ for (const [width, height, reducedMotion, speed] of [
       );
     }
     expect(data.hits.every((hit) => hit.crit && hit.frame === 3)).toBe(true);
+    expect(data.hits.map((h) => h.damage)).toEqual(
+      authoritative.flatMap((a) =>
+        a.hits.filter((h) => h.crit).map((h) => h.damage),
+      ),
+    );
     expect(data.labelGaps.length).toBeGreaterThan(0);
     expect(Math.min(...data.labelGaps)).toBeGreaterThan(8);
     const lastCritical = data.frames.findLastIndex(

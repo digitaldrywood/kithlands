@@ -5,6 +5,8 @@ Updated 2026-10-25. This file records work; it does not schedule unattended runs
 
 ## Verified locally
 
+- Physical attacks now present each server-resolved hit at its own authored contact cue, with per-hit crit/miss flags, incremental HP feedback and a final total. Sequential results retain their reading hold before replacing the previous number for that target. Four native Warrior two-hit cases and four mixed critical/normal attack cases plus five crowded Blaze regressions pass (824 client tests/build/format). See `MULTI_HIT_PRESENTATION_PROOF.md`. Counters, dense formations and real Miss acceptance remain open. Hosted `24d213d` campaign failed in the normal-route helper; delayed-frame input diagnostics/recovery are in progress, while walking/escort/interiors are green.
+
 - Five-target Blaze results now use one stationary number per target and one server-derived defeat summary after caster recovery. Crowded phone rows and their group caption leave readable result/name lanes. Five native desktop/phone/Fast/reduced-motion/partial-defeat cases, 821 client tests/build/format and inspected final captures pass. See `CROWDED_BATTLE_RESULTS_PROOF.md` for fixture limits and exact gates. The preceding `f445d67` hosted visual run `40254454000` passed all five groups; this follow-up needs its own remote gate.
 
 - Phone combat numbers and lower action messages now enforce 16 CSS pixels, criticals 18, enemy names 12. Measured name/result/status lanes remove the Frost overlap and keep critical/defeat text separate; party damage/healing anchors respect feet registration. Seven native desktop/default/375px/390px cast/critical cases and nine Defend/VFX cases pass, with all 177 current captures/motion frames inspected. Three held-text/Fast-message cases plus a real Fast Warrior critical case also pass, with 21 additional inspected captures. Original hold-time proof history is preserved. 817 client tests/build/format pass. See `COMBAT_TEXT_READABILITY_PROOF.md` for exact measurements and limits. Hosted visual runs `40250320489` on `00444d7` and `40251826213` on `8c842b0` pass all five groups; the combat-text follow-up needs its own remote gate.
@@ -105,7 +107,7 @@ The active goal is the complete user-pasted request, not only this checklist. Ex
 
 ## Subsequent work
 
-- Complete dense single-target critical, multi-hit and actual server-Miss result-label acceptance beyond the verified Warrior/Cinder default/Fast and five-target Blaze references. Review small floating action titles and victory-detail text separately.
+- Complete dense single-target critical, counter/more-than-two-hit and actual server-Miss result-label acceptance beyond the verified Warrior two-hit/mixed-critical, Cinder default/Fast and five-target Blaze references. Review small floating action titles and victory-detail text separately.
 
 - Audit Codex reference lists against shared content; its static equipment/class guide still lives in client code.
 

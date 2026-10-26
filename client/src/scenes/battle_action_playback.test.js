@@ -2,7 +2,31 @@ import { describe, expect, it } from "vitest";
 import {
   beginBattleAction,
   physicalAttackState,
+  physicalHitPresentations,
 } from "./battle_action_playback.js";
+
+describe("server hit presentation", () => {
+  it("preserves the resolved hit order, misses and individual critical flags", () => {
+    const action = {
+      crit: true,
+      hits: [
+        { damage: 12 },
+        { damage: 0, missed: true },
+        { damage: 24, crit: true },
+      ],
+    };
+    expect(physicalHitPresentations(action, 36, true)).toEqual([
+      { damage: 12, crit: false, missed: false, defeated: false },
+      { damage: 0, crit: false, missed: true, defeated: false },
+      { damage: 24, crit: true, missed: false, defeated: true },
+    ]);
+  });
+  it("keeps legacy aggregate responses playable without inventing extra hits", () => {
+    expect(physicalHitPresentations({ crit: true }, 42, true)).toEqual([
+      { damage: 42, crit: true, missed: false, defeated: true },
+    ]);
+  });
+});
 
 describe("authored action cue", () => {
   it("uses a critical state only for a reported crit with an authored variant", () => {

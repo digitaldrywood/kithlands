@@ -218,3 +218,11 @@ subsequent native five-target Blaze acceptance, stable numbers, server-derived
 defeat summary and crowded phone framing/caption fixes. The original proof
 history above remains unchanged. This follow-up does not accept dense criticals,
 all monster-size/name combinations, multi-hit or a real server-resolved Miss.
+
+## Individual physical hits
+
+[MULTI_HIT_PRESENTATION_PROOF.md](MULTI_HIT_PRESENTATION_PROOF.md) records the
+subsequent per-hit contact/readability correction. The previous 169-point
+aggregate crit reference is superseded by the actual 106-critical + 63-normal
+sequence. The historical evidence above remains intact; current acceptance
+uses individual server hit values and actual number/defeat spacing.

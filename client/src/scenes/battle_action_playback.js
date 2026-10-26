@@ -1,5 +1,17 @@
 // Own the hand-off between authored body poses and scene effects. The scene
 // displays the server result at the cue, then resumes follow-through/recovery.
+export function physicalHitPresentations(action, damage, defeated) {
+  const hits = action.hits?.length
+    ? action.hits
+    : [{ damage, crit: action.crit, missed: action.missed }];
+  return hits.map((hit, index) => ({
+    damage: hit.damage,
+    crit: !!hit.crit,
+    missed: !!hit.missed,
+    defeated: !!defeated && index === hits.length - 1,
+  }));
+}
+
 export function physicalAttackState(sprite, critical) {
   return critical && sprite?.battleStates?.critical_attack
     ? "critical_attack"

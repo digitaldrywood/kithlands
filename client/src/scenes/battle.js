@@ -5,6 +5,7 @@ import { meleeContactDetails } from "./battle_contact_fx.js";
 import {
   beginBattleAction,
   physicalAttackState,
+  physicalHitPresentations,
 } from "./battle_action_playback.js";
 import fieldPresentation from "../../../shared/field_presentation.json";
 import abilityDefinitions from "../../../shared/abilities.json";
@@ -3627,6 +3628,7 @@ export class BattleScene extends Phaser.Scene {
         const dmg = action.damage || (attackMatch && parseInt(attackMatch[4]));
         const dmgType = action.damage_type || "physical";
         const attackTitle = this.actionTitleFor(action, line);
+        const hits = physicalHitPresentations(action, dmg, defeatMatch);
 
         const pe = this.partySprites[attacker];
         const ee = this.enemySprites[targetId];
@@ -3643,7 +3645,7 @@ export class BattleScene extends Phaser.Scene {
           this.revealLine(`${attacker} attacks ${ee.name}!`, "#ff8844");
           await this.showActionTitle(pe, attackTitle, "#ffcc66");
           await this.playMajorCinematicPrelude(action, pe, "none");
-          await this.lungePartySprite(pe, ee, { crit: action.crit });
+          await this.lungePartySprite(pe, ee, { crit: hits[0].crit });
           if (!pe?.battleAction && !attackerEnemy?.battleAction)
             await this.wait(ACTION_BEAT_MS.preImpact);
         } else if (pe) {
@@ -3660,64 +3662,101 @@ export class BattleScene extends Phaser.Scene {
           this.revealLine(`${attacker} attacks ${pt.name}!`, "#ff9966");
           await this.showActionTitle(attackerEnemy, attackTitle, "#ff9966");
           await this.playMajorCinematicPrelude(action, attackerEnemy, "none");
-          await this.lungePartySprite(attackerEnemy, pt);
+          await this.lungePartySprite(attackerEnemy, pt, {
+            crit: hits[0].crit,
+          });
           if (!pe?.battleAction && !attackerEnemy?.battleAction)
             await this.wait(ACTION_BEAT_MS.preImpact);
         }
 
-        playSFX("sfx_slash");
-        if (ee) {
-          const targetKey = `enemy_${targetId}`;
-          playSFX(defeatMatch ? "sfx_death" : "sfx_hit");
-          await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch, dmgType, {
-            crit: action.crit,
-            guarded: action.damage_prevented > 0,
-            missed: action.missed,
-            targetKey,
-            entry: ee,
-          });
-          if (!action.missed && ee.sprite.setTint) {
-            ee.sprite.setTint(0xff4444);
-            this.scaledDelay(200, () => ee.sprite.clearTint?.());
-          }
-          // Animate HP bar drain — integer math only, see systems/hpBar.js
-          if (!action.missed && ee.hpBar) {
-            const newHP = applyDamage(ee.hpBar.currentHP, dmg);
-            this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
-            if (!defeatMatch) {
-              this.playEnemyHitReaction(ee, {
-                newHP,
-                maxHP: ee.hpBar.maxHP,
-              });
-            }
-          }
-          await this.resetPartySprite(pe);
-          if (defeatMatch) await this.enemyDeathFx(ee);
-        } else if (pt) {
-          const targetKey = `party_${action.target_name || attackMatch?.[2]}`;
-          const atkName = action.actor_name || attackMatch?.[1] || attacker;
-          const tgtName = action.target_name || attackMatch?.[2] || "";
-          if (!attackerEnemy) {
-            this.revealLine(`${atkName} attacks ${tgtName}!`, "#ff8800");
-          }
-          playSFX("sfx_party_hit");
-          await this.hitFx(pt.x, pt.y, dmg, true, false, dmgType, {
-            crit: action.crit,
-            guarded: action.damage_prevented > 0,
-            missed: action.missed,
-            targetKey,
-            entry: pt,
-          });
-          // Animate party HP bar drain — integer math only
-          if (!action.missed && pt.hpBar) {
-            const newHP = applyDamage(pt.hpBar.currentHP, dmg);
-            this.animateHPBar(pt.hpBar, newHP, pt.hpBar.maxHP);
-            this.playPartyHitReaction(pt, {
-              newHP,
-              maxHP: pt.hpBar.maxHP,
+        for (const [index, hit] of hits.entries()) {
+          if (index > 0) {
+            await this.waitForCombatRead();
+            await this.lungePartySprite(pe || attackerEnemy, ee || pt, {
+              crit: hit.crit,
             });
           }
-          await this.resetPartySprite(attackerEnemy);
+          if (hits.length > 1) {
+            this.revealLine(
+              `${attacker} → ${(ee || pt)?.name || action.target_name}: strike ${index + 1}/${hits.length}`,
+              "#ffcc66",
+            );
+            this.combatReadUntil = Math.max(
+              this.combatReadUntil || 0,
+              performance.now() + (hit.crit ? 1500 : 1200),
+            );
+          }
+          playSFX("sfx_slash");
+          if (ee) {
+            const targetKey = `enemy_${targetId}`;
+            playSFX(hit.defeated ? "sfx_death" : "sfx_hit");
+            await this.hitFx(
+              ee.x,
+              ee.y,
+              hit.damage,
+              false,
+              hit.defeated,
+              dmgType,
+              {
+                crit: hit.crit,
+                guarded: action.damage_prevented > 0,
+                missed: hit.missed,
+                targetKey,
+                entry: ee,
+                replaceTarget: hits.length > 1,
+              },
+            );
+            if (!hit.missed && ee.sprite.setTint) {
+              ee.sprite.setTint(0xff4444);
+              this.scaledDelay(200, () => ee.sprite.clearTint?.());
+            }
+            // Animate HP bar drain — integer math only, see systems/hpBar.js
+            if (!hit.missed && ee.hpBar) {
+              const newHP = applyDamage(ee.hpBar.currentHP, hit.damage);
+              this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
+              if (!hit.defeated) {
+                this.playEnemyHitReaction(ee, {
+                  newHP,
+                  maxHP: ee.hpBar.maxHP,
+                });
+              }
+            }
+            await this.resetPartySprite(pe);
+            if (hit.defeated) await this.enemyDeathFx(ee);
+          } else if (pt) {
+            const targetKey = `party_${action.target_name || attackMatch?.[2]}`;
+            const atkName = action.actor_name || attackMatch?.[1] || attacker;
+            const tgtName = action.target_name || attackMatch?.[2] || "";
+            if (!attackerEnemy) {
+              this.revealLine(`${atkName} attacks ${tgtName}!`, "#ff8800");
+            }
+            playSFX("sfx_party_hit");
+            await this.hitFx(pt.x, pt.y, hit.damage, true, false, dmgType, {
+              crit: hit.crit,
+              guarded: action.damage_prevented > 0,
+              missed: hit.missed,
+              targetKey,
+              entry: pt,
+              replaceTarget: hits.length > 1,
+            });
+            // Animate party HP bar drain — integer math only
+            if (!hit.missed && pt.hpBar) {
+              const newHP = applyDamage(pt.hpBar.currentHP, hit.damage);
+              this.animateHPBar(pt.hpBar, newHP, pt.hpBar.maxHP);
+              this.playPartyHitReaction(pt, {
+                newHP,
+                maxHP: pt.hpBar.maxHP,
+              });
+            }
+            await this.resetPartySprite(attackerEnemy);
+          }
+        }
+        if (hits.length > 1) {
+          await this.waitForCombatRead();
+          this.revealLine(
+            `${attacker}: ${dmg} damage (${hits.length} strikes).`,
+            "#ffcc66",
+          );
         }
         await this.wait(ACTION_BEAT_MS.postDamage);
         await this.wait(ACTION_BEAT_MS.interAction);
@@ -4642,6 +4681,7 @@ export class BattleScene extends Phaser.Scene {
           guarded: opts.guarded,
           defeated: defeated && !opts.missed,
           groupResult: opts.groupResult,
+          replaceTarget: opts.replaceTarget,
           maxBottom: textAnchor.maxBottom,
           gap,
         },

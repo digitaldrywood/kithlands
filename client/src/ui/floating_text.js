@@ -351,6 +351,12 @@ export class FloatingTextPool {
   }
 
   spawnResult(x, y, value, type, targetKey, opts = {}) {
+    // A sequential strike replaces only the prior result for this target,
+    // after the scene has honored its independent full-opacity reading hold.
+    if (opts.replaceTarget) {
+      for (const text of [...this.active])
+        if (text._targetKey === targetKey) this.release(text);
+    }
     const pending = [];
     let maxBottom = opts.maxBottom;
     if (opts.groupResult) {
