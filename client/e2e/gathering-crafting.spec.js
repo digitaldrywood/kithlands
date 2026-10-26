@@ -1,6 +1,6 @@
 import { walkTo } from "./helpers/crafting-progression.js";
 import { test, expect } from "@playwright/test";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 
 const proof = new URL(`../tmp/gathering-${Date.now()}/`, import.meta.url);
 mkdirSync(proof, { recursive: true });
@@ -142,7 +142,13 @@ for (const [width, height] of [
     page.setDefaultTimeout(15_000);
     await page.setViewportSize({ width, height });
     const errors = [];
-    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("pageerror", (error) => {
+      errors.push(error.message);
+      writeFileSync(
+        new URL(`${width}-page-errors.json`, proof),
+        JSON.stringify(errors, null, 2),
+      );
+    });
     await page.addInitScript(() =>
       localStorage.setItem(
         "kithlands_prefs",
@@ -386,9 +392,7 @@ for (const [width, height] of [
     await page.waitForFunction(
       () => window.__kithlandsTest.activeSceneKey() === "Battle",
     );
-    await page.waitForFunction(
-      () => !window.__gatherGame.scene.getScene("Battle").animating,
-    );
+    await battleCommandsOrResults(page);
     const battle = await state(page, "Battle");
     expect(battle.equipment[0].weapon_item.instance_id).toBe(sword.instance_id);
     await capture(page, `${width}-crafted-sword-battle`);
@@ -402,9 +406,7 @@ for (const [width, height] of [
         })),
       );
     });
-    await page.waitForFunction(
-      () => !window.__gatherGame.scene.getScene("Battle").animating,
-    );
+    await battleCommandsOrResults(page);
     const used = page.waitForResponse(
       (r) => r.url().endsWith("/action") && r.request().method() === "POST",
     );
@@ -427,22 +429,39 @@ for (const [width, height] of [
     });
     const afterPotion = await (await used).json();
     expect(afterPotion.potions).toBe(crafted.potions - 1);
-    await page.waitForFunction(
-      () => !window.__gatherGame.scene.getScene("Battle").animating,
-    );
+    await battleCommandsOrResults(page);
     await capture(page, `${width}-crafted-potion-used`);
     for (
       let round = 0;
       round < 15 && (await state(page, "Battle")).phase === "combat";
       round++
     ) {
+      // A result remains actionable even if its presentation clock stalls.
+      await page.evaluate(() => {
+        const scene = window.__gatherGame.scene.getScene("Battle");
+        scene.victoryClockFaultFixture = false;
+        const freeze = () => {
+          if (!scene.children.list.some((child) => child.text === "VICTORY!"))
+            return;
+          scene.time.paused = true;
+          scene.victoryClockFaultFixture = true;
+          scene.events.off("postupdate", freeze);
+        };
+        scene.events.on("postupdate", freeze);
+        scene.events.once("shutdown", () => {
+          scene.events.off("postupdate", freeze);
+          scene.time.paused = false;
+        });
+      });
       await page.evaluate(() =>
         window.__kithlandsTest.startAuthoritativeBattleRound("attack"),
       );
-      await page.waitForFunction(
-        () => !window.__gatherGame.scene.getScene("Battle").animating,
-      );
+      await battleCommandsOrResults(page);
     }
+    await page.waitForFunction(
+      () =>
+        window.__gatherGame.scene.getScene("Battle").victoryClockFaultFixture,
+    );
     const won = await state(page, "Battle");
     expect(won.phase).toBe("quest_complete");
     expect(
@@ -452,13 +471,47 @@ for (const [width, height] of [
     expect(
       won.party.some((member, index) => member.xp > battle.party[index].xp),
     ).toBe(true);
-    await page.waitForFunction(
-      () =>
-        window.__kithlandsTest
-          .visibleTexts("Battle")
-          .some((entry) => entry.text === "Continue"),
-      null,
-      { timeout: 30_000 },
+    // Victory may first offer an earned equipment drop. Keep it through the
+    // real control before expecting Continue, as a normal player would.
+    while (await page.locator(".battle-loot-keep").count()) {
+      await page.locator(".battle-loot-keep").click();
+      await page.waitForTimeout(100);
+    }
+    try {
+      await page.waitForFunction(() =>
+        window.__kithlandsTest.interactiveTextPosition("Continue", "Battle"),
+      );
+    } catch (error) {
+      const audit = await page.evaluate(() => {
+        const scene = window.__gatherGame.scene.getScene("Battle");
+        return {
+          active: window.__kithlandsTest.activeSceneKey(),
+          phase: scene.gameState?.phase,
+          animating: scene.animating,
+          victory: scene.victoryContinueShown,
+          text: window.__kithlandsTest.visibleTexts("Battle"),
+        };
+      });
+      writeFileSync(
+        new URL(`${width}-victory-failure.json`, proof),
+        JSON.stringify({ audit, errors }, null, 2),
+      );
+      throw error;
+    }
+    const xpLabels = await page.evaluate(() =>
+      window.__kithlandsTest
+        .visibleTexts("Battle")
+        .map((entry) => entry.text)
+        .filter(
+          (text) => /^\+\d+ XP$/.test(text) || text === "NO XP · DEFEATED",
+        ),
+    );
+    expect(xpLabels).toEqual(
+      won.party.map((member, index) =>
+        won.died_this_fight?.[index]
+          ? "NO XP · DEFEATED"
+          : `+${member.xp - won.xp_before[index]} XP`,
+      ),
     );
     await capture(page, `${width}-victory`);
     await page.keyboard.press("Enter");
@@ -501,4 +554,41 @@ async function assertWorkbenchFits(page, crafting) {
   await expect(
     crafting.getByRole("button", { name: "Forge Iron Sword", exact: true }),
   ).toBeVisible();
+}
+
+// An outgoing scene clears animating before its restart is processed. Wait
+// for actual commands/results so the next API round cannot race that handoff.
+async function battleCommandsOrResults(page) {
+  try {
+    await page.waitForFunction(() => {
+      const scene = window.__gatherGame.scene.getScene("Battle");
+      return (
+        window.__kithlandsTest.activeSceneKey() === "Battle" &&
+        ((scene.gameState?.phase === "combat" &&
+          !scene.animating &&
+          scene.promptText?.getText().includes("choose an action")) ||
+          (scene.gameState?.phase !== "combat" && scene.victoryContinueShown))
+      );
+    });
+  } catch (error) {
+    const audit = await page.evaluate(() => {
+      const scene = window.__gatherGame.scene.getScene("Battle");
+      return {
+        active: window.__kithlandsTest.activeSceneKey(),
+        phase: scene.gameState?.phase,
+        animating: scene.animating,
+        victory: scene.victoryContinueShown,
+        clockPaused: scene.time.paused,
+        clockFault: scene.victoryClockFaultFixture,
+        prompt: scene.promptText?.getText(),
+        text: window.__kithlandsTest.visibleTexts("Battle"),
+      };
+    });
+    writeFileSync(
+      new URL(`${page.viewportSize().width}-command-failure.json`, proof),
+      JSON.stringify(audit, null, 2),
+    );
+    await capture(page, `${page.viewportSize().width}-command-failure`);
+    throw error;
+  }
 }

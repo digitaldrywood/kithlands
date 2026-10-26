@@ -37,6 +37,7 @@ import { buildVictoryXPSegments } from "../systems/victoryXp.js";
 import {
   buildVictorySummary,
   buildFinalePartyXP,
+  buildPartyXP,
   formatSpoils,
 } from "../systems/victoryPresentation.js";
 import {
@@ -5065,6 +5066,7 @@ export class BattleScene extends Phaser.Scene {
     const log = gs.combat_log || [];
     const summary = buildVictorySummary(log, gs.battle_rewards);
     const finaleXP = buildFinalePartyXP(gs);
+    const partyXP = buildPartyXP(gs);
     if (finaleXP)
       summary.xpEarned = finaleXP.reduce((total, xp) => total + xp, 0);
     const totalEther =
@@ -5262,7 +5264,9 @@ export class BattleScene extends Phaser.Scene {
           rowY - (mobileVictory ? 38 : -7),
           diedThisFight
             ? "NO XP · DEFEATED"
-            : `+${finaleXP?.[i] ?? summary.xpEarned} XP`,
+            : partyXP[i] == null
+              ? "XP updated"
+              : `+${partyXP[i]} XP`,
           {
             fontSize: mobileVictory ? "18px" : "10px",
             color: diedThisFight ? "#d77b82" : "#89c9f2",
@@ -5541,15 +5545,17 @@ export class BattleScene extends Phaser.Scene {
 
     const contTimer = this.time.delayedCall(
       450 + gs.party.length * 650 + 900,
-      () => this.finalizeVictory(gs),
+      () => this.fastForwardVictoryResults(gs),
     );
     this.victoryPendingTimers.push({
       timer: contTimer,
-      finalize: () => this.finalizeVictory(gs),
+      finalize: () => this.fastForwardVictoryResults(gs),
     });
 
-    this.victoryFFHandler = () => this.fastForwardVictoryResults(gs);
-    this.input.keyboard.on("keydown-SPACE", this.victoryFFHandler);
+    // Navigation must not depend on the tally clock progressing. The player
+    // can watch the animation, skip it, or explicitly leave once results exist.
+    // Earned equipment still goes through the authoritative loot review first.
+    this.finalizeVictory(gs);
   }
 
   fastForwardVictoryResults(gs) {
@@ -5594,6 +5600,13 @@ export class BattleScene extends Phaser.Scene {
   }
 
   addContinueButton(gs) {
+    let continuing = false;
+    const continueBattle = () => {
+      if (continuing) return;
+      continuing = true;
+      this.fastForwardVictoryResults(gs);
+      this.returnFromBattle(gs);
+    };
     const layout = this.victoryResultLayout || {
       continueY: 545,
       continueWidth: 150,
@@ -5607,7 +5620,7 @@ export class BattleScene extends Phaser.Scene {
       layout.continueWidth,
       layout.continueHeight,
       "Continue",
-      () => this.returnFromBattle(gs),
+      continueBattle,
       {
         depth: 8,
         fontSize: layout.continueFontSize,
@@ -5617,7 +5630,10 @@ export class BattleScene extends Phaser.Scene {
         fontFamily: "Arial",
       },
     );
-    this.input.keyboard.on("keydown-ENTER", () => this.returnFromBattle(gs));
-    this.input.keyboard.on("keydown-SPACE", () => this.returnFromBattle(gs));
+    this.input.keyboard.on("keydown-ENTER", continueBattle);
+    this.input.keyboard.on("keydown-SPACE", () => {
+      if (!this.victoryFastForwarded) this.fastForwardVictoryResults(gs);
+      else continueBattle();
+    });
   }
 }

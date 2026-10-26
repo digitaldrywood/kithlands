@@ -1720,6 +1720,12 @@ export function installDevTestBridge(game) {
       if (result?.error) {
         throw new Error(result.error);
       }
+      // SceneManager.start does not replace other active scenes. Match the
+      // wizard's production handoff so old keyboard handlers/DOM cannot leak
+      // into a custom fixture's menus or a later game.
+      for (const active of game.scene.getScenes(true)) {
+        game.scene.stop(active.scene.key);
+      }
       game.scene.start("World", { gameState: result });
       await this.waitForSceneReady("World");
       return this.gameState("World");

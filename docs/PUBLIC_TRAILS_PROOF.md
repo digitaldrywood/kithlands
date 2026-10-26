@@ -114,3 +114,8 @@ broader combat choreography, full menu/gem acceptance and natural human-paced
 opening remain open. These trails are one connected-navigation improvement,
 not final terrain art or complete goal acceptance. Hosted CI on this chunk is
 still required; general CI remains self-hosted per owner instruction.
+
+## Hosted result
+
+Run `40272728412` passes all six visual suites and the protected summary on
+`34ab998dbbcb60d36096089af6b314c873908820`. General CI remains self-hosted.

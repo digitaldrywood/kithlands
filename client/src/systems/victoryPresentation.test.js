@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildFinalePartyXP,
+  buildPartyXP,
   buildVictorySummary,
   formatBattleDrop,
   formatSpoils,
@@ -80,4 +81,45 @@ it("uses actual finale progression for each survivor and excludes KO members", (
     }),
   ).toEqual([45, 0]);
   expect(buildFinalePartyXP({ party: [] })).toBeNull();
+});
+
+it("shows each ally's split XP instead of repeating the reward pool", () => {
+  expect(
+    buildPartyXP({
+      party: Array.from({ length: 4 }, () => ({ xp: 6, xp_next: 70 })),
+      xp_before: [0, 0, 0, 0],
+      xp_thresholds: [[70], [70], [70], [70]],
+    }),
+  ).toEqual([6, 6, 6, 6]);
+});
+it("counts XP across a level threshold and preserves a defeated member's exclusion", () => {
+  expect(
+    buildPartyXP({
+      party: [
+        { xp: 8, xp_next: 120 },
+        { xp: 52, xp_next: 70 },
+      ],
+      xp_before: [65, 52],
+      xp_thresholds: [[70, 120], [70]],
+      died_this_fight: [false, true],
+    }),
+  ).toEqual([13, 0]);
+});
+it("does not invent an individual reward when an older snapshot lacks progression metadata", () => {
+  expect(buildPartyXP({ party: [{ xp: 40, xp_next: 70 }] })).toEqual([null]);
+  expect(
+    buildFinalePartyXP({
+      final_encounter: { defeated: true },
+      party: [{ xp: 40, xp_next: 70 }],
+    }),
+  ).toBeNull();
+});
+it("retains actual XP changes at the level cap", () => {
+  expect(
+    buildPartyXP({
+      party: [{ xp: 96, xp_next: 0 }],
+      xp_before: [90],
+      xp_thresholds: [[]],
+    }),
+  ).toEqual([6]);
 });

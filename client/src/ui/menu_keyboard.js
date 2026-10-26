@@ -95,6 +95,61 @@ export function menuKeyboard(root, { scope = () => root } = {}) {
       event.preventDefault();
       return true;
     }
+    // Only opt-in button groups own arrows. Native fields keep their editing
+    // and selection keys, and browsing never activates a costly action.
+    if (
+      !isTyping(event.target) &&
+      !event.altKey &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.shiftKey
+    ) {
+      const group = event.target?.closest?.("[data-menu-arrows]");
+      if (group && current.contains(group)) {
+        const grid = group.dataset.menuArrows === "grid";
+        const horizontal = group.dataset.menuArrows === "horizontal";
+        const columns = grid
+          ? Math.max(
+              1,
+              getComputedStyle(group).gridTemplateColumns.split(/\s+/).length,
+            )
+          : 1;
+        const steps = grid
+          ? {
+              ArrowUp: -columns,
+              ArrowDown: columns,
+              ArrowLeft: -1,
+              ArrowRight: 1,
+            }
+          : horizontal
+            ? { ArrowLeft: -1, ArrowRight: 1 }
+            : { ArrowUp: -1, ArrowDown: 1 };
+        if (event.key in steps || ["Home", "End"].includes(event.key)) {
+          const controls = visibleControls(group).filter(
+            (node) => node.closest("[data-menu-arrows]") === group,
+          );
+          const index = controls.indexOf(document.activeElement);
+          if (index >= 0 && controls.length) {
+            let target =
+              event.key === "Home"
+                ? 0
+                : event.key === "End"
+                  ? controls.length - 1
+                  : index + steps[event.key];
+            if (grid) {
+              const crossesRow =
+                ["ArrowLeft", "ArrowRight"].includes(event.key) &&
+                Math.floor(target / columns) !== Math.floor(index / columns);
+              if (target < 0 || target >= controls.length || crossesRow)
+                target = index;
+            } else target = (target + controls.length) % controls.length;
+            event.preventDefault();
+            controls[target].focus();
+            return true;
+          }
+        }
+      }
+    }
     if (
       !event.altKey ||
       event.ctrlKey ||

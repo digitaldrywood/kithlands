@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [walking, combat, gameplay, interiors, campaign, escort]
+        suite: [walking, combat, gameplay, interiors, campaign, escort, menus, crafting]
     timeout-minutes: 30
     env:
       PGHOST: localhost
@@ -62,6 +62,12 @@ jobs:
       - name: Verify field magic, exploration, shops, and adventure navigation
         if: matrix.suite == 'gameplay'
         run: ./scripts/run_playwright_local.sh e2e/field-magic-repeat.spec.js e2e/world-encounter-pacing.spec.js e2e/river-footbridges.spec.js e2e/public-trails.spec.js e2e/public-trails-legacy.spec.js e2e/adventure-map-navigation.spec.js e2e/heron-playability-loop.spec.js e2e/opening-integration.spec.js e2e/shop-responsive.spec.js e2e/shop-buy-flow.spec.js e2e/shop-compare.spec.js e2e/shop-spell-learn.spec.js e2e/merchant-stock-authority.spec.js e2e/canonical-item-art.spec.js e2e/first-session-route.spec.js e2e/world-shop-entry.spec.js e2e/dev-artifact-isolation.spec.js e2e/exploration-notice-layout.spec.js e2e/exploration-touch.spec.js
+      - name: Verify gathering, crafted equipment and saved resources
+        if: matrix.suite == 'crafting'
+        run: ./scripts/run_playwright_local.sh e2e/gathering-crafting.spec.js
+      - name: Verify gems, equipment and locality navigation
+        if: matrix.suite == 'menus'
+        run: ./scripts/run_playwright_local.sh e2e/crafting-sources-layout.spec.js e2e/gem-workshop.spec.js e2e/equipment-loadout-screen.spec.js e2e/equipment-builds.spec.js e2e/effective-equipment.spec.js e2e/wizard-back.spec.js e2e/wizard-start.spec.js e2e/post-battle-loot.spec.js
       - name: Verify natural campaign progression and quest recovery
         if: matrix.suite == 'campaign'
         run: ./scripts/run_playwright_local.sh e2e/normal-route-input.spec.js e2e/campaign-first-level.spec.js
@@ -88,6 +94,15 @@ jobs:
             client/tmp/bandit-guard-*/
             client/tmp/meadow-ground-*/
             client/tmp/public-trails-*/
+            client/tmp/gathering-*/
+            client/tmp/crafting-sources-*/
+            client/tmp/gem-discovery-*/
+            client/tmp/post-battle-loot-*/
+            client/tmp/equipment-loadout-*/
+            client/tmp/equipment-builds-*/
+            client/tmp/effective-equipment-*/
+            client/tmp/wizard-back-*/
+            client/test-results/**/*.png
             client/tmp/overworld-landmarks/
             client/tmp/opening-integration-*/
             client/tmp/first-session-*/

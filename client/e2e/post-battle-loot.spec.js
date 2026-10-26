@@ -78,7 +78,7 @@ async function startGame(page, viewport) {
   );
 }
 
-async function forceGuaranteedLootVictory(page) {
+async function forceGuaranteedLootVictory(page, requestTimeoutMs = null) {
   const before = await page.evaluate(() =>
     window.__kithlandsTest.gameState("World"),
   );
@@ -92,6 +92,16 @@ async function forceGuaranteedLootVictory(page) {
   await page.waitForFunction(
     () => window.__kithlandsTest.activeSceneKey() === "Battle",
   );
+  if (requestTimeoutMs != null) {
+    await page.evaluate(
+      (timeout) =>
+        window.__kithlandsTest.setPostBattleLootRequestTimeout(
+          timeout,
+          "Battle",
+        ),
+      requestTimeoutMs,
+    );
+  }
   const victory = await page.evaluate(() =>
     window.__kithlandsTest.forceVictory("Battle"),
   );
@@ -173,7 +183,10 @@ for (const viewport of VIEWPORTS) {
     if (viewport.name === "default-800x600") {
       expect(conflictItem?.instance_id).toBeTruthy();
     }
-    const first = await forceGuaranteedLootVictory(page);
+    const first = await forceGuaranteedLootVictory(
+      page,
+      viewport.name === "desktop-1440x900" ? 1_000 : null,
+    );
     const equipmentDrop = first.victory.battle_rewards.drops.find(
       (drop) => drop.kind === "equipment" && drop.item_id === "steel_sword",
     );
@@ -197,12 +210,6 @@ for (const viewport of VIEWPORTS) {
       gemDrop,
       visibleReceipt,
     });
-
-    if (viewport.name === "desktop-1440x900") {
-      await page.evaluate(() =>
-        window.__kithlandsTest.setPostBattleLootRequestTimeout(1_000, "Battle"),
-      );
-    }
 
     const dialog = await openLootDecision(page);
     await expect(dialog).toContainText(equipmentDrop.name);

@@ -553,6 +553,13 @@ export function showGemWorkshop(
     if (pages > 1) parent.append(nav);
     const list = element("div", "gem-choice-list");
     list.dataset.list = role;
+    list.dataset.menuArrows = "grid";
+    list.setAttribute("role", "group");
+    list.setAttribute("aria-label", label);
+    list.setAttribute(
+      "aria-description",
+      "Arrow keys browse choices. Enter or Space selects.",
+    );
     for (const entry of entries.slice(
       page * PAGE_SIZE,
       (page + 1) * PAGE_SIZE,
@@ -1027,6 +1034,7 @@ export function showGemWorkshop(
     root.append(header);
     const tabs = element("nav", "gem-tabs");
     tabs.setAttribute("aria-label", "Workshop actions");
+    tabs.dataset.menuArrows = "horizontal";
     for (const [id, label] of [
       ["socket", "Socket gems"],
       ["transmute", `Transmute · ${craftableRecipeCount(gs)} ready`],

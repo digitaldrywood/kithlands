@@ -135,3 +135,74 @@ for (const pending of ["geocode", "preview"]) {
     await expectTitle(page);
   });
 }
+
+for (const [label, width, height] of [
+  ["keyboard", 1440, 900],
+  ["touch", 390, 844],
+]) {
+  test.describe(`party cancel ${label}`, () => {
+    test.use({ hasTouch: label === "touch", viewport: { width, height } });
+    test("Cancel returns to search, then Back exits without creating a game", async ({
+      page,
+    }) => {
+      const creates = [];
+      page.on("request", (request) => {
+        if (request.url().endsWith("/api/game/new"))
+          creates.push(request.url());
+      });
+      await page.route("**/api/geocode", (route) =>
+        route.fulfill({ json: { lat: 44.9475, lng: -91.1504 } }),
+      );
+      await page.route("**/api/osm/preview", (route) =>
+        route.fulfill({
+          json: {
+            radius_miles: 1.5,
+            nodes: [
+              {
+                id: "library",
+                name: "Town Library",
+                kind: "landmark",
+                importance: 9,
+              },
+            ],
+          },
+        }),
+      );
+      await openWizard(page);
+      await page.locator('input[type="text"]').fill("Cadott, WI");
+      await page.keyboard.press("Enter");
+      await page.waitForFunction(() =>
+        window.__kithlandsTest
+          .visibleTexts("Wizard")
+          .some((entry) => entry.text === "PICK YOUR PARTY"),
+      );
+      await page.screenshot({
+        path: new URL(`${label}-party-cancel.png`, proof).pathname,
+      });
+      if (label === "touch") {
+        const point = await page.evaluate(() =>
+          window.__kithlandsTest.interactiveTextPosition("CANCEL", "Wizard"),
+        );
+        await page.touchscreen.tap(point.x, point.y);
+      } else {
+        await page.locator('input[type="text"]').first().focus();
+        await page.keyboard.press("Escape");
+      }
+      await expect(page.locator('input[type="range"]')).toHaveCount(1);
+      await page.screenshot({
+        path: new URL(`${label}-cancelled-to-search.png`, proof).pathname,
+      });
+      if (label === "touch") {
+        const point = await page.evaluate(() =>
+          window.__kithlandsTest.interactiveTextPosition("Back", "Wizard"),
+        );
+        await page.touchscreen.tap(point.x, point.y);
+      } else await page.keyboard.press("Escape");
+      await expectTitle(page);
+      expect(creates).toHaveLength(0);
+      await page.screenshot({
+        path: new URL(`${label}-cancelled-to-title.png`, proof).pathname,
+      });
+    });
+  });
+}

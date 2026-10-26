@@ -174,6 +174,33 @@ test.describe("wizard start flow", () => {
       });
     });
 
+    // This is the browser setup-flow reference, not a live Overpass test.
+    // Assert the OSM request, then create the corresponding fixture locality
+    // through the real Go endpoint. Import and outage semantics have separate
+    // deterministic API coverage in server/api/osm_test.go.
+    const submissions = [];
+    await page.route("**/api/game/new", async (route) => {
+      const submitted = route.request().postDataJSON();
+      submissions.push(submitted);
+      expect(submitted.use_osm).toBe(true);
+      expect(submitted.lat).toBe(44.9475);
+      expect(submitted.lng).toBe(-91.1504);
+      expect(submitted.party.map((member) => member.name)).toEqual([
+        "Ayla",
+        "Mira",
+        "Cato",
+        "Nia",
+      ]);
+      const response = await route.fetch({
+        postData: JSON.stringify({
+          ...submitted,
+          use_osm: false,
+          places: PREVIEW_NODES.map((node) => node.name),
+        }),
+      });
+      await route.fulfill({ response });
+    });
+
     await page.goto("/");
     await waitForBridge(page);
     await recordWizardTitles(page);
@@ -265,6 +292,16 @@ test.describe("wizard start flow", () => {
       () => window.__kithlandsTest.activeSceneKey() === "World",
     );
 
+    expect(submissions).toHaveLength(1);
+    const created = await page.evaluate(() =>
+      window.__kithlandsTest.gameState("World"),
+    );
+    expect(created.party.map((member) => member.name)).toEqual([
+      "Ayla",
+      "Mira",
+      "Cato",
+      "Nia",
+    ]);
     expect(pageErrors).toEqual([]);
   });
 

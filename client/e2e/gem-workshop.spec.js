@@ -751,10 +751,22 @@ test("scene shutdown ignores a late socket response", async ({ page }) => {
   const held = new Promise((resolve) => {
     release = resolve;
   });
+  let responseReady, finishRoute;
+  const serverResponded = new Promise((resolve) => {
+    responseReady = resolve;
+  });
+  const routeFinished = new Promise((resolve) => {
+    finishRoute = resolve;
+  });
   await page.route("**/gems/change", async (route) => {
-    const response = await route.fetch();
-    await held;
-    await route.fulfill({ response });
+    try {
+      const response = await route.fetch();
+      responseReady();
+      await held;
+      await route.fulfill({ response });
+    } finally {
+      finishRoute();
+    }
   });
   try {
     await page
@@ -764,6 +776,8 @@ test("scene shutdown ignores a late socket response", async ({ page }) => {
     await expect(
       page.locator(".kith-gem-workshop").getByRole("status"),
     ).toContainText("Applying gem change");
+    // Hold a completed real server response, not a request still connecting.
+    await serverResponded;
     const replacement = await page.evaluate(() =>
       window.__kithlandsTest.startCustomGame({
         town_name: "New game",
@@ -775,6 +789,7 @@ test("scene shutdown ignores a late socket response", async ({ page }) => {
       }),
     );
     release();
+    await routeFinished;
     await expect(
       page.getByRole("dialog", { name: "Gem Workshop" }),
     ).toHaveCount(0);
@@ -789,6 +804,7 @@ test("scene shutdown ignores a late socket response", async ({ page }) => {
     expect(current.equipment[0].weapon_item.sockets[0].gem_id).toBeUndefined();
   } finally {
     release();
+    await routeFinished;
   }
 });
 
@@ -833,3 +849,97 @@ for (const width of [610, 390]) {
     await capture(page, `${width}-iron-sword-loadout-icon`);
   });
 }
+
+for (const [width, height] of [
+  [1440, 900],
+  [390, 844],
+]) {
+  test(`keyboard browses gem groups without spending until confirmation at ${width}`, async ({
+    page,
+  }) => {
+    test.setTimeout(60000);
+    await page.setViewportSize({ width, height });
+    await start(page);
+    await open(page);
+    const before = await state(page);
+    const socketMode = page.getByRole("button", {
+      name: "Socket gems",
+      exact: true,
+    });
+    const transmuteMode = page.getByRole("button", { name: /Transmute ·/ });
+    await socketMode.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(transmuteMode).toBeFocused();
+    await expect(page.locator(".kith-gem-workshop")).toHaveAttribute(
+      "data-mode",
+      "socket",
+    );
+    await page.keyboard.press("Space");
+    await expect(page.locator(".kith-gem-workshop")).toHaveAttribute(
+      "data-mode",
+      "transmute",
+    );
+    const rows = page.locator('[data-list="recipe"] button');
+    await rows.first().focus();
+    await page.keyboard.press("ArrowDown");
+    const nextRow = rows.nth(width < 620 ? 2 : 1);
+    await expect(nextRow).toBeFocused();
+    const firstBounds = await rows.first().boundingBox();
+    expect((await nextRow.boundingBox()).y).toBeGreaterThan(firstBounds.y);
+    if (width < 620) {
+      await page.keyboard.press("ArrowRight");
+      await expect(rows.nth(3)).toBeFocused();
+      await page.keyboard.press("ArrowLeft");
+      await expect(nextRow).toBeFocused();
+    }
+    await page.keyboard.press("End");
+    await expect(rows.last()).toBeFocused();
+    await page.keyboard.press("Home");
+    await expect(rows.first()).toBeFocused();
+    await page.keyboard.press("ArrowUp");
+    await expect(rows.first()).toBeFocused();
+    await page.keyboard.press("End");
+    expect((await state(page)).gems).toEqual(before.gems);
+    expect((await state(page)).gold).toBe(before.gold);
+    await capture(page, `${width}-keyboard-recipe-focus`);
+    const recipe = page.locator('[data-recipe-id="refine_ember_gem"]');
+    await recipe.focus();
+    await page.keyboard.press("Enter");
+    const preview = page.getByRole("region", { name: "Recipe preview" });
+    await expect(preview).toContainText("3 owned / 3 needed");
+    const confirm = preview.locator(".gem-confirm");
+    await confirm.focus();
+    await page.keyboard.press("Enter");
+    await expect(
+      page.locator(".kith-gem-workshop").getByRole("status"),
+    ).toContainText("Ember Gem");
+    expect((await state(page)).gems).toEqual([
+      expect.objectContaining({ id: "ember_gem", count: 1 }),
+    ]);
+    await capture(page, `${width}-keyboard-crafted`);
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog", { name: "Character" })).toBeVisible();
+  });
+}
+
+test("custom workshop world replaces the locality wizard input scene", async ({
+  page,
+}) => {
+  await start(page);
+  expect(
+    await page.evaluate(() => window.__kithlandsTest.sceneIsActive("Wizard")),
+  ).toBe(false);
+  expect(
+    await page.evaluate(() => window.__kithlandsTest.sceneIsActive("Title")),
+  ).toBe(false);
+  await open(page);
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  expect(
+    await page.evaluate(() => window.__kithlandsTest.activeSceneKey()),
+  ).toBe("World");
+  await expect(
+    page.getByRole("main", { name: "Kithlands main menu" }),
+  ).toHaveCount(0);
+});
