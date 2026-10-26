@@ -7,6 +7,7 @@ import { meleeContactDetails } from "./battle_contact_fx.js";
 import {
   beginBattleAction,
   physicalAttackState,
+  physicalContactFamily,
   physicalHitPresentations,
   playItemPresentation,
 } from "./battle_action_playback.js";
@@ -2098,7 +2099,9 @@ export class BattleScene extends Phaser.Scene {
     const target = this.resolveVisualEntry(targetEntry);
     if (!actor || !target) return;
     const reducedMotion = this.reducedBattleMotion();
-    const path = buildAttackMotionPath(actor, target, reducedMotion);
+    const path = buildAttackMotionPath(actor, target, reducedMotion, {
+      contactFamily: physicalContactFamily(actor.sprite, crit),
+    });
     this.tweens.killTweensOf(actor.sprite);
     if (actor.sprite.playBattleState) {
       const stateID = physicalAttackState(actor.sprite, crit);
@@ -3657,7 +3660,8 @@ export class BattleScene extends Phaser.Scene {
               performance.now() + (hit.crit ? 1500 : 1200),
             );
           }
-          playSFX("sfx_slash");
+          const contactFamily = physicalContactFamily(pe?.sprite, hit.crit);
+          if (contactFamily !== "blunt") playSFX("sfx_slash");
           if (ee) {
             const targetKey = `enemy_${targetId}`;
             if (!hit.missed) playSFX(hit.defeated ? "sfx_death" : "sfx_hit");
@@ -3674,6 +3678,7 @@ export class BattleScene extends Phaser.Scene {
                 missed: hit.missed,
                 targetKey,
                 entry: ee,
+                contactFamily,
                 replaceTarget: hits.length > 1,
               },
             );
@@ -3715,6 +3720,7 @@ export class BattleScene extends Phaser.Scene {
                 missed: hit.missed,
                 targetKey,
                 entry: pt,
+                contactFamily,
                 replaceTarget: hits.length > 1,
               },
             );

@@ -102,10 +102,48 @@ export function fireContactDetails(scene, target, style, scale = 1) {
   return objects;
 }
 
-export function meleeContactDetails(scene, x, y, { crit = false } = {}) {
+function bluntContactDetails(scene, x, y, crit) {
+  const reduced = scene.reducedBattleMotion();
+  const impact = scene.add.graphics().setDepth(21).setPosition(x, y);
+  impact._combatFxTag = "melee-contact";
+  impact._contactFamily = "blunt";
+  const radius = crit ? 25 : 18;
+  impact.fillStyle(0xfff9e7, 0.9);
+  impact.fillCircle(0, 0, crit ? 9 : 6);
+  impact.lineStyle(crit ? 4 : 3, crit ? 0xffd781 : 0xd5d2bb, 0.9);
+  impact.strokeCircle(0, 0, radius);
+  for (let i = 0; i < (reduced ? 4 : 8); i++) {
+    const angle = i * Math.PI * (reduced ? 0.5 : 0.25);
+    impact.lineBetween(
+      Math.cos(angle) * (radius + 3),
+      Math.sin(angle) * (radius + 3),
+      Math.cos(angle) * (radius + 8),
+      Math.sin(angle) * (radius + 8),
+    );
+  }
+  impact.setScale(reduced ? 1 : 0.65);
+  scene.tweens.add({
+    targets: impact,
+    alpha: 0,
+    scaleX: reduced ? 1 : 1.2,
+    scaleY: reduced ? 1 : 1.2,
+    duration: scene.scaledMs(reduced ? 110 : 190),
+    onComplete: () => impact.destroy(),
+  });
+  return impact;
+}
+
+export function meleeContactDetails(
+  scene,
+  x,
+  y,
+  { crit = false, contactFamily = "slash" } = {},
+) {
+  if (contactFamily === "blunt") return bluntContactDetails(scene, x, y, crit);
   const reduced = scene.reducedBattleMotion();
   const slash = scene.add.graphics().setDepth(21).setPosition(x, y);
   slash._combatFxTag = "melee-contact";
+  slash._contactFamily = "slash";
   // Broad leading edge, tapering tip and short counterstroke read as a cut.
   slash.fillStyle(crit ? 0xffd781 : 0xb4dcf0, 0.65);
   slash.fillPoints(

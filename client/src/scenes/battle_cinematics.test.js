@@ -54,6 +54,21 @@ describe("battle cinematic motion", () => {
     expect(monsterPath.strike.x).toBeGreaterThan(monster.x + 200);
   });
 
+  it("brings a blunt weapon to the target edge without changing reduced travel", () => {
+    const actor = { x: 540, y: 230, width: 112 };
+    const target = { x: 160, y: 230, width: 96 };
+    const slash = buildAttackMotionPath(actor, target);
+    const blunt = buildAttackMotionPath(actor, target, false, {
+      contactFamily: "blunt",
+    });
+    expect(blunt.strike.x - target.x).toBeCloseTo(blunt.clearance);
+    expect(blunt.clearance).toBeGreaterThan(48);
+    expect(blunt.strike.x).toBeLessThan(slash.strike.x);
+    expect(
+      buildAttackMotionPath(actor, target, true, { contactFamily: "blunt" }),
+    ).toEqual(buildAttackMotionPath(actor, target, true));
+  });
+
   it("keeps reduced-motion attacks local while retaining directional meaning", () => {
     const path = buildAttackMotionPath(
       { x: 540, y: 220, width: 72 },

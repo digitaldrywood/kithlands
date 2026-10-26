@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   beginBattleAction,
   physicalAttackState,
+  physicalContactFamily,
   physicalHitPresentations,
   playItemPresentation,
 } from "./battle_action_playback.js";
@@ -119,4 +120,22 @@ describe("item result cue", () => {
     await playItemPresentation(null, {}, () => order.push("fallback"));
     expect(order).toEqual(["legacy", "result", "fallback"]);
   });
+});
+
+it("uses the authored contact family and preserves legacy or critical fallback", () => {
+  const sprite = {
+    battleStates: {
+      physical_attack: { contact_family: "blunt" },
+      critical_attack: { contact_family: "slash" },
+    },
+  };
+  expect(physicalContactFamily(sprite)).toBe("blunt");
+  expect(physicalContactFamily(sprite, true)).toBe("slash");
+  expect(
+    physicalContactFamily(
+      { battleStates: { physical_attack: { contact_family: "blunt" } } },
+      true,
+    ),
+  ).toBe("blunt");
+  expect(physicalContactFamily(null)).toBe("slash");
 });

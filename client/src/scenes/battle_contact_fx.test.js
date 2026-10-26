@@ -17,6 +17,9 @@ function fixture(reduced) {
           "setPosition",
           "fillStyle",
           "fillPoints",
+          "fillCircle",
+          "strokeCircle",
+          "setScale",
           "lineStyle",
           "lineBetween",
         ])
@@ -46,4 +49,20 @@ it("reduced motion has no radial melee particles and only two stationary fire ci
     expect(tween.x).toBe(100);
     expect(tween.y).toBe(200);
   }
+});
+
+it("keeps reduced blunt impact stationary and distinct from a blade slash", () => {
+  const { scene, created, tweens } = fixture(true);
+  const impact = meleeContactDetails(scene, 100, 200, {
+    crit: true,
+    contactFamily: "blunt",
+  });
+  expect(impact._contactFamily).toBe("blunt");
+  expect(created).toHaveLength(1);
+  expect(tweens[0].scaleX).toBe(1);
+  expect(tweens[0].scaleY).toBe(1);
+  expect(tweens[0].x).toBeUndefined();
+  expect(tweens[0].y).toBeUndefined();
+  tweens[0].onComplete();
+  expect(impact.destroy).toHaveBeenCalledOnce();
 });

@@ -1,6 +1,8 @@
 package gamedata_test
 
 import (
+	"encoding/json"
+	"os"
 	"slices"
 	"testing"
 
@@ -105,6 +107,18 @@ func TestLayeredShieldVisualMetadataLoads(t *testing.T) {
 
 func TestBattleCharacterManifestLoadsEveryRuntimeIdentity(t *testing.T) {
 	gd := gamedata.Load("../../../shared")
+	raw, err := os.ReadFile("../../../shared/battle_characters.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var authored gamedata.BattleCharactersData
+	if err := json.Unmarshal(raw, &authored); err != nil {
+		t.Fatal(err)
+	}
+	authoredByID := make(map[string]gamedata.BattleCharacterProfile)
+	for _, profile := range authored.Classes {
+		authoredByID[profile.ID] = profile
+	}
 	if got := len(gd.BattleCharacters.Classes); got != 12 {
 		t.Fatalf("battle character identities = %d, want 12", got)
 	}
@@ -132,8 +146,12 @@ func TestBattleCharacterManifestLoadsEveryRuntimeIdentity(t *testing.T) {
 			if !ok || len(state.Frames) == 0 {
 				t.Fatalf("%s is missing populated state %s", profile.ID, stateID)
 			}
-			if state.BodyKey != signature.BodyKey || state.BodyPath != signature.BodyPath {
-				t.Fatalf("%s/%s changed identity atlas", profile.ID, stateID)
+			expected, explicit := authoredByID[profile.ID].States[stateID]
+			if !explicit {
+				expected = signature
+			}
+			if state.BodyKey != expected.BodyKey || state.BodyPath != expected.BodyPath {
+				t.Fatalf("%s/%s changed authored identity atlas", profile.ID, stateID)
 			}
 			for frameIndex, frame := range state.Frames {
 				for attachmentID := range profile.Attachments {
@@ -148,17 +166,27 @@ func TestBattleCharacterManifestLoadsEveryRuntimeIdentity(t *testing.T) {
 			t.Fatalf("%s KO state must hold its last frame", profile.ID)
 		}
 		finalKO := ko.Frames[len(ko.Frames)-1]
-		if finalKO.Body.Angle != 90 {
-			t.Fatalf("%s final KO body angle = %v, want 90", profile.ID, finalKO.Body.Angle)
+		wantKOAngle := 90.0
+		if profile.ID == "warrior" || profile.ID == "cinder" {
+			wantKOAngle = 0
+		}
+		if finalKO.Body.Angle != wantKOAngle {
+			t.Fatalf("%s final KO body angle = %v, want %v", profile.ID, finalKO.Body.Angle, wantKOAngle)
 		}
 		hiddenItemAttachments := 0
 		totalItemAttachments := 0
 		for _, frame := range profile.States["item_use"].Frames {
 			for attachmentID, pose := range frame.Attachments {
 				totalItemAttachments++
-				if pose.Visible != nil && !*pose.Visible {
+				visible := pose.Visible == nil || *pose.Visible
+				if profile.ID == "warrior" || profile.ID == "cinder" {
+					if visible != (frame.Frame == 0) {
+						t.Fatalf("%s item_use frame %d has unexpected %s visibility", profile.ID, frame.Frame, attachmentID)
+					}
+				}
+				if !visible {
 					hiddenItemAttachments++
-				} else if profile.ID != "warrior" {
+				} else if profile.ID != "warrior" && profile.ID != "cinder" {
 					t.Fatalf("%s item_use leaves %s visible", profile.ID, attachmentID)
 				}
 			}

@@ -18,6 +18,13 @@ export function physicalAttackState(sprite, critical) {
     : "physical_attack";
 }
 
+export function physicalContactFamily(sprite, critical = false) {
+  return sprite?.battleStates?.[physicalAttackState(sprite, critical)]
+    ?.contact_family === "blunt"
+    ? "blunt"
+    : "slash";
+}
+
 export function beginBattleAction(sprite, stateID, options = {}) {
   let release, releaseRecovery, signalCue;
   const gate = new Promise((resolve) => {

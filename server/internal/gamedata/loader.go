@@ -957,6 +957,11 @@ func (gd *GameData) validateBattleCharacters(baseClassIDs map[string]bool) {
 			}
 		}
 		for stateID, state := range profile.States {
+			switch state.ContactFamily {
+			case "", "slash", "blunt":
+			default:
+				panic(fmt.Sprintf("gamedata: battle character %q state %q has invalid contact_family %q", profile.ID, stateID, state.ContactFamily))
+			}
 			if !requiredStates[stateID] && !optionalStates[stateID] {
 				panic(fmt.Sprintf("gamedata: battle character %q has unknown state %q", profile.ID, stateID))
 			}

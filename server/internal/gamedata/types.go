@@ -116,6 +116,7 @@ type BattleAttachmentDefinition struct {
 }
 
 type BattleStateDefinition struct {
+	ContactFamily string             `json:"contact_family,omitempty"`
 	CueFrame      *int               `json:"cue_frame,omitempty"`
 	BodyKey       string             `json:"body_key"`
 	BodyPath      string             `json:"body_path"`

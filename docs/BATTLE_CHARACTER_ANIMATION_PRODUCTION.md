@@ -462,3 +462,13 @@ Cinder physical melee and the full integrated combat/environment/first-visit
 acceptance remain open. Final authoritative mana HUD reconciliation after action
 playback is now verified in `BATTLE_MANA_HUD_PROOF.md`; per-action MP animation
 is not established by that follow-up.
+
+### Cinder staff physical attack
+
+`physical_attack` uses dedicated `staff-strike-body.png`, six192px cells with
+original guard/coil/raise/downward impact/follow-through/original guard. Cue3;
+no body translation or tilt; separate staff grips per frame. Shared
+`contact_family: blunt` selects bounded blunt feedback and a closer normal-motion
+approach. Empty or slash retains legacy blade behavior; reduced travel stays local.
+Proof/source/rejections: `CINDER_MELEE_POSE_PROOF.md`. This accepts staff physical
+attack only, not other weapons or all-class battle expansion.

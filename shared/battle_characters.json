@@ -1047,6 +1047,86 @@
             }
           ]
         },
+        "physical_attack": {
+          "body_key": "battle_cinder_staff_strike_body",
+          "body_path": "/sprites/battle/cinder/staff-strike-body.png",
+          "cue_frame": 3,
+          "contact_family": "blunt",
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 80,
+              "attachments": {
+                "staff": {
+                  "x": 27,
+                  "y": 13,
+                  "angle": 8,
+                  "front": false
+                }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 95,
+              "attachments": {
+                "staff": {
+                  "x": 26,
+                  "y": -29,
+                  "angle": 30,
+                  "front": false
+                }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 120,
+              "attachments": {
+                "staff": {
+                  "x": 14,
+                  "y": -48,
+                  "angle": 55,
+                  "front": false
+                }
+              }
+            },
+            {
+              "frame": 3,
+              "duration": 100,
+              "attachments": {
+                "staff": {
+                  "x": 34,
+                  "y": 11,
+                  "angle": -115,
+                  "front": true
+                }
+              }
+            },
+            {
+              "frame": 4,
+              "duration": 120,
+              "attachments": {
+                "staff": {
+                  "x": 26,
+                  "y": 26,
+                  "angle": -130,
+                  "front": true
+                }
+              }
+            },
+            {
+              "frame": 5,
+              "duration": 120,
+              "attachments": {
+                "staff": {
+                  "x": 27,
+                  "y": 13,
+                  "angle": 8,
+                  "front": false
+                }
+              }
+            }
+          ]
+        },
         "cast_class_ability": {
           "cue_frame": 3,
           "body_key": "battle_cinder_staff_cast_body",

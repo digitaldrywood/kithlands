@@ -1,0 +1,56 @@
+{
+  "status": "approved_runtime",
+  "generated_on": "2026-10-26",
+  "generator": "OpenAI built-in image_gen (model identifier not returned)",
+  "identity_reference": "art-source/characters/cinder/battle/staff-cast/frame-00.png",
+  "guide_paths": [
+    "../../guides/staff-melee-coil.svg",
+    "../../guides/staff-melee-windup.svg",
+    "../../guides/staff-melee-contact.svg",
+    "../../guides/staff-melee-follow.svg"
+  ],
+  "generation_outputs": [
+    "exec-832a15d8-bdee-45b8-af1c-aaf40a3fc7cb.png",
+    "exec-07d80751-c97e-4f6c-9867-cd3f033e84e7.png",
+    "exec-5c77cb03-d63b-4a9b-b2bd-2c74269c532a.png",
+    "exec-d944bcc1-9b28-4148-a331-2505eecffcbe.png"
+  ],
+  "prompts": {
+    "cinderMeleeCoilPrompt": "Use case identity-preserve original pixel-art game animation frame. Image1 is locked Kithlands Cinder identity/camera/rendering, image2 is skeleton pose guide ONLY. Produce ONE body-only full-body SAME slim shadow-faced mage, three-quarter facing screen-left, slightly overhead battle camera. Preserve crooked bent-tip violet hat, black face with exactly two tiny cyan eyes, gold-edged layered purple robes/cloak, red-violet chest clasp, dark gloves/boots, original slim proportions and crisp chunky pixel clusters equivalent192px sprite detail. Both boots planted in original guard stance, robe hem grounded, stable head/hat/torso mass; no jumping/floating or whole-body sprite tilt. Guide BLACK arm with ORANGE fist marks character's RIGHT WEAPON ARM on screen-right shoulder; TEAL arm marks free arm. Hands must NOT swap. Staff will render separately later, both gloves empty in body art. Entire figure centered with generous transparent margins, genuine alpha. NO staff, weapon, shield, prop, magic/glow, ground, shadow, scenery, blood, text, UI or grid. One isolated pose, no sheet. Pose is physical STAFF ATTACK ANTICIPATION COIL: right weapon elbow draws back to SCREEN RIGHT at shoulder height, right empty fist rises to upper chest/shoulder height at screen-right, torso turns a little away from target to load the swing. Free forearm bends low across abdomen for balance. Hat/head stay facing screen-left toward enemy. Heavy robe/cape shifts subtly behind torso, fixed feet. Not a casting pose or celebratory salute.",
+    "cinderMeleeWindupRevisionPrompt": "Use case: precise identity-preserving pixel-art pose continuation. Image1 is locked original Kithlands Cinder identity, image2 is the CORRECT preceding COIL pose, image3 is the exact WIND-UP guide. Create ONE next frame by preserving image2's arm assignment: ONLY the already raised glove on SCREEN RIGHT is the weapon glove. Raise THAT SCREEN-RIGHT GLOVE up by about30 sprite pixels until beside the right edge of the hat, bending the elbow back on SCREEN RIGHT. The OTHER glove on SCREEN LEFT MUST remain DOWN across the waist/abdomen, exactly as image2. Do not raise the screen-left arm, do not mirror the mage or swap hands. Keep the same three-quarter left-facing camera, head with two tiny cyan eyes, black face, bent-tip purple hat, gold-edged layered purple robe/cloak, red-violet clasp and grounded boots. Torso coiled for a sweeping physical staff strike to the left, no casting. Orange guide fist on SCREEN RIGHT identifies correct raised glove. Stable original head/hat/body mass and fixed planted boots, crisp chunky pixel-art equivalent192px detail. Empty gloves: no staff/weapon/shield/prop/effects/shadow/ground/scenery/text/UI/grid. Entire body centered with clear transparent margins and real alpha, one pose only.",
+    "cinderMeleecontactAnatomicalPrompt": "Edit only the LEFT ARM of this same purple mage from image1. Anatomical LEFT arm is on the RIGHT EDGE OF THE PICTURE and has raised fist. Keep anatomical RIGHT arm on LEFT SIDE OF PICTURE bent across belly unchanged. Image2 guide orange dot marks position of ANATOMICAL LEFT FIST, on RIGHT SIDE OF PICTURE. Lower the ANATOMICAL LEFT ARM from above head so its LEFT fist is beside the outer LEFT waist on RIGHT SIDE OF PICTURE, elbow soft, forearm angled DOWN and OUT to image right. Short downward staff blow, end of impact. No arm crossing, no fist on left edge of image, no change to the other arm across abdomen. Do not mirror the pose. Same original Kithlands character identity and exact pixel style: crooked violet hat, black shadow face, exactly two tiny cyan eyes, gold layered purple cloak, red chest clasp, gloves and boots. Preserve planted stance and full body scale. No staff or weapon, no magic/particles, ground, shadow, scenery, text or UI. Body only with transparent alpha, single full body isolated pose. Image3 is idle identity reference.",
+    "cinderMeleefollowAnatomicalPrompt": "Edit only the LEFT ARM of this same purple mage from image1. Anatomical LEFT arm is on the RIGHT EDGE OF THE PICTURE and has raised fist. Keep anatomical RIGHT arm on LEFT SIDE OF PICTURE bent across belly unchanged. Image2 guide orange dot marks position of ANATOMICAL LEFT FIST, on RIGHT SIDE OF PICTURE. Lower the ANATOMICAL LEFT ARM from above head so LEFT fist hangs beside outer LEFT thigh on RIGHT SIDE OF PICTURE, elbow softly bent. Followthrough of downward staff blow. No arm crossing, no fist on left edge of image, no change to the other arm across abdomen. Do not mirror the pose. Same original Kithlands character identity and exact pixel style: crooked violet hat, black shadow face, exactly two tiny cyan eyes, gold layered purple cloak, red chest clasp, gloves and boots. Preserve planted stance and full body scale. No staff or weapon, no magic/particles, ground, shadow, scenery, text or UI. Body only with transparent alpha, single full body isolated pose. Image3 is idle identity reference."
+  },
+  "frame_contract": {
+    "frame_size": [
+      192,
+      192
+    ],
+    "atlas_size": [
+      1152,
+      192
+    ],
+    "order": [
+      "guard",
+      "coil",
+      "windup",
+      "downward_contact",
+      "follow",
+      "guard_recovery"
+    ],
+    "container_anchor": [
+      96,
+      184
+    ],
+    "body_baseline": 182,
+    "weapon_baked_in": false
+  },
+  "normalization": "Keep original guard exactly for frames00/05. New poses alpha>8 occupied bbox, nearest-neighbor uniform167px height, centered192px cell, occupied bottom182. No painted or algorithmic pose synthesis.",
+  "rejections": "Initial windup raised opposite arm. Initial cross-body contact/follow/recover drafts and downward drafts using anatomical RIGHT wording switched the weapon hand; rejected. Final contact/follow use explicit anatomical LEFT arm (screen-right) and a short downward blow. Recovery reuses exact accepted guard. Rejected raw outputs and prompt history retained outside runtime.",
+  "candidate_path": "client/tmp/cinder-melee-candidate-1793077000",
+  "visual_acceptance": {
+    "proof": "docs/CINDER_MELEE_POSE_PROOF.md",
+    "runtime_path": "client/public/sprites/battle/cinder/staff-strike-body.png",
+    "scope": "Inspected native desktop/phone/reduced motion: real Go staff hit at cue3, blunt impact, fixed body feet/shadow, staff grip continuity, recovery, Spark finish, receipt Continue to World"
+  }
+}

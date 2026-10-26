@@ -96,6 +96,7 @@ export function buildAttackMotionPath(
   actorEntry,
   targetEntry,
   reducedMotion = false,
+  { contactFamily = "slash" } = {},
 ) {
   const actor = point(actorEntry);
   const target = point(targetEntry);
@@ -105,10 +106,13 @@ export function buildAttackMotionPath(
   const ux = distance > 0 ? dx / distance : 1;
   const uy = distance > 0 ? dy / distance : 0;
   const anticipationDistance = reducedMotion ? 0 : 12;
-  const clearance = clamp((actor.width + target.width) * 0.5 + 18, 72, 124);
+  const blunt = !reducedMotion && contactFamily === "blunt";
+  const clearance = blunt
+    ? clamp(actor.width * 0.25 + target.width * 0.33, 48, 72)
+    : clamp((actor.width + target.width) * 0.5 + 18, 72, 124);
   const travel = reducedMotion
     ? Math.min(14, distance * 0.08)
-    : clamp(distance - clearance, 0, distance * 0.76);
+    : clamp(distance - clearance, 0, distance * (blunt ? 0.9 : 0.76));
   const strikeX = actor.x + ux * travel;
   const strikeY = actor.y + uy * travel;
   const approachGap = reducedMotion ? 0 : Math.min(24, travel * 0.15);
