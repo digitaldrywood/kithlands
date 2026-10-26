@@ -97,6 +97,35 @@ export function showEquipmentScreen(scene, partyIndex = 0, options = {}) {
   for (const eventName of ["pointerdown", "pointerup", "click"]) {
     root.addEventListener(eventName, (event) => event.stopPropagation());
   }
+  // A parked pointer must not compete with keyboard focus for item details.
+  // Restore hover when the player deliberately moves or presses the pointer.
+  root.addEventListener("pointerdown", () =>
+    root.classList.remove("is-keyboard-browsing"),
+  );
+  let tooltipFramePending = false;
+  const positionCandidateTooltip = () => {
+    if (tooltipFramePending) return;
+    tooltipFramePending = true;
+    requestAnimationFrame(() => {
+      tooltipFramePending = false;
+      if (!root.isConnected) return;
+      for (const tip of root.querySelectorAll(".candidate-tooltip")) {
+        if (!tip.getClientRects().length) continue;
+        const row = tip.parentElement.getBoundingClientRect();
+        const bounds = tip.getBoundingClientRect();
+        const left = row.left - bounds.width - 8;
+        tip.style.left = `${Math.max(8, Math.min(left, window.innerWidth - bounds.width - 8))}px`;
+        tip.style.top = `${Math.max(8, Math.min(row.top, window.innerHeight - bounds.height - 8))}px`;
+      }
+    });
+  };
+  root.addEventListener("pointermove", (event) => {
+    if (event.movementX || event.movementY)
+      root.classList.remove("is-keyboard-browsing");
+    positionCandidateTooltip();
+  });
+  root.addEventListener("focusin", positionCandidateTooltip);
+  root.addEventListener("scroll", positionCandidateTooltip, true);
   const dom = { destroy: () => root.remove() };
   const state = {
     scene,
@@ -121,11 +150,13 @@ export function showEquipmentScreen(scene, partyIndex = 0, options = {}) {
     previousPhaserInputEnabled: scene.input?.enabled,
   };
   if (scene.input) scene.input.enabled = false;
-  state.resizeHandler = () =>
+  state.resizeHandler = () => {
     root.classList.toggle(
       "is-compact",
       window.innerWidth < 600 || window.innerHeight < 650,
     );
+    positionCandidateTooltip();
+  };
   window.addEventListener("resize", state.resizeHandler);
   scene.equipmentScreenState = state;
 
@@ -134,6 +165,13 @@ export function showEquipmentScreen(scene, partyIndex = 0, options = {}) {
   });
   state.keyHandler = (event) => {
     if (topWorldLock(scene) !== LOCK_NAME) return;
+    if (
+      ["Tab", "Home", "End", "Enter", " "].includes(event.key) ||
+      event.key.startsWith("Arrow") ||
+      event.altKey
+    )
+      root.classList.add("is-keyboard-browsing");
+    positionCandidateTooltip();
     event.stopImmediatePropagation();
     if (event.key === "Escape" || !state.menuKeys.handle(event))
       handleOverlayKeydown(state, event);

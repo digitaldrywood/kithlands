@@ -507,8 +507,8 @@
   box-shadow: 0 20px 70px #0006;
 }
 
-.equipment-slot:hover,
-.equipment-slot:focus-visible {
+.kith-equipment-screen:not(.is-keyboard-browsing) .equipment-slot:hover,
+.kith-equipment-screen.is-keyboard-browsing .equipment-slot:focus-visible {
   z-index: 60;
 }
 
@@ -727,10 +727,18 @@
   pointer-events: none;
 }
 
-.equipment-slot:hover .equipment-tooltip,
-.equipment-slot:focus-visible .equipment-tooltip,
-.equipment-item-row:hover .equipment-tooltip,
-.equipment-item-row:focus-visible .equipment-tooltip {
+.kith-equipment-screen:not(.is-keyboard-browsing)
+  .equipment-slot:hover
+  .equipment-tooltip,
+.kith-equipment-screen:not(.is-keyboard-browsing)
+  .equipment-item-row:hover
+  .equipment-tooltip,
+.kith-equipment-screen.is-keyboard-browsing
+  .equipment-slot:focus-visible
+  .equipment-tooltip,
+.kith-equipment-screen.is-keyboard-browsing
+  .equipment-item-row:focus-visible
+  .equipment-tooltip {
   display: grid;
 }
 
@@ -946,6 +954,9 @@
 
 .equipment-item-row.is-disabled {
   cursor: not-allowed;
+}
+
+.equipment-item-row.is-disabled > :not(.equipment-tooltip) {
   opacity: 0.55;
 }
 
@@ -986,8 +997,10 @@
 }
 
 .candidate-tooltip {
-  right: calc(100% + 8px);
-  left: auto;
+  /* Escape the scrolling gear list; runtime clamps this to the viewport. */
+  position: fixed;
+  right: auto;
+  left: 8px;
   top: 0;
 }
 
