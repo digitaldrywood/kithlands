@@ -15,6 +15,7 @@
       "tile_hill": ["#85816d", "#96917b", "#74735f", "#a49c85"],
       "tile_marsh": ["#637553", "#70815d", "#536747", "#80906a"]
     },
+    "path_style": "worn",
     "resource_props": {
       "meadow_herb": {
         "key": "resource_meadow_herbs",

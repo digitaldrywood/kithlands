@@ -28,8 +28,15 @@ export function meadowGroundPlan(scene, plan, x, y) {
     plan.overlay && field.meadow.ground[plan.overlay.key]
       ? {
           ...plan.overlay,
-          key: meadowGroundPlan(scene, { baseKey: plan.overlay.key }, 0, 0)
-            .baseKey,
+          key: meadowGroundPlan(
+            scene,
+            { baseKey: plan.overlay.key },
+            plan.overlay.key === "tile_path" ? x : 0,
+            plan.overlay.key === "tile_path" ? y : 0,
+          ).baseKey,
+          ...(plan.overlay.key === "tile_path"
+            ? { edgeStyle: field.meadow.path_style, variant }
+            : {}),
         }
       : plan.overlay;
   return { ...plan, baseKey: key, overlay };

@@ -35,6 +35,16 @@ for (const [width, height] of [
         if (!prop.texture.key.startsWith("resource_"))
           throw new Error(`Resource fallback art: ${prop.resourceNodeID}`);
       }
+      const roadTextures = () =>
+        s.tileSprites.list
+          .filter((image) => s.tileData[image.y / 32]?.[image.x / 32] === 1)
+          .map((image) => image.texture.key);
+      const warmed = roadTextures();
+      if (!warmed.length || warmed.some((key) => !key.endsWith(":worn")))
+        throw new Error("Meadow road is not using the worn path renderer");
+      s.drawMap();
+      if (JSON.stringify(roadTextures()) !== JSON.stringify(warmed))
+        throw new Error("Redraw changed the cached road identity");
       return JSON.stringify({
         tiles: s.tileData,
         resources: s.gameState.resources,

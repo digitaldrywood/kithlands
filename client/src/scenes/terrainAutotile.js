@@ -1,3 +1,4 @@
+import { drawMeadowPath } from "./meadowPath.js";
 import {
   TILE_IDS,
   TILE_SPRITE_KEYS,
@@ -374,7 +375,7 @@ export function ensureTerrainRenderTexture(scene, plan) {
   if (!plan.baseKey) return null;
   if (!plan.overlay) return plan.baseKey;
 
-  const textureKey = `terrain:${plan.baseKey}:${plan.overlay.key}:${plan.overlay.kind}:${plan.overlay.mask}:${plan.overlay.corners || 0}`;
+  const textureKey = `terrain:${plan.baseKey}:${plan.overlay.key}:${plan.overlay.kind}:${plan.overlay.mask}:${plan.overlay.corners || 0}:${plan.overlay.edgeStyle || "solid"}`;
   if (scene.textures.exists(textureKey)) return textureKey;
 
   const baseImage = getTextureImage(scene, plan.baseKey);
@@ -393,7 +394,15 @@ export function ensureTerrainRenderTexture(scene, plan) {
       TILE_SIZE,
       TILE_SIZE,
     );
-    if (plan.overlay.kind === "path") {
+    if (plan.overlay.edgeStyle === "worn") {
+      drawMeadowPath(
+        ctx,
+        overlayImage,
+        plan.overlay.mask,
+        plan.overlay.corners,
+        plan.overlay.variant,
+      );
+    } else if (plan.overlay.kind === "path") {
       drawPathOverlay(
         ctx,
         overlayImage,
