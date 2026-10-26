@@ -26,11 +26,12 @@ export class TitleScene extends Phaser.Scene {
     super("Title");
   }
 
-  create() {
+  create(data = {}) {
     clearQuestMilestones();
     // World and party menus can use a tall portrait canvas.
     this.scale.setGameSize(800, 600);
     this.showMainMenu();
+    if (data.openSaves) void this.showLoadScreen();
   }
 
   clearMenu() {

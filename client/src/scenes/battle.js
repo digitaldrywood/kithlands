@@ -1,3 +1,4 @@
+import { showDefeatReceipt } from "./defeat_receipt.js";
 import { portraitFontSize } from "../systems/gameplayViewport.js";
 import { combatReadTime } from "../ui/combat_read_time.js";
 import { oncePerKeyEvent } from "../systems/keyboard_events.js";
@@ -4912,8 +4913,14 @@ export class BattleScene extends Phaser.Scene {
 
   showVictoryResults(gs) {
     if (this.returnFromDungeonDefeat(gs)) return;
-    this.children.removeAll(true);
+    // Cancel the floating-text completion callbacks before destroying Text
+    // textures; a late pool release would otherwise redraw a destroyed canvas.
+    this.floatingText?.destroy();
+    // DisplayList.removeAll(true) skips callbacks; it does not destroy actors,
+    // input targets or DOM elements. Destroy a snapshot before replacing the UI.
+    this.children.list.slice().forEach((child) => child.destroy());
     this.gameState = gs;
+    this.defeatDialog?.dispose();
     this.victoryReceipt?.finish();
     this.victoryReceipt?.dialog.dispose();
     this.victoryFastForwarded = false;
@@ -4923,57 +4930,7 @@ export class BattleScene extends Phaser.Scene {
     playMusic(isDefeat ? "music_defeat" : "music_victory", false);
 
     if (isDefeat) {
-      this.add
-        .text(400, 76, "PARTY DEFEATED", {
-          fontSize: "30px",
-          color: "#ff7777",
-          fontFamily: "Arial, sans-serif",
-          fontStyle: "bold",
-        })
-        .setOrigin(0.5);
-      this.add
-        .text(400, 130, gs.message || "Your party has fallen.", {
-          fontSize: "16px",
-          color: "#d4dfed",
-          fontFamily: "Arial, sans-serif",
-          align: "center",
-          wordWrap: { width: 620, useAdvancedWrap: true },
-        })
-        .setOrigin(0.5, 0);
-
-      drawButton(
-        this,
-        400,
-        302,
-        260,
-        46,
-        "LOAD LAST SAVE",
-        () => this.scene.start("Title"),
-        {
-          fontSize: "16px",
-          fill: 0x1c2736,
-          fillHover: 0x384859,
-          stroke: 0x384859,
-          strokeActive: 0xf2d27a,
-        },
-      );
-      drawButton(
-        this,
-        400,
-        364,
-        260,
-        42,
-        "TITLE SCREEN",
-        () => this.scene.start("Title"),
-        {
-          fontSize: "14px",
-          fill: 0x151e2b,
-          fillHover: 0x1c2736,
-          stroke: 0x384859,
-          strokeActive: 0xb7d8f5,
-        },
-      );
-
+      this.defeatDialog = showDefeatReceipt(this, gs);
       return;
     }
 

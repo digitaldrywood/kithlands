@@ -190,6 +190,16 @@ function shopControl(scene, text) {
     !receiptButton.closest("[inert]")
   )
     return receiptButton;
+  const resultControl = [
+    ...(scene?.defeatDialog?.root.querySelectorAll("button") || []),
+  ].find(
+    (node) =>
+      node.dataset.resultLabel === text &&
+      !node.disabled &&
+      node.isConnected &&
+      node.getClientRects().length,
+  );
+  if (resultControl) return resultControl;
   const wizard = [
     ...(scene?.wizardDialog?.root.querySelectorAll("button") || []),
   ].find(
@@ -1648,6 +1658,7 @@ export function installDevTestBridge(game) {
       const root =
         scene?.shopDialog?.root ||
         scene?.wizardDialog?.root ||
+        scene?.defeatDialog?.root ||
         scene?.victoryReceipt?.dialog.root;
       if (root?.isConnected) {
         return [

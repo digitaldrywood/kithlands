@@ -1,5 +1,7 @@
 # Playability work tracker
 
+- Wizard fallback is unified and the unreachable duplicate creation flow removed (`c519ff0`, 18 native setup cases). Ordinary defeat now uses the readable viewport receipt and accurately opens newest-save/history selection. A reproduced result cleanup leak is corrected by cancelling floating-text tweens before destroying old battle actors; all 16 final defeat/victory/loot/save-history cases, 838 client tests/build/format pass, and all 78 final captures are inspected. Exact evidence and retained failures are in `RESPONSIVE_DEFEAT_PROOF.md`. The earlier `c4839ad` hosted visual run passes all eight suites and its required summary; current head CI remains required.
+
 - Responsive locality search, party selection and manual setup forms now reuse the viewport dialog with native labelled controls, visible shortcuts, fixed actions/status, edit-preserving cancellation and protected pending creation. 15 final native cases pass across four viewports, covering real Go creation/retry and keyboard/touch; all 54 final captures inspected; 838 client tests/build/format pass; late search/create responses cannot reopen a closed wizard. See `RESPONSIVE_WIZARD_PROOF.md` for final evidence and limits. Location discovery now also uses the dialog; unreachable legacy preview/confirmation/second-create code is removed. All 18 setup cases and 12 additional empty-map captures pass review. Ordinary defeat and secondary text remain open.
 
 - Victory receipts now use responsive 14px+ text, scrolling party details and fixed native Continue controls. Natural/skip/reduced XP tally, KO retention, long names and consecutive battles pass across desktop/default/short-phone/phone sizes; stale ready flags and detached Continue handles are cleared between encounters. 838 client tests/build/format, seven gathering cases, eight reentry/loot cases and the 89.509s normal phone opening replay pass; current proof captures inspected. See `RESPONSIVE_VICTORY_PROOF.md`. Fresh hosted gate remains pending; Wizard/secondary text, remaining art/environment/choreography and human first-visit pacing stay open.
@@ -129,7 +131,7 @@ The active goal is the complete user-pasted request, not only this checklist. Ex
 
 ## Subsequent work
 
-- Improve portrait Wizard and ordinary defeat-screen readability, plus secondary equipment metadata/spell-card fonts. Victory receipt acceptance is recorded above. Primary Character summary acceptance is recorded above. Verify Arcane Staff, Hand Axe and remaining equipment fallback icons rather than accepting letter tiles as finished artwork.
+- Finish secondary equipment metadata/spell-card fonts. Wizard and ordinary defeat-screen acceptance is recorded above. Victory receipt acceptance is recorded above. Primary Character summary acceptance is recorded above. Verify Arcane Staff, Hand Axe and remaining equipment fallback icons rather than accepting letter tiles as finished artwork.
 
 - Complete dense single-target critical and counter/more-than-two-hit result-label acceptance beyond the verified Warrior two-hit/mixed-critical/server-Miss, Cinder default/Fast and five-target Blaze references. Review small floating action titles and victory-detail text separately.
 

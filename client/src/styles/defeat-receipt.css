@@ -1,0 +1,64 @@
+.defeat-receipt .viewport-dialog-panel {
+  width: min(100%, 760px);
+  border-color: #bd7777;
+}
+.defeat-receipt .viewport-dialog-header h1 {
+  color: #ffc0b9;
+}
+.defeat-receipt h2 {
+  margin: 0 0 14px;
+  font-size: 18px;
+}
+.defeat-party {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.defeat-member {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--menu-line);
+  border-radius: 12px;
+  background: var(--menu-card);
+}
+.defeat-member img {
+  width: 52px;
+  height: 64px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.defeat-member h3 {
+  margin: 0 0 5px;
+  overflow-wrap: anywhere;
+  font-size: 18px;
+}
+.defeat-member p {
+  margin: 2px 0;
+  font-size: 14px;
+  color: var(--menu-muted);
+}
+.defeat-recovery-note {
+  margin: 18px 0 0;
+}
+.defeat-receipt .viewport-dialog-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.defeat-receipt .viewport-dialog-footer kbd {
+  margin-left: 8px;
+}
+@media (max-width: 550px) {
+  .defeat-party {
+    grid-template-columns: 1fr;
+  }
+  .defeat-receipt .viewport-dialog-footer {
+    flex-wrap: wrap;
+  }
+  .defeat-receipt .viewport-dialog-footer button {
+    flex: 1;
+  }
+}
