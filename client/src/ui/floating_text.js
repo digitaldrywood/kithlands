@@ -1,3 +1,4 @@
+import { portraitFontSize } from "../systems/gameplayViewport.js";
 import Phaser from "phaser";
 
 // ── Style definitions per damage type ──────────────────────────────────
@@ -162,8 +163,9 @@ export class FloatingTextPool {
       .setFontStyle("bold");
     applyTextStroke(t, "#000000", 0);
     if (t._targetKey) {
-      this._decrementTarget(t._targetKey);
+      if (t._resultType !== "defeated") this._decrementTarget(t._targetKey);
       t._targetKey = null;
+      t._resultType = null;
     }
   }
 
@@ -220,7 +222,10 @@ export class FloatingTextPool {
     const reducedMotion = this.scene.reducedBattleMotion?.() || false;
 
     this._enforceTargetCap(targetKey);
-    const offset = this._getStaggerOffset(targetKey);
+    const offset =
+      type === "defeated"
+        ? { dx: 0, dy: 0 }
+        : this._getStaggerOffset(targetKey);
     const t = this.acquire();
 
     // Build display text
@@ -252,7 +257,12 @@ export class FloatingTextPool {
 
     // Configure text object
     t.setText(displayText)
-      .setFontSize(parseInt(style.fontSize))
+      .setFontSize(
+        Math.max(
+          parseInt(style.fontSize),
+          parseInt(portraitFontSize(this.scene, type === "crit" ? 18 : 16)),
+        ),
+      )
       .setColor(color)
       .setFontStyle(style.fontStyle || "bold")
       .setPosition(
@@ -270,13 +280,40 @@ export class FloatingTextPool {
     applyTextStroke(t, style.stroke || "#111111", style.strokeThickness || 2);
 
     t._targetKey = targetKey;
+    t._resultType = type;
     this.active.push(t);
 
     // Brief bounce on spawn so even normal hits read as impact.
-    const startScale = reducedMotion
+    let startScale = reducedMotion
       ? 1
       : Math.min(style.bounceScale || 1.12, 1.16);
     t.setScale(startScale);
+    // Reserve actual multiline/bounce bounds above the name/status lane.
+    // A high target can use a single-line critical so it stays above the head.
+    if (Number.isFinite(opts.maxBottom)) {
+      const margin = opts.gap ?? 10;
+      let bounds = t.getBounds();
+      if (opts.maxBottom - bounds.height < margin && t.text.includes("\n")) {
+        t.setText(t.text.replaceAll("\n", " · "));
+        bounds = t.getBounds();
+      }
+      if (opts.maxBottom - bounds.height < margin && startScale > 1) {
+        startScale = 1;
+        t.setScale(1);
+        bounds = t.getBounds();
+      }
+      const width = this.scene.scale?.gameSize?.width || 800;
+      t.setPosition(
+        Math.max(
+          bounds.width / 2 + margin,
+          Math.min(width - bounds.width / 2 - margin, t.x),
+        ),
+        Math.max(
+          margin + bounds.height / 2,
+          Math.min(t.y, opts.maxBottom - bounds.height / 2),
+        ),
+      );
+    }
 
     if (startScale > 1) {
       this.scene.tweens.add({
@@ -309,6 +346,29 @@ export class FloatingTextPool {
     return new Promise((resolve) => {
       this.scene.time.delayedCall(150, resolve);
     });
+  }
+
+  spawnResult(x, y, value, type, targetKey, opts = {}) {
+    const pending = [];
+    let maxBottom = opts.maxBottom;
+    if (opts.defeated) {
+      pending.push(
+        this.spawn(
+          x,
+          Number.isFinite(maxBottom) ? maxBottom : y + 52,
+          0,
+          "defeated",
+          targetKey,
+          opts,
+        ),
+      );
+      const status = this.active.at(-1);
+      maxBottom = status.getBounds().top - (opts.gap ?? 10);
+    }
+    pending.push(
+      this.spawn(x, y, value, type, targetKey, { ...opts, maxBottom }),
+    );
+    return Promise.all(pending);
   }
 
   destroy() {

@@ -1,3 +1,8 @@
+import {
+  installCombatTextAudit,
+  collectCombatTextAudit,
+  expectReadableCombatText,
+} from "./helpers/combat-text-audit.js";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { test, expect } from "@playwright/test";
@@ -48,6 +53,7 @@ for (const [width, height, reducedMotion] of [
       });
     });
     await openShowcase(page, { width, height, reducedMotion });
+    await page.evaluate(installCombatTextAudit, { gameKey: "__criticalGame" });
     await page.evaluate(() => {
       window.__criticalProof = {
         frames: [],
@@ -163,6 +169,12 @@ for (const [width, height, reducedMotion] of [
         { timeout: 60000 },
       );
     }
+    const readability = await collectCombatTextAudit(page);
+    writeFileSync(
+      path.join(proof, `${width}-readability.json`),
+      JSON.stringify(readability, null, 2),
+    );
+    expectReadableCombatText(readability);
     const data = await page.evaluate(() => {
       window.__criticalGame.events.off("postrender", window.__criticalCapture);
       return window.__criticalProof;

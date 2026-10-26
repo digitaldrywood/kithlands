@@ -97,6 +97,24 @@ describe("buildEnemyBattleLayout", () => {
 });
 
 describe("floatingTextAnchorForEntry", () => {
+  it("reserves the actual enemy-name bounds", () => {
+    const anchor = floatingTextAnchorForEntry({
+      x: 100,
+      y: 220,
+      sprite: { displayHeight: 100 },
+      nameText: { getBounds: () => ({ top: 140 }) },
+    });
+    expect(anchor.maxBottom).toBe(130);
+  });
+  it("uses the full height above a feet-anchored party member", () => {
+    const anchor = floatingTextAnchorForEntry({
+      x: 540,
+      y: 300,
+      sprite: { displayHeight: 108, feetAnchored: true },
+    });
+    expect(anchor).toEqual({ x: 540, y: 180, maxBottom: 182 });
+  });
+
   it("lifts the anchor above the sprite top edge", () => {
     const anchor = floatingTextAnchorForEntry({
       x: 540,
@@ -104,7 +122,7 @@ describe("floatingTextAnchorForEntry", () => {
       sprite: { x: 540, y: 220, displayHeight: 100 },
     });
 
-    expect(anchor).toEqual({ x: 540, y: 158 });
+    expect(anchor).toEqual({ x: 540, y: 158, maxBottom: 160 });
   });
 });
 

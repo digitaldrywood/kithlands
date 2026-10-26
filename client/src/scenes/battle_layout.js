@@ -122,8 +122,11 @@ export function floatingTextAnchorForEntry(entry, fallback = {}) {
     };
   }
 
+  const top = y - (sprite?.feetAnchored ? height : height / 2);
+  const nameTop = entry?.nameText?.getBounds?.().top;
   return {
     x,
-    y: y - height / 2 - PARTY_LAYOUT.floatingTextLift,
+    y: top - PARTY_LAYOUT.floatingTextLift,
+    maxBottom: Math.min(top, nameTop ?? top) - (fallback.gap ?? 10),
   };
 }

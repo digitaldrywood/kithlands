@@ -1,3 +1,4 @@
+import { portraitFontSize } from "../systems/gameplayViewport.js";
 import { combatReadTime } from "../ui/combat_read_time.js";
 import { oncePerKeyEvent } from "../systems/keyboard_events.js";
 import { meleeContactDetails } from "./battle_contact_fx.js";
@@ -357,7 +358,7 @@ export class BattleScene extends Phaser.Scene {
       maxHeight: messageBounds.height,
       anchorBottom: false,
       depth: 20,
-      fontSize: this.hudLayout.mode === "mobile" ? "32px" : "15px",
+      fontSize: `${Math.max(15, parseInt(portraitFontSize(this, 16)))}px`,
       lineSpacing: this.hudLayout.mode === "mobile" ? 6 : 2,
     });
     this.promptText = this.messageWindow;
@@ -1484,7 +1485,9 @@ export class BattleScene extends Phaser.Scene {
 
       const nameText = this.add
         .text(x, placement.nameY, e.name, {
-          fontSize: "11px",
+          fontSize: `${Math.max(11, parseInt(portraitFontSize(this, 12)))}px`,
+          wordWrap: { width: placement.lane.width - 14 },
+          align: "center",
           color: "#ffffff",
           stroke: "#101820",
           strokeThickness: 3,
@@ -1492,6 +1495,7 @@ export class BattleScene extends Phaser.Scene {
           fontStyle: "bold",
         })
         .setOrigin(0.5);
+      nameText.setDepth(10);
       this.enemySprites[e.id].nameText = nameText;
 
       // Number indicator for keyboard targeting
@@ -4029,6 +4033,7 @@ export class BattleScene extends Phaser.Scene {
             amount,
             "heal",
             targetKey,
+            { maxBottom: anchor.maxBottom },
           );
           if (presentation.target?.hpBar) {
             const newHP = applyHeal(
@@ -4583,65 +4588,31 @@ export class BattleScene extends Phaser.Scene {
       }
 
       const targetKey = opts.targetKey || `pos_${x}_${y}`;
-      const textAnchor = floatingTextAnchorForEntry(opts.entry, { x, y });
-
-      // Determine floating text type
-      if (opts.missed) {
-        this.floatingText.spawn(
-          textAnchor.x,
-          textAnchor.y,
-          0,
-          "miss",
-          targetKey,
-        );
-      } else if (opts.crit) {
-        this.floatingText.spawn(
-          textAnchor.x,
-          textAnchor.y,
-          dmg,
-          "crit",
-          targetKey,
-          { guarded: opts.guarded },
-        );
-      } else if (isParty) {
-        this.floatingText.spawn(
-          textAnchor.x,
-          textAnchor.y,
-          dmg,
-          "party_hit",
-          targetKey,
-          { guarded: opts.guarded },
-        );
-      } else if (damageType === "magical") {
-        this.floatingText.spawn(
-          textAnchor.x,
-          textAnchor.y,
-          dmg,
-          "magical",
-          targetKey,
-          {
-            element: opts.element,
-          },
-        );
-      } else {
-        this.floatingText.spawn(
-          textAnchor.x,
-          textAnchor.y,
-          dmg,
-          "physical",
-          targetKey,
-        );
-      }
-
-      if (defeated) {
-        this.floatingText.spawn(
-          textAnchor.x,
-          textAnchor.y + 52,
-          0,
-          "defeated",
-          targetKey,
-        );
-      }
+      const gap = Math.max(10, parseInt(portraitFontSize(this, 6)));
+      const textAnchor = floatingTextAnchorForEntry(opts.entry, { x, y, gap });
+      const type = opts.missed
+        ? "miss"
+        : opts.crit
+          ? "crit"
+          : isParty
+            ? "party_hit"
+            : damageType === "magical"
+              ? "magical"
+              : "physical";
+      this.floatingText.spawnResult(
+        textAnchor.x,
+        textAnchor.y,
+        dmg,
+        type,
+        targetKey,
+        {
+          element: opts.element,
+          guarded: opts.guarded,
+          defeated: defeated && !opts.missed,
+          maxBottom: textAnchor.maxBottom,
+          gap,
+        },
+      );
 
       this.scaledDelay(opts.crit ? 180 : 150, resolve);
     });

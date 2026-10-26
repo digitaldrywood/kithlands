@@ -69,6 +69,20 @@ function makeText() {
       this.fontStyle = fontStyle;
       return this;
     },
+    getBounds() {
+      const height =
+        this.fontSize * 1.2 * this.text.split("\n").length * this.scaleY;
+      return {
+        height,
+        width:
+          Math.max(...this.text.split("\n").map((line) => line.length)) *
+          this.fontSize *
+          0.6 *
+          this.scaleX,
+        top: this.y - height / 2,
+        bottom: this.y + height / 2,
+      };
+    },
     setPosition(x, y) {
       this.x = x;
       this.y = y;
@@ -135,6 +149,49 @@ describe("FloatingTextPool", () => {
       duration: 1850,
       y: 208,
     });
+  });
+
+  it.each([375, 390])(
+    "keeps phone damage and defeat readable and separated at %s CSS pixels",
+    async (width) => {
+      const scene = makeScene();
+      scene.game = { canvas: { getBoundingClientRect: () => ({ width }) } };
+      scene.scale = { gameSize: { width: 800 } };
+      const pool = new FloatingTextPool(scene);
+      await pool.spawnResult(100, 200, 169, "crit", "enemy_1", {
+        defeated: true,
+        maxBottom: 190,
+        gap: 13,
+      });
+      const status = pool.active.find((t) => t._resultType === "defeated");
+      const critical = pool.active.find((t) => t._resultType === "crit");
+      expect((status.fontSize * width) / 800).toBeGreaterThanOrEqual(16);
+      expect((critical.fontSize * width) / 800).toBeGreaterThanOrEqual(18);
+      expect(status.getBounds().bottom).toBeLessThanOrEqual(190);
+      expect(critical.getBounds().bottom).toBeLessThanOrEqual(
+        status.getBounds().top - 13,
+      );
+    },
+  );
+
+  it("keeps a high target's critical/defeat stack inside the field", async () => {
+    const scene = makeScene();
+    scene.game = { canvas: { getBoundingClientRect: () => ({ width: 375 }) } };
+    const pool = new FloatingTextPool(scene);
+    await pool.spawnResult(680, 100, 169, "crit", "party_0", {
+      defeated: true,
+      maxBottom: 126,
+      gap: 13,
+    });
+    const [status, critical] = pool.active;
+    expect(critical.text).toBe("CRITICAL · -169!");
+    expect(critical.getBounds().top).toBeGreaterThanOrEqual(13 - 1e-6);
+    expect(critical.getBounds().bottom).toBeLessThanOrEqual(
+      status.getBounds().top - 13,
+    );
+    expect(critical.x + critical.getBounds().width / 2).toBeLessThanOrEqual(
+      787,
+    );
   });
 
   it("keeps critical text opaque through a 1.5-second read hold without flashing", async () => {

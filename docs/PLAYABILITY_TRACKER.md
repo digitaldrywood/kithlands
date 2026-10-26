@@ -5,6 +5,8 @@ Updated 2026-10-25. This file records work; it does not schedule unattended runs
 
 ## Verified locally
 
+- Phone combat numbers and lower action messages now enforce 16 CSS pixels, criticals 18, enemy names 12. Measured name/result/status lanes remove the Frost overlap and keep critical/defeat text separate; party damage/healing anchors respect feet registration. Seven native desktop/default/375px/390px cast/critical cases and nine Defend/VFX cases pass, with all 177 current captures/motion frames inspected. 817 client tests/build/format pass. See `COMBAT_TEXT_READABILITY_PROOF.md` for exact measurements and limits. Hosted visual runs `40250320489` on `00444d7` and `40251826213` on `8c842b0` pass all five groups; the combat-text follow-up needs its own remote gate.
+
 - Cinder's Frost now has an original faceted staff release, ice lance and bounded shatter, with stationary reduced-motion cues. The cast aura is grounded behind bodies rather than across the healer's face. Native desktop/phone/reduced-motion casts verify cue/shadow/HP-text timing and recovery; the normal phone gathering→purchase→craft/socket→bat battle→save/load route passes again. All 111 final captures/motion frames across the Frost, VFX regression and normal-route flows inspected. 812 client tests/build/format, Go tests, shared-data validation and 4,000-battle smoke pass. See `CINDER_FROST_PROOF.md`. This accepts Frost only; other spell families and phone combat font sizing remain open.
 
 - Portrait interiors now use separate room/UI cameras, readable phone fonts, real floor tap-to-walk and one accessible Menu. Contextual captions clear actors and hide during dialogue; Help/Sound have visible H/V shortcuts. Native desktop/default/three phone-size cases, World touch, 811 client tests/build/format and all 14 movement regression cases pass locally. See `PORTRAIT_INTERIOR_PROOF.md`. Hosted run `40245410823` on `303d0c6` passes all five visual groups; the subsequent interior update needs its own remote gate. General CI remains queued on the owner-selected self-hosted runner setup.
@@ -101,7 +103,7 @@ The active goal is the complete user-pasted request, not only this checklist. Ex
 
 ## Subsequent work
 
-- Fix the phone floating-damage/enemy-name lane overlap observed in `CINDER_FROST_PROOF.md`, and measure actual CSS font sizing with critical/status combinations.
+- Complete dense/group/multi-hit/fastest-speed/Miss result-label acceptance beyond the verified Warrior/Cinder default-speed reference. Review small floating action titles and victory-detail text separately.
 
 - Audit Codex reference lists against shared content; its static equipment/class guide still lives in client code.
 

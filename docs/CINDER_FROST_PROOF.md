@@ -117,3 +117,7 @@ Inspected player-state proof: `client/tmp/frost-player-party-1792998900.png`
 and `client/tmp/frost-player-world-1792998900.png`. The tab is left on World.
 Temporary test API8690/Vite3610 are stopped after proof; 3609/API8689 and the
 existing database remain available. No saves were reset or deleted.
+
+Subsequent readability work resolves the primary phone name/number overlap and
+adds measured CSS font minima plus critical/status lanes. Current evidence and
+remaining density/speed limits are in `COMBAT_TEXT_READABILITY_PROOF.md`.
