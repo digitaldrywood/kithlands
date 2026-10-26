@@ -20,15 +20,17 @@ for (const direction of ["ArrowRight", "d"]) {
       };
       await window.__kithlandsTest.startQuickGame();
     });
-    await page.keyboard.press("m");
-    await page.waitForFunction(
-      () => window.__kithlandsTest.sceneFlags("World").menuOpen,
-    );
+    // Establish held movement in the world. The DOM Party menu correctly
+    // captures keys, so it cannot establish a new Phaser key-down state.
     await page.keyboard.down(direction);
     await page.waitForFunction((key) => {
       const scene = window.__heldKeyWorld;
       return (key === "d" ? scene.wasd.D : scene.cursors.right).isDown;
     }, direction);
+    await page.keyboard.press("m");
+    await page.waitForFunction(
+      () => window.__kithlandsTest.sceneFlags("World").menuOpen,
+    );
     await page.evaluate(() =>
       window.__kithlandsTest.clickMenuButton("OPTIONS", "World"),
     );

@@ -54,8 +54,11 @@ export function viewportDialog(scene, { key, title, onEscape, onKey }) {
     if (event.key === "Escape") {
       event.preventDefault();
       onEscape?.();
-    } else if (!menuKeys.handle(event)) {
+    } else {
+      // Dialog-specific meanings (Space finishes a victory tally) take
+      // precedence over generic focused-button activation.
       onKey?.(event);
+      if (!event.defaultPrevented) menuKeys.handle(event);
     }
   }
   window.addEventListener("keydown", keydown, true);

@@ -1500,7 +1500,7 @@ function cycleParty(state, delta, event) {
   if (slots.length < 2) return;
   // A double-click on a two-person party otherwise advances twice and lands
   // back on the same member, which makes a successful navigation look inert.
-  if (Number(event?.detail) > 1) return;
+  if (slots.length === 2 && Number(event?.detail) > 1) return;
   const position = Math.max(0, slots.indexOf(state.partyIndex));
   state.partyIndex = slots[(position + delta + slots.length) % slots.length];
   state.selectedSlotID = "";

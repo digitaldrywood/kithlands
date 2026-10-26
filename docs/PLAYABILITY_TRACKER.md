@@ -1,5 +1,7 @@
 # Playability work tracker
 
+- Reproduced hosted phone victory failure: generic Space activation bypassed the finish-tally handler. Custom dialog keys now take priority, with held-Space regression and28 distinct native victory/menu/Options/party/loadout cases passing;116 final PNGs inspected. Also restricted the two-person double-click guard so rapid four-person taps work, preserving the two-person acceptance check. Corrected stale Options held-key setup without removing stationary-return assertions. Existing869 client tests plus pending icon-contract test/build/format pass. See `DIALOG_INPUT_PRIORITY_PROOF.md`; remote rerun remains required.
+
 - Equipment keyboard focus now takes priority over parked mouse hover; deliberate pointer movement restores hover. Fixed candidate tooltip clipping, disabled-row transparency and hovered-slot layer obstruction. All13 native tooltip/menu/loadout cases pass,50 current PNGs inspected,869 client tests/build/full format pass. See `EQUIPMENT_TOOLTIP_INPUT_PROOF.md`. The split hosted gameplay and shops jobs pass on51e09a9; other suites remain running. Remaining icon coverage, secondary text and full integrated goal acceptance stay open.
 
 - Split the timed-out hosted gameplay workload into29 exploration and35 shop/art cases, preserving the exact90-spec registration multiset and protected all-suite gate. YAML, discovery and diff checks pass; General CI keeps the owner-requested self-hosted labels. See `VISUAL_CI_GAMEPLAY_SPLIT_PROOF.md`; new remote acceptance remains pending.

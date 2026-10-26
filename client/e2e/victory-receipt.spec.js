@@ -200,7 +200,15 @@ for (const viewport of [
           `${viewport.width}-${viewport.reduced ? "reduced" : "motion"}-level-up.png`,
         ),
       });
-      if (!viewport.reduced) await page.keyboard.press("Space");
+      if (!viewport.reduced) {
+        await page.keyboard.down("Space");
+        await page.keyboard.down("Space");
+        await page.keyboard.up("Space");
+        await expect(page.locator(".victory-controls")).toHaveText(
+          "Enter / Space: continue · Esc: continue",
+        );
+        await expect(page.locator(".victory-continue")).toBeEnabled();
+      }
       expect(
         await page.evaluate(() => window.__kithlandsTest.activeSceneKey()),
       ).toBe("Battle");
