@@ -1181,6 +1181,85 @@
               }
             }
           ]
+        },
+        "defend": {
+          "body_key": "battle_cinder_staff_defend_body",
+          "body_path": "/sprites/battle/cinder/staff-defend-body.png",
+          "cue_frame": 2,
+          "frames": [
+            {
+              "frame": 0,
+              "duration": 80,
+              "attachments": {
+                "staff": {
+                  "x": 27,
+                  "y": 13,
+                  "angle": 8,
+                  "front": false
+                }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 100,
+              "attachments": {
+                "staff": {
+                  "x": 24,
+                  "y": 34,
+                  "angle": 8,
+                  "front": false
+                }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 120,
+              "attachments": {
+                "staff": {
+                  "x": 23,
+                  "y": 37,
+                  "angle": 8,
+                  "front": false
+                }
+              }
+            },
+            {
+              "frame": 2,
+              "duration": 220,
+              "attachments": {
+                "staff": {
+                  "x": 23,
+                  "y": 37,
+                  "angle": 8,
+                  "front": false
+                }
+              }
+            },
+            {
+              "frame": 1,
+              "duration": 100,
+              "attachments": {
+                "staff": {
+                  "x": 24,
+                  "y": 34,
+                  "angle": 8,
+                  "front": false
+                }
+              }
+            },
+            {
+              "frame": 0,
+              "duration": 100,
+              "attachments": {
+                "staff": {
+                  "x": 27,
+                  "y": 13,
+                  "angle": 8,
+                  "front": false
+                }
+              }
+            }
+          ]
         }
       }
     },

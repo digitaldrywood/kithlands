@@ -167,6 +167,7 @@ describe("shared battle character catalog", () => {
       "battle_rogue_dagger_slash_body",
       "battle_mender_staff_cast_body",
       "battle_cinder_staff_cast_body",
+      "battle_cinder_staff_defend_body",
       "battle_cinder_staff_hit_body",
       "battle_cinder_staff_ko_body",
       "battle_wayfarer_staff_inspire_body",
