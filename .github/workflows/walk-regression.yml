@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [walking, combat, gameplay, interiors, campaign, escort, menus, crafting]
+        suite: [walking, combat, combat-effects, gameplay, interiors, campaign, escort, menus, crafting]
     timeout-minutes: 30
     env:
       PGHOST: localhost
@@ -33,6 +33,7 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: '1.24'
+          cache-dependency-path: server/go.sum
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
@@ -56,9 +57,12 @@ jobs:
       - name: Verify all-class walking and world rendering
         if: matrix.suite == 'walking'
         run: ./scripts/run_playwright_local.sh e2e/walk-rendered-cadence.spec.js e2e/walk-all-classes.spec.js e2e/world-space-cycle.spec.js e2e/world-walk-audit-party.spec.js e2e/world-terrain-visibility.spec.js e2e/meadow-ground.spec.js e2e/overworld-landmarks.spec.js
-      - name: Verify combat controls, presentation, and tactical encounters
+      - name: Verify combat controls, tactical encounters, and result recovery
         if: matrix.suite == 'combat'
-        run: ./scripts/run_playwright_local.sh e2e/battle-continuity.spec.js e2e/battle-stop-auto.spec.js e2e/warrior-critical.spec.js e2e/combat-text-readability.spec.js e2e/battle-crowded-results.spec.js e2e/battle-multi-hit.spec.js e2e/cinder-frost.spec.js e2e/battle-defend.spec.js e2e/battle-context-choices.spec.js e2e/enemy-tactics.spec.js e2e/bandit-guard.spec.js e2e/battle-hud-workstream.spec.js e2e/victory-receipt.spec.js e2e/defeat-receipt.spec.js
+        run: ./scripts/run_playwright_local.sh e2e/battle-continuity.spec.js e2e/battle-stop-auto.spec.js e2e/battle-defend.spec.js e2e/battle-context-choices.spec.js e2e/enemy-tactics.spec.js e2e/bandit-guard.spec.js e2e/battle-hud-workstream.spec.js e2e/victory-receipt.spec.js e2e/defeat-receipt.spec.js
+      - name: Verify combat animation, spell motion, and readable per-hit results
+        if: matrix.suite == 'combat-effects'
+        run: ./scripts/run_playwright_local.sh e2e/warrior-critical.spec.js e2e/combat-text-readability.spec.js e2e/battle-crowded-results.spec.js e2e/battle-multi-hit.spec.js e2e/battle-counter-hits.spec.js e2e/cinder-frost.spec.js
       - name: Verify field magic, exploration, shops, and adventure navigation
         if: matrix.suite == 'gameplay'
         run: ./scripts/run_playwright_local.sh e2e/field-magic-repeat.spec.js e2e/world-encounter-pacing.spec.js e2e/river-footbridges.spec.js e2e/public-trails.spec.js e2e/public-trails-legacy.spec.js e2e/adventure-map-navigation.spec.js e2e/heron-playability-loop.spec.js e2e/opening-integration.spec.js e2e/shop-responsive.spec.js e2e/shop-buy-flow.spec.js e2e/shop-compare.spec.js e2e/shop-spell-learn.spec.js e2e/merchant-stock-authority.spec.js e2e/canonical-item-art.spec.js e2e/first-session-route.spec.js e2e/world-shop-entry.spec.js e2e/dev-artifact-isolation.spec.js e2e/exploration-notice-layout.spec.js e2e/exploration-touch.spec.js
@@ -91,6 +95,7 @@ jobs:
             client/tmp/combat-text-*/
             client/tmp/battle-crowded-*/
             client/tmp/battle-multi-hit-*/
+            client/tmp/counter-hits-*/
             client/tmp/warrior-critical-*/
             client/tmp/cinder-frost-*/
             client/tmp/battle-defend-*/

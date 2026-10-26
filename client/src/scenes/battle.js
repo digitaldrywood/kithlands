@@ -2062,7 +2062,8 @@ export class BattleScene extends Phaser.Scene {
   actionTitleFor(action, line) {
     if (action?.action_name) return action.action_name;
     if (action?.spell_name) return action.spell_name;
-    if (action?.kind === "attack" || action?.kind === "counter") {
+    if (action?.kind === "counter") return "COUNTER";
+    if (action?.kind === "attack") {
       return "ATTACK";
     }
     if (action?.kind === "ability") {
@@ -3625,25 +3626,41 @@ export class BattleScene extends Phaser.Scene {
 
       if (
         action.kind === "attack" ||
+        action.kind === "counter" ||
+        counterMatch ||
         (attackMatch && action.kind !== "spell")
       ) {
         if (this.isDefeatedEnemyActor(action)) {
           continue;
         }
-        const attacker = action.actor_name || (attackMatch && attackMatch[1]);
+        const attacker =
+          action.actor_name || attackMatch?.[1] || counterMatch?.[1];
+        const counter =
+          action.kind === "counter" || counterMatch?.[2] === "counter-attacks";
+        const verb = counter ? "counters" : counterMatch?.[2] || "attacks";
         const attackerEnemy = this.findEnemySpriteForAction(action, attacker);
         const targetId =
-          action.target_id || (attackMatch && parseInt(attackMatch[3]));
-        const dmg = action.damage || (attackMatch && parseInt(attackMatch[4]));
+          action.target_id ??
+          (attackMatch
+            ? parseInt(attackMatch[3])
+            : parseInt(counterMatch?.[4]));
+        const dmg =
+          action.damage ??
+          (attackMatch
+            ? parseInt(attackMatch[4])
+            : parseInt(counterMatch?.[5])) ??
+          0;
         const dmgType = action.damage_type || "physical";
-        const attackTitle = this.actionTitleFor(action, line);
+        const attackTitle =
+          this.actionTitleFor(action, line) ||
+          (counter ? "COUNTER" : counterMatch ? "BACKSTAB" : "ATTACK");
         const hits = physicalHitPresentations(action, dmg, defeatMatch);
         const attackCaption = (target) =>
           hits.length > 1
-            ? `${attacker} → ${target || action.target_name}: strike 1/${hits.length}`
+            ? `${attacker} ${counter ? "counters" : "→"} ${target || action.target_name}: strike 1/${hits.length}`
             : target
-              ? `${attacker} attacks ${target}!`
-              : `${attacker} attacks!`;
+              ? `${attacker} ${verb} ${target}!`
+              : `${attacker} ${verb}!`;
 
         const pe = this.partySprites[attacker];
         const ee = this.enemySprites[targetId];
@@ -3687,18 +3704,17 @@ export class BattleScene extends Phaser.Scene {
         for (const [index, hit] of hits.entries()) {
           if (index > 0) {
             await this.waitForCombatRead();
+            // Start the next caption with anticipation, so contact never
+            // clears the message window just as its damage number appears.
+            this.revealLine(
+              `${attacker} ${counter ? "counters" : "→"} ${(ee || pt)?.name || action.target_name}: strike ${index + 1}/${hits.length}`,
+              "#ffcc66",
+            );
             await this.lungePartySprite(pe || attackerEnemy, ee || pt, {
               crit: hit.crit,
             });
           }
           if (hits.length > 1) {
-            // The first strike caption already began with anticipation. Do not
-            // replace the opening message at contact before it can be read.
-            if (index > 0)
-              this.revealLine(
-                `${attacker} → ${(ee || pt)?.name || action.target_name}: strike ${index + 1}/${hits.length}`,
-                "#ffcc66",
-              );
             this.combatReadUntil = Math.max(
               this.combatReadUntil || 0,
               performance.now() + (hit.crit ? 1500 : 1200),
@@ -3707,7 +3723,7 @@ export class BattleScene extends Phaser.Scene {
           playSFX("sfx_slash");
           if (ee) {
             const targetKey = `enemy_${targetId}`;
-            playSFX(hit.defeated ? "sfx_death" : "sfx_hit");
+            if (!hit.missed) playSFX(hit.defeated ? "sfx_death" : "sfx_hit");
             await this.hitFx(
               ee.x,
               ee.y,
@@ -3748,7 +3764,7 @@ export class BattleScene extends Phaser.Scene {
             if (!attackerEnemy) {
               this.revealLine(`${atkName} attacks ${tgtName}!`, "#ff8800");
             }
-            playSFX("sfx_party_hit");
+            if (!hit.missed) playSFX("sfx_party_hit");
             await this.hitFx(pt.x, pt.y, hit.damage, true, false, dmgType, {
               crit: hit.crit,
               guarded: action.damage_prevented > 0,
@@ -3795,57 +3811,6 @@ export class BattleScene extends Phaser.Scene {
           await this.wait(ACTION_BEAT_MS.briefStatus);
           actorEntry.sprite?.clearTint?.();
         }
-        await this.wait(ACTION_BEAT_MS.interAction);
-      } else if (action.kind === "counter" || counterMatch) {
-        if (this.isDefeatedEnemyActor(action)) {
-          continue;
-        }
-        const actorName =
-          action.actor_name || (counterMatch && counterMatch[1]);
-        const targetId =
-          action.target_id || (counterMatch && parseInt(counterMatch[4]));
-        const dmg =
-          action.damage || (counterMatch && parseInt(counterMatch[5]));
-        const dmgType = action.damage_type || "physical";
-        this.revealLine(line, "#ff8800");
-        playSFX("sfx_slash");
-        const pe = this.partySprites[actorName];
-        const ee = this.enemySprites[targetId];
-        if (ee) {
-          this.showActionFocus(pe, ee, {
-            tracerColor: ACTION_TRACER_COLORS.partyToEnemy,
-            targetColor: ACTION_RETICLE_COLORS.enemyTarget,
-          });
-          await this.showActionTitle(
-            pe,
-            this.actionTitleFor(action, line),
-            "#ffcc66",
-          );
-          await this.playMajorCinematicPrelude(action, pe, "none");
-          await this.lungePartySprite(pe, ee, { crit: action.crit });
-          if (!pe?.battleAction) await this.wait(ACTION_BEAT_MS.preImpact);
-          const targetKey = `enemy_${targetId}`;
-          await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch, dmgType, {
-            crit: action.crit,
-            guarded: action.damage_prevented > 0,
-            missed: action.missed,
-            targetKey,
-            entry: ee,
-          });
-          if (ee.hpBar) {
-            const newHP = applyDamage(ee.hpBar.currentHP, dmg);
-            this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
-            if (!defeatMatch) {
-              this.playEnemyHitReaction(ee, {
-                newHP,
-                maxHP: ee.hpBar.maxHP,
-              });
-            }
-          }
-          await this.resetPartySprite(pe);
-          if (defeatMatch) await this.enemyDeathFx(ee);
-        }
-        await this.wait(ACTION_BEAT_MS.postDamage);
         await this.wait(ACTION_BEAT_MS.interAction);
       } else if (action.kind === "spell" || spellMatch) {
         if (this.isDefeatedEnemyActor(action)) {
