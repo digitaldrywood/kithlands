@@ -1,3 +1,5 @@
+import { interiorControls } from "../ui/interior_controls.js";
+import { installInteriorCamera } from "./interiorCamera.js";
 import { installEscortFollower } from "./escortFollower.js";
 import { startWalkMotion } from "./walkMotion.js";
 import { beginWalkStep } from "./walkPlayback.js";
@@ -89,6 +91,7 @@ import { isChestOpen } from "./town_chests.js";
 import {
   applyGameplayViewport,
   centeredPlayfieldOffset,
+  portraitFontSize,
 } from "../systems/gameplayViewport.js";
 
 // Seeded PRNG (mulberry32). Returns a () => float [0,1) closure.
@@ -851,7 +854,7 @@ export class TownScene extends Phaser.Scene {
     // Message overlay (same pattern as WorldScene)
     this.messageText = this.add
       .text(layout.centerX, layout.messageY, "", {
-        fontSize: layout.portrait ? "24px" : "14px",
+        fontSize: layout.portrait ? portraitFontSize(this) : "14px",
         color: "#ffffff",
         fontFamily: "Arial, sans-serif",
         backgroundColor: "#000000dd",
@@ -861,6 +864,7 @@ export class TownScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setDepth(DEPTH_UI + 10)
+      .setScrollFactor(0)
       .setVisible(false);
 
     if (this.entryMessage) {
@@ -872,6 +876,8 @@ export class TownScene extends Phaser.Scene {
     drawTownObjective(this);
 
     this.updateInteractionTargets();
+    installInteriorCamera(this, roomPixelW, roomPixelH);
+    this.interiorMenuHUD = interiorControls(this, () => toggleMenu(this));
   }
 
   // Place NPCs: proprietor at anchor position, extras on walkable floor tiles.
@@ -1057,7 +1063,7 @@ export class TownScene extends Phaser.Scene {
         y + (portrait ? 32 : 17),
         this.spawn.name,
         {
-          fontSize: portrait ? "28px" : "15px",
+          fontSize: portrait ? portraitFontSize(this) : "15px",
           color: "#f5efe0",
           fontFamily: "Arial, sans-serif",
           fontStyle: "bold",
@@ -1066,6 +1072,7 @@ export class TownScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(depth + 2);
     this.labelBar.push(...frame, ...corners, accent, title);
+    this.labelBar.forEach((entry) => entry.setScrollFactor(0));
 
     if (this.interiorTemplate?.floors?.length > 1) {
       this.labelBar.push(
@@ -1081,7 +1088,8 @@ export class TownScene extends Phaser.Scene {
             },
           )
           .setOrigin(0.5)
-          .setDepth(depth + 2),
+          .setDepth(depth + 2)
+          .setScrollFactor(0),
       );
     }
   }
@@ -1089,6 +1097,10 @@ export class TownScene extends Phaser.Scene {
   drawHelpStrip() {
     this.helpStrip?.panel?.bg?.destroy?.();
     this.helpStrip?.text?.destroy?.();
+    if (this.gameplayLayout.portrait) {
+      this.helpStrip = null;
+      return;
+    }
     const panel = drawPanel(
       this,
       this.gameplayLayout.centerX,
@@ -1118,7 +1130,8 @@ export class TownScene extends Phaser.Scene {
         },
       )
       .setOrigin(0.5)
-      .setDepth(DEPTH_UI + 1);
+      .setDepth(DEPTH_UI + 1)
+      .setScrollFactor(0);
     this.helpStrip = { panel, text };
   }
 
@@ -1371,14 +1384,18 @@ export class TownScene extends Phaser.Scene {
         : `[ ENTER / SPACE ] ${action}`;
     this.interactPrompt = this.add
       .text(this.player.x, this.player.y - 25, label, {
-        fontSize: this.gameplayLayout.portrait ? "24px" : "10px",
+        fontSize: this.gameplayLayout.portrait
+          ? portraitFontSize(this)
+          : "10px",
         color: "#ffff44",
         fontFamily: "Arial, sans-serif",
         backgroundColor: "#000000cc",
         padding: { x: 6, y: 3 },
+        wordWrap: { width: 700 },
       })
       .setOrigin(0.5)
-      .setDepth(DEPTH_UI + 5);
+      .setDepth(DEPTH_UI + 5)
+      .setScrollFactor(this.gameplayLayout.portrait ? 0 : 1);
   }
 
   hideInteractPrompt() {
@@ -1398,9 +1415,11 @@ export class TownScene extends Phaser.Scene {
         fontFamily: "Arial, sans-serif",
         backgroundColor: "#000000cc",
         padding: { x: 6, y: 3 },
+        wordWrap: { width: 700 },
       })
       .setOrigin(0.5)
-      .setDepth(DEPTH_UI + 5);
+      .setDepth(DEPTH_UI + 5)
+      .setScrollFactor(this.gameplayLayout.portrait ? 0 : 1);
   }
 
   hideSearchPrompt() {

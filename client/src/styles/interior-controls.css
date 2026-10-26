@@ -1,0 +1,40 @@
+.interior-controls {
+  position: fixed;
+  z-index: 900;
+  pointer-events: none;
+}
+.interior-controls[hidden] {
+  display: none !important;
+}
+.interior-menu-button {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  pointer-events: auto;
+  min-height: 46px;
+  min-width: 94px;
+  padding: 10px 14px;
+  border: 1px solid #dfcc9f;
+  border-radius: 12px;
+  background: #c9b589;
+  color: #151e2b;
+  font:
+    600 16px/1.2 system-ui,
+    sans-serif;
+  cursor: pointer;
+}
+.interior-menu-button:hover {
+  background: #dfcc9f;
+}
+.interior-menu-button:focus-visible {
+  outline: 3px solid #fff2bb;
+  outline-offset: 3px;
+}
+.interior-menu-button kbd {
+  margin-left: 6px;
+  font: inherit;
+  font-size: 12px;
+  border: 1px solid #66573566;
+  border-radius: 4px;
+  padding: 1px 4px;
+}

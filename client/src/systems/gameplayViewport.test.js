@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   centeredPlayfieldOffset,
+  portraitFontSize,
   gameplayViewportLayout,
   isPortraitPhone,
 } from "./gameplayViewport.js";
@@ -61,3 +62,16 @@ describe("gameplay viewport", () => {
     });
   });
 });
+
+it.each([320, 375, 390, 540])(
+  "keeps fixed portrait text at least sixteen CSS pixels at %s",
+  (width) => {
+    const scene = {
+      game: { canvas: { getBoundingClientRect: () => ({ width }) } },
+      scale: { gameSize: { width: 800 } },
+    };
+    expect(
+      (parseFloat(portraitFontSize(scene)) * width) / 800,
+    ).toBeGreaterThanOrEqual(16);
+  },
+);

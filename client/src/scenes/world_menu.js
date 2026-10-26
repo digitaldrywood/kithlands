@@ -1,9 +1,10 @@
+import { toggleCodex } from "./world_codex.js";
 import { showFieldCrafting } from "./field_crafting.js";
 import { element, viewportDialog } from "../ui/viewport_dialog.js";
 import { roundedRectangle } from "../ui/theme.js";
 import { showObjectiveQuestLog } from "./objective_quest_log.js";
 import { saveGame, equipItem } from "../api.js";
-import { playSFX } from "../systems/audio.js";
+import { playSFX, toggleMute, isMuted } from "../systems/audio.js";
 import { getAutosaveEnabled, setAutosaveEnabled } from "../systems/prefs.js";
 import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
 import {
@@ -135,6 +136,7 @@ export function toggleMenu(scene) {
   const autoEnabled = getAutosaveEnabled();
   let saveHandle = null;
   let autoHandle = null;
+  let soundHandle = null;
   const secondaryActions = [
     {
       label: "QUEST LOG",
@@ -197,6 +199,22 @@ export function toggleMenu(scene) {
       },
     },
     {
+      label: "Help & controls",
+      hotkey: "H",
+      onClick: () => {
+        closeMenu(scene);
+        toggleCodex(scene);
+      },
+    },
+    {
+      label: isMuted() ? "Sound: muted" : "Sound: on",
+      hotkey: "V",
+      onClick: () => {
+        const muted = toggleMute();
+        soundHandle?.setLabel(muted ? "Sound: muted" : "Sound: on");
+      },
+    },
+    {
       label: "OPTIONS",
       hotkey: "O",
 
@@ -239,6 +257,7 @@ export function toggleMenu(scene) {
   scene.menuGroup.push({ destroy: () => menu.dispose() });
   saveHandle = menu.handles.get("S");
   autoHandle = menu.handles.get("A");
+  soundHandle = menu.handles.get("V");
   scene.events.once("shutdown", (menu.shutdown = () => closeMenu(scene)));
 }
 

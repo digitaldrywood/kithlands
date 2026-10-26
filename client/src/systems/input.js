@@ -10,7 +10,10 @@ import { toggleCodex } from "../scenes/world_codex.js";
 import { toggleMute, isMuted } from "./audio.js";
 import { isWorldInputLocked } from "./modalLock.js";
 import { TILE_WALKABLE } from "../scenes/tileConstants.js";
-import { gameplayViewportLayout } from "./gameplayViewport.js";
+import {
+  gameplayViewportLayout,
+  portraitFontSize,
+} from "./gameplayViewport.js";
 const RENDERED_TILE = 32;
 
 let _isTouch = false;
@@ -237,7 +240,17 @@ function setupTapToMove(scene) {
 
   scene.input.on("pointerdown", (pointer) => {
     if (isWorldInputLocked(scene)) return;
-    if (!scene.tileData) return;
+    const grid = scene.tileData || scene.tiles;
+    if (!grid) return;
+    const field = scene.cameras.main;
+    if (
+      scene.interiorUICamera &&
+      (pointer.x < field.x ||
+        pointer.x > field.x + field.width ||
+        pointer.y < field.y ||
+        pointer.y > field.y + field.height)
+    )
+      return;
     // The first real touch is reserved for revealing the touch UI. Without
     // this guard it also leaks through as a tap-to-walk command.
     if (pointer.wasTouch && !_isTouch) return;
@@ -276,7 +289,7 @@ function setupTapToMove(scene) {
         ? (tile) => scene.canWalkTile(tile)
         : null;
       const path = findPath(
-        scene.tileData,
+        grid,
         scene.playerX,
         scene.playerY,
         tx,
@@ -509,7 +522,9 @@ function createTouchHUD(scene) {
       .setInteractive();
     const txt = scene.add
       .text(x, y, label, {
-        fontSize: touchLayout(scene).portrait ? "19px" : "11px",
+        fontSize: touchLayout(scene).portrait
+          ? portraitFontSize(scene)
+          : "11px",
         color,
         fontFamily: "monospace",
       })
@@ -563,7 +578,7 @@ function createTouchUI(scene) {
   _controls = { elements: [], moveTimer: null };
   createDpad(scene);
   createActionButton(scene);
-  if (!scene.explorationHUD) createTouchHUD(scene);
+  if (!scene.explorationHUD && !scene.interiorMenuHUD) createTouchHUD(scene);
   setupPinchZoom(scene);
   setupSwipeGestures(scene);
 }

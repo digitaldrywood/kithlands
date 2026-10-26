@@ -1,3 +1,4 @@
+import { portraitFontSize } from "../systems/gameplayViewport.js";
 import { oncePerKeyEvent } from "../systems/keyboard_events.js";
 import { roundedRectangle } from "../ui/theme.js";
 import { getNpcDialogue } from "../api.js";
@@ -83,8 +84,8 @@ export async function openDialogue(scene, spawn, providedDialogue = null) {
   // it.
   const depth = 1700;
   const portrait = scene.gameplayLayout?.portrait === true;
-  const boxY = portrait ? scene.gameplayLayout.playfieldBottom - 280 : 430;
-  const boxH = portrait ? 240 : 118;
+  const boxY = portrait ? scene.gameplayLayout.playfieldBottom - 320 : 430;
+  const boxH = portrait ? 280 : 118;
   const bg = roundedRectangle(
     scene,
     400,
@@ -114,7 +115,7 @@ export async function openDialogue(scene, spawn, providedDialogue = null) {
   // Dialogue text
   const dialogueText = scene.add
     .text(40, boxY + (portrait ? 64 : 35), lines[lineIndex], {
-      fontSize: portrait ? "28px" : "12px",
+      fontSize: portrait ? portraitFontSize(scene) : "12px",
       color: "#ffffff",
       fontFamily: portrait ? "Arial, sans-serif" : "Arial, sans-serif",
       wordWrap: { width: 700 },

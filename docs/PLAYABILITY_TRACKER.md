@@ -5,6 +5,8 @@ Updated 2026-10-25. This file records work; it does not schedule unattended runs
 
 ## Verified locally
 
+- Portrait interiors now use separate room/UI cameras, readable phone fonts, real floor tap-to-walk and one accessible Menu. Contextual captions clear actors and hide during dialogue; Help/Sound have visible H/V shortcuts. Native desktop/default/three phone-size cases, World touch, 811 client tests/build/format and all 14 movement regression cases pass locally. See `PORTRAIT_INTERIOR_PROOF.md`. Hosted run `40245410823` on `303d0c6` passes all five visual groups; the subsequent interior update needs its own remote gate. General CI remains queued on the owner-selected self-hosted runner setup.
+
 - Exploration notices now stack above entrance/trail/menu controls at the left edge and expire without shifting those controls. Desktop/default/phone cases cover real saves, herb gathering and a clearly simulated long save-error response. Shop fixture inputs now separate touch activation from door confirmation; the world-shop route reproduces the crowded household layout and checks that the proprietor is actually selected. Presentation/touch, catalog and world-shop cases, 799 client tests/build/format and inspected captures pass locally. Painted D-pad bounds now include the square arrow edges, and a native edge tap verifies one tile without map auto-walk. See `EXPLORATION_NOTICE_PROOF.md`; the new remote gate remains pending.
 
 - Q04 Bandit Clearing now requires its authored trail-approach fight and a separate return/report. The entrance warns about the fight; unrelated travel encounters never clear it. Pending victory reports survive save/load, recovery allows ordinary travel and retry, and completed saves remain completed. See `TRAIL_QUEST_COMBAT_PROOF.md`. Q05 now has a server-owned search, visible escort and separate reunion, including saved custody, retreat and defeat/rejoin recovery; see `ESCORT_JOURNEY_PROOF.md`.
@@ -90,12 +92,14 @@ The Heron Pool detour now connects an optional visible threat → guarded smithi
 - [x] Diagnose the hosted merchant-stock-authority phone revisit timeout on 370dfc4: separate mobile activation from one entrance confirmation and wait for the actual destination. Local catalog cases pass; remote acceptance remains open.
 - [x] Reproduce and correct the 5c448c3 world-shop fixture talking to the nearby Blacksmith instead of the proprietor. Seed 24 covers the crowded room with a runtime NPC-selection assertion.
 - [x] Give shop names a full row above price/shortcut; the 774px regression now keeps long words intact. Seven native desktop/default/tablet/phone shop cases pass with 27 inspected captures. See `SHOP_STOCK_LABEL_PROOF.md`.
-- [ ] Improve phone interior framing and small canvas text; the Q05 phone captures still show a small room surrounded by unused vertical space.
+- [x] Enlarge phone interiors with a separate room camera, preserve readable CSS text, enable room tap-to-walk and consolidate interior controls into one accessible Menu. See `PORTRAIT_INTERIOR_PROOF.md`.
 - [ ] Inspect unique screenshots and motion evidence; run required local gates and obtain passing relevant remote CI.
 
 The active goal is the complete user-pasted request, not only this checklist. Existing local proof should be reused where valid; a check stays open when its remaining acceptance depends on the new connected route or final integrated verification.
 
 ## Subsequent work
+
+- Audit Codex reference lists against shared content; its static equipment/class guide still lives in client code.
 
 - Meaningful enemy roles and server-owned intent previews, tied to the action actually resolved.
 - Further action-specific body choreography for melee weapons and class abilities; Warrior's critical variation is verified, other identities still require their own acceptance.

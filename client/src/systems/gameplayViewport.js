@@ -115,3 +115,14 @@ export function centeredPlayfieldOffset(layout, contentWidth, contentHeight) {
     y: Math.round(layout.playfieldCenterY - contentHeight / 2),
   };
 }
+
+// Fixed canvas UI is sized in logical units, but readability is a CSS-pixel
+// requirement. Use the actual canvas fit, including a narrow browser panel.
+export function portraitFontSize(scene, cssPixels = 16) {
+  const canvasWidth =
+    scene.game?.canvas?.getBoundingClientRect?.()?.width ||
+    globalThis.innerWidth ||
+    GAMEPLAY_WIDTH;
+  const logicalWidth = scene.scale?.gameSize?.width || GAMEPLAY_WIDTH;
+  return `${Math.ceil((cssPixels * logicalWidth) / canvasWidth)}px`;
+}

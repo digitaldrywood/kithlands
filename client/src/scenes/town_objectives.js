@@ -1,3 +1,4 @@
+import { portraitFontSize } from "../systems/gameplayViewport.js";
 import { gameAction, autosaveGame } from "../api.js";
 import { openDialogue } from "./town_dialogue.js";
 import { questObjectiveText, questCustodyText } from "./quest_text.js";
@@ -43,7 +44,7 @@ export function drawTownObjective(scene) {
       [questObjectiveText(objective.quest), custody].filter(Boolean).join("\n"),
       {
         fontFamily: "Arial, sans-serif",
-        fontSize: portrait ? "24px" : "15px",
+        fontSize: portrait ? portraitFontSize(scene) : "15px",
         color: "#f4e3af",
         backgroundColor: "#0b1729ed",
         padding: { x: 14, y: 10 },
