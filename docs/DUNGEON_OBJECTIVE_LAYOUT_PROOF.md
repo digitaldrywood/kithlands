@@ -55,7 +55,7 @@ All8pass in2.1minutes:
 All23 final PNGs opened/inspected:
 
 - `client/tmp/dungeon-objective-layout-1793038950160/`:16 collapsed/expanded/
-  journal/after-battle images,16 geometry JSONs.
+  journal/after-battle images,12 geometry JSONs.
 - `client/tmp/exploration-hud-1793039065136/`:6 World/menu images.
 - `client/tmp/exploration-touch-1793039072906/`:1 touch World image.
 - `client/tmp/dungeon-objective-review-1793071200/index.json`: exact mapping
