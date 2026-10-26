@@ -130,9 +130,10 @@ test.describe("all-class battle state contract", () => {
         }
         if (stateID === "ko_defeated") {
           expect(preview.bodyAngle, `${identityID}/ko_defeated`).toBe(
-            identityID === "warrior" ? 0 : 90,
+            ["warrior", "cinder"].includes(identityID) ? 0 : 90,
           );
-          if (identityID === "warrior") expect(preview.frameIndex).toBe(2);
+          if (["warrior", "cinder"].includes(identityID))
+            expect(preview.frameIndex).toBe(2);
         }
 
         await page.screenshot({
@@ -152,9 +153,10 @@ test.describe("all-class battle state contract", () => {
             "ko_defeated",
           );
           expect(completed.bodyAngle, `${identityID}/${stateID} hold`).toBe(
-            identityID === "warrior" ? 0 : 90,
+            ["warrior", "cinder"].includes(identityID) ? 0 : 90,
           );
-          if (identityID === "warrior") expect(completed.frameIndex).toBe(2);
+          if (["warrior", "cinder"].includes(identityID))
+            expect(completed.frameIndex).toBe(2);
         } else {
           expect(completed.stateID, `${identityID}/${stateID} reset`).toBe(
             "idle_guard",
@@ -194,9 +196,10 @@ test.describe("all-class battle state contract", () => {
         { actor: actorName },
       );
       expect(ko.bodyAngle, `${identityID}/portrait KO`).toBe(
-        identityID === "warrior" ? 0 : 90,
+        ["warrior", "cinder"].includes(identityID) ? 0 : 90,
       );
-      if (identityID === "warrior") expect(ko.frameIndex).toBe(2);
+      if (["warrior", "cinder"].includes(identityID))
+        expect(ko.frameIndex).toBe(2);
       await page.screenshot({
         path: testInfo.outputPath(
           `all-class-${identityID}-ko-defeated-portrait-${RUN_ID}.png`,

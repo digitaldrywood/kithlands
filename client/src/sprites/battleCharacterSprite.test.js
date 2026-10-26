@@ -129,10 +129,12 @@ describe("all-class battle state runtime contract", () => {
           : BATTLE_CHARACTER_CATALOG.required_states,
       );
       expect(profile.states.ko_defeated.hold_last_frame, profile.id).toBe(true);
-      if (profile.id === "warrior") {
-        expect(profile.states.ko_defeated.body_key).toBe(
-          "battle_warrior_sword_ko_body",
-        );
+      const groundedKO = {
+        warrior: "battle_warrior_sword_ko_body",
+        cinder: "battle_cinder_staff_ko_body",
+      }[profile.id];
+      if (groundedKO) {
+        expect(profile.states.ko_defeated.body_key).toBe(groundedKO);
         expect(profile.states.ko_defeated.frames.at(-1).frame).toBe(2);
         expect(
           profile.states.ko_defeated.frames.every(

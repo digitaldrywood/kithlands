@@ -33,9 +33,12 @@ export function inferPartyRow(member = {}) {
 
 export function buildPartyBattleLayout(party = [], { compact = false } = {}) {
   const config = compact ? PARTY_LAYOUT.mobile : PARTY_LAYOUT.desktop;
+  // Two full-height bodies in the same column need room for the rear member's
+  // feet/KO pose to remain visible above the foreground member's silhouette.
+  const slotGapY = config.slotGapY * (party.length === 2 ? 2 : 1);
   return party.map((member, slot) => {
     const row = inferPartyRow(member);
-    const y = config.slotStartY + slot * config.slotGapY;
+    const y = config.slotStartY + slot * slotGapY;
     const x = row === "front" ? config.frontX : config.backX;
 
     return {
@@ -49,9 +52,9 @@ export function buildPartyBattleLayout(party = [], { compact = false } = {}) {
       arrowY: y,
       lane: {
         x: 500,
-        y: y - config.slotGapY / 2,
+        y: y - slotGapY / 2,
         width: 292,
-        height: config.slotGapY,
+        height: slotGapY,
       },
     };
   });

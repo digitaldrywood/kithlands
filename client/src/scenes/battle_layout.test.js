@@ -41,6 +41,16 @@ describe("inferPartyRow", () => {
 });
 
 describe("buildPartyBattleLayout", () => {
+  it("keeps a two-caster party far enough apart to reveal the rear floor pose", () => {
+    const party = [{ row: "back" }, { row: "back" }];
+    for (const compact of [false, true]) {
+      const layout = buildPartyBattleLayout(party, { compact });
+      expect(layout[1].x).toBe(layout[0].x);
+      expect(layout[1].y - layout[0].y).toBeGreaterThanOrEqual(96);
+      expect(layout[1].y).toBeLessThan(compact ? 584 : 414);
+    }
+  });
+
   it("creates staggered front/back columns for a four-member party", () => {
     const layout = buildPartyBattleLayout([
       { name: "Ayla", class_id: "warrior", max_hp: 100, max_mp: 0 },
