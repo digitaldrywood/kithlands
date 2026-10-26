@@ -52,3 +52,17 @@ The new save scenarios and their proof folder are registered in the existing hos
 ## Local session handling
 
 The server health endpoint remained healthy. It was not restarted. Existing owner saves and tabs were not reloaded, reset or deleted. The local client has HMR disabled: a frozen tab needs a refresh and normal Continue/latest adventure to receive the fixed renderer. The reproduced crash occurs after the save acknowledgement; no claim about an uninspected individual owner save is made.
+
+## Current-head regression recheck
+
+Rechecked at `3530d2f` after the repeated save-lockup report. The frontend served by port3609 contains Settlement's `hideMessage()` implementation; its Vite configuration still disables HMR. This establishes that a new page receives the fix, not that an existing open page has loaded it. The in-app browser connection was unavailable, and the separate developer browser exposed only a blank page, so the owner's frozen tab and individual save were not inspected or refreshed.
+
+The isolated current-content build on Vite3612/API8691 passed all eight existing save and exit scenarios at858×842 and390×844: repeated saves, failed-save retry, notice dismissal, resumed movement, Continue/latest-save restoration, keyboard exit, and failed-transition retry. No runtime code change was needed. The original missing-method crash remains the verified historical cause; this run did not reproduce a new regression or establish the exact error in the owner's open tab.
+
+Command from `client/`:
+
+```sh
+VITE_PORT=3612 PLAYWRIGHT_BROWSERS_PATH="$PWD/tmp/ms-playwright" XDG_CONFIG_HOME="$PWD/tmp/xdg-config" XDG_CACHE_HOME="$PWD/tmp/xdg-cache" npx playwright test --config=e2e/playwright.config.js e2e/settlement-save.spec.js e2e/settlement-exit.spec.js --grep '(settlement save|town exit) (858|390)' --output=tmp/save-exit-recheck-20261026
+```
+
+Result:8/8 pass in1.8minutes; log `client/tmp/save-exit-recheck-20261026.log`. All38 final PNGs were opened and inspected on seven contact sheets, with exact source mappings in `client/tmp/save-exit-final-review-20261026/index.json`. Originals are in `client/tmp/settlement-save-1793052212917/` and `client/tmp/settlement-exit-1793052168981/`. Notices disappear, movement changes position, latest-save cards remain contained, and the gate offers Leave town before returning to World. The phone checks combine keyboard movement with touch menu/exit actions. No new build, unit suite, simulator, or backend check is claimed for this documentation-only recheck. Owner services and saves remain intact.
