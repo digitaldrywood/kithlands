@@ -1,5 +1,7 @@
 # Playability work tracker
 
+- Character summary now uses readable 14px primary stats/resources/tabs and ordinary stacked phone flow above the loadout. A stronger containment check catches the initially rejected overflowing layout. Four final loadout and five saved-build/effective-equipment cases pass, including native phone touch, real spell combat and save/reload; all 53 final captures and the actual local Character screen inspected. 838 client tests/build/format pass. See `CHARACTER_SUMMARY_READABILITY_PROOF.md`; secondary metadata, Wizard/victory typography and staff artwork remain open.
+
 - Workshop keyboard browsing follows desktop/phone grid geometry without spending until confirmation. Victory Continue no longer waits for the presentation timer, and individual XP reflects the actual server split. 838 client tests/build pass; combined native run passes 52/53 with its old loot-fixture failure retained, corrected loot suite passes all three cases, and the normal phone opening route passes again. Final changed-state and opening-route captures inspected. See `GEM_MENU_ACCEPTANCE_PROOF.md` and `VICTORY_RECEIPT_PROOF.md`. Fresh hosted gate pending; phone Character/Wizard/victory readability and the broader goal remain open.
 
 - Public trails now connect close destinations in generated worlds while preserving imported roads, barriers and hidden discoveries. Old checkpoints, resource identities and harvest deadlines migrate through normal Continue/save/reload. Native trails and old-save flows pass at desktop/default/phone sizes; fresh phone/desktop opening routes and river regressions pass, all captures inspected. 834 client tests, full Go/race/vet/build/lint, isolated DB integration and 600 campaign simulations pass. Main localhost:3609 is updated with the owner’s latest level-5 save restored and supplies intact. See `PUBLIC_TRAILS_PROOF.md`. Natural first-visit pacing, pale grove terrain and broader visual acceptance remain open.
@@ -121,7 +123,7 @@ The active goal is the complete user-pasted request, not only this checklist. Ex
 
 ## Subsequent work
 
-- Improve the phone Character summary and portrait Wizard readability; current inspected captures retain 7–11px text/small canvas controls. Verify Arcane Staff and remaining equipment fallback icons rather than accepting letter tiles as finished artwork.
+- Improve portrait Wizard and victory receipt readability, plus secondary equipment metadata/spell-card fonts. Primary Character summary acceptance is recorded above. Verify Arcane Staff and remaining equipment fallback icons rather than accepting letter tiles as finished artwork.
 
 - Complete dense single-target critical and counter/more-than-two-hit result-label acceptance beyond the verified Warrior two-hit/mixed-critical/server-Miss, Cinder default/Fast and five-target Blaze references. Review small floating action titles and victory-detail text separately.
 

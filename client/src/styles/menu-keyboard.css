@@ -52,7 +52,8 @@
 
 .kith-equipment-screen .character-detail-tab {
   padding: 6px 2px;
-  font-size: 11px;
+  font-size: 14px;
+  text-transform: none;
 }
 .kith-equipment-screen .character-detail-tab .menu-shortcut {
   display: block;
