@@ -163,7 +163,7 @@ export class FloatingTextPool {
       .setFontStyle("bold");
     applyTextStroke(t, "#000000", 0);
     if (t._targetKey) {
-      if (t._resultType !== "defeated") this._decrementTarget(t._targetKey);
+      if (t._usesStagger) this._decrementTarget(t._targetKey);
       t._targetKey = null;
       t._resultType = null;
     }
@@ -223,7 +223,7 @@ export class FloatingTextPool {
 
     this._enforceTargetCap(targetKey);
     const offset =
-      type === "defeated"
+      type === "defeated" || opts.still
         ? { dx: 0, dy: 0 }
         : this._getStaggerOffset(targetKey);
     const t = this.acquire();
@@ -281,12 +281,14 @@ export class FloatingTextPool {
 
     t._targetKey = targetKey;
     t._resultType = type;
+    t._usesStagger = type !== "defeated" && !opts.still;
     this.active.push(t);
 
     // Brief bounce on spawn so even normal hits read as impact.
-    let startScale = reducedMotion
-      ? 1
-      : Math.min(style.bounceScale || 1.12, 1.16);
+    let startScale =
+      reducedMotion || opts.still
+        ? 1
+        : Math.min(style.bounceScale || 1.12, 1.16);
     t.setScale(startScale);
     // Reserve actual multiline/bounce bounds above the name/status lane.
     // A high target can use a single-line critical so it stays above the head.
@@ -330,7 +332,7 @@ export class FloatingTextPool {
     const readMs = type === "crit" ? 1500 : 1200;
     this.scene.tweens.add({
       targets: t,
-      y: t.y - (reducedMotion ? 0 : style.rise),
+      y: t.y - (reducedMotion || opts.still ? 0 : style.rise),
       duration: style.duration,
       ease: "Sine.Out",
     });
@@ -351,6 +353,11 @@ export class FloatingTextPool {
   spawnResult(x, y, value, type, targetKey, opts = {}) {
     const pending = [];
     let maxBottom = opts.maxBottom;
+    if (opts.groupResult) {
+      // A simultaneous group result gets one stable number per target. The
+      // scene reports defeats once, without repeating a wide status banner.
+      return this.spawn(x, y, value, type, targetKey, { ...opts, still: true });
+    }
     if (opts.defeated) {
       pending.push(
         this.spawn(

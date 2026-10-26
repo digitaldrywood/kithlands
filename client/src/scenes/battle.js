@@ -1401,7 +1401,7 @@ export class BattleScene extends Phaser.Scene {
       enemies,
       {
         height: this.hudLayout.mode === "mobile" ? 500 : 320,
-        groundTop: this.hudLayout.mode === "mobile" ? 340 : 205,
+        compact: this.hudLayout.mode === "mobile",
         groundBottom:
           this.hudLayout.battlefield.y + this.hudLayout.battlefield.height - 10,
       },
@@ -1996,10 +1996,23 @@ export class BattleScene extends Phaser.Scene {
       bottom - top - 10,
       9,
     );
+    const crowdedEnemyGroup = mode === "enemy" && visuals.length > 3;
     label
       .setText(labelText)
+      .setFontSize(
+        crowdedEnemyGroup
+          ? Math.max(10, parseInt(portraitFontSize(this, 12)))
+          : 10,
+      );
+    const labelBottom = crowdedEnemyGroup
+      ? Math.min(
+          this.hudLayout.battlefield.y + this.hudLayout.battlefield.height - 6,
+          bottom + label.height + 8,
+        )
+      : top - 4;
+    label
       .setColor(`#${color.toString(16).padStart(6, "0")}`)
-      .setPosition((left + right) / 2, top - 4)
+      .setPosition((left + right) / 2, labelBottom)
       .setVisible(true)
       .setAlpha(1);
     this.tweens.add({
@@ -3893,7 +3906,13 @@ export class BattleScene extends Phaser.Scene {
                 false,
                 tgt.defeated,
                 dmgType,
-                { targetKey, element, missed: tgt.missed, entry: ee },
+                {
+                  targetKey,
+                  element,
+                  missed: tgt.missed,
+                  entry: ee,
+                  groupResult: isGroupCast,
+                },
               );
               if (!tgt.missed && ee.hpBar) {
                 const newHP = applyDamage(ee.hpBar.currentHP, tgt.dmg);
@@ -3914,6 +3933,7 @@ export class BattleScene extends Phaser.Scene {
                 element,
                 missed: tgt.missed,
                 entry: pt,
+                groupResult: isGroupCast,
               });
               if (!tgt.missed && pt.hpBar) {
                 const newHP = applyDamage(pt.hpBar.currentHP, tgt.dmg);
@@ -3928,6 +3948,18 @@ export class BattleScene extends Phaser.Scene {
         );
         await this.resetPartySprite(actorEntry);
         this.hideGroupTargetCursor();
+        if (isGroupCast) {
+          const defeatedCount = presentations.filter(
+            ({ tgt }) => tgt.defeated,
+          ).length;
+          if (defeatedCount) {
+            await this.waitForCombatRead();
+            this.revealLine(
+              `${spellName}: ${defeatedCount} defeated.`,
+              "#e9eef7",
+            );
+          }
+        }
         await this.wait(ACTION_BEAT_MS.postDamage);
         await this.wait(ACTION_BEAT_MS.interAction);
       } else if (
@@ -4609,6 +4641,7 @@ export class BattleScene extends Phaser.Scene {
           element: opts.element,
           guarded: opts.guarded,
           defeated: defeated && !opts.missed,
+          groupResult: opts.groupResult,
           maxBottom: textAnchor.maxBottom,
           gap,
         },

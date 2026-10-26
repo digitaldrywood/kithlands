@@ -210,3 +210,11 @@ Full-client formatting passed after these test-only changes:
 `client/tmp/combat-text-fast-format-1793004100.log`.
 Hosted visual CI now also runs and retains the held-text checks. No production
 code changed after the prior 817-test/build/native acceptance run.
+
+## Five-target spell follow-up
+
+See [CROWDED_BATTLE_RESULTS_PROOF.md](CROWDED_BATTLE_RESULTS_PROOF.md) for the
+subsequent native five-target Blaze acceptance, stable numbers, server-derived
+defeat summary and crowded phone framing/caption fixes. The original proof
+history above remains unchanged. This follow-up does not accept dense criticals,
+all monster-size/name combinations, multi-hit or a real server-resolved Miss.

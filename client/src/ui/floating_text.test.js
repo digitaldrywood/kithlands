@@ -194,6 +194,25 @@ describe("FloatingTextPool", () => {
     );
   });
 
+  it("keeps group damage stable and leaves defeat reporting to the shared summary", async () => {
+    const scene = makeScene(),
+      pool = new FloatingTextPool(scene);
+    await pool.spawnResult(100, 150, 82, "magical", "enemy_1", {
+      defeated: true,
+      groupResult: true,
+      maxBottom: 140,
+    });
+    expect(pool.active).toHaveLength(1);
+    const text = pool.active[0];
+    expect(text.text).toBe("-82");
+    expect(text.scaleX).toBe(1);
+    expect(scene.tweenCalls[0].y).toBe(text.y);
+    expect(scene.tweenCalls[1]).toMatchObject({ alpha: 0, delay: 1200 });
+    expect(pool.targetCounts.size).toBe(0);
+    pool.release(text);
+    expect(pool.targetCounts.size).toBe(0);
+  });
+
   it("keeps critical text opaque through a 1.5-second read hold without flashing", async () => {
     const scene = makeScene();
     const pool = new FloatingTextPool(scene);

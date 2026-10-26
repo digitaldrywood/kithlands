@@ -96,6 +96,41 @@ describe("buildEnemyBattleLayout", () => {
   });
 });
 
+describe("crowded portrait result space", () => {
+  it.each([
+    ["slime", "slime", "slime", "wolf", "wolf"],
+    ["slime", "wolf", "iron_golem", "gargoyle"],
+  ])("leaves room between rows without shrinking result text: %s", (...ids) => {
+    const enemies = ids.map((monster_id, id) => ({ monster_id, id }));
+    const layout = buildEnemyBattleLayout(enemies, {
+      compact: true,
+      height: 500,
+      groundBottom: 594,
+    });
+    const columns = Math.ceil(Math.sqrt(enemies.length));
+    for (let i = columns; i < layout.length; i++) {
+      const numberTop = layout[i].nameY - 22 - 15 - 54;
+      expect(numberTop).toBeGreaterThan(layout[i - columns].nameY + 22);
+    }
+  });
+  it("preserves the accepted two-enemy phone framing", () => {
+    const enemies = [{ monster_id: "iron_golem" }, { monster_id: "gargoyle" }];
+    expect(
+      buildEnemyBattleLayout(enemies, {
+        compact: true,
+        height: 500,
+        groundBottom: 594,
+      }),
+    ).toEqual(
+      buildEnemyBattleLayout(enemies, {
+        groundTop: 340,
+        height: 500,
+        groundBottom: 594,
+      }),
+    );
+  });
+});
+
 describe("floatingTextAnchorForEntry", () => {
   it("reserves the actual enemy-name bounds", () => {
     const anchor = floatingTextAnchorForEntry({

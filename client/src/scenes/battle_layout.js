@@ -88,7 +88,10 @@ export function buildEnemyBattleLayout(
       cellWidth - 24,
       cellHeight - 56,
     );
-    const groundTop = bounds.groundTop ?? 205;
+    // Multiple phone rows need room for readable names and result labels.
+    // Use the available field depth rather than compressing every row at its foot.
+    const groundTop =
+      bounds.groundTop ?? (bounds.compact ? (count > 3 ? 140 : 340) : 205);
     const groundBottom = bounds.groundBottom ?? 414;
     const feetY =
       groundTop + ((row + 0.75) / rows) * (groundBottom - groundTop);
