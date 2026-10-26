@@ -159,3 +159,10 @@ images inspected through `lightning-silhouette-review-1793094000.json`.
 Final accepted references comprise the current 66 lightning captures plus the
 22 gold-spell and 90 Frost regression captures described above. Nothing in these
 advanced fixtures establishes unassisted early-game balance or pacing.
+
+## Main local server acceptance
+
+The subsequent safe refresh is complete: `LOCAL_API_REFRESH_PROOF.md` records
+normal save/exit/load, exact owner-state preservation and an inspected native
+Shock pass against the actual main server on port 3609. The older live-API
+metadata limitation described above is resolved.

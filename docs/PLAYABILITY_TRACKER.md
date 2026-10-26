@@ -1,6 +1,8 @@
 # Playability work tracker
 
-- Cinder Shock/Thunder now use authored lightning metadata and an original branching discharge with a reduced-motion target charge. Casting holds its cue pose through charge and follows through at departure. Visual inspection exposed an old staff emission point outside its 26px image; shared metadata now places it inside the gem, with a real-PNG bounds regression. See `CINDER_LIGHTNING_PROOF.md` for native contact/HP proof, inspected captures, rejected candidates and the safe live-server refresh still needed for new metadata. Other ice/status identities and body choreography remain open.
+- Main local API is refreshed on 8689 and the owner’s game is restored on 3609. Normal Save/Save-and-exit/Continue preserved all gameplay fields exactly, including party, inventory, quests, world state, RNG seed and tile (23,143). A disposable native Shock case passes against that actual server; all 12 captures and owner before/after/ready screenshots are inspected. See `LOCAL_API_REFRESH_PROOF.md`. No player grants, save resets or history deletion.
+
+- Cinder Shock/Thunder now use authored lightning metadata and an original branching discharge with a reduced-motion target charge. Casting holds its cue pose through charge and follows through at departure. Visual inspection exposed an old staff emission point outside its 26px image; shared metadata now places it inside the gem, with a real-PNG bounds regression. See `CINDER_LIGHTNING_PROOF.md` for native contact/HP proof, inspected captures, rejected candidates and the completed safe live-server refresh (`LOCAL_API_REFRESH_PROOF.md`). Other ice/status identities and body choreography remain open.
 - Hosted run `40298587413` passes all nine visual suites and the required summary on banner head `82c1d0d`. The new lightning head needs its own CI gate; general CI remains self-hosted.
 
 - Action banners now stay in the upper-left, use at least 14/18 CSS-pixel actor/action text, and retain a reading hold at Fast speed. Four native Lv1 Warrior/Cinder keyboard/touch/reduced-motion cases pass; all 20 captures are inspected. See `ACTION_TITLE_READABILITY_PROOF.md`. Other body choreography, spell families and first-visit pacing remain open.
@@ -138,6 +140,8 @@ The Heron Pool detour now connects an optional visible threat → guarded smithi
 The active goal is the complete user-pasted request, not only this checklist. Existing local proof should be reused where valid; a check stays open when its remaining acceptance depends on the new connected route or final integrated verification.
 
 ## Subsequent work
+
+- A current shared-data audit finds 46 weapon records and only 10 explicit `icon_key` values. Verify the other 36 runtime fallbacks rather than treating the three already observed gaps (Arcane Staff, Hand Axe, Mythril Axe) as the complete artwork backlog.
 
 - Finish secondary equipment metadata/spell-card fonts. Wizard and ordinary defeat-screen acceptance is recorded above. Victory receipt acceptance is recorded above. Primary Character summary acceptance is recorded above. Verify Arcane Staff, Hand Axe, Mythril Axe and remaining equipment fallback icons rather than accepting letter tiles as finished artwork.
 
