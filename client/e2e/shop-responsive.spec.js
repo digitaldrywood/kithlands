@@ -35,6 +35,40 @@ for (const width of [1440, 800, 610, 390]) {
     const height = width === 800 ? 600 : width === 1440 ? 900 : 844;
     const mobile = width <= 620;
     test.use({ viewport: { width, height }, hasTouch: mobile });
+    test("equipment explains class restrictions without weapon wording", async ({
+      page,
+    }) => {
+      test.setTimeout(90000);
+      await visit(page);
+      const shop = page.locator(".kith-shop");
+      const activate = (locator) => (mobile ? locator.tap() : locator.click());
+      await activate(shop.getByRole("button", { name: /^Armor/ }));
+      await activate(await findStockRow(page, shop, "Cloth Robe"));
+      await activate(shop.getByRole("button", { name: /^Hero · Warrior/ }));
+      await expect(shop.locator(".shop-comparison .shop-error")).toHaveText(
+        "Warrior cannot equip this armor.",
+      );
+      await expect(shop.locator(".shop-member").first()).toContainText(
+        "Class restricted",
+      );
+      await expect(
+        shop.getByRole("button", { name: /^Buy for Hero/ }),
+      ).toBeDisabled();
+      await page.screenshot({
+        path: path.join(proof, `${width}-armor-class-restriction.png`),
+      });
+      await activate(shop.getByRole("button", { name: /^Willow · Mender/ }));
+      await expect(shop.locator(".shop-member").last()).toContainText(
+        "Can equip",
+      );
+      await expect(shop.locator(".shop-comparison .shop-error")).toHaveCount(0);
+      await page.screenshot({
+        path: path.join(proof, `${width}-armor-compatible.png`),
+      });
+      await activate(shop.getByRole("button", { name: /^Leave Shop/ }));
+      await expect(shop).toHaveCount(0);
+    });
+
     test("ordinary item effects and usage are visible before buying", async ({
       page,
     }) => {

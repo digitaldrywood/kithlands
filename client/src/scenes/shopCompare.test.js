@@ -9,6 +9,7 @@ import {
   cycleMemberIndex,
   indicatorForMember,
   isEquipmentShopItem,
+  memberEquipmentStatus,
 } from "./shopCompare.js";
 
 describe("shopCompare helpers", () => {
@@ -40,6 +41,21 @@ describe("shopCompare helpers", () => {
     stats: { power: 2, hit_pct: 2 },
     class_ids: ["brawler"],
   };
+
+  it("distinguishes class restrictions from an unmet equipment level", () => {
+    const advanced = { ...weapon, required_level: 8 };
+    const member = { name: "Hero", class_id: "warrior", level: 7 };
+    expect(memberEquipmentStatus(advanced, member)).toEqual({
+      canEquip: false,
+      label: "Requires Lv.8",
+      reason: "Requires level 8; Hero is level 7.",
+    });
+    expect(indicatorForMember(advanced, member).state).toBe("locked");
+    expect(canPartyMemberEquip(advanced, { ...member, level: 8 })).toBe(true);
+    expect(
+      memberEquipmentStatus(advanced, { class_id: "mender", level: 8 }).label,
+    ).toBe("Class restricted");
+  });
 
   it("detects equipment rows and parses allowed classes", () => {
     expect(isEquipmentShopItem(weapon)).toBe(true);
@@ -136,7 +152,7 @@ describe("shopCompare helpers", () => {
       expect.arrayContaining([
         { label: "Power", value: "8" },
         { label: "Hit%", value: "-5" },
-        { label: "Wielders", value: "warrior, wayfarer" },
+        { label: "Classes", value: "warrior, wayfarer" },
       ]),
     );
 

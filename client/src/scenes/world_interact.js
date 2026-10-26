@@ -63,7 +63,14 @@ export function updateWorldInteractionTarget(scene, playerX, playerY) {
     scene.currentDoorSpawn = null;
     scene.currentNaturalSpawn = null;
     hideInteractPrompt(scene);
-    scene.explorationHUD?.interaction(`Gather — ${scene.currentResource.name}`);
+    const resource = scene.currentResource;
+    const requirement =
+      resource.required_level > 1
+        ? ` · Requires party Lv.${resource.required_level}`
+        : "";
+    scene.explorationHUD?.interaction(
+      `Gather — ${resource.name}${requirement}`,
+    );
     return scene.currentResource;
   }
   scene.currentDoorSpawn = spawn && !isNaturalSpawn(spawn) ? spawn : null;

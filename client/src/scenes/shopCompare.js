@@ -90,9 +90,32 @@ export function allowedClassIds(item) {
     .filter(Boolean);
 }
 
+export function memberEquipmentStatus(item, member) {
+  if (
+    !isEquipmentShopItem(item) ||
+    !member?.class_id ||
+    !allowedClassIds(item).includes(member.class_id)
+  ) {
+    return {
+      canEquip: false,
+      label: "Class restricted",
+      reason: `${member?.class_name || "This class"} cannot equip this ${itemType(item) === "weapon" ? "weapon" : itemType(item) === "armor" ? "armor" : "gear"}.`,
+    };
+  }
+  const requiredLevel = item.required_level || 1;
+  const level = member.level || 1;
+  if (level < requiredLevel) {
+    return {
+      canEquip: false,
+      label: `Requires Lv.${requiredLevel}`,
+      reason: `Requires level ${requiredLevel}; ${member.name || "this character"} is level ${level}.`,
+    };
+  }
+  return { canEquip: true, label: "Can equip", reason: "" };
+}
+
 export function canPartyMemberEquip(item, member) {
-  if (!isEquipmentShopItem(item) || !member?.class_id) return false;
-  return allowedClassIds(item).includes(member.class_id);
+  return memberEquipmentStatus(item, member).canEquip;
 }
 
 export function indicatorForMember(item, member, equipped = {}) {
@@ -173,7 +196,7 @@ export function buildItemStatBlock(item) {
   }
   stats.push({ label: "Element", value: item?.element || "none" });
   stats.push({
-    label: "Wielders",
+    label: "Classes",
     value: allowedClassIds(item).join(", ") || "-",
   });
   return stats;

@@ -81,7 +81,10 @@ export async function verifyCraftingProgression(page, viewport, proof) {
     await walkTo(page, { x: node.x, y: node.y });
     await capture(`resource-${node.material_id}`);
     await page
-      .getByRole("button", { name: `Gather — ${node.name}`, exact: true })
+      .getByRole("button", {
+        name: `Gather — ${node.name}${node.required_level > 1 ? ` · Requires party Lv.${node.required_level}` : ""}`,
+        exact: true,
+      })
       .click();
     await page.waitForFunction(
       (id) =>

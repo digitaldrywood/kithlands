@@ -16,6 +16,7 @@ import {
   buildFocusedMemberCompare,
   canPartyMemberEquip,
   isEquipmentShopItem,
+  memberEquipmentStatus,
 } from "./shopCompare.js";
 import "../styles/shop.css";
 
@@ -626,11 +627,7 @@ export async function openShop(scene, spawn) {
         "shop-member",
       );
       choose.setAttribute("aria-pressed", String(memberIndex === index));
-      text(
-        choose,
-        "small",
-        canPartyMemberEquip(item, member) ? "May equip" : "May not wield",
-      );
+      text(choose, "small", memberEquipmentStatus(item, member).label);
       members.append(choose);
     }
     preview.append(members);
@@ -645,7 +642,12 @@ export async function openShop(scene, spawn) {
     text(comparison, "p", `Current: ${compare.currentName}`);
     text(comparison, "p", `Preview: ${compare.nextName}`);
     if (!compare.canEquip)
-      text(comparison, "p", "Ill suited to this path", "shop-error");
+      text(
+        comparison,
+        "p",
+        memberEquipmentStatus(item, member).reason,
+        "shop-error",
+      );
     for (const line of compare.lines) {
       const row = element("div", "shop-stat-delta");
       text(

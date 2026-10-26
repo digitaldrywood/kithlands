@@ -176,11 +176,11 @@ test.describe("shop compare flow", () => {
     await page.waitForFunction(() =>
       window.__kithlandsTest
         .visibleTexts("Town")
-        .some((entry) => entry.text === "Ill suited to this path"),
+        .some((entry) => entry.text === "Warrior cannot equip this weapon."),
     );
     let texts = await visibleTexts(page);
     expect(texts).toContain("Ayla · Warrior · Lv.5");
-    expect(texts).toContain("May not wield");
+    expect(texts).toContain("Class restricted");
     await page.screenshot({
       path: path.join(
         PROOF_DIR,
@@ -196,7 +196,7 @@ test.describe("shop compare flow", () => {
         .some((entry) => entry.text === "Mira · Mender · Lv.5"),
     );
     texts = await visibleTexts(page);
-    expect(texts).toContain("May equip");
+    expect(texts).toContain("Can equip");
     expect(texts).toContain("Buy for Mira");
     await page.screenshot({
       path: path.join(PROOF_DIR, `issue-202-shop-cycle-locked-${RUN_ID}.png`),
@@ -213,7 +213,7 @@ test.describe("shop compare flow", () => {
     texts = await visibleTexts(page);
     await expect(page.locator(".shop-member")).toHaveCount(4);
     await expect(
-      page.locator(".shop-member").filter({ hasText: "May equip" }),
+      page.locator(".shop-member").filter({ hasText: "Can equip" }),
     ).not.toHaveCount(0);
     expect(texts).toContain("Silk Robe");
 
