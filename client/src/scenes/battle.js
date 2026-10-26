@@ -3637,6 +3637,12 @@ export class BattleScene extends Phaser.Scene {
         const dmgType = action.damage_type || "physical";
         const attackTitle = this.actionTitleFor(action, line);
         const hits = physicalHitPresentations(action, dmg, defeatMatch);
+        const attackCaption = (target) =>
+          hits.length > 1
+            ? `${attacker} → ${target || action.target_name}: strike 1/${hits.length}`
+            : target
+              ? `${attacker} attacks ${target}!`
+              : `${attacker} attacks!`;
 
         const pe = this.partySprites[attacker];
         const ee = this.enemySprites[targetId];
@@ -3650,14 +3656,14 @@ export class BattleScene extends Phaser.Scene {
             tracerColor: ACTION_TRACER_COLORS.partyToEnemy,
             targetColor: ACTION_RETICLE_COLORS.enemyTarget,
           });
-          this.revealLine(`${attacker} attacks ${ee.name}!`, "#ff8844");
+          this.revealLine(attackCaption(ee.name), "#ff8844");
           await this.showActionTitle(pe, attackTitle, "#ffcc66");
           await this.playMajorCinematicPrelude(action, pe, "none");
           await this.lungePartySprite(pe, ee, { crit: hits[0].crit });
           if (!pe?.battleAction && !attackerEnemy?.battleAction)
             await this.wait(ACTION_BEAT_MS.preImpact);
         } else if (pe) {
-          this.revealLine(`${attacker} attacks!`, "#ff8844");
+          this.revealLine(attackCaption(), "#ff8844");
           await this.showActionTitle(pe, attackTitle, "#ffcc66");
           await this.playMajorCinematicPrelude(action, pe, "none");
           if (!pe?.battleAction && !attackerEnemy?.battleAction)
@@ -3667,7 +3673,7 @@ export class BattleScene extends Phaser.Scene {
             tracerColor: ACTION_TRACER_COLORS.enemyToParty,
             targetColor: ACTION_RETICLE_COLORS.partyTarget,
           });
-          this.revealLine(`${attacker} attacks ${pt.name}!`, "#ff9966");
+          this.revealLine(attackCaption(pt.name), "#ff9966");
           await this.showActionTitle(attackerEnemy, attackTitle, "#ff9966");
           await this.playMajorCinematicPrelude(action, attackerEnemy, "none");
           await this.lungePartySprite(attackerEnemy, pt, {
@@ -3685,10 +3691,13 @@ export class BattleScene extends Phaser.Scene {
             });
           }
           if (hits.length > 1) {
-            this.revealLine(
-              `${attacker} → ${(ee || pt)?.name || action.target_name}: strike ${index + 1}/${hits.length}`,
-              "#ffcc66",
-            );
+            // The first strike caption already began with anticipation. Do not
+            // replace the opening message at contact before it can be read.
+            if (index > 0)
+              this.revealLine(
+                `${attacker} → ${(ee || pt)?.name || action.target_name}: strike ${index + 1}/${hits.length}`,
+                "#ffcc66",
+              );
             this.combatReadUntil = Math.max(
               this.combatReadUntil || 0,
               performance.now() + (hit.crit ? 1500 : 1200),

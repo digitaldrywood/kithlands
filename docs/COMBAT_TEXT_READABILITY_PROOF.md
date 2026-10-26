@@ -235,3 +235,14 @@ miss: the label holds for about 1.23 seconds at desktop/phone/reduced motion,
 contact occurs at authored frame 3 without a slash, and displayed HP stays 5.
 Target labels/arrows also now clear measured enemy-name bounds. Original
 proof history and other action/class limits above remain preserved.
+
+
+## Follow-up: multi-hit opening message
+
+Hosted `32458c3` exposed a real 197–229ms replacement of the generic attack
+caption by the first-strike caption. The opening caption now names strike one
+at anticipation and survives first contact. The unchanged 1450ms native gate
+passes at desktop, phone and reduced motion (1671.6/1669.3/1552.8ms final holds),
+with four authoritative multi-hit references still passing. See
+`COMBAT_MESSAGE_SEQUENCE_PROOF.md` for failed-before traces, final inspected
+captures and current remote-gate limits. Earlier proof remains historical.

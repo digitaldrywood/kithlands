@@ -1,6 +1,9 @@
 # Playability work tracker
 
 
+- Fixed the reproduced hosted combat caption regression: multi-hit strike one now appears during anticipation instead of replacing an attack caption after ~200ms. The unchanged 1450ms minimum passes at 1671.6/1669.3/1552.8ms desktop/phone/reduced motion. Seven combined readability/authoritative-hit cases and three final caption captures pass; all 54 multi-hit and nine readability images inspected; 831 client tests/build/format pass. See `COMBAT_MESSAGE_SEQUENCE_PROOF.md`. Full hosted acceptance remains pending on the new head.
+
+
 - Portrait settlement now uses a larger bounded camera with fixed UI, one accessible Menu, readable interaction captions and a 44px Old Mill trail target. Native keyboard/touch routes verify street walking, menu locks, inn entry/return, world exit and simulated network-failure recovery. All five final viewport cases, eight earlier combined landmark cases, two interior regressions, 831 client tests/build/format pass; final 35 settlement and 13 interior captures inspected. See `PORTRAIT_SETTLEMENT_PROOF.md`. Other doors, foreground/rotation and broad menu acceptance remain open. Prior hosted `32458c3` passed every non-combat suite but exposed a reproduced combat-message timing regression; that repair takes priority next.
 
 

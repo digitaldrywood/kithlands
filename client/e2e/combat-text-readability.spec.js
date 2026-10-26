@@ -126,16 +126,19 @@ for (const [width, height, reducedMotion] of [
     );
     await page.waitForFunction(() => window.__readTrace.length >= 2);
     const trace = await page.evaluate(() => window.__readTrace);
+    writeFileSync(
+      new URL(`${width}-read-timing.json`, proof),
+      JSON.stringify(trace, null, 2),
+    );
     expect(trace[1].t - trace[0].t).toBeGreaterThanOrEqual(1450);
+    await page.screenshot({
+      path: new URL(`${width}-second-strike-message.png`, proof).pathname,
+    });
     const readability = await collectCombatTextAudit(page);
     writeFileSync(
       new URL(`${width}-readability.json`, proof),
       JSON.stringify(readability, null, 2),
     );
     expectReadableCombatText(readability);
-    writeFileSync(
-      new URL(`${width}-read-timing.json`, proof),
-      JSON.stringify(trace, null, 2),
-    );
   });
 }
