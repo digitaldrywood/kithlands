@@ -1,3 +1,4 @@
+import { findStockRow } from "./helpers/shop-stock.js";
 import { test, expect } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -225,11 +226,11 @@ for (const [label, width, height] of [
         expect(catalog.shop_items.find((i) => i.id === id)?.icon_key).toBe(
           `weapons/${id.replaceAll("_", "-")}.svg`,
         );
-        const row = shop.locator(".shop-stock-row").filter({
-          has: page.locator(
-            `img[src="/sprites/items/weapons/${id.replaceAll("_", "-")}.svg"]`,
-          ),
-        });
+        const row = await findStockRow(
+          page,
+          shop,
+          catalog.shop_items.find((item) => item.id === id).name,
+        );
         await verify(row.locator("img"), id);
         await page.screenshot({
           path: path.join(proof, `${label}-stock-${id}.png`),

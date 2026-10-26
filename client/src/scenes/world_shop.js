@@ -125,7 +125,9 @@ export async function openShop(scene, spawn) {
   let items = [],
     catalogError = "",
     selectedId = null,
-    category = "weapons";
+    category = "weapons",
+    stockPage = 0,
+    pageSize = 6;
   let memberIndex = 0,
     detailOpen = false,
     notice = "Loading stock…";
@@ -154,7 +156,9 @@ export async function openShop(scene, spawn) {
       if (index < 0) return;
       event.preventDefault();
       const delta = ["ArrowDown", "ArrowRight"].includes(event.key) ? 1 : -1;
-      controls[(index + delta + controls.length) % controls.length]?.focus();
+      controls[(index + delta + controls.length) % controls.length]?.focus({
+        preventScroll: true,
+      });
     },
   });
   scene.shopDialog = dialog;
@@ -199,8 +203,44 @@ export async function openShop(scene, spawn) {
     img.width = img.height = 64;
     parent.append(img);
   }
+  const resizeObserver = new ResizeObserver(fitStockPage);
+  resizeObserver.observe(dialog.body);
+  const stopStockObserver = () => {
+    resizeObserver.disconnect();
+    scene.events.off("shutdown", stopStockObserver);
+  };
+  scene.events.once("shutdown", stopStockObserver);
+
+  function fitStockPage() {
+    if (dialog.disposed) {
+      stopStockObserver();
+      return;
+    }
+    const stock = dialog.body.querySelector(".shop-stock");
+    if (!stock?.clientHeight) return;
+    // Match the fixed 52px rows, 4px gaps, padding and 46px page controls.
+    const capacity = Math.max(
+      1,
+      Math.floor((stock.clientHeight - 74 + 4) / 56),
+    );
+    if (capacity === pageSize) return;
+    const offers = groupShopItems(items)[category] || [];
+    const index = offers.findIndex(
+      (item) => shopSelectionID(item) === selectedId,
+    );
+    pageSize = capacity;
+    stockPage = Math.floor(Math.max(0, index) / pageSize);
+    const focus = document.activeElement?.closest(".shop-categories")
+      ? "category"
+      : document.activeElement?.closest(".shop-stock")
+        ? "selected"
+        : undefined;
+    render(focus);
+  }
+
   function close() {
     if (scene.shopPurchasePending || dialog.disposed) return;
+    stopStockObserver();
     dialog.dispose();
     scene.animating = false;
     if (scene.shopDialog === dialog) scene.shopDialog = null;
@@ -302,7 +342,10 @@ export async function openShop(scene, spawn) {
   }
   function render(focus) {
     if (dialog.disposed) return;
+    const oldStock = dialog.body.querySelector(".shop-stock");
     const oldScroll = dialog.body.scrollTop;
+    const navScroll =
+      dialog.body.querySelector(".shop-categories")?.scrollLeft || 0;
     gold.textContent = `Gold: ${scene.gameState.gold}`;
     status.textContent = notice;
     dialog.body.replaceChildren();
@@ -333,6 +376,7 @@ export async function openShop(scene, spawn) {
     for (const [key, label] of categories) {
       const tab = button(label, () => {
         category = key;
+        stockPage = 0;
         selectedId = null;
         detailOpen = false;
         render("category");
@@ -341,13 +385,27 @@ export async function openShop(scene, spawn) {
       nav.append(tab);
     }
     const layout = element("div", "shop-workbench");
-    const stock = element("section", "shop-stock");
+    let stock = element("section", "shop-stock");
     stock.setAttribute("aria-label", "Stock");
     stock.dataset.shopKeys = "stock";
     const offers = groupShopItems(items)[category] || [];
     if (!offers.some((item) => shopSelectionID(item) === selectedId))
       selectedId = offers[0] ? shopSelectionID(offers[0]) : null;
-    for (const item of offers) {
+    const pageCount = Math.max(1, Math.ceil(offers.length / pageSize));
+    stockPage = Math.min(stockPage, pageCount - 1);
+    const stockSignature = JSON.stringify([
+      category,
+      stockPage,
+      pageSize,
+      scene.shopPurchasePending,
+      offers.map(shopSelectionID),
+    ]);
+    stock.dataset.signature = stockSignature;
+    const list = element("div", "shop-stock-list");
+    for (const item of offers.slice(
+      stockPage * pageSize,
+      (stockPage + 1) * pageSize,
+    )) {
       const row = button(
         item.name,
         () => {
@@ -370,6 +428,7 @@ export async function openShop(scene, spawn) {
         "shop-stock-row",
       );
       row.replaceChildren();
+      row.dataset.offerId = shopSelectionID(item);
       row.setAttribute(
         "aria-pressed",
         String(selectedId === shopSelectionID(item)),
@@ -377,11 +436,31 @@ export async function openShop(scene, spawn) {
       art(row, item);
       const name = element("span", "shop-stock-name", item.name);
       if (item.type === "spell")
-        text(name, "small", `${item.school} · Level ${item.spell_level}`);
+        text(name, "small", `${item.school} · Tier ${item.spell_level}`);
       row.append(name, element("span", "shop-price", `${item.price}g`));
-      stock.append(row);
+      list.append(row);
     }
-    if (!offers.length) text(stock, "p", "Nothing in this category.");
+    stock.append(list);
+    if (!offers.length) text(list, "p", "Nothing in this category.");
+    const pager = element("nav", "shop-pagination");
+    pager.setAttribute("aria-label", "Stock pages");
+    const turnPage = (delta) => {
+      stockPage += delta;
+      selectedId = shopSelectionID(offers[stockPage * pageSize]);
+      detailOpen = false;
+      render("selected");
+    };
+    const previous = button("Previous page", () => turnPage(-1));
+    previous.disabled ||= stockPage === 0;
+    const next = button("Next page", () => turnPage(1));
+    next.disabled ||= stockPage === pageCount - 1;
+    const range = offers.length
+      ? `${stockPage * pageSize + 1}–${Math.min((stockPage + 1) * pageSize, offers.length)} of ${offers.length}`
+      : "0 items";
+    const position = element("span", "shop-page-position", range);
+    position.setAttribute("role", "status");
+    pager.append(previous, position, next);
+    stock.append(pager);
     const preview = element("section", "shop-preview");
     preview.setAttribute("aria-label", "Item preview");
     const item = selected();
@@ -410,7 +489,7 @@ export async function openShop(scene, spawn) {
       if (description) text(preview, "p", description, "shop-description");
       if (context)
         text(preview, "p", context, "shop-use-context shop-secondary");
-      if (item.required_level)
+      if (item.required_level && item.type !== "spell")
         text(
           preview,
           "p",
@@ -422,7 +501,13 @@ export async function openShop(scene, spawn) {
       if (isEquipmentShopItem(item)) {
         renderEquipment(preview, item, party);
       } else if (item.type === "spell") {
-        text(preview, "p", `${item.school} magic · Level ${item.spell_level}`);
+        text(preview, "p", `${item.school} magic · Tier ${item.spell_level}`);
+        text(
+          preview,
+          "p",
+          "Magic tier is not character level. Each companion’s class and character level determine whether they can learn it.",
+          "shop-secondary shop-spell-requirements",
+        );
         text(preview, "h3", "Choose a learner");
         const learners = element("div", "shop-members");
         learners.dataset.shopKeys = "learners";
@@ -483,22 +568,49 @@ export async function openShop(scene, spawn) {
         actions.append(equip);
       }
     }
+    // Changing the preview must not recreate its neighboring catalog rows.
+    // Keep decoded icons, focus and layout; rebuild only for a different page,
+    // category, pending state or authoritative quote.
+    if (oldStock?.dataset.signature === stockSignature) {
+      stock = oldStock;
+      for (const row of stock.querySelectorAll(".shop-stock-row")) {
+        row.setAttribute(
+          "aria-pressed",
+          String(row.dataset.offerId === selectedId),
+        );
+      }
+    }
     layout.append(stock, preview);
     dialog.body.append(nav, layout);
     dialog.body.scrollTop = oldScroll;
+    nav.scrollLeft = navScroll;
+    queueMicrotask(fitStockPage);
     if (focus === "category")
-      nav.querySelector('[aria-pressed="true"]')?.focus();
+      nav
+        .querySelector('[aria-pressed="true"]')
+        ?.focus({ preventScroll: true });
     if (focus === "selected")
-      stock.querySelector('[aria-pressed="true"]')?.focus();
+      stock
+        .querySelector('[aria-pressed="true"]')
+        ?.focus({ preventScroll: true });
     if (focus === "detail") {
-      preview.tabIndex = -1;
-      preview.focus();
-      dialog.body.scrollTop = 0;
+      if (window.matchMedia("(max-width: 620px)").matches) {
+        preview.tabIndex = -1;
+        preview.focus({ preventScroll: true });
+        dialog.body.scrollTop = 0;
+      } else
+        stock
+          .querySelector('[aria-pressed="true"]')
+          ?.focus({ preventScroll: true });
     }
     if (focus === "member")
-      preview.querySelector('.shop-member[aria-pressed="true"]')?.focus();
+      preview
+        .querySelector('.shop-member[aria-pressed="true"]')
+        ?.focus({ preventScroll: true });
     if (focus === "purchase")
-      (actions.querySelector(".shop-purchase:not(:disabled)") || leave).focus();
+      (actions.querySelector(".shop-purchase:not(:disabled)") || leave).focus({
+        preventScroll: true,
+      });
   }
   function renderEquipment(preview, item, party) {
     text(preview, "h3", "Compare for");

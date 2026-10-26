@@ -1,3 +1,4 @@
+import { findStockRow } from "./helpers/shop-stock.js";
 import { test, expect } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 const proof = new URL(`../tmp/canonical-art-${Date.now()}/`, import.meta.url);
@@ -233,6 +234,7 @@ for (const width of [1440, 610, 390]) {
         .some((t) => t.text === "Leave Shop"),
     );
     expect(catalog.shop_items.some((i) => i.id === "steel_sword")).toBe(true);
+    await findStockRow(page, page.locator(".kith-shop"), "Steel Sword");
     const steelIcon = page.locator(
       '.shop-stock img[src="/sprites/items/crafted/steel-sword.svg"]',
     );

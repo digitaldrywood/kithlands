@@ -60,24 +60,43 @@
 .shop-stock {
   border-right: 1px solid var(--menu-line);
 }
+.shop-stock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  overflow: hidden;
+}
+.shop-stock-list {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 .kith-shop .shop-stock-row {
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) auto;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  grid-template-rows: 1fr 1fr;
   align-items: center;
-  gap: 4px 12px;
+  gap: 0 8px;
   width: 100%;
   text-align: left;
-  margin-bottom: 8px;
-  min-height: 72px;
-  padding: 10px;
+  flex: 0 0 52px;
+  height: 52px;
+  min-height: 52px;
+  padding: 4px 8px;
+  font-size: 15px;
+  line-height: 1.2;
+  border-radius: 8px;
 }
 .shop-item-art {
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   object-fit: contain;
   flex-shrink: 0;
   border: 1px solid var(--menu-line);
-  border-radius: 10px;
+  border-radius: 8px;
   background: #0c1523;
 }
 .shop-stock-row .shop-item-art {
@@ -85,34 +104,64 @@
   grid-row: 1 / 3;
 }
 .shop-stock-row .shop-price {
-  grid-column: 2;
-  grid-row: 2;
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
 }
 .shop-stock-row .menu-shortcut {
   grid-column: 3;
   grid-row: 2;
   justify-self: end;
   margin: 0;
-}
-.shop-stock-row:not(:has(.shop-item-art)) .shop-stock-name {
-  grid-column: 1 / -1;
-}
-.shop-stock-row:not(:has(.shop-item-art)) .shop-price {
-  grid-column: 1 / 3;
+  font-size: 10px;
+  padding: 0 3px;
 }
 .shop-stock-name {
-  grid-column: 2 / -1;
-  grid-row: 1;
+  grid-column: 2;
+  grid-row: 1 / 3;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+.shop-stock-row:not(:has(.shop-item-art)) {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.shop-stock-row:not(:has(.shop-item-art)) .shop-stock-name {
+  grid-column: 1;
+}
+.shop-stock-row:not(:has(.shop-item-art)) .shop-price,
+.shop-stock-row:not(:has(.shop-item-art)) .menu-shortcut {
+  grid-column: 2;
 }
 .shop-stock-name small,
 .shop-member small {
   display: block;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: normal;
   color: var(--menu-muted);
-  margin-top: 4px;
+  margin-top: 2px;
+}
+.shop-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 46px;
+  gap: 6px;
+}
+.kith-shop .shop-pagination button {
+  position: relative;
+  min-height: 46px;
+  padding: 4px 8px;
+  font-size: 15px;
+}
+.shop-pagination .menu-shortcut {
+  display: block;
+  margin: 0;
+  font-size: 9px;
+}
+.shop-page-position {
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--menu-muted);
 }
 .shop-preview-heading {
   display: flex;
@@ -215,6 +264,9 @@
     padding: 12px;
   }
   .shop-stock {
+    flex: 1;
+    min-height: 0;
+    padding: 10px;
     border: 0;
   }
   .kith-shop:not(.shop-detail-open) .shop-preview,

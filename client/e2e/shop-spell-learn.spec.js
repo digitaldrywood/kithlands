@@ -1,3 +1,4 @@
+import { findStockRow } from "./helpers/shop-stock.js";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -166,18 +167,9 @@ test.describe("shop spell learning flow", () => {
     await startSpellShopGame(page);
     await visitShop(page);
 
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("Spells", "Town"),
-    );
-    await page.waitForFunction(() =>
-      window.__kithlandsTest
-        .visibleTexts("Town")
-        .some((entry) => entry.text.includes("Heal")),
-    );
-
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("Heal", "Town"),
-    );
+    const shop = page.locator(".kith-shop");
+    await shop.getByRole("button", { name: /^Spells/ }).click();
+    await (await findStockRow(page, shop, "Heal")).click();
     await page.waitForFunction(() => {
       const texts = window.__kithlandsTest.visibleTexts("Town");
       return (

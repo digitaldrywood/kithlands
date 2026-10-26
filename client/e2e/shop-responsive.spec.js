@@ -1,6 +1,7 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
+import { findStockRow } from "./helpers/shop-stock.js";
 import {
   startNormalRoute,
   walkNormally,
@@ -54,13 +55,7 @@ for (const width of [1440, 800, 610, 390]) {
         ["Phoenix Down", "1 HP"],
         ["Tent", "50%"],
       ]) {
-        await activate(
-          shop.locator(".shop-stock-row").filter({
-            has: page.locator(".shop-stock-name", {
-              hasText: new RegExp(`^${name}$`),
-            }),
-          }),
-        );
+        await activate(await findStockRow(page, shop, name));
         const preview = shop.locator(".shop-preview");
         await expect(preview.locator(".shop-description")).toContainText(
           effect,
@@ -94,11 +89,7 @@ for (const width of [1440, 800, 610, 390]) {
           "sword grip": "Leather grip wrap",
           "removes impurities": "Forge flux",
         };
-        await activate(
-          shop.locator(".shop-stock-row").filter({
-            has: page.locator(".shop-stock-name", { hasText: names[effect] }),
-          }),
-        );
+        await activate(await findStockRow(page, shop, names[effect]));
         await expect(shop.locator(".shop-description")).toContainText(effect);
         await expect(shop.locator(".shop-use-context")).toContainText(
           "Crafting in the party menu",
@@ -111,13 +102,7 @@ for (const width of [1440, 800, 610, 390]) {
           await activate(shop.getByRole("button", { name: /^Back to stock/ }));
       }
       await activate(shop.getByRole("button", { name: /^Items/ }));
-      await activate(
-        shop.locator(".shop-stock-row").filter({
-          has: page.locator(".shop-stock-name", {
-            hasText: /^Strange Coin$/,
-          }),
-        }),
-      );
+      await activate(await findStockRow(page, shop, "Strange Coin"));
       await expect(shop.locator(".shop-description")).toContainText(
         "unknown origin",
       );
@@ -152,11 +137,11 @@ for (const width of [1440, 800, 610, 390]) {
       await page.screenshot({ path: path.join(proof, `${width}-stock.png`) });
       if (mobile) {
         await activate(shop.getByRole("button", { name: /^Armor/ }));
-        await activate(shop.getByRole("button", { name: /^Leather Armor/ }));
+        await activate(await findStockRow(page, shop, "Leather Armor"));
       } else {
         await shop.getByRole("button", { name: /^Armor/ }).focus();
         await page.keyboard.press("Enter");
-        await shop.getByRole("button", { name: /^Leather Armor/ }).focus();
+        await (await findStockRow(page, shop, "Leather Armor")).focus();
         await page.keyboard.press("Space");
       }
       await expect(shop.locator(".shop-preview")).toContainText(
