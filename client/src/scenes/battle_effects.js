@@ -1,3 +1,4 @@
+import { playIceRelease, playIceToTarget } from "./battle_ice_fx.js";
 import { drawFirebolt, fireContactDetails } from "./battle_contact_fx.js";
 const INTENSITY_TIERS = Object.freeze({
   1: Object.freeze({ scale: 0.82, particleCount: 4, strokeWidth: 2 }),
@@ -12,6 +13,13 @@ const EFFECT_FAMILIES = Object.freeze({
     glow: 0xe8c86d,
     accent: 0xffffff,
     soundHook: "sfx_heal",
+  }),
+  ice: Object.freeze({
+    motion: "projectile",
+    core: 0xb7ecff,
+    glow: 0x426baf,
+    accent: 0xffffff,
+    soundHook: "sfx_ice",
   }),
   fire: Object.freeze({
     motion: "projectile",
@@ -56,6 +64,8 @@ export function playBattleEffectRelease(scene, actor, presentation) {
   scene.continueCastMotion?.(actor);
   const origin = battleCastOrigin(actor);
   const reducedMotion = scene.reducedBattleMotion();
+  if (presentation.effectFamily === "ice")
+    return playIceRelease(scene, origin, presentation);
   if (presentation.motion === "projectile") {
     const direction = actor.x > 400 ? -1 : 1;
     const release = tagEffect(
@@ -119,6 +129,16 @@ export function playBattleEffectRelease(scene, actor, presentation) {
 export function playBattleEffectToTarget(scene, actor, target, presentation) {
   if (!presentation || !target) return null;
   const reducedMotion = scene.reducedBattleMotion();
+  if (presentation.effectFamily === "ice") {
+    if (!actor) return null;
+    scene.continueCastMotion?.(actor);
+    return playIceToTarget(
+      scene,
+      battleCastOrigin(actor),
+      target,
+      presentation,
+    );
+  }
   const motion = battleEffectMotion(presentation, reducedMotion);
   if (presentation.motion === "projectile") {
     if (!actor) return null;

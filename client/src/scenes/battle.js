@@ -2382,11 +2382,11 @@ export class BattleScene extends Phaser.Scene {
     const reducedMotion = this.reducedBattleMotion();
     const aura = this.add
       .graphics()
-      .setDepth(13)
+      .setDepth((actor.sprite?.depth ?? 4) - 1)
       .setAlpha(0)
       .setScale(reducedMotion ? 1 : 0.65);
     aura._combatFxTag = "cast-aura";
-    aura.setPosition(actor.x, actor.y + actor.height * 0.3);
+    aura.setPosition(actor.x, actor.feetY);
     aura.lineStyle(3, style.core, 0.95);
     aura.strokeEllipse(0, 0, actor.width * 1.05, 24);
     aura.lineStyle(2, style.accent, 0.75);

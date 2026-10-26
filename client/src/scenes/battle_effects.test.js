@@ -7,7 +7,7 @@ import {
 } from "./battle_effects.js";
 
 describe("battle effect presentation", () => {
-  it.each(["fire", "restorative_light"])(
+  it.each(["fire", "ice", "restorative_light"])(
     "%s applies the result on arrival while the impact fades",
     async (effect_family) => {
       const tweens = [];
@@ -49,7 +49,9 @@ describe("battle effect presentation", () => {
       tweens[0].onComplete();
       await effect;
       expect(arrived).toBe(true);
-      expect(tweens.length).toBe(effect_family === "fire" ? 10 : 2);
+      if (effect_family !== "ice")
+        expect(tweens.length).toBe(effect_family === "fire" ? 10 : 2);
+      expect(tweens.at(-1).onComplete).toEqual(expect.any(Function));
       // The fading impact's completion has not run yet.
     },
   );

@@ -314,3 +314,13 @@ Normal and reduced-motion playback must both retain contact, following shadows
 and a return home. Critical damage and defeat text must remain separate. The
 actual server-resolved three-round proof, inspected frame sequences, exact
 commands and current limits are in `WARRIOR_CRITICAL_STRIKE_PROOF.md`.
+
+### Cinder Frost presentation reference
+
+Frost alone now selects an original `ice` release/lance/shatter presentation
+through shared spell metadata. It retains Cinder's approved body/staff and
+frame-3 emission cue. The cast aura belongs at the feet behind bodies.
+Desktop, touch portrait and reduced-motion release/contact/recovery evidence,
+plus a normal fresh-party purchase/use/save route, are recorded in
+`docs/CINDER_FROST_PROOF.md`. This is an accepted spell slice, not approval of
+all elemental spells or Cinder's complete action vocabulary.

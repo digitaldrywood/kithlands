@@ -5,6 +5,8 @@ Updated 2026-10-25. This file records work; it does not schedule unattended runs
 
 ## Verified locally
 
+- Cinder's Frost now has an original faceted staff release, ice lance and bounded shatter, with stationary reduced-motion cues. The cast aura is grounded behind bodies rather than across the healer's face. Native desktop/phone/reduced-motion casts verify cue/shadow/HP-text timing and recovery; the normal phone gathering→purchase→craft/socket→bat battle→save/load route passes again. All 111 final captures/motion frames across the Frost, VFX regression and normal-route flows inspected. 812 client tests/build/format, Go tests, shared-data validation and 4,000-battle smoke pass. See `CINDER_FROST_PROOF.md`. This accepts Frost only; other spell families and phone combat font sizing remain open.
+
 - Portrait interiors now use separate room/UI cameras, readable phone fonts, real floor tap-to-walk and one accessible Menu. Contextual captions clear actors and hide during dialogue; Help/Sound have visible H/V shortcuts. Native desktop/default/three phone-size cases, World touch, 811 client tests/build/format and all 14 movement regression cases pass locally. See `PORTRAIT_INTERIOR_PROOF.md`. Hosted run `40245410823` on `303d0c6` passes all five visual groups; the subsequent interior update needs its own remote gate. General CI remains queued on the owner-selected self-hosted runner setup.
 
 - Exploration notices now stack above entrance/trail/menu controls at the left edge and expire without shifting those controls. Desktop/default/phone cases cover real saves, herb gathering and a clearly simulated long save-error response. Shop fixture inputs now separate touch activation from door confirmation; the world-shop route reproduces the crowded household layout and checks that the proprietor is actually selected. Presentation/touch, catalog and world-shop cases, 799 client tests/build/format and inspected captures pass locally. Painted D-pad bounds now include the square arrow edges, and a native edge tap verifies one tile without map auto-walk. See `EXPLORATION_NOTICE_PROOF.md`; the new remote gate remains pending.
@@ -98,6 +100,8 @@ The Heron Pool detour now connects an optional visible threat → guarded smithi
 The active goal is the complete user-pasted request, not only this checklist. Existing local proof should be reused where valid; a check stays open when its remaining acceptance depends on the new connected route or final integrated verification.
 
 ## Subsequent work
+
+- Fix the phone floating-damage/enemy-name lane overlap observed in `CINDER_FROST_PROOF.md`, and measure actual CSS font sizing with critical/status combinations.
 
 - Audit Codex reference lists against shared content; its static equipment/class guide still lives in client code.
 

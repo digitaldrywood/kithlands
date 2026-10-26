@@ -58,7 +58,7 @@ jobs:
         run: ./scripts/run_playwright_local.sh e2e/walk-rendered-cadence.spec.js e2e/walk-all-classes.spec.js e2e/world-space-cycle.spec.js e2e/world-walk-audit-party.spec.js e2e/world-terrain-visibility.spec.js
       - name: Verify battle controls, field magic, pacing, and adventure navigation
         if: matrix.suite == 'gameplay'
-        run: ./scripts/run_playwright_local.sh e2e/battle-continuity.spec.js e2e/field-magic-repeat.spec.js e2e/battle-stop-auto.spec.js e2e/world-encounter-pacing.spec.js e2e/river-footbridges.spec.js e2e/adventure-map-navigation.spec.js e2e/heron-playability-loop.spec.js e2e/warrior-critical.spec.js e2e/battle-defend.spec.js e2e/battle-context-choices.spec.js e2e/enemy-tactics.spec.js e2e/opening-integration.spec.js e2e/shop-responsive.spec.js e2e/shop-buy-flow.spec.js e2e/shop-compare.spec.js e2e/shop-spell-learn.spec.js e2e/merchant-stock-authority.spec.js e2e/canonical-item-art.spec.js e2e/first-session-route.spec.js e2e/world-shop-entry.spec.js e2e/dev-artifact-isolation.spec.js e2e/exploration-notice-layout.spec.js e2e/exploration-touch.spec.js
+        run: ./scripts/run_playwright_local.sh e2e/battle-continuity.spec.js e2e/field-magic-repeat.spec.js e2e/battle-stop-auto.spec.js e2e/world-encounter-pacing.spec.js e2e/river-footbridges.spec.js e2e/adventure-map-navigation.spec.js e2e/heron-playability-loop.spec.js e2e/warrior-critical.spec.js e2e/cinder-frost.spec.js e2e/battle-defend.spec.js e2e/battle-context-choices.spec.js e2e/enemy-tactics.spec.js e2e/opening-integration.spec.js e2e/shop-responsive.spec.js e2e/shop-buy-flow.spec.js e2e/shop-compare.spec.js e2e/shop-spell-learn.spec.js e2e/merchant-stock-authority.spec.js e2e/canonical-item-art.spec.js e2e/first-session-route.spec.js e2e/world-shop-entry.spec.js e2e/dev-artifact-isolation.spec.js e2e/exploration-notice-layout.spec.js e2e/exploration-touch.spec.js
       - name: Verify natural campaign progression and quest recovery
         if: matrix.suite == 'campaign'
         run: ./scripts/run_playwright_local.sh e2e/campaign-first-level.spec.js
@@ -76,6 +76,7 @@ jobs:
           path: |
             client/tmp/walk-rendered-*/
             client/tmp/warrior-critical-*/
+            client/tmp/cinder-frost-*/
             client/tmp/battle-defend-*/
             client/tmp/enemy-tactics-*/
             client/tmp/opening-integration-*/

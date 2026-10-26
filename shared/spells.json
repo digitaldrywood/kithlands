@@ -41,6 +41,10 @@
       "effect": "damage",
       "element": "ice",
       "power": 10,
+      "presentation": {
+        "effect_family": "ice",
+        "intensity_tier": 1
+      },
       "description": "Small ice damage to one enemy"
     },
     {
