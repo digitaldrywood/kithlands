@@ -741,45 +741,68 @@
           ]
         },
         "victory": {
-          "body_key": "battle_warrior_sword_attack_body",
-          "body_path": "/sprites/battle/warrior/sword-attack-body.png",
+          "body_key": "battle_warrior_sword_victory_body",
+          "body_path": "/sprites/battle/warrior/sword-victory-body.png",
+          "cue_frame": 2,
           "frames": [
             {
               "frame": 0,
-              "duration": 85,
+              "duration": 80,
               "attachments": {
-                "sword": { "x": -48, "y": -7, "angle": -135, "front": true }
+                "sword": {
+                  "x": -48,
+                  "y": -7,
+                  "angle": -135,
+                  "front": true
+                }
               }
             },
             {
               "frame": 1,
-              "duration": 90,
-              "body": { "y": -3 },
+              "duration": 140,
               "attachments": {
-                "sword": { "x": 31, "y": -7, "angle": 55, "front": false }
+                "sword": {
+                  "x": -52,
+                  "y": -1,
+                  "angle": -135,
+                  "front": true
+                }
               }
             },
             {
               "frame": 2,
-              "duration": 150,
-              "body": { "y": -9 },
+              "duration": 380,
               "attachments": {
-                "sword": { "x": 0, "y": -57, "angle": -18, "front": true }
+                "sword": {
+                  "x": -48,
+                  "y": -7,
+                  "angle": -135,
+                  "front": true
+                }
               }
             },
             {
-              "frame": 2,
-              "duration": 130,
-              "body": { "y": -6 },
+              "frame": 1,
+              "duration": 140,
               "attachments": {
-                "sword": { "x": 0, "y": -57, "angle": -18, "front": true }
+                "sword": {
+                  "x": -52,
+                  "y": -1,
+                  "angle": -135,
+                  "front": true
+                }
               }
             },
             {
               "frame": 0,
-              "duration": 90,
+              "duration": 100,
               "attachments": {
-                "sword": { "x": -48, "y": -7, "angle": -135, "front": true }
+                "sword": {
+                  "x": -48,
+                  "y": -7,
+                  "angle": -135,
+                  "front": true
+                }
               }
             }
           ]

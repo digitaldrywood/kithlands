@@ -384,3 +384,19 @@ consumption, healing and revival. Native potion and revival checks, reduced-moti
 flags, trace evidence and acceptance limits are in `WARRIOR_ITEM_USE_PROOF.md`.
 Sources, exact built-in image-generation prompts and guides are in
 `art-source/characters/warrior/battle/sword-item/metadata.json`.
+
+## Warrior victory reference (2026-10-26)
+
+Victory uses a dedicated 576×192 three-cell RGBA body atlas:
+`/sprites/battle/warrior/sword-victory-body.png`. Original guard is unchanged;
+individually guided chest-fist and raised-fist poses retain the planted baseline.
+The item-selected sword stays low in the near glove with authored grip sockets.
+Playback is guard → settle → salute → settle → guard, cue frame 2, with no body
+translation or rotation. The existing living-party victory beat completes before
+the receipt; reward and exploration acknowledgement remain Go-owned.
+
+Sources, exact built-in generation prompts and guides are retained in
+`art-source/characters/warrior/battle/sword-victory/metadata.json`.
+Native motion/receipt/World checks and acceptance limits are recorded in
+`WARRIOR_VICTORY_POSE_PROOF.md`. This does not approve other classes' reused
+victory art or close Warrior class-ability/Cinder choreography.
