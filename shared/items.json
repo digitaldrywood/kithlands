@@ -551,6 +551,7 @@
     },
     {
       "id": "hand_axe",
+      "icon_key": "weapons/hand-axe.svg",
       "name": "Hand Axe",
       "type": "axe",
       "tier": 1,
@@ -719,6 +720,7 @@
     },
     {
       "id": "arcane_staff",
+      "icon_key": "weapons/arcane-staff.svg",
       "name": "Arcane Staff",
       "type": "staff",
       "tier": 3,
@@ -751,6 +753,7 @@
     },
     {
       "id": "mythril_axe",
+      "icon_key": "weapons/mythril-axe.svg",
       "name": "Mythril Axe",
       "type": "axe",
       "tier": 4,

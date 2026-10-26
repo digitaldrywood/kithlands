@@ -1,5 +1,7 @@
 # Playability work tracker
 
+- Hand Axe, Mythril Axe and Arcane Staff now have original canonical SVG icons. Four native viewport/input cases plus three existing sword/gem cases, a real Mythril Axe loot result and a main-server desktop case pass; all 96 final captures inspected. 841 client tests/build/format, Go tests and shared-data validation pass. Normal save/exit/Continue preserves every owner gameplay field exactly while refreshing API 8689. See `WEAPON_ITEM_ART_PROOF.md`. The remaining 33 weapon metadata gaps and broader goal stay open; fresh CI required.
+
 - Hosted `2f9b095` visual run 40302989350 finishes eight suites green but fails combat on a defeat-test save-list race (31 other combat cases pass). CI snapshots show the correct single latest save; the test branched into history before loading completed. Controlled real-response latency reproduces both failures. The corrected exact-save presence wait passes all eight recovery/history flows, 841 client tests/build/format, with all 36 captures inspected. See `DEFEAT_SAVE_LIST_RACE_PROOF.md`; fresh head CI remains required.
 
 - Main local API is refreshed on 8689 and the owner’s game is restored on 3609. Normal Save/Save-and-exit/Continue preserved all gameplay fields exactly, including party, inventory, quests, world state, RNG seed and tile (23,143). A disposable native Shock case passes against that actual server; all 12 captures and owner before/after/ready screenshots are inspected. See `LOCAL_API_REFRESH_PROOF.md`. No player grants, save resets or history deletion.

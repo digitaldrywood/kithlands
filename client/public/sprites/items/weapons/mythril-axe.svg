@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs><linearGradient id="mythril-axe-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e9fff9"/><stop offset=".48" stop-color="#81c6d2"/><stop offset=".5" stop-color="#c7f5f3"/><stop offset="1" stop-color="#407a9a"/></linearGradient></defs>
+  <g stroke="#172332" stroke-width="2" stroke-linejoin="round">
+    <path d="M11 55L17 60L49 15L43 10Z" fill="#304a65"/>
+    <path d="M14 50L22 55M19 43L27 48M24 36L32 41" stroke="#cbb782" stroke-width="2.5"/>
+    <path d="M38 17L28 5Q13 9 15 25L23 34L35 29L41 25L47 36L58 39Q63 24 55 15L45 13Z" fill="url(#mythril-axe-metal)"/>
+    <path d="M28 5Q13 9 15 25L20 29Q18 14 32 10Z" fill="#e9fff9"/>
+    <path d="M55 15Q63 24 58 39L53 36Q57 24 51 17Z" fill="#c7f5f3"/>
+    <path d="M24 15L29 14L27 21M47 25L53 27L49 31" fill="none" stroke="#d7ffff" stroke-width="1.5"/>
+    <path d="M38 16L44 21L39 28L33 23Z" fill="#b8a477"/>
+    <circle cx="38.5" cy="22" r="2" fill="#d5f6f4" stroke-width="1"/>
+    <path d="M10 53L19 59L15 63L6 57Z" fill="#cbb782"/>
+  </g>
+</svg>

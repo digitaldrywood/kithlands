@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs><linearGradient id="hand-axe-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e5edf2"/><stop offset=".5" stop-color="#9baebd"/><stop offset=".52" stop-color="#d5dfe7"/><stop offset="1" stop-color="#53687b"/></linearGradient></defs>
+  <g stroke="#172332" stroke-width="2" stroke-linejoin="round">
+    <path d="M10 54L16 59L46 19L40 14Z" fill="#76513b"/>
+    <path d="M16 53L39 22" stroke="#b08a5e" stroke-width="1.5"/>
+    <path d="M14 48L21 53M18 43L25 48M22 38L29 43" stroke="#c3ad80" stroke-width="2.5"/>
+    <path d="M43 16L28 5Q13 14 17 30L28 37L36 27L44 29L49 22Z" fill="url(#hand-axe-metal)"/>
+    <path d="M28 5Q13 14 17 30L23 32Q20 17 32 8Z" fill="#e9f0f3"/>
+    <path d="M28 12L35 20L29 29" fill="none" stroke="#758b9d" stroke-width="1.5"/>
+    <circle cx="38" cy="22" r="3" fill="#a08e6d"/>
+    <path d="M10 53L18 59L14 63L6 57Z" fill="#778998"/>
+  </g>
+</svg>
