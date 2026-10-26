@@ -31,15 +31,25 @@ test.afterEach(async ({ page }, info) => {
 });
 const proof = path.resolve(`tmp/warrior-critical-${Date.now()}`);
 mkdirSync(proof, { recursive: true });
-for (const [width, height, reducedMotion] of [
+for (const [width, height, reducedMotion, speed] of [
   [1440, 900, "no-preference"],
   [390, 844, "no-preference"],
   [800, 600, "reduce"],
+  [390, 844, "no-preference", 1],
 ]) {
-  test(`server critical selects a grounded authored strike ${width}`, async ({
+  const caseProof = speed ? path.join(proof, "fast-390") : proof;
+  mkdirSync(caseProof, { recursive: true });
+  test(`server critical selects a grounded authored strike ${width}${speed ? " Fast" : ""}`, async ({
     page,
   }) => {
     test.setTimeout(240000);
+    if (speed)
+      await page.addInitScript(() =>
+        localStorage.setItem(
+          "kithlands_prefs",
+          JSON.stringify({ battleSpeed: 1, messageSpeed: 6 }),
+        ),
+      );
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("console", (message) => {
@@ -153,7 +163,7 @@ for (const [width, height, reducedMotion] of [
       expect(hero).toBeTruthy();
       authoritative.push({ round, critical: !!hero.crit, damage: hero.damage });
       writeFileSync(
-        path.join(proof, `${width}-server-${round}.json`),
+        path.join(caseProof, `${width}-server-${round}.json`),
         JSON.stringify({ hero, errors }, null, 2),
       );
       await page.waitForFunction(
@@ -171,7 +181,7 @@ for (const [width, height, reducedMotion] of [
     }
     const readability = await collectCombatTextAudit(page);
     writeFileSync(
-      path.join(proof, `${width}-readability.json`),
+      path.join(caseProof, `${width}-readability.json`),
       JSON.stringify(readability, null, 2),
     );
     expectReadableCombatText(readability);
@@ -219,15 +229,17 @@ for (const [width, height, reducedMotion] of [
     ).toBe(true);
     for (const [key, image] of Object.entries(data.images))
       writeFileSync(
-        path.join(proof, `${width}-${key.replace(":", "-")}.png`),
+        path.join(caseProof, `${width}-${key.replace(":", "-")}.png`),
         Buffer.from(image.split(",")[1], "base64"),
       );
     delete data.images;
     writeFileSync(
-      path.join(proof, `${width}-trace.json`),
+      path.join(caseProof, `${width}-trace.json`),
       JSON.stringify({ authoritative, ...data }, null, 2),
     );
     expect(errors).toEqual([]);
-    await page.screenshot({ path: path.join(proof, `${width}-recovered.png`) });
+    await page.screenshot({
+      path: path.join(caseProof, `${width}-recovered.png`),
+    });
   });
 }

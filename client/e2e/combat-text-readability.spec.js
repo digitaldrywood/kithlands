@@ -1,3 +1,8 @@
+import {
+  installCombatTextAudit,
+  collectCombatTextAudit,
+  expectReadableCombatText,
+} from "./helpers/combat-text-audit.js";
 import { test, expect } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { openShowcase } from "./battle-vfx-proof-helpers.js";
@@ -26,6 +31,7 @@ for (const [width, height, reducedMotion] of [
       });
     });
     await openShowcase(page, { width, height, reducedMotion });
+    await page.evaluate(installCombatTextAudit, { gameKey: "__textGame" });
     // Presentation fixtures supply known crit/miss/heal values; no server HP changes.
     await page.evaluate(async () => {
       const scene = window.__textGame.scene.getScene("Battle");
@@ -34,13 +40,15 @@ for (const [width, height, reducedMotion] of [
       const target = Object.values(scene.enemySprites)[0];
       const point = floatingTextAnchorForEntry(target, target);
       window.__critPoint = point;
-      scene.floatingText.spawn(
+      scene.floatingText.spawnResult(
         point.x,
         point.y,
         142,
         "crit",
-        "readability-critical",
+        `enemy_${target.id}`,
+        { maxBottom: point.maxBottom },
       );
+      window.__criticalReadTarget = `enemy_${target.id}`;
       window.__critStart = performance.now();
     });
     await page.waitForTimeout(1100);
@@ -48,7 +56,7 @@ for (const [width, height, reducedMotion] of [
       const t = window.__textGame.scene
         .getScene("Battle")
         .floatingText.active.find(
-          (t) => t._targetKey === "readability-critical",
+          (t) => t._targetKey === window.__criticalReadTarget,
         );
       return {
         text: t.text,
@@ -69,7 +77,7 @@ for (const [width, height, reducedMotion] of [
         !window.__textGame.scene
           .getScene("Battle")
           .floatingText.active.some(
-            (t) => t._targetKey === "readability-critical",
+            (t) => t._targetKey === window.__criticalReadTarget,
           ),
     );
     await page.evaluate(async () => {
@@ -80,13 +88,25 @@ for (const [width, height, reducedMotion] of [
         ally = Object.values(scene.partySprites)[0];
       const e = floatingTextAnchorForEntry(enemy, enemy),
         a = floatingTextAnchorForEntry(ally, ally);
-      scene.floatingText.spawn(e.x, e.y, 33, "magical", "enemy-damage", {
-        element: "fire",
+      scene.floatingText.spawnResult(
+        e.x,
+        e.y,
+        33,
+        "magical",
+        `enemy_${enemy.id}`,
+        {
+          element: "fire",
+          maxBottom: e.maxBottom,
+        },
+      );
+      scene.floatingText.spawn(a.x, a.y, 28, "heal", "ally-heal", {
+        maxBottom: a.maxBottom,
       });
-      scene.floatingText.spawn(a.x, a.y, 28, "heal", "ally-heal");
       const other = Object.values(scene.enemySprites)[1];
       const m = floatingTextAnchorForEntry(other, other);
-      scene.floatingText.spawn(m.x, m.y, 0, "miss", "enemy-miss");
+      scene.floatingText.spawnResult(m.x, m.y, 0, "miss", `enemy_${other.id}`, {
+        maxBottom: m.maxBottom,
+      });
     });
     await page.waitForTimeout(950);
     await page.screenshot({
@@ -107,6 +127,12 @@ for (const [width, height, reducedMotion] of [
     await page.waitForFunction(() => window.__readTrace.length >= 2);
     const trace = await page.evaluate(() => window.__readTrace);
     expect(trace[1].t - trace[0].t).toBeGreaterThanOrEqual(1450);
+    const readability = await collectCombatTextAudit(page);
+    writeFileSync(
+      new URL(`${width}-readability.json`, proof),
+      JSON.stringify(readability, null, 2),
+    );
+    expectReadableCombatText(readability);
     writeFileSync(
       new URL(`${width}-read-timing.json`, proof),
       JSON.stringify(trace, null, 2),
