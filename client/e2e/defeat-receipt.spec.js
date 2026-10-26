@@ -201,6 +201,13 @@ for (const [label, width, height] of [
       await expect(
         dialog.getByRole("button", { name: /^Choose a save/ }),
       ).toBeFocused();
+      // The Title heading renders before its real save-list request completes.
+      // Keep that ordering observable even against a fast local API.
+      await page.route("**/api/saves", async (route) => {
+        const response = await route.fetch();
+        await new Promise((resolve) => setTimeout(resolve, 750));
+        await route.fulfill({ response });
+      });
       if (width < 500)
         await dialog.getByRole("button", { name: /^Choose a save/ }).tap();
       else await page.keyboard.press("Enter");
@@ -210,6 +217,9 @@ for (const [label, width, height] of [
       ).toBeVisible();
       await expect(page.locator(".defeat-receipt")).toHaveCount(0);
       const target = page.locator(`[data-save-id="${saved.id}"]`);
+      await expect(target, "wait for the requested save to load").toHaveCount(
+        1,
+      );
       if (!(await target.isVisible()))
         await page.locator("details.save-history > summary").click();
       await expect(target).toBeVisible();
