@@ -77,3 +77,11 @@ Automated routes know destinations. Their elapsed seconds are not evidence of
 unassisted human pacing or a fifteen-minute integrated route. The jump from
 level one to three also needs a reward-curve review in that larger playtest.
 Natural leveling is available; its timing and integration remain unfinished.
+
+## Delayed-frame input follow-up
+
+[NORMAL_ROUTE_INPUT_PROOF.md](NORMAL_ROUTE_INPUT_PROOF.md) records the subsequent
+hosted phone movement wait, its deterministic native-input reproduction and
+helper fix. All three standard campaign cases pass again, including natural
+level-up, real phone defeat/retry, reward handling and save continuity. Original
+campaign evidence and human-pacing limitations above remain unchanged.

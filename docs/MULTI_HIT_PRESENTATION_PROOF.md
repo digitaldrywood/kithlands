@@ -83,3 +83,8 @@ failure; walking, escort and interiors are green. Input diagnostics and a
 separate helper fix are being tracked independently. Neither this local proof
 nor prior green runs substitute for this commit's remote gate. General CI
 retains the owner's self-hosted runner preference.
+
+Subsequent campaign/helper diagnosis and local recovery:
+[NORMAL_ROUTE_INPUT_PROOF.md](NORMAL_ROUTE_INPUT_PROOF.md). The standard
+three-case campaign passes after the input acknowledgement fix, with all
+natural progression and defeat/retry assertions retained.

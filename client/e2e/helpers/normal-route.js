@@ -106,7 +106,25 @@ export async function walkNormally(page, key, target) {
           : next.y > before.y
             ? "ArrowDown"
             : "ArrowUp";
-    await page.keyboard.press(direction, { delay: 40 });
+    // Movement samples held keys on game frames. A fixed 40ms press can fall
+    // entirely between frames on a loaded runner. Keep native input down until
+    // the requested step starts, then release before waiting for its animation
+    // and authoritative arrival. Never retry/skip a tile to hide a mismatch.
+    await page.keyboard.down(direction);
+    try {
+      await page.waitForFunction(
+        ({ key, next }) => {
+          const scene = window.__normalRouteGame.scene.getScene(key);
+          return (
+            window.__kithlandsTest.activeSceneKey() !== key ||
+            (scene.playerX === next.x && scene.playerY === next.y)
+          );
+        },
+        { key, next },
+      );
+    } finally {
+      await page.keyboard.up(direction);
+    }
     await page.waitForFunction(
       ({ key, next }) => {
         const scene = window.__normalRouteGame.scene.getScene(key);
