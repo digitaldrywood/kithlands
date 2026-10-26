@@ -105,7 +105,18 @@ The new responsive spec and capture directory are added to the existing hosted
 menu visual gate without reducing any prior cases. General CI remains
 self-hosted, per the owner's decision. Fresh head CI is still required.
 
-Rare empty-map POI selection and legacy map-preview/confirmation screens still
-use their previous canvas implementation; they are outside this accepted slice.
+Follow-up cleanup removes the unreachable map-preview/confirmation/second-create
+path: party selection already creates directly. Location discovery, including
+empty-map fallback, now uses the responsive dialog. Obsolete canvas shell,
+buttons, labels and window keyboard handler are removed; scene input has one
+owner. All 18 setup cases pass (38.9s) in
+`client/tmp/wizard-cleanup-1793082100.log`; three added desktop/default/phone
+empty-map routes use real Go creation and verify optional blank companions.
+All 12 added captures in `client/tmp/wizard-responsive-1793000642502/` were
+inspected through `client/tmp/wizard-empty-review-1793082250.json`. Existing
+54-capture layout acceptance remains applicable, and its 15 input/lifecycle
+cases reran successfully. 838 client tests, build and formatting pass in
+`wizard-cleanup-{unit,build,format-check}` logs (`1793082200` for unit/format,
+`1793082000` for build). No new content or game mechanics were introduced.
 Ordinary defeat, secondary equipment metadata, remaining icons/environment work,
 battle choreography and human first-visit engagement remain open in the tracker.
