@@ -112,3 +112,15 @@ Parent925416f hosted run40382379128 passes all visual suites; this new head need
 its own remote gates. Self-hosted general CI remains owner-selected and queued.
 Broader integrated battle acceptance, other equipment, environment composition,
 all-class final acceptance and unassisted first15minute pacing remain open.
+
+Additional gate status: changed data-package race check
+`cd server && go test -race ./internal/gamedata -count=1` passes
+(`cinder-melee-gamedata-race-1793081800.log`). The first full `go test -race ./...`
+hit the API package's default ten-minute timeout while loading a settlement in
+`TestTargetedPotionInCombat`; this is not a full race pass. The repeat full gate passes all packages
+(`cinder-melee-race-1793081000.log`), with no reported race. The intentional panic-recovery regression also logs a
+stack trace; that log alone is not a failing test. Full normal Go tests pass.
+
+Final additional commands also pass:
+`cd server && go vet ./...`, `go build ./...`, `golangci-lint run ./...`
+(zero issues). Logs `cinder-melee-{vet,server-build,lint}-1793082200.log`.
