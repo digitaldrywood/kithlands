@@ -61,7 +61,7 @@ jobs:
         run: ./scripts/run_playwright_local.sh e2e/walk-rendered-cadence.spec.js e2e/walk-all-classes.spec.js e2e/world-space-cycle.spec.js e2e/world-walk-audit-party.spec.js e2e/world-terrain-visibility.spec.js e2e/meadow-ground.spec.js e2e/overworld-landmarks.spec.js
       - name: Verify combat controls, tactical encounters, and result recovery
         if: matrix.suite == 'combat'
-        run: ./scripts/run_playwright_local.sh e2e/battle-continuity.spec.js e2e/battle-stop-auto.spec.js e2e/battle-defend.spec.js e2e/warrior-defend-route.spec.js e2e/all-class-battle-states.spec.js e2e/battle-context-choices.spec.js e2e/enemy-tactics.spec.js e2e/bandit-guard.spec.js e2e/battle-hud-workstream.spec.js e2e/victory-receipt.spec.js e2e/victory-advance.spec.js e2e/defeat-receipt.spec.js
+        run: ./scripts/run_playwright_local.sh e2e/battle-continuity.spec.js e2e/battle-stop-auto.spec.js e2e/battle-defend.spec.js e2e/warrior-hit-reaction.spec.js e2e/warrior-defend-route.spec.js e2e/all-class-battle-states.spec.js e2e/battle-context-choices.spec.js e2e/enemy-tactics.spec.js e2e/bandit-guard.spec.js e2e/battle-hud-workstream.spec.js e2e/victory-receipt.spec.js e2e/victory-advance.spec.js e2e/defeat-receipt.spec.js
       - name: Verify physical combat animation and readable per-hit results
         if: matrix.suite == 'combat-effects'
         run: ./scripts/run_playwright_local.sh e2e/warrior-critical.spec.js e2e/combat-text-readability.spec.js e2e/battle-crowded-results.spec.js e2e/battle-multi-hit.spec.js e2e/battle-counter-hits.spec.js e2e/battle-action-title.spec.js
@@ -114,6 +114,7 @@ jobs:
             client/tmp/cinder-lightning-*/
             client/tmp/weapon-item-art-*/
             client/tmp/battle-defend-*/
+            client/tmp/warrior-hit-reaction-*/
             client/tmp/warrior-defend-route-*/
             client/tmp/enemy-tactics-*/
             client/tmp/bandit-guard-*/

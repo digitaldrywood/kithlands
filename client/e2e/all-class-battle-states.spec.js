@@ -107,7 +107,14 @@ test.describe("all-class battle state contract", () => {
               state,
               frame,
             ),
-          { actor: actorName, state: stateID, frame: PROOF_FRAME[stateID] },
+          {
+            actor: actorName,
+            state: stateID,
+            frame:
+              identityID === "warrior" && stateID === "hit_reaction"
+                ? 0
+                : PROOF_FRAME[stateID],
+          },
         );
         expect(preview.stateID, `${identityID}/${stateID}`).toBe(stateID);
         expect(preview.textureKey, `${identityID}/${stateID}`).toContain(

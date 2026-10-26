@@ -160,6 +160,7 @@ describe("shared battle character catalog", () => {
     expect(battleBodyAssets().map(({ key }) => key)).toEqual([
       "battle_warrior_sword_attack_body",
       "battle_warrior_sword_defend_body",
+      "battle_warrior_sword_hit_body",
       "battle_brawler_unarmed_strike_body",
       "battle_rogue_dagger_slash_body",
       "battle_mender_staff_cast_body",

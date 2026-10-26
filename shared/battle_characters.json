@@ -628,37 +628,44 @@
           ]
         },
         "hit_reaction": {
-          "body_key": "battle_warrior_sword_attack_body",
-          "body_path": "/sprites/battle/warrior/sword-attack-body.png",
+          "body_key": "battle_warrior_sword_hit_body",
+          "body_path": "/sprites/battle/warrior/sword-hit-body.png",
+          "cue_frame": 1,
           "frames": [
             {
-              "frame": 0,
-              "duration": 55,
+              "frame": 1,
+              "duration": 95,
               "attachments": {
-                "sword": { "x": -48, "y": -7, "angle": -135, "front": true }
+                "sword": {
+                  "x": -48,
+                  "y": -26,
+                  "angle": -65,
+                  "front": true
+                }
               }
             },
             {
-              "frame": 4,
-              "duration": 80,
-              "body": { "x": 8, "y": 2, "angle": 4 },
+              "frame": 2,
+              "duration": 100,
               "attachments": {
-                "sword": { "x": -48, "y": 2, "angle": -132, "front": true }
-              }
-            },
-            {
-              "frame": 5,
-              "duration": 105,
-              "body": { "x": 13, "y": 5, "angle": 7 },
-              "attachments": {
-                "sword": { "x": -38, "y": 1, "angle": -52, "front": true }
+                "sword": {
+                  "x": -43,
+                  "y": -21,
+                  "angle": -35,
+                  "front": true
+                }
               }
             },
             {
               "frame": 0,
               "duration": 90,
               "attachments": {
-                "sword": { "x": -48, "y": -7, "angle": -135, "front": true }
+                "sword": {
+                  "x": -48,
+                  "y": -7,
+                  "angle": -135,
+                  "front": true
+                }
               }
             }
           ]

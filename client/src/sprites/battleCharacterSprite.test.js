@@ -39,10 +39,17 @@ describe("Warrior battle runtime contract", () => {
       ...BATTLE_CHARACTER_CATALOG.required_states,
       "critical_attack",
     ]);
-    expect(warrior.states.hit_reaction.frames[2]).toMatchObject({
-      frame: 5,
-      body: { x: 13, y: 5, angle: 7 },
-    });
+    expect(warrior.states.hit_reaction.frames[0].frame).toBe(
+      warrior.states.hit_reaction.cue_frame,
+    );
+    expect(warrior.states.hit_reaction.body_key).not.toBe(
+      warrior.states.physical_attack.body_key,
+    );
+    expect(
+      warrior.states.hit_reaction.frames.every(
+        (pose) => !pose.body?.y && !pose.body?.angle,
+      ),
+    ).toBe(true);
     expect(warrior.states.ko_defeated.hold_last_frame).toBe(true);
   });
 

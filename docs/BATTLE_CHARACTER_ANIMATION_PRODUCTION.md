@@ -338,3 +338,18 @@ attack or critical body images or expand the pattern to other classes.
 `docs/WARRIOR_DEFEND_POSE_PROOF.md` records actual guarded rounds, fresh normal
 Old Mill desktop/phone routes, source/frame inspection, regression gates and
 remaining class-action limitations.
+
+### Warrior contact recoil
+
+Warrior hit reaction uses a separate 576×192 RGBA body atlas: original guard,
+individually guided recoil and the accepted settle recovery. The first played
+pose is the recoil cue; damage contact and reaction begin together, then the
+renderer awaits the existing effect hold. A separate equipped sword follows
+the authored closed glove. Body transforms retain the common feet anchor, and
+reduced motion suppresses container shake. Lethal results select the existing
+persistent KO state instead of recoil.
+
+`docs/WARRIOR_HIT_REACTION_PROOF.md` records native Go-resolved surviving/lethal
+hits, contact timing, actual media flags, desktop/phone/reduced-motion captures
+and remaining limits. This accepts the hit slice without approving legacy KO
+art or expanding new body poses to other identities.

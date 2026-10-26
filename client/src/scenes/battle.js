@@ -1888,18 +1888,17 @@ export class BattleScene extends Phaser.Scene {
       this.scaledDelay(320, () => sprite.clearTint?.());
     }
 
-    this.tweens.add({
-      targets: sprite,
-      x: x + 3,
-      duration: this.scaledMs(40),
-      yoyo: true,
-      repeat: 3,
-      ease: "Sine.easeInOut",
-      onStart: () => this.setSpritePosition(sprite, x - 3, y),
-      onComplete: () => this.setSpritePosition(sprite, x, y),
-    });
-
     if (!this.reducedBattleMotion()) {
+      this.tweens.add({
+        targets: sprite,
+        x: x + 3,
+        duration: this.scaledMs(40),
+        yoyo: true,
+        repeat: 3,
+        ease: "Sine.easeInOut",
+        onStart: () => this.setSpritePosition(sprite, x - 3, y),
+        onComplete: () => this.setSpritePosition(sprite, x, y),
+      });
       this.cameras.main.shake(this.scaledMs(150), 0.003);
     }
     if (isParty && isLowHpDanger(newHP, maxHP)) {
@@ -3698,14 +3697,22 @@ export class BattleScene extends Phaser.Scene {
               this.revealLine(`${atkName} attacks ${tgtName}!`, "#ff8800");
             }
             if (!hit.missed) playSFX("sfx_party_hit");
-            await this.hitFx(pt.x, pt.y, hit.damage, true, false, dmgType, {
-              crit: hit.crit,
-              guarded: action.damage_prevented > 0,
-              missed: hit.missed,
-              targetKey,
-              entry: pt,
-              replaceTarget: hits.length > 1,
-            });
+            const contactEffect = this.hitFx(
+              pt.x,
+              pt.y,
+              hit.damage,
+              true,
+              false,
+              dmgType,
+              {
+                crit: hit.crit,
+                guarded: action.damage_prevented > 0,
+                missed: hit.missed,
+                targetKey,
+                entry: pt,
+                replaceTarget: hits.length > 1,
+              },
+            );
             // Animate party HP bar drain — integer math only
             if (!hit.missed && pt.hpBar) {
               const newHP = applyDamage(pt.hpBar.currentHP, hit.damage);
@@ -3715,6 +3722,7 @@ export class BattleScene extends Phaser.Scene {
                 maxHP: pt.hpBar.maxHP,
               });
             }
+            await contactEffect;
             await this.resetPartySprite(attackerEnemy);
           }
         }
@@ -3883,13 +3891,21 @@ export class BattleScene extends Phaser.Scene {
             } else if (pt) {
               if (!(tgt.dmg > 0)) return;
               const targetKey = `party_${tgt.targetName || spellMatch?.[3]}`;
-              await this.hitFx(pt.x, pt.y, tgt.dmg, true, false, dmgType, {
-                targetKey,
-                element,
-                missed: tgt.missed,
-                entry: pt,
-                groupResult: isGroupCast,
-              });
+              const contactEffect = this.hitFx(
+                pt.x,
+                pt.y,
+                tgt.dmg,
+                true,
+                false,
+                dmgType,
+                {
+                  targetKey,
+                  element,
+                  missed: tgt.missed,
+                  entry: pt,
+                  groupResult: isGroupCast,
+                },
+              );
               if (!tgt.missed && pt.hpBar) {
                 const newHP = applyDamage(pt.hpBar.currentHP, tgt.dmg);
                 this.animateHPBar(pt.hpBar, newHP, pt.hpBar.maxHP);
@@ -3898,6 +3914,7 @@ export class BattleScene extends Phaser.Scene {
                   maxHP: pt.hpBar.maxHP,
                 });
               }
+              await contactEffect;
             }
           }),
         );
@@ -4170,7 +4187,7 @@ export class BattleScene extends Phaser.Scene {
               tracerColor: ACTION_TRACER_COLORS.enemyToParty,
               targetColor: ACTION_RETICLE_COLORS.partyTarget,
             });
-            await this.hitFx(
+            const contactEffect = this.hitFx(
               targetMember.x,
               targetMember.y,
               dmg,
@@ -4191,6 +4208,7 @@ export class BattleScene extends Phaser.Scene {
                 maxHP: targetMember.hpBar.maxHP,
               });
             }
+            await contactEffect;
           }
         }
         await this.wait(ACTION_BEAT_MS.postDamage);
