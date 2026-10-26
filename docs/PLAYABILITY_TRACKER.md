@@ -1,5 +1,7 @@
 # Playability work tracker
 
+- Completed explicit weapon icon coverage:33 original outlined SVG additions preserve13 approved icons, so46/46 weapon definitions have canonical art. Three native desktop/default/phone cases perform99 real equips and verify all11 newly illustrated merchant offers;70 native PNGs and six source review images inspected. Whole-catalog contract brings client tests to870; Go/data/build/format pass. See `WEAPON_CATALOG_ART_PROOF.md`. New icons were verified on isolated API8691/Vite3612 because the owner API8689 retains its startup catalog; owner session/saves are preserved, and its catalog still needs a later safe restart. Armor/accessory icons and full integrated combat/environment/pacing remain open.
+
 - Reproduced hosted phone victory failure: generic Space activation bypassed the finish-tally handler. Custom dialog keys now take priority, with held-Space regression and28 distinct native victory/menu/Options/party/loadout cases passing;116 final PNGs inspected. Also restricted the two-person double-click guard so rapid four-person taps work, preserving the two-person acceptance check. Corrected stale Options held-key setup without removing stationary-return assertions. Existing869 client tests plus pending icon-contract test/build/format pass. See `DIALOG_INPUT_PRIORITY_PROOF.md`; remote rerun remains required.
 
 - Equipment keyboard focus now takes priority over parked mouse hover; deliberate pointer movement restores hover. Fixed candidate tooltip clipping, disabled-row transparency and hovered-slot layer obstruction. All13 native tooltip/menu/loadout cases pass,50 current PNGs inspected,869 client tests/build/full format pass. See `EQUIPMENT_TOOLTIP_INPUT_PROOF.md`. The split hosted gameplay and shops jobs pass on51e09a9; other suites remain running. Remaining icon coverage, secondary text and full integrated goal acceptance stay open.
@@ -192,7 +194,7 @@ The Heron Pool detour now connects an optional visible threat → guarded smithi
 - [ ] Finish resource habitat/landmark art acceptance on the actual quest route. Larger original props, compatible forest underlay, canopy visibility and phone framing now pass inspected route proof; real closed-page renewal and identities/deadlines remain verified. Repeated canopy stamps, geometric roads and sparse landmark/path composition still require an authored pass (`GATHERING_RESOURCE_ART_PROOF.md`).
 - [ ] Recheck locality Back/Cancel, one journal/menu, temporary notifications and scene transitions for stale overlays.
 - [x] Verify named canonical sword/gem/axe/staff art, Gem mutations/rejections, saved builds and scoped crafting/equipment keyboard choices at desktop/default/phone sizes; see `MENU_CHOICE_NAVIGATION_PROOF.md` for68 distinct cases and fixture limits.
-- [ ] Finish remaining weapon icon coverage, other menu collections and integrated natural-acquisition acceptance; stale hover tooltip priority is now verified in `EQUIPMENT_TOOLTIP_INPUT_PROOF.md`.
+- [ ] Finish remaining armor/accessory icon coverage, other menu collections and integrated natural-acquisition acceptance; stale hover tooltip priority is now verified in `EQUIPMENT_TOOLTIP_INPUT_PROOF.md`.
 - [x] Verify newest save selection and optional history with multiple snapshots of one adventure.
 - [x] Play and time an automated normal fresh route with encounters enabled, no debug grants, real starting money and levels; document what shopping/spell purchasing/XP is actually reachable.
 - [x] Verify a natural campaign level-up through normal travel and quest interactions; the campaign reward currently supplies 180 XP per living member and can reach level three. The two-fight Old Mill detour alone still yields only 24 XP per member.
@@ -212,9 +214,9 @@ The active goal is the complete user-pasted request, not only this checklist. Ex
 
 - Gathering and shop requirement wording is verified in `EQUIPMENT_GATHERING_REQUIREMENTS_PROOF.md`. A naturally offered underlevel shop item still needs native acceptance; the level boundary is currently unit verified.
 
-- The item-art follow-up leaves 46 weapon records with 13 explicit `icon_key` values and 33 runtime fallbacks still to verify. Arcane Staff, Hand Axe and Mythril Axe now have accepted canonical art; that does not close the rest of the artwork backlog.
+- All46 weapon records now have explicit canonical icons;33 additions and99 real equips are verified in `WEAPON_CATALOG_ART_PROOF.md`. Remaining armor/accessory fallback art is still open. Existing Arcane Staff, Hand Axe, Mythril Axe, crafted swords and gems remain accepted.
 
-- Finish secondary equipment metadata/spell-card fonts. Wizard and ordinary defeat-screen acceptance is recorded above. Victory receipt acceptance is recorded above. Primary Character summary acceptance is recorded above. Verify Arcane Staff, Hand Axe, Mythril Axe and remaining equipment fallback icons rather than accepting letter tiles as finished artwork.
+- Finish secondary equipment metadata/spell-card fonts. Wizard and ordinary defeat-screen acceptance is recorded above. Victory receipt acceptance is recorded above. Primary Character summary acceptance is recorded above. Weapon icon coverage is now accepted; finish armor/accessory fallback icons rather than accepting filled-slot letter tiles as finished artwork.
 
 - Complete dense single-target critical and counter/more-than-two-hit result-label acceptance beyond the verified Warrior two-hit/mixed-critical/server-Miss, Cinder default/Fast and five-target Blaze references. Review small floating action titles and victory-detail text separately.
 

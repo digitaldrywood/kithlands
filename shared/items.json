@@ -493,6 +493,7 @@
     },
     {
       "id": "wooden_club",
+      "icon_key": "weapons/catalog/wooden-club.svg",
       "name": "Wooden Club",
       "type": "hammer",
       "tier": 1,
@@ -507,6 +508,7 @@
     },
     {
       "id": "wooden_staff",
+      "icon_key": "weapons/catalog/wooden-staff.svg",
       "name": "Wooden Staff",
       "type": "staff",
       "tier": 1,
@@ -521,6 +523,7 @@
     },
     {
       "id": "rusty_dagger",
+      "icon_key": "weapons/catalog/rusty-dagger.svg",
       "name": "Rusty Dagger",
       "type": "dagger",
       "tier": 1,
@@ -535,6 +538,7 @@
     },
     {
       "id": "short_sword",
+      "icon_key": "weapons/catalog/short-sword.svg",
       "name": "Short Sword",
       "type": "sword",
       "tier": 1,
@@ -566,6 +570,7 @@
     },
     {
       "id": "short_bow",
+      "icon_key": "weapons/catalog/short-bow.svg",
       "name": "Short Bow",
       "type": "bow",
       "tier": 1,
@@ -618,6 +623,7 @@
     },
     {
       "id": "iron_dagger",
+      "icon_key": "weapons/catalog/iron-dagger.svg",
       "name": "Iron Dagger",
       "type": "dagger",
       "tier": 2,
@@ -632,6 +638,7 @@
     },
     {
       "id": "iron_axe",
+      "icon_key": "weapons/catalog/iron-axe.svg",
       "name": "Iron Axe",
       "type": "axe",
       "tier": 2,
@@ -646,6 +653,7 @@
     },
     {
       "id": "oak_staff",
+      "icon_key": "weapons/catalog/oak-staff.svg",
       "name": "Oak Staff",
       "type": "staff",
       "tier": 2,
@@ -660,6 +668,7 @@
     },
     {
       "id": "long_bow",
+      "icon_key": "weapons/catalog/long-bow.svg",
       "name": "Long Bow",
       "type": "bow",
       "tier": 2,
@@ -675,6 +684,7 @@
     },
     {
       "id": "war_hammer",
+      "icon_key": "weapons/catalog/war-hammer.svg",
       "name": "War Hammer",
       "type": "hammer",
       "tier": 2,
@@ -706,6 +716,7 @@
     },
     {
       "id": "steel_dagger",
+      "icon_key": "weapons/catalog/steel-dagger.svg",
       "name": "Steel Dagger",
       "type": "dagger",
       "tier": 3,
@@ -768,6 +779,7 @@
     },
     {
       "id": "shadow_blade",
+      "icon_key": "weapons/catalog/shadow-blade.svg",
       "name": "Shadow Blade",
       "type": "dagger",
       "visual_id": "shadow_blade",
@@ -784,6 +796,7 @@
     },
     {
       "id": "war_staff",
+      "icon_key": "weapons/catalog/war-staff.svg",
       "name": "War Staff",
       "type": "staff",
       "visual_id": "war_staff",
@@ -801,6 +814,7 @@
     },
     {
       "id": "composite_bow",
+      "icon_key": "weapons/catalog/composite-bow.svg",
       "name": "Composite Bow",
       "type": "bow",
       "tier": 4,
@@ -816,6 +830,7 @@
     },
     {
       "id": "mythril_hammer",
+      "icon_key": "weapons/catalog/mythril-hammer.svg",
       "name": "Mythril Hammer",
       "type": "hammer",
       "tier": 4,
@@ -830,6 +845,7 @@
     },
     {
       "id": "flame_blade",
+      "icon_key": "weapons/catalog/flame-blade.svg",
       "name": "Flame Blade",
       "type": "sword",
       "tier": 5,
@@ -844,6 +860,7 @@
     },
     {
       "id": "berserker_axe",
+      "icon_key": "weapons/catalog/berserker-axe.svg",
       "name": "Berserker Axe",
       "type": "axe",
       "tier": 5,
@@ -858,6 +875,7 @@
     },
     {
       "id": "venom_dagger",
+      "icon_key": "weapons/catalog/venom-dagger.svg",
       "name": "Venom Dagger",
       "type": "dagger",
       "tier": 5,
@@ -872,6 +890,7 @@
     },
     {
       "id": "elemental_staff",
+      "icon_key": "weapons/catalog/elemental-staff.svg",
       "name": "Elemental Staff",
       "type": "staff",
       "tier": 5,
@@ -887,6 +906,7 @@
     },
     {
       "id": "hawk_bow",
+      "icon_key": "weapons/catalog/hawk-bow.svg",
       "name": "Hawk Bow",
       "type": "bow",
       "tier": 5,
@@ -902,6 +922,7 @@
     },
     {
       "id": "thunder_hammer",
+      "icon_key": "weapons/catalog/thunder-hammer.svg",
       "name": "Thunder Hammer",
       "type": "hammer",
       "tier": 5,
@@ -916,6 +937,7 @@
     },
     {
       "id": "rune_blade",
+      "icon_key": "weapons/catalog/rune-blade.svg",
       "name": "Rune Blade",
       "type": "sword",
       "tier": 6,
@@ -930,6 +952,7 @@
     },
     {
       "id": "titan_axe",
+      "icon_key": "weapons/catalog/titan-axe.svg",
       "name": "Titan Axe",
       "type": "axe",
       "tier": 6,
@@ -944,6 +967,7 @@
     },
     {
       "id": "void_knife",
+      "icon_key": "weapons/catalog/void-knife.svg",
       "name": "Void Knife",
       "type": "dagger",
       "tier": 6,
@@ -958,6 +982,7 @@
     },
     {
       "id": "sage_staff",
+      "icon_key": "weapons/catalog/sage-staff.svg",
       "name": "Sage Staff",
       "type": "staff",
       "tier": 6,
@@ -973,6 +998,7 @@
     },
     {
       "id": "storm_bow",
+      "icon_key": "weapons/catalog/storm-bow.svg",
       "name": "Storm Bow",
       "type": "bow",
       "tier": 6,
@@ -988,6 +1014,7 @@
     },
     {
       "id": "earth_hammer",
+      "icon_key": "weapons/catalog/earth-hammer.svg",
       "name": "Earth Hammer",
       "type": "hammer",
       "tier": 6,
@@ -1002,6 +1029,7 @@
     },
     {
       "id": "hero_edge",
+      "icon_key": "weapons/catalog/hero-edge.svg",
       "name": "Hero's Edge",
       "type": "sword",
       "tier": 7,
@@ -1016,6 +1044,7 @@
     },
     {
       "id": "world_splitter",
+      "icon_key": "weapons/catalog/world-splitter.svg",
       "name": "World Splitter",
       "type": "axe",
       "tier": 7,
@@ -1030,6 +1059,7 @@
     },
     {
       "id": "whisperfang",
+      "icon_key": "weapons/catalog/whisperfang.svg",
       "name": "Whisperfang",
       "type": "dagger",
       "tier": 7,
@@ -1044,6 +1074,7 @@
     },
     {
       "id": "starcaller",
+      "icon_key": "weapons/catalog/starcaller.svg",
       "name": "Starcaller",
       "type": "staff",
       "tier": 7,
@@ -1059,6 +1090,7 @@
     },
     {
       "id": "skys_eye",
+      "icon_key": "weapons/catalog/skys-eye.svg",
       "name": "Sky's Eye",
       "type": "bow",
       "tier": 7,
@@ -1074,6 +1106,7 @@
     },
     {
       "id": "mountainvoice",
+      "icon_key": "weapons/catalog/mountainvoice.svg",
       "name": "Mountainvoice",
       "type": "hammer",
       "tier": 7,

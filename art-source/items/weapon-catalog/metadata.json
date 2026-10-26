@@ -1,0 +1,242 @@
+{
+  "artist": "Original Kithlands code-native vector artwork",
+  "workflow": "Extend the established outlined 64x64 SVG item system; no generated bitmap assets or external dependencies.",
+  "generator": "build_icons.py",
+  "candidate_review": "client/tmp/weapon-catalog-candidates-1793094700/gallery-{1,2,3}.png; final wooden-staff-review.png and mountainvoice-review.png; final-axe-review.png after correcting top-edge clipping",
+  "assets": [
+    {
+      "id": "wooden_club",
+      "kind": "club",
+      "material": "wood",
+      "variant": "plain",
+      "icon_key": "weapons/catalog/wooden-club.svg"
+    },
+    {
+      "id": "wooden_staff",
+      "kind": "staff",
+      "material": "wood",
+      "variant": "plain",
+      "icon_key": "weapons/catalog/wooden-staff.svg"
+    },
+    {
+      "id": "rusty_dagger",
+      "kind": "dagger",
+      "material": "rust",
+      "variant": "plain",
+      "icon_key": "weapons/catalog/rusty-dagger.svg"
+    },
+    {
+      "id": "short_sword",
+      "kind": "sword",
+      "material": "iron",
+      "variant": "plain",
+      "icon_key": "weapons/catalog/short-sword.svg"
+    },
+    {
+      "id": "short_bow",
+      "kind": "bow",
+      "material": "wood",
+      "variant": "short",
+      "icon_key": "weapons/catalog/short-bow.svg"
+    },
+    {
+      "id": "iron_dagger",
+      "kind": "dagger",
+      "material": "iron",
+      "variant": "plain",
+      "icon_key": "weapons/catalog/iron-dagger.svg"
+    },
+    {
+      "id": "iron_axe",
+      "kind": "axe",
+      "material": "iron",
+      "variant": "single",
+      "icon_key": "weapons/catalog/iron-axe.svg"
+    },
+    {
+      "id": "oak_staff",
+      "kind": "staff",
+      "material": "wood",
+      "variant": "crook",
+      "icon_key": "weapons/catalog/oak-staff.svg"
+    },
+    {
+      "id": "long_bow",
+      "kind": "bow",
+      "material": "wood",
+      "variant": "long",
+      "icon_key": "weapons/catalog/long-bow.svg"
+    },
+    {
+      "id": "war_hammer",
+      "kind": "hammer",
+      "material": "iron",
+      "variant": "block",
+      "icon_key": "weapons/catalog/war-hammer.svg"
+    },
+    {
+      "id": "steel_dagger",
+      "kind": "dagger",
+      "material": "steel",
+      "variant": "plain",
+      "icon_key": "weapons/catalog/steel-dagger.svg"
+    },
+    {
+      "id": "shadow_blade",
+      "kind": "dagger",
+      "material": "shadow",
+      "variant": "hook",
+      "icon_key": "weapons/catalog/shadow-blade.svg"
+    },
+    {
+      "id": "war_staff",
+      "kind": "staff",
+      "material": "mythril",
+      "variant": "mace",
+      "icon_key": "weapons/catalog/war-staff.svg"
+    },
+    {
+      "id": "composite_bow",
+      "kind": "bow",
+      "material": "steel",
+      "variant": "recurve",
+      "icon_key": "weapons/catalog/composite-bow.svg"
+    },
+    {
+      "id": "mythril_hammer",
+      "kind": "hammer",
+      "material": "mythril",
+      "variant": "block",
+      "icon_key": "weapons/catalog/mythril-hammer.svg"
+    },
+    {
+      "id": "flame_blade",
+      "kind": "sword",
+      "material": "fire",
+      "variant": "flame",
+      "icon_key": "weapons/catalog/flame-blade.svg"
+    },
+    {
+      "id": "berserker_axe",
+      "kind": "axe",
+      "material": "fire",
+      "variant": "double",
+      "icon_key": "weapons/catalog/berserker-axe.svg"
+    },
+    {
+      "id": "venom_dagger",
+      "kind": "dagger",
+      "material": "venom",
+      "variant": "hook",
+      "icon_key": "weapons/catalog/venom-dagger.svg"
+    },
+    {
+      "id": "elemental_staff",
+      "kind": "staff",
+      "material": "storm",
+      "variant": "orb",
+      "icon_key": "weapons/catalog/elemental-staff.svg"
+    },
+    {
+      "id": "hawk_bow",
+      "kind": "bow",
+      "material": "gold",
+      "variant": "wing",
+      "icon_key": "weapons/catalog/hawk-bow.svg"
+    },
+    {
+      "id": "thunder_hammer",
+      "kind": "hammer",
+      "material": "storm",
+      "variant": "rune",
+      "icon_key": "weapons/catalog/thunder-hammer.svg"
+    },
+    {
+      "id": "rune_blade",
+      "kind": "sword",
+      "material": "mythril",
+      "variant": "rune",
+      "icon_key": "weapons/catalog/rune-blade.svg"
+    },
+    {
+      "id": "titan_axe",
+      "kind": "axe",
+      "material": "gold",
+      "variant": "double",
+      "icon_key": "weapons/catalog/titan-axe.svg"
+    },
+    {
+      "id": "void_knife",
+      "kind": "dagger",
+      "material": "shadow",
+      "variant": "void",
+      "icon_key": "weapons/catalog/void-knife.svg"
+    },
+    {
+      "id": "sage_staff",
+      "kind": "staff",
+      "material": "mythril",
+      "variant": "crescent",
+      "icon_key": "weapons/catalog/sage-staff.svg"
+    },
+    {
+      "id": "storm_bow",
+      "kind": "bow",
+      "material": "storm",
+      "variant": "recurve",
+      "icon_key": "weapons/catalog/storm-bow.svg"
+    },
+    {
+      "id": "earth_hammer",
+      "kind": "hammer",
+      "material": "earth",
+      "variant": "stone",
+      "icon_key": "weapons/catalog/earth-hammer.svg"
+    },
+    {
+      "id": "hero_edge",
+      "kind": "sword",
+      "material": "gold",
+      "variant": "wing",
+      "icon_key": "weapons/catalog/hero-edge.svg"
+    },
+    {
+      "id": "world_splitter",
+      "kind": "axe",
+      "material": "mythril",
+      "variant": "crown",
+      "icon_key": "weapons/catalog/world-splitter.svg"
+    },
+    {
+      "id": "whisperfang",
+      "kind": "dagger",
+      "material": "mythril",
+      "variant": "fang",
+      "icon_key": "weapons/catalog/whisperfang.svg"
+    },
+    {
+      "id": "starcaller",
+      "kind": "staff",
+      "material": "gold",
+      "variant": "star",
+      "icon_key": "weapons/catalog/starcaller.svg"
+    },
+    {
+      "id": "skys_eye",
+      "kind": "bow",
+      "material": "mythril",
+      "variant": "eye",
+      "icon_key": "weapons/catalog/skys-eye.svg"
+    },
+    {
+      "id": "mountainvoice",
+      "kind": "hammer",
+      "material": "gold",
+      "variant": "mountain",
+      "icon_key": "weapons/catalog/mountainvoice.svg"
+    }
+  ],
+  "preserved_existing_explicit_weapon_icons": 13,
+  "scope": "UI icons only. No battle/world equipment sprite, stats, recipes, rewards, stock tiers or progression changes.",
+  "runtime_acceptance": "docs/WEAPON_CATALOG_ART_PROOF.md"
+}
