@@ -81,7 +81,8 @@ test.describe("Warrior layered battle gold slice", () => {
       () => window.__kithlandsTest.battleVisibilitySnapshot().partyMembers[0],
     );
     expect(ko.battleState).toBe("ko_defeated");
-    expect(ko.battleBodyAngle).toBe(90);
+    expect(ko.battleBodyAngle).toBe(0);
+    expect(ko.textureKey).toBe("battle_warrior_sword_ko_body");
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({
@@ -191,7 +192,19 @@ test.describe("Warrior layered battle gold slice", () => {
     const single = await page.evaluate(() =>
       window.__kithlandsTest.previewBattleSpellFlow("spark"),
     );
-    expect(single.pickerOpen).toBe(false);
+    expect(single.pickerOpen).toBe(true);
+    await expect(page.locator(".battle-choice-panel")).toContainText(
+      "Choose enemy",
+    );
+    await expect(
+      page.getByRole("button", { name: "Iron Golem", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Gargoyle", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "All", exact: true }),
+    ).toHaveCount(0);
     expect(single.targetingMode).toBe("enemy");
     expect(single.actions).toEqual([]);
     await page.screenshot({

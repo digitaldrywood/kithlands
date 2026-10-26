@@ -91,9 +91,8 @@ describe("shared battle character catalog", () => {
     }
     expect(battleStateFor("warrior", "ko_defeated")).toMatchObject({
       hold_last_frame: true,
-      frames: expect.arrayContaining([
-        expect.objectContaining({ body: { x: 18, y: 16, angle: 90 } }),
-      ]),
+      body_key: "battle_warrior_sword_ko_body",
+      frames: expect.arrayContaining([expect.objectContaining({ frame: 2 })]),
     });
     expect(
       battleStateFor("warrior", "item_use").frames.some(
@@ -161,6 +160,7 @@ describe("shared battle character catalog", () => {
       "battle_warrior_sword_attack_body",
       "battle_warrior_sword_defend_body",
       "battle_warrior_sword_hit_body",
+      "battle_warrior_sword_ko_body",
       "battle_brawler_unarmed_strike_body",
       "battle_rogue_dagger_slash_body",
       "battle_mender_staff_cast_body",

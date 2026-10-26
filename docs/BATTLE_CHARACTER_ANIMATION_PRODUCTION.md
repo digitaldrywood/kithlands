@@ -353,3 +353,18 @@ persistent KO state instead of recoil.
 hits, contact timing, actual media flags, desktop/phone/reduced-motion captures
 and remaining limits. This accepts the hit slice without approving legacy KO
 art or expanding new body poses to other identities.
+
+### Warrior grounded KO
+
+Warrior KO now uses its approved recoil followed by individually guided knee
+buckle and settled-fall body art in a 576×192 atlas. The 192px cells keep the
+common [96,184] registration; the equipped sword rests as a separate layer
+beside the fallen body. No body rotation/translation simulates the fall. Frame
+2 is held until explicit reset/revival or transition. New battle redraws of a
+dead Warrior apply that terminal frame immediately.
+
+Native lethal-hit, held-pose, Phoenix Down and save-recovery evidence is in
+`docs/WARRIOR_KO_POSE_PROOF.md`. Tests use the authored terminal frame and
+persistence contract instead of requiring every identity to depict KO through
+a 90-degree rotation. Other identities retain their existing recipes; their
+full body-pose acceptance remains separate.

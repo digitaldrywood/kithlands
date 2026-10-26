@@ -1,0 +1,46 @@
+{
+  "status": "approved_runtime",
+  "generated_on": "2026-10-26",
+  "generator": "OpenAI built-in image_gen; model identifier and seed not returned",
+  "identity_reference": "art-source/characters/warrior/battle/sword-attack/frame-00.png",
+  "pose_guides": [
+    "../../guides/sword-ko-kneel.svg",
+    "../../guides/sword-ko-fallen.svg"
+  ],
+  "frame_contract": {
+    "frame_size": [
+      192,
+      192
+    ],
+    "atlas_size": [
+      576,
+      192
+    ],
+    "order": [
+      "recoil",
+      "knee_buckle",
+      "settled_fall"
+    ],
+    "feet_anchor": [
+      96,
+      184
+    ],
+    "weapon_baked_in": false,
+    "hold_terminal_frame": true
+  },
+  "normalization": "Preserve generated alpha; bbox alpha>8; uniform nearest-neighbor resize: knee buckle 130px high; settled fall 176px wide (47px high). Bottom y181 exclusive. Center each pose in canonical 192px cell without body transforms. Recoil reuses the approved hit body frame.",
+  "frame_sources": [
+    "../sword-hit/frame-01.png",
+    "client/tmp/warrior-ko-candidate-1793053200/kneel-normalized.png",
+    "client/tmp/warrior-ko-candidate-1793053200/fallen-normalized.png"
+  ],
+  "generation_outputs": [
+    "exec-8ed96c2d-5ca8-4e2c-9c7b-bd1f1f9bba48.png",
+    "exec-8d33a9c5-9cf2-4123-ada9-43078ee014f5.png"
+  ],
+  "prompts": {
+    "knee_buckle": "Use case identity-preserve pixel-art RPG animation pose. Image1 is the locked original Kithlands Warrior identity and pixel-cluster style. Image2 is a precise skeleton pose guide ONLY. Create ONE full-body body-only KO transition frame of this SAME Warrior: a controlled knee buckle, three-quarter facing screen-left, helmet bowed, torso pitching forward, one armored knee lowering almost to the ground, rear leg folded, forward empty gauntlet dropping toward ground to catch the fall. Match image2 articulation. Preserve exact enclosed silver helmet/black visor/gold trim, blue plume and cape, silver/gold plate armor, outfit details, original body-part proportions and fixed orthographic battle camera. It must visibly read as losing balance from exhaustion, not an attack, victory bow or seated rest. Keep both hands EMPTY with forward glove curled loosely for a separate sword attachment. Full plume, cape, hands, knees and boots visible, no cropping, generous clear margins. Transparent background. Crisp pixel detail equivalent 192x192 original; no painterly smoothing. NO sword, shield, staff, blood, injury, magic, effects, shadow, ground/scenery, text, grid or UI. One pose only; not a sheet.",
+    "settled_fall": "Use case identity-preserve pixel-art RPG pose. Image1 is the locked original Kithlands Warrior identity/pixel style. Image2 is a pose skeleton guide ONLY. Create ONE final KO / unconscious resting body pose of the SAME Warrior on his side, lying flat along the ground plane. Helmet and shoulders at screen-left, boots at screen-right; one leg extended and the other gently bent. Torso, helmet, forearm, hip and boot visibly settle at one ground baseline rather than floating or sitting. Match guide. This is a settled unconscious pose, not sleeping comfortably, crawling, kneeling or a standing image rotated. Preserve enclosed silver/gold helmet with black visor, blue plume, silver plate with gold trim, blue scarf/cape, original armor proportions, same orthographic battle view and crisp pixel clusters. The blue cape rests behind/under the body as clothing, not a ground shadow. Both hands empty; image-left forward glove curled loosely near floor at guide orange point so a separate weapon can rest beside it. Whole character visible with ample clear margins: no plume/hand/boot/cape clipping. Transparent background. Detail equivalent 192x192 sprite. NO sword, shield, staff, blood, wounds, skulls, damage marks, effects, aura, baked ground shadow, scenery, ground line, text, grid or UI. Single pose only."
+  },
+  "notes": "New body art replaces Warrior's rotated attack KO only. Sword remains separate, resting along ground near the empty gauntlets. Raw candidates/source contact under client/tmp/warrior-ko-candidate-1793053200. Other classes retain their accepted existing state recipes. Source contacts, real lethal-hit traces, held KO, native Phoenix Down revival and save-recovery captures inspected by Codex; acceptance is limited to Warrior KO."
+}

@@ -775,39 +775,44 @@
           ]
         },
         "ko_defeated": {
-          "body_key": "battle_warrior_sword_attack_body",
-          "body_path": "/sprites/battle/warrior/sword-attack-body.png",
+          "body_key": "battle_warrior_sword_ko_body",
+          "body_path": "/sprites/battle/warrior/sword-ko-body.png",
           "hold_last_frame": true,
           "frames": [
             {
               "frame": 0,
-              "duration": 65,
+              "duration": 85,
               "attachments": {
-                "sword": { "x": -48, "y": -7, "angle": -135, "front": true }
+                "sword": {
+                  "x": -48,
+                  "y": -26,
+                  "angle": -65,
+                  "front": true
+                }
               }
             },
             {
-              "frame": 4,
-              "duration": 90,
-              "body": { "x": 8, "y": 5, "angle": 25 },
+              "frame": 1,
+              "duration": 170,
               "attachments": {
-                "sword": { "x": -48, "y": 2, "angle": -132, "front": true }
+                "sword": {
+                  "x": -56,
+                  "y": 83,
+                  "angle": -90,
+                  "front": false
+                }
               }
             },
             {
-              "frame": 5,
-              "duration": 105,
-              "body": { "x": 14, "y": 10, "angle": 60 },
+              "frame": 2,
+              "duration": 260,
               "attachments": {
-                "sword": { "x": -38, "y": 1, "angle": -52, "front": true }
-              }
-            },
-            {
-              "frame": 5,
-              "duration": 120,
-              "body": { "x": 18, "y": 16, "angle": 90 },
-              "attachments": {
-                "sword": { "x": -38, "y": 1, "angle": -52, "front": true }
+                "sword": {
+                  "x": -56,
+                  "y": 83,
+                  "angle": -90,
+                  "front": false
+                }
               }
             }
           ]

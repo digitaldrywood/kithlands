@@ -129,10 +129,22 @@ describe("all-class battle state runtime contract", () => {
           : BATTLE_CHARACTER_CATALOG.required_states,
       );
       expect(profile.states.ko_defeated.hold_last_frame, profile.id).toBe(true);
-      expect(
-        profile.states.ko_defeated.frames.at(-1).body,
-        `${profile.id}/ko_defeated`,
-      ).toMatchObject({ angle: 90 });
+      if (profile.id === "warrior") {
+        expect(profile.states.ko_defeated.body_key).toBe(
+          "battle_warrior_sword_ko_body",
+        );
+        expect(profile.states.ko_defeated.frames.at(-1).frame).toBe(2);
+        expect(
+          profile.states.ko_defeated.frames.every(
+            (pose) => !pose.body?.y && !pose.body?.angle,
+          ),
+        ).toBe(true);
+      } else {
+        expect(
+          profile.states.ko_defeated.frames.at(-1).body,
+          `${profile.id}/ko_defeated`,
+        ).toMatchObject({ angle: 90 });
+      }
     }
   });
 });

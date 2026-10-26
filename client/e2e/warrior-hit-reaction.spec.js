@@ -213,7 +213,19 @@ for (const [width, height, motion] of [
       const ko = data.frames.filter(
         (f) => f.stage === "lethal" && f.state === "ko_defeated",
       );
-      expect(ko.some((f) => f.bodyAngle === 90)).toBe(true);
+      const terminal = ko.filter(
+        (f) => f.frame === 2 && f.texture === "battle_warrior_sword_ko_body",
+      );
+      expect(terminal.length).toBeGreaterThan(1);
+      expect(
+        terminal.every((f) => f.bodyAngle === 0 && f.feetOffset === 0),
+      ).toBe(true);
+      expect(terminal.at(-1).at - terminal[0].at).toBeGreaterThan(200);
+      expect(ko.at(-1)).toMatchObject({
+        frame: 2,
+        texture: "battle_warrior_sword_ko_body",
+        bodyAngle: 0,
+      });
       expect(
         data.frames
           .filter((f) => f.at >= ko[0].at)
