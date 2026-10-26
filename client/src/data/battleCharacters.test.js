@@ -160,6 +160,7 @@ describe("shared battle character catalog", () => {
       "battle_warrior_sword_attack_body",
       "battle_warrior_sword_defend_body",
       "battle_warrior_sword_hit_body",
+      "battle_warrior_sword_item_body",
       "battle_warrior_sword_ko_body",
       "battle_brawler_unarmed_strike_body",
       "battle_rogue_dagger_slash_body",

@@ -3,6 +3,7 @@ import {
   beginBattleAction,
   physicalAttackState,
   physicalHitPresentations,
+  playItemPresentation,
 } from "./battle_action_playback.js";
 
 describe("server hit presentation", () => {
@@ -87,5 +88,35 @@ describe("authored action cue", () => {
     );
     expect(await action.cue).toBe(false);
     expect(await action.finished).toBe(false);
+  });
+});
+
+describe("item result cue", () => {
+  it("reveals the result once at the authored gesture before recovery", async () => {
+    const order = [];
+    const sprite = {
+      async playBattleItemUse({ onCue }) {
+        order.push("retrieve", "present");
+        await onCue();
+        await onCue();
+        order.push("recover");
+      },
+    };
+    await playItemPresentation(sprite, {}, () => order.push("result"));
+    expect(order).toEqual(["retrieve", "present", "result", "recover"]);
+  });
+  it("preserves completion timing for legacy and absent body animations", async () => {
+    const order = [];
+    await playItemPresentation(
+      {
+        async playBattleItemUse() {
+          order.push("legacy");
+        },
+      },
+      {},
+      () => order.push("result"),
+    );
+    await playItemPresentation(null, {}, () => order.push("fallback"));
+    expect(order).toEqual(["legacy", "result", "fallback"]);
   });
 });

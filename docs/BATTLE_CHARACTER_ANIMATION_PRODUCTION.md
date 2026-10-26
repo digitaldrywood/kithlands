@@ -368,3 +368,19 @@ Native lethal-hit, held-pose, Phoenix Down and save-recovery evidence is in
 persistence contract instead of requiring every identity to depict KO through
 a 90-degree rotation. Other identities retain their existing recipes; their
 full body-pose acceptance remains separate.
+
+## Warrior item-use reference (2026-10-26)
+
+`item_use` has a separate 576×192 three-cell body atlas:
+`/sprites/battle/warrior/sword-item-body.png`. Guard remains the existing source
+cell; individually guided retrieval and palm-forward presentation poses keep the
+same planted baseline. Playback is guard → retrieve → present → retrieve → guard,
+with cue frame 2 and no body translation/rotation. The separate item-selected sword
+is hidden during retrieval/presentation and restored on guard.
+
+Item result playback supports an authored cue exactly once and falls back to
+completion for legacy states without a cue. This is presentation only; Go owns
+consumption, healing and revival. Native potion and revival checks, reduced-motion
+flags, trace evidence and acceptance limits are in `WARRIOR_ITEM_USE_PROOF.md`.
+Sources, exact built-in image-generation prompts and guides are in
+`art-source/characters/warrior/battle/sword-item/metadata.json`.

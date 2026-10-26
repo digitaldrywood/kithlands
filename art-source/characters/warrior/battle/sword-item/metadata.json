@@ -1,0 +1,28 @@
+{
+  "status": "approved_runtime",
+  "generated_on": "2026-10-26",
+  "generator": "OpenAI built-in image_gen (model identifier not returned)",
+  "identity_reference": "art-source/characters/warrior/battle/sword-attack/frame-00.png",
+  "guide_paths": [
+    "../../guides/sword-item-reach.svg",
+    "../../guides/sword-item-present.svg"
+  ],
+  "generation_outputs": [
+    "exec-a6961b3b-de55-4962-a84d-4b1fb84b24c6.png",
+    "exec-665f26b4-a100-427a-bfee-9a9c5e5a9c2e.png"
+  ],
+  "prompts": {
+    "reach": "Use case: identity-preserve original game sprite animation frame. Image 1 is the locked Kithlands Warrior identity and pixel-art rendering reference. Image 2 is a skeleton guide for pose only, not artwork. Produce ONE full-body body-only frame of the SAME helmeted silver/gold armored blue-caped knight in a calm ITEM RETRIEVAL pose, three-quarter facing screen-left. Both armored boots remain planted in the identical wide guard stance. Torso upright, head subtly looking down left. The near screen-left forearm bends DOWN toward the belt at waist height, empty closed glove at the small belt pouch; far hand rests low by the other hip. This is reaching for supplies, not attacking, not praying, no hands above shoulders. Match exact helmet shape, blue plume, gold chest lines, steel plates, long blue cape, stocky proportions, original chunky crisp pixel-art shading and same camera elevation. No sword, weapon, bottle, potion, object, shield, text, ground, shadow, backdrop, particles or effects; actual items are separate runtime layers. Keep the full figure centered with clear transparent margins, genuine transparent background. One pose only, no grid, no contact sheet.",
+    "present": "Use case: identity-preserve original game sprite animation frame. Image 1 is locked original Kithlands Warrior identity and pixel-art rendering. Image 2 is skeleton pose guide ONLY. Produce ONE body-only full-body ITEM PRESENTATION frame of the SAME helmeted silver/gold armored blue-caped knight, three-quarter facing screen-left. Both armored boots stay planted in identical wide guard stance, torso upright, head looking slightly left toward the gesture. Near screen-left arm extends diagonally forward toward screen-left at LOWER CHEST height, elbow slightly bent, glove OPEN palm upward to offer a supply. Far arm stays down at hip. A calm deliberate offering gesture, no arm above shoulder, no attack, no prayer. Preserve exact blue plume helmet, gold-trimmed pauldrons, chest plate, belt, blue tabard, boots, original chunky crisp pixel-art texture, stocky proportions and camera elevation. EMPTY glove; no sword, weapon, shield, bottle, potion or other held prop, text, scenery, ground, shadow, glow, magic or effects. Runtime adds the actual item separately. Full figure centered with transparent margins, genuine transparent alpha. One pose only, no sheet, no variants, no grid."
+  },
+  "frame_contract": {
+    "frame_size": [192, 192],
+    "atlas_size": [576, 192],
+    "order": ["guard", "retrieve", "present"],
+    "container_anchor": [96, 184],
+    "body_baseline": 180,
+    "weapon_baked_in": false
+  },
+  "normalization": "Transparent alpha retained; occupied bbox alpha>8 uniformly nearest-neighbor resized to 164px height and centered, bottom at y180; guard unchanged.",
+  "notes": "Source poses, normalized cells and native desktop/phone/reduced-motion potion sequence inspected. Acceptance is Warrior item-use body and result cue only; no other class body art changed. Raw candidates retained under client/tmp/warrior-item-candidate-1793059200. The generic gesture has no baked consumable prop."
+}

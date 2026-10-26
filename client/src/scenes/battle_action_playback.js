@@ -53,3 +53,16 @@ export function beginBattleAction(sprite, stateID, options = {}) {
     },
   };
 }
+
+// New authored item states can reveal the result at a cue. Legacy states
+// without a cue keep their existing completion timing. Never reveal twice.
+export async function playItemPresentation(sprite, options, present) {
+  let presented = false;
+  const presentOnce = () => {
+    if (presented) return;
+    presented = true;
+    return present();
+  };
+  await sprite?.playBattleItemUse?.({ ...options, onCue: presentOnce });
+  presentOnce();
+}

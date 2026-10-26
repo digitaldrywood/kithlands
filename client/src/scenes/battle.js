@@ -8,6 +8,7 @@ import {
   beginBattleAction,
   physicalAttackState,
   physicalHitPresentations,
+  playItemPresentation,
 } from "./battle_action_playback.js";
 import fieldPresentation from "../../../shared/field_presentation.json";
 import abilityDefinitions from "../../../shared/abilities.json";
@@ -4061,42 +4062,45 @@ export class BattleScene extends Phaser.Scene {
           this.partySprites[action.target_name] || actorEntry || null;
         this.revealLine(line, "#66ff99");
         await this.showActionTitle(actorEntry, "ITEM", "#66ff99");
-        if (actorEntry?.sprite?.playBattleItemUse) {
-          await actorEntry.sprite.playBattleItemUse({
+        await playItemPresentation(
+          actorEntry?.sprite,
+          {
             reducedMotion: this.reducedBattleMotion(),
             speedMultiplier: battleSpeedMul(),
-          });
-        }
-        if (targetEntry) {
-          this.showActionFocus(actorEntry, targetEntry, {
-            targetColor: CURSOR_TINTS.ally,
-          });
-          this.spawnSpellImpact(targetEntry, "holy");
-          if (
-            line.includes("healed") &&
-            action.damage > 0 &&
-            targetEntry.hpBar
-          ) {
-            const newHP = applyHeal(
-              targetEntry.hpBar.currentHP,
-              action.damage,
-              targetEntry.hpBar.maxHP,
-            );
-            this.animateHPBar(
-              targetEntry.hpBar,
-              newHP,
-              targetEntry.hpBar.maxHP,
-            );
-          }
-          if (line.includes("revived")) {
-            targetEntry.alive = true;
-            targetEntry.sprite?.resetBattlePose?.();
-            targetEntry.sprite?.clearTint?.();
-            targetEntry.sprite?.setAngle?.(0);
-            targetEntry.sprite?.setAlpha?.(1);
-            targetEntry.sprite?.setInteractive?.({ useHandCursor: true });
-          }
-        }
+          },
+          () => {
+            if (targetEntry) {
+              this.showActionFocus(actorEntry, targetEntry, {
+                targetColor: CURSOR_TINTS.ally,
+              });
+              this.spawnSpellImpact(targetEntry, "holy");
+              if (
+                line.includes("healed") &&
+                action.damage > 0 &&
+                targetEntry.hpBar
+              ) {
+                const newHP = applyHeal(
+                  targetEntry.hpBar.currentHP,
+                  action.damage,
+                  targetEntry.hpBar.maxHP,
+                );
+                this.animateHPBar(
+                  targetEntry.hpBar,
+                  newHP,
+                  targetEntry.hpBar.maxHP,
+                );
+              }
+              if (line.includes("revived")) {
+                targetEntry.alive = true;
+                targetEntry.sprite?.resetBattlePose?.();
+                targetEntry.sprite?.clearTint?.();
+                targetEntry.sprite?.setAngle?.(0);
+                targetEntry.sprite?.setAlpha?.(1);
+                targetEntry.sprite?.setInteractive?.({ useHandCursor: true });
+              }
+            }
+          },
+        );
         await this.wait(ACTION_BEAT_MS.briefStatus);
       } else if (line.includes("Found:")) {
         this.revealLine(line, "#44ff44");
