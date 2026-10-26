@@ -22,6 +22,9 @@ func PlanEnemyAction(enemy *Combatant, party []*Combatant, monster *gamedata.Mon
 		return Action{}, false
 	}
 	step := EnemyPatternStep(monster, round)
+	if step.Kind == "defend" {
+		return Action{ActorID: enemy.ID, Kind: ActionDefend, TargetID: enemy.ID}, true
+	}
 	if step.Kind == "focus" {
 		return Action{ActorID: enemy.ID, Kind: ActionAbility, AbilityID: "focus", TargetID: enemy.ID}, true
 	}

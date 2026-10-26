@@ -197,7 +197,11 @@
     "name": "Bandit",
     "field_note": "A roaming opportunist who prefers a toll demanded from cover to a fair fight in the open.",
     "habitats": ["Roadsides", "Foothills", "Wilderness camps"],
-    "tactics": "Bandits have no elemental weakness; steady physical pressure and front-row defense are the safest answer.",
+    "tactics": "Bandits alternate guarding and attacking. Guard halves physical hits but leaves magic unchanged. Strike exposed allies first, or use magic through the guard; defend when it opens to attack.",
+    "battle_pattern": [
+      { "kind": "defend", "label": "Guard: physical hits halved" },
+      { "kind": "attack", "label": "Attack: guard open" }
+    ],
     "tier": 2,
     "size": "medium",
     "stats": {

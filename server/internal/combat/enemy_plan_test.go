@@ -112,3 +112,41 @@ func TestEnemyPreparationCanWakeButConfusionReplacesIt(t *testing.T) {
 		t.Fatal("confusion must replace preparation with a random attack and no focus buff")
 	}
 }
+
+func TestBanditGuardProtectsBeforeInitiativeAndOpensNextRound(t *testing.T) {
+	gd := loadTestData(t)
+	monster := gd.MonsterByID("bandit")
+	run := func(round int) combat.ResolvedAction {
+		bandit := makeEnemy(100, monster.Name, 8, 1, 10000, 0)
+		bandit.MonsterID = monster.ID
+		warrior := makeWarrior("Hero", 25, 0)
+		warrior.AGI, warrior.HitPct = 1000, 64
+		party, enemies := []*combat.Combatant{warrior}, []*combat.Combatant{bandit}
+		plan, ok := combat.PlanEnemyAction(bandit, party, monster, round, rand.New(rand.NewPCG(5, 0)))
+		if !ok {
+			t.Fatal("bandit did not plan an action")
+		}
+		want := combat.ActionDefend
+		if round%2 == 1 {
+			want = combat.ActionAttack
+		}
+		if plan.Kind != want {
+			t.Fatalf("round %d plan = %s, want %s", round, plan.Kind, want)
+		}
+		results := combat.ResolveTurn(party, enemies, []combat.Action{{ActorID: warrior.ID, Kind: combat.ActionAttack, TargetID: bandit.ID}, plan}, &gd.Stats.Combat, rand.New(rand.NewPCG(12, 0)))
+		if len(results) != 2 || results[0].ActorID != warrior.ID {
+			t.Fatal("fixture must strike before bandit's initiative")
+		}
+		if bandit.Defending {
+			t.Fatal("guard leaked past end of round")
+		}
+		return results[0]
+	}
+	guarded, open, guardedAgain := run(0), run(1), run(2)
+	if guarded.TotalDmg <= 0 || guarded.DamagePrevented <= 0 || guarded.TotalDmg+guarded.DamagePrevented != open.TotalDmg || open.DamagePrevented != 0 {
+		t.Fatalf("guard=%+v open=%+v", guarded, open)
+	}
+	if guardedAgain.TotalDmg != guarded.TotalDmg {
+		t.Fatal("repeating guard changed its protection")
+	}
+}

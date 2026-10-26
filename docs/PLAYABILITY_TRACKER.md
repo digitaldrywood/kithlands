@@ -5,6 +5,8 @@ Updated 2026-10-25. This file records work; it does not schedule unattended runs
 
 ## Verified locally
 
+- Bandits now alternate a shared-data guard/open pattern; physical damage is reduced while Spark remains effective. The existing Bramblehog preparation/rush role is preserved. Go tests cover normal/legacy intent parity and guard interruption; native desktop/phone/reduced-motion rounds verify real choices and outcomes. A real Warrior server-Miss now has inspected readable feedback with no HP change or contact slash. Target labels/arrows clear measured enemy names. Eight final tactical/contextual cases, three natural campaigns, 825 client tests/build/format and full Go test/race/vet/build/lint/data/balance gates pass. See `BANDIT_GUARD_PROOF.md`. The local player's checkpoint/resources were preserved, and the play server now disables automatic edit reloads. Hosted `927d806` had four visual groups green but gameplay hit its 30-minute budget after 78 passes; `VISUAL_CI_BUDGET_PROOF.md` records the spec-preserving split and pending new six-suite gate.
+
 - The normal-route helper now releases native movement input only after the requested tile starts. A 250ms delayed-frame regression fails before and passes after on desktop/phone, preserving exact destination and authoritative-arrival checks. All three standard campaign cases pass again, including phone real defeat/recovery/retry and natural level-up, plus save/reload and reward continuity. Forty campaign/input captures were inspected, with final strengthened input captures also inspected separately. See `NORMAL_ROUTE_INPUT_PROOF.md`. This fixes test input reliability; no runtime walk mechanics/assets changed. Hosted `24d213d` run `40257579990` finished with four visual groups green and campaign failing on the reproduced helper wait; this fix needs its own remote gate.
 
 - Physical attacks now present each server-resolved hit at its own authored contact cue, with per-hit crit/miss flags, incremental HP feedback and a final total. Sequential results retain their reading hold before replacing the previous number for that target. Four native Warrior two-hit cases and four mixed critical/normal attack cases plus five crowded Blaze regressions pass (824 client tests/build/format). See `MULTI_HIT_PRESENTATION_PROOF.md`. Counters, dense formations and real Miss acceptance remain open. Hosted `24d213d` campaign failed in the normal-route helper; see `NORMAL_ROUTE_INPUT_PROOF.md` for the subsequent local recovery and remaining remote gate.
@@ -85,7 +87,7 @@ The Heron Pool detour now connects an optional visible threat → guarded smithi
 - [x] A normal fresh game presents a recognizable optional encounter and honest enemy/level information before engagement.
 - [x] Winning connects to useful smithing supplies and a power/accuracy crafting choice; the cleared bank persists as a rest stop.
 - [ ] Retreat, defeat, repeated visits, saving/loading and reward replay are verified for the new route.
-- [ ] Enemy tactical roles and any intent preview match the actual server-resolved action, including interrupted or invalidated actions.
+- [x] Current attack/guard/preparation role intents match server resolution, including interruption, preemption and invalidated/dead actor/target cases. Bandit and Bramblehog native references are verified; see `BANDIT_GUARD_PROOF.md`.
 - [x] Profile initial gathering-route generation and complete full Go race/lint gates without reducing seed coverage or suppressing unreviewed findings.
 - [ ] Warrior/Cinder action-specific choreography covers critical attacks, defense, abilities, healing/status, victory and KO; other-class expansion follows reference acceptance.
 - [ ] Inspect current melee and elemental spell anticipation/release/contact/recovery at normal and reduced motion, with readable action text and unobscured targets.
@@ -109,11 +111,11 @@ The active goal is the complete user-pasted request, not only this checklist. Ex
 
 ## Subsequent work
 
-- Complete dense single-target critical, counter/more-than-two-hit and actual server-Miss result-label acceptance beyond the verified Warrior two-hit/mixed-critical, Cinder default/Fast and five-target Blaze references. Review small floating action titles and victory-detail text separately.
+- Complete dense single-target critical and counter/more-than-two-hit result-label acceptance beyond the verified Warrior two-hit/mixed-critical/server-Miss, Cinder default/Fast and five-target Blaze references. Review small floating action titles and victory-detail text separately.
 
 - Audit Codex reference lists against shared content; its static equipment/class guide still lives in client code.
 
-- Meaningful enemy roles and server-owned intent previews, tied to the action actually resolved.
+- Extend encounter variety from the accepted guard/open Bandit and prepare/rush Bramblehog roles only where the route needs another meaningful decision; current intent/execution contracts are verified.
 - Further action-specific body choreography for melee weapons and class abilities; Warrior's critical variation is verified, other identities still require their own acceptance.
 - Distinct elemental spell motion and status feedback, using the verified release/contact/recovery contract.
 - Original higher-quality enemy, effect and environment assets, installed only after an inspected playable slice.

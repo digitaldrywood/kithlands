@@ -96,6 +96,21 @@ function makeScene() {
 }
 
 describe("TargetCursor", () => {
+  it("places the target arrow and label above a measured enemy name", () => {
+    const cursor = new TargetCursor(makeScene());
+    cursor.showFor({ x: 100, y: 140, width: 60, height: 70, nameTop: 90 });
+    expect(cursor.label.y).toBe(72);
+    expect(cursor.graphics.commands).toContainEqual([
+      "fillTriangle",
+      -7,
+      -64,
+      7,
+      -64,
+      0,
+      -54,
+    ]);
+  });
+
   it("draws a labeled target reticle and hides cleanly", () => {
     const scene = makeScene();
     const cursor = new TargetCursor(scene);

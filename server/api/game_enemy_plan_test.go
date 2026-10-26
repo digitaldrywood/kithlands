@@ -9,12 +9,17 @@ import (
 
 func enemyPlanGame(t *testing.T) *Game {
 	t.Helper()
+	return enemyPatternGame(t, "bramblehog")
+}
+
+func enemyPatternGame(t *testing.T, monsterID string) *Game {
+	t.Helper()
 	gm := NewGameManager(loadSharedForTest(t), "../../shared")
 	g, err := gm.DebugCreateShowcase()
 	if err != nil {
 		t.Fatal(err)
 	}
-	m := g.gd.MonsterByID("bramblehog")
+	m := g.gd.MonsterByID(monsterID)
 	g.enemies = []*combat.Combatant{{ID: 100, MonsterID: m.ID, Name: m.Name,
 		STR: 8, AGI: 1, HitPct: 100, MaxHP: 10000, CurrentHP: 10000}}
 	g.encounterStart = combat.EncounterStartNormal
@@ -23,35 +28,37 @@ func enemyPlanGame(t *testing.T) *Game {
 }
 
 func TestEnemyIntentMatchesNormalAndLegacyRounds(t *testing.T) {
-	for _, legacy := range []bool{false, true} {
-		g := enemyPlanGame(t)
-		for round := 0; round < 4; round++ {
-			before := g.State().Enemies[0].Intent
-			var state *GameState
-			var err error
-			if legacy {
-				g.inv.Consumables["potion"]++
-				state, err = g.ProcessAction(GameActionRequest{Type: "item", ItemID: "potion"})
-			} else {
-				state, err = g.ProcessAction(GameActionRequest{Type: "combat_round", Actions: []MemberActionReq{{Slot: 0, Type: "defend"}}})
-			}
-			if err != nil {
-				t.Fatal(err)
-			}
-			matched := false
-			for _, action := range state.CombatActions {
-				if action.ActorID != 100 {
-					continue
+	for _, monsterID := range []string{"bramblehog", "bandit"} {
+		for _, legacy := range []bool{false, true} {
+			g := enemyPatternGame(t, monsterID)
+			for round := 0; round < 4; round++ {
+				before := g.State().Enemies[0].Intent
+				var state *GameState
+				var err error
+				if legacy {
+					g.inv.Consumables["potion"]++
+					state, err = g.ProcessAction(GameActionRequest{Type: "item", ItemID: "potion"})
+				} else {
+					state, err = g.ProcessAction(GameActionRequest{Type: "combat_round", Actions: []MemberActionReq{{Slot: 0, Type: "defend"}}})
 				}
-				if before.Kind == "focus" && action.Kind == "ability" && action.ActionID == "focus" {
-					matched = true
+				if err != nil {
+					t.Fatal(err)
 				}
-				if before.Kind == "attack" && action.Kind == "attack" {
-					matched = true
+				matched := false
+				for _, action := range state.CombatActions {
+					if action.ActorID != 100 {
+						continue
+					}
+					if before.Kind == "focus" && action.Kind == "ability" && action.ActionID == "focus" {
+						matched = true
+					}
+					if (before.Kind == "attack" || before.Kind == "defend") && action.Kind == before.Kind {
+						matched = true
+					}
 				}
-			}
-			if !matched || g.combatRound != round+1 {
-				t.Fatalf("legacy=%v round=%d intent=%+v actions=%+v", legacy, round, before, state.CombatActions)
+				if !matched || g.combatRound != round+1 {
+					t.Fatalf("legacy=%v round=%d intent=%+v actions=%+v", legacy, round, before, state.CombatActions)
+				}
 			}
 		}
 	}
@@ -118,5 +125,74 @@ func TestAmbushCannotApplySubmittedItemsBeforeStrippingPartyActions(t *testing.T
 				t.Fatal("ambushed item logged")
 			}
 		}
+	}
+}
+
+func TestBanditGuardReducesPhysicalButNotSpellDamage(t *testing.T) {
+	for _, kind := range []string{"attack", "spell"} {
+		g := enemyPatternGame(t, "bandit")
+		request := MemberActionReq{Slot: 0, Type: "attack", TargetID: 100}
+		if kind == "spell" {
+			request = MemberActionReq{Slot: 1, Type: "spell", SpellID: "spark", TargetID: 100}
+		}
+		before := g.State()
+		if before.Enemies[0].Intent.Kind != "defend" {
+			t.Fatal("guard preview missing")
+		}
+		state, err := g.ProcessAction(GameActionRequest{Type: "combat_round", Actions: []MemberActionReq{request}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		found := false
+		for _, action := range state.CombatActions {
+			if action.TargetID != 100 || action.Kind != kind {
+				continue
+			}
+			found = true
+			if action.Damage <= 0 {
+				t.Fatal("fixture attack missed or did no damage")
+			}
+			if (kind == "attack") != (action.DamagePrevented > 0) {
+				t.Fatalf("%s guard accounting: %+v", kind, action)
+			}
+		}
+		if !found || state.Enemies[0].Intent.Kind != "attack" {
+			t.Fatalf("missing action or opening: %+v", state.CombatActions)
+		}
+	}
+}
+
+func TestBanditGuardCannotProtectWhenPreemptedOrIncapacitated(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		status character.Status
+		start  combat.EncounterStart
+	}{
+		{name: "surprised", start: combat.EncounterStartPreemptive},
+		{name: "asleep", status: character.StatusSleep, start: combat.EncounterStartNormal},
+		{name: "stoned", status: character.StatusStone, start: combat.EncounterStartNormal},
+		{name: "confused", status: character.StatusConfuse, start: combat.EncounterStartNormal},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := enemyPatternGame(t, "bandit")
+			g.enemies[0].Status = tc.status
+			g.encounterStart = tc.start
+			before := g.State().Enemies[0].Intent
+			if before.Kind == "defend" {
+				t.Fatal("intent concealed the interruption")
+			}
+			state, err := g.ProcessAction(GameActionRequest{Type: "combat_round", Actions: []MemberActionReq{{Slot: 0, Type: "attack", TargetID: 100}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, action := range state.CombatActions {
+				if action.ActorName == "Hero" && action.Kind == "attack" && action.DamagePrevented != 0 {
+					t.Fatal("inactive guard reduced party damage")
+				}
+				if tc.start == combat.EncounterStartPreemptive && action.ActorID == 100 {
+					t.Fatal("surprised enemy acted")
+				}
+			}
+		})
 	}
 }

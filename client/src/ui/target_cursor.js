@@ -65,7 +65,7 @@ export class TargetCursor {
     );
   }
 
-  drawTarget(width, height, color) {
+  drawTarget(width, height, color, pointerTip) {
     const halfW = Math.max(27, width / 2 + 8);
     const halfH = Math.max(27, height / 2 + 8);
     const corner = 13;
@@ -81,7 +81,14 @@ export class TargetCursor {
 
     // The downward diamond is deliberately unlike the actor's ground ring.
     this.graphics.fillStyle(color, 1);
-    this.graphics.fillTriangle(-7, -halfH - 13, 7, -halfH - 13, 0, -halfH - 3);
+    this.graphics.fillTriangle(
+      -7,
+      pointerTip - 10,
+      7,
+      pointerTip - 10,
+      0,
+      pointerTip,
+    );
   }
 
   showFor(entry, { tint = 0xffffff, label = this.defaultLabel } = {}) {
@@ -127,10 +134,13 @@ export class TargetCursor {
         ease: "Sine.easeInOut",
       });
     } else {
-      this.drawTarget(width, height, color);
-      this.label
-        .setOrigin(0.5, 1)
-        .setPosition(x, y - Math.max(27, height / 2 + 8) - 17);
+      // Leave the rendered enemy-name lane clear, including phone font scaling.
+      const pointerTip = Math.min(
+        -Math.max(27, height / 2 + 8) - 3,
+        Number.isFinite(entry?.nameTop) ? entry.nameTop - y - 4 : Infinity,
+      );
+      this.drawTarget(width, height, color, pointerTip);
+      this.label.setOrigin(0.5, 1).setPosition(x, y + pointerTip - 14);
       this.scene.tweens.add({
         targets: [this.graphics, this.label],
         alpha: { from: 1, to: 0.62 },

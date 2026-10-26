@@ -226,3 +226,12 @@ subsequent per-hit contact/readability correction. The previous 169-point
 aggregate crit reference is superseded by the actual 106-critical + 63-normal
 sequence. The historical evidence above remains intact; current acceptance
 uses individual server hit values and actual number/defeat spacing.
+
+## Actual server-Miss acceptance
+
+[BANDIT_GUARD_PROOF.md](BANDIT_GUARD_PROOF.md) closes the Warrior reference's
+synthetic-only Miss limitation. A seeded, native-input Go round resolves the
+miss: the label holds for about 1.23 seconds at desktop/phone/reduced motion,
+contact occurs at authored frame 3 without a slash, and displayed HP stays 5.
+Target labels/arrows also now clear measured enemy-name bounds. Original
+proof history and other action/class limits above remain preserved.

@@ -27,8 +27,17 @@ new levels in a corner, stays readable through scene changes, then fades.
 This is an alternative first-session emphasis; completing an errand plus the
 entire mill sample within fifteen minutes has not been timed with a new human
 player. Bandit Clearing now requires a trail fight and return/report; use the
-**Clear the blocked trail** prompt at its destination. Lost Person still needs
-proper escort conditions; see the tracker.
+**Clear the blocked trail** prompt at its destination. In its mixed encounter,
+Bandits alternate guard and attack: physical damage is reduced while guarding,
+while Spark still deals full spell damage. Target the exposed Goblin or use
+magic through the guard, then use Defend if you need protection on the attack
+turn. The enemy plan appears in the command area and target detail.
+
+Lost Traveler requires asking the keeper for the search location, finding the
+traveler, choosing **Escort the traveler home**, and returning for a separate
+reunion. They take cover during combat. If the party falls, rejoin them at the
+search site before returning. Arrival alone pays no quest reward; see
+`ESCORT_JOURNEY_PROOF.md`.
 
 For the most connected early detour, take **Old Mill trail → Explore the
 optional Heron Pool**. The marked reed-bank herd offers an encounter preview

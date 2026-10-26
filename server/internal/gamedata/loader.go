@@ -595,7 +595,7 @@ func (gd *GameData) validate() {
 	validSizes := map[string]bool{"small": true, "medium": true, "large": true, "boss": true}
 	for _, m := range gd.Monsters {
 		for _, step := range m.BattlePattern {
-			if step.Kind != "attack" && step.Kind != "focus" {
+			if step.Kind != "attack" && step.Kind != "focus" && step.Kind != "defend" {
 				panic(fmt.Sprintf("gamedata: monster %q has unsupported battle action %q", m.ID, step.Kind))
 			}
 			if strings.TrimSpace(step.Label) == "" || len(step.Label) > 40 {

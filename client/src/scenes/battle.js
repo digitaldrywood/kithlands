@@ -1948,10 +1948,18 @@ export class BattleScene extends Phaser.Scene {
     const visual = this.resolveVisualEntry(entry);
     if (!visual || !this.targetCursor) return;
     const isPartyTarget = mode === "party";
-    this.targetCursor.showFor(visual, {
-      tint: isPartyTarget ? CURSOR_TINTS.ally : CURSOR_TINTS.enemy,
-      label: isPartyTarget ? "ALLY TARGET" : "TARGET",
-    });
+    this.targetCursor.showFor(
+      {
+        ...visual,
+        nameTop: entry.nameText?.visible
+          ? entry.nameText.getBounds().top
+          : undefined,
+      },
+      {
+        tint: isPartyTarget ? CURSOR_TINTS.ally : CURSOR_TINTS.enemy,
+        label: isPartyTarget ? "ALLY TARGET" : "TARGET",
+      },
+    );
   }
 
   showGroupTargetCursor(entries, mode = "enemy") {
