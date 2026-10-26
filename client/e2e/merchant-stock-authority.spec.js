@@ -1,3 +1,4 @@
+import { findStockRow } from "./helpers/shop-stock.js";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -323,10 +324,12 @@ for (const viewport of VIEWPORTS) {
     await page.evaluate(() =>
       window.__kithlandsTest.clickInteractiveText("Armor", "Town"),
     );
-    await page.evaluate(
-      (name) => window.__kithlandsTest.clickInteractiveText(name, "Town"),
+    const row = await findStockRow(
+      page,
+      page.locator(".kith-shop"),
       rolledOffer.name,
     );
+    await row[viewport.mobile ? "tap" : "click"]();
     await page.waitForFunction(
       (name) =>
         window.__kithlandsTest
@@ -486,11 +489,9 @@ test("merchant catalog failures recover without stale offers", async ({
   await page.evaluate(() =>
     window.__kithlandsTest.clickInteractiveText("Weapons", "Town"),
   );
-  await page.waitForFunction(() =>
-    window.__kithlandsTest
-      .visibleTexts("Town")
-      .some((entry) => entry.text === "Wooden Club"),
-  );
+  await expect(
+    await findStockRow(page, page.locator(".kith-shop"), "Wooden Club"),
+  ).toBeVisible();
 
   const catalog = await page.evaluate(() =>
     window.__kithlandsTest.shopItems("Town"),
@@ -501,10 +502,9 @@ test("merchant catalog failures recover without stale offers", async ({
   await page.evaluate(() =>
     window.__kithlandsTest.clickInteractiveText("Armor", "Town"),
   );
-  await page.evaluate(
-    (name) => window.__kithlandsTest.clickInteractiveText(name, "Town"),
-    rolledOffer.name,
-  );
+  await (
+    await findStockRow(page, page.locator(".kith-shop"), rolledOffer.name)
+  ).click();
 
   failedShopGets = 1;
   await page.evaluate(() =>
@@ -545,11 +545,9 @@ test("merchant catalog failures recover without stale offers", async ({
   await page.evaluate(() =>
     window.__kithlandsTest.clickInteractiveText("Weapons", "Town"),
   );
-  await page.waitForFunction(() =>
-    window.__kithlandsTest
-      .visibleTexts("Town")
-      .some((entry) => entry.text === "Wooden Club"),
-  );
+  await expect(
+    await findStockRow(page, page.locator(".kith-shop"), "Wooden Club"),
+  ).toBeVisible();
   const recoveredCatalog = await page.evaluate(() =>
     window.__kithlandsTest.shopItems("Town"),
   );
@@ -566,10 +564,9 @@ test("merchant catalog failures recover without stale offers", async ({
   await page.evaluate(() =>
     window.__kithlandsTest.clickInteractiveText("Weapons", "Town"),
   );
-  await page.evaluate(
-    (name) => window.__kithlandsTest.clickInteractiveText(name, "Town"),
-    reusableOffer.name,
-  );
+  await (
+    await findStockRow(page, page.locator(".kith-shop"), reusableOffer.name)
+  ).click();
   const remotePurchase = await page.evaluate(
     ({ nodeID, stockID }) =>
       window.__kithlandsTest.buyShopOfferRemote(nodeID, stockID, "Town"),
