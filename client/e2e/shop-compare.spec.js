@@ -1,3 +1,4 @@
+import { findStockRow } from "./helpers/shop-stock.js";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -169,9 +170,9 @@ test.describe("shop compare flow", () => {
     await startShopGame(page);
     await visitShop(page);
 
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("Wooden Staff", "Town"),
-    );
+    await (
+      await findStockRow(page, page.locator(".kith-shop"), "Wooden Staff")
+    ).click();
     await page.waitForFunction(() =>
       window.__kithlandsTest
         .visibleTexts("Town")
@@ -205,14 +206,9 @@ test.describe("shop compare flow", () => {
     await page.evaluate(() =>
       window.__kithlandsTest.clickInteractiveText("Armor", "Town"),
     );
-    await page.waitForFunction(() =>
-      window.__kithlandsTest
-        .visibleTexts("Town")
-        .some((entry) => entry.text.includes("Silk Robe")),
-    );
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("Silk Robe", "Town"),
-    );
+    await (
+      await findStockRow(page, page.locator(".kith-shop"), "Silk Robe")
+    ).click();
 
     texts = await visibleTexts(page);
     await expect(page.locator(".shop-member")).toHaveCount(4);

@@ -42,3 +42,31 @@ They cover catalog, rolled-item preview, purchase, save/reload and recovery.
 This resolves a locally reproduced test navigation regression. New-head hosted
 CI remains a separate gate. General CI retains the owner's self-hosted labels.
 The owner's running game, saves and server were not restarted or changed.
+
+## Comparison test follow-up
+
+Hosted run `40347639481` on `5bcfd3e` finished with ten visual suites green.
+Gameplay passed 59 cases and failed `shop-compare.spec.js` selecting Wooden
+Staff, again assuming it was on the first page. The unchanged spec reproduced
+locally in `client/tmp/shop-compare-pages-before-1793048500.log`.
+
+The comparison spec now uses `findStockRow` and visible DOM clicks for Wooden
+Staff and Silk Robe. Every class restriction, member-selection, stat delta,
+exact gold, buy-and-equip and equipment-picker assertion remains unchanged.
+Existing debug setup, level fixture, category and purchase bridge controls
+remain; this is not a normal opening route.
+
+The corrected case passes (4.8 seconds):
+
+```sh
+cd client
+VITE_PORT=3609 PLAYWRIGHT_BROWSERS_PATH="$PWD/tmp/ms-playwright" HOME="$PWD/tmp/home" XDG_CONFIG_HOME="$PWD/tmp/xdg-config" XDG_CACHE_HOME="$PWD/tmp/xdg-cache" npx playwright test --config=e2e/playwright.config.js e2e/shop-compare.spec.js --output=tmp/shop-compare-pages-final-1793048700
+npx prettier --check --ignore-path .gitignore .
+```
+
+Logs: `client/tmp/shop-compare-pages-final-1793048700.log` and
+`client/tmp/shop-compare-pages-format-1793048800.log`. All four unique captures
+`client/e2e/tmp/issue-202-*1793030017185.png` inspected through
+`client/tmp/shop-compare-pages-review-1793048800.jpg`. Diff checks pass.
+No runtime/shop behavior or meaningful assertion changed. New-head CI remains
+open. Concurrent Warrior hit-presentation work is a separate change.
