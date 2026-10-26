@@ -260,7 +260,13 @@ export class SettlementScene extends Phaser.Scene {
       () => {
         if (!isWorldInputLocked(this)) toggleMenu(this);
       },
-      { label: "Settlement controls" },
+      {
+        label: "Settlement controls",
+        contextAction: () =>
+          this.currentInteraction?.type === "exit"
+            ? { label: "Leave town", activate: () => this.handleAction() }
+            : null,
+      },
     );
   }
 
@@ -365,7 +371,8 @@ export class SettlementScene extends Phaser.Scene {
       this.playerY,
       this.playerDir,
     );
-    if (this.currentInteraction) this.showInteractPrompt();
+    if (this.currentInteraction && this.currentInteraction.type !== "exit")
+      this.showInteractPrompt();
     else this.hideInteractPrompt();
   }
 
@@ -405,17 +412,19 @@ export class SettlementScene extends Phaser.Scene {
 
   async handleAction() {
     if (!this.currentInteraction || isWorldInputLocked(this)) return;
+    const interaction = this.currentInteraction;
     this.animating = true;
     this.hideInteractPrompt();
     let result;
     try {
-      result = await transitionLocation(
-        this.gameState.id,
-        this.currentInteraction.name,
-      );
+      result = await transitionLocation(this.gameState.id, interaction.name);
     } catch {
       this.animating = false;
-      this.showMessage("Could not enter. Please try again.");
+      this.showMessage(
+        interaction.type === "exit"
+          ? "Could not leave town. Please try again."
+          : "Could not enter. Please try again.",
+      );
       this.updateInteractionTargets();
       return;
     }

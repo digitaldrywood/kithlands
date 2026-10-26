@@ -305,7 +305,7 @@ for (const width of [1440, 800, 390, 375, 540]) {
           () =>
             window.__normalRouteGame.scene.getScene("World").cameras.main.zoom,
         ),
-      ).toBe(1);
+      ).toBe(width <= 600 ? 2 : 1);
       await expect(page.locator(".interior-controls")).toHaveCount(0);
       await expect(
         page.getByRole("button", { name: "Menu", exact: true }),

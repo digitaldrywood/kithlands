@@ -6,7 +6,8 @@
 .interior-controls[hidden] {
   display: none !important;
 }
-.interior-menu-button {
+.interior-menu-button,
+.interior-action-button {
   position: absolute;
   right: 12px;
   bottom: 12px;
@@ -23,18 +24,32 @@
     sans-serif;
   cursor: pointer;
 }
-.interior-menu-button:hover {
+.interior-menu-button:hover,
+.interior-action-button:hover {
   background: #dfcc9f;
 }
-.interior-menu-button:focus-visible {
+.interior-menu-button:focus-visible,
+.interior-action-button:focus-visible {
   outline: 3px solid #fff2bb;
   outline-offset: 3px;
 }
-.interior-menu-button kbd {
+.interior-menu-button kbd,
+.interior-action-button kbd {
   margin-left: 6px;
   font: inherit;
   font-size: 12px;
   border: 1px solid #66573566;
   border-radius: 4px;
   padding: 1px 4px;
+}
+
+.interior-action-button {
+  right: auto;
+  left: 12px;
+  max-width: calc(100% - 130px);
+  background: #1c2c37;
+  color: #f2dfaa;
+}
+.interior-action-button:hover {
+  background: #344955;
 }

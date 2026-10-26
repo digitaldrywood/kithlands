@@ -40,13 +40,21 @@ describe("portrait settlement framing", () => {
     "pans readable streets without overlapping controls at %sx%s",
     (width, height) => {
       const layout = gameplayViewportLayout(width, height);
-      const framing = settlementFraming(layout, 800, 600, 110);
+      const gap = Math.max(96, (70 * layout.width) / width);
+      const framing = settlementFraming(layout, 800, 600, 110, gap);
       expect(framing.zoom).toBeGreaterThan(1);
       expect(framing.viewport.y).toBeGreaterThanOrEqual(120);
       expect(framing.viewport.height).toBeGreaterThanOrEqual(64);
       expect(framing.viewport.y + framing.viewport.height).toBeLessThanOrEqual(
-        layout.controlArea.dpadTop - 96,
+        layout.controlArea.dpadTop - gap,
       );
+      expect(
+        ((layout.controlArea.dpadTop -
+          framing.viewport.y -
+          framing.viewport.height) *
+          width) /
+          layout.width,
+      ).toBeGreaterThanOrEqual(69.99);
       expect(framing.viewport.width / framing.zoom).toBeLessThan(800);
     },
   );

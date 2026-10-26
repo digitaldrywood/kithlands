@@ -63,7 +63,23 @@ export function interactionAt(model, playerX, playerY, direction = "up") {
     );
     if (interaction) return interaction;
   }
-  return null;
+  // The illustrated gate approach is wider than a single authored exit cell.
+  // Let input select a nearby exit without requiring pixel-perfect alignment;
+  // ordinary doors above retain their existing facing/adjacent targeting.
+  return (
+    model.interactions.find((object) => {
+      if (object.type !== "exit") return false;
+      const left = Math.floor(object.x / model.tileWidth);
+      const right = Math.ceil((object.x + object.width) / model.tileWidth) - 1;
+      const top = Math.floor(object.y / model.tileHeight);
+      const bottom =
+        Math.ceil((object.y + object.height) / model.tileHeight) - 1;
+      const distance =
+        Math.max(left - playerX, 0, playerX - right) +
+        Math.max(top - playerY, 0, playerY - bottom);
+      return distance <= 3;
+    }) || null
+  );
 }
 
 export function buildSettlementModel(tiledMap, anchor) {

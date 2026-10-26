@@ -1,12 +1,12 @@
 import { element } from "./viewport_dialog.js";
-import { activeWorldLocks } from "../systems/modalLock.js";
+import { activeWorldLocks, isWorldInputLocked } from "../systems/modalLock.js";
 import "../styles/interior-controls.css";
 
 // One fixed DOM entry point, outside the room camera and its hit areas.
 export function interiorControls(
   scene,
   openMenu,
-  { label = "Interior controls" } = {},
+  { label = "Interior controls", contextAction } = {},
 ) {
   const root = element("nav", "interior-controls");
   root.setAttribute("aria-label", label);
@@ -19,6 +19,22 @@ export function interiorControls(
     if (event.key === "Enter" || event.key === " ") event.stopPropagation();
   });
   root.append(button);
+  const action = contextAction
+    ? element("button", "interior-action-button")
+    : null;
+  let currentAction = null;
+  if (action) {
+    action.type = "button";
+    action.hidden = true;
+    action.setAttribute("aria-keyshortcuts", "Enter Space");
+    action.onclick = () => {
+      if (!isWorldInputLocked(scene)) currentAction?.activate();
+    };
+    action.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") event.stopPropagation();
+    });
+    root.append(action);
+  }
   for (const event of ["pointerdown", "pointerup", "click", "wheel"])
     root.addEventListener(event, (e) => e.stopPropagation());
   document.body.append(root);
@@ -30,9 +46,28 @@ export function interiorControls(
       width: `${r.width}px`,
       height: `${r.height}px`,
     });
+    if (action && scene.gameplayLayout?.portrait) {
+      const layout = scene.gameplayLayout;
+      action.style.bottom = `${((layout.height - layout.controlArea.dpadTop) * r.height) / layout.height + 12}px`;
+    }
   };
   const update = () => {
     root.hidden = activeWorldLocks(scene).length > 0 || !scene.scene.isActive();
+    if (action) {
+      currentAction = contextAction();
+      action.hidden = !currentAction;
+      action.disabled = isWorldInputLocked(scene);
+      if (
+        currentAction &&
+        action.getAttribute("aria-label") !== currentAction.label
+      ) {
+        action.setAttribute("aria-label", currentAction.label);
+        action.replaceChildren(
+          document.createTextNode(currentAction.label + " "),
+          element("kbd", "", "Enter"),
+        );
+      }
+    }
   };
   const hide = () => {
     root.hidden = true;

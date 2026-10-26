@@ -18,7 +18,13 @@ export function interiorFraming(layout, width, height, uiBottom = 280) {
   };
 }
 
-export function settlementFraming(layout, width, height, uiBottom = 90) {
+export function settlementFraming(
+  layout,
+  width,
+  height,
+  uiBottom = 90,
+  controlsGap = 96,
+) {
   const framing = interiorFraming(layout, width, height, uiBottom);
   if (!layout.portrait) return framing;
   // A settlement spans the screen on desktop. On a phone, pan across its
@@ -30,7 +36,7 @@ export function settlementFraming(layout, width, height, uiBottom = 90) {
       ...framing.viewport,
       height: Math.min(
         (height + 36) * zoom,
-        layout.controlArea.dpadTop - 96 - framing.viewport.y,
+        layout.controlArea.dpadTop - controlsGap - framing.viewport.y,
       ),
     },
   };
@@ -50,7 +56,18 @@ export function installInteriorCamera(
       ...(scene.labelBar || []).map((o) => o.getBounds().bottom),
       scene.objectiveText?.getBounds().bottom || 0,
     );
-  const { zoom, viewport: v } = framing(layout, width, height, uiBottom());
+  // The settlement exit is a 46px DOM button with 12px clearance on each
+  // side. Convert its screen-space lane to logical units on narrow phones.
+  const cssWidth =
+    scene.game.canvas.getBoundingClientRect().width || layout.width;
+  const controlsGap = Math.max(96, (70 * layout.width) / cssWidth);
+  const { zoom, viewport: v } = framing(
+    layout,
+    width,
+    height,
+    uiBottom(),
+    controlsGap,
+  );
   camera.setViewport(v.x, v.y, v.width, v.height).setZoom(zoom);
   camera.setBounds(
     scene.offsetX - 18,
@@ -85,7 +102,13 @@ export function installInteriorCamera(
     // a modal temporarily hides the objective or when the new text is shorter.
     if (nextBottom > reservedBottom + 1) {
       reservedBottom = nextBottom;
-      const next = framing(layout, width, height, reservedBottom).viewport;
+      const next = framing(
+        layout,
+        width,
+        height,
+        reservedBottom,
+        controlsGap,
+      ).viewport;
       camera.setViewport(next.x, next.y, next.width, next.height);
     }
     for (const object of scene.children.list) {

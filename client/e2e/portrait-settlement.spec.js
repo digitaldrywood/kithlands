@@ -50,13 +50,21 @@ for (const [width, height] of [
             cssActorHeight: s.player.displayHeight * c.zoom * ratio,
             viewport: { x: c.x, y: c.y, width: c.width, height: c.height },
             dpadTop: s.gameplayLayout.controlArea.dpadTop,
-            prompt: s.interactPrompt && {
-              font: parseFloat(s.interactPrompt.style.fontSize) * ratio,
-              bounds: {
-                top: s.interactPrompt.getBounds().top,
-                bottom: s.interactPrompt.getBounds().bottom,
-              },
-            },
+            exitAction: (() => {
+              const action = document.querySelector(".interior-action-button");
+              const bounds = action?.getBoundingClientRect();
+              return action && !action.hidden
+                ? {
+                    font: parseFloat(getComputedStyle(action).fontSize),
+                    height: bounds.height,
+                    top: bounds.top,
+                    bottom: bounds.bottom,
+                    roomBottom: r.top + (c.y + c.height) * ratio,
+                    dpadTop:
+                      r.top + s.gameplayLayout.controlArea.dpadTop * ratio,
+                  }
+                : null;
+            })(),
             trail: s.dungeonEntryButton && {
               height: s.dungeonEntryButton.bg.getBounds().height * ratio,
               font:
@@ -75,9 +83,13 @@ for (const [width, height] of [
         expect(before.viewport.y + before.viewport.height).toBeLessThan(
           before.dpadTop,
         );
-        expect(before.prompt.font).toBeGreaterThanOrEqual(15.9);
-        expect(before.prompt.bounds.top).toBeGreaterThan(
-          before.viewport.y + before.viewport.height,
+        expect(before.exitAction.font).toBeGreaterThanOrEqual(15.9);
+        expect(before.exitAction.height).toBeGreaterThanOrEqual(46);
+        expect(before.exitAction.top).toBeGreaterThan(
+          before.exitAction.roomBottom,
+        );
+        expect(before.exitAction.bottom).toBeLessThan(
+          before.exitAction.dpadTop,
         );
         expect(before.uiCamera).toBe(true);
         expect(before.trail.height).toBeGreaterThanOrEqual(44);
