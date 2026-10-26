@@ -163,12 +163,16 @@ async function waitForContinue(page) {
 
 async function continueToWorld(page) {
   await waitForContinue(page);
-  await page.evaluate(() =>
-    window.__kithlandsTest.clickInteractiveText("Continue", "Battle"),
-  );
+  await page.keyboard.press("Enter");
   await page.waitForFunction(
     () => window.__kithlandsTest.activeSceneKey() === "World",
   );
+  await expect(page.locator(".victory-receipt")).toHaveCount(0);
+  expect(
+    await page.evaluate(() =>
+      window.__kithlandsTest.sceneInputSnapshot("World"),
+    ),
+  ).toEqual({ inputEnabled: true, keyboardEnabled: true, modalLocks: [] });
 }
 
 for (const viewport of VIEWPORTS) {
@@ -349,10 +353,11 @@ for (const viewport of VIEWPORTS) {
       return window.__kithlandsTest.sceneInputSnapshot("Battle");
     });
     expect(inputAfterEquip).toEqual({
-      inputEnabled: true,
-      keyboardEnabled: true,
-      modalLocks: [],
+      inputEnabled: false,
+      keyboardEnabled: false,
+      modalLocks: ["victory-receipt"],
     });
+    await expect(page.locator(".victory-continue")).toBeFocused();
     await continueToWorld(page);
 
     const second = await forceGuaranteedLootVictory(page);

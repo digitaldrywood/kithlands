@@ -180,6 +180,16 @@ function findMenuButtonAt(scene, label, occurrence = 0) {
 }
 
 function shopControl(scene, text) {
+  const receiptButton =
+    scene?.victoryReceipt?.dialog.root.querySelector(".victory-continue");
+  if (
+    text === "Continue" &&
+    receiptButton?.isConnected &&
+    receiptButton.getClientRects().length > 0 &&
+    !receiptButton.hidden &&
+    !receiptButton.closest("[inert]")
+  )
+    return receiptButton;
   const controls = [
     ...(scene?.shopDialog?.root?.querySelectorAll("button") || []),
   ].filter((node) => !node.disabled && node.getClientRects().length);
@@ -1262,10 +1272,18 @@ function visibleBattleFxSnapshot(scene) {
     groundPlaneCount: taggedCount("ground-plane"),
     shadowCount: taggedCount("combat-shadow"),
     actionPanelCount: taggedCount("action-panel"),
-    victoryReportPanelCount: taggedCount("victory-report-panel"),
-    victoryRewardCardCount: taggedCount("victory-reward-card"),
-    victoryPartyRowCount: taggedCount("victory-party-row"),
-    victorySpoilsPanelCount: taggedCount("victory-spoils-panel"),
+    victoryReportPanelCount: scene?.victoryReceipt?.dialog.root.isConnected
+      ? 1
+      : 0,
+    victoryRewardCardCount:
+      scene?.victoryReceipt?.dialog.root.querySelectorAll(".victory-reward")
+        .length || 0,
+    victoryPartyRowCount:
+      scene?.victoryReceipt?.dialog.root.querySelectorAll(".victory-member")
+        .length || 0,
+    victorySpoilsPanelCount:
+      scene?.victoryReceipt?.dialog.root.querySelectorAll(".victory-spoils")
+        .length || 0,
     partyMembers,
     enemyMembers,
     floatingTexts: (scene?.floatingText?.active || [])
@@ -1617,7 +1635,8 @@ export function installDevTestBridge(game) {
 
     visibleTexts(sceneKey) {
       const scene = getScene(game, sceneKey);
-      const root = scene?.shopDialog?.root;
+      const root =
+        scene?.shopDialog?.root || scene?.victoryReceipt?.dialog.root;
       if (root?.isConnected) {
         return [
           ...root.querySelectorAll(

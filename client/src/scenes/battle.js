@@ -33,13 +33,7 @@ import {
   hpBarColorPct,
   hpBarFillWidth,
 } from "../systems/hpBar.js";
-import { buildVictoryXPSegments } from "../systems/victoryXp.js";
-import {
-  buildVictorySummary,
-  buildFinalePartyXP,
-  buildPartyXP,
-  formatSpoils,
-} from "../systems/victoryPresentation.js";
+import { showVictoryReceipt } from "./victory_receipt.js";
 import {
   pendingEquipmentDrops,
   showPostBattleLoot,
@@ -263,6 +257,9 @@ export class BattleScene extends Phaser.Scene {
 
   init(data) {
     this.gameState = data.gameState;
+    this.victoryContinueShown = false;
+    this.victoryFastForwarded = false;
+    this.victoryReceipt = null;
     // Only round restarts carry presentation forward; a new encounter starts fresh.
     this.battlePresentation = data.battlePresentation ?? {
       formation: (data.gameState?.enemies ?? []).map((enemy) => ({ ...enemy })),
@@ -386,6 +383,8 @@ export class BattleScene extends Phaser.Scene {
       this.finishMajorCinematic?.(true);
       closeEquipmentScreen(this, { callOnClose: false });
       this.postBattleLootDialog?.dispose();
+      this.victoryReceipt?.dialog.dispose();
+      this.victoryReceipt = null;
       if (this.scale.gameSize.height !== 600) {
         this.scale.setGameSize(800, 600);
       }
@@ -4913,97 +4912,12 @@ export class BattleScene extends Phaser.Scene {
 
   showVictoryResults(gs) {
     if (this.returnFromDungeonDefeat(gs)) return;
-    const mobileVictory = this.hudLayout?.mode === "mobile";
-    const screenHeight = mobileVictory ? 1600 : 600;
-    if (this.scale.gameSize.height !== screenHeight) {
-      this.scale.setGameSize(800, screenHeight);
-    }
     this.children.removeAll(true);
-
-    const resultLayout = mobileVictory
-      ? {
-          reportY: 800,
-          reportHeight: 1510,
-          titleY: 82,
-          titleSize: "42px",
-          subtitleY: 132,
-          subtitleSize: "20px",
-          rewardCards: [
-            { x: 400, y: 245 },
-            { x: 400, y: 385 },
-            { x: 400, y: 525 },
-          ],
-          rewardWidth: 696,
-          rewardHeight: 118,
-          partyLabelY: 610,
-          rowTop: 640,
-          rowHeight: 132,
-          rowGap: 14,
-          spoilsY: 1350,
-          spoilsHeight: 180,
-          continueY: 1515,
-          continueWidth: 340,
-          continueHeight: 70,
-          continueFontSize: "26px",
-        }
-      : {
-          reportY: 300,
-          reportHeight: 552,
-          titleY: 43,
-          titleSize: "25px",
-          subtitleY: 72,
-          subtitleSize: "12px",
-          rewardCards: [
-            { x: 164, y: 118 },
-            { x: 400, y: 118 },
-            { x: 636, y: 118 },
-          ],
-          rewardWidth: 220,
-          rewardHeight: 58,
-          partyLabelY: 154,
-          rowTop: 171,
-          rowHeight: 58,
-          rowGap: 6,
-          spoilsY: 468,
-          spoilsHeight: 58,
-          continueY: 545,
-          continueWidth: 150,
-          continueHeight: 34,
-          continueFontSize: "16px",
-        };
-    this.victoryResultLayout = resultLayout;
-
-    const backdrop = this.add.graphics().setDepth(-4);
-    backdrop.fillGradientStyle(0x151e2b, 0x151e2b, 0x151e2b, 0x151e2b, 1);
-    backdrop.fillRect(0, 0, 800, screenHeight);
-    backdrop._combatFxTag = "victory-backdrop";
-
-    const reportPanel = drawPanel(
-      this,
-      400,
-      resultLayout.reportY,
-      744,
-      resultLayout.reportHeight,
-      {
-        variant: "ff6",
-        depth: 0,
-        radius: 14,
-        innerTop: 0x1c2736,
-        innerBottom: 0x151e2b,
-        outerFill: 0x384859,
-        outerStroke: 0xd6efff,
-        innerStroke: 0x76ace0,
-        interactive: false,
-      },
-    );
-    reportPanel.bg._combatFxTag = "victory-report-panel";
-
+    this.gameState = gs;
+    this.victoryReceipt?.finish();
+    this.victoryReceipt?.dialog.dispose();
     this.victoryFastForwarded = false;
     this.victoryContinueShown = false;
-    this.victoryFinalizers = [];
-    this.victoryPendingTimers = [];
-    this.victoryFFHandler = null;
-
     const isDefeat = gs.phase === "defeat";
     stopMusic();
     playMusic(isDefeat ? "music_defeat" : "music_victory", false);
@@ -5063,533 +4977,24 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    const log = gs.combat_log || [];
-    const summary = buildVictorySummary(log, gs.battle_rewards);
-    const finaleXP = buildFinalePartyXP(gs);
-    const partyXP = buildPartyXP(gs);
-    if (finaleXP)
-      summary.xpEarned = finaleXP.reduce((total, xp) => total + xp, 0);
-    const totalEther =
-      (gs.ethers || 0) + (gs.hi_ethers || 0) + (gs.x_ethers || 0);
-
-    const victoryTitle = this.add
-      .text(52, resultLayout.titleY, "VICTORY!", {
-        fontSize: resultLayout.titleSize,
-        color: "#f6d77c",
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold",
-      })
-      .setDepth(2);
-    victoryTitle._combatFxTag = "victory-title";
-    this.add
-      .text(52, resultLayout.subtitleY, "Rewards and party progress", {
-        fontSize: resultLayout.subtitleSize,
-        color: "#9bb6d2",
-        fontFamily: "Arial, sans-serif",
-      })
-      .setDepth(2);
-
-    const drawRewardCard = ({ x, y }, label, value, detail, color) => {
-      const card = drawPanel(
-        this,
-        x,
-        y,
-        resultLayout.rewardWidth,
-        resultLayout.rewardHeight,
-        {
-          fill: 0x151e2b,
-          fillAlpha: 0.92,
-          stroke: 0x384859,
-          strokeWidth: 1,
-          depth: 2,
-          interactive: false,
-        },
-      );
-      card.bg._combatFxTag = "victory-reward-card";
-      const rewardLeft = x - resultLayout.rewardWidth / 2 + 14;
-      this.add
-        .text(rewardLeft, y - (mobileVictory ? 40 : 22), label, {
-          fontSize: mobileVictory ? "18px" : "10px",
-          color: "#82b9df",
-          fontFamily: "Arial, sans-serif",
-          fontStyle: "bold",
-        })
-        .setDepth(3);
-      this.add
-        .text(rewardLeft, y - (mobileVictory ? 12 : 7), value, {
-          fontSize: mobileVictory ? "38px" : "21px",
-          color,
-          fontFamily: "Arial, sans-serif",
-          fontStyle: "bold",
-        })
-        .setDepth(3);
-      this.add
-        .text(
-          x + resultLayout.rewardWidth / 2 - 14,
-          y + resultLayout.rewardHeight / 2 - (mobileVictory ? 14 : 11),
-          detail,
-          {
-            fontSize: mobileVictory ? "16px" : "9px",
-            color: "#94a8bd",
-            fontFamily: "Arial, sans-serif",
-          },
-        )
-        .setOrigin(1, 1)
-        .setDepth(3);
-    };
-
-    drawRewardCard(
-      resultLayout.rewardCards[0],
-      "XP EARNED",
-      `+${summary.xpEarned}`,
-      "shared by active allies",
-      "#8fd6ff",
-    );
-    drawRewardCard(
-      resultLayout.rewardCards[1],
-      "GOLD EARNED",
-      `+${summary.goldEarned}`,
-      `total ${gs.gold || 0}`,
-      "#f6d77c",
-    );
-    drawRewardCard(
-      resultLayout.rewardCards[2],
-      "SPOILS",
-      summary.found.length > 0 ? `${summary.found.length}` : "—",
-      summary.found.length === 1 ? "item recovered" : "items recovered",
-      "#9de0ae",
-    );
-
-    this.add
-      .text(52, resultLayout.partyLabelY, "PARTY PROGRESS", {
-        fontSize: mobileVictory ? "18px" : "10px",
-        color: "#82b9df",
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold",
-      })
-      .setDepth(2);
-
-    const barW = mobileVictory ? 220 : 180;
-    const xpBefore = gs.xp_before || [];
-    const xpThresholds = gs.xp_thresholds || [];
-    const diedFlags = gs.died_this_fight || [];
-    const rowTop = resultLayout.rowTop;
-    const rowHeight = resultLayout.rowHeight;
-    const rowGap = resultLayout.rowGap;
-
-    for (let i = 0; i < gs.party.length; i++) {
-      const p = gs.party[i];
-      const rowY = rowTop + i * (rowHeight + rowGap) + rowHeight / 2;
-      const diedThisFight = diedFlags[i] === true;
-      const alive = !diedThisFight && p.hp > 0;
-      const prevXP = xpBefore[i] || 0;
-      const leveledUp =
-        !diedThisFight && log.some((l) => l.includes(`${p.name} leveled up`));
-
-      const row = roundedRectangle(
-        this,
-        400,
-        rowY,
-        696,
-        rowHeight,
-        i % 2 === 0 ? 0x151e2b : 0x151e2b,
-        0.96,
-      )
-        .setStrokeStyle(1, leveledUp ? 0xc7a94f : 0x384859)
-        .setDepth(2);
-      row._combatFxTag = "victory-party-row";
-      roundedRectangle(
-        this,
-        55,
-        rowY,
-        4,
-        rowHeight - (mobileVictory ? 18 : 8),
-        leveledUp ? 0xf1cb66 : alive ? 0x384859 : 0x8b4a52,
-        1,
-      ).setDepth(3);
-
-      const cs = CLASS_SPRITES[p.sprite_id || p.class_id];
-      if (cs && this.textures.exists(cs)) {
-        const sprite = this.add
-          .image(mobileVictory ? 105 : 84, rowY, cs)
-          .setDepth(3);
-        sprite.setScale(
-          (mobileVictory ? 88 : 44) / Math.max(sprite.width, sprite.height),
-        );
-        if (!alive) sprite.setTint(0x444444);
-      }
-
-      this.add
-        .text(
-          mobileVictory ? 165 : 114,
-          rowY - (mobileVictory ? 40 : 16),
-          `${p.name}`,
-          {
-            fontSize: mobileVictory ? "28px" : "15px",
-            color: alive ? "#f5f8fc" : "#7c8793",
-            fontFamily: "Arial, sans-serif",
-            fontStyle: "bold",
-          },
-        )
-        .setDepth(3);
-      const levelText = this.add
-        .text(
-          mobileVictory ? 165 : 114,
-          rowY - (mobileVictory ? 4 : -6),
-          `${p.class_name}  ·  Lv ${p.level}`,
-          {
-            fontSize: mobileVictory ? "18px" : "10px",
-            color: alive ? "#9cb3ca" : "#65717d",
-            fontFamily: "Arial, sans-serif",
-          },
-        )
-        .setDepth(3);
-
-      this.add
-        .text(
-          mobileVictory ? 165 : 250,
-          rowY + (mobileVictory ? 28 : -16),
-          `HP  ${p.hp} / ${p.max_hp}`,
-          {
-            fontSize: mobileVictory ? "19px" : "11px",
-            color: alive ? "#a7e4c0" : "#9b666c",
-            fontFamily: "Arial, sans-serif",
-            fontStyle: "bold",
-          },
-        )
-        .setDepth(3);
-      this.add
-        .text(
-          mobileVictory ? 430 : 250,
-          rowY - (mobileVictory ? 38 : -7),
-          diedThisFight
-            ? "NO XP · DEFEATED"
-            : partyXP[i] == null
-              ? "XP updated"
-              : `+${partyXP[i]} XP`,
-          {
-            fontSize: mobileVictory ? "18px" : "10px",
-            color: diedThisFight ? "#d77b82" : "#89c9f2",
-            fontFamily: "Arial, sans-serif",
-            fontStyle: "bold",
-          },
-        )
-        .setDepth(3);
-
-      this.add
-        .text(
-          mobileVictory ? 430 : 395,
-          rowY - (mobileVictory ? 4 : 17),
-          `XP  ${p.xp} / ${p.xp_next}`,
-          {
-            fontSize: mobileVictory ? "16px" : "9px",
-            color: diedThisFight ? "#65717d" : "#a8bed4",
-            fontFamily: "Arial, sans-serif",
-          },
-        )
-        .setDepth(3);
-      const progressX = mobileVictory ? 430 : 395;
-      const progressY = rowY + (mobileVictory ? 34 : 10);
-      roundedRectangle(
-        this,
-        progressX,
-        progressY,
-        barW,
-        mobileVictory ? 14 : 8,
-        0x151e2b,
-        1,
-      )
-        .setOrigin(0, 0.5)
-        .setStrokeStyle(1, 0x384859)
-        .setDepth(3);
-
-      const delay = 450 + i * 650;
-
-      if (diedThisFight) {
-        // Defeat prevents a reward, but does not erase previously earned XP.
-        const retainedXP =
-          p.xp_next > 0 ? Math.max(0, Math.min(1, p.xp / p.xp_next)) : 0;
-        if (retainedXP > 0) {
-          roundedRectangle(
-            this,
-            progressX,
-            progressY,
-            barW * retainedXP,
-            mobileVictory ? 14 : 8,
-            0x65717d,
-          )
-            .setOrigin(0, 0.5)
-            .setDepth(4);
-        }
-        this.add
-          .text(684, rowY, "DEFEATED", {
-            fontSize: mobileVictory ? "16px" : "10px",
-            color: "#d77b82",
-            fontFamily: "Arial, sans-serif",
-            fontStyle: "bold",
-          })
-          .setOrigin(0.5)
-          .setDepth(3);
-      } else {
-        const segments = buildVictoryXPSegments({
-          prevXP,
-          currentXP: p.xp,
-          xpNext: p.xp_next,
-          xpThresholds: xpThresholds[i] || [],
-        });
-        const firstSegment = segments[0] || null;
-        const firstMax = firstSegment?.max || p.xp_next;
-        const firstWidth =
-          firstMax > 0 ? (barW * firstSegment.start) / firstMax : 0;
-
-        const xpBarFill = roundedRectangle(
-          this,
-          progressX,
-          progressY,
-          firstWidth,
-          mobileVictory ? 14 : 8,
-          0x384859,
-        )
-          .setOrigin(0, 0.5)
-          .setDepth(4);
-
-        const xpTweens = [];
-        const animateSegment = (segmentIdx) => {
-          if (segmentIdx >= segments.length) {
-            xpBarFill.setSize(
-              p.xp_next > 0 ? (barW * p.xp) / p.xp_next : 0,
-              xpBarFill.height,
-            );
-            return;
-          }
-
-          const segment = segments[segmentIdx];
-          const startWidth =
-            segment.max > 0 ? (barW * segment.start) / segment.max : 0;
-          const endWidth =
-            segment.max > 0 ? (barW * segment.end) / segment.max : 0;
-          xpBarFill.setSize(startWidth, xpBarFill.height);
-
-          if (segment.start === segment.end) {
-            animateSegment(segmentIdx + 1);
-            return;
-          }
-
-          const tween = this.tweens.add({
-            targets: xpBarFill,
-            width: endWidth,
-            onUpdate: () =>
-              xpBarFill.setSize(xpBarFill.width, xpBarFill.height),
-            duration: Math.max(150, Math.floor(1200 / segments.length)),
-            ease: "Power2",
-            onComplete: () => {
-              xpBarFill.setSize(endWidth, xpBarFill.height);
-              animateSegment(segmentIdx + 1);
-            },
-          });
-          xpTweens.push(tween);
-        };
-
-        const xpTimer = this.time.delayedCall(delay, () => animateSegment(0));
-        this.victoryPendingTimers.push({
-          timer: xpTimer,
-          finalize: () => {
-            for (const tween of xpTweens) tween.stop();
-            xpBarFill.setSize(
-              p.xp_next > 0 ? (barW * p.xp) / p.xp_next : 0,
-              xpBarFill.height,
-            );
-          },
-        });
-        this.victoryFinalizers.push(() => {
-          for (const tween of xpTweens) tween.stop();
-          xpBarFill.setSize(
-            p.xp_next > 0 ? (barW * p.xp) / p.xp_next : 0,
-            xpBarFill.height,
-          );
-        });
-      }
-
-      if (leveledUp) {
-        const badgeBg = roundedRectangle(
-          this,
-          684,
-          rowY,
-          mobileVictory ? 116 : 102,
-          mobileVictory ? 44 : 28,
-          0x5b4614,
-          1,
-        )
-          .setStrokeStyle(1, 0xf1cb66)
-          .setAlpha(0)
-          .setDepth(4);
-        const badgeText = this.add
-          .text(684, rowY, "LEVEL UP", {
-            fontSize: mobileVictory ? "15px" : "10px",
-            color: "#ffe496",
-            fontFamily: "Arial, sans-serif",
-            fontStyle: "bold",
-          })
-          .setOrigin(0.5)
-          .setAlpha(0)
-          .setDepth(5);
-
-        const runLevelUp = (instant) => {
-          const flash = roundedRectangle(
-            this,
-            400,
-            rowY,
-            696,
-            rowHeight,
-            0xf1cb66,
-            0.2,
-          );
-          badgeBg.setAlpha(1);
-          badgeText.setAlpha(1);
-
-          if (instant) {
-            flash.destroy();
-          } else {
-            const flashTween = this.tweens.add({
-              targets: flash,
-              alpha: 0,
-              duration: 600,
-              onComplete: () => flash.destroy(),
-            });
-            this.victoryFinalizers.push(() => {
-              flashTween.stop();
-              if (flash.active) flash.destroy();
-            });
-          }
-
-          levelText
-            .setText(`${p.class_name}  ·  Lv ${p.level}`)
-            .setColor("#ffe496");
-        };
-
-        const lvlTimer = this.time.delayedCall(delay + 1300, () =>
-          runLevelUp(false),
-        );
-        this.victoryPendingTimers.push({
-          timer: lvlTimer,
-          finalize: () => runLevelUp(true),
-        });
-      }
-    }
-
-    const spoilsPanel = drawPanel(
-      this,
-      400,
-      resultLayout.spoilsY,
-      696,
-      resultLayout.spoilsHeight,
-      {
-        fill: 0x151e2b,
-        fillAlpha: 0.96,
-        stroke: 0x384859,
-        strokeWidth: 1,
-        depth: 2,
-        interactive: false,
+    this.victoryReceipt = showVictoryReceipt(this, gs, {
+      onContinue: () => this.returnFromBattle(this.gameState),
+      onTallyDone: () => {
+        this.victoryFastForwarded = true;
       },
-    );
-    spoilsPanel.bg._combatFxTag = "victory-spoils-panel";
-    this.add
-      .text(
-        68,
-        resultLayout.spoilsY - resultLayout.spoilsHeight / 2 + 14,
-        "RECOVERED",
-        {
-          fontSize: mobileVictory ? "18px" : "9px",
-          color: "#82b9df",
-          fontFamily: "Arial, sans-serif",
-          fontStyle: "bold",
-        },
-      )
-      .setDepth(3);
-    const detailLines = [formatSpoils(summary), ...summary.quests];
-    this.add
-      .text(
-        68,
-        resultLayout.spoilsY -
-          resultLayout.spoilsHeight / 2 +
-          (mobileVictory ? 48 : 28),
-        detailLines.join("  ·  "),
-        {
-          fontSize: mobileVictory ? "20px" : "11px",
-          color: summary.found.length > 0 ? "#b8e6c3" : "#91a6bb",
-          fontFamily: "Arial, sans-serif",
-          wordWrap: {
-            width: mobileVictory ? 640 : 430,
-            useAdvancedWrap: true,
-          },
-          lineSpacing: 2,
-        },
-      )
-      .setDepth(3);
-    this.add
-      .text(
-        732,
-        resultLayout.spoilsY +
-          resultLayout.spoilsHeight / 2 -
-          (mobileVictory ? 28 : 26),
-        `POTIONS  ${gs.potions || 0}   ·   ETHER  ${totalEther}`,
-        {
-          fontSize: mobileVictory ? "17px" : "10px",
-          color: "#9bb6d2",
-          fontFamily: "Arial, sans-serif",
-          fontStyle: "bold",
-        },
-      )
-      .setOrigin(1, 0.5)
-      .setDepth(3);
-
-    const contTimer = this.time.delayedCall(
-      450 + gs.party.length * 650 + 900,
-      () => this.fastForwardVictoryResults(gs),
-    );
-    this.victoryPendingTimers.push({
-      timer: contTimer,
-      finalize: () => this.fastForwardVictoryResults(gs),
     });
-
-    // Navigation must not depend on the tally clock progressing. The player
-    // can watch the animation, skip it, or explicitly leave once results exist.
-    // Earned equipment still goes through the authoritative loot review first.
     this.finalizeVictory(gs);
   }
 
-  fastForwardVictoryResults(gs) {
-    if (this.victoryFastForwarded) return;
-    this.victoryFastForwarded = true;
-
-    const first = this.victoryFinalizers;
-    this.victoryFinalizers = [];
-    for (const fn of first) fn();
-
-    const timers = this.victoryPendingTimers;
-    this.victoryPendingTimers = [];
-    for (const { timer, finalize } of timers) {
-      if (timer && !timer.hasDispatched) {
-        timer.remove(false);
-      }
-      finalize();
-    }
-
-    // Level-up finalizers may have pushed additional flash/text finalizers;
-    // snap those too so nothing is left mid-tween.
-    const late = this.victoryFinalizers;
-    this.victoryFinalizers = [];
-    for (const fn of late) fn();
+  fastForwardVictoryResults() {
+    this.victoryReceipt?.finish();
   }
 
   finalizeVictory(gs) {
     if (this.victoryContinueShown) return;
     this.victoryContinueShown = true;
-    if (this.victoryFFHandler) {
-      this.input.keyboard.off("keydown-SPACE", this.victoryFFHandler);
-      this.victoryFFHandler = null;
-    }
     if (pendingEquipmentDrops(gs).length > 0) {
+      this.victoryReceipt?.suspend();
       showPostBattleLoot(this, gs, {
         onComplete: (latest) => this.addContinueButton(latest),
         requestTimeoutMs: this.postBattleLootRequestTimeoutMs,
@@ -5599,41 +5004,7 @@ export class BattleScene extends Phaser.Scene {
     this.addContinueButton(gs);
   }
 
-  addContinueButton(gs) {
-    let continuing = false;
-    const continueBattle = () => {
-      if (continuing) return;
-      continuing = true;
-      this.fastForwardVictoryResults(gs);
-      this.returnFromBattle(gs);
-    };
-    const layout = this.victoryResultLayout || {
-      continueY: 545,
-      continueWidth: 150,
-      continueHeight: 34,
-      continueFontSize: "16px",
-    };
-    drawButton(
-      this,
-      400,
-      layout.continueY,
-      layout.continueWidth,
-      layout.continueHeight,
-      "Continue",
-      continueBattle,
-      {
-        depth: 8,
-        fontSize: layout.continueFontSize,
-        fill: 0x1c2736,
-        fillHover: 0x384859,
-        stroke: 0x9cdfb4,
-        fontFamily: "Arial",
-      },
-    );
-    this.input.keyboard.on("keydown-ENTER", continueBattle);
-    this.input.keyboard.on("keydown-SPACE", () => {
-      if (!this.victoryFastForwarded) this.fastForwardVictoryResults(gs);
-      else continueBattle();
-    });
+  addContinueButton() {
+    this.victoryReceipt?.enableContinue();
   }
 }

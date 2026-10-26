@@ -1,4 +1,8 @@
-import { pauseWorldFor, resumeWorldFor } from "../systems/modalLock.js";
+import {
+  pauseWorldFor,
+  resumeWorldFor,
+  topWorldLock,
+} from "../systems/modalLock.js";
 import "../styles/viewport-dialog.css";
 import { menuKeyboard } from "./menu_keyboard.js";
 
@@ -43,6 +47,8 @@ export function viewportDialog(scene, { key, title, onEscape, onKey }) {
     root.addEventListener(type, (event) => event.stopPropagation());
   }
   function keydown(event) {
+    // Only the top dialog owns input when a receipt opens earned-loot review.
+    if (topWorldLock(scene) !== key) return;
     // Capture before Phaser's window listeners, including the closing Escape.
     event.stopImmediatePropagation();
     if (event.key === "Escape") {

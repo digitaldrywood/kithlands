@@ -1,5 +1,7 @@
 # Playability work tracker
 
+- Victory receipts now use responsive 14px+ text, scrolling party details and fixed native Continue controls. Natural/skip/reduced XP tally, KO retention, long names and consecutive battles pass across desktop/default/short-phone/phone sizes; stale ready flags and detached Continue handles are cleared between encounters. 838 client tests/build/format, seven gathering cases, eight reentry/loot cases and the 89.509s normal phone opening replay pass; current proof captures inspected. See `RESPONSIVE_VICTORY_PROOF.md`. Fresh hosted gate remains pending; Wizard/secondary text, remaining art/environment/choreography and human first-visit pacing stay open.
+
 - Hosted `beec7c5` run `40281199697` passes seven visual groups; gameplay passes 46/47 and exposes a shop expectation that incorrectly demanded `Abs +0` for equal rolled armor. The test now requires exact positive/negative/neutral formatting, preserving comparison/purchase/equipment checks; native shop flow passes. See `SHOP_COMPARE_CI_PROOF.md`. A fresh hosted gate remains required.
 
 - Character summary now uses readable 14px primary stats/resources/tabs and ordinary stacked phone flow above the loadout. A stronger containment check catches the initially rejected overflowing layout. Four final loadout and five saved-build/effective-equipment cases pass, including native phone touch, real spell combat and save/reload; all 53 final captures and the actual local Character screen inspected. 838 client tests/build/format pass. See `CHARACTER_SUMMARY_READABILITY_PROOF.md`; secondary metadata, Wizard/victory typography and staff artwork remain open.
@@ -125,7 +127,7 @@ The active goal is the complete user-pasted request, not only this checklist. Ex
 
 ## Subsequent work
 
-- Improve portrait Wizard and victory receipt readability, plus secondary equipment metadata/spell-card fonts. Primary Character summary acceptance is recorded above. Verify Arcane Staff and remaining equipment fallback icons rather than accepting letter tiles as finished artwork.
+- Improve portrait Wizard and ordinary defeat-screen readability, plus secondary equipment metadata/spell-card fonts. Victory receipt acceptance is recorded above. Primary Character summary acceptance is recorded above. Verify Arcane Staff, Hand Axe and remaining equipment fallback icons rather than accepting letter tiles as finished artwork.
 
 - Complete dense single-target critical and counter/more-than-two-hit result-label acceptance beyond the verified Warrior two-hit/mixed-critical/server-Miss, Cinder default/Fast and five-target Blaze references. Review small floating action titles and victory-detail text separately.
 

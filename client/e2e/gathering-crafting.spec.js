@@ -441,8 +441,7 @@ for (const [width, height] of [
         const scene = window.__gatherGame.scene.getScene("Battle");
         scene.victoryClockFaultFixture = false;
         const freeze = () => {
-          if (!scene.children.list.some((child) => child.text === "VICTORY!"))
-            return;
+          if (!scene.victoryReceipt?.dialog.root.isConnected) return;
           scene.time.paused = true;
           scene.victoryClockFaultFixture = true;
           scene.events.off("postupdate", freeze);

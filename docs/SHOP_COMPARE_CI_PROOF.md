@@ -18,5 +18,8 @@ unchanged. Existing unit coverage explicitly checks neutral zero/grey output.
 No timeout, seed coverage or gameplay assertions were removed.
 
 `shop-compare-ci-recovery-1793073500.log`: the real shop flow passes in 4.4s.
-Screenshot inspection and the new hosted gate are recorded separately when
-complete. This repairs a browser expectation, not an equipment balance issue.
+All four uniquely named `client/e2e/tmp/issue-202-*-1792998529606.png`
+captures inspected via `client/tmp/shop-ci-review-1793073900.jpg`: eligible/locked
+member choices, exact positive deltas, purchase and equipment path remain intact.
+That local roll has positive deltas; the equal-roll failure is established by
+the hosted log and the neutral format contract. New hosted gate remains pending. This repairs a browser expectation, not an equipment balance issue.

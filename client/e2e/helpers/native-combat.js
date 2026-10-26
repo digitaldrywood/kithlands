@@ -47,10 +47,52 @@ export async function fightNormally(page, onRound = async () => {}) {
       await page.waitForFunction(() =>
         window.__kithlandsTest.interactiveTextPosition("Continue", "Battle"),
       );
-      await clickRouteText(page, "Continue", "Battle");
-      await page.waitForFunction(
-        () => window.__kithlandsTest.activeSceneKey() !== "Battle",
-      );
+      await page.evaluate(() => {
+        window.__receiptInputEvents = [];
+        window.__receiptInputListener = (event) => {
+          const button = document.querySelector(".victory-continue");
+          const rect = button?.getBoundingClientRect();
+          window.__receiptInputEvents.push({
+            type: event.type,
+            target: event.target?.tagName,
+            text: event.target?.textContent?.slice(0, 100),
+            x: event.clientX,
+            y: event.clientY,
+            button: rect
+              ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+              : null,
+          });
+        };
+        for (const type of ["pointerdown", "pointerup", "click"])
+          window.addEventListener(type, window.__receiptInputListener, true);
+      });
+      try {
+        await clickRouteText(page, "Continue", "Battle");
+        await page.waitForFunction(
+          () => window.__kithlandsTest.activeSceneKey() !== "Battle",
+        );
+      } catch (error) {
+        const audit = await page.evaluate(() => ({
+          events: window.__receiptInputEvents,
+          active: window.__kithlandsTest.activeSceneKey(),
+          phase: window.__kithlandsTest.gameState("Battle")?.phase,
+          input: window.__kithlandsTest.sceneInputSnapshot("Battle"),
+          receipt: document.querySelector(".victory-receipt")?.outerHTML,
+        }));
+        throw new Error(
+          `${error.message}\nReceipt pointer audit: ${JSON.stringify(audit)}`,
+        );
+      } finally {
+        await page.evaluate(() => {
+          for (const type of ["pointerdown", "pointerup", "click"])
+            window.removeEventListener(
+              type,
+              window.__receiptInputListener,
+              true,
+            );
+          delete window.__receiptInputListener;
+        });
+      }
       return {
         key: await page.evaluate(() => window.__kithlandsTest.activeSceneKey()),
         state,
