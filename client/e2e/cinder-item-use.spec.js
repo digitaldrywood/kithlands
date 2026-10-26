@@ -153,7 +153,17 @@ for (const [width, reduced, itemID, itemName] of [
           r.request().postDataJSON()?.type === "combat_round",
       );
       const target = page.getByRole("button", {
-        name: new RegExp(`^Hero · ${itemID === "potion" ? 10 : 25}/`),
+        name: `Hero · ${itemID === "potion" ? `${before.party[0].hp}/${before.party[0].max_hp} HP` : `${before.party[0].mp}/${before.party[0].max_mp} MP`}`,
+        exact: true,
+      });
+      await expect(target).toBeEnabled();
+      await expect(page.locator(".battle-choice-detail")).toContainText(
+        itemID === "potion"
+          ? `${before.party[0].hp}/${before.party[0].max_hp} HP`
+          : `${before.party[0].mp}/${before.party[0].max_mp} MP`,
+      );
+      await page.screenshot({
+        path: path.join(proof, `${width}-${itemID}-target-resource.png`),
       });
       if (width === 390) await target.tap();
       else await target.click();

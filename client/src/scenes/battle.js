@@ -3098,7 +3098,7 @@ export class BattleScene extends Phaser.Scene {
         label: target.name,
         detail:
           side === "party"
-            ? `${target.hp}/${target.max_hp} HP · ${target.mp ?? 0}/${target.max_mp ?? 0} MP`
+            ? `${target.hp}/${target.max_hp} HP${target.max_mp > 0 ? ` · ${target.mp ?? 0}/${target.max_mp} MP` : ""}`
             : target.intent?.label ||
               `${kind === "spell" ? "Cast magic" : kind === "ability" ? "Use ability" : "Attack"} on ${target.name}`,
         onInspect: () => {
@@ -3317,20 +3317,26 @@ export class BattleScene extends Phaser.Scene {
         action: () =>
           this.showBattleChoices(
             `${item.name} · Choose ally`,
-            this.gameState.party.map((target, targetSlot) => ({
-              label: `${target.name} · ${target.hp}/${target.max_hp} HP`,
-              detail: `${item.description} · ${target.mp ?? 0}/${target.max_mp ?? 0} MP`,
-              disabled: !canUseOnTarget(item, target),
-              action: () => {
-                this.closePicker();
-                this.recordAction(slot, {
-                  slot,
-                  type: item.id === "phoenix_down" ? "revive" : "item",
-                  target_id: targetSlot,
-                  item_id: item.id,
-                });
-              },
-            })),
+            this.gameState.party.map((target, targetSlot) => {
+              const resource =
+                item.effect === "restore_mp"
+                  ? `${target.mp ?? 0}/${target.max_mp ?? 0} MP`
+                  : `${target.hp}/${target.max_hp} HP`;
+              return {
+                label: `${target.name} · ${resource}`,
+                detail: `${item.description} · ${resource}`,
+                disabled: !canUseOnTarget(item, target),
+                action: () => {
+                  this.closePicker();
+                  this.recordAction(slot, {
+                    slot,
+                    type: item.id === "phoenix_down" ? "revive" : "item",
+                    target_id: targetSlot,
+                    item_id: item.id,
+                  });
+                },
+              };
+            }),
             () => this.showItemPicker(slot),
           ),
       })),

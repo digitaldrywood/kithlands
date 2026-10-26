@@ -64,7 +64,7 @@ jobs:
         run: ./scripts/run_playwright_local.sh e2e/battle-continuity.spec.js e2e/battle-stop-auto.spec.js e2e/battle-defend.spec.js e2e/warrior-hit-reaction.spec.js e2e/cinder-hit-reaction.spec.js e2e/warrior-ko-revive.spec.js e2e/cinder-ko-reaction.spec.js e2e/cinder-ko-revive.spec.js e2e/warrior-item-use.spec.js e2e/cinder-item-use.spec.js e2e/warrior-victory.spec.js e2e/cinder-victory.spec.js e2e/cinder-melee.spec.js e2e/warrior-defend-route.spec.js e2e/cinder-defend-route.spec.js e2e/all-class-battle-states.spec.js e2e/battle-context-choices.spec.js e2e/enemy-tactics.spec.js e2e/bandit-guard.spec.js e2e/battle-hud-workstream.spec.js e2e/victory-receipt.spec.js e2e/victory-advance.spec.js e2e/defeat-receipt.spec.js
       - name: Verify physical combat animation and readable per-hit results
         if: matrix.suite == 'combat-effects'
-        run: ./scripts/run_playwright_local.sh e2e/warrior-critical.spec.js e2e/combat-text-readability.spec.js e2e/battle-crowded-results.spec.js e2e/battle-multi-hit.spec.js e2e/battle-counter-hits.spec.js e2e/battle-action-title.spec.js
+        run: ./scripts/run_playwright_local.sh e2e/warrior-critical.spec.js e2e/combat-text-readability.spec.js e2e/battle-crowded-results.spec.js e2e/battle-multi-hit.spec.js e2e/battle-counter-hits.spec.js e2e/battle-action-title.spec.js e2e/reference-combat-journey.spec.js
       - name: Verify spell release, contact, recovery, and readable status outcomes
         if: matrix.suite == 'spell-effects'
         run: ./scripts/run_playwright_local.sh e2e/cinder-frost.spec.js e2e/cinder-lightning.spec.js e2e/cinder-ice-family.spec.js e2e/status-spell-feedback.spec.js
@@ -126,6 +126,7 @@ jobs:
             client/tmp/cinder-ko-revive-*/
             client/tmp/warrior-item-use-*/
             client/tmp/cinder-item-use-*/
+            client/tmp/reference-combat-journey-*/
             client/tmp/warrior-victory-*/
             client/tmp/cinder-victory-*/
             client/tmp/cinder-melee-*/
