@@ -324,3 +324,17 @@ Desktop, touch portrait and reduced-motion release/contact/recovery evidence,
 plus a normal fresh-party purchase/use/save route, are recorded in
 `docs/CINDER_FROST_PROOF.md`. This is an accepted spell slice, not approval of
 all elemental spells or Cinder's complete action vocabulary.
+
+### Warrior sword Defend
+
+Warrior Defend now selects a separate three-cell 576×192 body atlas with the
+existing guard plus individually guided settle and low-brace poses. The
+192px RGBA cells retain [96,184] container registration and empty gloves;
+shared frame sockets raise the separate equipped sword toward the visor.
+Playback enters, holds brace, recovers and resets to the approved idle atlas;
+reduced motion retains the brace cue. This does not replace the approved
+attack or critical body images or expand the pattern to other classes.
+
+`docs/WARRIOR_DEFEND_POSE_PROOF.md` records actual guarded rounds, fresh normal
+Old Mill desktop/phone routes, source/frame inspection, regression gates and
+remaining class-action limitations.

@@ -1,0 +1,42 @@
+{
+  "status": "approved_runtime",
+  "generated_on": "2026-10-26",
+  "generator": "OpenAI built-in image_gen (model identifier not returned)",
+  "identity_reference": "art-source/characters/warrior/battle/sword-attack/frame-00.png",
+  "guide_paths": [
+    "../../guides/sword-defend-settle.svg",
+    "../../guides/sword-defend-brace.svg"
+  ],
+  "frame_contract": {
+    "frame_size": [
+      192,
+      192
+    ],
+    "atlas_size": [
+      576,
+      192
+    ],
+    "order": [
+      "guard",
+      "settle",
+      "brace"
+    ],
+    "container_anchor": [
+      96,
+      184
+    ],
+    "body_baseline": 180,
+    "weapon_baked_in": false
+  },
+  "generation_outputs": [
+    "exec-cbc607a1-fdd3-4a6c-baa5-7d5f96bd7d85.png",
+    "exec-c4e6f455-2763-45b3-ab13-4f9d9365d2e5.png"
+  ],
+  "normalization": "Transparent alpha retained; occupied bbox at alpha>8; nearest-neighbor uniform resize to 158px settle / 152px brace, bottom at y180; original guard unchanged.",
+  "notes": "Source frames, real guarded-round traces, desktop/phone/reduced-motion captures and normal Old Mill route inspected by Codex. Acceptance is limited to Warrior Defend; approved attack atlas is unchanged. Raw generated output remains under client/tmp/warrior-defend-candidate-1793042700.",
+  "prompts": {
+    "brace": "Use case: identity-preserve game sprite frame. Image 1 is the locked original Kithlands Warrior identity and exact pixel-art rendering style; image 2 is a skeleton pose guide only. Produce ONE body-only full-body battle DEFEND BRACE pose of that SAME Warrior, three-quarter facing screen-left. Follow guide: feet wide and planted, knees visibly bent, weight lowered, upper body compact, helmet slightly tucked behind the raised empty weapon fist at chest height toward screen-left; free arm across torso. Preserve silver plate helmet with black visor, gold armor trim, blue plume, blue cape, armored proportions and exact restrained pixel palette of image 1. Both gloves EMPTY; weapon and shield are rendered separately later. Full character centered in square transparent canvas, entire helmet/plume/cape/hands/boots visible, clear margins, feet on common baseline about 94% down image. Body silhouette occupies ~80% canvas height, stable scale. Crisp pixel clusters at equivalent original 192x192 sprite detail; no painterly smoothing. Transparent background. NO sword, shield, staff, magic, aura, shadow, ground, text, outline box or extra accessories. Output one pose, not a sheet or collage.",
+    "settle": "Use case identity-preserve. ONE original Kithlands Warrior pixel-art battle body frame on transparent background. Image 1 is locked approved identity and idle guard. Image 2 is same Warrior low defensive brace candidate. Image 3 is precise INTERMEDIATE SETTLING pose guide. Create the transition halfway from image1 into image2: knees slightly bent, head tucked slightly, weapon hand empty at chest height screen-left but still farther away from face than image2. Free forearm across breastplate. Preserve exactly the helmet, blue plume, silver plate, gold trim, cape identity and pixel cluster style, body proportions, camera facing three-quarter left of image1. Feet planted at same ground, wide enough for stable brace. Full-body isolated, margin around entire plume/cape/hands/boots. Crisp pixel art detail equivalent 192x192 original. NO sword, shield, staff, weapon, magic, shadow, scenery, text, grid or UI. Both gloves are empty. One pose only. Do not use image3's stick figure appearance; it guides limbs only. Keep camera and armor scale consistent."
+  },
+  "seed": "Not returned by built-in tool"
+}

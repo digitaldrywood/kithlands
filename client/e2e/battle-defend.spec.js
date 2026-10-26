@@ -79,6 +79,15 @@ for (const [width, height, reducedMotion] of [
             previous = key;
             window.__guardProof.frames.push({
               frame: hero.battleFrameIndex,
+              at: performance.now(),
+              texture: hero.battleBody?.texture?.key,
+              feetOffset: hero.battleBody?.y + hero.battleFeetOffset,
+              weapon: hero.battleAttachmentLayers?.map((layer) => ({
+                x: layer.front.x,
+                y: layer.front.y,
+                angle: layer.front.angle,
+                visible: layer.front.visible,
+              })),
               bodyX: hero.battleBody?.x,
               bodyY: hero.battleBody?.y,
               x: hero.x,
@@ -250,11 +259,36 @@ for (const [width, height, reducedMotion] of [
         { timeout: 60000 },
       );
       await capture("recovered");
+      expect(
+        await page.evaluate(() => {
+          const hero =
+            window.__guardGame.scene.getScene("Battle").partySprites.Hero
+              .sprite;
+          return {
+            state: hero.battleState,
+            texture: hero.battleBody.texture.key,
+            frame: hero.battleFrameIndex,
+          };
+        }),
+      ).toEqual({
+        state: "idle_guard",
+        texture: "battle_warrior_sword_attack_body",
+        frame: 0,
+      });
       const data = await page.evaluate(() => {
         window.__guardGame.events.off("postrender", window.__guardCapture);
         return window.__guardProof;
       });
       expect(data.frames.length).toBeGreaterThan(0);
+      expect(data.frames.some((frame) => frame.frame === 2)).toBe(true);
+      expect(
+        data.frames.every(
+          (frame) =>
+            frame.texture === "battle_warrior_sword_defend_body" &&
+            frame.bodyX === 0 &&
+            frame.feetOffset === 0,
+        ),
+      ).toBe(true);
       expect(
         data.frames.every(
           (frame) => frame.shadowDelta !== null && frame.shadowDelta < 0.5,

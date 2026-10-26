@@ -28,6 +28,7 @@ const STATE_IDS = [
 const PROOF_FRAME = {
   idle_guard: 0,
   physical_attack: 3,
+  critical_attack: 3,
   cast_class_ability: 3,
   defend: 2,
   hit_reaction: 2,
@@ -80,7 +81,7 @@ async function selectLayeredEquipment(page, identityID) {
 test.describe("all-class battle state contract", () => {
   test.describe.configure({ timeout: 240_000 });
 
-  test("renders and plays all eight states for all twelve identities", async ({
+  test("renders required and authored optional states for all twelve identities", async ({
     page,
   }, testInfo) => {
     const initial = await openAudit(page);
@@ -92,9 +93,13 @@ test.describe("all-class battle state contract", () => {
       const audit = await selectLayeredEquipment(page, identityID);
       expect(audit.identityID).toBe(identityID);
       expect(audit.layerAvailable, identityID).toBe(true);
-      expect(audit.availableStates, identityID).toEqual(STATE_IDS);
+      const identityStates =
+        identityID === "warrior"
+          ? [...STATE_IDS, "critical_attack"]
+          : STATE_IDS;
+      expect(audit.availableStates, identityID).toEqual(identityStates);
 
-      for (const stateID of STATE_IDS) {
+      for (const stateID of identityStates) {
         const preview = await page.evaluate(
           ({ actor, state, frame }) =>
             window.__kithlandsTest.previewBattleCharacterStateFrame(

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import authoredCatalog from "../../../shared/battle_characters.json";
 
 import {
   BATTLE_CHARACTER_CATALOG,
@@ -54,16 +55,20 @@ describe("shared battle character catalog", () => {
           : BATTLE_CHARACTER_CATALOG.required_states,
       );
       const signature = profile.states[profile.default_state];
+      const authored = authoredCatalog.classes.find(
+        ({ id }) => id === profile.id,
+      );
       for (const stateID of BATTLE_CHARACTER_CATALOG.required_states) {
         const state = profile.states[stateID];
         expect(state.frames.length, `${profile.id}/${stateID}`).toBeGreaterThan(
           0,
         );
+        const expected = authored.states[stateID] || signature;
         expect(state.body_key, `${profile.id}/${stateID}`).toBe(
-          signature.body_key,
+          expected.body_key,
         );
         expect(state.body_path, `${profile.id}/${stateID}`).toBe(
-          signature.body_path,
+          expected.body_path,
         );
       }
       expect(profile.states.ko_defeated.hold_last_frame, profile.id).toBe(true);
@@ -154,6 +159,7 @@ describe("shared battle character catalog", () => {
     ]);
     expect(battleBodyAssets().map(({ key }) => key)).toEqual([
       "battle_warrior_sword_attack_body",
+      "battle_warrior_sword_defend_body",
       "battle_brawler_unarmed_strike_body",
       "battle_rogue_dagger_slash_body",
       "battle_mender_staff_cast_body",
