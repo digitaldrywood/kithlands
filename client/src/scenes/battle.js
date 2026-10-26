@@ -1,3 +1,4 @@
+import { battleActionTitle } from "../ui/battle_action_title.js";
 import { showDefeatReceipt } from "./defeat_receipt.js";
 import { portraitFontSize } from "../systems/gameplayViewport.js";
 import { combatReadTime } from "../ui/combat_read_time.js";
@@ -2074,85 +2075,15 @@ export class BattleScene extends Phaser.Scene {
   }
 
   showActionTitle(anchorEntry, label, color = "#ffffff") {
-    const title = String(label || "")
-      .trim()
-      .toUpperCase();
-    if (!title) return Promise.resolve();
-
-    const anchor = this.resolveVisualEntry(anchorEntry) || {
-      x: 400,
-      y: 250,
-      height: 56,
-    };
-    const actorName = String(anchorEntry?.name || "")
-      .trim()
-      .toUpperCase();
-    const width = Math.max(
-      112,
-      title.length * 11 + 30,
-      actorName.length * 8 + 30,
+    if (!String(label || "").trim()) return Promise.resolve();
+    this.actionTitle?.dispose();
+    this.actionTitle = battleActionTitle(
+      this,
+      anchorEntry?.name,
+      label,
+      color,
+      this.scaledMs(ACTION_BEAT_MS.titleDisplay),
     );
-    const panelY = Math.max(48, anchor.y - anchor.height / 2 - 42);
-    const bg = this.add
-      .rectangle(anchor.x, panelY, width, 42, 0x151e2b, 0.94)
-      .setDepth(23)
-      .setStrokeStyle(2, 0x2f3444)
-      .setAlpha(0);
-    bg._combatFxTag = "title-card";
-    const accent = this.add
-      .rectangle(anchor.x - width / 2 + 10, panelY, 6, 32, 0xffffff, 1)
-      .setDepth(24)
-      .setAlpha(0);
-    const actorText = this.add
-      .text(anchor.x, panelY - 10, actorName, {
-        fontSize: "9px",
-        color: "#d6deef",
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5)
-      .setDepth(24)
-      .setAlpha(0);
-    actorText._combatFxTag = "title-actor";
-    const actionText = this.add
-      .text(anchor.x, panelY + 8, title, {
-        fontSize: "15px",
-        color,
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5)
-      .setDepth(24)
-      .setAlpha(0);
-    actionText._combatFxTag = "title-action";
-
-    this.tweens.add({
-      targets: [bg, accent, actorText, actionText],
-      alpha: 1,
-      duration: this.scaledMs(120),
-      ease: "Back.easeOut",
-    });
-    this.tweens.add({
-      targets: [bg, accent, actorText, actionText],
-      y: "-=4",
-      duration: this.scaledMs(120),
-      ease: "Back.easeOut",
-    });
-    this.scaledDelay(ACTION_BEAT_MS.titleDisplay, () => {
-      this.tweens.add({
-        targets: [bg, accent, actorText, actionText],
-        alpha: 0,
-        y: "-=8",
-        duration: this.scaledMs(180),
-        ease: "Quad.In",
-        onComplete: () => {
-          bg.destroy();
-          accent.destroy();
-          actorText.destroy();
-          actionText.destroy();
-        },
-      });
-    });
     return this.wait(ACTION_BEAT_MS.titleLead);
   }
 
@@ -4878,6 +4809,8 @@ export class BattleScene extends Phaser.Scene {
 
   showVictoryResults(gs) {
     if (this.returnFromDungeonDefeat(gs)) return;
+    this.actionTitle?.dispose();
+    this.actionTitle = null;
     // Cancel the floating-text completion callbacks before destroying Text
     // textures; a late pool release would otherwise redraw a destroyed canvas.
     this.floatingText?.destroy();
