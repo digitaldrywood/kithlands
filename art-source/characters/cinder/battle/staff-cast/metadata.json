@@ -1,5 +1,5 @@
 {
-  "status": "visual_approval_pending",
+  "status": "approved_runtime",
   "generated_on": "2026-08-08",
   "generator": "OpenAI built-in imagegen",
   "identity_references": [
@@ -21,5 +21,5 @@
     "grip_origin": [0.5, 0.48]
   },
   "prompt_template": "IDENTITY-PRESERVE Cinder battle frame. Accepted portrait and walk assets lock the crooked violet witch hat, black shadow face with exactly two cyan eyes, slim proportions, deep-purple layered robe and cloak, gold edging and fasteners, red-violet chest gem, dark gloves and boots. The prior sequence frame locks pixel treatment and the authored guide locks the pose. BODY ONLY: no staff, weapon, magic, effect, shadow, text, UI or scenery. Flat chroma-key backdrop, full body visible, common bottom-center baseline.",
-  "notes": "Cinder's first class-specific battle slice. The body remains distinct from Mender and uses the same equipped War Staff attachment through shared item metadata. Installed for aggregate all-class review."
+  "notes": "Cinder's first class-specific battle slice. The body remains distinct from Mender and uses the same equipped War Staff attachment through shared item metadata. Installed for aggregate all-class review. Approval status reconciled with the existing aggregate/runtime acceptance and CINDER_FROST_PROOF.md / CINDER_LIGHTNING_PROOF.md; four native Frost regressions reverified with inspected motion captures on 2026-10-26. No source or runtime cast pixels changed."
 }

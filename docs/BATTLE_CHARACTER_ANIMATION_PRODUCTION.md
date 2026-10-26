@@ -400,3 +400,19 @@ Sources, exact built-in generation prompts and guides are retained in
 Native motion/receipt/World checks and acceptance limits are recorded in
 `WARRIOR_VICTORY_POSE_PROOF.md`. This does not approve other classes' reused
 victory art or close Warrior class-ability/Cinder choreography.
+
+## Cinder surviving-hit reference (2026-10-26)
+
+Cinder `hit_reaction` now overrides the caster recipe with a dedicated
+576×192 atlas, `/sprites/battle/cinder/staff-hit-body.png`. Guard is copied from
+the unchanged accepted cast atlas; new individually guided flinch/recovery cells
+keep occupied height 167px and bottom y182. Playback starts immediately on frame 1
+(95ms), settles through frame 2 (120ms), then guard frame 0 (90ms), with no body
+translation or rotation. Staff grips remain shared-data attachments.
+
+Native Go-resolved hits, normal/reduced motion and unchanged Frost casts are
+verified in `CINDER_HIT_REACTION_PROOF.md`. New source/prompts/guides live in
+`art-source/characters/cinder/battle/staff-hit/metadata.json`. The original cast
+source's stale pending flag is reconciled against the existing accepted cast and
+current Frost proof, without changing its pixels. This accepts surviving-hit
+reactions only; remaining Cinder states retain their separate acceptance gates.
