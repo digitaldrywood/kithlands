@@ -445,3 +445,18 @@ retained with each source package under
 
 These references do not accept Cinder victory/melee, all other identities'
 choreography or the full integrated combat/environment/first-visit backlog.
+
+## Cinder victory reference (2026-10-26)
+
+`victory` uses `/sprites/battle/cinder/staff-victory-body.png`: a576×192 RGBA
+atlas with unchanged guard, hat-tip salute and a small drawn bow. Playback is
+0/1/2/1/0 at80/140/380/140/100ms, cue2. No body translation/rotation; fixed feet
+and shadow, separate visible staff throughout. Both new source cells use167px
+occupied height at bottom y182, anchor(96,184), preserving head/body mass rather
+than shrinking the sprite to simulate a bow.
+
+Exact source prompts, guides, outputs and rejected normalization are retained in
+`art-source/characters/cinder/battle/staff-victory/metadata.json`.
+Real Spark-win/receipt/World acceptance is in `CINDER_VICTORY_POSE_PROOF.md`.
+Cinder physical melee, resource-HUD reconciliation during playback and the full
+integrated combat/environment/first-visit acceptance remain open.
