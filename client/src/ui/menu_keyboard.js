@@ -91,9 +91,20 @@ export function menuKeyboard(root, { scope = () => root } = {}) {
       }
       return true;
     }
-    if (["Enter", " "].includes(event.key) && event.repeat) {
-      event.preventDefault();
-      return true;
+    if (["Enter", " "].includes(event.key)) {
+      const button = event.target?.closest?.("button");
+      // Phaser captures Space's keyup even while its input is paused. Own
+      // button activation on keydown so native menus work consistently, and
+      // prevent the browser's later default click from submitting twice.
+      if (button && current.contains(button)) {
+        event.preventDefault();
+        if (!event.repeat && !button.disabled) button.click();
+        return true;
+      }
+      if (event.repeat) {
+        event.preventDefault();
+        return true;
+      }
     }
     // Only opt-in button groups own arrows. Native fields keep their editing
     // and selection keys, and browsing never activates a costly action.
@@ -106,13 +117,19 @@ export function menuKeyboard(root, { scope = () => root } = {}) {
     ) {
       const group = event.target?.closest?.("[data-menu-arrows]");
       if (group && current.contains(group)) {
-        const grid = group.dataset.menuArrows === "grid";
-        const horizontal = group.dataset.menuArrows === "horizontal";
+        const style = getComputedStyle(group);
+        // Responsive lists may switch from grid/block to a horizontal flex
+        // strip. grid-template-columns still has a computed value in flex;
+        // only use it when the browser is actually laying out a grid.
+        const bounded = group.dataset.menuArrows === "grid";
+        const grid = bounded && ["grid", "inline-grid"].includes(style.display);
+        const horizontal =
+          group.dataset.menuArrows === "horizontal" ||
+          (bounded &&
+            style.display === "flex" &&
+            !style.flexDirection.startsWith("column"));
         const columns = grid
-          ? Math.max(
-              1,
-              getComputedStyle(group).gridTemplateColumns.split(/\s+/).length,
-            )
+          ? Math.max(1, style.gridTemplateColumns.split(/\s+/).length)
           : 1;
         const steps = grid
           ? {
@@ -136,8 +153,9 @@ export function menuKeyboard(root, { scope = () => root } = {}) {
                 : event.key === "End"
                   ? controls.length - 1
                   : index + steps[event.key];
-            if (grid) {
+            if (bounded) {
               const crossesRow =
+                grid &&
                 ["ArrowLeft", "ArrowRight"].includes(event.key) &&
                 Math.floor(target / columns) !== Math.floor(index / columns);
               if (target < 0 || target >= controls.length || crossesRow)

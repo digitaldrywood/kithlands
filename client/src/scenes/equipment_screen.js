@@ -878,6 +878,7 @@ function renderEquipmentDrawer(
   drawer.append(ownedHeading);
 
   const list = element("div", "equipment-item-list");
+  list.dataset.menuArrows = "grid";
   if (candidates.length === 0) {
     list.append(
       element("p", "equipment-empty", `No owned items fit ${slot.name}.`),

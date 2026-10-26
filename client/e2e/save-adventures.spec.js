@@ -60,6 +60,10 @@ for (const [width, height] of [
     await page.keyboard.press("Enter");
     await expect(list.locator(".title-save:visible")).toHaveCount(9);
     await expect(summary).toContainText("8 older");
+    await page.keyboard.press("Space");
+    await expect(list.locator(".title-save:visible")).toHaveCount(1);
+    await page.keyboard.press("Space");
+    await expect(list.locator(".title-save:visible")).toHaveCount(9);
     await expect(list.locator("details .title-save").first()).toBeInViewport({
       ratio: 0.9,
     });

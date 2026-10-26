@@ -124,6 +124,7 @@ export function showFieldCrafting(scene, { onClose, selectedRecipe } = {}) {
     dialog.body.replaceChildren();
     const workbench = element("div", "craft-workbench");
     const library = element("nav", "craft-library");
+    library.dataset.menuArrows = "grid";
     library.setAttribute("aria-label", "Crafting recipes");
     library.append(element("h2", "craft-label", "RECIPES"));
     for (const r of recipes) {
