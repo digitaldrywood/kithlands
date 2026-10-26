@@ -16,6 +16,9 @@ export function battleChoicePanel(scene, { title, choices, onBack }) {
   const list = element("div", "battle-choice-list");
   const detail = element("p", "battle-choice-detail");
   detail.setAttribute("aria-live", "polite");
+  detail.setAttribute("role", "region");
+  detail.setAttribute("aria-label", "Choice details");
+  detail.tabIndex = 0;
   let selected = Math.max(
     0,
     choices.findIndex((choice) => !choice.disabled),
@@ -33,6 +36,7 @@ export function battleChoicePanel(scene, { title, choices, onBack }) {
       selected = index;
       choice.onInspect?.();
       detail.textContent = choice.detail || "";
+      detail.scrollTop = 0;
       buttons.forEach((row, i) =>
         row.classList.toggle("is-selected", i === index),
       );
@@ -77,6 +81,24 @@ export function battleChoicePanel(scene, { title, choices, onBack }) {
   position();
   const keydown = (e) => {
     if (e.altKey || e.ctrlKey || e.metaKey) return;
+    // Reading scrollable help must never commit the selected battle action.
+    if (
+      document.activeElement === detail &&
+      [
+        "ArrowUp",
+        "ArrowDown",
+        "PageUp",
+        "PageDown",
+        "Home",
+        "End",
+        " ",
+        "Enter",
+      ].includes(e.key)
+    ) {
+      e.stopImmediatePropagation();
+      if (e.key === "Enter") e.preventDefault();
+      return;
+    }
     if (
       ![
         "Escape",

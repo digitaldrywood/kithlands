@@ -42,6 +42,21 @@ for (const [width, height] of [
       });
     const inStrip = async () => {
       const bounds = await panel.boundingBox();
+      const description = await panel
+        .locator(".battle-choice-detail")
+        .evaluate((node) => {
+          const rect = node.getBoundingClientRect();
+          const list = node.previousElementSibling.getBoundingClientRect();
+          return {
+            font: parseFloat(getComputedStyle(node).fontSize),
+            top: rect.top,
+            bottom: rect.bottom,
+            listBottom: list.bottom,
+          };
+        });
+      expect(description.font).toBeGreaterThanOrEqual(14);
+      expect(description.top).toBeGreaterThanOrEqual(description.listBottom);
+      expect(description.bottom).toBeLessThanOrEqual(bounds.y + bounds.height);
       const expected = await page.evaluate(() => {
         const scene = window.__battleGame.scene.getScene("Battle");
         const rect = scene.game.canvas.getBoundingClientRect();
@@ -139,6 +154,33 @@ for (const [width, height] of [
     await expect(panel).toContainText("Items");
     await inStrip();
     await capture("items");
+    const details = panel.getByRole("region", { name: "Choice details" });
+    for (
+      let i = 0;
+      i < 20 &&
+      !(await details.evaluate((node) => node === document.activeElement));
+      i++
+    )
+      await page.keyboard.press("Tab");
+    await expect(details).toBeFocused();
+    const selectedBeforeReading = await panel
+      .locator(".is-selected")
+      .textContent();
+    await page.keyboard.press("Space");
+    await page.keyboard.press("Enter");
+    await expect(panel).toContainText("Items");
+    expect(await panel.locator(".is-selected").textContent()).toBe(
+      selectedBeforeReading,
+    );
+    await page.keyboard.press("End");
+    await expect
+      .poll(() =>
+        details.evaluate(
+          (node) => node.scrollTop + node.clientHeight >= node.scrollHeight - 1,
+        ),
+      )
+      .toBe(true);
+    await capture("item-details-keyboard");
     const usable = panel.locator(".battle-choice:not(:disabled)").first();
     if (await usable.count()) {
       await usable.click();
