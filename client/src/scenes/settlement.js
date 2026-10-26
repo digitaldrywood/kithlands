@@ -452,8 +452,15 @@ export class SettlementScene extends Phaser.Scene {
     });
   }
 
+  hideMessage() {
+    if (!this.messageText) return;
+    this.tweens.killTweensOf(this.messageText);
+    this.messageText.destroy();
+    this.messageText = null;
+  }
+
   showMessage(text) {
-    this.messageText?.destroy();
+    this.hideMessage();
     const notice = this.add
       .text(
         20,
