@@ -20,6 +20,20 @@ export function objectiveTracker(openJournal) {
     toggle.setAttribute("aria-expanded", String(!details.hidden));
     toggle.textContent = details.hidden ? "Objective ▾" : "Objective ▴";
   };
+  // Native disclosure buttons own their keys; Enter/Space must not also
+  // activate a nearby landmark through the canvas keyboard listener.
+  root.addEventListener("keydown", (event) => {
+    event.stopPropagation();
+    if (event.key === "Escape" && !details.hidden) {
+      event.preventDefault();
+      toggle.click();
+      toggle.focus();
+    }
+  });
+  root.addEventListener("keyup", (event) => {
+    // Phaser also captures Space on keyup, when native buttons activate.
+    if ([" ", "Enter"].includes(event.key)) event.stopPropagation();
+  });
   root.append(toggle, details);
   return {
     root,

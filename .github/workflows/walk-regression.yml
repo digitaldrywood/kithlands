@@ -79,7 +79,7 @@ jobs:
         run: ./scripts/run_playwright_local.sh e2e/heron-recovery.spec.js e2e/resource-route-respawn.spec.js
       - name: Verify gems, equipment and locality navigation
         if: matrix.suite == 'menus'
-        run: ./scripts/run_playwright_local.sh e2e/crafting-sources-layout.spec.js e2e/gem-workshop.spec.js e2e/equipment-loadout-screen.spec.js e2e/equipment-builds.spec.js e2e/effective-equipment.spec.js e2e/wizard-back.spec.js e2e/wizard-start.spec.js e2e/wizard-responsive.spec.js e2e/save-adventures.spec.js e2e/post-battle-loot.spec.js
+        run: ./scripts/run_playwright_local.sh e2e/crafting-sources-layout.spec.js e2e/gem-workshop.spec.js e2e/equipment-loadout-screen.spec.js e2e/equipment-builds.spec.js e2e/effective-equipment.spec.js e2e/wizard-back.spec.js e2e/wizard-start.spec.js e2e/wizard-responsive.spec.js e2e/save-adventures.spec.js e2e/post-battle-loot.spec.js e2e/dungeon-objective-layout.spec.js e2e/exploration-hud.spec.js
       - name: Verify natural campaign progression and quest recovery
         if: matrix.suite == 'campaign'
         run: ./scripts/run_playwright_local.sh e2e/normal-route-input.spec.js e2e/campaign-first-level.spec.js
@@ -148,6 +148,8 @@ jobs:
             client/tmp/dev-artifact-isolation-*/
             client/tmp/exploration-notice-*/
             client/tmp/exploration-touch-*/
+            client/tmp/exploration-hud-*/
+            client/tmp/dungeon-objective-layout-*/
             client/tmp/shop-responsive-*/
             client/tmp/resource-requirements-*/
             client/tmp/shop-spell-catalog-*/

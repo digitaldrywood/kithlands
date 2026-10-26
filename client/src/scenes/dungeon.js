@@ -650,7 +650,7 @@ export class DungeonScene extends Phaser.Scene {
       const position = () => {
         const rect = this.game.canvas.getBoundingClientRect();
         this.objectiveHUD.root.style.left = `${rect.left + 16}px`;
-        this.objectiveHUD.root.style.top = `${rect.top + ((height - (portrait ? 300 : 76)) / height) * rect.height}px`;
+        this.objectiveHUD.root.style.top = `${rect.top + (this.layout.top / this.layout.height) * rect.height + 12}px`;
         this.objectiveHUD.root.style.maxWidth = `${Math.min(500, rect.width - 32)}px`;
       };
       position();

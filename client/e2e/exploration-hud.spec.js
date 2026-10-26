@@ -38,7 +38,9 @@ for (const width of [1440, 610, 390]) {
       name: "Exit to main menu",
       exact: true,
     });
-    await expect(exit).toHaveText("Exit game");
+    await expect(exit.locator(":scope > span")).toHaveText("Exit game");
+    await expect(exit.locator("kbd")).toHaveText("Alt+1");
+    await expect(exit).toHaveAttribute("aria-keyshortcuts", "Alt+1");
     await menu
       .locator(".party-nav-scroll")
       .evaluate((el) => (el.scrollTop = el.scrollHeight));
