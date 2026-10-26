@@ -190,6 +190,16 @@ function shopControl(scene, text) {
     !receiptButton.closest("[inert]")
   )
     return receiptButton;
+  const wizard = [
+    ...(scene?.wizardDialog?.root.querySelectorAll("button") || []),
+  ].find(
+    (node) =>
+      node.dataset.wizardLabel === text &&
+      !node.disabled &&
+      node.isConnected &&
+      node.getClientRects().length,
+  );
+  if (wizard) return wizard;
   const controls = [
     ...(scene?.shopDialog?.root?.querySelectorAll("button") || []),
   ].filter((node) => !node.disabled && node.getClientRects().length);
@@ -1636,7 +1646,9 @@ export function installDevTestBridge(game) {
     visibleTexts(sceneKey) {
       const scene = getScene(game, sceneKey);
       const root =
-        scene?.shopDialog?.root || scene?.victoryReceipt?.dialog.root;
+        scene?.shopDialog?.root ||
+        scene?.wizardDialog?.root ||
+        scene?.victoryReceipt?.dialog.root;
       if (root?.isConnected) {
         return [
           ...root.querySelectorAll(
@@ -3151,6 +3163,28 @@ export function installDevTestBridge(game) {
           : scene.step === 5
             ? "party"
             : "idle";
+      const root = scene.wizardDialog?.root;
+      if (root?.isConnected) {
+        const status = root.querySelector("[role=status]");
+        const rect = status?.getBoundingClientRect();
+        return {
+          phase,
+          visibleStatusLines: status?.textContent ? 1 : 0,
+          loadingPanelBounds:
+            phase === "loading" && rect
+              ? {
+                  left: rect.left,
+                  top: rect.top,
+                  right: rect.right,
+                  bottom: rect.bottom,
+                  width: rect.width,
+                  height: rect.height,
+                }
+              : null,
+          formVisible:
+            phase !== "loading" && !!root.querySelector("input:not(:disabled)"),
+        };
+      }
       // contentGroup is a Phaser Group, not an Array — pull its children list.
       const children = scene.contentGroup?.getChildren?.() || [];
       const visibleStatusLines = children.filter((obj) => {

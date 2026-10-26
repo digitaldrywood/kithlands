@@ -67,7 +67,7 @@ jobs:
         run: ./scripts/run_playwright_local.sh e2e/gathering-crafting.spec.js
       - name: Verify gems, equipment and locality navigation
         if: matrix.suite == 'menus'
-        run: ./scripts/run_playwright_local.sh e2e/crafting-sources-layout.spec.js e2e/gem-workshop.spec.js e2e/equipment-loadout-screen.spec.js e2e/equipment-builds.spec.js e2e/effective-equipment.spec.js e2e/wizard-back.spec.js e2e/wizard-start.spec.js e2e/post-battle-loot.spec.js
+        run: ./scripts/run_playwright_local.sh e2e/crafting-sources-layout.spec.js e2e/gem-workshop.spec.js e2e/equipment-loadout-screen.spec.js e2e/equipment-builds.spec.js e2e/effective-equipment.spec.js e2e/wizard-back.spec.js e2e/wizard-start.spec.js e2e/wizard-responsive.spec.js e2e/post-battle-loot.spec.js
       - name: Verify natural campaign progression and quest recovery
         if: matrix.suite == 'campaign'
         run: ./scripts/run_playwright_local.sh e2e/normal-route-input.spec.js e2e/campaign-first-level.spec.js
@@ -104,6 +104,7 @@ jobs:
             client/tmp/equipment-builds-*/
             client/tmp/effective-equipment-*/
             client/tmp/wizard-back-*/
+            client/tmp/wizard-responsive-*/
             client/test-results/**/*.png
             client/tmp/overworld-landmarks/
             client/tmp/opening-integration-*/
