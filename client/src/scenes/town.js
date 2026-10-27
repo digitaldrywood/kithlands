@@ -1160,6 +1160,10 @@ export class TownScene extends Phaser.Scene {
     return !!TILE_WALKABLE[tile];
   }
 
+  isTileOccupied(x, y) {
+    return this.npcs.some((npc) => npc.x === x && npc.y === y);
+  }
+
   tryMove(dx, dy) {
     if (this.animating || isWorldInputLocked(this)) return;
     const nx = this.playerX + dx;
@@ -1169,9 +1173,7 @@ export class TownScene extends Phaser.Scene {
     const tile = this.tiles[ny][nx];
 
     // Walking into any NPC position is blocked
-    for (const npc of this.npcs) {
-      if (nx === npc.x && ny === npc.y) return;
-    }
+    if (this.isTileOccupied(nx, ny)) return;
 
     if (!TILE_WALKABLE[tile]) return;
 

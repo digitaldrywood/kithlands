@@ -1,5 +1,7 @@
 # Playability work tracker
 
+- Touch-to-walk now routes around blocking interior NPCs using the same collision check as movement. Removed a retired invisible touch-HUD exclusion that blocked part of the room at 540px. Seven native phone touch/interior cases pass after two reproduced failures; 35 screenshots inspected and 875 client tests/build/format pass. Setup uses keyboard; a fully touch-only opening remains open. See `TOUCH_NPC_PATH_PROOF.md`.
+
 - Hosted cave-art walking job 122004100031 failed three screenshots at the 30s test budget (37 other cases passed). Its postrender wait now returns no Phaser renderer object to Playwright; all six cave/family/town/save cases pass locally in 18s with 13 inspected captures. The checks remain intact; fresh hosted CI is required. See `CAVE_LANDMARK_ART_PROOF.md`.
 
 - Native seeded Warrior showcase now measures a critical followed by a normal hit on one target: four desktop/phone/reduced/Fast cases show separate labels with 1.62–1.67s and 1.35–1.37s full-opacity holds. 66 final frames inspected; 875 client tests/build/format pass. This is a developer fixture, not blanket acceptance of all crit/miss combinations. See `MULTIHIT_CRITICAL_READABILITY_PROOF.md`.
