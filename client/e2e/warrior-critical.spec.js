@@ -70,6 +70,8 @@ for (const [width, height, reducedMotion, speed] of [
         images: {},
         hits: [],
         labelGaps: [],
+        resultSpans: {},
+        overlappingResults: 0,
       };
       let previous = "";
       window.__criticalCapture = () => {
@@ -85,6 +87,24 @@ for (const [width, height, reducedMotion, speed] of [
           scene.floatingText?.active.filter(
             (text) => text.visible && text.alpha > 0.9,
           ) || [];
+        const resultLabels = labels.filter(
+          (text) =>
+            text._targetKey === "enemy_101" &&
+            ["crit", "physical"].includes(text._resultType),
+        );
+        if (resultLabels.length > 1)
+          window.__criticalProof.overlappingResults++;
+        for (const text of resultLabels) {
+          const id = `${text._resultType}:${text.text}`;
+          const now = performance.now();
+          const spans = window.__criticalProof.resultSpans;
+          if (!spans[id]) {
+            spans[id] = { first: now, last: now };
+            window.__criticalProof.images[
+              `result-${text._resultType}-${text.text.replace(/\W+/g, "-")}`
+            ] = game.canvas.toDataURL("image/png");
+          } else spans[id].last = now;
+        }
         const criticalLabel = labels.find((text) =>
           text.text.startsWith("CRITICAL"),
         );
@@ -231,6 +251,24 @@ for (const [width, height, reducedMotion, speed] of [
         a.hits.filter((h) => h.crit).map((h) => h.damage),
       ),
     );
+    expect(
+      authoritative[2].hits.map((hit) => ({
+        damage: hit.damage,
+        crit: !!hit.crit,
+      })),
+    ).toEqual([
+      { damage: 106, crit: true },
+      { damage: 63, crit: false },
+    ]);
+    expect(data.overlappingResults).toBe(0);
+    expect(
+      data.resultSpans["crit:CRITICAL\n-106!"].last -
+        data.resultSpans["crit:CRITICAL\n-106!"].first,
+    ).toBeGreaterThanOrEqual(1400);
+    expect(
+      data.resultSpans["physical:-63"].last -
+        data.resultSpans["physical:-63"].first,
+    ).toBeGreaterThanOrEqual(1100);
     expect(data.labelGaps.length).toBeGreaterThan(0);
     expect(Math.min(...data.labelGaps)).toBeGreaterThan(8);
     const lastCritical = data.frames.findLastIndex(
