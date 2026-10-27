@@ -23,6 +23,7 @@ const VIEWPORTS = [
   { label: "390x844", width: 390, height: 844, mobile: true },
 ];
 
+// Approach the painted steps at row 9; row 8 is the solid shop roof.
 const STORE_PATH = [
   "up",
   "right",
@@ -37,7 +38,6 @@ const STORE_PATH = [
   "right",
   "right",
   "right",
-  "up",
   "up",
   "up",
 ];
@@ -265,9 +265,14 @@ async function leaveShopForWorld(page) {
     () => window.__kithlandsTest.activeSceneKey() === "Settlement",
   );
   await page.waitForFunction(
-    () =>
-      window.__kithlandsTest.settlementSnapshot().currentInteraction === null,
+    () => !window.__kithlandsTest.settlementSnapshot().animating,
   );
+  // The authored return anchor is now on the store steps, beside its door.
+  expect(
+    await page.evaluate(
+      () => window.__kithlandsTest.settlementSnapshot().currentInteraction,
+    ),
+  ).toBe("general-store-door");
   await moveSettlement(page, SOUTH_EXIT_PATH);
   await page.evaluate(() =>
     window.__kithlandsTest.pressKey("Enter", "Settlement"),

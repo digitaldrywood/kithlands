@@ -111,6 +111,15 @@ Natural level-up availability is now verified separately through native campaign
 errands. Human timing, intended reward pacing and complete campaign integration
 still require acceptance; see `CAMPAIGN_PROGRESSION_PROOF.md`.
 
+A subsequent UI-only agent playthrough also completed this shopping → optional
+herd → earned supplies → crafted/socketed sword → bank rest → bats → save/load
+route using screenshots and visible controls, without seed overrides or game
+state helpers. It finished with28gold, seven potions and24XP each, still level1.
+Tool-driven reading/capture pauses mean its duration is not human timing.
+It exposed a missing town trail shortcut after shop return and inconsistent
+arrival guidance; the world entrance remains usable. See
+`UI_OPENING_PLAYTHROUGH_PROOF.md` for evidence and remaining friction.
+
 ## Gathering and professions recommendation
 
 The first gathering loop is implemented: find a resource along a quest route,
