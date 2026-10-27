@@ -38,14 +38,15 @@ export function renderWorldLandmarks(
 
     const point = worldPoint(spawn);
     const descriptor = landmarkMarkerFor(spawn, gameState, source);
+    const markerY = point.y + (descriptor.variant.offset_y ?? 0);
     const marker = scene.add
-      .image(point.x, point.y, descriptor.variant.key)
+      .image(point.x, markerY, descriptor.variant.key)
       .setOrigin(source.marker.origin_x, source.marker.origin_y);
     markers.add(marker);
 
     const badgeModels = descriptor.badges.map((badge, index) => {
       const x = point.x + source.badge.offset_x - index * 18;
-      const y = point.y + source.badge.offset_y;
+      const y = markerY + source.badge.offset_y;
       badges.add(scene.add.image(x, y, badge.key).setOrigin(0.5));
       return {
         dungeonId: badge.dungeon_id,
@@ -64,7 +65,7 @@ export function renderWorldLandmarks(
       variantId: descriptor.variant.id,
       key: descriptor.variant.key,
       x: point.x,
-      y: point.y,
+      y: markerY,
       width: source.marker.width,
       height: source.marker.height,
       originX: source.marker.origin_x,

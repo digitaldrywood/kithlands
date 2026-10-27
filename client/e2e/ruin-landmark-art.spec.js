@@ -29,6 +29,14 @@ for (const [width, height] of [
       width: 64,
       height: 64,
     });
+    const spawnY = await page.evaluate(
+      (nodeId) =>
+        window.__normalRouteGame.scene
+          .getScene("World")
+          .spawns.find((s) => s.node_id === nodeId).y,
+      marker.nodeId,
+    );
+    expect(marker.y).toBe(spawnY * 32 + 16 - 12);
     await page.evaluate((nodeId) => {
       window.__kithlandsTest.approachWorldSpawn(nodeId);
       window.__kithlandsTest.centerCameraOnPlayer("World");

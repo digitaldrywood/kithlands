@@ -75,7 +75,8 @@
         {
           "id": "dungeon-ruins",
           "key": "world_landmark_dungeon_ruins",
-          "path": "/sprites/world/landmarks/dungeon-ruins-detailed.png"
+          "path": "/sprites/world/landmarks/dungeon-ruins-detailed.png",
+          "offset_y": -12
         },
         {
           "id": "dungeon-cave",
