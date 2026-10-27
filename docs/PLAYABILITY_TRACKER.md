@@ -1,5 +1,7 @@
 # Playability work tracker
 
+- Cinder pose-guide follow-up produced clearer boots but altered the upper sprite; composing its generated lower portion with the approved frame broke the robe hem. Rejected; see `CINDER_WALK_DRAFT_20261026.md`. The runtime atlas remains intact and the gait/art acceptance task remains open.
+
 - Cinder walk exploration generated one six-pose side row and two single passing-pose drafts. The row retained a weak stride; the clearer single poses changed identity/proportions at native size. All were rejected and the runtime atlas remains untouched. See `CINDER_WALK_DRAFT_20261026.md`; controlled pose-guided production and full visual acceptance remain open. Hosted visual run 40439007285 on 45656d6 passed.
 
 - All twelve walk sheets pass native geometry; 15 World/Town/direction/Space/phone audit cases and seven normal-speed/cadence/gallery cases pass. Inspected 72 real rendered east-facing frames, 12 stopped screenshots and the gallery. Mender, Cinder and Sage show limited stride under robes; full live-motion/all-direction visual acceptance remains open, especially because the in-app browser was unavailable. See `WALK_RECHECK_20261026.md`. No art or runtime change.
