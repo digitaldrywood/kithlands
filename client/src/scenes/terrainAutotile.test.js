@@ -26,6 +26,22 @@ describe("buildTerrainRenderPlan", () => {
     );
   });
 
+  it("blends snow into adjacent grass and highland tiles", () => {
+    for (const [ground, key] of [
+      [0, "tile_grass"],
+      [11, "tile_hill"],
+    ]) {
+      const plan = buildTerrainRenderPlan([[16], [ground]], 0, 1);
+      expect(plan.baseKey).toBe(key);
+      expect(plan.overlay).toEqual(
+        expect.objectContaining({
+          key: "tile_snow",
+          mask: AUTOTILE_EDGE_NORTH,
+        }),
+      );
+    }
+  });
+
   it("builds a connected path mask from orthogonal neighbors", () => {
     const tiles = [
       [0, 1, 0],

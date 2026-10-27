@@ -11,7 +11,7 @@ for (const [width, height] of [
   [800, 600],
   [390, 844],
 ]) {
-  test(`snow beside the grove feathers into grass without changing terrain at ${width}`, async ({
+  test(`snow regions feather into highlands without changing terrain at ${width}`, async ({
     page,
   }) => {
     test.setTimeout(90000);
@@ -26,8 +26,13 @@ for (const [width, height] of [
         .find((m) => m.family === "natural_grove");
       const grove = s.spawns.find((p) => p.node_id === marker.nodeId);
       let snow;
-      for (let y = grove.y - 12; y <= grove.y + 12 && !snow; y++)
-        for (let x = grove.x - 12; x <= grove.x + 12 && !snow; x++)
+      for (let y = 1; y < s.tileData.length - 2 && !snow; y++)
+        for (let x = 1; x < s.tileData[y].length - 1 && !snow; x++)
+          if (s.tileData[y][x] === 16 && s.tileData[y + 1]?.[x] === 11)
+            snow = { x, y };
+      if (!snow) throw Error("Expected snow bordering highlands");
+      for (let y = grove.y - 12; y <= grove.y + 12; y++)
+        for (let x = grove.x - 12; x <= grove.x + 12; x++)
           if (
             s.tileData[y]?.[x] === 16 &&
             [
@@ -35,11 +40,9 @@ for (const [width, height] of [
               [1, 0],
               [0, 1],
               [-1, 0],
-            ].every(([dx, dy]) => s.tileData[y + dy]?.[x + dx] === 0)
+            ].every(([dx, dy]) => s.tileData[y + dy]?.[x + dx] !== 16)
           )
-            snow = { x, y };
-      if (!snow)
-        throw Error("Expected the actual isolated snow patch near the grove");
+            throw Error("Unexpected isolated snow near the grove");
       window.__kithlandsTest.approachWorldSpawn(grove.node_id);
       window.__kithlandsTest.centerCameraOnPlayer("World");
       return {
@@ -54,7 +57,7 @@ for (const [width, height] of [
     await page.screenshot({ path: path.join(proof, `${width}-grove.png`) });
     const inspect = () =>
       page.evaluate(
-        ({ snow, grass }) => {
+        ({ snow, base }) => {
           const s = window.__normalRouteGame.scene.getScene("World");
           const tile = s.tileSprites.list.find(
             (p) => p.x === snow.x * 32 && p.y === (snow.y + 1) * 32,
@@ -65,18 +68,18 @@ for (const [width, height] of [
           const ctx = canvas.getContext("2d");
           ctx.drawImage(source, 0, 0);
           const pixels = ctx.getImageData(0, 3, 16, 1).data;
-          let grassPixels = 0;
+          let basePixels = 0;
           for (let i = 0; i < pixels.length; i += 4) {
             const hex =
               "#" +
               [pixels[i], pixels[i + 1], pixels[i + 2]]
                 .map((v) => v.toString(16).padStart(2, "0"))
                 .join("");
-            if (grass.includes(hex)) grassPixels++;
+            if (base.includes(hex)) basePixels++;
           }
           return {
-            grassPixels,
-            otherPixels: 16 - grassPixels,
+            basePixels,
+            otherPixels: 16 - basePixels,
             key: tile.texture.key,
             canonical: JSON.stringify({
               tiles: s.tileData,
@@ -84,11 +87,15 @@ for (const [width, height] of [
             }),
           };
         },
-        { snow: baseline.snow, grass: field.meadow.ground.tile_grass },
+        { snow: baseline.snow, base: field.meadow.ground.tile_hill },
       );
+    await page.evaluate(({ x, y }) => {
+      window.__kithlandsTest.setPlayerTile(x + 2, y + 1, "World");
+      window.__kithlandsTest.centerCameraOnPlayer("World");
+    }, baseline.snow);
     const first = await inspect();
-    // A mixed row inside the old solid half-tile rejects the cross-shaped edge.
-    expect(first.grassPixels).toBeGreaterThanOrEqual(2);
+    // A mixed row inside the old solid snow-to-hill boundary rejects the cross-shaped edge.
+    expect(first.basePixels).toBeGreaterThanOrEqual(2);
     expect(first.otherPixels).toBeGreaterThanOrEqual(2);
     expect(first.canonical).toBe(baseline.canonical);
     await page.evaluate(({ x, y }) => {

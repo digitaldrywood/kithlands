@@ -181,7 +181,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	if worldState.ResourcePlacementVersion == 0 {
 		worldState.ResourcePlacementVersion = resourcePlacementLegacy
 	}
-	if worldState.ResourcePlacementVersion < resourcePlacementLegacy || worldState.ResourcePlacementVersion > resourcePlacementTrails {
+	if worldState.ResourcePlacementVersion < resourcePlacementLegacy || worldState.ResourcePlacementVersion > resourcePlacementBiome {
 		return nil, fmt.Errorf("unsupported resource placement version %d", worldState.ResourcePlacementVersion)
 	}
 	quests, worldState.CurrentQ = migrateRequiredCampaign(quests, worldState.CurrentQ)
@@ -340,11 +340,12 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		}
 	}
 	// Accept exact historical map signatures, then revalidate the position.
-	// Footbridges and public trails only open traversable connections;
-	// arbitrary stale or corrupt map signatures still use normal recovery.
+	// Recognized historical maps preserve their checkpoint only after it passes
+	// current traversal validation. Unknown signatures use normal recovery.
 	if savedCheckpoint != nil && savedCheckpoint.MapSignature != worldMapSignature(tileMap) {
+		beforeBiome := locality.GenerateTileMapBeforeBiomeCleanup(loc, spawnID, walk)
 		preTrailMap := locality.GenerateTileMapBeforePublicTrails(loc, spawnID, walk)
-		if savedCheckpoint.MapSignature == worldMapSignature(preTrailMap) {
+		if savedCheckpoint.MapSignature == worldMapSignature(beforeBiome) || savedCheckpoint.MapSignature == worldMapSignature(preTrailMap) {
 			savedCheckpoint.MapSignature = worldMapSignature(tileMap)
 		} else {
 			legacyMap := locality.GenerateTileMapBeforeFootbridges(loc, spawnID, walk)

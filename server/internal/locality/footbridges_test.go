@@ -116,8 +116,8 @@ func TestFootbridgesReuseNearbyRoadCrossing(t *testing.T) {
 func TestGeneratedFootbridgesDeterministicAndLegacyStable(t *testing.T) {
 	loc := &Locality{Name: "tributary regression", Nodes: []Node{{ID: "home", Kind: NodePlace}}, WaterwaySegments: []Waterway{{Kind: "stream", Points: []struct{ X, Y float64 }{{.5, 0}, {.5, 1}}}}}
 	old := GenerateTileMapBeforeFootbridges(loc, "home", nil)
-	first := GenerateTileMap(loc, "home", nil)
-	second := GenerateTileMap(loc, "home", nil)
+	first := GenerateTileMapBeforeBiomeCleanup(loc, "home", nil)
+	second := GenerateTileMapBeforeBiomeCleanup(loc, "home", nil)
 	if !reflect.DeepEqual(first, second) {
 		t.Fatal("generation is not deterministic")
 	}

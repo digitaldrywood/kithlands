@@ -49,6 +49,7 @@ type FieldRecipeState struct {
 const (
 	resourcePlacementLegacy = 1
 	resourcePlacementTrails = 2
+	resourcePlacementBiome  = 3
 )
 
 // Resource identities depend on saved map coordinates, not the active quest.
@@ -62,9 +63,13 @@ func (g *Game) resourceNodes() []ResourceNodeState {
 		return nil
 	}
 	anchorMap := g.tileMap
-	if g.resourcePlacementVersion == resourcePlacementLegacy {
+	if g.resourcePlacementVersion == resourcePlacementLegacy || g.resourcePlacementVersion == resourcePlacementTrails {
 		if g.resourceAnchorMap == nil {
-			g.resourceAnchorMap = locality.GenerateTileMapBeforePublicTrails(g.loc, g.walk.Spawn.ID, g.walk)
+			if g.resourcePlacementVersion == resourcePlacementLegacy {
+				g.resourceAnchorMap = locality.GenerateTileMapBeforePublicTrails(g.loc, g.walk.Spawn.ID, g.walk)
+			} else {
+				g.resourceAnchorMap = locality.GenerateTileMapBeforeBiomeCleanup(g.loc, g.walk.Spawn.ID, g.walk)
+			}
 		}
 		anchorMap = g.resourceAnchorMap
 	}

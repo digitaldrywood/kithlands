@@ -161,7 +161,7 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 	}
 
 	game := &Game{
-		resourcePlacementVersion: resourcePlacementTrails,
+		resourcePlacementVersion: resourcePlacementBiome,
 		id:                       fmt.Sprintf("game_%d", time.Now().UnixNano()),
 		gd:                       gm.gd,
 		dungeons:                 make(map[string]*DungeonProgress),

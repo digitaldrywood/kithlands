@@ -102,7 +102,7 @@ func TestPublicTrailMapPreservesLegacyLandmarksAndWalkableTiles(t *testing.T) {
 	loc := BuildFromWizard(WizardInput{TownName: "Cadott", People: []WizardPerson{{Name: "Alice", Relation: "friend"}, {Name: "Bob", Relation: "friend"}}, Places: []string{"Square"}, BigBuilding: "Keep", Flavor: "medieval", Difficulty: "normal"})
 	walk := Walk(loc, "central")
 	old := GenerateTileMapBeforePublicTrails(loc, "central", walk)
-	current := GenerateTileMap(loc, "central", walk)
+	current := GenerateTileMapBeforeBiomeCleanup(loc, "central", walk)
 	if !reflect.DeepEqual(old.Spawns, current.Spawns) || old.PlayerX != current.PlayerX || old.PlayerY != current.PlayerY || !reflect.DeepEqual(old.HiddenPath, current.HiddenPath) {
 		t.Fatal("public trails moved landmarks, spawn or shortcut")
 	}
@@ -121,7 +121,7 @@ func TestPublicTrailMapPreservesLegacyLandmarksAndWalkableTiles(t *testing.T) {
 	if changed < 20 {
 		t.Fatalf("fixture has only %d new trail tiles", changed)
 	}
-	if !reflect.DeepEqual(current, GenerateTileMap(loc, "central", walk)) {
+	if !reflect.DeepEqual(current, GenerateTileMapBeforeBiomeCleanup(loc, "central", walk)) {
 		t.Fatal("public routes are not deterministic")
 	}
 }

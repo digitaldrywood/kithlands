@@ -118,7 +118,7 @@ func TestPublicTrailMigrationPreservesPositionHarvestAndTimers(t *testing.T) {
 
 func TestNewPublicTrailGamesKeepCurrentResourcePlacementOnLoad(t *testing.T) {
 	game := newTownTestGame(t)
-	if game.resourcePlacementVersion != resourcePlacementTrails {
+	if game.resourcePlacementVersion != resourcePlacementBiome {
 		t.Fatal("new adventure uses legacy resource anchors")
 	}
 	before := game.State().Resources
@@ -130,7 +130,54 @@ func TestNewPublicTrailGamesKeepCurrentResourcePlacementOnLoad(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if loaded.resourcePlacementVersion != resourcePlacementTrails || !reflect.DeepEqual(loaded.State().Resources, before) {
+	if loaded.resourcePlacementVersion != resourcePlacementBiome || !reflect.DeepEqual(loaded.State().Resources, before) {
 		t.Fatal("new adventure resource sites changed on load")
+	}
+}
+
+func TestBiomeMigrationPreservesPublicTrailResourceState(t *testing.T) {
+	game := newTownTestGame(t)
+	game.tileMap = locality.GenerateTileMapBeforeBiomeCleanup(game.loc, game.walk.Spawn.ID, game.walk)
+	if worldMapSignature(game.tileMap) == worldMapSignature(locality.GenerateTileMap(game.loc, game.walk.Spawn.ID, game.walk)) {
+		t.Fatal("fixture must exercise changed terrain signature")
+	}
+	game.resourcePlacementVersion = resourcePlacementTrails
+	game.resourceMap, game.resourceNodeCache = nil, nil
+	before := game.State().Resources
+	if len(before) == 0 {
+		t.Fatal("fixture has no gathering nodes")
+	}
+	node := before[0]
+	game.setWorldCheckpointLocked(WorldPosition{X: node.X, Y: node.Y}, game.location.WorldNodeID)
+	if err := game.Gather(node.ID); err != nil {
+		t.Fatal(err)
+	}
+	before = game.State().Resources
+	checkpoint := *game.worldCheckpoint
+	saved, err := game.ToSaveState("before biome cleanup", "test-user")
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := FromSaveState(saved, game.gd, game.loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.resourcePlacementVersion != resourcePlacementTrails || !reflect.DeepEqual(before, loaded.State().Resources) || !reflect.DeepEqual(game.inv.ResourceReadyAt, loaded.inv.ResourceReadyAt) || !reflect.DeepEqual(game.inv.Materials, loaded.inv.Materials) {
+		t.Fatal("migration changed public-trail gathering sites or harvest state")
+	}
+	got := loaded.State().WorldCheckpoint
+	if got.X != checkpoint.X || got.Y != checkpoint.Y || got.WorldNodeID != checkpoint.WorldNodeID || got.MapSignature != worldMapSignature(loaded.tileMap) {
+		t.Fatalf("migration changed checkpoint: %+v -> %+v", checkpoint, got)
+	}
+	resaved, err := loaded.ToSaveState("after biome cleanup", "test-user")
+	if err != nil {
+		t.Fatal(err)
+	}
+	reloaded, err := FromSaveState(resaved, game.gd, game.loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(before, reloaded.State().Resources) || !reflect.DeepEqual(got, reloaded.State().WorldCheckpoint) {
+		t.Fatal("second load changed migrated state")
 	}
 }

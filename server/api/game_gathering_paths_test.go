@@ -112,6 +112,9 @@ func TestCurrentGatheringPlacementFingerprints(t *testing.T) {
 	}
 	for seed, want := range baseline {
 		g := gatheringPerformanceGame(t, seed)
+		g.tileMap = locality.GenerateTileMapBeforeBiomeCleanup(g.loc, g.walk.Spawn.ID, g.walk)
+		g.resourcePlacementVersion = resourcePlacementTrails
+		g.resourceMap, g.resourceNodeCache = nil, nil
 		data, err := json.Marshal(struct {
 			Nodes []ResourceNodeState
 			Tiles [][]int
