@@ -49,7 +49,7 @@ for (const [width, height] of [
     await page.evaluate(
       () =>
         new Promise((resolve) => {
-          window.__normalRouteGame.events.once("postrender", resolve);
+          window.__normalRouteGame.events.once("postrender", () => resolve());
         }),
     );
     await page.screenshot({ path: path.join(proof, `${width}-approach.png`) });

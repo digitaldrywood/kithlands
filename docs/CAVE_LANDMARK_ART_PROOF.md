@@ -16,3 +16,9 @@ npx prettier --check --ignore-path .gitignore .
 ```
 
 875 client tests, build, formatting, `make test`, `make validate-data`, workflow YAML and `git diff --check` passed. Logs: `client/tmp/cave-art-{unit,build,format,go,data}-20261026.log`. No combat/progression pacing changed, so no new balance simulation is claimed. The hosted visual suite includes the new fixture; current-head hosted CI is still required. The isolated server was used; the owner's server and saves were not touched.
+
+## Hosted test timeout follow-up
+
+Hosted run `40448107200`, walking job `122004100031`, failed all three new cave cases at `page.screenshot` after the default 30-second test budget; 37 other cases passed. The job log is `client/tmp/ci-cave-walking-20261026.log`. The postrender wait previously passed `resolve` directly to Phaser, causing the event's renderer argument to become the Playwright evaluation result. The callback now resolves without returning that renderer. The existing postrender wait, marker/offset/prompt assertions and screenshots remain. This explains the observed local reduction from 18–19 seconds per cave case to 1.9–2.6 seconds; the remote result is not yet established.
+
+The corrected isolated run `client/tmp/cave-ci-fix-20261026.log` passes all six cave and landmark cases in 18 seconds. The three final approach captures `client/tmp/cave-landmark-art-1793075205018/{1440,800,390}-approach.png` were opened individually; the ten family/town/save captures were inspected at `client/tmp/cave-ci-review-20261026/landmarks.png`, with originals indexed in `index.txt`. Client unit/build/format logs: `client/tmp/cave-ci-fix-{unit,build,format}-20261026.log`. This is a test-only repair; it does not change the asset or gameplay. Fresh hosted CI remains required.
