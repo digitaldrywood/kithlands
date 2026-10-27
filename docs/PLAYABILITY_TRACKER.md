@@ -1,5 +1,7 @@
 # Playability work tracker
 
+- Replaced the flat ruined-arch overland variant with original detailed pixel art; stable selection, dimensions, prompt and save identity remain. Six actual-game marker/landmark/town/save checks pass at desktop/default/phone, with 16 screenshots inspected; 874 client tests/build/format, Go/data and export checks pass. See `RUIN_LANDMARK_ART_PROOF.md`. The character partly covers the arch at the interaction point, and cave/other landmark variants and broad environment acceptance remain open. Owner game/saves untouched; new-head CI pending.
+
 - Cinder pose-guide follow-up produced clearer boots but altered the upper sprite; composing its generated lower portion with the approved frame broke the robe hem. Rejected; see `CINDER_WALK_DRAFT_20261026.md`. The runtime atlas remains intact and the gait/art acceptance task remains open.
 
 - Cinder walk exploration generated one six-pose side row and two single passing-pose drafts. The row retained a weak stride; the clearer single poses changed identity/proportions at native size. All were rejected and the runtime atlas remains untouched. See `CINDER_WALK_DRAFT_20261026.md`; controlled pose-guided production and full visual acceptance remain open. Hosted visual run 40439007285 on 45656d6 passed.
