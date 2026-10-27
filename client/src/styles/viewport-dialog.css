@@ -318,26 +318,38 @@
   height: auto;
   display: block;
   border-radius: 16px;
+  object-fit: contain;
+  background: #13221a;
 }
 .world-map-legend {
   color: var(--menu-muted);
   margin: 16px 0;
   font-size: 14px;
 }
-.world-map-places {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
-  list-style: none;
-  padding: 0;
+.world-map-place-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 14px;
 }
-.world-map-places li {
-  padding: 10px 14px;
-  border-radius: 12px;
+.world-map-place-select {
+  flex: 1;
+  min-width: 0;
+  max-width: 360px;
+  min-height: 44px;
+  padding: 6px 10px;
+  font: inherit;
+  color: var(--menu-text);
   background: var(--menu-card);
+  border: 1px solid var(--menu-line);
+  border-radius: 8px;
 }
-.world-map-places .is-target {
+.world-map-selection {
   color: var(--menu-accent);
+  font-size: 16px;
+  margin-block: 8px 0;
 }
 
 .world-map-adventures {

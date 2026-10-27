@@ -21,6 +21,11 @@ encounter pressure, especially in dark grass. Open Menu → Quest journal to
 check your next destination. Existing saved adventures keep their harvested
 resource identities and respawn deadlines when the trails are added.
 
+Open Menu → World map to identify a destination. The map names the tracked
+place and gives its compass direction. Use Inspect a place to highlight another
+location, such as the General Store; this does not change your tracked quest.
+The full overview fits the screen, and Find adventures jumps to the route cards.
+
 Times are a suggested budget, not a guarantee of first-visit completion.
 
 To experience a **level-up**, follow the campaign errand in Menu → Quest
