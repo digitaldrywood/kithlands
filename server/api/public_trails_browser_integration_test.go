@@ -39,8 +39,20 @@ func TestSeedLegacyTrailBrowserWorld(t *testing.T) {
 		t.Fatal(err)
 	}
 	game := newTownTestGame(t)
-	game.tileMap = locality.GenerateTileMapBeforePublicTrails(game.loc, game.walk.Spawn.ID, game.walk)
-	game.resourcePlacementVersion = resourcePlacementLegacy
+	kind := os.Getenv("KITHLANDS_LEGACY_TRAIL_KIND")
+	switch kind {
+	case "", "pre-trail":
+		game.tileMap = locality.GenerateTileMapBeforePublicTrails(game.loc, game.walk.Spawn.ID, game.walk)
+		game.resourcePlacementVersion = resourcePlacementLegacy
+	case "pre-biome":
+		game.tileMap = locality.GenerateTileMapBeforeBiomeCleanup(game.loc, game.walk.Spawn.ID, game.walk)
+		game.resourcePlacementVersion = resourcePlacementTrails
+	default:
+		t.Fatalf("unsupported legacy fixture kind %q", kind)
+	}
+	if worldMapSignature(game.tileMap) == worldMapSignature(locality.GenerateTileMap(game.loc, game.walk.Spawn.ID, game.walk)) {
+		t.Fatal("fixture must exercise a changed map signature")
+	}
 	game.resourceMap, game.resourceNodeCache = nil, nil
 	nodes := game.State().Resources
 	if len(nodes) == 0 {
@@ -62,7 +74,9 @@ func TestSeedLegacyTrailBrowserWorld(t *testing.T) {
 	if err := json.Unmarshal(saved.WorldState, &world); err != nil {
 		t.Fatal(err)
 	}
-	delete(world, "resource_placement_version")
+	if kind != "pre-biome" {
+		delete(world, "resource_placement_version")
+	}
 	saved.WorldState, err = json.Marshal(world)
 	if err != nil {
 		t.Fatal(err)

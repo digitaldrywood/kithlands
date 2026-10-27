@@ -6,12 +6,15 @@ import { routeReady } from "./helpers/normal-route.js";
 
 const proof = path.resolve(`tmp/public-trails-legacy-${Date.now()}`);
 mkdirSync(proof, { recursive: true });
-for (const [width, height] of [
+const viewports = [
   [1440, 900],
   [800, 600],
   [390, 844],
-]) {
-  test.describe(`${width} legacy trail save`, () => {
+];
+for (const [kind, width, height] of ["pre-trail", "pre-biome"].flatMap((kind) =>
+  viewports.map(([width, height]) => [kind, width, height]),
+)) {
+  test.describe(`${width} ${kind} legacy save`, () => {
     test.use({ viewport: { width, height }, hasTouch: width < 600 });
     test("Continue preserves an old harvest and exact checkpoint through migration", async ({
       page,
@@ -19,7 +22,7 @@ for (const [width, height] of [
       test.setTimeout(120000);
       page.setDefaultTimeout(15000);
       const output = path.resolve(
-        `tmp/legacy-trail-seed-${width}-${Date.now()}.json`,
+        `tmp/legacy-${kind}-seed-${width}-${Date.now()}.json`,
       );
       execFileSync(
         "go",
@@ -33,14 +36,20 @@ for (const [width, height] of [
         ],
         {
           cwd: path.resolve("../server"),
-          env: { ...process.env, KITHLANDS_LEGACY_TRAIL_PROOF_PATH: output },
+          env: {
+            ...process.env,
+            KITHLANDS_LEGACY_TRAIL_PROOF_PATH: output,
+            KITHLANDS_LEGACY_TRAIL_KIND: kind,
+          },
         },
       );
       const fixture = JSON.parse(readFileSync(output, "utf8"));
       const activate = (locator) =>
         width < 600 ? locator.tap() : locator.click();
       const capture = (stage) =>
-        page.screenshot({ path: path.join(proof, `${width}-${stage}.png`) });
+        page.screenshot({
+          path: path.join(proof, `${kind}-${width}-${stage}.png`),
+        });
       const errors = [];
       page.on("pageerror", (e) => errors.push(e.message));
       await page.goto("/");
@@ -132,7 +141,7 @@ for (const [width, height] of [
       await capture("loaded-again");
       expect(errors).toEqual([]);
       writeFileSync(
-        path.join(proof, `${width}-audit.json`),
+        path.join(proof, `${kind}-${width}-audit.json`),
         JSON.stringify(
           {
             beforeCheckpoint: fixture.before.world_checkpoint,
