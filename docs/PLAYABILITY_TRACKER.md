@@ -1,5 +1,7 @@
 # Playability work tracker
 
+- Extended the same seeded touch opening beyond the mill save/reload to complete the ordinary fetch-and-return campaign quest, then save/Continue again. Three real battles, tracked quest, shopping, gathering, crafted/socketed sword and level-three progression are retained; 15 final screenshots inspected. The 180-XP quest causes a two-level jump and unassisted fifteen-minute pacing remains unproven. See `FIRST_SESSION_TOUCH_PROOF.md`; fresh hosted CI remains required.
+
 - A fresh seeded 390px opening now runs with touch gameplay from tracked journal through herbs/ore, shop/Frost, Heron battle/cache, potion/sword/gem/equip, mill bats and save/Continue. State, socket and two respawn deadlines survive reload; 12 final phone and 24 desktop regression captures inspected. The guided run ends at Lv1/24 XP and does not establish unassisted 15-minute pacing or all phone sizes. 875 client tests/build/format pass; parent aa8065c visual CI passed. See `FIRST_SESSION_TOUCH_PROOF.md`.
 
 - Touch-to-walk now routes around blocking interior NPCs using the same collision check as movement. Removed a retired invisible touch-HUD exclusion that blocked part of the room at 540px. Seven native phone touch/interior cases pass after two reproduced failures; 35 screenshots inspected and 875 client tests/build/format pass. Setup uses keyboard; a fully touch-only opening remains open. See `TOUCH_NPC_PATH_PROOF.md`.

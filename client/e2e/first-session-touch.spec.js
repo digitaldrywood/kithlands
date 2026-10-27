@@ -13,7 +13,7 @@ import { fightNormally } from "./helpers/native-combat.js";
 const proof = path.resolve(`tmp/first-session-touch-${Date.now()}`);
 mkdirSync(proof, { recursive: true });
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
-test("touch opening connects gathering, shopping and the Heron battle", async ({
+test("touch opening connects the mill, crafting, campaign level-up and saves", async ({
   page,
 }) => {
   test.setTimeout(600000);
@@ -242,12 +242,180 @@ test("touch opening connects gathering, shopping and the Heron battle", async ({
     false,
   );
   await capture("07-loaded");
+  // Continue the same saved adventure through the normal fetch quest.
+  await clickRouteText(page, "Retreat", "Dungeon", true);
+  await page.waitForFunction(() =>
+    ["World", "Settlement"].includes(window.__kithlandsTest.activeSceneKey()),
+  );
+  if (
+    (await page.evaluate(() => window.__kithlandsTest.activeSceneKey())) ===
+    "Settlement"
+  ) {
+    await routeReady(page, "Settlement");
+    await walk("Settlement", { x: 12, y: 16 });
+    await page.getByRole("button", { name: "Leave town", exact: true }).tap();
+  }
+  await routeReady(page, "World");
+  const quest = (await state()).quests.find((q) => q.id === "quest_0");
+  expect(quest.template_id).toBe("Q01");
+  for (const nodeId of ["person_1", "person_0"]) {
+    const destination = await page.evaluate(
+      (id) =>
+        window.__normalRouteGame.scene
+          .getScene("World")
+          .spawns.find((s) => s.node_id === id),
+      nodeId,
+    );
+    await walk("World", destination);
+    await page
+      .getByRole("button")
+      .filter({ hasText: `— ${destination.name}` })
+      .tap();
+    await routeReady(page, "Town");
+    const approach = await page.evaluate(() => {
+      const scene = window.__normalRouteGame.scene.getScene("Town"),
+        grid = scene.tiles,
+        npc = scene.npcs[0];
+      const queue = [{ x: scene.playerX, y: scene.playerY }],
+        seen = new Set();
+      for (let i = 0; i < queue.length; i++) {
+        const point = queue[i],
+          key = `${point.x},${point.y}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const distance = (n) =>
+          Math.abs(n.x - point.x) + Math.abs(n.y - point.y);
+        if (
+          distance(npc) <= 2 &&
+          !scene.npcs.slice(1).some((n) => distance(n) < distance(npc)) &&
+          !(scene.chests || []).some((n) => distance(n) <= 1) &&
+          !(scene.hiddenItems || []).some((n) => distance(n) <= 1)
+        )
+          return point;
+        for (const [dx, dy] of [
+          [1, 0],
+          [0, 1],
+          [-1, 0],
+          [0, -1],
+        ]) {
+          const next = { x: point.x + dx, y: point.y + dy },
+            tile = grid[next.y]?.[next.x];
+          if (
+            Number.isInteger(tile) &&
+            scene.canWalkTile(tile) &&
+            !scene.npcs.some((n) => n.x === next.x && n.y === next.y)
+          )
+            queue.push(next);
+        }
+      }
+      throw new Error("No reachable quest keeper");
+    });
+    await walk("Town", approach);
+    const questResponse = page.waitForResponse(
+      (r) =>
+        r.url().endsWith("/action") &&
+        r.request().postDataJSON()?.type === "quest_action",
+    );
+    await action("Town");
+    expect((await (await questResponse).json()).error).toBeUndefined();
+    await page.waitForFunction(() =>
+      window.__normalRouteGame.scene
+        .getScene("Town")
+        ._modalLocks?.has("dialogue"),
+    );
+    for (let line = 0; line < 12; line++) {
+      const before = await page.evaluate(() =>
+        window.__kithlandsTest
+          .visibleTexts("Town")
+          .map((t) => t.text)
+          .join("\n"),
+      );
+      const point = await page.evaluate(() => {
+        const scene = window.__normalRouteGame.scene.getScene("Town"),
+          r = scene.game.canvas.getBoundingClientRect(),
+          y = scene.gameplayLayout.playfieldBottom - 180;
+        return {
+          x: r.x + (400 * r.width) / scene.scale.gameSize.width,
+          y: r.y + (y * r.height) / scene.scale.gameSize.height,
+        };
+      });
+      await page.touchscreen.tap(point.x, point.y);
+      await page.waitForFunction(
+        (previous) =>
+          !window.__normalRouteGame.scene
+            .getScene("Town")
+            ._modalLocks?.has("dialogue") ||
+          window.__kithlandsTest
+            .visibleTexts("Town")
+            .map((t) => t.text)
+            .join("\n") !== previous,
+        before,
+      );
+      if (
+        await page.evaluate(
+          () =>
+            !window.__normalRouteGame.scene
+              .getScene("Town")
+              ._modalLocks?.has("dialogue"),
+        )
+      )
+        break;
+    }
+    await page.waitForFunction(
+      () => !window.__normalRouteGame.scene.getScene("Town")._modalLocks?.size,
+    );
+    if (nodeId === "person_0") {
+      const notice = page.getByRole("status", { name: "Quest reward" });
+      await expect(notice).toBeVisible();
+      await expect(notice).toContainText(quest.name);
+      await expect(notice).toContainText(`+${quest.reward.xp} XP`);
+      await capture("08-campaign-level-up");
+    }
+    const door = await page.evaluate(() => {
+      const scene = window.__normalRouteGame.scene.getScene("Town"),
+        y = scene.roomH - 1;
+      return { x: scene.tiles[y].indexOf(2), y };
+    });
+    await walk("Town", door);
+    await routeReady(page, "World");
+  }
+  const leveled = await state();
+  expect(leveled.quests.find((q) => q.id === quest.id).completed).toBe(true);
+  expect(leveled.party.every((p) => p.level > 1)).toBe(true);
+  await page.getByRole("button", { name: "Menu", exact: true }).tap();
+  await page
+    .getByRole("button", { name: "Exit to main menu", exact: true })
+    .tap();
+  await page.getByRole("button", { name: "Save and exit", exact: true }).tap();
+  await page.getByRole("button", { name: /^Continue/ }).tap();
+  await page.locator(".title-adventure > .title-save").tap();
+  await routeReady(page, "World");
+  const resumed = await state();
+  expect(resumed.quests.find((q) => q.id === quest.id).completed).toBe(true);
+  expect(resumed.gold).toBe(leveled.gold);
+  expect(
+    resumed.resources.map(({ id, ready_at }) => ({ id, ready_at })),
+  ).toEqual(leveled.resources.map(({ id, ready_at }) => ({ id, ready_at })));
+  expect(
+    resumed.party.find((p) => p.name === "Sparks").spells.map((s) => s.id),
+  ).toContain("frost");
+  expect(resumed.party.map((p) => [p.level, p.xp])).toEqual(
+    leveled.party.map((p) => [p.level, p.xp]),
+  );
+  expect(
+    resumed.equipment[0].weapon_item.sockets.map((s) => s.gem_id),
+  ).toContain("ember_gem");
+  await capture("09-campaign-reloaded");
+  expect(requests.filter((r) => r.path.includes("/debug"))).toEqual([]);
+  expect(requests.some((r) => r.body?.debug_no_encounters === true)).toBe(
+    false,
+  );
   writeFileSync(
     path.join(proof, "summary.json"),
     JSON.stringify(
       {
-        gold: loaded.gold,
-        party: loaded.party.map((p) => ({
+        gold: resumed.gold,
+        party: resumed.party.map((p) => ({
           name: p.name,
           level: p.level,
           xp: p.xp,
@@ -255,8 +423,10 @@ test("touch opening connects gathering, shopping and the Heron battle", async ({
           mp: p.mp,
         })),
         battles: battleNumber,
-        readyResources: loaded.resources.filter((r) => r.ready_at > 0).length,
-        room: loaded.dungeon.room_id,
+        readyResources: resumed.resources.filter((r) => r.ready_at > 0).length,
+        millRoomBeforeRetreat: loaded.dungeon.room_id,
+        campaignQuestComplete: resumed.quests.find((q) => q.id === quest.id)
+          .completed,
         errors,
       },
       null,
