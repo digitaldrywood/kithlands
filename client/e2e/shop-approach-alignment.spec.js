@@ -5,7 +5,6 @@ import {
   startNormalRoute,
   routeReady,
   walkNormally,
-  openNormalMerchant,
 } from "./helpers/normal-route.js";
 const proof = path.resolve(`tmp/shop-approach-${Date.now()}`);
 mkdirSync(proof, { recursive: true });
@@ -160,7 +159,27 @@ for (const [width, height] of [
       expect(merchant.x).toBe(7);
       expect(merchant.npc.role).toBe("shopkeeper");
       await capture("counter-prompt");
-      await openNormalMerchant(page);
+      await page.keyboard.press("Enter");
+      const browse = page.getByRole("button", {
+        name: "Browse wares · B",
+        exact: true,
+      });
+      await expect(browse).toBeVisible();
+      await capture("merchant-greeting");
+      if (width === 390) await browse.tap();
+      else if (width === 800) {
+        // Conversation can still advance before taking the direct trade action.
+        await page.keyboard.press("Enter");
+        await expect(browse).toBeVisible();
+        await capture("merchant-conversation");
+        await page.keyboard.press("Tab");
+        await expect(browse).toBeFocused();
+        await page.keyboard.press("Enter");
+      } else await page.keyboard.press("b");
+      await expect(browse).toHaveCount(0);
+      await expect(
+        page.getByRole("dialog", { name: "Cadott General Store" }),
+      ).toBeVisible();
       await activate(page.getByRole("button", { name: /^Spells/ }));
       await activate(page.getByRole("button", { name: /^Frost/ }));
       await capture("spell-preview");

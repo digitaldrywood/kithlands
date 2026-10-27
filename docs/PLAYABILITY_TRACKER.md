@@ -1,5 +1,7 @@
 # Playability work tracker
 
+- Merchant greetings now offer a visible, focusable Browse wares action and B shortcut while retaining the conversation. Desktop/default/phone actual-game store → Frost purchase → trail checks pass; a separate run confirms advancing dialogue and Tab/Enter.49 screenshots inspected;873 client tests, build and formatting pass. See `MERCHANT_BROWSE_PROOF.md`. New-head CI and broader playability acceptance remain open.
+
 - Town/interiors now use the shared collapsible Objective control and selected journal model instead of a permanent campaign banner. Campaign custody stays visible on demand; exact echoed campaign guidance follows the selected story without replacing reward/error messages. Escape returns focus to the game; M stays usable. Five interior and three final shop cases pass across desktop/default/phone, plus the full phone opening/save-load route.873unit tests/build/full format pass;97accepted PNGs inspected. See `INTERIOR_OBJECTIVE_CONTINUITY_PROOF.md`.
 - The UI audit's provisional town-shortcut failure was not reproduced at settled input. Native checks now explicitly walk back from the shop, assert and activate the Old Mill control at all3sizes. Controls intentionally hide while movement runs; no speculative lifecycle fix was added. Merchant greeting/route-choice discoverability, terrain and final combat/full-goal acceptance remain open.
 

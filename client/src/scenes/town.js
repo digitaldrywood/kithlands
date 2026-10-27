@@ -1271,7 +1271,10 @@ export class TownScene extends Phaser.Scene {
       const dialogue = interaction?.dialogue || null;
 
       if (npc.isProprietor) {
-        await openDialogue(this, this.spawn, dialogue);
+        await openDialogue(this, this.spawn, dialogue, {
+          browseShop: tagSet.has("shop") || tagSet.has("commerce"),
+        });
+        if (this.scene?.isActive?.() === false) return;
 
         if (isRestBuilding(tags)) {
           const result = await restAtTown(

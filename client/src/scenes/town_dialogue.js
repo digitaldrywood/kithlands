@@ -1,3 +1,4 @@
+import "../styles/merchant-dialogue.css";
 import { portraitFontSize } from "../systems/gameplayViewport.js";
 import { oncePerKeyEvent } from "../systems/keyboard_events.js";
 import { roundedRectangle } from "../ui/theme.js";
@@ -56,7 +57,12 @@ function isConfirmKey(event) {
   );
 }
 
-export async function openDialogue(scene, spawn, providedDialogue = null) {
+export async function openDialogue(
+  scene,
+  spawn,
+  providedDialogue = null,
+  { browseShop = false } = {},
+) {
   pauseWorldFor(scene, "dialogue");
   scene.animating = true;
 
@@ -148,9 +154,25 @@ export async function openDialogue(scene, spawn, providedDialogue = null) {
 
   return new Promise((resolve) => {
     let closed = false;
+    let browseButton = null;
+    let observer = null;
+    const positionBrowse = () => {
+      const rect = scene.game.canvas.getBoundingClientRect();
+      const scale = rect.height / scene.scale.gameSize.height;
+      browseButton.style.left = `${rect.left + 40 * scale}px`;
+      browseButton.style.top = `${rect.top + (boxY + boxH - (portrait ? 108 : 54)) * scale}px`;
+    };
+    const removeBrowse = () => {
+      if (!browseButton) return;
+      observer?.disconnect();
+      window.removeEventListener("resize", positionBrowse);
+      browseButton.remove();
+    };
     const closeDialogue = () => {
       if (closed) return;
       closed = true;
+      removeBrowse();
+      scene.events?.off("shutdown", closeDialogue);
       overlay.forEach((o) => o.destroy());
       scene.animating = false;
       resumeWorldFor(scene, "dialogue");
@@ -176,12 +198,37 @@ export async function openDialogue(scene, spawn, providedDialogue = null) {
       closeDialogue();
     };
     const keyHandler = oncePerKeyEvent((event) => {
+      if (browseShop && event?.key?.toLowerCase() === "b" && !event.repeat) {
+        event.preventDefault?.();
+        closeDialogue();
+        return;
+      }
       if (!isConfirmKey(event)) return;
       event?.preventDefault?.();
       if (event?.repeat) return;
       advanceHandler();
     });
 
+    if (browseShop) {
+      browseButton = document.createElement("button");
+      browseButton.type = "button";
+      browseButton.className = "merchant-browse";
+      browseButton.setAttribute("aria-keyshortcuts", "B");
+      browseButton.textContent = "Browse wares · B";
+      for (const type of ["pointerdown", "pointerup", "click"])
+        browseButton.addEventListener(type, (event) => event.stopPropagation());
+      for (const type of ["keydown", "keyup"])
+        browseButton.addEventListener(type, (event) => {
+          if (["Enter", " "].includes(event.key)) event.stopPropagation();
+        });
+      browseButton.addEventListener("click", closeDialogue);
+      document.body.append(browseButton);
+      observer = new ResizeObserver(positionBrowse);
+      observer.observe(scene.game.canvas);
+      window.addEventListener("resize", positionBrowse);
+      positionBrowse();
+      scene.events?.once("shutdown", closeDialogue);
+    }
     scene.input.keyboard.on("keydown", keyHandler);
     scene.input.keyboard.on("keydown-ESC", escHandler);
 
