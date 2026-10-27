@@ -47,6 +47,10 @@ export class DungeonScene extends Phaser.Scene {
     rememberWorldTileMap(this.gameState);
     rememberWorldCheckpoint(this.gameState);
     this.entryMessage = data.entryMessage ?? data.gameState?.message ?? "";
+    this.entryMessageTemporary = data.entryMessageTemporary === true;
+    this.statusText = null;
+    this.noticeTimer = null;
+    this.noticeTween = null;
     this.playerDir = data.playerDir || "up";
     this.animating = false;
     this.menuOpen = false;
@@ -68,6 +72,7 @@ export class DungeonScene extends Phaser.Scene {
     this.events.once("shutdown", () => {
       this.path = [];
       this.pendingAction = null;
+      this.hideMessage();
       this.input.keyboard.removeAllListeners();
     });
     if (this.gameState.phase === "combat") {
@@ -285,7 +290,10 @@ export class DungeonScene extends Phaser.Scene {
     });
     this.animating = false;
     this.updateHUD();
-    if (this.entryMessage) this.showMessage(this.entryMessage);
+    if (this.entryMessage)
+      this.showMessage(this.entryMessage, {
+        temporary: this.entryMessageTemporary,
+      });
   }
 
   update() {
@@ -416,6 +424,10 @@ export class DungeonScene extends Phaser.Scene {
           gameState: result,
           playerDir: this.playerDir,
           entryMessage: result.message || "",
+          entryMessageTemporary:
+            action.type === "interact" &&
+            previous?.actions?.find((item) => item.id === action.action_id)
+              ?.kind === "treasure",
         });
         return;
       }
@@ -494,6 +506,7 @@ export class DungeonScene extends Phaser.Scene {
 
   updateHUD() {
     if (!this.layout || !this.gameState.dungeon) return;
+    this.hideMessage();
     for (const element of [...this.hudGroup, ...this.markers])
       element.destroy();
     this.hudGroup = [];
@@ -752,6 +765,7 @@ export class DungeonScene extends Phaser.Scene {
       if (this.scene.isActive())
         this.showMessage(
           result?.error || "Adventure saved. You can continue from this room.",
+          { temporary: !result?.error },
         );
       if (!result?.error) playSFX("sfx_save");
     } catch {
@@ -777,15 +791,40 @@ export class DungeonScene extends Phaser.Scene {
     this.journalDialog = null;
   }
 
-  showMessage(message) {
-    this.statusText?.setText(message).setVisible(true);
+  showMessage(message, { temporary = false } = {}) {
+    this.hideMessage();
+    if (!this.statusText) return;
+    this.statusText.setAlpha(1).setText(message).setVisible(true);
+    if (!temporary) return;
+    const words = message.trim().split(/\s+/).length;
+    const holdMs = Math.max(4500, Math.min(12000, words * 300));
+    this.noticeTimer = this.time.delayedCall(holdMs, () => {
+      this.noticeTimer = null;
+      if (globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+        this.hideMessage();
+        return;
+      }
+      this.noticeTween = this.tweens.add({
+        targets: this.statusText,
+        alpha: 0,
+        duration: 400,
+        onComplete: () => {
+          this.noticeTween = null;
+          this.statusText?.setVisible(false).setAlpha(1);
+        },
+      });
+    });
   }
 
   hideMessage() {
-    this.statusText?.setVisible(false);
+    this.noticeTimer?.remove();
+    this.noticeTimer = null;
+    this.noticeTween?.stop();
+    this.noticeTween = null;
+    this.statusText?.setVisible(false).setAlpha(1);
   }
 
   flashSaveIcon() {
-    this.showMessage("Adventure saved.");
+    this.showMessage("Adventure saved.", { temporary: true });
   }
 }
