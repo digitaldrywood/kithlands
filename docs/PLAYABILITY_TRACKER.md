@@ -1,5 +1,7 @@
 # Playability work tracker
 
+- All twelve walk sheets pass native geometry; 15 World/Town/direction/Space/phone audit cases and seven normal-speed/cadence/gallery cases pass. Inspected 72 real rendered east-facing frames, 12 stopped screenshots and the gallery. Mender, Cinder and Sage show limited stride under robes; full live-motion/all-direction visual acceptance remains open, especially because the in-app browser was unavailable. See `WALK_RECHECK_20261026.md`. No art or runtime change.
+
 - Native old-save follow-up: six database-backed pre-trail and pre-biome migration cases pass across desktop/default/phone, using visible Continue/save/Continue and retaining exact checkpoint, inventory, resource IDs and respawn deadlines. All 18 screenshots inspected. See `BIOME_SNOW_MIGRATION_PROOF.md`. Full terrain composition and latest-head CI remain open.
 
 - Small disconnected snow patches now join nearby highland or meadow; retained snow blends into hill edges. Exact old map signatures and resource-placement anchors are preserved; a changed-signature harvest/save/load/reload test passes. Twelve desktop/default/phone native terrain, habitat, trail, crafting, landmark and save/reload cases pass; all 73 captures inspected. Go, balance, isolated DB integration, client tests/build/format pass. See `BIOME_SNOW_MIGRATION_PROOF.md`. The remaining snow island is visibly flat, and full terrain, movement, combat and current-head CI acceptance stay open. Owner server/saves untouched.
