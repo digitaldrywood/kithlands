@@ -101,3 +101,27 @@ func TestGatheringPathRaggedRowsAndBlockedDestinations(t *testing.T) {
 		t.Fatal("out-of-bounds destinations must not have routes")
 	}
 }
+
+func TestCurrentGatheringPlacementFingerprints(t *testing.T) {
+	// Capture the public-trail generation used by saves before any biome migration.
+	baseline := map[int64]string{
+		1:   "72c759fb60db8e98077e0d12f7ded97df3ace6af5784d7f727df0342536a9528",
+		42:  "41f410e4fbbadd315a6c00ea587e0498b61b52c6f760a61765b1b67f60576963",
+		73:  "3939cce19e6ae6be0a5575559133d777c900a1a481bb7d56124351180339adf0",
+		941: "fc1aaca3ca303ad1a4e721969394aca0e94918ff130942fe25f18e4b376b2f5c",
+	}
+	for seed, want := range baseline {
+		g := gatheringPerformanceGame(t, seed)
+		data, err := json.Marshal(struct {
+			Nodes []ResourceNodeState
+			Tiles [][]int
+		}{g.resourceNodes(), g.tileMap.Tiles})
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := fmt.Sprintf("%x", sha256.Sum256(data))
+		if got != want {
+			t.Errorf("seed %d changed resource identities, habitats or terrain: %s", seed, got)
+		}
+	}
+}
