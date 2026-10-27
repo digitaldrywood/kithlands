@@ -1,0 +1,17 @@
+# Touch opening route — 2026-10-27
+
+The previous phone opening regression used keyboard movement. A new 390×844 touchscreen route now uses a fresh normal Quick start and seeded world (24), with encounters enabled. After filling the account field, gameplay actions use touch: D-pad steps through the world, settlement and store; taps track Old Mill in the journal, gather herbs and ore, buy Frost, enter the trail, fight the Heron herd, collect the guarded cache, brew a potion, forge/equip the Balanced Trail Sword, refine shards, transmute/socket an Ember Gem, rest, fight the mill bats, save, exit and Continue the newest save. The helper reads game state for pathfinding and choice selection; it does not teleport, grant items, disable encounters, invoke debug endpoints or mutate game state. The test is guided automation, not an unassisted human playtest.
+
+The final run passes in `client/tmp/first-session-touch-complete-20261027.log`. It verifies saved/loaded gold, party HP/MP/XP/levels, Frost, material quantities, both saved resource deadlines, room/action completion and the socketed gem. Its summary `client/tmp/first-session-touch-1793078064396/summary.json` records two fights, 28 gold and 24 XP per member at level one, two active resource deadlines, and zero page errors. All 12 final PNGs in that directory were inspected via two sheets at `client/tmp/first-session-touch-complete-review-20261027/`, with source mapping in `index.txt`. An earlier combined run also passed the unchanged desktop normal opening after the shared test helpers were extended for touch: `client/tmp/first-session-touch-verified-20261027.log`; its 24 desktop and ten phone captures were inspected in `client/tmp/first-session-touch-review-20261027/`.
+
+Earlier attempts are retained: the first used object indexing for the materials list; the second was interrupted after the test attempted to close equipment while the gem workshop was still open; the third had an ambiguous Back-to-game locator; the journal extension initially used the wrong accessible name for its Close button. Those were harness errors, not game failures. The final path uses the actual visible close controls. The account field is filled by automation, and only this seeded 390px route is covered; the test does not establish a human fifteen-minute completion time, all route choices, other phone sizes, or a level-up in this optional-mill route. The broader goal and natural pacing acceptance remain open.
+
+```sh
+cd client
+VITE_PORT=3615 PLAYWRIGHT_BROWSERS_PATH="$PWD/tmp/ms-playwright" XDG_CONFIG_HOME="$PWD/tmp/xdg-config" XDG_CACHE_HOME="$PWD/tmp/xdg-cache" npx playwright test --config=e2e/playwright.config.js e2e/first-session-touch.spec.js --output=tmp/first-session-touch-complete-20261027
+npm test -- --run
+npm run build
+npx prettier --check --ignore-path .gitignore .
+```
+
+875 client tests and build passed before the final test-only journal extension (`client/tmp/first-session-touch-{unit,build}-20261027.log`); final formatting passed (`client/tmp/first-session-touch-accept-format-20261027.log`). Workflow YAML and `git diff --check` pass. The gameplay hosted suite includes the new case; current-head CI is required. Parent `aa8065c` visual run `40451776638` passed, including the touch NPC fix. General CI remains self-hosted. No runtime mechanics, assets, or save logic changed; isolated services/accounts were used and the owner's session and saves were not touched.

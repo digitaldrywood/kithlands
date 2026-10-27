@@ -2,7 +2,11 @@ import { expect } from "@playwright/test";
 import { clickRouteText } from "./normal-route.js";
 
 // Read choices, then use actual command/target controls for every party member.
-export async function fightNormally(page, onRound = async () => {}) {
+export async function fightNormally(
+  page,
+  onRound = async () => {},
+  { touch = false } = {},
+) {
   let choices = 0;
   while (choices++ < 160) {
     await page.waitForFunction(
@@ -41,7 +45,7 @@ export async function fightNormally(page, onRound = async () => {}) {
           window.__kithlandsTest.interactiveTextPosition("Continue", "Battle"),
       );
       while (await page.locator(".battle-loot-keep").count()) {
-        await page.locator(".battle-loot-keep").click();
+        await page.locator(".battle-loot-keep")[touch ? "tap" : "click"]();
         await page.waitForTimeout(100);
       }
       await page.waitForFunction(() =>
@@ -67,7 +71,7 @@ export async function fightNormally(page, onRound = async () => {}) {
           window.addEventListener(type, window.__receiptInputListener, true);
       });
       try {
-        await clickRouteText(page, "Continue", "Battle");
+        await clickRouteText(page, "Continue", "Battle", touch);
         await page.waitForFunction(
           () => window.__kithlandsTest.activeSceneKey() !== "Battle",
         );
@@ -109,7 +113,7 @@ export async function fightNormally(page, onRound = async () => {}) {
         .filter({ hasText: label })
         .first();
       await expect(row).toBeVisible();
-      await row.click();
+      await row[touch ? "tap" : "click"]();
     };
     const targetEnemy = async () => {
       await expect(page.locator(".battle-choice-panel")).toContainText(
@@ -118,7 +122,7 @@ export async function fightNormally(page, onRound = async () => {}) {
       await page
         .locator(".battle-choice-list button:not(:disabled)")
         .first()
-        .click();
+        [touch ? "tap" : "click"]();
     };
     const spell = member.spells?.find(
       (s) =>
@@ -132,7 +136,8 @@ export async function fightNormally(page, onRound = async () => {}) {
     );
     if (slot === 0) await onRound(state);
     if (spell) {
-      await page.keyboard.press("s");
+      if (touch) await clickRouteText(page, "SPELL", "Battle", true);
+      else await page.keyboard.press("s");
       await choose(spell.name);
       if (spell.id === "cure") await choose(injured.name);
       else await targetEnemy();
@@ -140,11 +145,13 @@ export async function fightNormally(page, onRound = async () => {}) {
       member.class_id === "rogue" &&
       member.abilities?.some((a) => (a.id || a) === "backstab")
     ) {
-      await page.keyboard.press("b");
+      if (touch) await clickRouteText(page, "ABILITY", "Battle", true);
+      else await page.keyboard.press("b");
       await choose("Backstab");
       await targetEnemy();
     } else {
-      await page.keyboard.press("a");
+      if (touch) await clickRouteText(page, "ATTACK", "Battle", true);
+      else await page.keyboard.press("a");
       await targetEnemy();
     }
     // The next actor prompt is delayed; never recycle the previous actor's turn.

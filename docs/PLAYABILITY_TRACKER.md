@@ -1,5 +1,7 @@
 # Playability work tracker
 
+- A fresh seeded 390px opening now runs with touch gameplay from tracked journal through herbs/ore, shop/Frost, Heron battle/cache, potion/sword/gem/equip, mill bats and save/Continue. State, socket and two respawn deadlines survive reload; 12 final phone and 24 desktop regression captures inspected. The guided run ends at Lv1/24 XP and does not establish unassisted 15-minute pacing or all phone sizes. 875 client tests/build/format pass; parent aa8065c visual CI passed. See `FIRST_SESSION_TOUCH_PROOF.md`.
+
 - Touch-to-walk now routes around blocking interior NPCs using the same collision check as movement. Removed a retired invisible touch-HUD exclusion that blocked part of the room at 540px. Seven native phone touch/interior cases pass after two reproduced failures; 35 screenshots inspected and 875 client tests/build/format pass. Setup uses keyboard; a fully touch-only opening remains open. See `TOUCH_NPC_PATH_PROOF.md`.
 
 - Hosted cave-art walking job 122004100031 failed three screenshots at the 30s test budget (37 other cases passed). Its postrender wait now returns no Phaser renderer object to Playwright; all six cave/family/town/save cases pass locally in 18s with 13 inspected captures. The checks remain intact; fresh hosted CI is required. See `CAVE_LANDMARK_ART_PROOF.md`.

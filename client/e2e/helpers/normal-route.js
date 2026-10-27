@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 
-export async function startNormalRoute(page, seed) {
+export async function startNormalRoute(page, seed, touch = false) {
   if (seed !== undefined) {
     await page.route("**/api/game/new", async (route) => {
       await route.continue({
@@ -25,7 +25,9 @@ export async function startNormalRoute(page, seed) {
   const account = page.locator("input");
   await expect(account).toHaveCount(1);
   await account.fill(`normal_route_${Date.now()}@kithlands.dev`);
-  await page.getByRole("button", { name: /^Quick start/ }).click();
+  await page
+    .getByRole("button", { name: /^Quick start/ })
+    [touch ? "tap" : "click"]();
   await routeReady(page, "World");
 }
 
@@ -46,9 +48,9 @@ export async function routeReady(page, key) {
   }
 }
 
-// Read a route, then walk every tile with actual key events. No teleport,
+// Read a route, then walk every tile with actual keys or touch controls. No teleport,
 // server position mutation, encounter disabling or debug resource grants.
-export async function walkNormally(page, key, target) {
+export async function walkNormally(page, key, target, touch = false) {
   const path = await page.evaluate(
     ({ key, target }) => {
       const scene = window.__normalRouteGame.scene.getScene(key);
@@ -110,7 +112,48 @@ export async function walkNormally(page, key, target) {
     // entirely between frames on a loaded runner. Keep native input down until
     // the requested step starts, then release before waiting for its animation
     // and authoritative arrival. Never retry/skip a tile to hide a mismatch.
-    await page.keyboard.down(direction);
+    if (touch) {
+      const control = await page.evaluate((key) => {
+        const scene = window.__normalRouteGame.scene.getScene(key);
+        const visible = scene.children.list.some(
+          (o) => o.type === "Text" && o.text === "▲" && o.visible,
+        );
+        const rect = scene.game.canvas.getBoundingClientRect();
+        return { visible, x: rect.x + 4, y: rect.y + 4 };
+      }, key);
+      if (!control.visible) await page.touchscreen.tap(control.x, control.y);
+      const point = await page.evaluate(
+        ({ key, direction }) => {
+          const scene = window.__normalRouteGame.scene.getScene(key);
+          const pad = scene.gameplayLayout.dpad,
+            rect = scene.game.canvas.getBoundingClientRect();
+          const dx =
+            direction === "ArrowLeft"
+              ? -pad.offset
+              : direction === "ArrowRight"
+                ? pad.offset
+                : 0;
+          const dy =
+            direction === "ArrowUp"
+              ? -pad.offset
+              : direction === "ArrowDown"
+                ? pad.offset
+                : 0;
+          const offset =
+            scene.explorationHUD && scene.gameplayLayout.portrait ? 150 : 0;
+          return {
+            x:
+              rect.x + ((pad.x + dx) * rect.width) / scene.scale.gameSize.width,
+            y:
+              rect.y +
+              ((pad.y + dy - offset) * rect.height) /
+                scene.scale.gameSize.height,
+          };
+        },
+        { key, direction },
+      );
+      await page.touchscreen.tap(point.x, point.y);
+    } else await page.keyboard.down(direction);
     try {
       await page.waitForFunction(
         ({ key, next }) => {
@@ -123,7 +166,7 @@ export async function walkNormally(page, key, target) {
         { key, next },
       );
     } finally {
-      await page.keyboard.up(direction);
+      if (!touch) await page.keyboard.up(direction);
     }
     await page.waitForFunction(
       ({ key, next }) => {
