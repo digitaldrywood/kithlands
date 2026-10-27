@@ -712,13 +712,13 @@ export class DungeonScene extends Phaser.Scene {
     this.statusText = add(
       this.text(
         width / 2,
-        this.layout.bottom - (portrait ? 34 : 18),
+        this.layout.bottom - 8,
         "",
         portrait ? 26 : 15,
         "#fff1c8",
         HUD_DEPTH + 3,
       )
-        .setOrigin(0.5)
+        .setOrigin(0.5, 1)
         .setAlign("center")
         .setWordWrapWidth(width - 72)
         .setPadding(10, 7)

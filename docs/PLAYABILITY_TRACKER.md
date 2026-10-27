@@ -1,5 +1,7 @@
 # Playability work tracker
 
+- Heron arrival messages now grow upward above trail controls instead of overlapping them on phone. The real long arrival message reproduced the overlap before the fix; five native desktop/default/phone discovery and combat-to-crafting cases pass after it, with three arrival captures inspected. 875 client tests/build/format pass. See `DUNGEON_NOTICE_LAYOUT_PROOF.md`. Notices can still cover part of the map while visible; broader HUD polish remains open.
+
 - Heron Pool is now visible with the bats on the first Old Mill trail action page; the river hint remains on page two. Eight native discovery, battle-tactics and reward/crafting cases pass across desktop/default/phone; 61 screenshots inspected. Go/data/balance, 875 client tests, build and format pass. See `HERON_ROUTE_DISCOVERY_PROOF.md`. Owner server retains its startup catalog until safely restarted; the full human-paced opening and broader visual acceptance remain open.
 
 - Ruin art now has a 12px upward visual offset, with attached badges following it; the node and interaction remain unchanged. The opening is more visible at the tested southern approach, though its lower edge still overlaps the player. Six actual-game marker/town/save cases pass across desktop/default/phone; all 16 captures inspected. 875 client tests/build/format, Go/data pass. See `RUIN_LANDMARK_ART_PROOF.md`; other approaches, broader landscape and current CI remain open.

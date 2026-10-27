@@ -78,6 +78,17 @@ for (const [width, height] of [
       (await page.evaluate(() => window.__kithlandsTest.gameState("Dungeon")))
         .dungeon.room_id,
     ).toBe("heron-pool");
+    const notice = await page.evaluate(() => {
+      const scene = window.__normalRouteGame.scene.getScene("Dungeon");
+      const bounds = scene.statusText.getBounds();
+      return {
+        visible: scene.statusText.visible,
+        bottom: bounds.bottom,
+        actionTop: scene.layout.actionY - scene.layout.buttonHeight / 2,
+      };
+    });
+    expect(notice.visible).toBe(true);
+    expect(notice.bottom).toBeLessThanOrEqual(notice.actionTop);
     await page.screenshot({
       path: path.join(proof, `${width}-heron-pool.png`),
     });
