@@ -30,6 +30,21 @@ for (const [width, height] of [
         page.screenshot({ path: path.join(proof, `${width}-${stage}.png`) });
       const activate = (node) => (width === 390 ? node.tap() : node.click());
       await startNormalRoute(page, 6);
+      const campaignName = await page.evaluate(() => {
+        const state = window.__kithlandsTest.gameState("World");
+        return state.quests[state.current_quest].name;
+      });
+      await activate(page.getByRole("button", { name: "Menu", exact: true }));
+      await activate(page.getByRole("button", { name: /^Quest journal/ }));
+      await activate(
+        page.getByRole("button", {
+          name: "Track The Old Mill of Cadott, WI",
+          exact: true,
+        }),
+      );
+      await activate(
+        page.getByRole("button", { name: "Close Quest Log", exact: true }),
+      );
       const home = await page.evaluate(() => {
         const s = window.__normalRouteGame.scene.getScene("World");
         return s.spawns.find(
@@ -70,6 +85,49 @@ for (const [width, height] of [
       await capture("door-prompt");
       await page.keyboard.press("Enter");
       await routeReady(page, "Town");
+      const objective = page.locator(
+        ".interior-controls [data-objective-tracker]",
+      );
+      await expect(objective).toHaveCount(1);
+      await expect(
+        objective.locator(".explore-objective-details"),
+      ).toBeHidden();
+      await activate(
+        objective.getByRole("button", { name: "Objective ▾", exact: true }),
+      );
+      await expect(objective.locator("strong")).toHaveText(
+        "The Old Mill of Cadott, WI",
+      );
+      await expect(objective.locator("p")).toContainText("Old Mill trail");
+      await capture("inside-tracked-story");
+      await activate(
+        objective.getByRole("button", { name: "Quest journal", exact: true }),
+      );
+      const journal = page.getByRole("dialog", {
+        name: "Quest Log",
+        exact: true,
+      });
+      await expect(journal).toBeVisible();
+      await expect(page.locator(".interior-controls")).toBeHidden();
+      await activate(
+        journal.getByRole("button", {
+          name: `Track ${campaignName}`,
+          exact: true,
+        }),
+      );
+      await activate(
+        page.getByRole("button", { name: "Close Quest Log", exact: true }),
+      );
+      await expect(objective.locator("strong")).toHaveText(campaignName);
+      await capture("inside-tracked-campaign");
+      await objective
+        .getByRole("button", { name: "Objective ▴", exact: true })
+        .focus();
+      await page.keyboard.press("Escape");
+      await expect(
+        objective.locator(".explore-objective-details"),
+      ).toBeHidden();
+      await expect(page.locator("#game > canvas")).toBeFocused();
       await capture("inside-entry");
       const start = await page.evaluate(() => {
         const s = window.__normalRouteGame.scene.getScene("Town");
@@ -135,6 +193,42 @@ for (const [width, height] of [
       expect(returned.y).toBe(10);
       expect(returned.gold).toBe(0);
       expect(returned.party).toEqual(bought.party);
+      await walkNormally(page, "Settlement", { x: 12, y: 15 });
+      await capture("returned-trail-junction");
+      const trail = await page.evaluate(() => {
+        const s = window.__normalRouteGame.scene.getScene("Settlement");
+        return {
+          location: s.gameState.current_location,
+          entries: s.gameState.dungeon_entries,
+          entry: s.currentDungeonEntry,
+          button: s.dungeonEntryButton && {
+            active: s.dungeonEntryButton.bg.active,
+            visible: s.dungeonEntryButton.bg.visible,
+            label: s.dungeonEntryButton.label.text,
+          },
+        };
+      });
+      writeFileSync(
+        path.join(proof, `${width}-trail-diagnostic.json`),
+        JSON.stringify(trail, null, 2),
+      );
+      expect(trail.button?.active).toBe(true);
+      expect(trail.button?.visible).toBe(true);
+      expect(trail.button?.label).toBe("Old Mill trail");
+      // Activate the actual retained control, proving this is more than visibility.
+      const trailBox = await page.evaluate(() => {
+        const s = window.__normalRouteGame.scene.getScene("Settlement"),
+          r = s.dungeonEntryButton.bg.getBounds(),
+          c = s.game.canvas.getBoundingClientRect();
+        return {
+          x: c.x + (r.centerX * c.width) / s.scale.gameSize.width,
+          y: c.y + (r.centerY * c.height) / s.scale.gameSize.height,
+        };
+      });
+      if (width === 390) await page.touchscreen.tap(trailBox.x, trailBox.y);
+      else await page.mouse.click(trailBox.x, trailBox.y);
+      await routeReady(page, "Dungeon");
+      await capture("trail-entered-after-shop");
       expect(errors).toEqual([]);
       writeFileSync(
         path.join(proof, `${width}-audit.json`),

@@ -1,7 +1,7 @@
 import { element } from "./viewport_dialog.js";
 
 // Both field scenes use this same collapsible tracker and journal entry point.
-export function objectiveTracker(openJournal) {
+export function objectiveTracker(openJournal, { onDismiss } = {}) {
   const root = element("div", "explore-objective explore-surface");
   root.dataset.objectiveTracker = "true";
   const toggle = element("button", "explore-disclosure", "Objective ▾");
@@ -23,11 +23,14 @@ export function objectiveTracker(openJournal) {
   // Native disclosure buttons own their keys; Enter/Space must not also
   // activate a nearby landmark through the canvas keyboard listener.
   root.addEventListener("keydown", (event) => {
-    event.stopPropagation();
+    // Keep movement/selection keys local, but retain the scene's Menu shortcut
+    // after Escape returns focus to the disclosure button.
+    if (event.key.toLowerCase() !== "m") event.stopPropagation();
     if (event.key === "Escape" && !details.hidden) {
       event.preventDefault();
       toggle.click();
-      toggle.focus();
+      if (onDismiss) onDismiss();
+      else toggle.focus();
     }
   });
   root.addEventListener("keyup", (event) => {

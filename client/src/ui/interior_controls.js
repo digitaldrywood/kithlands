@@ -1,3 +1,5 @@
+import { objectiveTracker } from "./objective_tracker.js";
+import "../styles/exploration-hud.css";
 import { element } from "./viewport_dialog.js";
 import { activeWorldLocks, isWorldInputLocked } from "../systems/modalLock.js";
 import "../styles/interior-controls.css";
@@ -6,7 +8,7 @@ import "../styles/interior-controls.css";
 export function interiorControls(
   scene,
   openMenu,
-  { label = "Interior controls", contextAction } = {},
+  { label = "Interior controls", contextAction, objective, openJournal } = {},
 ) {
   const root = element("nav", "interior-controls");
   root.setAttribute("aria-label", label);
@@ -19,6 +21,26 @@ export function interiorControls(
     if (event.key === "Enter" || event.key === " ") event.stopPropagation();
   });
   root.append(button);
+  const tracker = objective
+    ? objectiveTracker(openJournal, {
+        onDismiss: () => {
+          const canvas = scene.game.canvas;
+          if (!canvas.hasAttribute("tabindex")) canvas.tabIndex = -1;
+          canvas.focus({ preventScroll: true });
+        },
+      })
+    : null;
+  if (tracker) root.append(tracker.root);
+  let lastObjective = "";
+  const refreshObjective = () => {
+    if (!tracker) return;
+    const selected = objective();
+    const key = JSON.stringify([selected.title, selected.detail]);
+    if (key === lastObjective) return;
+    lastObjective = key;
+    tracker.update(selected.title, selected.detail);
+  };
+  refreshObjective();
   const action = contextAction
     ? element("button", "interior-action-button")
     : null;
@@ -38,8 +60,10 @@ export function interiorControls(
   for (const event of ["pointerdown", "pointerup", "click", "wheel"])
     root.addEventListener(event, (e) => e.stopPropagation());
   document.body.append(root);
+  let canvasRect;
   const position = () => {
     const r = scene.game.canvas.getBoundingClientRect();
+    canvasRect = r;
     Object.assign(root.style, {
       left: `${r.left}px`,
       top: `${r.top}px`,
@@ -51,8 +75,24 @@ export function interiorControls(
       action.style.bottom = `${((layout.height - layout.controlArea.dpadTop) * r.height) / layout.height + 12}px`;
     }
   };
+  let objectiveHeaderBottom = 0;
   const update = () => {
     root.hidden = activeWorldLocks(scene).length > 0 || !scene.scene.isActive();
+    refreshObjective();
+    if (tracker) {
+      const rect = canvasRect;
+      const fixedHeader = [...(scene.labelBar || [])];
+      if (scene.dungeonEntryButton?.bg?.active)
+        fixedHeader.push(scene.dungeonEntryButton.bg);
+      // Trail controls hide during steps. Retain their lane so the objective
+      // does not jump up and down with every movement/input lock.
+      objectiveHeaderBottom = Math.max(
+        objectiveHeaderBottom,
+        ...fixedHeader.map((o) => o.getBounds().bottom),
+      );
+      const top = `${Math.max(12, (objectiveHeaderBottom * rect.height) / scene.scale.gameSize.height + 8)}px`;
+      if (tracker.root.style.top !== top) tracker.root.style.top = top;
+    }
     if (action) {
       currentAction = contextAction();
       action.hidden = !currentAction;
@@ -96,5 +136,5 @@ export function interiorControls(
   };
   scene.events.once("shutdown", dispose);
   scene.events.once("destroy", dispose);
-  return { dispose };
+  return { dispose, refreshObjective };
 }

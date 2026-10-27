@@ -116,9 +116,11 @@ herd → earned supplies → crafted/socketed sword → bank rest → bats → s
 route using screenshots and visible controls, without seed overrides or game
 state helpers. It finished with28gold, seven potions and24XP each, still level1.
 Tool-driven reading/capture pauses mean its duration is not human timing.
-It exposed a missing town trail shortcut after shop return and inconsistent
-arrival guidance; the world entrance remains usable. See
-`UI_OPENING_PLAYTHROUGH_PROOF.md` for evidence and remaining friction.
+It exposed inconsistent arrival guidance, now reconciled with the shared journal.
+The apparent missing town shortcut was not reproduced after movement settled;
+follow-up desktop/default/phone checks activate it successfully after shop return.
+See `UI_OPENING_PLAYTHROUGH_PROOF.md` and
+`INTERIOR_OBJECTIVE_CONTINUITY_PROOF.md` for evidence and remaining friction.
 
 ## Gathering and professions recommendation
 

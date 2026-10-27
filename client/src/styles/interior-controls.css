@@ -53,3 +53,33 @@
 .interior-action-button:hover {
   background: #344955;
 }
+
+/* Match the shared field/adventure disclosure without scaling it with the room. */
+.interior-controls .explore-objective {
+  color: #e9eef7;
+  font:
+    13px/1.4 system-ui,
+    sans-serif;
+  max-width: min(340px, calc(100% - 24px));
+}
+.interior-controls .explore-objective [hidden] {
+  display: none !important;
+}
+.interior-controls .explore-disclosure {
+  pointer-events: auto;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #ffffff18;
+  border-radius: 10px;
+  background: #263344;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.interior-controls .explore-disclosure:hover {
+  background: #34465b;
+}
+.interior-controls .explore-disclosure:focus-visible {
+  outline: 2px solid #c9b589;
+  outline-offset: 3px;
+}

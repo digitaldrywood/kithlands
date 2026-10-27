@@ -3,6 +3,7 @@ import {
   questJournalModel,
   trackQuest,
   trackedQuestID,
+  questGuidanceMessage,
 } from "./questJournalModel.js";
 
 const state = {
@@ -74,5 +75,46 @@ describe("unified quest journal", () => {
   it("handles empty and legacy quest state", () => {
     expect(questJournalModel({}).tracker.title).toBe("Campaign Complete");
     expect(trackedQuestID({ gameState: {} })).toBe("campaign");
+  });
+  it("keeps campaign custody with the journal's tracked objective", () => {
+    const model = questJournalModel({
+      ...state,
+      quests: [
+        {
+          ...state.quests[0],
+          objectives: { step: 0, item: "mill parcel" },
+          actions: [{ text: "Deliver the parcel." }],
+        },
+      ],
+    });
+    expect(model.tracker.detail).toBe(
+      "1/1 · Deliver the parcel.\nCarrying: mill parcel",
+    );
+  });
+  it("remaps only echoed campaign guidance when a local story is selected", () => {
+    const scene = {
+      gameState: {
+        ...state,
+        quests: [
+          {
+            objectives: { step: 0 },
+            actions: [{ text: "Travel to the inn." }],
+          },
+        ],
+      },
+      registry: { get: () => ({ gameID: state.id, id: "dungeon:old-mill" }) },
+    };
+    expect(questGuidanceMessage(scene, "Travel to the inn.")).toContain(
+      "Read the ledger",
+    );
+    for (const message of [
+      "Quest complete! +180 XP",
+      "Could not enter",
+      "Found a potion!",
+    ])
+      expect(questGuidanceMessage(scene, message)).toBe(message);
+    expect(
+      questGuidanceMessage({ ...scene, registry: null }, "Travel to the inn."),
+    ).toBe("Travel to the inn.");
   });
 });

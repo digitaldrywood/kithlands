@@ -259,13 +259,39 @@ for (const width of [1440, 800, 390, 375, 540]) {
       if (width <= 600) {
         const clearance = await page.evaluate(() => {
           const s = window.__normalRouteGame.scene.getScene("Town");
-          return s.cameras.main.y - s.objectiveText.getBounds().bottom;
+          return (
+            s.cameras.main.y -
+            Math.max(...s.labelBar.map((o) => o.getBounds().bottom))
+          );
         });
         expect(
           clearance,
-          "room leaves space for the updated objective and custody",
+          "room leaves space below the fixed interior header",
         ).toBeGreaterThanOrEqual(19);
       }
+      const objective = page.locator(
+        ".interior-controls [data-objective-tracker]",
+      );
+      await expect(
+        objective.locator(".explore-objective-details"),
+      ).toBeHidden();
+      await objective
+        .getByRole("button", { name: "Objective ▾", exact: true })
+        [width <= 600 ? "tap" : "click"]();
+      const updatedQuest = result.quests[result.current_quest];
+      await expect(objective.locator("p")).toContainText(
+        updatedQuest.actions[updatedQuest.objectives.step].text,
+      );
+      if (updatedQuest.objectives.item)
+        await expect(objective.locator("p")).toContainText(
+          updatedQuest.objectives.item,
+        );
+      await capture("updated-objective");
+      await page.keyboard.press("Escape");
+      await expect(
+        objective.locator(".explore-objective-details"),
+      ).toBeHidden();
+      await expect(page.locator("#game > canvas")).toBeFocused();
       const entry = page.getByRole("button", { name: "Menu M", exact: true });
       await expect(entry).toBeVisible();
       if (width <= 600) {

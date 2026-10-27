@@ -2,7 +2,8 @@ import { beginWalkStep } from "./walkPlayback.js";
 import { transitionLocation } from "../api.js";
 import { installInteriorCamera, settlementFraming } from "./interiorCamera.js";
 import { interiorControls } from "../ui/interior_controls.js";
-import { toggleMenu } from "./world_menu.js";
+import { toggleMenu, showQuestLog } from "./world_menu.js";
+import { trackedObjective } from "./questJournalModel.js";
 import { isWorldInputLocked } from "../systems/modalLock.js";
 import { playMusic, playSFX } from "../systems/audio.js";
 import { initTouchControls, isTouchDevice } from "../systems/input.js";
@@ -262,6 +263,8 @@ export class SettlementScene extends Phaser.Scene {
       },
       {
         label: "Settlement controls",
+        objective: () => trackedObjective(this),
+        openJournal: () => showQuestLog(this),
         contextAction: () =>
           this.currentInteraction?.type === "exit"
             ? { label: "Leave town", activate: () => this.handleAction() }

@@ -1,4 +1,4 @@
-import { questObjectiveText } from "./quest_text.js";
+import { questObjectiveText, questCustodyText } from "./quest_text.js";
 
 // Tracking is disposable UI selection. Progress and notes always come from Go.
 export function trackedQuestID(scene) {
@@ -66,7 +66,9 @@ export function questJournalModel(state, tracked = "campaign") {
           detail: campaign?.hidden
             ? "Explore to uncover your next objective."
             : campaign
-              ? questObjectiveText(campaign)
+              ? [questObjectiveText(campaign), questCustodyText(campaign)]
+                  .filter(Boolean)
+                  .join("\n")
               : "All quests complete.",
         },
   };
@@ -74,4 +76,15 @@ export function questJournalModel(state, tracked = "campaign") {
 
 export function trackedObjective(scene) {
   return questJournalModel(scene.gameState, trackedQuestID(scene)).tracker;
+}
+
+// Arrival can echo the current campaign instruction even while a local story
+// is tracked. Only remap that exact instruction; rewards/errors/flavor survive.
+export function questGuidanceMessage(scene, message) {
+  const quest = scene.gameState?.quests?.[scene.gameState?.current_quest];
+  const action = quest?.actions?.[quest.objectives?.step];
+  const tracked = trackedObjective(scene);
+  return tracked.key !== "campaign" && action?.text === message
+    ? tracked.detail
+    : message;
 }

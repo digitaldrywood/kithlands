@@ -1,7 +1,5 @@
-import { portraitFontSize } from "../systems/gameplayViewport.js";
 import { gameAction, autosaveGame } from "../api.js";
 import { openDialogue } from "./town_dialogue.js";
-import { questObjectiveText, questCustodyText } from "./quest_text.js";
 import { showQuestMilestone } from "../ui/quest_milestone.js";
 import {
   activeWorldLocks,
@@ -32,30 +30,7 @@ export function nearbyQuestObjective(scene) {
 export function drawTownObjective(scene) {
   scene.objectiveText?.destroy();
   scene.objectiveText = null;
-  const objective = currentObjective(scene);
-  if (!objective) return;
-  const { portrait, centerX } = scene.gameplayLayout;
-  const width = 650;
-  const custody = questCustodyText(objective.quest);
-  scene.objectiveText = scene.add
-    .text(
-      centerX,
-      portrait ? 138 : 76,
-      [questObjectiveText(objective.quest), custody].filter(Boolean).join("\n"),
-      {
-        fontFamily: "Arial, sans-serif",
-        fontSize: portrait ? portraitFontSize(scene) : "15px",
-        color: "#f4e3af",
-        backgroundColor: "#0b1729ed",
-        padding: { x: 14, y: 10 },
-        wordWrap: { width },
-        align: "center",
-      },
-    )
-    .setOrigin(0.5, 0)
-    .setScrollFactor(0)
-    .setDepth(1402);
-  syncTownObjectiveVisibility(scene);
+  scene.interiorMenuHUD?.refreshObjective();
 }
 
 export function syncTownObjectiveVisibility(scene) {

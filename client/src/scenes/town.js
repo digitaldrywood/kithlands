@@ -26,7 +26,8 @@ import {
   drawInteriorProps,
   interiorChestKey,
 } from "./town_presentation.js";
-import { toggleMenu } from "./world_menu.js";
+import { toggleMenu, showQuestLog } from "./world_menu.js";
+import { trackedObjective } from "./questJournalModel.js";
 import { openShop } from "./world_shop.js";
 import { isTouchDevice, initTouchControls } from "../systems/input.js";
 import {
@@ -877,7 +878,10 @@ export class TownScene extends Phaser.Scene {
 
     this.updateInteractionTargets();
     installInteriorCamera(this, roomPixelW, roomPixelH);
-    this.interiorMenuHUD = interiorControls(this, () => toggleMenu(this));
+    this.interiorMenuHUD = interiorControls(this, () => toggleMenu(this), {
+      objective: () => trackedObjective(this),
+      openJournal: () => showQuestLog(this),
+    });
   }
 
   // Place NPCs: proprietor at anchor position, extras on walkable floor tiles.

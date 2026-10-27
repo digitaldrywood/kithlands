@@ -5,7 +5,7 @@ import {
   gatherNearbyResource,
   resourceTerrain,
 } from "./world_gathering.js";
-import { trackedObjective } from "./questJournalModel.js";
+import { trackedObjective, questGuidanceMessage } from "./questJournalModel.js";
 import { updateWorldTerrainVisibility } from "./worldTerrainVisibility.js";
 import { beginWalkStep } from "./walkPlayback.js";
 import {
@@ -513,7 +513,7 @@ export class WorldScene extends Phaser.Scene {
 
     // Show any pending message from last action (quest complete, level up, etc.)
     if (gs.message) {
-      this.showMessage(gs.message);
+      this.showMessage(questGuidanceMessage(this, gs.message));
       this.time.delayedCall(3000, () => this.hideMessage());
     }
     if (gs.combat_log) {
@@ -864,7 +864,7 @@ export class WorldScene extends Phaser.Scene {
       this.updateVehicleIndicator();
 
       if (result.message && !milestoneShown) {
-        this.showMessage(result.message);
+        this.showMessage(questGuidanceMessage(this, result.message));
         this.time.delayedCall(3000, () => this.hideMessage());
       }
       if (result.phase === "victory") {

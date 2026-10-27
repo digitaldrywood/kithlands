@@ -63,9 +63,12 @@ contact-timing/reduced-motion proof.
 Remaining friction found here:
 
 - The town Old Mill shortcut is visible on initial entry but absent after shop
-  return at the south junction. World entry still works; repair this lifecycle.
-- Arrival guidance shows the campaign errand despite the previously selected
-  local story. Reconcile arrival guidance with journal selection.
+  return at the south junction. World entry still works. Follow-up settled
+  native checks did not reproduce a broken lifecycle: all three viewport cases
+  assert and activate the trail after shop return. See
+  `INTERIOR_OBJECTIVE_CONTINUITY_PROOF.md`.
+- Arrival guidance showed the campaign errand despite the previously selected
+  local story. This is reconciled in `INTERIOR_OBJECTIVE_CONTINUITY_PROOF.md`.
 - Three merchant flavor lines must be advanced before stock. Evaluate a direct
   trade action/short greeting without discarding NPC conversation.
 - The optional threat and supplies require More routes. The audit can find
