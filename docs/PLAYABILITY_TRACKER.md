@@ -1,5 +1,7 @@
 # Playability work tracker
 
+- Replaced the flat cave landmark with an original detailed 64px outcrop and a 12px visual offset. Six native fixture/family/town/save cases plus three final postrender cases pass; 13 accepted screenshots inspected. 875 client tests/build/format and Go/data pass. The controlled fixture substitutes a cave-selecting ID, and the player still overlaps the entrance at the tested approach; broader environment acceptance remains open. See `CAVE_LANDMARK_ART_PROOF.md`.
+
 - Heron arrival messages now grow upward above trail controls instead of overlapping them on phone. The real long arrival message reproduced the overlap before the fix; five native desktop/default/phone discovery and combat-to-crafting cases pass after it, with three arrival captures inspected. 875 client tests/build/format pass. See `DUNGEON_NOTICE_LAYOUT_PROOF.md`. Notices can still cover part of the map while visible; broader HUD polish remains open.
 
 - Heron Pool is now visible with the bats on the first Old Mill trail action page; the river hint remains on page two. Eight native discovery, battle-tactics and reward/crafting cases pass across desktop/default/phone; 61 screenshots inspected. Go/data/balance, 875 client tests, build and format pass. See `HERON_ROUTE_DISCOVERY_PROOF.md`. Owner server retains its startup catalog until safely restarted; the full human-paced opening and broader visual acceptance remain open.

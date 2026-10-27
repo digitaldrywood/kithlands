@@ -58,7 +58,7 @@ jobs:
           python3 skills/kithlands-visual-production/scripts/audit_walk_sheets.py client/public/sprites/walk --columns 6 --rows 8 --mode enforce
       - name: Verify all-class walking and world rendering
         if: matrix.suite == 'walking'
-        run: ./scripts/run_playwright_local.sh e2e/walk-rendered-cadence.spec.js e2e/walk-all-classes.spec.js e2e/world-space-cycle.spec.js e2e/world-walk-audit-party.spec.js e2e/world-terrain-visibility.spec.js e2e/meadow-ground.spec.js e2e/grove-snow-fringe.spec.js e2e/overworld-landmarks.spec.js e2e/ruin-landmark-art.spec.js
+        run: ./scripts/run_playwright_local.sh e2e/walk-rendered-cadence.spec.js e2e/walk-all-classes.spec.js e2e/world-space-cycle.spec.js e2e/world-walk-audit-party.spec.js e2e/world-terrain-visibility.spec.js e2e/meadow-ground.spec.js e2e/grove-snow-fringe.spec.js e2e/overworld-landmarks.spec.js e2e/ruin-landmark-art.spec.js e2e/cave-landmark-art.spec.js
       - name: Verify combat controls, tactical encounters, and result recovery
         if: matrix.suite == 'combat'
         run: ./scripts/run_playwright_local.sh e2e/battle-continuity.spec.js e2e/battle-stop-auto.spec.js e2e/battle-defend.spec.js e2e/warrior-hit-reaction.spec.js e2e/cinder-hit-reaction.spec.js e2e/warrior-ko-revive.spec.js e2e/cinder-ko-reaction.spec.js e2e/cinder-ko-revive.spec.js e2e/warrior-item-use.spec.js e2e/cinder-item-use.spec.js e2e/warrior-victory.spec.js e2e/cinder-victory.spec.js e2e/cinder-melee.spec.js e2e/warrior-defend-route.spec.js e2e/cinder-defend-route.spec.js e2e/all-class-battle-states.spec.js e2e/battle-context-choices.spec.js e2e/enemy-tactics.spec.js e2e/bandit-guard.spec.js e2e/battle-hud-workstream.spec.js e2e/victory-receipt.spec.js e2e/victory-advance.spec.js e2e/defeat-receipt.spec.js
@@ -154,6 +154,7 @@ jobs:
             client/test-results/**/*.png
             client/tmp/overworld-landmarks/
             client/tmp/ruin-landmark-art-*/
+            client/tmp/cave-landmark-art-*/
             client/tmp/opening-integration-*/
             client/tmp/first-session-*/
             client/tmp/campaign-first-level-*/

@@ -81,7 +81,8 @@
         {
           "id": "dungeon-cave",
           "key": "world_landmark_dungeon_cave",
-          "path": "/sprites/world/landmarks/dungeon-cave.png"
+          "path": "/sprites/world/landmarks/dungeon-cave-detailed.png",
+          "offset_y": -12
         }
       ]
     },
