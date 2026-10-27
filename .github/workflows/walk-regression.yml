@@ -91,7 +91,7 @@ jobs:
         run: ./scripts/run_playwright_local.sh e2e/escort-journey.spec.js
       - name: Verify complete interior library and playable entrances
         if: matrix.suite == 'interiors'
-        run: ./scripts/run_playwright_local.sh e2e/interior-library-gallery.spec.js e2e/elder-house-visit.spec.js e2e/interior-door-access.spec.js e2e/interior-templates-proof.spec.js e2e/portrait-interior.spec.js e2e/portrait-settlement.spec.js e2e/settlement-exit.spec.js e2e/settlement-save.spec.js e2e/interior-menu-shortcuts.spec.js
+        run: ./scripts/run_playwright_local.sh e2e/interior-library-gallery.spec.js e2e/elder-house-visit.spec.js e2e/interior-door-access.spec.js e2e/interior-templates-proof.spec.js e2e/portrait-interior.spec.js e2e/portrait-settlement.spec.js e2e/shop-approach-alignment.spec.js e2e/settlement-exit.spec.js e2e/settlement-save.spec.js e2e/interior-menu-shortcuts.spec.js
       - name: Retain motion evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -177,6 +177,7 @@ jobs:
             client/tmp/interior-library-*/
             client/tmp/portrait-interior-*/
             client/tmp/portrait-settlement-*/
+            client/tmp/shop-approach-*/
             client/tmp/settlement-exit-*/
             client/tmp/settlement-save-*/
             client/tmp/interior-menu-shortcuts-*/

@@ -76,7 +76,8 @@ for (const [width, height] of [
       // Native select keys must not leak through to world movement or menu actions.
       await picker.focus();
       await page.keyboard.press("ArrowDown");
-      await page.keyboard.press("Enter");
+      await page.keyboard.press("Tab");
+      await expect(picker).not.toBeFocused();
       await expect(dialog).toBeVisible();
       await page.screenshot({
         path: path.join(proof, `${width}-keyboard.png`),

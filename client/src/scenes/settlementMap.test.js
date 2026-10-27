@@ -81,6 +81,20 @@ describe("buildSettlementModel", () => {
     expect(interactionAt(model, 18, 9, "up")?.name).toBe("general-store-door");
   });
 
+  it("keeps the store roof solid and its illustrated steps reachable", () => {
+    const model = buildSettlementModel(cadott, "general-store-return");
+    for (const x of [18, 19]) {
+      expect(model.tileData[8][x]).toBe(1);
+      expect(model.tileData[9][x]).toBe(0);
+      expect(model.tileData[10][x]).toBe(0);
+      expect(interactionAt(model, x, 9, "up")?.name).toBe("general-store-door");
+      expect(interactionAt(model, x, 7, "up")?.name).not.toBe(
+        "general-store-door",
+      );
+    }
+    expect(model.spawn).toEqual({ x: 19, y: 10, direction: "down" });
+  });
+
   it("rejects a missing transition anchor", () => {
     expect(() => buildSettlementModel(testMap(), "missing")).toThrow(
       "Settlement spawn missing is missing",

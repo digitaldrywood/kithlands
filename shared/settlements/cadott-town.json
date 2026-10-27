@@ -64,7 +64,7 @@
         { "id": 16, "name": "inn-upper", "type": "solid", "x": 32, "y": 96, "width": 240, "height": 112, "rotation": 0, "visible": true },
         { "id": 17, "name": "inn-left", "type": "solid", "x": 32, "y": 208, "width": 144, "height": 48, "rotation": 0, "visible": true },
         { "id": 18, "name": "inn-right", "type": "solid", "x": 208, "y": 208, "width": 64, "height": 48, "rotation": 0, "visible": true },
-        { "id": 19, "name": "store-upper", "type": "solid", "x": 512, "y": 96, "width": 288, "height": 144, "rotation": 0, "visible": true },
+        { "id": 19, "name": "store-upper", "type": "solid", "x": 512, "y": 96, "width": 288, "height": 192, "rotation": 0, "visible": true },
         { "id": 20, "name": "store-left", "type": "solid", "x": 512, "y": 240, "width": 64, "height": 80, "rotation": 0, "visible": true },
         { "id": 21, "name": "store-right", "type": "solid", "x": 640, "y": 240, "width": 160, "height": 80, "rotation": 0, "visible": true },
         { "id": 22, "name": "house-upper", "type": "solid", "x": 256, "y": 320, "width": 192, "height": 96, "rotation": 0, "visible": true },
@@ -91,7 +91,7 @@
           { "name": "destination_id", "type": "string", "value": "cadott-riverlight-inn" }, { "name": "destination_kind", "type": "string", "value": "interior" }, { "name": "display_name", "type": "string", "value": "Riverlight Inn" }, { "name": "building_type", "type": "string", "value": "inn" }, { "name": "tags", "type": "string", "value": "rest" }, { "name": "return_anchor", "type": "string", "value": "inn-return" },
           { "name": "interior_template_id", "type": "string", "value": "inn_gilded_steps_2f" }
         ] },
-        { "id": 32, "name": "general-store-door", "type": "door", "x": 576, "y": 256, "width": 64, "height": 32, "rotation": 0, "visible": true, "properties": [
+        { "id": 32, "name": "general-store-door", "type": "door", "x": 576, "y": 320, "width": 64, "height": 32, "rotation": 0, "visible": true, "properties": [
           { "name": "destination_id", "type": "string", "value": "cadott-general-store" }, { "name": "destination_kind", "type": "string", "value": "interior" }, { "name": "display_name", "type": "string", "value": "Cadott General Store" }, { "name": "building_type", "type": "string", "value": "shop" }, { "name": "tags", "type": "string", "value": "shop,commerce" }, { "name": "return_anchor", "type": "string", "value": "general-store-return" },
           { "name": "interior_template_id", "type": "string", "value": "shop_corner_goods_1f" }
         ] },

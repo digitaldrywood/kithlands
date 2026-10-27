@@ -40,3 +40,6 @@ Log: `client/tmp/map-place-final-20261026.log`. Inspection originals/audits: `cl
 ## Remaining acceptance
 
 Complete the uninterrupted UI-only exploration/shop/battle/crafting route after resolving entrance/approach clarity. Keep resource habitat/macro terrain and broad reference battle acceptance open. This change closes the map-identification defect; it does not close the full goal or establish a human fifteen-minute completion time.
+
+
+The doorway/aisle findings above were subsequently confirmed as authored data mismatches and corrected; see `SHOP_APPROACH_ALIGNMENT_PROOF.md`. Its desktop/phone scripted opening rechecks pass. The interrupted UI-only audit remains incomplete.
