@@ -68,17 +68,6 @@
             "flag": "oak-read"
           },
           {
-            "id": "kingfisher-bend",
-            "label": "Listen at the river bend",
-            "kind": "hint",
-            "position": {
-              "x": 20,
-              "y": 8
-            },
-            "text": "A kingfisher waits on a branch. The water is still: the mill's sluice must be closed.",
-            "flag": "river-read"
-          },
-          {
             "id": "trail-bats",
             "label": "Clear the roosting bats",
             "kind": "encounter",
@@ -101,7 +90,7 @@
           },
           {
             "id": "heron-trail",
-            "label": "Explore the optional Heron Pool",
+            "label": "Heron Pool (optional)",
             "kind": "door",
             "position": {
               "x": 6,
@@ -113,6 +102,17 @@
               "y": 13
             },
             "text": "The western trail leads to a bramblehog guarding a millwright supply box. Its balanced bronze pommel can make a more accurate sword. You can leave the main mill route for later."
+          },
+          {
+            "id": "kingfisher-bend",
+            "label": "Listen at the river bend",
+            "kind": "hint",
+            "position": {
+              "x": 20,
+              "y": 8
+            },
+            "text": "A kingfisher waits on a branch. The water is still: the mill's sluice must be closed.",
+            "flag": "river-read"
           },
           {
             "id": "mill-door",

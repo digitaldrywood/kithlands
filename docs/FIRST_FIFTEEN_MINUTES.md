@@ -53,8 +53,8 @@ reunion. They take cover during combat. If the party falls, rejoin them at the
 search site before returning. Arrival alone pays no quest reward; see
 `ESCORT_JOURNEY_PROOF.md`.
 
-For the most connected early detour, take **Old Mill trail → Explore the
-optional Heron Pool**. The marked reed-bank herd offers an encounter preview
+For the most connected early detour, take **Old Mill trail → Heron Pool
+(optional)**. The marked reed-bank herd offers an encounter preview
 with level and tactics; Back leaves without fighting. Win, recover the
 millwright supplies, then open Party → Crafting. The box contains 8 ore,
 2 hardwood and a unique balanced bronze pommel. Choose the normal Iron Sword
