@@ -1,5 +1,7 @@
 # Playability work tracker
 
+- Tested a total-preserving 100/220/220 Act 1 XP schedule in an isolated server copy. Both 100-seed standard simulations pass their gates, but candidate aggressive victory was 96% versus 99% baseline, the low-encounter promotion gate still fails, and the current save loader would undo the new first reward. No live reward change was accepted. See `OPENING_XP_CURVE_STUDY.md`; save migration and human-paced testing remain open.
+
 - Old Mill treasure and successful adventure-save notices now clear after a reading hold, with reduced-motion support; clues and errors remain available until replaced. The real seeded cache/battle route passes desktop, phone and reduced-motion checks, and a later clue survives an earlier reward timer. The guided touch opening and discovery regressions pass. See `DUNGEON_REWARD_NOTICE_PROOF.md`; full presentation and unassisted opening acceptance remain open.
 
 - Investigated the first-quest level jump without changing rewards. Two 120-run simulator comparisons show that cutting Act 1 XP from 180 to 100 worsens low-encounter promotion levels; both standard scenarios pass, both no-injected scenarios miss the existing promotion band. Corrected the stale Section 5.2 XP table/formula to match shared data. Human pacing, a total-XP-preserving reward alternative and current-head CI remain open. See `OPENING_XP_CURVE_STUDY.md`.

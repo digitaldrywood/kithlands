@@ -25,3 +25,13 @@ go run ./cmd/validate_gamedata -shared=../shared
 ```
 
 Both standard cases pass all simulator assertions; both no-injected cases exit nonzero for the promotion-level assertions listed above. Exact logs and JSON reports are in `client/tmp/quest-xp-study-20261027/`. The focused tests and shared data validator pass. No gameplay, user save or local service was changed. Hosted current-head CI remains required; general CI stays self-hosted.
+
+## Total-preserving redistribution experiment
+
+In a disposable copy of the server and shared data, the three Act 1 generated quest rewards were changed from 180/180/180 XP to 100/220/220. Total Act 1 quest XP remains 540. The known guided opening's 29 XP before its first quest would reach level 2 rather than level 3 after the proposed 100 XP, based on the current 70/95 XP thresholds. This is arithmetic on that observed route, not an actual-game test of the candidate.
+
+With 100 seeds per strategy and route, the standard simulator passed its gates for both versions. Main-route mean promotion levels were 12.88/13.05/13.18 for baseline and 12.70/13.09/13.06 for the candidate (aggressive/cautious/healer-heavy). Main-route victory rates were 99%/100%/100% versus 96%/99%/100%; the cautious candidate's terminal victory rate and boss win rate differ because they measure different outcomes. Random paths diverge between versions, so these small differences do not establish causation or statistical significance. Both scenarios inject about 47 battles and are not a human opening playtest.
+
+The 20-seed no-injected candidate still failed the promotion-level gate at 9.15 for all three main strategies, matching the baseline mean, and main victory rates were 95%/95%/100% versus baseline 100%/95%/100%. This extreme lower-bound scenario is not representative of ordinary encounters. Output and commands are preserved in `client/tmp/quest-xp-redistribution-20261027/`; the simulator was run with `-runs 100` for both standard cases and `-runs 20 -encounter-rolls-per-quest -1` for the candidate low-encounter case.
+
+This prototype hardcodes the reward adjustment only in the disposable copy; it is not a proposed production architecture. In particular, `refreshPendingCampaignXP` applies the existing 180-XP floor on load, so a new 100-XP first reward would be raised after saving. An implementation needs a content-driven reward schedule and a clear persisted migration/version policy that preserves existing saves and does not re-award completed quests. The battle-rate and save evidence are insufficient to accept the candidate; current game rewards remain unchanged. Human-paced opening and actual-game save/load verification are still required.
