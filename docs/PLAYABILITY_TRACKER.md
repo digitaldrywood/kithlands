@@ -1,5 +1,7 @@
 # Playability work tracker
 
+- Investigated the first-quest level jump without changing rewards. Two 120-run simulator comparisons show that cutting Act 1 XP from 180 to 100 worsens low-encounter promotion levels; both standard scenarios pass, both no-injected scenarios miss the existing promotion band. Corrected the stale Section 5.2 XP table/formula to match shared data. Human pacing, a total-XP-preserving reward alternative and current-head CI remain open. See `OPENING_XP_CURVE_STUDY.md`.
+
 - Extended the same seeded touch opening beyond the mill save/reload to complete the ordinary fetch-and-return campaign quest, then save/Continue again. Three real battles, tracked quest, shopping, gathering, crafted/socketed sword and level-three progression are retained; 15 final screenshots inspected. The 180-XP quest causes a two-level jump and unassisted fifteen-minute pacing remains unproven. See `FIRST_SESSION_TOUCH_PROOF.md`; fresh hosted CI remains required.
 
 - A fresh seeded 390px opening now runs with touch gameplay from tracked journal through herbs/ore, shop/Frost, Heron battle/cache, potion/sword/gem/equip, mill bats and save/Continue. State, socket and two respawn deadlines survive reload; 12 final phone and 24 desktop regression captures inspected. The guided run ends at Lv1/24 XP and does not establish unassisted 15-minute pacing or all phone sizes. 875 client tests/build/format pass; parent aa8065c visual CI passed. See `FIRST_SESSION_TOUCH_PROOF.md`.
