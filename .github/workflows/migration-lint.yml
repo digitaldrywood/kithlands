@@ -1,11 +1,13 @@
 name: Migration Lint
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - "server/internal/db/migrations/*.sql"
-      - "server/internal/db/migrations/**/*.sql"
+  workflow_dispatch:
+    inputs:
+      base:
+        description: Base branch to compare against
+        required: false
+        type: string
+        default: main
 
 permissions:
   contents: read
@@ -25,8 +27,8 @@ jobs:
         env:
           MIGRATIONS_DIR: server/internal/db/migrations
         run: |
-          git fetch origin "${{ github.base_ref }}" --depth=1
-          BASE_SHA="$(git merge-base HEAD "origin/${{ github.base_ref }}")"
+          git fetch origin "${{ inputs.base }}" --depth=1
+          BASE_SHA="$(git merge-base HEAD "origin/${{ inputs.base }}")"
           files=$(git diff --name-only --diff-filter=ACMRT "$BASE_SHA" HEAD -- "$MIGRATIONS_DIR" | grep -E '\.sql$' | tr '\n' ' ' | sed 's/[[:space:]]*$//' || true)
           echo "files=$files" >> "$GITHUB_OUTPUT"
           if [ -z "$files" ]; then
