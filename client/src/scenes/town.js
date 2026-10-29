@@ -1,3 +1,7 @@
+import { interiorControls } from "../ui/interior_controls.js";
+import { installInteriorCamera } from "./interiorCamera.js";
+import { installEscortFollower } from "./escortFollower.js";
+import { startWalkMotion } from "./walkMotion.js";
 import { beginWalkStep } from "./walkPlayback.js";
 import { initAudio, playSFX, playMusic } from "../systems/audio.js";
 import {
@@ -22,7 +26,8 @@ import {
   drawInteriorProps,
   interiorChestKey,
 } from "./town_presentation.js";
-import { toggleMenu } from "./world_menu.js";
+import { toggleMenu, showQuestLog } from "./world_menu.js";
+import { trackedObjective } from "./questJournalModel.js";
 import { openShop } from "./world_shop.js";
 import { isTouchDevice, initTouchControls } from "../systems/input.js";
 import {
@@ -77,6 +82,8 @@ import { walkStepMs } from "../systems/prefs.js";
 import { drawPanel } from "../ui/panel.js";
 import {
   hasWorldLock,
+  pauseWorldFor,
+  resumeWorldFor,
   isWorldInputLocked,
   topWorldLock,
 } from "../systems/modalLock.js";
@@ -85,6 +92,7 @@ import { isChestOpen } from "./town_chests.js";
 import {
   applyGameplayViewport,
   centeredPlayfieldOffset,
+  portraitFontSize,
 } from "../systems/gameplayViewport.js";
 
 // Seeded PRNG (mulberry32). Returns a () => float [0,1) closure.
@@ -785,11 +793,11 @@ export class TownScene extends Phaser.Scene {
       );
     }
 
+    installEscortFollower(this, RENDERED_TILE);
+
     // Input
     this.cursors = this.input.keyboard.createCursorKeys();
     this.wasd = this.input.keyboard.addKeys("W,A,S,D");
-    this.lastMoveTime = 0;
-    this.moveCooldown = 150;
     this.menuOpen = false;
     this.menuGroup = null;
     this._modalLocks = new Set();
@@ -847,7 +855,7 @@ export class TownScene extends Phaser.Scene {
     // Message overlay (same pattern as WorldScene)
     this.messageText = this.add
       .text(layout.centerX, layout.messageY, "", {
-        fontSize: layout.portrait ? "24px" : "14px",
+        fontSize: layout.portrait ? portraitFontSize(this) : "14px",
         color: "#ffffff",
         fontFamily: "Arial, sans-serif",
         backgroundColor: "#000000dd",
@@ -857,6 +865,7 @@ export class TownScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setDepth(DEPTH_UI + 10)
+      .setScrollFactor(0)
       .setVisible(false);
 
     if (this.entryMessage) {
@@ -868,6 +877,11 @@ export class TownScene extends Phaser.Scene {
     drawTownObjective(this);
 
     this.updateInteractionTargets();
+    installInteriorCamera(this, roomPixelW, roomPixelH);
+    this.interiorMenuHUD = interiorControls(this, () => toggleMenu(this), {
+      objective: () => trackedObjective(this),
+      openJournal: () => showQuestLog(this),
+    });
   }
 
   // Place NPCs: proprietor at anchor position, extras on walkable floor tiles.
@@ -1053,7 +1067,7 @@ export class TownScene extends Phaser.Scene {
         y + (portrait ? 32 : 17),
         this.spawn.name,
         {
-          fontSize: portrait ? "28px" : "15px",
+          fontSize: portrait ? portraitFontSize(this) : "15px",
           color: "#f5efe0",
           fontFamily: "Arial, sans-serif",
           fontStyle: "bold",
@@ -1062,6 +1076,7 @@ export class TownScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(depth + 2);
     this.labelBar.push(...frame, ...corners, accent, title);
+    this.labelBar.forEach((entry) => entry.setScrollFactor(0));
 
     if (this.interiorTemplate?.floors?.length > 1) {
       this.labelBar.push(
@@ -1077,7 +1092,8 @@ export class TownScene extends Phaser.Scene {
             },
           )
           .setOrigin(0.5)
-          .setDepth(depth + 2),
+          .setDepth(depth + 2)
+          .setScrollFactor(0),
       );
     }
   }
@@ -1085,6 +1101,10 @@ export class TownScene extends Phaser.Scene {
   drawHelpStrip() {
     this.helpStrip?.panel?.bg?.destroy?.();
     this.helpStrip?.text?.destroy?.();
+    if (this.gameplayLayout.portrait) {
+      this.helpStrip = null;
+      return;
+    }
     const panel = drawPanel(
       this,
       this.gameplayLayout.centerX,
@@ -1114,15 +1134,15 @@ export class TownScene extends Phaser.Scene {
         },
       )
       .setOrigin(0.5)
-      .setDepth(DEPTH_UI + 1);
+      .setDepth(DEPTH_UI + 1)
+      .setScrollFactor(0);
     this.helpStrip = { panel, text };
   }
 
-  update(time) {
+  update() {
     syncTownObjectiveVisibility(this);
     if (isWorldInputLocked(this)) return;
     if (this.animating) return;
-    if (time - this.lastMoveTime < this.moveCooldown) return;
 
     let dx = 0,
       dy = 0;
@@ -1133,7 +1153,6 @@ export class TownScene extends Phaser.Scene {
 
     if (dx !== 0 || dy !== 0) {
       this.tryMove(dx, dy);
-      this.lastMoveTime = time;
     }
   }
 
@@ -1141,7 +1160,12 @@ export class TownScene extends Phaser.Scene {
     return !!TILE_WALKABLE[tile];
   }
 
+  isTileOccupied(x, y) {
+    return this.npcs.some((npc) => npc.x === x && npc.y === y);
+  }
+
   tryMove(dx, dy) {
+    if (this.animating || isWorldInputLocked(this)) return;
     const nx = this.playerX + dx;
     const ny = this.playerY + dy;
     if (nx < 0 || nx >= this.roomW || ny < 0 || ny >= this.roomH) return;
@@ -1149,9 +1173,7 @@ export class TownScene extends Phaser.Scene {
     const tile = this.tiles[ny][nx];
 
     // Walking into any NPC position is blocked
-    for (const npc of this.npcs) {
-      if (nx === npc.x && ny === npc.y) return;
-    }
+    if (this.isTileOccupied(nx, ny)) return;
 
     if (!TILE_WALKABLE[tile]) return;
 
@@ -1186,17 +1208,7 @@ export class TownScene extends Phaser.Scene {
       walk.complete();
       this.animating = false;
     };
-    this.tweens.add({
-      targets: this.player,
-      x: dest.x,
-      y: dest.y,
-      duration: stepMs,
-      ease: "Linear",
-      onUpdate: () => {
-        walk.updatePosition();
-      },
-      onComplete: finishStepAnimation,
-    });
+    startWalkMotion(this, dest, stepMs, walk, finishStepAnimation);
 
     const stair = this.stairsByPosition?.get(`${nx},${ny}`);
     if (stair) {
@@ -1215,91 +1227,101 @@ export class TownScene extends Phaser.Scene {
 
   async interact() {
     if (isWorldInputLocked(this)) return;
-    if (await performQuestObjective(this)) return;
-    if (await this.openNearbyChest()) return;
-    // Hidden item pickup takes priority
-    if (this.nearHiddenItem) {
-      this.hideSearchPrompt();
-      const item = this.nearHiddenItem;
-      const result = await collectHiddenItem(
-        this.gameState.id,
-        this.spawn.node_id,
-        item.key,
-        this.spawn.tags || [],
-      );
-      if (result && !result.error) {
-        // Remove from local list so it won't trigger again
-        this.hiddenItems = this.hiddenItems.filter((h) => h.key !== item.key);
-        this.nearHiddenItem = null;
-        // Merge updated game state
-        Object.assign(this.gameState, result);
-        playSFX("sfx_heal");
-        this.showMessage(result.message || "Found an item!");
-        this.time.delayedCall(1500, () => this.hideMessage());
-      }
-      return;
-    }
-
-    if (this.nearNpcIndex < 0) return;
-
-    this.hideInteractPrompt();
-
-    const npc = this.npcs[this.nearNpcIndex];
-    const tags = this.spawn.tags || [];
-    const tagSet = new Set(tags);
-    const nodeId = npc.isProprietor
-      ? this.spawn.node_id
-      : this.spawn.node_id + "_npc" + npc.index;
-    const interaction = await interactWithNpc(this.gameState.id, nodeId);
-    if (interaction?.game_state && !interaction.game_state.error) {
-      Object.assign(this.gameState, interaction.game_state);
-    }
-    const dialogue = interaction?.dialogue || null;
-
-    if (npc.isProprietor) {
-      await openDialogue(this, this.spawn, dialogue);
-
-      if (isRestBuilding(tags)) {
-        const result = await restAtTown(
+    // Reserve the interaction before the first await; two confirmations must
+    // not issue overlapping NPC requests or leave a second dialogue under a shop.
+    pauseWorldFor(this, "interaction");
+    try {
+      if (await performQuestObjective(this)) return;
+      if (await this.openNearbyChest()) return;
+      // Hidden item pickup takes priority
+      if (this.nearHiddenItem) {
+        this.hideSearchPrompt();
+        const item = this.nearHiddenItem;
+        const result = await collectHiddenItem(
           this.gameState.id,
           this.spawn.node_id,
-          tags,
+          item.key,
+          this.spawn.tags || [],
         );
         if (result && !result.error) {
+          // Remove from local list so it won't trigger again
+          this.hiddenItems = this.hiddenItems.filter((h) => h.key !== item.key);
+          this.nearHiddenItem = null;
+          // Merge updated game state
           Object.assign(this.gameState, result);
           playSFX("sfx_heal");
-          autosaveGame(result.id, "inn_rest").catch((e) =>
-            console.error("[Town] autosave failed:", e),
-          );
+          this.showMessage(result.message || "Found an item!");
+          this.time.delayedCall(1500, () => this.hideMessage());
         }
-        this.showMessage(
-          result?.error ? "Could not rest here." : "HP and spells restored!",
-        );
-        this.time.delayedCall(1500, () => this.hideMessage());
-      } else if (tagSet.has("shop") || tagSet.has("commerce")) {
-        openShop(this, this.spawn);
-      } else if (tagSet.has("temple") || tagSet.has("revive")) {
-        const dead = this.gameState.party.filter((p) => p.hp <= 0);
-        if (dead.length > 0) {
-          dead.forEach((p) => {
-            p.hp = 1;
-            p.status = "";
-          });
-        } else {
-          this.gameState.party.forEach((p) => {
-            p.hp = p.max_hp;
-          });
-        }
-        playSFX("sfx_heal");
+        return;
       }
-    } else {
-      const synthSpawn = { ...this.spawn, node_id: nodeId };
-      await openDialogue(this, synthSpawn, dialogue);
-    }
 
-    // Re-show talk prompt if still near an NPC
-    if (this.nearNpcIndex >= 0) {
-      this.showInteractPrompt("Talk");
+      if (this.nearNpcIndex < 0) return;
+
+      this.hideInteractPrompt();
+
+      const npc = this.npcs[this.nearNpcIndex];
+      const tags = this.spawn.tags || [];
+      const tagSet = new Set(tags);
+      const nodeId = npc.isProprietor
+        ? this.spawn.node_id
+        : this.spawn.node_id + "_npc" + npc.index;
+      const interaction = await interactWithNpc(this.gameState.id, nodeId);
+      if (interaction?.game_state && !interaction.game_state.error) {
+        Object.assign(this.gameState, interaction.game_state);
+      }
+      const dialogue = interaction?.dialogue || null;
+
+      if (npc.isProprietor) {
+        await openDialogue(this, this.spawn, dialogue, {
+          browseShop: tagSet.has("shop") || tagSet.has("commerce"),
+        });
+        if (this.scene?.isActive?.() === false) return;
+
+        if (isRestBuilding(tags)) {
+          const result = await restAtTown(
+            this.gameState.id,
+            this.spawn.node_id,
+            tags,
+          );
+          if (result && !result.error) {
+            Object.assign(this.gameState, result);
+            playSFX("sfx_heal");
+            autosaveGame(result.id, "inn_rest").catch((e) =>
+              console.error("[Town] autosave failed:", e),
+            );
+          }
+          this.showMessage(
+            result?.error ? "Could not rest here." : "HP and spells restored!",
+          );
+          this.time.delayedCall(1500, () => this.hideMessage());
+        } else if (tagSet.has("shop") || tagSet.has("commerce")) {
+          openShop(this, this.spawn);
+        } else if (tagSet.has("temple") || tagSet.has("revive")) {
+          const dead = this.gameState.party.filter((p) => p.hp <= 0);
+          if (dead.length > 0) {
+            dead.forEach((p) => {
+              p.hp = 1;
+              p.status = "";
+            });
+          } else {
+            this.gameState.party.forEach((p) => {
+              p.hp = p.max_hp;
+            });
+          }
+          playSFX("sfx_heal");
+        }
+      } else {
+        const synthSpawn = { ...this.spawn, node_id: nodeId };
+        await openDialogue(this, synthSpawn, dialogue);
+      }
+
+      // Re-show talk prompt if still near an NPC
+      if (this.nearNpcIndex >= 0) {
+        this.showInteractPrompt("Talk");
+      }
+    } finally {
+      resumeWorldFor(this, "interaction");
     }
   }
 
@@ -1371,14 +1393,18 @@ export class TownScene extends Phaser.Scene {
         : `[ ENTER / SPACE ] ${action}`;
     this.interactPrompt = this.add
       .text(this.player.x, this.player.y - 25, label, {
-        fontSize: this.gameplayLayout.portrait ? "24px" : "10px",
+        fontSize: this.gameplayLayout.portrait
+          ? portraitFontSize(this)
+          : "10px",
         color: "#ffff44",
         fontFamily: "Arial, sans-serif",
         backgroundColor: "#000000cc",
         padding: { x: 6, y: 3 },
+        wordWrap: { width: 700 },
       })
       .setOrigin(0.5)
-      .setDepth(DEPTH_UI + 5);
+      .setDepth(DEPTH_UI + 5)
+      .setScrollFactor(this.gameplayLayout.portrait ? 0 : 1);
   }
 
   hideInteractPrompt() {
@@ -1398,9 +1424,11 @@ export class TownScene extends Phaser.Scene {
         fontFamily: "Arial, sans-serif",
         backgroundColor: "#000000cc",
         padding: { x: 6, y: 3 },
+        wordWrap: { width: 700 },
       })
       .setOrigin(0.5)
-      .setDepth(DEPTH_UI + 5);
+      .setDepth(DEPTH_UI + 5)
+      .setScrollFactor(this.gameplayLayout.portrait ? 0 : 1);
   }
 
   hideSearchPrompt() {

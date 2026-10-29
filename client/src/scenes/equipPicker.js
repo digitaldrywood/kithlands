@@ -91,5 +91,8 @@ export function formatDeltaLabel(delta, type, statKey) {
     text = `${label} 0`;
     color = DELTA_COLOR_NEUTRAL;
   }
+  if (statKey === "evade_penalty" && delta !== 0) {
+    color = delta < 0 ? DELTA_COLOR_POSITIVE : DELTA_COLOR_NEGATIVE;
+  }
   return { text, color };
 }

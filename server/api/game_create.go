@@ -23,6 +23,7 @@ import (
 
 // GameManager holds active game sessions.
 type GameManager struct {
+	buildOSM          func(context.Context, float64, float64, int, string) (*locality.Locality, error)
 	gd                *gamedata.GameData
 	sharedDir         string
 	buildingQuestPool []generator.BuildingSideQuestEntry
@@ -33,7 +34,7 @@ type GameManager struct {
 }
 
 func NewGameManager(gd *gamedata.GameData, sharedDir string) *GameManager {
-	gm := &GameManager{gd: gd, sharedDir: sharedDir, games: make(map[string]*Game)}
+	gm := &GameManager{gd: gd, sharedDir: sharedDir, games: make(map[string]*Game), buildOSM: locality.BuildFromOSM}
 	if sharedDir != "" {
 		if pool, err := generator.LoadBuildingSideQuestPool(sharedDir); err == nil {
 			gm.buildingQuestPool = pool
@@ -68,12 +69,13 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 	if req.UseOSM && req.Lat != 0 && req.Lng != 0 {
 		var err error
 		radiusM := milesToMeters(req.RadiusMiles)
-		loc, err = locality.BuildFromOSM(context.Background(), req.Lat, req.Lng, radiusM, req.TownName)
+		loc, err = gm.buildOSM(context.Background(), req.Lat, req.Lng, radiusM, req.TownName)
 		if err != nil {
 			// Fall back to wizard if OSM fails
 			loc = nil
 		}
 	}
+	importedOSM := loc != nil
 	if loc == nil {
 		var wizPeople []locality.WizardPerson
 		for _, p := range req.People {
@@ -90,7 +92,7 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 	}
 
 	// Add personal NPCs on top of OSM data
-	if req.UseOSM {
+	if importedOSM {
 		for i, p := range req.People {
 			loc.Nodes = append(loc.Nodes, locality.Node{
 				ID:         fmt.Sprintf("person_%d", i),
@@ -131,12 +133,8 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 		// Spell books for casters (unified MP pool lives on Character, GDD §8.1).
 		if len(cls.Magic.Schools) > 0 {
 			sb := magic.NewSpellBook()
-			for _, spell := range gm.gd.Spells.Spells {
-				for _, school := range cls.Magic.Schools {
-					if spell.School == school && spell.SpellLevel == 1 {
-						_ = sb.LearnSpell(spell.ID, spell.SpellLevel, gm.gd.Spells.ChargeTable.MaxSpellsPerLvl)
-					}
-				}
+			for _, spell := range gm.gd.StartingSpellsForClass(cls) {
+				_ = sb.LearnSpell(spell.ID, spell.SpellLevel, gm.gd.Spells.ChargeTable.MaxSpellsPerLvl)
 			}
 			spellBooks[c.Name] = sb
 		}
@@ -163,15 +161,16 @@ func (gm *GameManager) CreateGame(req NewGameRequest) (*Game, error) {
 	}
 
 	game := &Game{
-		id:                  fmt.Sprintf("game_%d", time.Now().UnixNano()),
-		gd:                  gm.gd,
-		dungeons:            make(map[string]*DungeonProgress),
-		rng:                 rng,
-		loc:                 loc,
-		walk:                walk,
-		tileMap:             tileMap,
-		settlementMap:       settlementMap,
-		settlementInteriors: settlementInteriors,
+		resourcePlacementVersion: resourcePlacementBiome,
+		id:                       fmt.Sprintf("game_%d", time.Now().UnixNano()),
+		gd:                       gm.gd,
+		dungeons:                 make(map[string]*DungeonProgress),
+		rng:                      rng,
+		loc:                      loc,
+		walk:                     walk,
+		tileMap:                  tileMap,
+		settlementMap:            settlementMap,
+		settlementInteriors:      settlementInteriors,
 		location: LocationState{
 			Kind:        LocationWorld,
 			WorldNodeID: spawnID,

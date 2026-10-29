@@ -121,6 +121,17 @@ describe("formatDeltaLabel", () => {
     expect(out.color).toBe("#ff6666");
   });
 
+  it("marks a lower armor evade penalty as better and a higher one as worse", () => {
+    expect(formatDeltaLabel(-1, "armor", "evade_penalty")).toMatchObject({
+      text: "Eva -1",
+      color: "#44ff44",
+    });
+    expect(formatDeltaLabel(1, "armor", "evade_penalty")).toMatchObject({
+      text: "Eva +1",
+      color: "#ff6666",
+    });
+  });
+
   it("uses zero with grey for a wash", () => {
     const out = formatDeltaLabel(0, "weapon");
     expect(out.text).toBe("Pow 0");

@@ -15,9 +15,9 @@ const MOBILE = {
   gameHeight: 1600,
   battlefield: { x: 8, y: 8, width: 784, height: 584 },
   strip: { x: 0, y: 600, width: 800, height: 1000 },
-  command: { x: 16, y: 616, width: 376, height: 360 },
-  message: { x: 408, y: 616, width: 376, height: 360 },
-  party: { x: 16, y: 992, width: 768, height: 592 },
+  command: { x: 16, y: 616, width: 768, height: 400 },
+  message: { x: 16, y: 1032, width: 768, height: 160 },
+  party: { x: 16, y: 1208, width: 768, height: 376 },
 };
 
 function copyRect(rect) {

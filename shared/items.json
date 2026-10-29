@@ -114,6 +114,7 @@
     },
     {
       "id": "patched_mantle",
+      "icon_key": "equipment/catalog/patched-mantle.svg",
       "name": "Patched Mantle",
       "kind": "armor",
       "category": "shoulders",
@@ -133,6 +134,7 @@
     },
     {
       "id": "leather_gloves",
+      "icon_key": "equipment/catalog/leather-gloves.svg",
       "name": "Leather Gloves",
       "kind": "armor",
       "category": "gloves",
@@ -152,6 +154,7 @@
     },
     {
       "id": "traveler_belt",
+      "icon_key": "equipment/catalog/traveler-belt.svg",
       "name": "Traveler's Belt",
       "kind": "armor",
       "category": "belt",
@@ -171,6 +174,7 @@
     },
     {
       "id": "trail_pants",
+      "icon_key": "equipment/catalog/trail-pants.svg",
       "name": "Trail Pants",
       "kind": "armor",
       "category": "pants",
@@ -190,6 +194,7 @@
     },
     {
       "id": "trail_boots",
+      "icon_key": "equipment/catalog/trail-boots.svg",
       "name": "Trail Boots",
       "kind": "armor",
       "category": "boots",
@@ -209,6 +214,7 @@
     },
     {
       "id": "copper_amulet",
+      "icon_key": "equipment/catalog/copper-amulet.svg",
       "name": "Copper Amulet",
       "kind": "accessory",
       "category": "amulet",
@@ -228,6 +234,7 @@
     },
     {
       "id": "copper_ring",
+      "icon_key": "equipment/catalog/copper-ring.svg",
       "name": "Copper Ring",
       "kind": "accessory",
       "category": "ring",
@@ -247,6 +254,7 @@
     },
     {
       "id": "twin_sigil_amulet",
+      "icon_key": "equipment/catalog/twin-sigil-amulet.svg",
       "name": "Twin-Sigil Amulet",
       "kind": "accessory",
       "category": "amulet",
@@ -266,6 +274,7 @@
     },
     {
       "id": "warrior_signet",
+      "icon_key": "equipment/catalog/warrior-signet.svg",
       "name": "Warrior's Signet",
       "kind": "accessory",
       "category": "ring",
@@ -493,6 +502,7 @@
     },
     {
       "id": "wooden_club",
+      "icon_key": "weapons/catalog/wooden-club.svg",
       "name": "Wooden Club",
       "type": "hammer",
       "tier": 1,
@@ -507,6 +517,7 @@
     },
     {
       "id": "wooden_staff",
+      "icon_key": "weapons/catalog/wooden-staff.svg",
       "name": "Wooden Staff",
       "type": "staff",
       "tier": 1,
@@ -521,6 +532,7 @@
     },
     {
       "id": "rusty_dagger",
+      "icon_key": "weapons/catalog/rusty-dagger.svg",
       "name": "Rusty Dagger",
       "type": "dagger",
       "tier": 1,
@@ -535,6 +547,7 @@
     },
     {
       "id": "short_sword",
+      "icon_key": "weapons/catalog/short-sword.svg",
       "name": "Short Sword",
       "type": "sword",
       "tier": 1,
@@ -551,6 +564,7 @@
     },
     {
       "id": "hand_axe",
+      "icon_key": "weapons/hand-axe.svg",
       "name": "Hand Axe",
       "type": "axe",
       "tier": 1,
@@ -565,6 +579,7 @@
     },
     {
       "id": "short_bow",
+      "icon_key": "weapons/catalog/short-bow.svg",
       "name": "Short Bow",
       "type": "bow",
       "tier": 1,
@@ -581,6 +596,7 @@
     {
       "id": "iron_sword",
       "name": "Iron Sword",
+      "icon_key": "crafted/iron-sword",
       "type": "sword",
       "tier": 2,
       "power": 12,
@@ -595,7 +611,28 @@
       "sell_price": 40
     },
     {
+      "id": "trail_sword",
+      "name": "Balanced Trail Sword",
+      "icon_key": "crafted/iron-sword",
+      "type": "sword",
+      "tier": 2,
+      "power": 11,
+      "hit_pct": 15,
+      "crit_pct": 0,
+      "element": "none",
+      "classes": [
+        "warrior",
+        "wayfarer"
+      ],
+      "visual_id": "iron_sword",
+      "animation_set": "sword",
+      "special": "Balanced bronze pommel: accuracy in exchange for blade weight.",
+      "buy_price": 0,
+      "sell_price": 40
+    },
+    {
       "id": "iron_dagger",
+      "icon_key": "weapons/catalog/iron-dagger.svg",
       "name": "Iron Dagger",
       "type": "dagger",
       "tier": 2,
@@ -610,6 +647,7 @@
     },
     {
       "id": "iron_axe",
+      "icon_key": "weapons/catalog/iron-axe.svg",
       "name": "Iron Axe",
       "type": "axe",
       "tier": 2,
@@ -624,6 +662,7 @@
     },
     {
       "id": "oak_staff",
+      "icon_key": "weapons/catalog/oak-staff.svg",
       "name": "Oak Staff",
       "type": "staff",
       "tier": 2,
@@ -638,6 +677,7 @@
     },
     {
       "id": "long_bow",
+      "icon_key": "weapons/catalog/long-bow.svg",
       "name": "Long Bow",
       "type": "bow",
       "tier": 2,
@@ -653,6 +693,7 @@
     },
     {
       "id": "war_hammer",
+      "icon_key": "weapons/catalog/war-hammer.svg",
       "name": "War Hammer",
       "type": "hammer",
       "tier": 2,
@@ -667,6 +708,7 @@
     },
     {
       "id": "steel_sword",
+      "icon_key": "crafted/steel-sword.svg",
       "name": "Steel Sword",
       "type": "sword",
       "tier": 3,
@@ -683,6 +725,7 @@
     },
     {
       "id": "steel_dagger",
+      "icon_key": "weapons/catalog/steel-dagger.svg",
       "name": "Steel Dagger",
       "type": "dagger",
       "tier": 3,
@@ -697,6 +740,7 @@
     },
     {
       "id": "arcane_staff",
+      "icon_key": "weapons/arcane-staff.svg",
       "name": "Arcane Staff",
       "type": "staff",
       "tier": 3,
@@ -712,6 +756,7 @@
     },
     {
       "id": "mythril_sword",
+      "icon_key": "crafted/mythril-sword.svg",
       "name": "Mythril Sword",
       "type": "sword",
       "tier": 4,
@@ -728,6 +773,7 @@
     },
     {
       "id": "mythril_axe",
+      "icon_key": "weapons/mythril-axe.svg",
       "name": "Mythril Axe",
       "type": "axe",
       "tier": 4,
@@ -742,6 +788,7 @@
     },
     {
       "id": "shadow_blade",
+      "icon_key": "weapons/catalog/shadow-blade.svg",
       "name": "Shadow Blade",
       "type": "dagger",
       "visual_id": "shadow_blade",
@@ -758,6 +805,7 @@
     },
     {
       "id": "war_staff",
+      "icon_key": "weapons/catalog/war-staff.svg",
       "name": "War Staff",
       "type": "staff",
       "visual_id": "war_staff",
@@ -775,6 +823,7 @@
     },
     {
       "id": "composite_bow",
+      "icon_key": "weapons/catalog/composite-bow.svg",
       "name": "Composite Bow",
       "type": "bow",
       "tier": 4,
@@ -790,6 +839,7 @@
     },
     {
       "id": "mythril_hammer",
+      "icon_key": "weapons/catalog/mythril-hammer.svg",
       "name": "Mythril Hammer",
       "type": "hammer",
       "tier": 4,
@@ -804,6 +854,7 @@
     },
     {
       "id": "flame_blade",
+      "icon_key": "weapons/catalog/flame-blade.svg",
       "name": "Flame Blade",
       "type": "sword",
       "tier": 5,
@@ -818,6 +869,7 @@
     },
     {
       "id": "berserker_axe",
+      "icon_key": "weapons/catalog/berserker-axe.svg",
       "name": "Berserker Axe",
       "type": "axe",
       "tier": 5,
@@ -832,6 +884,7 @@
     },
     {
       "id": "venom_dagger",
+      "icon_key": "weapons/catalog/venom-dagger.svg",
       "name": "Venom Dagger",
       "type": "dagger",
       "tier": 5,
@@ -846,6 +899,7 @@
     },
     {
       "id": "elemental_staff",
+      "icon_key": "weapons/catalog/elemental-staff.svg",
       "name": "Elemental Staff",
       "type": "staff",
       "tier": 5,
@@ -861,6 +915,7 @@
     },
     {
       "id": "hawk_bow",
+      "icon_key": "weapons/catalog/hawk-bow.svg",
       "name": "Hawk Bow",
       "type": "bow",
       "tier": 5,
@@ -876,6 +931,7 @@
     },
     {
       "id": "thunder_hammer",
+      "icon_key": "weapons/catalog/thunder-hammer.svg",
       "name": "Thunder Hammer",
       "type": "hammer",
       "tier": 5,
@@ -890,6 +946,7 @@
     },
     {
       "id": "rune_blade",
+      "icon_key": "weapons/catalog/rune-blade.svg",
       "name": "Rune Blade",
       "type": "sword",
       "tier": 6,
@@ -904,6 +961,7 @@
     },
     {
       "id": "titan_axe",
+      "icon_key": "weapons/catalog/titan-axe.svg",
       "name": "Titan Axe",
       "type": "axe",
       "tier": 6,
@@ -918,6 +976,7 @@
     },
     {
       "id": "void_knife",
+      "icon_key": "weapons/catalog/void-knife.svg",
       "name": "Void Knife",
       "type": "dagger",
       "tier": 6,
@@ -932,6 +991,7 @@
     },
     {
       "id": "sage_staff",
+      "icon_key": "weapons/catalog/sage-staff.svg",
       "name": "Sage Staff",
       "type": "staff",
       "tier": 6,
@@ -947,6 +1007,7 @@
     },
     {
       "id": "storm_bow",
+      "icon_key": "weapons/catalog/storm-bow.svg",
       "name": "Storm Bow",
       "type": "bow",
       "tier": 6,
@@ -962,6 +1023,7 @@
     },
     {
       "id": "earth_hammer",
+      "icon_key": "weapons/catalog/earth-hammer.svg",
       "name": "Earth Hammer",
       "type": "hammer",
       "tier": 6,
@@ -976,6 +1038,7 @@
     },
     {
       "id": "hero_edge",
+      "icon_key": "weapons/catalog/hero-edge.svg",
       "name": "Hero's Edge",
       "type": "sword",
       "tier": 7,
@@ -990,6 +1053,7 @@
     },
     {
       "id": "world_splitter",
+      "icon_key": "weapons/catalog/world-splitter.svg",
       "name": "World Splitter",
       "type": "axe",
       "tier": 7,
@@ -1004,6 +1068,7 @@
     },
     {
       "id": "whisperfang",
+      "icon_key": "weapons/catalog/whisperfang.svg",
       "name": "Whisperfang",
       "type": "dagger",
       "tier": 7,
@@ -1018,6 +1083,7 @@
     },
     {
       "id": "starcaller",
+      "icon_key": "weapons/catalog/starcaller.svg",
       "name": "Starcaller",
       "type": "staff",
       "tier": 7,
@@ -1033,6 +1099,7 @@
     },
     {
       "id": "skys_eye",
+      "icon_key": "weapons/catalog/skys-eye.svg",
       "name": "Sky's Eye",
       "type": "bow",
       "tier": 7,
@@ -1048,6 +1115,7 @@
     },
     {
       "id": "mountainvoice",
+      "icon_key": "weapons/catalog/mountainvoice.svg",
       "name": "Mountainvoice",
       "type": "hammer",
       "tier": 7,
@@ -1151,6 +1219,7 @@
     },
     {
       "id": "cloth_robe",
+      "icon_key": "equipment/catalog/cloth-robe.svg",
       "name": "Cloth Robe",
       "type": "robe",
       "tier": 1,
@@ -1164,6 +1233,7 @@
     },
     {
       "id": "leather_armor",
+      "icon_key": "equipment/catalog/leather-armor.svg",
       "name": "Leather Armor",
       "type": "leather",
       "tier": 1,
@@ -1177,6 +1247,7 @@
     },
     {
       "id": "chain_mail",
+      "icon_key": "equipment/catalog/chain-mail.svg",
       "name": "Chain Mail",
       "type": "chain",
       "tier": 2,
@@ -1190,6 +1261,7 @@
     },
     {
       "id": "silk_robe",
+      "icon_key": "equipment/catalog/silk-robe.svg",
       "name": "Silk Robe",
       "type": "robe",
       "tier": 2,
@@ -1203,6 +1275,7 @@
     },
     {
       "id": "studded_leather",
+      "icon_key": "equipment/catalog/studded-leather.svg",
       "name": "Studded Leather",
       "type": "leather",
       "tier": 2,
@@ -1216,6 +1289,7 @@
     },
     {
       "id": "plate_mail",
+      "icon_key": "equipment/catalog/plate-mail.svg",
       "name": "Plate Mail",
       "type": "plate",
       "tier": 3,
@@ -1229,6 +1303,7 @@
     },
     {
       "id": "enchanted_robe",
+      "icon_key": "equipment/catalog/enchanted-robe.svg",
       "name": "Enchanted Robe",
       "type": "robe",
       "tier": 3,
@@ -1242,6 +1317,7 @@
     },
     {
       "id": "war_plate",
+      "icon_key": "equipment/catalog/war-plate.svg",
       "name": "War Plate",
       "type": "plate",
       "tier": 4,
@@ -1255,6 +1331,7 @@
     },
     {
       "id": "mythril_chain",
+      "icon_key": "equipment/catalog/mythril-chain.svg",
       "name": "Mythril Chain",
       "type": "chain",
       "tier": 4,
@@ -1268,6 +1345,7 @@
     },
     {
       "id": "shadow_leather",
+      "icon_key": "equipment/catalog/shadow-leather.svg",
       "name": "Shadow Leather",
       "type": "leather",
       "tier": 4,
@@ -1281,6 +1359,7 @@
     },
     {
       "id": "arcane_robe",
+      "icon_key": "equipment/catalog/arcane-robe.svg",
       "name": "Arcane Robe",
       "type": "robe",
       "tier": 4,
@@ -1294,6 +1373,7 @@
     },
     {
       "id": "dragonscale_plate",
+      "icon_key": "equipment/catalog/dragonscale-plate.svg",
       "name": "Dragonscale Plate",
       "type": "plate",
       "tier": 5,
@@ -1307,6 +1387,7 @@
     },
     {
       "id": "knight_chain",
+      "icon_key": "equipment/catalog/knight-chain.svg",
       "name": "Knight Chain",
       "type": "chain",
       "tier": 5,
@@ -1320,6 +1401,7 @@
     },
     {
       "id": "ranger_leather",
+      "icon_key": "equipment/catalog/ranger-leather.svg",
       "name": "Ranger Leather",
       "type": "leather",
       "tier": 5,
@@ -1333,6 +1415,7 @@
     },
     {
       "id": "sage_robe",
+      "icon_key": "equipment/catalog/sage-robe.svg",
       "name": "Sage Robe",
       "type": "robe",
       "tier": 5,
@@ -1346,6 +1429,7 @@
     },
     {
       "id": "blessed_plate",
+      "icon_key": "equipment/catalog/blessed-plate.svg",
       "name": "Blessed Plate",
       "type": "plate",
       "tier": 6,
@@ -1359,6 +1443,7 @@
     },
     {
       "id": "guardian_chain",
+      "icon_key": "equipment/catalog/guardian-chain.svg",
       "name": "Guardian Chain",
       "type": "chain",
       "tier": 6,
@@ -1372,6 +1457,7 @@
     },
     {
       "id": "hunter_leather",
+      "icon_key": "equipment/catalog/hunter-leather.svg",
       "name": "Hunter Leather",
       "type": "leather",
       "tier": 6,
@@ -1385,6 +1471,7 @@
     },
     {
       "id": "void_robe",
+      "icon_key": "equipment/catalog/void-robe.svg",
       "name": "Void Robe",
       "type": "robe",
       "tier": 6,
@@ -1398,6 +1485,7 @@
     },
     {
       "id": "aegis_plate",
+      "icon_key": "equipment/catalog/aegis-plate.svg",
       "name": "Aegis Plate",
       "type": "plate",
       "tier": 7,
@@ -1411,6 +1499,7 @@
     },
     {
       "id": "titan_chain",
+      "icon_key": "equipment/catalog/titan-chain.svg",
       "name": "Titan Chain",
       "type": "chain",
       "tier": 7,
@@ -1424,6 +1513,7 @@
     },
     {
       "id": "phantom_leather",
+      "icon_key": "equipment/catalog/phantom-leather.svg",
       "name": "Phantom Leather",
       "type": "leather",
       "tier": 7,
@@ -1437,6 +1527,7 @@
     },
     {
       "id": "celestial_robe",
+      "icon_key": "equipment/catalog/celestial-robe.svg",
       "name": "Celestial Robe",
       "type": "robe",
       "tier": 7,
@@ -1452,6 +1543,7 @@
   "shields": [
     {
       "id": "wooden_shield",
+      "icon_key": "equipment/catalog/wooden-shield.svg",
       "name": "Wooden Shield",
       "tier": 1,
       "absorb": 3,
@@ -1462,6 +1554,7 @@
     },
     {
       "id": "iron_shield",
+      "icon_key": "equipment/catalog/iron-shield.svg",
       "name": "Iron Shield",
       "tier": 2,
       "absorb": 8,
@@ -1472,6 +1565,7 @@
     },
     {
       "id": "steel_shield",
+      "icon_key": "equipment/catalog/steel-shield.svg",
       "name": "Steel Shield",
       "tier": 3,
       "visual_id": "steel_shield",
@@ -1486,6 +1580,7 @@
   "helmets": [
     {
       "id": "leather_cap",
+      "icon_key": "equipment/catalog/leather-cap.svg",
       "name": "Leather Cap",
       "type": "cap",
       "tier": 1,
@@ -1496,6 +1591,7 @@
     },
     {
       "id": "iron_helm",
+      "icon_key": "equipment/catalog/iron-helm.svg",
       "name": "Iron Helm",
       "type": "helm",
       "tier": 2,
@@ -1506,6 +1602,7 @@
     },
     {
       "id": "great_helm",
+      "icon_key": "equipment/catalog/great-helm.svg",
       "name": "Great Helm",
       "type": "great_helm",
       "tier": 3,
@@ -1523,7 +1620,7 @@
       "value": 30,
       "buy_price": 20,
       "sell_price": 10,
-      "description": "Restores 30 HP to a single ally.",
+      "description": "Restores up to 30 HP to one living ally. HP is health. Useful for light injuries; it cannot revive a knocked-out companion. Healing stops at the ally's maximum HP.",
       "combat_usable": true,
       "world_usable": true
     },
@@ -1534,7 +1631,7 @@
       "value": 120,
       "buy_price": 100,
       "sell_price": 50,
-      "description": "Restores 120 HP to a single ally.",
+      "description": "Restores up to 120 HP to one living ally. A stronger healing potion for serious injuries. It restores health, not magic, and cannot revive a knocked-out companion. Healing stops at the ally's maximum HP.",
       "combat_usable": true,
       "world_usable": true
     },
@@ -1545,7 +1642,7 @@
       "value": 20,
       "buy_price": 60,
       "sell_price": 30,
-      "description": "Restores 20 MP to a single ally.",
+      "description": "Restores up to 20 MP to one living ally. MP powers spells; use Ether when a spellcaster is running low. It does not restore HP or revive a knocked-out companion. MP cannot exceed the ally's maximum.",
       "combat_usable": true,
       "world_usable": true
     },
@@ -1556,7 +1653,7 @@
       "value": 50,
       "buy_price": 180,
       "sell_price": 90,
-      "description": "Restores 50 MP to a single ally.",
+      "description": "Restores up to 50 MP to one living ally. A stronger supply for replenishing the magic used to cast spells. It does not heal injuries or revive a knocked-out companion. MP cannot exceed the ally's maximum.",
       "combat_usable": true,
       "world_usable": true
     },
@@ -1567,7 +1664,7 @@
       "value": 150,
       "buy_price": 500,
       "sell_price": 250,
-      "description": "Restores 150 MP to a single ally.",
+      "description": "Restores up to 150 MP to one living ally. A large magic reserve for spellcasters with substantial MP loss. It does not heal injuries or revive a knocked-out companion. MP cannot exceed the ally's maximum.",
       "combat_usable": true,
       "world_usable": true
     },
@@ -1578,7 +1675,7 @@
       "value": 0,
       "buy_price": 15,
       "sell_price": 7,
-      "description": "Cures Poison from one ally.",
+      "description": "Cures Poison from one ally. Use it to stop poison from draining their health. It removes the condition but does not restore HP already lost.",
       "combat_usable": true,
       "world_usable": true
     },
@@ -1589,7 +1686,7 @@
       "value": 0,
       "buy_price": 30,
       "sell_price": 15,
-      "description": "Cures Silence from one ally.",
+      "description": "Cures Silence from one ally, allowing them to cast spells again. It removes the condition but does not replenish the MP needed to cast those spells.",
       "combat_usable": true,
       "world_usable": true
     },
@@ -1600,7 +1697,7 @@
       "value": 0,
       "buy_price": 200,
       "sell_price": 100,
-      "description": "Cures Stone from one ally.",
+      "description": "Cures Stone from one ally. Use it to free a petrified companion so they can act again. It does not revive a companion knocked out by losing all HP.",
       "combat_usable": true,
       "world_usable": true
     },
@@ -1611,7 +1708,7 @@
       "value": 1,
       "buy_price": 500,
       "sell_price": 250,
-      "description": "Revives a KO'd ally with 1 HP.",
+      "description": "Revives a knocked-out ally with 1 HP. Use this when a companion has fallen; ordinary healing potions cannot revive them. The revived ally is still badly hurt, so follow up with healing.",
       "combat_usable": true,
       "world_usable": true
     },
@@ -1622,7 +1719,7 @@
       "value": 50,
       "buy_price": 50,
       "sell_price": 25,
-      "description": "Restores 50% HP and MP to all living party members. Field use only.",
+      "description": "Restores HP and MP equal to 50% of each living party member's maximum, capped at their maximum. Also clears status conditions on the companions it restores. A party recovery supply for use between battles; it cannot revive knocked-out companions or be used during battle.",
       "combat_usable": false,
       "world_usable": true
     }

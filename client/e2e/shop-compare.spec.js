@@ -1,3 +1,4 @@
+import { findStockRow } from "./helpers/shop-stock.js";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -61,16 +62,32 @@ async function startShopGame(page) {
 }
 
 async function visitShop(page) {
-  await page.evaluate(() =>
-    window.__kithlandsTest.startTownScene({
-      node_id: "shop",
-      name: "General Store",
-      tags: ["commerce", "shop"],
-    }),
-  );
-  await page.waitForFunction(() =>
-    window.__kithlandsTest.sceneIsActive("Town"),
-  );
+  await page.evaluate(async () => {
+    const api = await import("/src/api.js");
+    let gs = window.__kithlandsTest.gameState("World");
+    gs = await api.transitionLocation(
+      gs.id,
+      "enter-settlement",
+      gs.settlement_entry_node_id,
+    );
+    if (gs.error) throw new Error(gs.error);
+    const door = gs.settlement_map.layers
+      .flatMap((layer) => layer.objects || [])
+      .find((object) =>
+        object.properties?.some(
+          (property) =>
+            property.name === "building_type" && property.value === "shop",
+        ),
+      );
+    if (!door) throw new Error("Settlement has no shop entrance");
+    gs = await api.transitionLocation(gs.id, door.name);
+    if (gs.error) throw new Error(gs.error);
+    window.__kithlandsTest.startScene("Town", {
+      gameState: gs,
+      spawn: gs.current_location.interior,
+    });
+  });
+  await page.evaluate(() => window.__kithlandsTest.waitForSceneReady("Town"));
 
   const npc = await page.evaluate(
     () => window.__kithlandsTest.townNpcPositions("Town")[0],
@@ -153,17 +170,17 @@ test.describe("shop compare flow", () => {
     await startShopGame(page);
     await visitShop(page);
 
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("Wooden Staff", "Town"),
-    );
+    await (
+      await findStockRow(page, page.locator(".kith-shop"), "Wooden Staff")
+    ).click();
     await page.waitForFunction(() =>
       window.__kithlandsTest
         .visibleTexts("Town")
-        .some((entry) => entry.text === "Ill suited to this path"),
+        .some((entry) => entry.text === "Warrior cannot equip this weapon."),
     );
     let texts = await visibleTexts(page);
     expect(texts).toContain("Ayla · Warrior · Lv.5");
-    expect(texts).toContain("May not wield");
+    expect(texts).toContain("Class restricted");
     await page.screenshot({
       path: path.join(
         PROOF_DIR,
@@ -172,18 +189,14 @@ test.describe("shop compare flow", () => {
       fullPage: true,
     });
 
-    const nextArrow = await page.evaluate(() =>
-      window.__kithlandsTest.interactiveTextPosition(">", "Town"),
-    );
-    expect(nextArrow).toBeTruthy();
-    await page.mouse.click(nextArrow.x + 24, nextArrow.y);
+    await page.getByRole("button", { name: /^Mira · Mender/ }).click();
     await page.waitForFunction(() =>
       window.__kithlandsTest
         .visibleTexts("Town")
         .some((entry) => entry.text === "Mira · Mender · Lv.5"),
     );
     texts = await visibleTexts(page);
-    expect(texts).toContain("May equip");
+    expect(texts).toContain("Can equip");
     expect(texts).toContain("Buy for Mira");
     await page.screenshot({
       path: path.join(PROOF_DIR, `issue-202-shop-cycle-locked-${RUN_ID}.png`),
@@ -193,30 +206,39 @@ test.describe("shop compare flow", () => {
     await page.evaluate(() =>
       window.__kithlandsTest.clickInteractiveText("Armor", "Town"),
     );
-    await page.waitForFunction(() =>
-      window.__kithlandsTest
-        .visibleTexts("Town")
-        .some((entry) => entry.text.includes("Silk Robe")),
-    );
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("Silk Robe", "Town"),
-    );
+    await (
+      await findStockRow(page, page.locator(".kith-shop"), "Silk Robe")
+    ).click();
 
     texts = await visibleTexts(page);
-    const indicatorCount = texts.filter((text) =>
-      ["▲", "▼", "=", "-"].includes(text),
-    ).length;
-    expect(indicatorCount).toBeGreaterThanOrEqual(4);
+    await expect(page.locator(".shop-member")).toHaveCount(4);
+    await expect(
+      page.locator(".shop-member").filter({ hasText: "Can equip" }),
+    ).not.toHaveCount(0);
     expect(texts).toContain("Silk Robe");
 
     texts = await visibleTexts(page);
     expect(texts).toContain("Mira · Mender · Lv.5");
-    expect(texts).toContain("Current: Cloth Robe");
+    const current = await page.evaluate(
+      () => window.__kithlandsTest.gameState("Town").equipment[1],
+    );
+    const catalog = await page.evaluate(() =>
+      window.__kithlandsTest.shopItems("Town"),
+    );
+    const robe = catalog.shop_items.find((item) => item.name === "Silk Robe");
+    expect(texts).toContain(`Current: ${current.armor_name}`);
     expect(texts).toContain("Preview: Silk Robe");
-    expect(texts).toContain("Absorb: 2 to 4");
-    expect(texts).toContain("Abs +2");
-    expect(texts).toContain("MagicDef: 2 to 5");
-    expect(texts).toContain("MDef +3");
+    expect(texts).toContain(
+      `Absorb: ${current.armor_absorb} to ${robe.absorb}`,
+    );
+    const absorbDelta = robe.absorb - current.armor_absorb;
+    expect(texts).toContain(`Abs ${absorbDelta > 0 ? "+" : ""}${absorbDelta}`);
+    expect(texts).toContain(
+      `MagicDef: ${current.armor_magic_defense} to ${robe.magic_defense}`,
+    );
+    expect(texts).toContain(
+      `MDef ${robe.magic_defense - current.armor_magic_defense > 0 ? "+" : ""}${robe.magic_defense - current.armor_magic_defense}`,
+    );
 
     await addProofOverlay(page, "Compare panel focused on Mira");
     await page.screenshot({
@@ -249,36 +271,32 @@ test.describe("shop compare flow", () => {
     );
     expect(extraBuy.error).toBeFalsy();
 
+    await page.getByRole("button", { name: /^Leave Shop/ }).click();
+    await page.keyboard.press("m");
     await page.evaluate(() =>
-      window.__kithlandsTest.openCharacterDetail(0, "Town"),
+      window.__kithlandsTest.clickMenuButton("CHARACTER", "Town"),
     );
-    await page.waitForFunction(
-      () => window.__kithlandsTest.sceneFlags("Town").characterDetailOpen,
-    );
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickCharacterDetailSlot("WEAPON", "Town"),
-    );
-    await page.waitForFunction(() =>
-      window.__kithlandsTest
-        .visibleTexts("Town")
-        .some((entry) => entry.text.includes("Hand Axe")),
-    );
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("Hand Axe", "Town"),
-    );
-    await page.waitForFunction(() => {
-      const state = window.__kithlandsTest.gameState("Town");
-      return state?.equipment?.[0]?.weapon_name === "Hand Axe";
-    });
-
-    const afterEquip = await page.evaluate(() => {
-      const state = window.__kithlandsTest.gameState("Town");
-      return {
-        aylaWeapon: state.equipment?.[0]?.weapon_name,
-      };
-    });
-    expect(afterEquip.aylaWeapon).toBe("Hand Axe");
-
+    const character = page.getByRole("dialog", { name: "Character" });
+    await expect(character).toBeVisible();
+    await page.locator('[data-slot-id="main_hand"]').click();
+    await page
+      .locator(".equipment-item-row")
+      .filter({ hasText: "Hand Axe" })
+      .click();
+    await page
+      .getByRole("button", { name: "Equip in Weapon", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Close gear drawer", exact: true })
+      .click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            window.__kithlandsTest.gameState("Town").equipment[0].weapon_name,
+        ),
+      )
+      .toBe("Hand Axe");
     await addProofOverlay(page, "Character detail equip path still works");
     await page.screenshot({
       path: path.join(PROOF_DIR, `issue-202-shop-equip-path-${RUN_ID}.png`),
@@ -286,11 +304,12 @@ test.describe("shop compare flow", () => {
     });
 
     await page.keyboard.press("Escape");
-    await page.waitForFunction(
-      () => !window.__kithlandsTest.sceneFlags("Town").characterDetailOpen,
-    );
-    texts = await visibleTexts(page);
-    expect(texts).toContain("General Store");
-    expect(texts).toContain("Leave Shop");
+    await expect(character).toHaveCount(0);
+    await expect(page.locator(".kith-shop")).toHaveCount(0);
+    expect(
+      await page.evaluate(
+        () => window.__kithlandsTest.sceneFlags("Town").modalLocks,
+      ),
+    ).not.toContain("shop");
   });
 });

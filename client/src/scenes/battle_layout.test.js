@@ -41,6 +41,16 @@ describe("inferPartyRow", () => {
 });
 
 describe("buildPartyBattleLayout", () => {
+  it("keeps a two-caster party far enough apart to reveal the rear floor pose", () => {
+    const party = [{ row: "back" }, { row: "back" }];
+    for (const compact of [false, true]) {
+      const layout = buildPartyBattleLayout(party, { compact });
+      expect(layout[1].x).toBe(layout[0].x);
+      expect(layout[1].y - layout[0].y).toBeGreaterThanOrEqual(96);
+      expect(layout[1].y).toBeLessThan(compact ? 584 : 414);
+    }
+  });
+
   it("creates staggered front/back columns for a four-member party", () => {
     const layout = buildPartyBattleLayout([
       { name: "Ayla", class_id: "warrior", max_hp: 100, max_mp: 0 },
@@ -57,8 +67,8 @@ describe("buildPartyBattleLayout", () => {
 
     expect(layout[0].x).toBeLessThan(layout[1].x);
     expect(layout[3].x).toBeLessThan(layout[2].x);
-    expect(Math.abs(layout[0].y - layout[1].y)).toBe(88);
-    expect(Math.abs(layout[2].y - layout[3].y)).toBe(88);
+    expect(Math.abs(layout[0].y - layout[1].y)).toBe(54);
+    expect(Math.abs(layout[2].y - layout[3].y)).toBe(54);
     expect(layout[2].y).toBeGreaterThan(layout[1].y);
     expect(layout[3].y).toBeGreaterThan(layout[0].y);
   });
@@ -74,7 +84,7 @@ describe("buildPartyBattleLayout", () => {
 
   it("uses full-height portrait lanes without crowding combatants", () => {
     const layout = buildPartyBattleLayout([{}, {}, {}, {}], { compact: true });
-    expect(layout.map((entry) => entry.y)).toEqual([88, 228, 368, 508]);
+    expect(layout.map((entry) => entry.y)).toEqual([378, 432, 486, 540]);
     expect(
       layout.at(-1).lane.y + layout.at(-1).lane.height,
     ).toBeLessThanOrEqual(584);
@@ -96,7 +106,60 @@ describe("buildEnemyBattleLayout", () => {
   });
 });
 
+describe("crowded portrait result space", () => {
+  it.each([
+    ["slime", "slime", "slime", "wolf", "wolf"],
+    ["slime", "wolf", "iron_golem", "gargoyle"],
+  ])("leaves room between rows without shrinking result text: %s", (...ids) => {
+    const enemies = ids.map((monster_id, id) => ({ monster_id, id }));
+    const layout = buildEnemyBattleLayout(enemies, {
+      compact: true,
+      height: 500,
+      groundBottom: 594,
+    });
+    const columns = Math.ceil(Math.sqrt(enemies.length));
+    for (let i = columns; i < layout.length; i++) {
+      const numberTop = layout[i].nameY - 22 - 15 - 54;
+      expect(numberTop).toBeGreaterThan(layout[i - columns].nameY + 22);
+    }
+  });
+  it("preserves the accepted two-enemy phone framing", () => {
+    const enemies = [{ monster_id: "iron_golem" }, { monster_id: "gargoyle" }];
+    expect(
+      buildEnemyBattleLayout(enemies, {
+        compact: true,
+        height: 500,
+        groundBottom: 594,
+      }),
+    ).toEqual(
+      buildEnemyBattleLayout(enemies, {
+        groundTop: 340,
+        height: 500,
+        groundBottom: 594,
+      }),
+    );
+  });
+});
+
 describe("floatingTextAnchorForEntry", () => {
+  it("reserves the actual enemy-name bounds", () => {
+    const anchor = floatingTextAnchorForEntry({
+      x: 100,
+      y: 220,
+      sprite: { displayHeight: 100 },
+      nameText: { getBounds: () => ({ top: 140 }) },
+    });
+    expect(anchor.maxBottom).toBe(130);
+  });
+  it("uses the full height above a feet-anchored party member", () => {
+    const anchor = floatingTextAnchorForEntry({
+      x: 540,
+      y: 300,
+      sprite: { displayHeight: 108, feetAnchored: true },
+    });
+    expect(anchor).toEqual({ x: 540, y: 180, maxBottom: 182 });
+  });
+
   it("lifts the anchor above the sprite top edge", () => {
     const anchor = floatingTextAnchorForEntry({
       x: 540,
@@ -104,7 +167,7 @@ describe("floatingTextAnchorForEntry", () => {
       sprite: { x: 540, y: 220, displayHeight: 100 },
     });
 
-    expect(anchor).toEqual({ x: 540, y: 158 });
+    expect(anchor).toEqual({ x: 540, y: 158, maxBottom: 160 });
   });
 });
 

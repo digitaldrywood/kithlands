@@ -52,9 +52,43 @@ describe("town dialogue touch input", () => {
     const stopPropagation = vi.fn();
 
     background.handlers.get("pointerdown")({}, 0, 0, { stopPropagation });
+    // A queued stale tap after closing must not destroy/unlock twice.
+    background.handlers.get("pointerdown")({}, 0, 0, { stopPropagation });
     await interaction;
 
-    expect(stopPropagation).toHaveBeenCalledOnce();
+    expect(stopPropagation).toHaveBeenCalledTimes(2);
+    expect(background.destroy).toHaveBeenCalledOnce();
+    expect(scene.animating).toBe(false);
+    expect([...scene._modalLocks]).toEqual([]);
+  });
+  it("a replayed confirm advances only one dialogue page", async () => {
+    const keyboard = new Map();
+    const scene = {
+      add: {
+        rectangle: vi.fn(() => displayObject()),
+        text: vi.fn(() => displayObject()),
+      },
+      animating: false,
+      input: {
+        keyboard: {
+          on: (key, handler) => keyboard.set(key, handler),
+          off: vi.fn(),
+        },
+      },
+      tweens: { add: vi.fn() },
+    };
+    const interaction = openDialogue(
+      scene,
+      { node_id: "shop" },
+      { npc_name: "Merchant", lines: ["First page", "Last page"] },
+    );
+    const key = { key: "Enter", repeat: false, preventDefault: vi.fn() };
+    const confirm = keyboard.get("keydown");
+    confirm(key);
+    confirm(key);
+    expect(scene.animating).toBe(true);
+    confirm({ key: "Enter", repeat: false, preventDefault: vi.fn() });
+    await interaction;
     expect(scene.animating).toBe(false);
     expect([...scene._modalLocks]).toEqual([]);
   });

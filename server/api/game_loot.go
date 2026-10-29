@@ -138,6 +138,7 @@ func (g *Game) rolledItemState(id string, item *inventory.EquipmentInstance) (It
 			Stat: socket.Stat, Value: socket.Value,
 		}
 		if gem := g.gd.GemByID(socket.GemID); gem != nil {
+			socketState.IconKey = gem.IconKey
 			socketState.Color = gem.SocketColor
 			socketState.GlowColor = gem.GlowColor
 		}
@@ -190,7 +191,7 @@ func (g *Game) fillGemState(state *GameState) {
 			continue
 		}
 		state.Gems = append(state.Gems, GemState{
-			ID: id, Name: gem.Name, Count: count, Tier: gem.Tier,
+			ID: id, Name: gem.Name, Count: count, Tier: gem.Tier, IconKey: gem.IconKey,
 			RequiredLevel: gem.RequiredLevel, Description: gem.Description,
 			Color: gem.SocketColor, GlowColor: gem.GlowColor,
 			Effects: gemEffectStates(gem.Effects),
@@ -229,6 +230,7 @@ func (g *Game) fillGemState(state *GameState) {
 func (g *Game) gemAmountState(gemID string, count int) GemAmountState {
 	state := GemAmountState{GemID: gemID, Count: count, Owned: g.inv.Gems[gemID]}
 	if gem := g.gd.GemByID(gemID); gem != nil {
+		state.IconKey = gem.IconKey
 		state.GemName = gem.Name
 		state.Tier = gem.Tier
 		state.RequiredLevel = gem.RequiredLevel

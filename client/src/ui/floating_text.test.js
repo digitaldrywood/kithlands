@@ -69,6 +69,20 @@ function makeText() {
       this.fontStyle = fontStyle;
       return this;
     },
+    getBounds() {
+      const height =
+        this.fontSize * 1.2 * this.text.split("\n").length * this.scaleY;
+      return {
+        height,
+        width:
+          Math.max(...this.text.split("\n").map((line) => line.length)) *
+          this.fontSize *
+          0.6 *
+          this.scaleX,
+        top: this.y - height / 2,
+        bottom: this.y + height / 2,
+      };
+    },
     setPosition(x, y) {
       this.x = x;
       this.y = y;
@@ -122,7 +136,7 @@ describe("FloatingTextPool", () => {
     expect(active.fontSize).toBe(26);
     expect(active.color).toBe("#ff8800");
     expect(active.stroke).toBe("#140808");
-    expect(active.strokeThickness).toBe(2);
+    expect(active.strokeThickness).toBe(4);
     expect(active.scaleX).toBeGreaterThan(1);
     expect(scene.tweenCalls[0]).toMatchObject({
       targets: active,
@@ -132,10 +146,128 @@ describe("FloatingTextPool", () => {
     });
     expect(scene.tweenCalls[1]).toMatchObject({
       targets: active,
-      alpha: 0,
-      duration: 1080,
-      y: 174,
+      duration: 1850,
+      y: 208,
     });
+  });
+
+  it.each([375, 390])(
+    "keeps phone damage and defeat readable and separated at %s CSS pixels",
+    async (width) => {
+      const scene = makeScene();
+      scene.game = { canvas: { getBoundingClientRect: () => ({ width }) } };
+      scene.scale = { gameSize: { width: 800 } };
+      const pool = new FloatingTextPool(scene);
+      await pool.spawnResult(100, 200, 169, "crit", "enemy_1", {
+        defeated: true,
+        maxBottom: 190,
+        gap: 13,
+      });
+      const status = pool.active.find((t) => t._resultType === "defeated");
+      const critical = pool.active.find((t) => t._resultType === "crit");
+      expect((status.fontSize * width) / 800).toBeGreaterThanOrEqual(16);
+      expect((critical.fontSize * width) / 800).toBeGreaterThanOrEqual(18);
+      expect(status.getBounds().bottom).toBeLessThanOrEqual(190);
+      expect(critical.getBounds().bottom).toBeLessThanOrEqual(
+        status.getBounds().top - 13,
+      );
+    },
+  );
+
+  it("keeps a high target's critical/defeat stack inside the field", async () => {
+    const scene = makeScene();
+    scene.game = { canvas: { getBoundingClientRect: () => ({ width: 375 }) } };
+    const pool = new FloatingTextPool(scene);
+    await pool.spawnResult(680, 100, 169, "crit", "party_0", {
+      defeated: true,
+      maxBottom: 126,
+      gap: 13,
+    });
+    const [status, critical] = pool.active;
+    expect(critical.text).toBe("CRITICAL · -169!");
+    expect(critical.getBounds().top).toBeGreaterThanOrEqual(13 - 1e-6);
+    expect(critical.getBounds().bottom).toBeLessThanOrEqual(
+      status.getBounds().top - 13,
+    );
+    expect(critical.x + critical.getBounds().width / 2).toBeLessThanOrEqual(
+      787,
+    );
+  });
+
+  it("replaces a sequential target result without clearing another target's text", async () => {
+    const pool = new FloatingTextPool(makeScene());
+    await pool.spawnResult(100, 150, 52, "physical", "enemy_1");
+    await pool.spawnResult(300, 150, 18, "physical", "enemy_2");
+    const other = pool.active.find((t) => t._targetKey === "enemy_2");
+    await pool.spawnResult(100, 150, 65, "physical", "enemy_1", {
+      replaceTarget: true,
+    });
+    expect(pool.active).toHaveLength(2);
+    expect(pool.active).toContain(other);
+    expect(pool.active.find((t) => t._targetKey === "enemy_1").text).toBe(
+      "-65",
+    );
+  });
+
+  it("keeps group damage stable and leaves defeat reporting to the shared summary", async () => {
+    const scene = makeScene(),
+      pool = new FloatingTextPool(scene);
+    await pool.spawnResult(100, 150, 82, "magical", "enemy_1", {
+      defeated: true,
+      groupResult: true,
+      maxBottom: 140,
+    });
+    expect(pool.active).toHaveLength(1);
+    const text = pool.active[0];
+    expect(text.text).toBe("-82");
+    expect(text.scaleX).toBe(1);
+    expect(scene.tweenCalls[0].y).toBe(text.y);
+    expect(scene.tweenCalls[1]).toMatchObject({ alpha: 0, delay: 1200 });
+    expect(pool.targetCounts.size).toBe(0);
+    pool.release(text);
+    expect(pool.targetCounts.size).toBe(0);
+  });
+
+  it("keeps critical text opaque through a 1.5-second read hold without flashing", async () => {
+    const scene = makeScene();
+    const pool = new FloatingTextPool(scene);
+    await pool.spawn(300, 180, 42, "crit", "enemy_1");
+    expect(pool.active[0].text).toBe("CRITICAL\n-42!");
+    const fades = scene.tweenCalls.filter((t) => t.alpha !== undefined);
+    expect(fades).toHaveLength(1);
+    expect(fades[0]).toMatchObject({ alpha: 0, delay: 1500, duration: 600 });
+    expect(pool.active[0].alpha).toBe(1);
+    fades[0].onComplete();
+    expect(pool.active).toHaveLength(0);
+  });
+
+  it("keeps defeat below a simultaneous two-line critical on the same target", async () => {
+    const pool = new FloatingTextPool(makeScene());
+    await pool.spawn(100, 100, 169, "crit", "enemy_1");
+    await pool.spawn(100, 152, "DEFEATED!", "defeated", "enemy_1");
+    const [critical, defeated] = pool.active;
+    expect(defeated.y - critical.y).toBeGreaterThan(64);
+  });
+
+  it("labels server-confirmed guards without hiding critical results", async () => {
+    const pool = new FloatingTextPool(makeScene());
+    await pool.spawn(100, 100, 12, "party_hit", "hero", { guarded: true });
+    expect(pool.active[0].text).toBe("GUARD\n-12");
+    expect(pool.active[0].color).toBe("#9edcff");
+    await pool.spawn(200, 100, 24, "crit", "ally", { guarded: true });
+    expect(pool.active[1].text).toBe("CRIT · GUARD\n-24!");
+  });
+
+  it("reduced motion holds text still without a bounce", async () => {
+    const scene = makeScene();
+    scene.reducedBattleMotion = () => true;
+    const pool = new FloatingTextPool(scene);
+    await pool.spawn(100, 100, 33, "physical", "enemy_1");
+    const t = pool.active[0];
+    expect(t.scaleX).toBe(1);
+    expect(scene.tweenCalls).toHaveLength(2);
+    expect(scene.tweenCalls[0].y).toBe(t.y);
+    expect(scene.tweenCalls[1].delay).toBeGreaterThanOrEqual(1200);
   });
 
   it("applies elemental magical colors without dropping the default stroke", async () => {
@@ -148,14 +280,13 @@ describe("FloatingTextPool", () => {
 
     const active = pool.active[0];
     expect(active.text).toBe("-18");
-    expect(active.color).toBe("#ff4444");
+    expect(active.color).toBe("#ffbb80");
     expect(active.stroke).toBe("#111111");
-    expect(active.strokeThickness).toBe(2);
-    expect(scene.tweenCalls).toHaveLength(2);
+    expect(active.strokeThickness).toBe(4);
+    expect(scene.tweenCalls).toHaveLength(3);
     expect(scene.tweenCalls[1]).toMatchObject({
       targets: active,
-      alpha: 0,
-      duration: 960,
+      duration: 1750,
     });
   });
 });

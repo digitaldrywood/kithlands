@@ -1,3 +1,18 @@
+import { battleActionTitle } from "../ui/battle_action_title.js";
+import { showDefeatReceipt } from "./defeat_receipt.js";
+import { portraitFontSize } from "../systems/gameplayViewport.js";
+import { combatReadTime } from "../ui/combat_read_time.js";
+import { oncePerKeyEvent } from "../systems/keyboard_events.js";
+import { meleeContactDetails } from "./battle_contact_fx.js";
+import {
+  beginBattleAction,
+  physicalAttackState,
+  physicalContactFamily,
+  physicalHitPresentations,
+  playItemPresentation,
+} from "./battle_action_playback.js";
+import fieldPresentation from "../../../shared/field_presentation.json";
+import abilityDefinitions from "../../../shared/abilities.json";
 import { roundedRectangle } from "../ui/theme.js";
 import { claimChest, gameAction, getGame } from "../api.js";
 import { createBattleCharacterSprite } from "../sprites/battleCharacterSprite.js";
@@ -8,7 +23,8 @@ import {
   isGroupTargetMode,
   targetModeSide,
 } from "../systems/battleSpellTargeting.js";
-import { showItemMenu } from "./item_menu.js";
+import { buildItemList, canUseOnTarget, itemUseContext } from "./item_menu.js";
+import { battleChoicePanel } from "../ui/battle_choice_panel.js";
 import {
   closeEquipmentScreen,
   showEquipmentScreen,
@@ -21,20 +37,19 @@ import {
   hpBarColorPct,
   hpBarFillWidth,
 } from "../systems/hpBar.js";
-import { buildVictoryXPSegments } from "../systems/victoryXp.js";
-import {
-  buildVictorySummary,
-  buildFinalePartyXP,
-  formatSpoils,
-} from "../systems/victoryPresentation.js";
+import { showVictoryReceipt } from "./victory_receipt.js";
 import {
   pendingEquipmentDrops,
   showPostBattleLoot,
+  withBattleLootDeadline,
 } from "./post_battle_loot.js";
 import { FloatingTextPool } from "../ui/floating_text.js";
 import { MessageWindow } from "../ui/message_window.js";
 import { TargetCursor } from "../ui/target_cursor.js";
-import { drawBattlePartyStatus } from "../ui/battle_party_status.js";
+import {
+  drawBattlePartyStatus,
+  reconcilePartyMana,
+} from "../ui/battle_party_status.js";
 import { monsterSpriteKey } from "../data/monsterSprites.js";
 import {
   battleSpeedMul,
@@ -60,9 +75,10 @@ import {
 } from "../systems/auto_battle.js";
 import { drawButton, drawFF6BottomStrip, drawPanel } from "../ui/panel.js";
 import { TILE_COLORS, TILE_IDS } from "./tileConstants.js";
-import { pickBackgroundKey } from "./battleBackgrounds.js";
+import { battleBackdropFrame, pickBackgroundKey } from "./battleBackgrounds.js";
 import {
   battleElementStyle,
+  battleCastOrigin,
   buildAttackMotionPath,
   cinematicActionKey,
   prefersReducedBattleMotion,
@@ -85,6 +101,7 @@ const ENEMY_COLORS = {
 const STATUS_ICONS = {
   poison: "icon_poison",
   sleep: "icon_sleep",
+  slow: "icon_slow",
   silence: "icon_mute",
   stone: "icon_paralyze",
   confuse: "icon_confuse",
@@ -249,6 +266,9 @@ export class BattleScene extends Phaser.Scene {
 
   init(data) {
     this.gameState = data.gameState;
+    this.victoryContinueShown = false;
+    this.victoryFastForwarded = false;
+    this.victoryReceipt = null;
     // Only round restarts carry presentation forward; a new encounter starts fresh.
     this.battlePresentation = data.battlePresentation ?? {
       formation: (data.gameState?.enemies ?? []).map((enemy) => ({ ...enemy })),
@@ -339,11 +359,14 @@ export class BattleScene extends Phaser.Scene {
     const messageBounds = this.hudLayout.message;
     this.messageWindow = new MessageWindow(this, {
       ...messageBounds,
-      minHeight: this.hudLayout.mode === "mobile" ? 360 : 92,
+      minHeight: Math.min(
+        messageBounds.height,
+        this.hudLayout.mode === "mobile" ? 360 : 92,
+      ),
       maxHeight: messageBounds.height,
       anchorBottom: false,
       depth: 20,
-      fontSize: this.hudLayout.mode === "mobile" ? "32px" : "15px",
+      fontSize: `${Math.max(15, parseInt(portraitFontSize(this, 16)))}px`,
       lineSpacing: this.hudLayout.mode === "mobile" ? 6 : 2,
     });
     this.promptText = this.messageWindow;
@@ -359,6 +382,7 @@ export class BattleScene extends Phaser.Scene {
       label: "TARGET",
     });
     this.events.once("shutdown", () => {
+      this.closePicker();
       this.floatingText?.destroy();
       this.messageWindow?.destroy();
       this.actorCursor?.destroy();
@@ -368,6 +392,8 @@ export class BattleScene extends Phaser.Scene {
       this.finishMajorCinematic?.(true);
       closeEquipmentScreen(this, { callOnClose: false });
       this.postBattleLootDialog?.dispose();
+      this.victoryReceipt?.dialog.dispose();
+      this.victoryReceipt = null;
       if (this.scale.gameSize.height !== 600) {
         this.scale.setGameSize(800, 600);
       }
@@ -398,6 +424,28 @@ export class BattleScene extends Phaser.Scene {
 
     this.drawEnemies(gs);
     this.drawParty(gs);
+    const syncShadows = () => {
+      for (const entry of [
+        ...Object.values(this.partySprites),
+        ...Object.values(this.enemySprites),
+      ]) {
+        const sprite = entry.sprite,
+          shadow = sprite?.battleShadow;
+        if (!shadow?.active) continue;
+        shadow.setPosition(
+          sprite.x,
+          sprite.y + (sprite.feetAnchored ? 0 : sprite.displayHeight / 2 - 4),
+        );
+        shadow.setVisible(sprite.visible && !entry.dead);
+        shadow.setAlpha(sprite.alpha * (entry.row === "back" ? 0.24 : 0.32));
+      }
+    };
+    this.events.on("postupdate", syncShadows);
+    this.events.once("shutdown", () => {
+      this.events.off("postupdate", syncShadows);
+      for (const entry of Object.values(this.partySprites))
+        entry.battleAction?.resume();
+    });
     this.drawPartyStatus(gs);
     this.setupBattleCharacterAudit(gs);
     this.createLowHpVignette();
@@ -583,56 +631,95 @@ export class BattleScene extends Phaser.Scene {
 
   setupKeyboard() {
     // Action hotkeys (A/S/I/F) — any manual action cancels auto-mode (#99)
-    this.input.keyboard.on("keydown-A", () => {
-      if (this.animating || this.targetingMode || this.pickerOverlay) return;
-      if (this.currentMemberIdx >= this.livingMembers.length) return;
-      this.autoMode = false;
-      const slot = this.livingMembers[this.currentMemberIdx];
-      const member = this.gameState.party[slot];
-      this.pendingAction = "attack";
-      this.enterTargetingMode();
-      this.promptText
-        .setText(`${member.name}: Select a target to attack!`)
-        .setColor("#ff4444");
-    });
+    this.input.keyboard.on(
+      "keydown-A",
+      oncePerKeyEvent((event) => {
+        if (event.repeat) return;
+        if (this.animating || this.targetingMode || this.pickerOverlay) return;
+        if (this.currentMemberIdx >= this.livingMembers.length) return;
+        this.autoMode = false;
+        const slot = this.livingMembers[this.currentMemberIdx];
+        const member = this.gameState.party[slot];
+        this.pendingAction = "attack";
+        this.enterTargetingMode();
+        this.promptText
+          .setText(`${member.name}: Select a target to attack!`)
+          .setColor("#ff4444");
+      }),
+    );
 
-    this.input.keyboard.on("keydown-S", () => {
-      if (this.animating || this.targetingMode || this.pickerOverlay) return;
-      if (this.currentMemberIdx >= this.livingMembers.length) return;
-      this.autoMode = false;
-      const slot = this.livingMembers[this.currentMemberIdx];
-      this.showSpellPicker(slot);
-    });
+    this.input.keyboard.on(
+      "keydown-S",
+      oncePerKeyEvent((event) => {
+        if (event.repeat) return;
+        if (this.animating || this.targetingMode || this.pickerOverlay) return;
+        if (this.currentMemberIdx >= this.livingMembers.length) return;
+        this.autoMode = false;
+        const slot = this.livingMembers[this.currentMemberIdx];
+        this.showSpellPicker(slot);
+      }),
+    );
 
-    this.input.keyboard.on("keydown-I", () => {
-      if (this.animating || this.targetingMode || this.pickerOverlay) return;
-      if (this.currentMemberIdx >= this.livingMembers.length) return;
-      this.autoMode = false;
-      const slot = this.livingMembers[this.currentMemberIdx];
-      this.showItemPicker(slot);
-    });
+    this.input.keyboard.on(
+      "keydown-I",
+      oncePerKeyEvent((event) => {
+        if (event.repeat) return;
+        if (this.animating || this.targetingMode || this.pickerOverlay) return;
+        if (this.currentMemberIdx >= this.livingMembers.length) return;
+        this.autoMode = false;
+        const slot = this.livingMembers[this.currentMemberIdx];
+        this.showItemPicker(slot);
+      }),
+    );
 
-    this.input.keyboard.on("keydown-M", () => {
-      if (this.animating || this.targetingMode || this.pickerOverlay) return;
-      if (this.currentMemberIdx >= this.livingMembers.length) return;
-      this.autoMode = false;
-      this.executeSmartAttack();
-    });
+    this.input.keyboard.on(
+      "keydown-M",
+      oncePerKeyEvent((event) => {
+        if (event.repeat) return;
+        if (this.animating || this.targetingMode || this.pickerOverlay) return;
+        if (this.currentMemberIdx >= this.livingMembers.length) return;
+        this.autoMode = false;
+        this.executeSmartAttack();
+      }),
+    );
 
-    this.input.keyboard.on("keydown-B", () => {
-      if (this.animating || this.targetingMode || this.pickerOverlay) return;
-      if (this.currentMemberIdx >= this.livingMembers.length) return;
-      this.autoMode = false;
-      const slot = this.livingMembers[this.currentMemberIdx];
-      this.showAbilityPicker(slot);
-    });
+    this.input.keyboard.on(
+      "keydown-B",
+      oncePerKeyEvent((event) => {
+        if (event.repeat) return;
+        if (this.animating || this.targetingMode || this.pickerOverlay) return;
+        if (this.currentMemberIdx >= this.livingMembers.length) return;
+        this.autoMode = false;
+        const slot = this.livingMembers[this.currentMemberIdx];
+        this.showAbilityPicker(slot);
+      }),
+    );
 
-    this.input.keyboard.on("keydown-F", () => {
-      if (this.animating || this.targetingMode || this.pickerOverlay) return;
-      if (this.currentMemberIdx >= this.livingMembers.length) return;
-      this.autoMode = false;
-      this.doFlee();
-    });
+    this.input.keyboard.on(
+      "keydown-D",
+      oncePerKeyEvent((event) => {
+        if (event.repeat) return;
+        const slot = this.livingMembers[this.currentMemberIdx];
+        if (slot === undefined) return;
+        this.handleActionButton(
+          { type: "defend" },
+          this.gameState.party[slot],
+          this.gameState,
+          slot,
+        );
+      }),
+    );
+
+    this.input.keyboard.on(
+      "keydown-F",
+      oncePerKeyEvent((event) => {
+        if (event.repeat) return;
+        if (this.animating || this.targetingMode || this.pickerOverlay) return;
+        if (this.currentMemberIdx >= this.livingMembers.length) return;
+        this.autoMode = false;
+        this.doFlee();
+      }),
+    );
 
     // Major cinematics remain skippable after they begin. SPACE is a no-op
     // during normal battle input so it cannot accidentally select an action.
@@ -641,24 +728,31 @@ export class BattleScene extends Phaser.Scene {
     });
 
     // REPEAT last round's actions (issue #99)
-    this.input.keyboard.on("keydown-R", () => {
-      if (this.animating || this.targetingMode || this.pickerOverlay) return;
-      if (!this.lastRoundActions) return;
-      this.executeRepeat();
-    });
+    this.input.keyboard.on(
+      "keydown-R",
+      oncePerKeyEvent((event) => {
+        if (event.repeat) return;
+        if (this.animating || this.targetingMode || this.pickerOverlay) return;
+        if (!this.lastRoundActions) return;
+        this.executeRepeat();
+      }),
+    );
 
     // Toggle AUTO-BATTLE mode (issue #99)
-    this.input.keyboard.on("keydown-Q", (event) => {
-      if (event.repeat) return;
-      if (this.autoMode) {
-        this.stopAutoAfterRound();
-        return;
-      }
-      if (this.animating || this.targetingMode || this.pickerOverlay) return;
-      if (!this.lastRoundActions) return;
-      this.autoMode = true;
-      this.executeRepeat();
-    });
+    this.input.keyboard.on(
+      "keydown-Q",
+      oncePerKeyEvent((event) => {
+        if (event.repeat) return;
+        if (this.autoMode) {
+          this.stopAutoAfterRound();
+          return;
+        }
+        if (this.animating || this.targetingMode || this.pickerOverlay) return;
+        if (!this.lastRoundActions) return;
+        this.autoMode = true;
+        this.executeRepeat();
+      }),
+    );
 
     // Number keys 1-9 for target/picker selection
     const numKeys = [
@@ -769,7 +863,7 @@ export class BattleScene extends Phaser.Scene {
         const slot = this.livingMembers[this.currentMemberIdx];
         const member = this.gameState.party[slot];
         this.promptText
-          .setText(`${member.name}'s turn -- choose an action`)
+          .setText(this.memberTurnPrompt(member))
           .setColor("#ffff44");
         return;
       }
@@ -807,6 +901,18 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
+  memberTurnPrompt(member) {
+    const plans = new Map();
+    for (const enemy of this.gameState.enemies || []) {
+      if (enemy.hp <= 0 || !enemy.intent?.label) continue;
+      // Group equal plans without claiming a target or predicting damage.
+      const label = enemy.intent.label.replace(/^Plans: /, "").split(":")[0];
+      plans.set(label, (plans.get(label) || 0) + 1);
+    }
+    if (!plans.size) return `${member.name}'s turn -- choose an action`;
+    return `${member.name}'s turn -- choose an action\nEnemy plans: ${[...plans].map(([label, count]) => `${label}${count > 1 ? ` ×${count}` : ""}`).join(" · ")}`;
+  }
+
   showCurrentMemberTurn() {
     const gs = this.gameState;
     if (this.currentMemberIdx >= this.livingMembers.length) {
@@ -824,9 +930,7 @@ export class BattleScene extends Phaser.Scene {
     const slot = this.livingMembers[this.currentMemberIdx];
     const member = gs.party[slot];
 
-    this.promptText
-      .setText(`${member.name}'s turn -- choose an action`)
-      .setColor("#ffff44");
+    this.promptText.setText(this.memberTurnPrompt(member)).setColor("#ffff44");
     this.pendingAction = null;
     this.pendingSpellId = null;
     this.pendingSpellEffect = null;
@@ -866,12 +970,24 @@ export class BattleScene extends Phaser.Scene {
     const key = (this.battlePresentation.backgroundKey ??=
       (gs.final_encounter?.active && gs.final_encounter.battle_background) ||
       gs.dungeon?.battle_background ||
+      (theme.motif === "plains" ? fieldPresentation.meadow.battle.key : null) ||
       pickBackgroundKey(theme.motif, seedParts, this.buildingType));
     if (key && this.textures.exists(key)) {
       const bg = this.add
-        .image(400, 300, key)
+        .image(
+          0,
+          0,
+          key,
+          key === fieldPresentation.meadow.battle.key
+            ? undefined
+            : battleBackdropFrame(this.textures.get(key)),
+        )
+        .setOrigin(0, 0)
         .setDepth(-5)
-        .setDisplaySize(800, 600);
+        .setDisplaySize(
+          800,
+          this.hudLayout.battlefield.y + this.hudLayout.battlefield.height,
+        );
       bg._combatFxTag = "battle-backdrop";
       bg._combatFxVariant = "image";
       this.backdropObjects.push(bg);
@@ -938,6 +1054,7 @@ export class BattleScene extends Phaser.Scene {
     if (!identity || !equipment || !entry) return null;
 
     if (rebuildSprite) {
+      const shadow = entry.sprite?.battleShadow;
       entry.sprite?.removeInteractive?.();
       entry.sprite?.destroy?.();
       const sprite = createBattleCharacterSprite(
@@ -951,6 +1068,7 @@ export class BattleScene extends Phaser.Scene {
           fallbackKey: CLASS_SPRITES[identity.id] || identity.id,
         },
       );
+      sprite.battleShadow = shadow;
       sprite.setDepth(4);
       if (entry.alive) {
         sprite.setInteractive({ useHandCursor: true });
@@ -1278,9 +1396,10 @@ export class BattleScene extends Phaser.Scene {
         Math.max(36, width),
         Math.max(12, height),
         this.backdropTheme?.shadow ?? 0x000000,
-        alpha,
+        1,
       )
-      .setDepth(1);
+      .setDepth(1)
+      .setAlpha(alpha);
     shadow._combatFxTag = "combat-shadow";
     this.combatShadows.push(shadow);
     return shadow;
@@ -1292,6 +1411,9 @@ export class BattleScene extends Phaser.Scene {
       enemies,
       {
         height: this.hudLayout.mode === "mobile" ? 500 : 320,
+        compact: this.hudLayout.mode === "mobile",
+        groundBottom:
+          this.hudLayout.battlefield.y + this.hudLayout.battlefield.height - 10,
       },
       this.battlePresentation.formation,
     );
@@ -1318,7 +1440,7 @@ export class BattleScene extends Phaser.Scene {
           ENEMY_COLORS[e.name] || 0xff5722,
         );
       }
-      this.addCombatShadow(
+      sprite.battleShadow = this.addCombatShadow(
         x,
         y + sprite.displayHeight / 2 - 4,
         sprite.displayWidth * 0.75,
@@ -1348,7 +1470,9 @@ export class BattleScene extends Phaser.Scene {
             e.is_undead,
           )
         ) {
-          this.promptText.setText(`Target: ${e.name}`);
+          this.promptText.setText(
+            [`Target: ${e.name}`, e.intent?.label].filter(Boolean).join("\n"),
+          );
         }
       });
       sprite.on("pointerout", () => {
@@ -1371,12 +1495,17 @@ export class BattleScene extends Phaser.Scene {
 
       const nameText = this.add
         .text(x, placement.nameY, e.name, {
-          fontSize: "11px",
+          fontSize: `${Math.max(11, parseInt(portraitFontSize(this, 12)))}px`,
+          wordWrap: { width: placement.lane.width - 14 },
+          align: "center",
           color: "#ffffff",
+          stroke: "#101820",
+          strokeThickness: 3,
           fontFamily: "Arial, sans-serif",
           fontStyle: "bold",
         })
         .setOrigin(0.5);
+      nameText.setDepth(10);
       this.enemySprites[e.id].nameText = nameText;
 
       // Number indicator for keyboard targeting
@@ -1430,9 +1559,9 @@ export class BattleScene extends Phaser.Scene {
           fallbackKey,
         },
       );
-      this.addCombatShadow(
-        placement.spriteX + 4,
-        placement.spriteY + 37,
+      sprite.battleShadow = this.addCombatShadow(
+        placement.spriteX,
+        placement.spriteY,
         62,
         16,
         placement.row === "front" ? 0.32 : 0.24,
@@ -1523,14 +1652,18 @@ export class BattleScene extends Phaser.Scene {
   resolveVisualEntry(entry) {
     if (!entry) return null;
     const sprite = entry.sprite || entry;
-    const x = entry.x ?? sprite.x;
-    const y = entry.y ?? sprite.y;
+    const x = sprite.x ?? entry.x;
+    const feetY = sprite.y ?? entry.y;
+    const y = feetY - (sprite.feetAnchored ? sprite.displayHeight / 2 : 0);
     if (typeof x !== "number" || typeof y !== "number") return null;
 
     return {
       sprite,
       x,
       y,
+      feetY: sprite.feetAnchored
+        ? feetY
+        : feetY + (sprite.displayHeight || 56) / 2,
       width: Math.max(
         42,
         Math.round((sprite.displayWidth || sprite.width || 56) * 0.72),
@@ -1723,7 +1856,8 @@ export class BattleScene extends Phaser.Scene {
     const visual = this.resolveVisualEntry(targetEntry);
     if (!visual) return;
 
-    const { sprite, x, y } = visual;
+    const { sprite, x } = visual;
+    const y = sprite.y;
     const defeated = isParty && Number.isFinite(newHP) && newHP <= 0;
 
     this.tweens.killTweensOf(sprite);
@@ -1759,18 +1893,17 @@ export class BattleScene extends Phaser.Scene {
       this.scaledDelay(320, () => sprite.clearTint?.());
     }
 
-    this.tweens.add({
-      targets: sprite,
-      x: x + 3,
-      duration: this.scaledMs(40),
-      yoyo: true,
-      repeat: 3,
-      ease: "Sine.easeInOut",
-      onStart: () => this.setSpritePosition(sprite, x - 3, y),
-      onComplete: () => this.setSpritePosition(sprite, x, y),
-    });
-
     if (!this.reducedBattleMotion()) {
+      this.tweens.add({
+        targets: sprite,
+        x: x + 3,
+        duration: this.scaledMs(40),
+        yoyo: true,
+        repeat: 3,
+        ease: "Sine.easeInOut",
+        onStart: () => this.setSpritePosition(sprite, x - 3, y),
+        onComplete: () => this.setSpritePosition(sprite, x, y),
+      });
       this.cameras.main.shake(this.scaledMs(150), 0.003);
     }
     if (isParty && isLowHpDanger(newHP, maxHP)) {
@@ -1823,10 +1956,18 @@ export class BattleScene extends Phaser.Scene {
     const visual = this.resolveVisualEntry(entry);
     if (!visual || !this.targetCursor) return;
     const isPartyTarget = mode === "party";
-    this.targetCursor.showFor(visual, {
-      tint: isPartyTarget ? CURSOR_TINTS.ally : CURSOR_TINTS.enemy,
-      label: isPartyTarget ? "ALLY TARGET" : "TARGET",
-    });
+    this.targetCursor.showFor(
+      {
+        ...visual,
+        nameTop: entry.nameText?.visible
+          ? entry.nameText.getBounds().top
+          : undefined,
+      },
+      {
+        tint: isPartyTarget ? CURSOR_TINTS.ally : CURSOR_TINTS.enemy,
+        label: isPartyTarget ? "ALLY TARGET" : "TARGET",
+      },
+    );
   }
 
   showGroupTargetCursor(entries, mode = "enemy") {
@@ -1872,10 +2013,23 @@ export class BattleScene extends Phaser.Scene {
       bottom - top - 10,
       9,
     );
+    const crowdedEnemyGroup = mode === "enemy" && visuals.length > 3;
     label
       .setText(labelText)
+      .setFontSize(
+        crowdedEnemyGroup
+          ? Math.max(10, parseInt(portraitFontSize(this, 12)))
+          : 10,
+      );
+    const labelBottom = crowdedEnemyGroup
+      ? Math.min(
+          this.hudLayout.battlefield.y + this.hudLayout.battlefield.height - 6,
+          bottom + label.height + 8,
+        )
+      : top - 4;
+    label
       .setColor(`#${color.toString(16).padStart(6, "0")}`)
-      .setPosition((left + right) / 2, top - 4)
+      .setPosition((left + right) / 2, labelBottom)
       .setVisible(true)
       .setAlpha(1);
     this.tweens.add({
@@ -1915,7 +2069,8 @@ export class BattleScene extends Phaser.Scene {
   actionTitleFor(action, line) {
     if (action?.action_name) return action.action_name;
     if (action?.spell_name) return action.spell_name;
-    if (action?.kind === "attack" || action?.kind === "counter") {
+    if (action?.kind === "counter") return "COUNTER";
+    if (action?.kind === "attack") {
       return "ATTACK";
     }
     if (action?.kind === "ability") {
@@ -1926,134 +2081,97 @@ export class BattleScene extends Phaser.Scene {
   }
 
   showActionTitle(anchorEntry, label, color = "#ffffff") {
-    const title = String(label || "")
-      .trim()
-      .toUpperCase();
-    if (!title) return Promise.resolve();
-
-    const anchor = this.resolveVisualEntry(anchorEntry) || {
-      x: 400,
-      y: 250,
-      height: 56,
-    };
-    const actorName = String(anchorEntry?.name || "")
-      .trim()
-      .toUpperCase();
-    const width = Math.max(
-      112,
-      title.length * 11 + 30,
-      actorName.length * 8 + 30,
+    if (!String(label || "").trim()) return Promise.resolve();
+    this.actionTitle?.dispose();
+    this.actionTitle = battleActionTitle(
+      this,
+      anchorEntry?.name,
+      label,
+      color,
+      this.scaledMs(ACTION_BEAT_MS.titleDisplay),
     );
-    const panelY = Math.max(48, anchor.y - anchor.height / 2 - 42);
-    const bg = this.add
-      .rectangle(anchor.x, panelY, width, 42, 0x151e2b, 0.94)
-      .setDepth(23)
-      .setStrokeStyle(2, 0x2f3444)
-      .setAlpha(0);
-    bg._combatFxTag = "title-card";
-    const accent = this.add
-      .rectangle(anchor.x - width / 2 + 10, panelY, 6, 32, 0xffffff, 1)
-      .setDepth(24)
-      .setAlpha(0);
-    const actorText = this.add
-      .text(anchor.x, panelY - 10, actorName, {
-        fontSize: "9px",
-        color: "#d6deef",
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5)
-      .setDepth(24)
-      .setAlpha(0);
-    actorText._combatFxTag = "title-actor";
-    const actionText = this.add
-      .text(anchor.x, panelY + 8, title, {
-        fontSize: "15px",
-        color,
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5)
-      .setDepth(24)
-      .setAlpha(0);
-    actionText._combatFxTag = "title-action";
-
-    this.tweens.add({
-      targets: [bg, accent, actorText, actionText],
-      alpha: 1,
-      duration: this.scaledMs(120),
-      ease: "Back.easeOut",
-    });
-    this.tweens.add({
-      targets: [bg, accent, actorText, actionText],
-      y: "-=4",
-      duration: this.scaledMs(120),
-      ease: "Back.easeOut",
-    });
-    this.scaledDelay(ACTION_BEAT_MS.titleDisplay, () => {
-      this.tweens.add({
-        targets: [bg, accent, actorText, actionText],
-        alpha: 0,
-        y: "-=8",
-        duration: this.scaledMs(180),
-        ease: "Quad.In",
-        onComplete: () => {
-          bg.destroy();
-          accent.destroy();
-          actorText.destroy();
-          actionText.destroy();
-        },
-      });
-    });
     return this.wait(ACTION_BEAT_MS.titleLead);
   }
 
-  async lungePartySprite(actorEntry, targetEntry) {
+  async lungePartySprite(actorEntry, targetEntry, { crit = false } = {}) {
     if (!actorEntry?.sprite || !targetEntry) return;
     const actor = this.resolveVisualEntry(actorEntry);
     const target = this.resolveVisualEntry(targetEntry);
     if (!actor || !target) return;
-
     const reducedMotion = this.reducedBattleMotion();
-    const path = buildAttackMotionPath(actor, target, reducedMotion);
+    const path = buildAttackMotionPath(actor, target, reducedMotion, {
+      contactFamily: physicalContactFamily(actor.sprite, crit),
+    });
     this.tweens.killTweensOf(actor.sprite);
-    this.setSpritePosition(actor.sprite, path.origin.x, path.origin.y);
-    void actor.sprite.playBattleAttack?.({
-      reducedMotion,
-      speedMultiplier: battleSpeedMul(),
-    });
-
-    await this.tweenP(actor.sprite, {
-      x: path.anticipation.x,
-      y: path.anticipation.y,
-      duration: reducedMotion ? 40 : ACTION_BEAT_MS.physicalAnticipation,
-      ease: "Quad.Out",
-    });
-    if (reducedMotion) {
-      await this.tweenP(actor.sprite, {
-        x: path.strike.x,
-        y: path.strike.y,
-        duration: 70,
-        ease: "Quad.Out",
+    if (actor.sprite.playBattleState) {
+      const stateID = physicalAttackState(actor.sprite, crit);
+      actorEntry.battleAction?.resume();
+      actorEntry.battleAction = beginBattleAction(actor.sprite, stateID, {
+        reducedMotion,
+        speedMultiplier: battleSpeedMul(),
+        holdRecovery: true,
+        onFrame: ({ frame, duration, cueFrame }) => {
+          if (frame === cueFrame) {
+            this.setSpritePosition(actor.sprite, path.strike.x, path.strike.y);
+            this.spawnMeleeSwing(actorEntry);
+          }
+          const dest =
+            frame < cueFrame
+              ? frame === 0
+                ? path.approach
+                : frame === 1 && !reducedMotion
+                  ? path.windup
+                  : path.strike
+              : frame === actor.sprite.battleStates[stateID].frames.at(-1).frame
+                ? { x: actorEntry.x, y: actorEntry.y }
+                : null;
+          if (dest)
+            return this.tweenP(actor.sprite, {
+              ...dest,
+              duration,
+              ease: "Sine.InOut",
+            });
+        },
       });
+      await actorEntry.battleAction.cue;
       return;
     }
-    await this.tweenP(actorEntry.sprite, {
-      x: path.apex.x,
-      y: path.apex.y,
-      duration: ACTION_BEAT_MS.physicalLaunch * 0.62,
-      ease: "Quad.Out",
-    });
-    await this.tweenP(actorEntry.sprite, {
+    await this.tweenP(actor.sprite, {
       x: path.strike.x,
-      y: path.strike.y,
-      duration: ACTION_BEAT_MS.physicalLaunch * 0.38,
-      ease: "Quad.In",
+      y:
+        path.strike.y -
+        (actor.sprite.feetAnchored ? 0 : actor.sprite.displayHeight / 2),
+      duration: reducedMotion ? 110 : 240,
+      ease: "Sine.InOut",
     });
   }
 
   reducedBattleMotion() {
     return this._forceReducedMotion ?? prefersReducedBattleMotion();
+  }
+
+  spawnMeleeSwing(actorEntry) {
+    if (this.reducedBattleMotion()) return;
+    const sprite = actorEntry.sprite;
+    const layer = sprite.battleAttachmentLayers?.find(
+      (entry) => entry.channel === "weapon",
+    );
+    const weapon = layer && (layer.front.visible ? layer.front : layer.back);
+    if (!weapon) return;
+    const arc = this.add.graphics().setPosition(weapon.x, weapon.y);
+    arc._combatFxTag = "melee-swing";
+    arc.lineStyle(5, 0xf4e4b0, 0.75);
+    arc.beginPath();
+    arc.arc(0, 0, weapon.height * 0.42, Math.PI * 0.65, Math.PI * 1.35);
+    arc.strokePath();
+    sprite.add(arc);
+    this.tweens.add({
+      targets: arc,
+      alpha: 0,
+      angle: 18,
+      duration: this.scaledMs(140),
+      onComplete: () => arc.destroy(),
+    });
   }
 
   majorCinematicsSeen() {
@@ -2231,11 +2349,11 @@ export class BattleScene extends Phaser.Scene {
     const reducedMotion = this.reducedBattleMotion();
     const aura = this.add
       .graphics()
-      .setDepth(13)
+      .setDepth((actor.sprite?.depth ?? 4) - 1)
       .setAlpha(0)
       .setScale(reducedMotion ? 1 : 0.65);
     aura._combatFxTag = "cast-aura";
-    aura.setPosition(actor.x, actor.y + actor.height * 0.3);
+    aura.setPosition(actor.x, actor.feetY);
     aura.lineStyle(3, style.core, 0.95);
     aura.strokeEllipse(0, 0, actor.width * 1.05, 24);
     aura.lineStyle(2, style.accent, 0.75);
@@ -2277,22 +2395,27 @@ export class BattleScene extends Phaser.Scene {
   async playCastAnticipation(actorEntry, element = "none") {
     const actor = this.resolveVisualEntry(actorEntry);
     if (!actor) return;
-    const style = battleElementStyle(element);
+    actor.sprite.battleCastSource = null;
     const reducedMotion = this.reducedBattleMotion();
-    void actor.sprite.playBattleCast?.({
-      reducedMotion,
-      speedMultiplier: battleSpeedMul(),
-    });
     this.spawnCastAura(actorEntry, element);
-    this.tweens.killTweensOf(actor.sprite);
-    this.setSpritePosition(actor.sprite, actor.x, actor.y);
-    actor.sprite.setTint?.(style.core);
-    await this.tweenP(actor.sprite, {
-      y: actor.y - (reducedMotion ? 0 : 12),
-      duration: reducedMotion ? 80 : ACTION_BEAT_MS.spellCharge,
-      ease: "Sine.Out",
-    });
-    actor.sprite.clearTint?.();
+    if (actor.sprite.playBattleState) {
+      actorEntry.battleAction?.resume();
+      actorEntry.battleAction = beginBattleAction(
+        actor.sprite,
+        "cast_class_ability",
+        {
+          reducedMotion,
+          speedMultiplier: battleSpeedMul(),
+          holdRecovery: true,
+        },
+      );
+      await actorEntry.battleAction.cue;
+      actor.sprite.battleCastSource = battleCastOrigin(
+        this.resolveVisualEntry(actorEntry),
+      );
+    } else {
+      await this.wait(reducedMotion ? 80 : ACTION_BEAT_MS.spellCharge);
+    }
   }
 
   spawnSpellImpact(targetEntry, element = "none") {
@@ -2333,11 +2456,115 @@ export class BattleScene extends Phaser.Scene {
     return impact;
   }
 
+  continueCastMotion(actorEntry) {
+    const actor = actorEntry?.battleAction
+      ? actorEntry
+      : [
+          ...Object.values(this.partySprites),
+          ...Object.values(this.enemySprites),
+        ].find((entry) => entry.sprite === actorEntry?.sprite);
+    actor?.battleAction?.followThrough();
+  }
+
+  spawnAbilityCue(actorEntry, targetEntry, color) {
+    const point = this.resolveVisualEntry(targetEntry || actorEntry);
+    if (!point) return;
+    const cue = this.add.graphics().setPosition(point.x, point.y).setDepth(20);
+    cue._combatFxTag = "ability-cue";
+    cue.lineStyle(2, color, 0.9);
+    cue.strokePoints(
+      [
+        { x: 0, y: -10 },
+        { x: 8, y: 0 },
+        { x: 0, y: 10 },
+        { x: -8, y: 0 },
+      ],
+      true,
+    );
+    this.tweens.add({
+      targets: cue,
+      alpha: 0,
+      duration: this.scaledMs(180),
+      onComplete: () => cue.destroy(),
+    });
+  }
+
+  async playUtilityAbility(actorEntry, action) {
+    if (!actorEntry?.sprite) return;
+    const presentation = abilityDefinitions.find(
+      (ability) => ability.id === action.action_id,
+    )?.choreography;
+    const stateID = presentation?.state || "cast_class_ability";
+    const sprite = actorEntry.sprite;
+    const state = sprite.battleStates?.[stateID];
+    if (!state) {
+      // Monsters have their own sprite pipeline; still show resolved preparation.
+      if (action.action_id === "focus" && this.enemySprites[action.actor_id]) {
+        this.spawnAbilityCue(actorEntry, null, 0xf1d58a);
+        await this.wait(ACTION_BEAT_MS.briefStatus);
+      }
+      return;
+    }
+    const target =
+      presentation?.motion === "reach"
+        ? this.enemySprites[action.target_id]
+        : null;
+    if (target) this.showActionFocus(actorEntry, target);
+    const path =
+      target &&
+      buildAttackMotionPath(
+        this.resolveVisualEntry(actorEntry),
+        this.resolveVisualEntry(target),
+        this.reducedBattleMotion(),
+      );
+    const cueIndex =
+      state.cue_frame == null
+        ? Math.floor(state.frames.length / 2)
+        : state.frames.findIndex((pose) => pose.frame === state.cue_frame);
+    await sprite.playBattleState(stateID, {
+      reducedMotion: this.reducedBattleMotion(),
+      speedMultiplier: battleSpeedMul(),
+      onFrame: ({ index, duration }) => {
+        if (presentation?.hide_weapon)
+          for (const layer of sprite.battleAttachmentLayers) {
+            if (layer.channel === "weapon") {
+              layer.front.setVisible(false);
+              layer.back.setVisible(false);
+            }
+          }
+        if (index === cueIndex)
+          this.spawnAbilityCue(
+            actorEntry,
+            target,
+            Number.parseInt((presentation?.color || "#f1d58a").slice(1), 16),
+          );
+        if (!path) return;
+        if (index === cueIndex)
+          this.setSpritePosition(sprite, path.strike.x, path.strike.y);
+        const destination =
+          index < cueIndex
+            ? path.strike
+            : index === state.frames.length - 1
+              ? path.origin
+              : null;
+        if (destination)
+          return this.tweenP(sprite, {
+            ...destination,
+            duration,
+            ease: "Sine.InOut",
+          });
+      },
+    });
+    this.setSpritePosition(sprite, actorEntry.x, actorEntry.y);
+  }
+
   launchSpellProjectile(actorEntry, targetEntry, element = "none", opts = {}) {
-    const actor = this.resolveVisualEntry(actorEntry);
+    const visual = this.resolveVisualEntry(actorEntry);
+    const actor = visual && { ...visual, ...battleCastOrigin(visual) };
     const target = this.resolveVisualEntry(targetEntry);
     if (!actor || !target) return Promise.resolve();
     const style = battleElementStyle(element);
+    actorEntry?.battleAction?.followThrough();
     const reducedMotion = this.reducedBattleMotion();
     if (reducedMotion) {
       const cue = this.add
@@ -2402,6 +2629,12 @@ export class BattleScene extends Phaser.Scene {
 
   async resetPartySprite(actorEntry) {
     if (!actorEntry?.sprite) return;
+    if (actorEntry.battleAction) {
+      const action = actorEntry.battleAction;
+      actorEntry.battleAction = null;
+      action.resume();
+      await action.finished;
+    }
     await this.tweenP(actorEntry.sprite, {
       x: actorEntry.x,
       y: actorEntry.y,
@@ -2409,6 +2642,7 @@ export class BattleScene extends Phaser.Scene {
       ease: "Power1",
     });
     actorEntry.sprite.resetBattlePose?.();
+    actorEntry.sprite.battleCastSource = null;
   }
 
   drawActions(gs, slot) {
@@ -2430,14 +2664,16 @@ export class BattleScene extends Phaser.Scene {
     const portraitY = bounds.y + (compact ? 90 : 52);
     const portraitFrameSize = compact ? 100 : 54;
     const portraitSize = portraitFrameSize - 8;
-    const buttonColumns = 2;
+    const buttonColumns = compact ? 3 : 2;
     const buttonGapX = compact ? 16 : 6;
-    const buttonGapY = compact ? 12 : 6;
+    const denseCommands = btns.length > 8;
+    const buttonGapY = compact ? 12 : denseCommands ? 3 : 6;
     const buttonAreaX = bounds.x + (compact ? 130 : 76);
     const buttonAreaWidth = bounds.width - (compact ? 146 : 84);
-    const buttonWidth = (buttonAreaWidth - buttonGapX) / buttonColumns;
-    const buttonHeight = compact ? 64 : 25;
-    const buttonStartY = bounds.y + (compact ? 70 : 39);
+    const buttonWidth =
+      (buttonAreaWidth - buttonGapX * (buttonColumns - 1)) / buttonColumns;
+    const buttonHeight = compact ? 96 : denseCommands ? 21 : 25;
+    const buttonStartY = bounds.y + (compact ? 100 : 39);
     const frame = drawPanel(
       this,
       bounds.x + bounds.width / 2,
@@ -2544,7 +2780,7 @@ export class BattleScene extends Phaser.Scene {
         () => this.handleActionButton(button, member, gs, slot),
         {
           depth: 17,
-          fontSize: compact ? "22px" : "9px",
+          fontSize: compact ? "28px" : "10px",
           fontFamily: "Arial, sans-serif",
           textColor: button.color,
           textColorDisabled: "#6e7d91",
@@ -2567,7 +2803,7 @@ export class BattleScene extends Phaser.Scene {
             handle?.setActive(false);
             defaultCommandHandle?.setActive(true);
             this.promptText
-              ?.setText(`${member.name}'s turn -- choose an action`)
+              ?.setText(this.memberTurnPrompt(member))
               .setColor("#ffffff");
           },
         },
@@ -2585,7 +2821,13 @@ export class BattleScene extends Phaser.Scene {
   }
 
   handleActionButton(button, member, gs, slot) {
-    if (this.animating) return;
+    if (
+      this.animating ||
+      this.pickerOverlay ||
+      this.targetingMode ||
+      slot !== this.livingMembers[this.currentMemberIdx]
+    )
+      return;
     if (button.type !== "repeat" && button.type !== "auto" && this.autoMode) {
       this.autoMode = false;
     }
@@ -2601,6 +2843,8 @@ export class BattleScene extends Phaser.Scene {
       this.showAbilityPicker(slot);
     } else if (button.type === "item") {
       this.showItemPicker(slot);
+    } else if (button.type === "defend") {
+      this.recordAction(slot, { slot, type: "defend" });
     } else if (button.type === "smart") {
       this.executeSmartAttack();
     } else if (button.type === "flee") {
@@ -2676,13 +2920,16 @@ export class BattleScene extends Phaser.Scene {
   }
 
   recordAction(slot, action) {
+    this.closePicker();
     const member = this.gameState.party[slot];
     const actionName =
       action.type === "spell"
         ? "casts spell"
         : action.type === "item"
           ? "uses potion"
-          : "attacks";
+          : action.type === "defend"
+            ? "defends"
+            : "attacks";
     this.promptText
       .setText(`${member.name} ${actionName}!`)
       .setColor("#44ff44");
@@ -2691,7 +2938,11 @@ export class BattleScene extends Phaser.Scene {
     this.currentMemberIdx++;
 
     // Brief pause then show next member's turn
-    this.scaledDelay(400, () => this.showCurrentMemberTurn());
+    const nextMemberIdx = this.currentMemberIdx;
+    this.scaledDelay(400, () => {
+      if (!this.animating && this.currentMemberIdx === nextMemberIdx)
+        this.showCurrentMemberTurn();
+    });
   }
 
   executeSmartAttack() {
@@ -2817,6 +3068,7 @@ export class BattleScene extends Phaser.Scene {
     }
 
     this.updateTargetHighlight();
+    this.showBattleTargets("enemy");
   }
 
   enterPartyTargetingMode() {
@@ -2831,6 +3083,55 @@ export class BattleScene extends Phaser.Scene {
     );
     this.selectedPartyIdx = casterIdx >= 0 ? casterIdx : 0;
     this.updatePartyTargetHighlight();
+    this.showBattleTargets("party");
+  }
+
+  showBattleTargets(side) {
+    const slot = this.livingMembers[this.currentMemberIdx];
+    const actor = this.gameState.party[slot];
+    const kind = this.pendingAction;
+    const targets =
+      side === "enemy" ? this.livingEnemies : this.livingPartyTargets;
+    this.showBattleChoices(
+      `${actor.name} · Choose ${side === "enemy" ? "enemy" : "ally"}`,
+      targets.map((target, index) => ({
+        label: target.name,
+        detail:
+          side === "party"
+            ? `${target.hp}/${target.max_hp} HP${target.max_mp > 0 ? ` · ${target.mp ?? 0}/${target.max_mp} MP` : ""}`
+            : target.intent?.label ||
+              `${kind === "spell" ? "Cast magic" : kind === "ability" ? "Use ability" : "Attack"} on ${target.name}`,
+        onInspect: () => {
+          if (side === "enemy") {
+            this.selectedTargetIdx = index;
+            this.updateTargetHighlight();
+          } else {
+            this.selectedPartyIdx = index;
+            this.updatePartyTargetHighlight();
+          }
+        },
+        action: () => {
+          this.closePicker();
+          if (side === "enemy") this.onEnemyClick(target.id);
+          else this.onPartyClick(target.slot);
+        },
+      })),
+      () => {
+        this.closePicker();
+        this.exitTargetingMode();
+        this.pendingAction = null;
+        this.pendingSpellId = null;
+        this.pendingSpellEffect = null;
+        this.pendingSpellTargetMode = null;
+        this.pendingAbilityId = null;
+        if (kind === "spell") this.showSpellPicker(slot);
+        else if (kind === "ability") this.showAbilityPicker(slot);
+        else
+          this.promptText
+            .setText(this.memberTurnPrompt(actor))
+            .setColor("#ffff44");
+      },
+    );
   }
 
   exitTargetingMode() {
@@ -2859,7 +3160,11 @@ export class BattleScene extends Phaser.Scene {
 
     // Show the position number from the full enemy list (matches displayed number)
     const fullIdx = this.gameState.enemies.findIndex((e) => e.id === enemy.id);
-    this.promptText.setText(`Target: ${enemy.name} [${fullIdx + 1}]`);
+    this.promptText.setText(
+      [`Target: ${enemy.name} [${fullIdx + 1}]`, enemy.intent?.label]
+        .filter(Boolean)
+        .join("\n"),
+    );
     this.promptText.setColor("#ff6666");
   }
 
@@ -2911,168 +3216,33 @@ export class BattleScene extends Phaser.Scene {
       .setColor("#8888ff");
   }
 
+  showBattleChoices(title, choices, onBack = () => this.closePicker()) {
+    this.closePicker();
+    this.pickerItems = choices.map((choice) => ({
+      action: () => {
+        if (!choice.disabled) choice.action();
+      },
+    }));
+    this.pickerOverlay = [battleChoicePanel(this, { title, choices, onBack })];
+  }
+
   showSpellPicker(slot) {
-    const gs = this.gameState;
-    const member = gs.party[slot];
-    if (!member?.spells) return;
-
-    const currentMP = member.mp ?? 0;
-    const spells = member.spells.filter((s) => currentMP >= (s.mp_cost ?? 0));
-    if (!spells.length) return;
-
-    const ol = [];
-    const rowHeight = 34;
-    const h = 136 + spells.length * rowHeight;
-    const centerY = 365;
-    const top = centerY - h / 2;
-    const bottom = centerY + h / 2;
-    const frame = drawPanel(this, 400, centerY, 430, h, {
-      variant: "ff6",
-      radius: 10,
-      innerInset: 5,
-      outerFill: 0x384859,
-      innerTop: 0x1c2736,
-      innerBottom: 0x151e2b,
-      outerStroke: 0xcfe8ff,
-      innerStroke: 0x384859,
-      depth: 50,
-      interactive: false,
-    });
-    frame.bg._combatFxTag = "spell-picker-panel";
-    ol.push(frame.bg);
-
-    const heading = this.add
-      .text(220, top + 23, "MAGIC", {
-        fontSize: "12px",
-        color: "#8fc9f0",
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold",
-      })
-      .setDepth(52);
-    const actor = this.add
-      .text(580, top + 23, `${member.name}  ·  MP ${currentMP}`, {
-        fontSize: "11px",
-        color: "#dcecff",
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold",
-      })
-      .setOrigin(1, 0)
-      .setDepth(52);
-    const detailLabel = this.add
-      .text(220, bottom - 74, "EFFECT", {
-        fontSize: "9px",
-        color: "#82b9df",
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold",
-      })
-      .setDepth(52);
-    const detailText = this.add
-      .text(220, bottom - 58, "", {
-        fontSize: "11px",
-        color: "#dce8f4",
-        fontFamily: "Arial, sans-serif",
-        wordWrap: { width: 360, useAdvancedWrap: true },
-        lineSpacing: 2,
-      })
-      .setDepth(52);
-    ol.push(heading, actor, detailLabel, detailText);
-
-    const targetLabel = (spell) => {
-      const target = spell.target || spell.target_modes?.[0];
-      if (target === "all_enemies") return "all enemies";
-      if (target === "all_allies") return "all allies";
-      if (target === "single_ally") return "one ally";
-      if (target === "self") return "self";
-      return "one enemy";
-    };
-    const spellDetail = (spell) =>
-      `${spell.description || "Combat magic"}  ·  ${spell.mp_cost} MP  ·  ${targetLabel(spell)}`;
-    detailText.setText(spellDetail(spells[0]));
-
-    this.pickerItems = [];
-    const pickerRows = [];
-    const focusRow = (selectedIndex) => {
-      for (let index = 0; index < pickerRows.length; index++) {
-        const entry = pickerRows[index];
-        const selected = index === selectedIndex;
-        entry.row
-          .setFillStyle(selected ? 0x384859 : 0x1c2736)
-          .setStrokeStyle(1, selected ? 0xf1cb66 : 0x384859);
-        entry.name.setColor(selected ? "#ffffff" : "#b9cee2");
-        entry.cost.setColor(selected ? "#ffe093" : "#8fc9f0");
-      }
-      detailText.setText(spellDetail(spells[selectedIndex]));
-    };
-
-    for (let i = 0; i < spells.length; i++) {
-      const sp = spells[i];
-      const y = top + 54 + i * rowHeight;
-      const row = roundedRectangle(this, 400, y, 390, 29, 0x1c2736)
-        .setStrokeStyle(1, 0x384859)
-        .setInteractive({ useHandCursor: true })
-        .setDepth(51);
-      const nameText = this.add
-        .text(220, y, `${i + 1}.  ${sp.name}`, {
-          fontSize: "11px",
-          color: "#b9cee2",
-          fontFamily: "Arial, sans-serif",
-          fontStyle: "bold",
-        })
-        .setOrigin(0, 0.5)
-        .setDepth(52);
-      const costText = this.add
-        .text(580, y, `${sp.mp_cost} MP`, {
-          fontSize: "10px",
-          color: "#8fc9f0",
-          fontFamily: "Arial, sans-serif",
-        })
-        .setOrigin(1, 0.5)
-        .setDepth(52);
-      ol.push(row, nameText, costText);
-      pickerRows.push({ row, name: nameText, cost: costText });
-
-      const selectSpell = () => {
-        this.closePicker();
-        // The server marks each spell with castable_in_combat based on
-        // whether the combat dispatch switch handles its effect. Reject
-        // any spell that flag rules out (Light, Resurrect, ...) so a
-        // utility cast does not silently consume a charge.
-        if (sp.castable_in_combat === false) {
-          this.pendingAction = null;
-          this.pendingSpellId = null;
-          this.pendingSpellEffect = null;
-          this.promptText
-            .setText(`${sp.name} cannot be cast in combat.`)
-            .setColor("#ff8888");
-          return;
-        }
-        this.beginSpellTargeting(slot, member, sp);
-      };
-
-      this.pickerItems.push({ action: selectSpell });
-
-      row.on("pointerover", () => focusRow(i));
-      row.on("pointerout", () => focusRow(0));
-      row.on("pointerdown", selectSpell);
-    }
-    focusRow(0);
-
-    const cancel = this.add
-      .text(580, bottom - 22, "ESC  BACK", {
-        fontSize: "10px",
-        color: "#8fc9f0",
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold",
-      })
-      .setOrigin(1, 1)
-      .setDepth(51)
-      .setInteractive({ useHandCursor: true });
-    cancel.on("pointerover", () => cancel.setColor("#ffe093"));
-    cancel.on("pointerout", () => cancel.setColor("#8fc9f0"));
-    cancel.on("pointerdown", () => this.closePicker());
-    ol.push(cancel);
-
-    this.pickerOverlay = ol;
+    const member = this.gameState.party[slot];
+    if (!member?.spells?.length) return;
+    this.showBattleChoices(
+      `${member.name} · Magic · ${member.mp ?? 0} MP`,
+      member.spells.map((spell) => ({
+        label: `${spell.name} · ${spell.mp_cost ?? 0} MP`,
+        detail: `${spell.description || "Combat magic"}${spell.castable_in_combat === false ? " · Field only" : ""}`,
+        disabled:
+          (member.mp ?? 0) < (spell.mp_cost ?? 0) ||
+          spell.castable_in_combat === false,
+        action: () => {
+          this.closePicker();
+          this.beginSpellTargeting(slot, member, spell);
+        },
+      })),
+    );
   }
 
   showAbilityPicker(slot) {
@@ -3106,113 +3276,71 @@ export class BattleScene extends Phaser.Scene {
       steal: { label: "Steal", desc: "Enemy: steal an item", targeted: true },
     };
 
-    const ol = [];
-    const h = 60 + abilities.length * 36;
-    const bg = roundedRectangle(this, 400, 370, 360, h, 0x1c2736, 0.95)
-      .setStrokeStyle(2, 0xaa44aa)
-      .setDepth(50)
-      .setInteractive();
-    ol.push(bg);
-
-    ol.push(
-      this.add
-        .text(400, 370 - h / 2 + 16, `${member.name}'s abilities:`, {
-          fontSize: "12px",
-          color: "#ffffff",
-          fontFamily: "Arial, sans-serif",
-        })
-        .setOrigin(0.5)
-        .setDepth(51),
+    this.showBattleChoices(
+      `${member.name} · Abilities`,
+      abilities.map((id) => {
+        const ability = meta[id] || { label: id, desc: "", targeted: true };
+        return {
+          label: ability.label,
+          detail: ability.desc,
+          action: () => {
+            this.closePicker();
+            this.pendingAbilityId = id;
+            if (ability.targeted) {
+              this.pendingAction = "ability";
+              this.enterTargetingMode();
+              this.promptText
+                .setText(`${member.name}: ${ability.label} — select a target`)
+                .setColor("#ff88ff");
+            } else {
+              this.recordAction(slot, {
+                slot,
+                type: "ability",
+                target_id: 0,
+                ability_id: id,
+              });
+            }
+          },
+        };
+      }),
     );
-
-    this.pickerItems = [];
-    for (let i = 0; i < abilities.length; i++) {
-      const id = abilities[i];
-      const m = meta[id] || { label: id, desc: "", targeted: true };
-      const y = 370 - h / 2 + 46 + i * 36;
-      const row = roundedRectangle(this, 400, y, 320, 30, 0x1c2736)
-        .setInteractive({ useHandCursor: true })
-        .setDepth(51);
-      const txt = this.add
-        .text(400, y, `${i + 1}. ${m.label} - ${m.desc}`, {
-          fontSize: "11px",
-          color: "#ffaaff",
-          fontFamily: "Arial, sans-serif",
-        })
-        .setOrigin(0.5)
-        .setDepth(52);
-      ol.push(row, txt);
-
-      const selectAbility = () => {
-        this.closePicker();
-        this.pendingAbilityId = id;
-        if (m.targeted) {
-          this.pendingAction = "ability";
-          this.enterTargetingMode();
-          this.promptText
-            .setText(`${member.name}: ${m.label} -- select a target!`)
-            .setColor("#ff88ff");
-        } else {
-          // Self/party target: send action immediately with target_id=0.
-          this.recordAction(slot, {
-            slot,
-            type: "ability",
-            target_id: 0,
-            ability_id: id,
-          });
-        }
-      };
-
-      this.pickerItems.push({ action: selectAbility });
-
-      row.on("pointerover", () => {
-        row.setFillStyle(0x384859);
-        txt.setColor("#ffffff");
-      });
-      row.on("pointerout", () => {
-        row.setFillStyle(0x1c2736);
-        txt.setColor("#ffaaff");
-      });
-      row.on("pointerdown", selectAbility);
-    }
-
-    const cancel = this.add
-      .text(400, 370 + h / 2 - 15, "[ CANCEL / ESC ]", {
-        fontSize: "10px",
-        color: "#888888",
-        fontFamily: "Arial, sans-serif",
-      })
-      .setOrigin(0.5)
-      .setDepth(51)
-      .setInteractive({ useHandCursor: true });
-    cancel.on("pointerdown", () => this.closePicker());
-    ol.push(cancel);
-
-    this.pickerOverlay = ol;
   }
 
   showItemPicker(slot) {
-    // Delegate to the shared FF-style Item menu (issue #144). It renders
-    // the scrollable list + filter tabs + description line + target picker,
-    // then calls back once the player has committed a choice. We pipe that
-    // into recordAction so the existing per-member submit flow below is
-    // untouched.
-    this.pickerItems = [];
-    const handle = showItemMenu(this, {
-      mode: "combat",
-      onConfirm: (item, targetSlot) => {
-        this.recordAction(slot, {
-          slot,
-          type: item.id === "phoenix_down" ? "revive" : "item",
-          target_id: targetSlot,
-          item_id: item.id,
-        });
-      },
-    });
-    // Route closePicker() through the overlay handle so ESC/cancel paths
-    // upstream of this method still tear it down. closePicker walks
-    // pickerOverlay with .forEach((o) => o.destroy()).
-    this.pickerOverlay = [{ destroy: () => handle.close() }];
+    const member = this.gameState.party[slot];
+    this.showBattleChoices(
+      `${member.name} · Items`,
+      buildItemList(this.gameState, "combat").map((item) => ({
+        label: `${item.name} ×${item.count}`,
+        detail: `${item.description} · ${itemUseContext(item, "combat")}`,
+        disabled: item.greyed,
+        action: () =>
+          this.showBattleChoices(
+            `${item.name} · Choose ally`,
+            this.gameState.party.map((target, targetSlot) => {
+              const resource =
+                item.effect === "restore_mp"
+                  ? `${target.mp ?? 0}/${target.max_mp ?? 0} MP`
+                  : `${target.hp}/${target.max_hp} HP`;
+              return {
+                label: `${target.name} · ${resource}`,
+                detail: `${item.description} · ${resource}`,
+                disabled: !canUseOnTarget(item, target),
+                action: () => {
+                  this.closePicker();
+                  this.recordAction(slot, {
+                    slot,
+                    type: item.id === "phoenix_down" ? "revive" : "item",
+                    target_id: targetSlot,
+                    item_id: item.id,
+                  });
+                },
+              };
+            }),
+            () => this.showItemPicker(slot),
+          ),
+      })),
+    );
   }
 
   closePicker() {
@@ -3283,6 +3411,7 @@ export class BattleScene extends Phaser.Scene {
 
       const finalResult = await this.resolvePendingTownChestClaim(result);
       this.gameState = finalResult;
+      reconcilePartyMana(this, this.partySprites, finalResult.party);
 
       if (finalResult.phase !== "combat" && finalResult.phase !== "defeat") {
         await this.playPartyVictoryBeat();
@@ -3386,7 +3515,14 @@ export class BattleScene extends Phaser.Scene {
     const finalDefeat =
       this.gameState?.final_encounter?.active &&
       gs?.final_encounter?.recovery === "defeat";
-    if (gs?.dungeon?.recovered_from_defeat !== true && !finalDefeat)
+    const questDefeat =
+      gs?.phase === "world" &&
+      gs?.quests?.[gs.current_quest]?.objectives?.recovery === "defeat";
+    if (
+      gs?.dungeon?.recovered_from_defeat !== true &&
+      !finalDefeat &&
+      !questDefeat
+    )
       return false;
     this.gameState = gs;
     this.autoMode = false;
@@ -3418,6 +3554,7 @@ export class BattleScene extends Phaser.Scene {
 
   async animateCombatLog(log, actions) {
     for (let i = 0; i < log.length; i++) {
+      if (i > 0) await this.waitForCombatRead();
       const line = log[i];
       const action = actions[i] || {};
 
@@ -3435,18 +3572,41 @@ export class BattleScene extends Phaser.Scene {
 
       if (
         action.kind === "attack" ||
+        action.kind === "counter" ||
+        counterMatch ||
         (attackMatch && action.kind !== "spell")
       ) {
         if (this.isDefeatedEnemyActor(action)) {
           continue;
         }
-        const attacker = action.actor_name || (attackMatch && attackMatch[1]);
+        const attacker =
+          action.actor_name || attackMatch?.[1] || counterMatch?.[1];
+        const counter =
+          action.kind === "counter" || counterMatch?.[2] === "counter-attacks";
+        const verb = counter ? "counters" : counterMatch?.[2] || "attacks";
         const attackerEnemy = this.findEnemySpriteForAction(action, attacker);
         const targetId =
-          action.target_id || (attackMatch && parseInt(attackMatch[3]));
-        const dmg = action.damage || (attackMatch && parseInt(attackMatch[4]));
+          action.target_id ??
+          (attackMatch
+            ? parseInt(attackMatch[3])
+            : parseInt(counterMatch?.[4]));
+        const dmg =
+          action.damage ??
+          (attackMatch
+            ? parseInt(attackMatch[4])
+            : parseInt(counterMatch?.[5])) ??
+          0;
         const dmgType = action.damage_type || "physical";
-        const attackTitle = this.actionTitleFor(action, line);
+        const attackTitle =
+          this.actionTitleFor(action, line) ||
+          (counter ? "COUNTER" : counterMatch ? "BACKSTAB" : "ATTACK");
+        const hits = physicalHitPresentations(action, dmg, defeatMatch);
+        const attackCaption = (target) =>
+          hits.length > 1
+            ? `${attacker} ${counter ? "counters" : "→"} ${target || action.target_name}: strike 1/${hits.length}`
+            : target
+              ? `${attacker} ${verb} ${target}!`
+              : `${attacker} ${verb}!`;
 
         const pe = this.partySprites[attacker];
         const ee = this.enemySprites[targetId];
@@ -3460,79 +3620,135 @@ export class BattleScene extends Phaser.Scene {
             tracerColor: ACTION_TRACER_COLORS.partyToEnemy,
             targetColor: ACTION_RETICLE_COLORS.enemyTarget,
           });
-          this.revealLine(`${attacker} attacks ${ee.name}!`, "#ff8844");
+          this.revealLine(attackCaption(ee.name), "#ff8844");
           await this.showActionTitle(pe, attackTitle, "#ffcc66");
           await this.playMajorCinematicPrelude(action, pe, "none");
-          await this.lungePartySprite(pe, ee);
-          await this.wait(ACTION_BEAT_MS.preImpact);
+          await this.lungePartySprite(pe, ee, { crit: hits[0].crit });
+          if (!pe?.battleAction && !attackerEnemy?.battleAction)
+            await this.wait(ACTION_BEAT_MS.preImpact);
         } else if (pe) {
-          this.revealLine(`${attacker} attacks!`, "#ff8844");
+          this.revealLine(attackCaption(), "#ff8844");
           await this.showActionTitle(pe, attackTitle, "#ffcc66");
           await this.playMajorCinematicPrelude(action, pe, "none");
-          await this.wait(ACTION_BEAT_MS.preImpact);
+          if (!pe?.battleAction && !attackerEnemy?.battleAction)
+            await this.wait(ACTION_BEAT_MS.preImpact);
         } else if (attackerEnemy && pt) {
           this.showActionFocus(attackerEnemy, pt, {
             tracerColor: ACTION_TRACER_COLORS.enemyToParty,
             targetColor: ACTION_RETICLE_COLORS.partyTarget,
           });
-          this.revealLine(`${attacker} attacks ${pt.name}!`, "#ff9966");
+          this.revealLine(attackCaption(pt.name), "#ff9966");
           await this.showActionTitle(attackerEnemy, attackTitle, "#ff9966");
           await this.playMajorCinematicPrelude(action, attackerEnemy, "none");
-          await this.lungePartySprite(attackerEnemy, pt);
-          await this.wait(ACTION_BEAT_MS.preImpact);
+          await this.lungePartySprite(attackerEnemy, pt, {
+            crit: hits[0].crit,
+          });
+          if (!pe?.battleAction && !attackerEnemy?.battleAction)
+            await this.wait(ACTION_BEAT_MS.preImpact);
         }
 
-        playSFX("sfx_slash");
-        if (ee) {
-          const targetKey = `enemy_${targetId}`;
-          playSFX(defeatMatch ? "sfx_death" : "sfx_hit");
-          await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch, dmgType, {
-            crit: action.crit,
-            missed: action.missed,
-            targetKey,
-            entry: ee,
-          });
-          if (!action.missed && ee.sprite.setTint) {
-            ee.sprite.setTint(0xff4444);
-            this.scaledDelay(200, () => ee.sprite.clearTint?.());
-          }
-          // Animate HP bar drain — integer math only, see systems/hpBar.js
-          if (!action.missed && ee.hpBar) {
-            const newHP = applyDamage(ee.hpBar.currentHP, dmg);
-            this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
-            if (!defeatMatch) {
-              this.playEnemyHitReaction(ee, {
-                newHP,
-                maxHP: ee.hpBar.maxHP,
-              });
-            }
-          }
-          await this.resetPartySprite(pe);
-          if (defeatMatch) await this.enemyDeathFx(ee);
-        } else if (pt) {
-          const targetKey = `party_${action.target_name || attackMatch?.[2]}`;
-          const atkName = action.actor_name || attackMatch?.[1] || attacker;
-          const tgtName = action.target_name || attackMatch?.[2] || "";
-          if (!attackerEnemy) {
-            this.revealLine(`${atkName} attacks ${tgtName}!`, "#ff8800");
-          }
-          playSFX("sfx_party_hit");
-          await this.hitFx(pt.x, pt.y, dmg, true, false, dmgType, {
-            crit: action.crit,
-            missed: action.missed,
-            targetKey,
-            entry: pt,
-          });
-          // Animate party HP bar drain — integer math only
-          if (!action.missed && pt.hpBar) {
-            const newHP = applyDamage(pt.hpBar.currentHP, dmg);
-            this.animateHPBar(pt.hpBar, newHP, pt.hpBar.maxHP);
-            this.playPartyHitReaction(pt, {
-              newHP,
-              maxHP: pt.hpBar.maxHP,
+        for (const [index, hit] of hits.entries()) {
+          if (index > 0) {
+            await this.waitForCombatRead();
+            // Start the next caption with anticipation, so contact never
+            // clears the message window just as its damage number appears.
+            this.revealLine(
+              `${attacker} ${counter ? "counters" : "→"} ${(ee || pt)?.name || action.target_name}: strike ${index + 1}/${hits.length}`,
+              "#ffcc66",
+            );
+            await this.lungePartySprite(pe || attackerEnemy, ee || pt, {
+              crit: hit.crit,
             });
           }
-          await this.resetPartySprite(attackerEnemy);
+          if (hits.length > 1) {
+            this.combatReadUntil = Math.max(
+              this.combatReadUntil || 0,
+              performance.now() + (hit.crit ? 1500 : 1200),
+            );
+          }
+          const contactFamily = physicalContactFamily(pe?.sprite, hit.crit);
+          if (contactFamily !== "blunt") playSFX("sfx_slash");
+          if (ee) {
+            const targetKey = `enemy_${targetId}`;
+            if (!hit.missed) playSFX(hit.defeated ? "sfx_death" : "sfx_hit");
+            await this.hitFx(
+              ee.x,
+              ee.y,
+              hit.damage,
+              false,
+              hit.defeated,
+              dmgType,
+              {
+                crit: hit.crit,
+                guarded: action.damage_prevented > 0,
+                missed: hit.missed,
+                targetKey,
+                entry: ee,
+                contactFamily,
+                replaceTarget: hits.length > 1,
+              },
+            );
+            if (!hit.missed && ee.sprite.setTint) {
+              ee.sprite.setTint(0xff4444);
+              this.scaledDelay(200, () => ee.sprite.clearTint?.());
+            }
+            // Animate HP bar drain — integer math only, see systems/hpBar.js
+            if (!hit.missed && ee.hpBar) {
+              const newHP = applyDamage(ee.hpBar.currentHP, hit.damage);
+              this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
+              if (!hit.defeated) {
+                this.playEnemyHitReaction(ee, {
+                  newHP,
+                  maxHP: ee.hpBar.maxHP,
+                });
+              }
+            }
+            await this.resetPartySprite(pe);
+            if (hit.defeated) await this.enemyDeathFx(ee);
+          } else if (pt) {
+            const targetKey = `party_${action.target_name || attackMatch?.[2]}`;
+            const atkName = action.actor_name || attackMatch?.[1] || attacker;
+            const tgtName = action.target_name || attackMatch?.[2] || "";
+            if (!attackerEnemy) {
+              this.revealLine(`${atkName} attacks ${tgtName}!`, "#ff8800");
+            }
+            if (!hit.missed) playSFX("sfx_party_hit");
+            const contactEffect = this.hitFx(
+              pt.x,
+              pt.y,
+              hit.damage,
+              true,
+              false,
+              dmgType,
+              {
+                crit: hit.crit,
+                guarded: action.damage_prevented > 0,
+                missed: hit.missed,
+                targetKey,
+                entry: pt,
+                contactFamily,
+                replaceTarget: hits.length > 1,
+              },
+            );
+            // Animate party HP bar drain — integer math only
+            if (!hit.missed && pt.hpBar) {
+              const newHP = applyDamage(pt.hpBar.currentHP, hit.damage);
+              this.animateHPBar(pt.hpBar, newHP, pt.hpBar.maxHP);
+              this.playPartyHitReaction(pt, {
+                newHP,
+                maxHP: pt.hpBar.maxHP,
+              });
+            }
+            await contactEffect;
+            await this.resetPartySprite(attackerEnemy);
+          }
+        }
+        if (hits.length > 1) {
+          await this.waitForCombatRead();
+          this.revealLine(
+            `${attacker}: ${dmg} damage (${hits.length} strikes).`,
+            "#ffcc66",
+          );
         }
         await this.wait(ACTION_BEAT_MS.postDamage);
         await this.wait(ACTION_BEAT_MS.interAction);
@@ -3553,56 +3769,6 @@ export class BattleScene extends Phaser.Scene {
           await this.wait(ACTION_BEAT_MS.briefStatus);
           actorEntry.sprite?.clearTint?.();
         }
-        await this.wait(ACTION_BEAT_MS.interAction);
-      } else if (action.kind === "counter" || counterMatch) {
-        if (this.isDefeatedEnemyActor(action)) {
-          continue;
-        }
-        const actorName =
-          action.actor_name || (counterMatch && counterMatch[1]);
-        const targetId =
-          action.target_id || (counterMatch && parseInt(counterMatch[4]));
-        const dmg =
-          action.damage || (counterMatch && parseInt(counterMatch[5]));
-        const dmgType = action.damage_type || "physical";
-        this.revealLine(line, "#ff8800");
-        playSFX("sfx_slash");
-        const pe = this.partySprites[actorName];
-        const ee = this.enemySprites[targetId];
-        if (ee) {
-          this.showActionFocus(pe, ee, {
-            tracerColor: ACTION_TRACER_COLORS.partyToEnemy,
-            targetColor: ACTION_RETICLE_COLORS.enemyTarget,
-          });
-          await this.showActionTitle(
-            pe,
-            this.actionTitleFor(action, line),
-            "#ffcc66",
-          );
-          await this.playMajorCinematicPrelude(action, pe, "none");
-          await this.lungePartySprite(pe, ee);
-          await this.wait(ACTION_BEAT_MS.preImpact);
-          const targetKey = `enemy_${targetId}`;
-          await this.hitFx(ee.x, ee.y, dmg, false, defeatMatch, dmgType, {
-            crit: action.crit,
-            missed: action.missed,
-            targetKey,
-            entry: ee,
-          });
-          if (ee.hpBar) {
-            const newHP = applyDamage(ee.hpBar.currentHP, dmg);
-            this.animateHPBar(ee.hpBar, newHP, ee.hpBar.maxHP);
-            if (!defeatMatch) {
-              this.playEnemyHitReaction(ee, {
-                newHP,
-                maxHP: ee.hpBar.maxHP,
-              });
-            }
-          }
-          await this.resetPartySprite(pe);
-          if (defeatMatch) await this.enemyDeathFx(ee);
-        }
-        await this.wait(ACTION_BEAT_MS.postDamage);
         await this.wait(ACTION_BEAT_MS.interAction);
       } else if (action.kind === "spell" || spellMatch) {
         if (this.isDefeatedEnemyActor(action)) {
@@ -3720,7 +3886,13 @@ export class BattleScene extends Phaser.Scene {
                 false,
                 tgt.defeated,
                 dmgType,
-                { targetKey, element, missed: tgt.missed, entry: ee },
+                {
+                  targetKey,
+                  element,
+                  missed: tgt.missed,
+                  entry: ee,
+                  groupResult: isGroupCast,
+                },
               );
               if (!tgt.missed && ee.hpBar) {
                 const newHP = applyDamage(ee.hpBar.currentHP, tgt.dmg);
@@ -3736,12 +3908,21 @@ export class BattleScene extends Phaser.Scene {
             } else if (pt) {
               if (!(tgt.dmg > 0)) return;
               const targetKey = `party_${tgt.targetName || spellMatch?.[3]}`;
-              await this.hitFx(pt.x, pt.y, tgt.dmg, true, false, dmgType, {
-                targetKey,
-                element,
-                missed: tgt.missed,
-                entry: pt,
-              });
+              const contactEffect = this.hitFx(
+                pt.x,
+                pt.y,
+                tgt.dmg,
+                true,
+                false,
+                dmgType,
+                {
+                  targetKey,
+                  element,
+                  missed: tgt.missed,
+                  entry: pt,
+                  groupResult: isGroupCast,
+                },
+              );
               if (!tgt.missed && pt.hpBar) {
                 const newHP = applyDamage(pt.hpBar.currentHP, tgt.dmg);
                 this.animateHPBar(pt.hpBar, newHP, pt.hpBar.maxHP);
@@ -3750,11 +3931,24 @@ export class BattleScene extends Phaser.Scene {
                   maxHP: pt.hpBar.maxHP,
                 });
               }
+              await contactEffect;
             }
           }),
         );
         await this.resetPartySprite(actorEntry);
         this.hideGroupTargetCursor();
+        if (isGroupCast) {
+          const defeatedCount = presentations.filter(
+            ({ tgt }) => tgt.defeated,
+          ).length;
+          if (defeatedCount) {
+            await this.waitForCombatRead();
+            this.revealLine(
+              `${spellName}: ${defeatedCount} defeated.`,
+              "#e9eef7",
+            );
+          }
+        }
         await this.wait(ACTION_BEAT_MS.postDamage);
         await this.wait(ACTION_BEAT_MS.interAction);
       } else if (
@@ -3860,6 +4054,7 @@ export class BattleScene extends Phaser.Scene {
             amount,
             "heal",
             targetKey,
+            { maxBottom: anchor.maxBottom },
           );
           if (presentation.target?.hpBar) {
             const newHP = applyHeal(
@@ -3883,42 +4078,45 @@ export class BattleScene extends Phaser.Scene {
           this.partySprites[action.target_name] || actorEntry || null;
         this.revealLine(line, "#66ff99");
         await this.showActionTitle(actorEntry, "ITEM", "#66ff99");
-        if (actorEntry?.sprite?.playBattleItemUse) {
-          await actorEntry.sprite.playBattleItemUse({
+        await playItemPresentation(
+          actorEntry?.sprite,
+          {
             reducedMotion: this.reducedBattleMotion(),
             speedMultiplier: battleSpeedMul(),
-          });
-        }
-        if (targetEntry) {
-          this.showActionFocus(actorEntry, targetEntry, {
-            targetColor: CURSOR_TINTS.ally,
-          });
-          this.spawnSpellImpact(targetEntry, "holy");
-          if (
-            line.includes("healed") &&
-            action.damage > 0 &&
-            targetEntry.hpBar
-          ) {
-            const newHP = applyHeal(
-              targetEntry.hpBar.currentHP,
-              action.damage,
-              targetEntry.hpBar.maxHP,
-            );
-            this.animateHPBar(
-              targetEntry.hpBar,
-              newHP,
-              targetEntry.hpBar.maxHP,
-            );
-          }
-          if (line.includes("revived")) {
-            targetEntry.alive = true;
-            targetEntry.sprite?.resetBattlePose?.();
-            targetEntry.sprite?.clearTint?.();
-            targetEntry.sprite?.setAngle?.(0);
-            targetEntry.sprite?.setAlpha?.(1);
-            targetEntry.sprite?.setInteractive?.({ useHandCursor: true });
-          }
-        }
+          },
+          () => {
+            if (targetEntry) {
+              this.showActionFocus(actorEntry, targetEntry, {
+                targetColor: CURSOR_TINTS.ally,
+              });
+              this.spawnSpellImpact(targetEntry, "holy");
+              if (
+                line.includes("healed") &&
+                action.damage > 0 &&
+                targetEntry.hpBar
+              ) {
+                const newHP = applyHeal(
+                  targetEntry.hpBar.currentHP,
+                  action.damage,
+                  targetEntry.hpBar.maxHP,
+                );
+                this.animateHPBar(
+                  targetEntry.hpBar,
+                  newHP,
+                  targetEntry.hpBar.maxHP,
+                );
+              }
+              if (line.includes("revived")) {
+                targetEntry.alive = true;
+                targetEntry.sprite?.resetBattlePose?.();
+                targetEntry.sprite?.clearTint?.();
+                targetEntry.sprite?.setAngle?.(0);
+                targetEntry.sprite?.setAlpha?.(1);
+                targetEntry.sprite?.setInteractive?.({ useHandCursor: true });
+              }
+            }
+          },
+        );
         await this.wait(ACTION_BEAT_MS.briefStatus);
       } else if (line.includes("Found:")) {
         this.revealLine(line, "#44ff44");
@@ -4009,7 +4207,7 @@ export class BattleScene extends Phaser.Scene {
               tracerColor: ACTION_TRACER_COLORS.enemyToParty,
               targetColor: ACTION_RETICLE_COLORS.partyTarget,
             });
-            await this.hitFx(
+            const contactEffect = this.hitFx(
               targetMember.x,
               targetMember.y,
               dmg,
@@ -4030,30 +4228,73 @@ export class BattleScene extends Phaser.Scene {
                 maxHP: targetMember.hpBar.maxHP,
               });
             }
+            await contactEffect;
           }
         }
         await this.wait(ACTION_BEAT_MS.postDamage);
         await this.wait(ACTION_BEAT_MS.interAction);
       } else if (action.kind === "status_effect") {
-        // Status spell landed or resisted
-        this.revealLine(line, "#cc88ff");
         const casterEntry =
           this.partySprites[action.actor_name] ||
           this.findEnemySpriteForAction(action, action.actor_name);
         const targetEntry = this.enemySprites[action.target_id];
+        const presentation = battleEffectPresentation(action);
+        this.revealLine(
+          `${action.actor_name} casts ${action.spell_name || "Status"}!`,
+          "#ccbbff",
+        );
         await this.showActionTitle(
           casterEntry,
           action.spell_name || "STATUS",
-          "#c27aff",
+          "#c6b9ff",
         );
         await this.playMajorCinematicPrelude(action, casterEntry, "dark");
         await this.playCastAnticipation(casterEntry, "dark");
+        await playBattleEffectRelease(
+          this,
+          this.resolveVisualEntry(casterEntry),
+          presentation,
+        );
         this.showActionFocus(casterEntry, targetEntry, {
           targetColor: ACTION_RETICLE_COLORS.magicalTarget,
         });
-        await this.launchSpellProjectile(casterEntry, targetEntry, "dark");
+        playSFX(presentation?.soundHook || "sfx_spell");
+        if (presentation)
+          await playBattleEffectToTarget(
+            this,
+            this.resolveVisualEntry(casterEntry),
+            this.resolveVisualEntry(targetEntry),
+            presentation,
+          );
+        else await this.launchSpellProjectile(casterEntry, targetEntry, "dark");
+        this.revealLine(
+          action.status_outcome === "resisted"
+            ? `${action.target_name} resists ${action.spell_name}.`
+            : action.status_outcome === "applied"
+              ? `${action.spell_name} takes hold on ${action.target_name}.`
+              : line,
+          "#ccbbff",
+        );
+        if (
+          targetEntry &&
+          ["applied", "resisted"].includes(action.status_outcome)
+        ) {
+          const anchor = floatingTextAnchorForEntry(targetEntry, {
+            x: targetEntry.x,
+            y: targetEntry.y,
+          });
+          await this.floatingText.spawn(
+            anchor.x,
+            anchor.y,
+            (action.spell_name || "STATUS").toUpperCase(),
+            action.status_outcome === "applied" ? "status" : "status_resist",
+            `enemy_${action.target_id}`,
+            { still: true, maxBottom: anchor.maxBottom },
+          );
+        }
         await this.resetPartySprite(casterEntry);
-        await this.wait(ACTION_BEAT_MS.briefStatus);
+        // Reading time remains independent of battle speed.
+        await new Promise((resolve) => this.time.delayedCall(1300, resolve));
       } else if (action.kind === "ability") {
         if (this.isDefeatedEnemyActor(action)) {
           continue;
@@ -4084,6 +4325,8 @@ export class BattleScene extends Phaser.Scene {
           );
           await this.resetPartySprite(actorEntry);
           this.hideGroupTargetCursor();
+        } else if (!(action.damage > 0)) {
+          await this.playUtilityAbility(actorEntry, action);
         }
         // Backstab with damage gets hit effect
         if (action.damage > 0) {
@@ -4100,8 +4343,9 @@ export class BattleScene extends Phaser.Scene {
                   ? ACTION_RETICLE_COLORS.magicalTarget
                   : ACTION_RETICLE_COLORS.enemyTarget,
             });
-            await this.lungePartySprite(actorEntry, ee);
-            await this.wait(ACTION_BEAT_MS.preImpact);
+            await this.lungePartySprite(actorEntry, ee, { crit: action.crit });
+            if (!actorEntry?.battleAction)
+              await this.wait(ACTION_BEAT_MS.preImpact);
             const targetKey = `enemy_${action.target_id}`;
             await this.hitFx(
               ee.x,
@@ -4110,7 +4354,12 @@ export class BattleScene extends Phaser.Scene {
               false,
               defeatMatch,
               action.damage_type || "physical",
-              { crit: action.crit, targetKey, entry: ee },
+              {
+                crit: action.crit,
+                guarded: action.damage_prevented > 0,
+                targetKey,
+                entry: ee,
+              },
             );
             if (ee.hpBar) {
               const newHP = applyDamage(ee.hpBar.currentHP, action.damage);
@@ -4130,6 +4379,17 @@ export class BattleScene extends Phaser.Scene {
         await this.wait(ACTION_BEAT_MS.interAction);
       }
     }
+    await this.waitForCombatRead();
+  }
+
+  // The final result also stays readable before victory or command selection.
+  async waitForCombatRead() {
+    const remaining = Math.max(
+      0,
+      (this.combatReadUntil || 0) - performance.now(),
+    );
+    if (remaining)
+      await new Promise((resolve) => this.time.delayedCall(remaining, resolve));
   }
 
   async runCinematicProofDemo() {
@@ -4168,7 +4428,7 @@ export class BattleScene extends Phaser.Scene {
     const afterTitle = now();
     await this.lungePartySprite(actorEntry, targetEntry);
     const lungePeak = now();
-    await this.wait(ACTION_BEAT_MS.preImpact);
+    if (!actorEntry.battleAction) await this.wait(ACTION_BEAT_MS.preImpact);
     const impactStart = now();
     playSFX("sfx_slash");
     await this.hitFx(
@@ -4354,6 +4614,20 @@ export class BattleScene extends Phaser.Scene {
   }
 
   hitFx(x, y, dmg, isParty, defeated, damageType, opts = {}) {
+    for (const actor of [
+      ...Object.values(this.partySprites),
+      ...Object.values(this.enemySprites),
+    ]) {
+      if (
+        actor.battleAction &&
+        actor.sprite.battleState === "physical_attack"
+      ) {
+        const action = actor.battleAction;
+        this.scaledDelay(this.reducedBattleMotion() ? 0 : 55, () =>
+          action.followThrough(),
+        );
+      }
+    }
     return new Promise((resolve) => {
       if (opts.missed) {
         playSFX("sfx_miss");
@@ -4366,7 +4640,12 @@ export class BattleScene extends Phaser.Scene {
           );
         }
       }
-      if (isParty && !opts.missed) {
+      if (opts.missed) {
+        // A miss must not draw the same contact slash as a landed blow.
+      } else if (damageType === "physical") {
+        meleeContactDetails(this, x, y, opts);
+        if (isParty) this.spawnPartyImpactBurst(x, y);
+      } else if (isParty) {
         this.spawnPartyImpactBurst(x, y);
       } else {
         const g = this.add.graphics().setDepth(20);
@@ -4376,63 +4655,33 @@ export class BattleScene extends Phaser.Scene {
       }
 
       const targetKey = opts.targetKey || `pos_${x}_${y}`;
-      const textAnchor = floatingTextAnchorForEntry(opts.entry, { x, y });
-
-      // Determine floating text type
-      if (opts.missed) {
-        this.floatingText.spawn(
-          textAnchor.x,
-          textAnchor.y,
-          0,
-          "miss",
-          targetKey,
-        );
-      } else if (opts.crit) {
-        this.floatingText.spawn(
-          textAnchor.x,
-          textAnchor.y,
-          dmg,
-          "crit",
-          targetKey,
-        );
-      } else if (isParty) {
-        this.floatingText.spawn(
-          textAnchor.x,
-          textAnchor.y,
-          dmg,
-          "party_hit",
-          targetKey,
-        );
-      } else if (damageType === "magical") {
-        this.floatingText.spawn(
-          textAnchor.x,
-          textAnchor.y,
-          dmg,
-          "magical",
-          targetKey,
-          {
-            element: opts.element,
-          },
-        );
-      } else {
-        this.floatingText.spawn(
-          textAnchor.x,
-          textAnchor.y,
-          dmg,
-          "physical",
-          targetKey,
-        );
-      }
-
-      if (defeated) {
-        this.floatingText.spawn(
-          textAnchor.x,
-          textAnchor.y + 30,
-          0,
-          "defeated",
-          targetKey,
-        );
-      }
+      const gap = Math.max(10, parseInt(portraitFontSize(this, 6)));
+      const textAnchor = floatingTextAnchorForEntry(opts.entry, { x, y, gap });
+      const type = opts.missed
+        ? "miss"
+        : opts.crit
+          ? "crit"
+          : isParty
+            ? "party_hit"
+            : damageType === "magical"
+              ? "magical"
+              : "physical";
+      this.floatingText.spawnResult(
+        textAnchor.x,
+        textAnchor.y,
+        dmg,
+        type,
+        targetKey,
+        {
+          element: opts.element,
+          guarded: opts.guarded,
+          defeated: defeated && !opts.missed,
+          groupResult: opts.groupResult,
+          replaceTarget: opts.replaceTarget,
+          maxBottom: textAnchor.maxBottom,
+          gap,
+        },
+      );
 
       this.scaledDelay(opts.crit ? 180 : 150, resolve);
     });
@@ -4568,6 +4817,7 @@ export class BattleScene extends Phaser.Scene {
       }
     }
     const charMs = messageCharMs();
+    this.combatReadUntil = performance.now() + combatReadTime(line, charMs);
     this.promptText.setColor(color);
     this.revealLastLine = line || "";
     if (!line || charMs <= 0) {
@@ -4641,678 +4891,47 @@ export class BattleScene extends Phaser.Scene {
 
   showVictoryResults(gs) {
     if (this.returnFromDungeonDefeat(gs)) return;
-    const mobileVictory = this.hudLayout?.mode === "mobile";
-    const screenHeight = mobileVictory ? 1600 : 600;
-    if (this.scale.gameSize.height !== screenHeight) {
-      this.scale.setGameSize(800, screenHeight);
-    }
-    this.children.removeAll(true);
-
-    const resultLayout = mobileVictory
-      ? {
-          reportY: 800,
-          reportHeight: 1510,
-          titleY: 82,
-          titleSize: "42px",
-          subtitleY: 132,
-          subtitleSize: "20px",
-          rewardCards: [
-            { x: 400, y: 245 },
-            { x: 400, y: 385 },
-            { x: 400, y: 525 },
-          ],
-          rewardWidth: 696,
-          rewardHeight: 118,
-          partyLabelY: 610,
-          rowTop: 640,
-          rowHeight: 132,
-          rowGap: 14,
-          spoilsY: 1350,
-          spoilsHeight: 180,
-          continueY: 1515,
-          continueWidth: 340,
-          continueHeight: 70,
-          continueFontSize: "26px",
-        }
-      : {
-          reportY: 300,
-          reportHeight: 552,
-          titleY: 43,
-          titleSize: "25px",
-          subtitleY: 72,
-          subtitleSize: "12px",
-          rewardCards: [
-            { x: 164, y: 118 },
-            { x: 400, y: 118 },
-            { x: 636, y: 118 },
-          ],
-          rewardWidth: 220,
-          rewardHeight: 58,
-          partyLabelY: 154,
-          rowTop: 171,
-          rowHeight: 58,
-          rowGap: 6,
-          spoilsY: 468,
-          spoilsHeight: 58,
-          continueY: 545,
-          continueWidth: 150,
-          continueHeight: 34,
-          continueFontSize: "16px",
-        };
-    this.victoryResultLayout = resultLayout;
-
-    const backdrop = this.add.graphics().setDepth(-4);
-    backdrop.fillGradientStyle(0x151e2b, 0x151e2b, 0x151e2b, 0x151e2b, 1);
-    backdrop.fillRect(0, 0, 800, screenHeight);
-    backdrop._combatFxTag = "victory-backdrop";
-
-    const reportPanel = drawPanel(
-      this,
-      400,
-      resultLayout.reportY,
-      744,
-      resultLayout.reportHeight,
-      {
-        variant: "ff6",
-        depth: 0,
-        radius: 14,
-        innerTop: 0x1c2736,
-        innerBottom: 0x151e2b,
-        outerFill: 0x384859,
-        outerStroke: 0xd6efff,
-        innerStroke: 0x76ace0,
-        interactive: false,
-      },
-    );
-    reportPanel.bg._combatFxTag = "victory-report-panel";
-
+    this.actionTitle?.dispose();
+    this.actionTitle = null;
+    // Cancel the floating-text completion callbacks before destroying Text
+    // textures; a late pool release would otherwise redraw a destroyed canvas.
+    this.floatingText?.destroy();
+    // DisplayList.removeAll(true) skips callbacks; it does not destroy actors,
+    // input targets or DOM elements. Destroy a snapshot before replacing the UI.
+    this.children.list.slice().forEach((child) => child.destroy());
+    this.gameState = gs;
+    this.defeatDialog?.dispose();
+    this.victoryReceipt?.finish();
+    this.victoryReceipt?.dialog.dispose();
     this.victoryFastForwarded = false;
     this.victoryContinueShown = false;
-    this.victoryFinalizers = [];
-    this.victoryPendingTimers = [];
-    this.victoryFFHandler = null;
-
     const isDefeat = gs.phase === "defeat";
     stopMusic();
     playMusic(isDefeat ? "music_defeat" : "music_victory", false);
 
     if (isDefeat) {
-      this.add
-        .text(400, 76, "PARTY DEFEATED", {
-          fontSize: "30px",
-          color: "#ff7777",
-          fontFamily: "Arial, sans-serif",
-          fontStyle: "bold",
-        })
-        .setOrigin(0.5);
-      this.add
-        .text(400, 130, gs.message || "Your party has fallen.", {
-          fontSize: "16px",
-          color: "#d4dfed",
-          fontFamily: "Arial, sans-serif",
-          align: "center",
-          wordWrap: { width: 620, useAdvancedWrap: true },
-        })
-        .setOrigin(0.5, 0);
-
-      drawButton(
-        this,
-        400,
-        302,
-        260,
-        46,
-        "LOAD LAST SAVE",
-        () => this.scene.start("Title"),
-        {
-          fontSize: "16px",
-          fill: 0x1c2736,
-          fillHover: 0x384859,
-          stroke: 0x384859,
-          strokeActive: 0xf2d27a,
-        },
-      );
-      drawButton(
-        this,
-        400,
-        364,
-        260,
-        42,
-        "TITLE SCREEN",
-        () => this.scene.start("Title"),
-        {
-          fontSize: "14px",
-          fill: 0x151e2b,
-          fillHover: 0x1c2736,
-          stroke: 0x384859,
-          strokeActive: 0xb7d8f5,
-        },
-      );
-
+      this.defeatDialog = showDefeatReceipt(this, gs);
       return;
     }
 
-    const log = gs.combat_log || [];
-    const summary = buildVictorySummary(log, gs.battle_rewards);
-    const finaleXP = buildFinalePartyXP(gs);
-    if (finaleXP)
-      summary.xpEarned = finaleXP.reduce((total, xp) => total + xp, 0);
-    const totalEther =
-      (gs.ethers || 0) + (gs.hi_ethers || 0) + (gs.x_ethers || 0);
-
-    const victoryTitle = this.add
-      .text(52, resultLayout.titleY, "VICTORY!", {
-        fontSize: resultLayout.titleSize,
-        color: "#f6d77c",
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold",
-      })
-      .setDepth(2);
-    victoryTitle._combatFxTag = "victory-title";
-    this.add
-      .text(52, resultLayout.subtitleY, "Rewards and party progress", {
-        fontSize: resultLayout.subtitleSize,
-        color: "#9bb6d2",
-        fontFamily: "Arial, sans-serif",
-      })
-      .setDepth(2);
-
-    const drawRewardCard = ({ x, y }, label, value, detail, color) => {
-      const card = drawPanel(
-        this,
-        x,
-        y,
-        resultLayout.rewardWidth,
-        resultLayout.rewardHeight,
-        {
-          fill: 0x151e2b,
-          fillAlpha: 0.92,
-          stroke: 0x384859,
-          strokeWidth: 1,
-          depth: 2,
-          interactive: false,
-        },
-      );
-      card.bg._combatFxTag = "victory-reward-card";
-      const rewardLeft = x - resultLayout.rewardWidth / 2 + 14;
-      this.add
-        .text(rewardLeft, y - (mobileVictory ? 40 : 22), label, {
-          fontSize: mobileVictory ? "18px" : "10px",
-          color: "#82b9df",
-          fontFamily: "Arial, sans-serif",
-          fontStyle: "bold",
-        })
-        .setDepth(3);
-      this.add
-        .text(rewardLeft, y - (mobileVictory ? 12 : 7), value, {
-          fontSize: mobileVictory ? "38px" : "21px",
-          color,
-          fontFamily: "Arial, sans-serif",
-          fontStyle: "bold",
-        })
-        .setDepth(3);
-      this.add
-        .text(
-          x + resultLayout.rewardWidth / 2 - 14,
-          y + resultLayout.rewardHeight / 2 - (mobileVictory ? 14 : 11),
-          detail,
-          {
-            fontSize: mobileVictory ? "16px" : "9px",
-            color: "#94a8bd",
-            fontFamily: "Arial, sans-serif",
-          },
-        )
-        .setOrigin(1, 1)
-        .setDepth(3);
-    };
-
-    drawRewardCard(
-      resultLayout.rewardCards[0],
-      "XP EARNED",
-      `+${summary.xpEarned}`,
-      "shared by active allies",
-      "#8fd6ff",
-    );
-    drawRewardCard(
-      resultLayout.rewardCards[1],
-      "GOLD EARNED",
-      `+${summary.goldEarned}`,
-      `total ${gs.gold || 0}`,
-      "#f6d77c",
-    );
-    drawRewardCard(
-      resultLayout.rewardCards[2],
-      "SPOILS",
-      summary.found.length > 0 ? `${summary.found.length}` : "—",
-      summary.found.length === 1 ? "item recovered" : "items recovered",
-      "#9de0ae",
-    );
-
-    this.add
-      .text(52, resultLayout.partyLabelY, "PARTY PROGRESS", {
-        fontSize: mobileVictory ? "18px" : "10px",
-        color: "#82b9df",
-        fontFamily: "Arial, sans-serif",
-        fontStyle: "bold",
-      })
-      .setDepth(2);
-
-    const barW = mobileVictory ? 220 : 180;
-    const xpBefore = gs.xp_before || [];
-    const xpThresholds = gs.xp_thresholds || [];
-    const diedFlags = gs.died_this_fight || [];
-    const rowTop = resultLayout.rowTop;
-    const rowHeight = resultLayout.rowHeight;
-    const rowGap = resultLayout.rowGap;
-
-    for (let i = 0; i < gs.party.length; i++) {
-      const p = gs.party[i];
-      const rowY = rowTop + i * (rowHeight + rowGap) + rowHeight / 2;
-      const diedThisFight = diedFlags[i] === true;
-      const alive = !diedThisFight && p.hp > 0;
-      const prevXP = xpBefore[i] || 0;
-      const leveledUp =
-        !diedThisFight && log.some((l) => l.includes(`${p.name} leveled up`));
-
-      const row = roundedRectangle(
-        this,
-        400,
-        rowY,
-        696,
-        rowHeight,
-        i % 2 === 0 ? 0x151e2b : 0x151e2b,
-        0.96,
-      )
-        .setStrokeStyle(1, leveledUp ? 0xc7a94f : 0x384859)
-        .setDepth(2);
-      row._combatFxTag = "victory-party-row";
-      roundedRectangle(
-        this,
-        55,
-        rowY,
-        4,
-        rowHeight - (mobileVictory ? 18 : 8),
-        leveledUp ? 0xf1cb66 : alive ? 0x384859 : 0x8b4a52,
-        1,
-      ).setDepth(3);
-
-      const cs = CLASS_SPRITES[p.sprite_id || p.class_id];
-      if (cs && this.textures.exists(cs)) {
-        const sprite = this.add
-          .image(mobileVictory ? 105 : 84, rowY, cs)
-          .setDepth(3);
-        sprite.setScale(
-          (mobileVictory ? 88 : 44) / Math.max(sprite.width, sprite.height),
-        );
-        if (!alive) sprite.setTint(0x444444);
-      }
-
-      this.add
-        .text(
-          mobileVictory ? 165 : 114,
-          rowY - (mobileVictory ? 40 : 16),
-          `${p.name}`,
-          {
-            fontSize: mobileVictory ? "28px" : "15px",
-            color: alive ? "#f5f8fc" : "#7c8793",
-            fontFamily: "Arial, sans-serif",
-            fontStyle: "bold",
-          },
-        )
-        .setDepth(3);
-      const levelText = this.add
-        .text(
-          mobileVictory ? 165 : 114,
-          rowY - (mobileVictory ? 4 : -6),
-          `${p.class_name}  ·  Lv ${p.level}`,
-          {
-            fontSize: mobileVictory ? "18px" : "10px",
-            color: alive ? "#9cb3ca" : "#65717d",
-            fontFamily: "Arial, sans-serif",
-          },
-        )
-        .setDepth(3);
-
-      this.add
-        .text(
-          mobileVictory ? 165 : 250,
-          rowY + (mobileVictory ? 28 : -16),
-          `HP  ${p.hp} / ${p.max_hp}`,
-          {
-            fontSize: mobileVictory ? "19px" : "11px",
-            color: alive ? "#a7e4c0" : "#9b666c",
-            fontFamily: "Arial, sans-serif",
-            fontStyle: "bold",
-          },
-        )
-        .setDepth(3);
-      this.add
-        .text(
-          mobileVictory ? 430 : 250,
-          rowY - (mobileVictory ? 38 : -7),
-          diedThisFight
-            ? "NO XP · DEFEATED"
-            : `+${finaleXP?.[i] ?? summary.xpEarned} XP`,
-          {
-            fontSize: mobileVictory ? "18px" : "10px",
-            color: diedThisFight ? "#d77b82" : "#89c9f2",
-            fontFamily: "Arial, sans-serif",
-            fontStyle: "bold",
-          },
-        )
-        .setDepth(3);
-
-      this.add
-        .text(
-          mobileVictory ? 430 : 395,
-          rowY - (mobileVictory ? 4 : 17),
-          `XP  ${p.xp} / ${p.xp_next}`,
-          {
-            fontSize: mobileVictory ? "16px" : "9px",
-            color: diedThisFight ? "#65717d" : "#a8bed4",
-            fontFamily: "Arial, sans-serif",
-          },
-        )
-        .setDepth(3);
-      const progressX = mobileVictory ? 430 : 395;
-      const progressY = rowY + (mobileVictory ? 34 : 10);
-      roundedRectangle(
-        this,
-        progressX,
-        progressY,
-        barW,
-        mobileVictory ? 14 : 8,
-        0x151e2b,
-        1,
-      )
-        .setOrigin(0, 0.5)
-        .setStrokeStyle(1, 0x384859)
-        .setDepth(3);
-
-      const delay = 450 + i * 650;
-
-      if (diedThisFight) {
-        // Defeat prevents a reward, but does not erase previously earned XP.
-        const retainedXP =
-          p.xp_next > 0 ? Math.max(0, Math.min(1, p.xp / p.xp_next)) : 0;
-        if (retainedXP > 0) {
-          roundedRectangle(
-            this,
-            progressX,
-            progressY,
-            barW * retainedXP,
-            mobileVictory ? 14 : 8,
-            0x65717d,
-          )
-            .setOrigin(0, 0.5)
-            .setDepth(4);
-        }
-        this.add
-          .text(684, rowY, "DEFEATED", {
-            fontSize: mobileVictory ? "16px" : "10px",
-            color: "#d77b82",
-            fontFamily: "Arial, sans-serif",
-            fontStyle: "bold",
-          })
-          .setOrigin(0.5)
-          .setDepth(3);
-      } else {
-        const segments = buildVictoryXPSegments({
-          prevXP,
-          currentXP: p.xp,
-          xpNext: p.xp_next,
-          xpThresholds: xpThresholds[i] || [],
-        });
-        const firstSegment = segments[0] || null;
-        const firstMax = firstSegment?.max || p.xp_next;
-        const firstWidth =
-          firstMax > 0 ? (barW * firstSegment.start) / firstMax : 0;
-
-        const xpBarFill = roundedRectangle(
-          this,
-          progressX,
-          progressY,
-          firstWidth,
-          mobileVictory ? 14 : 8,
-          0x384859,
-        )
-          .setOrigin(0, 0.5)
-          .setDepth(4);
-
-        const xpTweens = [];
-        const animateSegment = (segmentIdx) => {
-          if (segmentIdx >= segments.length) {
-            xpBarFill.setSize(
-              p.xp_next > 0 ? (barW * p.xp) / p.xp_next : 0,
-              xpBarFill.height,
-            );
-            return;
-          }
-
-          const segment = segments[segmentIdx];
-          const startWidth =
-            segment.max > 0 ? (barW * segment.start) / segment.max : 0;
-          const endWidth =
-            segment.max > 0 ? (barW * segment.end) / segment.max : 0;
-          xpBarFill.setSize(startWidth, xpBarFill.height);
-
-          if (segment.start === segment.end) {
-            animateSegment(segmentIdx + 1);
-            return;
-          }
-
-          const tween = this.tweens.add({
-            targets: xpBarFill,
-            width: endWidth,
-            onUpdate: () =>
-              xpBarFill.setSize(xpBarFill.width, xpBarFill.height),
-            duration: Math.max(150, Math.floor(1200 / segments.length)),
-            ease: "Power2",
-            onComplete: () => {
-              xpBarFill.setSize(endWidth, xpBarFill.height);
-              animateSegment(segmentIdx + 1);
-            },
-          });
-          xpTweens.push(tween);
-        };
-
-        const xpTimer = this.time.delayedCall(delay, () => animateSegment(0));
-        this.victoryPendingTimers.push({
-          timer: xpTimer,
-          finalize: () => {
-            for (const tween of xpTweens) tween.stop();
-            xpBarFill.setSize(
-              p.xp_next > 0 ? (barW * p.xp) / p.xp_next : 0,
-              xpBarFill.height,
-            );
-          },
-        });
-        this.victoryFinalizers.push(() => {
-          for (const tween of xpTweens) tween.stop();
-          xpBarFill.setSize(
-            p.xp_next > 0 ? (barW * p.xp) / p.xp_next : 0,
-            xpBarFill.height,
-          );
-        });
-      }
-
-      if (leveledUp) {
-        const badgeBg = roundedRectangle(
-          this,
-          684,
-          rowY,
-          mobileVictory ? 116 : 102,
-          mobileVictory ? 44 : 28,
-          0x5b4614,
-          1,
-        )
-          .setStrokeStyle(1, 0xf1cb66)
-          .setAlpha(0)
-          .setDepth(4);
-        const badgeText = this.add
-          .text(684, rowY, "LEVEL UP", {
-            fontSize: mobileVictory ? "15px" : "10px",
-            color: "#ffe496",
-            fontFamily: "Arial, sans-serif",
-            fontStyle: "bold",
-          })
-          .setOrigin(0.5)
-          .setAlpha(0)
-          .setDepth(5);
-
-        const runLevelUp = (instant) => {
-          const flash = roundedRectangle(
-            this,
-            400,
-            rowY,
-            696,
-            rowHeight,
-            0xf1cb66,
-            0.2,
-          );
-          badgeBg.setAlpha(1);
-          badgeText.setAlpha(1);
-
-          if (instant) {
-            flash.destroy();
-          } else {
-            const flashTween = this.tweens.add({
-              targets: flash,
-              alpha: 0,
-              duration: 600,
-              onComplete: () => flash.destroy(),
-            });
-            this.victoryFinalizers.push(() => {
-              flashTween.stop();
-              if (flash.active) flash.destroy();
-            });
-          }
-
-          levelText
-            .setText(`${p.class_name}  ·  Lv ${p.level}`)
-            .setColor("#ffe496");
-        };
-
-        const lvlTimer = this.time.delayedCall(delay + 1300, () =>
-          runLevelUp(false),
-        );
-        this.victoryPendingTimers.push({
-          timer: lvlTimer,
-          finalize: () => runLevelUp(true),
-        });
-      }
-    }
-
-    const spoilsPanel = drawPanel(
-      this,
-      400,
-      resultLayout.spoilsY,
-      696,
-      resultLayout.spoilsHeight,
-      {
-        fill: 0x151e2b,
-        fillAlpha: 0.96,
-        stroke: 0x384859,
-        strokeWidth: 1,
-        depth: 2,
-        interactive: false,
+    this.victoryReceipt = showVictoryReceipt(this, gs, {
+      onContinue: () => this.continueVictory(),
+      onTallyDone: () => {
+        this.victoryFastForwarded = true;
       },
-    );
-    spoilsPanel.bg._combatFxTag = "victory-spoils-panel";
-    this.add
-      .text(
-        68,
-        resultLayout.spoilsY - resultLayout.spoilsHeight / 2 + 14,
-        "RECOVERED",
-        {
-          fontSize: mobileVictory ? "18px" : "9px",
-          color: "#82b9df",
-          fontFamily: "Arial, sans-serif",
-          fontStyle: "bold",
-        },
-      )
-      .setDepth(3);
-    const detailLines = [formatSpoils(summary), ...summary.quests];
-    this.add
-      .text(
-        68,
-        resultLayout.spoilsY -
-          resultLayout.spoilsHeight / 2 +
-          (mobileVictory ? 48 : 28),
-        detailLines.join("  ·  "),
-        {
-          fontSize: mobileVictory ? "20px" : "11px",
-          color: summary.found.length > 0 ? "#b8e6c3" : "#91a6bb",
-          fontFamily: "Arial, sans-serif",
-          wordWrap: {
-            width: mobileVictory ? 640 : 430,
-            useAdvancedWrap: true,
-          },
-          lineSpacing: 2,
-        },
-      )
-      .setDepth(3);
-    this.add
-      .text(
-        732,
-        resultLayout.spoilsY +
-          resultLayout.spoilsHeight / 2 -
-          (mobileVictory ? 28 : 26),
-        `POTIONS  ${gs.potions || 0}   ·   ETHER  ${totalEther}`,
-        {
-          fontSize: mobileVictory ? "17px" : "10px",
-          color: "#9bb6d2",
-          fontFamily: "Arial, sans-serif",
-          fontStyle: "bold",
-        },
-      )
-      .setOrigin(1, 0.5)
-      .setDepth(3);
-
-    const contTimer = this.time.delayedCall(
-      450 + gs.party.length * 650 + 900,
-      () => this.finalizeVictory(gs),
-    );
-    this.victoryPendingTimers.push({
-      timer: contTimer,
-      finalize: () => this.finalizeVictory(gs),
     });
-
-    this.victoryFFHandler = () => this.fastForwardVictoryResults(gs);
-    this.input.keyboard.on("keydown-SPACE", this.victoryFFHandler);
+    this.finalizeVictory(gs);
   }
 
-  fastForwardVictoryResults(gs) {
-    if (this.victoryFastForwarded) return;
-    this.victoryFastForwarded = true;
-
-    const first = this.victoryFinalizers;
-    this.victoryFinalizers = [];
-    for (const fn of first) fn();
-
-    const timers = this.victoryPendingTimers;
-    this.victoryPendingTimers = [];
-    for (const { timer, finalize } of timers) {
-      if (timer && !timer.hasDispatched) {
-        timer.remove(false);
-      }
-      finalize();
-    }
-
-    // Level-up finalizers may have pushed additional flash/text finalizers;
-    // snap those too so nothing is left mid-tween.
-    const late = this.victoryFinalizers;
-    this.victoryFinalizers = [];
-    for (const fn of late) fn();
+  fastForwardVictoryResults() {
+    this.victoryReceipt?.finish();
   }
 
   finalizeVictory(gs) {
     if (this.victoryContinueShown) return;
     this.victoryContinueShown = true;
-    if (this.victoryFFHandler) {
-      this.input.keyboard.off("keydown-SPACE", this.victoryFFHandler);
-      this.victoryFFHandler = null;
-    }
     if (pendingEquipmentDrops(gs).length > 0) {
+      this.victoryReceipt?.suspend();
       showPostBattleLoot(this, gs, {
         onComplete: (latest) => this.addContinueButton(latest),
         requestTimeoutMs: this.postBattleLootRequestTimeoutMs,
@@ -5322,31 +4941,28 @@ export class BattleScene extends Phaser.Scene {
     this.addContinueButton(gs);
   }
 
-  addContinueButton(gs) {
-    const layout = this.victoryResultLayout || {
-      continueY: 545,
-      continueWidth: 150,
-      continueHeight: 34,
-      continueFontSize: "16px",
-    };
-    drawButton(
-      this,
-      400,
-      layout.continueY,
-      layout.continueWidth,
-      layout.continueHeight,
-      "Continue",
-      () => this.returnFromBattle(gs),
-      {
-        depth: 8,
-        fontSize: layout.continueFontSize,
-        fill: 0x1c2736,
-        fillHover: 0x384859,
-        stroke: 0x9cdfb4,
-        fontFamily: "Arial",
-      },
-    );
-    this.input.keyboard.on("keydown-ENTER", () => this.returnFromBattle(gs));
-    this.input.keyboard.on("keydown-SPACE", () => this.returnFromBattle(gs));
+  addContinueButton() {
+    this.victoryReceipt?.enableContinue();
+  }
+
+  async continueVictory() {
+    let next = this.gameState;
+    if (next.phase === "quest_complete") {
+      next = await withBattleLootDeadline(
+        (signal) =>
+          gameAction(
+            this.gameState.id,
+            { type: "battle_continue" },
+            { signal },
+          ),
+        this.victoryAdvanceTimeoutMs,
+      );
+      if (next?.error) throw new Error(next.error);
+      if (next?.id !== this.gameState.id || next.phase !== "world")
+        throw new Error("The adventure could not be resumed.");
+    }
+    if (this.scene.isActive?.() === false) return;
+    this.gameState = next;
+    this.returnFromBattle(next);
   }
 }

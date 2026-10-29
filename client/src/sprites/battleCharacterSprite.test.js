@@ -35,13 +35,21 @@ describe("Warrior battle runtime contract", () => {
 
   it("authors every required battle state and holds the final KO pose", () => {
     const warrior = battleProfileFor("warrior");
-    expect(Object.keys(warrior.states)).toEqual(
-      BATTLE_CHARACTER_CATALOG.required_states,
+    expect(Object.keys(warrior.states)).toEqual([
+      ...BATTLE_CHARACTER_CATALOG.required_states,
+      "critical_attack",
+    ]);
+    expect(warrior.states.hit_reaction.frames[0].frame).toBe(
+      warrior.states.hit_reaction.cue_frame,
     );
-    expect(warrior.states.hit_reaction.frames[2]).toMatchObject({
-      frame: 5,
-      body: { x: 13, y: 5, angle: 7 },
-    });
+    expect(warrior.states.hit_reaction.body_key).not.toBe(
+      warrior.states.physical_attack.body_key,
+    );
+    expect(
+      warrior.states.hit_reaction.frames.every(
+        (pose) => !pose.body?.y && !pose.body?.angle,
+      ),
+    ).toBe(true);
     expect(warrior.states.ko_defeated.hold_last_frame).toBe(true);
   });
 
@@ -104,7 +112,7 @@ describe("Warrior battle runtime contract", () => {
   });
 
   it("scales body-frame pacing with the battle-speed preference", () => {
-    const pose = WARRIOR_SWORD_ATTACK_FRAMES[0];
+    const pose = { duration: 90 };
     expect(battleFrameDelay(pose, false, 0.33)).toBeCloseTo(29.7);
     expect(battleFrameDelay(pose, false, 3)).toBe(270);
     expect(battleFrameDelay(pose, true, 0.66)).toBeCloseTo(29.7);
@@ -116,13 +124,29 @@ describe("all-class battle state runtime contract", () => {
   it("exposes the complete method-backed state vocabulary for every identity", () => {
     for (const profile of BATTLE_CHARACTER_CATALOG.classes) {
       expect(Object.keys(profile.states), profile.id).toEqual(
-        BATTLE_CHARACTER_CATALOG.required_states,
+        profile.id === "warrior"
+          ? [...BATTLE_CHARACTER_CATALOG.required_states, "critical_attack"]
+          : BATTLE_CHARACTER_CATALOG.required_states,
       );
       expect(profile.states.ko_defeated.hold_last_frame, profile.id).toBe(true);
-      expect(
-        profile.states.ko_defeated.frames.at(-1).body,
-        `${profile.id}/ko_defeated`,
-      ).toMatchObject({ angle: 90 });
+      const groundedKO = {
+        warrior: "battle_warrior_sword_ko_body",
+        cinder: "battle_cinder_staff_ko_body",
+      }[profile.id];
+      if (groundedKO) {
+        expect(profile.states.ko_defeated.body_key).toBe(groundedKO);
+        expect(profile.states.ko_defeated.frames.at(-1).frame).toBe(2);
+        expect(
+          profile.states.ko_defeated.frames.every(
+            (pose) => !pose.body?.y && !pose.body?.angle,
+          ),
+        ).toBe(true);
+      } else {
+        expect(
+          profile.states.ko_defeated.frames.at(-1).body,
+          `${profile.id}/ko_defeated`,
+        ).toMatchObject({ angle: 90 });
+      }
     }
   });
 });

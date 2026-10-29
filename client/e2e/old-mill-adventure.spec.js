@@ -1,3 +1,4 @@
+import { verifyCraftingProgression } from "./helpers/crafting-progression.js";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
@@ -77,11 +78,44 @@ for (const viewport of [
       () => window.__kithlandsTest.activeSceneKey() === "World",
     );
     await page.waitForTimeout(400);
+    await page.getByRole("button", { name: "Menu", exact: true }).click();
+    await page.getByRole("button", { name: /Quest journal/i }).click();
+    const journal = page.getByRole("dialog", {
+      name: "Quest Log",
+      exact: true,
+    });
+    await expect(
+      journal.getByRole("heading", { name: "Your campaign", exact: true }),
+    ).toBeVisible();
+    await expect(
+      journal.getByRole("heading", { name: "Local stories", exact: true }),
+    ).toBeVisible();
+    await journal.getByRole("button", { name: /Track The Old Mill/ }).click();
+    await capture(page, `${viewport.width}-world-shared-journal`);
+    await page
+      .getByRole("button", { name: "Close Quest Log", exact: true })
+      .click();
+    await expect(
+      page.locator(".exploration-hud [data-objective-tracker]"),
+    ).toHaveCount(0);
     await page
       .getByRole("button", { name: "Old Mill trail", exact: true })
       .click();
     await room(page, "approach");
     await capture(page, `${viewport.width}-approach`);
+    const tracker = page.locator("[data-objective-tracker]");
+    await expect(tracker).toHaveCount(1);
+    const toggle = tracker.getByRole("button", {
+      name: "Objective ▾",
+      exact: true,
+    });
+    expect((await toggle.boundingBox()).height).toBeGreaterThanOrEqual(44);
+    await toggle.click();
+    await expect(tracker).toContainText((await state(page)).dungeon.objective);
+    await capture(page, `${viewport.width}-shared-tracker`);
+    await tracker
+      .getByRole("button", { name: "Objective ▴", exact: true })
+      .click();
     await tapAction(page, "split-oak", viewport);
     await page.waitForFunction(
       () =>
@@ -127,8 +161,22 @@ for (const viewport of [
     await page.evaluate(() =>
       window.__kithlandsTest.clickInteractiveText("Journal", "Dungeon"),
     );
+    const sharedJournal = page.getByRole("dialog", {
+      name: "Quest Log",
+      exact: true,
+    });
+    await expect(sharedJournal).toBeVisible();
+    await expect(sharedJournal).toContainText("Your campaign");
+    await expect(sharedJournal).toContainText(before.dungeon.objective);
+    await expect(sharedJournal).toContainText(before.dungeon.journal.at(-1));
     await capture(page, `${viewport.width}-saved-journal`);
+    await sharedJournal
+      .locator('[data-quest-id="dungeon:old-mill"] details p')
+      .last()
+      .scrollIntoViewIfNeeded();
+    await capture(page, `${viewport.width}-saved-journal-notes`);
     await page.keyboard.press("Escape");
+    await expect(sharedJournal).toHaveCount(0);
     await tapAction(page, "receiving-exit", viewport);
     await room(page, "approach");
     await tapAction(page, "trail-home", viewport);
@@ -136,6 +184,20 @@ for (const viewport of [
       () => window.__kithlandsTest.activeSceneKey() === "World",
     );
     expect((await state(page)).gold).toBe(before.gold);
+    await page.getByRole("button", { name: "Menu", exact: true }).click();
+    await page.getByRole("button", { name: /Quest journal/i }).click();
+    await expect(
+      page.locator('[data-quest-id="dungeon:old-mill"]'),
+    ).toContainText(before.dungeon.journal.at(-1));
+    await page.locator('[data-quest-id="dungeon:old-mill"] summary').click();
+    await page
+      .locator('[data-quest-id="dungeon:old-mill"] details p')
+      .last()
+      .scrollIntoViewIfNeeded();
+    await capture(page, `${viewport.width}-returned-shared-journal`);
+    await page
+      .getByRole("button", { name: "Close Quest Log", exact: true })
+      .click();
     expect(errors).toEqual([]);
   });
 }
@@ -278,7 +340,14 @@ for (const viewport of [
   test(`complete authored Old Mill route with real combat ${viewport.width}x${viewport.height}`, async ({
     page,
   }) => {
-    test.setTimeout(420_000);
+    test.setTimeout(600_000);
+    await page.route("**/src/main.js*", async (r) => {
+      const response = await r.fetch();
+      await r.fulfill({
+        response,
+        body: `${await response.text()}\nwindow.__gatherGame = game;`,
+      });
+    });
     await page.setViewportSize(viewport);
     const errors = [];
     page.on("pageerror", (e) => errors.push(e.message));
@@ -326,9 +395,22 @@ for (const viewport of [
     expect(seen.size).toBe(12);
     expect(end.dungeon_entry.completed).toBe(true);
     expect(end.gold).toBe(prePayoff + 80);
+    expect(end.materials.find((m) => m.id === "mill_core").count).toBe(1);
     expect(end.message).toContain("80 gold");
     expect(end.combat_log || []).toEqual([]);
     await capture(page, `${viewport.width}-return-payoff`);
+    await page.getByRole("button", { name: "Menu", exact: true }).click();
+    await page.getByRole("button", { name: /Quest journal/i }).click();
+    await expect(
+      page.locator('[data-quest-id="dungeon:old-mill"]'),
+    ).toContainText("Complete");
+    await expect(
+      page.locator('[data-quest-id="dungeon:old-mill"]'),
+    ).not.toContainText("Track objective");
+    await capture(page, `${viewport.width}-completed-shared-journal`);
+    await page
+      .getByRole("button", { name: "Close Quest Log", exact: true })
+      .click();
     console.log(
       `Old Mill ${viewport.width}: automated actual-combat route ${((Date.now() - started) / 60000).toFixed(2)} minutes; this is not unassisted first-visit duration.`,
     );
@@ -355,6 +437,10 @@ for (const viewport of [
       () => window.__kithlandsTest.activeSceneKey() === "World",
     );
     expect((await state(page)).gold).toBe(end.gold);
+    expect(
+      (await state(page)).materials.find((m) => m.id === "mill_core").count,
+    ).toBe(1);
+    await verifyCraftingProgression(page, viewport, proof);
     expect(errors).toEqual([]);
   });
 }
@@ -505,29 +591,17 @@ for (const viewport of [
     await page.waitForFunction(
       () => window.__kithlandsTest.sceneFlags("Dungeon").menuOpen,
     );
-    const summary = await page.evaluate(() =>
-      window.__kithlandsTest.partyMenuSummary("Dungeon"),
-    );
-    const mapButton = summary.actionIcons.find(
-      (action) => action.label === "WORLD MAP" && action.kind === "button",
-    );
-    expect(mapButton.interactive).toBe(false);
+    const mapButton = page.getByRole("button", { name: /World map/i });
+    await expect(mapButton).toBeDisabled();
     await capture(page, `${viewport.width}-party-map-disabled`);
-    await tapLogical(
-      page,
-      (mapButton.bounds.left + mapButton.bounds.right) / 2,
-      (mapButton.bounds.top + mapButton.bounds.bottom) / 2,
-      summary.logicalSize.width,
-      summary.logicalSize.height,
-    );
+    const box = await mapButton.boundingBox();
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
     expect(
       await page.evaluate(
         () => window.__kithlandsTest.sceneFlags("Dungeon").modalLocks,
       ),
-    ).toEqual(["party_menu"]);
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("CLOSE", "Dungeon"),
-    );
+    ).toEqual(["party_menu", "party_menu_view"]);
+    await page.locator(".party-dismiss").click();
     await page.waitForFunction(
       () => !window.__kithlandsTest.sceneFlags("Dungeon").menuOpen,
     );
@@ -574,9 +648,7 @@ for (const viewport of [
     await page.waitForFunction(
       () => window.__kithlandsTest.sceneFlags("World").menuOpen,
     );
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("WORLD MAP", "World"),
-    );
+    await page.getByRole("button", { name: /World map/i }).click();
     expect(
       await page.evaluate(
         () => window.__kithlandsTest.sceneFlags("World").modalLocks,

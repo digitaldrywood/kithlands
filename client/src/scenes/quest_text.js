@@ -77,6 +77,8 @@ export function questRewardText(q) {
 }
 
 export function questCustodyText(q) {
+  if (q?.objectives?.companion)
+    return `Traveling with you: ${q.objectives.companion} · Return to ${q.giver_name || "the keeper"}.`;
   if (q?.objectives?.item) return `Carrying: ${q.objectives.item}`;
   if (q?.objectives?.clue) return `Clue recorded: ${q.objectives.clue}`;
   return "";

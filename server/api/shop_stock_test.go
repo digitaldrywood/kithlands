@@ -350,3 +350,70 @@ func TestLegacySaveWithoutShopStockLoadsAndGenerates(t *testing.T) {
 		t.Fatalf("legacy shop generation = %d items, %v", len(items), err)
 	}
 }
+
+func TestSmithingSuppliesPurchaseAndSavedStockUpgrade(t *testing.T) {
+	g := newTownTestGame(t)
+	node := enterStockTestShop(t, g)
+	stock, err := g.ensureShopStockLocked(node)
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := []ShopStockEntry{}
+	for _, entry := range stock.Entries {
+		if entry.Type != "material" {
+			old = append(old, entry)
+		}
+	}
+	stock.Entries = old
+	oldOffer := shopOfferID(node, 0, &stock.Entries[0])
+	items, err := g.GetShopItems(node)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if oldOffer != shopOfferID(node, 0, &stock.Entries[0]) {
+		t.Fatal("migration invalidated existing offer")
+	}
+	offer := findStockTestOffer(t, items, "charcoal")
+	gold := g.inv.Gold
+	if err := g.BuyItem(node, offer.StockID); err != nil {
+		t.Fatal(err)
+	}
+	if g.inv.Materials["charcoal"] != 1 || g.inv.Gold != gold-6 {
+		t.Fatal("incorrect supply transaction")
+	}
+	before := shopMutationSnapshot(t, g)
+	if err := g.BuyItem(node, offer.StockID); err == nil {
+		t.Fatal("replayed stale supply offer")
+	}
+	if before != shopMutationSnapshot(t, g) {
+		t.Fatal("stale purchase mutated inventory")
+	}
+	ss, err := g.ToSaveState("supplies", "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := FromSaveState(ss, g.gd, g.loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restored.inv.Materials["charcoal"] != 1 {
+		t.Fatal("lost purchased supplies on load")
+	}
+	restored.location = g.location
+	items, err = restored.GetShopItems(node)
+	if err != nil {
+		t.Fatal(err)
+	}
+	offer = findStockTestOffer(t, items, "charcoal")
+	if err := restored.BuyItem(node, offer.StockID); err != nil {
+		t.Fatal(err)
+	}
+	if restored.inv.Materials["charcoal"] != 2 {
+		t.Fatal("reusable supplies unavailable after load")
+	}
+	for _, item := range items {
+		if item.ID == "mill_core" {
+			t.Fatal("quest core sold in shop")
+		}
+	}
+}

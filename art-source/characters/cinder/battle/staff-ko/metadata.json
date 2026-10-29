@@ -1,0 +1,41 @@
+{
+  "status": "approved_runtime",
+  "generated_on": "2026-10-26",
+  "generator": "OpenAI built-in image_gen (model identifier not returned)",
+  "identity_reference": "art-source/characters/cinder/battle/staff-cast/frame-00.png",
+  "guide_paths": [
+    "../../guides/staff-ko-buckle.svg",
+    "../../guides/staff-ko-fallen.svg"
+  ],
+  "generation_outputs": [
+    "exec-1f5015cb-9dca-4cd8-a814-f019e9d9a649.png",
+    "exec-178821ce-de14-41e3-bd80-486f2c1b7f2e.png",
+    "exec-4fa726fc-e955-4a6a-9a64-ce24369d3596.png"
+  ],
+  "prompts": {
+    "buckle": "Use case: identity-preserve original game sprite animation frame. Image 1 is locked Kithlands Cinder identity/rendering. Image 2 is knee-buckle pose guide ONLY. Produce ONE body-only full-body Cinder KO KNEE BUCKLE transitional pose: same shadow-faced mage in crooked bent-tip violet hat, exactly two small cyan eyes in black face, gold-edged layered purple robes/cloak, red-violet chest clasp and dark gloves/boots. Three-quarter facing screen-left. Both knees buckle under the folding long robes; figure drops visibly LOW to a kneeling crouch, torso folds forward left, head/hat lowered, near empty glove reaching down left to brace near the floor, far empty glove slack near hip. Keep anatomy/camera/palette/hat/robe identity and original chunky crisp pixel-art treatment. No spinning/whole-body rigid rotation, no cast, no seated upright meditation, no floating or jumping. Heavy cloth folds and pools near bent knees. No staff/weapon, shadow, ground, scenery, blood, damage marks, glow, text or UI; staff remains a separate runtime layer. Entire pose centered with generous transparent margins, real alpha. One pose only, no sheet/grid.",
+    "fallen": "Use case: identity-preserve original game sprite animation frame. Image 1 is locked Kithlands Cinder identity/rendering. Image 2 is fallen-pose guide ONLY. Image 3 is the preceding knee buckle for continuity. Produce ONE body-only full-body Cinder SETTLED KO FALL pose. SAME shadow-faced mage in bent-tip violet pointed hat, exactly TWO very small DIM cyan eyes in BLACK face, gold-edged layered purple robes/cloak, red-violet clasp, dark gloves and boots. Figure lies fully on its SIDE along the ground, head on SCREEN LEFT, shoulders and torso horizontal, legs and robe extend SCREEN RIGHT. Near glove lies slack in front of chest; hat remains on head, bent crown rests sideways low behind head. Heavy robe and cloak pool along floor beneath body. Actual newly drawn fallen anatomy and cloth folds, NOT an upright figure rotated ninety degrees, no floating, no standing, no sitting, no kneeling. Silhouette should be long and LOW, around 3 times wider than tall. Preserve original slim character scale, palette and crisp chunky pixel-art style; slightly overhead battle camera. No staff/weapon, blood, wound, magic, glow, ground, baked shadow, scenery, text or UI. Entire fallen body centered with clear margins and real transparent alpha. One pose only, no sheet/grid.",
+    "fallen_revision": "Use case: targeted game sprite pose revision. Image 1 is locked Kithlands Cinder identity. Image 2 is the fallen candidate to revise. Keep the same left-head/right-feet side-lying KO pose, shadow-black face with exactly two dim cyan eyes, bent violet hat, layered purple/gold robe, red-violet clasp, dark gloves and boots, same crisp pixel-art style and transparent alpha. Correct ONLY the silhouette proportions: the current body is too stretched and makes the head tiny at sprite scale. Shorten/bunch the trailing robe and bent legs substantially, and make the hat/head mass about 25 percent LARGER relative to the total figure. Full fallen silhouette should be about THREE times wider than tall (not over four times). At a final 176px-wide sprite, hat/head should occupy roughly 60px of width and full silhouette height roughly 55-60px. Character lies fully along the floor, no raised torso, sitting or floating. Hand slack near face, hat rests on floor, robe pools under body, boots tucked into gathered cloth at right. No staff/weapon, shadow, ground, effects, blood, text or backdrop. One complete body-only pose with margins, real transparent alpha; no grid."
+  },
+  "frame_contract": {
+    "frame_size": [192, 192],
+    "atlas_size": [576, 192],
+    "order": ["recoil", "knee_buckle", "settled_fall"],
+    "container_anchor": [96, 184],
+    "body_baseline": 182,
+    "weapon_baked_in": false
+  },
+  "normalization": "Retain generated alpha; crop alpha>8 occupied bbox; uniform nearest-neighbor resize to buckle 130px high and fallen 176px wide; center cells with occupied bottom y182. Frame0 copied unchanged from accepted Cinder hit flinch.",
+  "rejected_candidates": [
+    {
+      "file": "exec-178821ce-de14-41e3-bd80-486f2c1b7f2e.png",
+      "reason": "Overstretched 176x41 normalized silhouette reduced hat/head mass; revised to 176x56 before runtime installation."
+    }
+  ],
+  "visual_acceptance": {
+    "proof": "docs/CINDER_KO_POSE_PROOF.md",
+    "scope": "Cinder KO, held terminal pose and native Phoenix Down revival at desktop and phone; reduced-motion lethal hit",
+    "rejected_pre_spacing": "Two-member back-row occlusion fixed before final acceptance",
+    "runtime_path": "client/public/sprites/battle/cinder/staff-ko-body.png"
+  }
+}

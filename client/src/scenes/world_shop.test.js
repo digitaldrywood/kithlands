@@ -5,12 +5,55 @@ import {
   groupShopItems,
   resolveShopCatalog,
   shouldHandleShopEscape,
+  shopItemInformation,
 } from "./world_shop.js";
+
+describe("shop item explanations", () => {
+  it("explains a consumable even when stock only supplies its ID and price", () => {
+    const info = shopItemInformation({
+      id: "hi_potion",
+      type: "consumable",
+      price: 100,
+    });
+    expect(info.description).toContain("120 HP");
+    expect(info.description).toContain("cannot revive");
+    expect(info.context).toBe("Use in battle or while exploring.");
+    expect(
+      shopItemInformation({ id: "tent", type: "consumable" }).context,
+    ).toBe("Use while exploring; cannot be used in battle.");
+  });
+  it("preserves explicit and mysterious descriptions without inventing effects", () => {
+    expect(
+      shopItemInformation({
+        id: "potion",
+        type: "consumable",
+        description: "An authored explanation.",
+      }).description,
+    ).toBe("An authored explanation.");
+    const mystery = shopItemInformation({
+      id: "strange_coin",
+      type: "key_item",
+    });
+    expect(mystery.description).toContain("unknown origin");
+    expect(mystery.context).toBe("");
+    expect(shopItemInformation({ id: "unknown", type: "key_item" })).toEqual({
+      description: "",
+      context: "",
+    });
+  });
+  it("explains purchased crafting supplies without treating them as consumables", () => {
+    const info = shopItemInformation({ id: "charcoal", type: "material" });
+    expect(info.description).toContain("smelting fuel");
+    expect(info.context).toContain("Crafting in the party menu");
+    expect(info.context).not.toContain("battle");
+  });
+});
 
 describe("groupShopItems", () => {
   it("keeps spell rows separate from consumables", () => {
     const grouped = groupShopItems([
       { id: "potion", type: "consumable" },
+      { id: "charcoal", type: "material" },
       { id: "airship_pass", type: "key_item" },
       { id: "heal", type: "spell" },
       { id: "short_bow", type: "weapon" },
@@ -21,6 +64,7 @@ describe("groupShopItems", () => {
       "potion",
       "airship_pass",
     ]);
+    expect(grouped.supplies.map((item) => item.id)).toEqual(["charcoal"]);
     expect(grouped.spells.map((item) => item.id)).toEqual(["heal"]);
   });
 });

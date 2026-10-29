@@ -844,6 +844,13 @@ export function buildBattleActionButtons({
     });
   }
   buttons.push({
+    label: "[D]EFEND",
+    type: "defend",
+    color: "#88ccff",
+    description:
+      "Reduce physical damage this round · protects before faster attacks",
+  });
+  buttons.push({
     label: "S[M]ART",
     type: "smart",
     color: "#9be7d0",
@@ -894,6 +901,8 @@ export function resolveAction(action, actor, gameState) {
 
   if (actor.hp <= 0) return null;
   if (!enemies.some((e) => e.hp > 0)) return null;
+
+  if (action.type === "defend") return { slot, type: "defend" };
 
   if (action.type === "attack") {
     return resolveAttack(action, enemies, slot);

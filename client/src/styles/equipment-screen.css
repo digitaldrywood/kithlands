@@ -231,7 +231,7 @@
   color: var(--sheet-muted);
   background: var(--menu-panel);
   cursor: pointer;
-  font-size: 8px;
+  font-size: 14px;
   text-transform: uppercase;
 }
 
@@ -251,6 +251,7 @@
 
 .character-summary-group {
   display: grid;
+  align-content: start;
   gap: 8px;
 }
 
@@ -259,14 +260,15 @@
   padding-bottom: 5px;
   border-bottom: 1px solid var(--menu-line);
   color: var(--menu-muted);
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .character-resource-bars {
   display: grid;
-  gap: 9px;
+  align-content: start;
+  gap: 12px;
 }
 
 .character-resource {
@@ -278,7 +280,7 @@
   display: flex;
   justify-content: space-between;
   color: var(--sheet-muted);
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .character-resource-label strong {
@@ -313,13 +315,13 @@
 .character-resource-note,
 .equipment-inactive-note {
   color: var(--menu-accent);
-  font-size: 8px;
+  font-size: 12px;
   text-align: right;
 }
 
 .equipment-magic-note {
   color: var(--sheet-muted);
-  font-size: 9px;
+  font-size: 13px;
   line-height: 1.45;
   text-align: right;
 }
@@ -329,7 +331,7 @@
   grid-template-columns: 1fr auto;
   gap: 7px 8px;
   margin: 0;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .character-stat-grid dt {
@@ -358,7 +360,7 @@
 .character-conditions {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .condition-label {
@@ -505,8 +507,8 @@
   box-shadow: 0 20px 70px #0006;
 }
 
-.equipment-slot:hover,
-.equipment-slot:focus-visible {
+.kith-equipment-screen:not(.is-keyboard-browsing) .equipment-slot:hover,
+.kith-equipment-screen.is-keyboard-browsing .equipment-slot:focus-visible {
   z-index: 60;
 }
 
@@ -725,10 +727,18 @@
   pointer-events: none;
 }
 
-.equipment-slot:hover .equipment-tooltip,
-.equipment-slot:focus-visible .equipment-tooltip,
-.equipment-item-row:hover .equipment-tooltip,
-.equipment-item-row:focus-visible .equipment-tooltip {
+.kith-equipment-screen:not(.is-keyboard-browsing)
+  .equipment-slot:hover
+  .equipment-tooltip,
+.kith-equipment-screen:not(.is-keyboard-browsing)
+  .equipment-item-row:hover
+  .equipment-tooltip,
+.kith-equipment-screen.is-keyboard-browsing
+  .equipment-slot:focus-visible
+  .equipment-tooltip,
+.kith-equipment-screen.is-keyboard-browsing
+  .equipment-item-row:focus-visible
+  .equipment-tooltip {
   display: grid;
 }
 
@@ -944,6 +954,9 @@
 
 .equipment-item-row.is-disabled {
   cursor: not-allowed;
+}
+
+.equipment-item-row.is-disabled > :not(.equipment-tooltip) {
   opacity: 0.55;
 }
 
@@ -984,8 +997,10 @@
 }
 
 .candidate-tooltip {
-  right: calc(100% + 8px);
-  left: auto;
+  /* Escape the scrolling gear list; runtime clamps this to the viewport. */
+  position: fixed;
+  right: auto;
+  left: 8px;
   top: 0;
 }
 
@@ -1349,32 +1364,37 @@
 
   .equipment-main,
   .equipment-main.has-selection {
-    display: grid;
-    grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(440px, 1fr);
+    display: block;
     gap: 6px;
     overflow-y: auto;
     padding: 5px;
   }
 
   .character-summary-panel {
-    display: flex;
-    gap: 7px;
-    max-height: 250px;
-    padding: 8px;
-    overflow: auto;
+    display: block;
+    margin-bottom: 8px;
+    max-height: none;
+    padding: 12px;
+    overflow: visible;
+  }
+
+  .character-summary-panel .section-title,
+  .character-detail-tabs {
+    margin-bottom: 10px;
   }
 
   .character-detail-panel {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 7px 12px;
+    flex: none;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: 20px;
   }
 
   .character-detail-tab {
     min-height: 44px;
     padding: 8px 4px;
-    font-size: 11px;
+    font-size: 14px;
     touch-action: manipulation;
   }
 
@@ -1385,16 +1405,16 @@
   }
 
   .character-resource-bars {
-    gap: 5px;
+    gap: 12px;
   }
 
   .character-stat-grid {
-    gap: 3px 6px;
-    font-size: 9px;
+    gap: 8px 12px;
+    font-size: 14px;
   }
 
   .character-stat-grid dd strong {
-    font-size: 10px;
+    font-size: 14px;
   }
 
   .stat-breakdown {

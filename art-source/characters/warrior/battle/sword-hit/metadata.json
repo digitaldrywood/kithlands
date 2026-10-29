@@ -1,0 +1,47 @@
+{
+  "status": "approved_runtime",
+  "generated_on": "2026-10-26",
+  "generator": "OpenAI built-in image_gen; model and seed not returned",
+  "identity_reference": "art-source/characters/warrior/battle/sword-attack/frame-00.png",
+  "pose_guide": "../../guides/sword-hit-flinch.svg",
+  "frame_contract": {
+    "frame_size": [
+      192,
+      192
+    ],
+    "atlas_size": [
+      576,
+      192
+    ],
+    "order": [
+      "guard",
+      "flinch",
+      "recover"
+    ],
+    "feet_anchor": [
+      96,
+      184
+    ],
+    "weapon_baked_in": false
+  },
+  "frame_sources": [
+    "../sword-attack/frame-00.png",
+    "client/tmp/warrior-hit-candidate-1793046500/flinch-normalized.png",
+    "../sword-defend/frame-01.png"
+  ],
+  "normalization": "Preserve alpha; bbox at alpha>8; uniform nearest-neighbor resize to 164px occupied height; baseline y181 exclusive; x registration +12px to align both boots with approved guard. No body transforms in runtime state.",
+  "prompts": {
+    "generation": "Use case identity-preserve pixel-art RPG animation frame. Input image 1 is the locked original Kithlands Warrior identity, proportions, camera and pixel style. Input image 2 is an exact skeleton pose guide only. Create ONE full-body body-only HIT REACTION frame of the SAME Warrior facing three-quarter screen-left. Show a brief believable flinch away from a blow from screen-left: upper torso recoils toward screen-right, helmet tips back slightly, knees bend to absorb weight, both feet remain planted at the same baseline. Empty weapon glove draws toward torso at guide orange point; free forearm pulls across chest. Match the guide's limbs and weight, but keep image1's enclosed silver/gold helmet and black visor, blue plume, silver plate armor, gold trim, blue cape and silhouette. Full head, plume, cape, gauntlets and boots visible with clear margins. Crisp pixel clusters equivalent 192x192 sprite detail; no painterly smoothing. Transparent background. No weapon, sword, shield, staff, blood, injury marks, magic, sparks, text, scenery or ground shadow. Both hands EMPTY. Single pose only, no grid or sprite sheet. Keep identity and armor scale fixed; convey impact with articulated posture, not resizing the body.",
+    "hand_correction": "Use case precise-object-edit of a game sprite. Edit image1 ONLY at the forward, image-left open glove: CLOSE its fingers into a firm empty fist curled around an invisible sword grip. Keep that hand's wrist and gauntlet position unchanged. The palm must no longer be open. This is a body-only sprite; do not add the actual sword or grip. Preserve every other part exactly: leaning helmet, plume, face visor, armor, other fist, shoulders, knees, boots, cape silhouette, palette, pixel clusters, full-body framing and transparent background. No other pose, anatomy, equipment or style changes. No text, scenery, effects or shadow."
+  },
+  "generation_outputs": [
+    "exec-1cd0ade7-b14c-4a5f-89ad-2024c0052a48.png (open hand rejected)",
+    "exec-260b39fa-84d6-4152-b1f9-74eacdb6bd38.png (closed hand correction)"
+  ],
+  "notes": "Source, actual Go-resolved surviving-hit/recovery and lethal-KO captures inspected by Codex on desktop, phone and reduced motion. Scope: Warrior hit reaction only. Existing attack, critical and KO art unchanged. Raw/rejected drafts remain in client/tmp/warrior-hit-candidate-1793046500. Recoil begins at contact with no anticipation; reduced motion retains this cue without container shake.",
+  "playback_order": [
+    "flinch",
+    "recover",
+    "guard"
+  ]
+}

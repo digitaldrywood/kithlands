@@ -1,0 +1,12 @@
+{
+  "generator": "built-in image_gen",
+  "model": "not exposed by tool",
+  "source": "generated-source.png",
+  "references": ["client/public/sprites/world/landmarks/dungeon-ruins.png", "client/public/sprites/world/landmarks/natural-grove-canopy.png"],
+  "prompt": "prompt.txt",
+  "normalization": "normalize.sh; nearest-neighbor 64x64 export",
+  "approved": "approved-64.png",
+  "runtime": "client/public/sprites/world/landmarks/dungeon-ruins-detailed.png",
+  "sha256": "757277b6d3024aa5859957d4554c8a853962d84b3c8a36db5b07e824aa00e0af",
+  "unchanged": ["variant ID", "texture key", "64x64 frame", "origin", "depth", "collision", "interaction", "save identity"]
+}

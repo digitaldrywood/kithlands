@@ -1,0 +1,105 @@
+.wizard-dialog .viewport-dialog-panel {
+  width: min(100%, 760px);
+}
+.wizard-dialog .viewport-dialog-header p {
+  margin-bottom: 0;
+}
+.wizard-dialog .viewport-dialog-body {
+  display: grid;
+  gap: 20px;
+}
+.wizard-dialog .viewport-dialog-footer {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+.wizard-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.wizard-field > span {
+  color: var(--menu-muted);
+  font-size: 14px;
+}
+.wizard-dialog input[type="text"],
+.wizard-dialog select {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid var(--menu-muted);
+  border-radius: 10px;
+  background: var(--menu-card);
+  color: var(--menu-text);
+  font: inherit;
+}
+.wizard-map-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+}
+.wizard-map-toggle input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--menu-accent);
+}
+.wizard-radius {
+  display: grid;
+  gap: 8px;
+}
+.wizard-radius[hidden] {
+  display: none;
+}
+.wizard-radius input {
+  width: 100%;
+  min-height: 46px;
+  accent-color: var(--menu-accent);
+}
+.wizard-party {
+  display: grid;
+  gap: 14px;
+}
+.wizard-member {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 14px;
+  border: 1px solid var(--menu-line);
+  border-radius: 14px;
+  background: var(--menu-card);
+}
+.wizard-member img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.wizard-member-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.wizard-dialog .dialog-status {
+  margin: 12px 0 0;
+}
+@media (max-width: 500px) {
+  .wizard-member {
+    grid-template-columns: 48px minmax(0, 1fr);
+    padding: 12px;
+    gap: 12px;
+  }
+  .wizard-member img {
+    width: 48px;
+    height: 64px;
+  }
+  .wizard-member-fields {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .wizard-dialog .viewport-dialog-footer button {
+    padding-inline: 12px;
+  }
+}

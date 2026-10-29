@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -48,7 +49,7 @@ func (g *Game) ToSaveStateWithWorldPosition(name, userID string, position *World
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	if (g.inDungeon() || g.finalEncounterActive()) && g.phase == "combat" {
+	if (g.inDungeon() || g.finalEncounterActive() || g.objectiveEncounterActive()) && g.phase == "combat" {
 		return nil, fmt.Errorf("finish or flee the encounter before saving")
 	}
 	if position != nil {
@@ -93,6 +94,7 @@ func (g *Game) ToSaveStateWithWorldPosition(name, userID string, position *World
 		"battle_rewards":             g.battleRewards,
 		"shop_stocks":                g.shopStocks,
 		"world_checkpoint":           g.worldCheckpoint,
+		"resource_placement_version": g.resourcePlacementVersion,
 		"interior_templates":         g.interiorChoices(),
 	}
 	worldJSON, err := json.Marshal(worldState)
@@ -171,9 +173,16 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		BattleRewards            *battleRewardsReceipt                  `json:"battle_rewards"`
 		ShopStocks               map[string]*ShopStock                  `json:"shop_stocks"`
 		WorldCheckpoint          json.RawMessage                        `json:"world_checkpoint"`
+		ResourcePlacementVersion int                                    `json:"resource_placement_version"`
 	}
 	if err := json.Unmarshal(ss.WorldState, &worldState); err != nil {
 		return nil, fmt.Errorf("unmarshaling world state: %w", err)
+	}
+	if worldState.ResourcePlacementVersion == 0 {
+		worldState.ResourcePlacementVersion = resourcePlacementLegacy
+	}
+	if worldState.ResourcePlacementVersion < resourcePlacementLegacy || worldState.ResourcePlacementVersion > resourcePlacementBiome {
+		return nil, fmt.Errorf("unsupported resource placement version %d", worldState.ResourcePlacementVersion)
 	}
 	quests, worldState.CurrentQ = migrateRequiredCampaign(quests, worldState.CurrentQ)
 	refreshPendingCampaignXP(quests, worldState.CurrentQ, gd)
@@ -265,6 +274,7 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 	}
 
 	game := &Game{
+		resourcePlacementVersion: worldState.ResourcePlacementVersion,
 		savedInteriorTemplates:   worldState.InteriorTemplates,
 		finalEncounter:           worldState.FinalEncounter,
 		dungeon:                  activeDungeon,
@@ -303,6 +313,10 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 		},
 	}
 
+	if err := game.reconcileDungeonMaterialRewards(); err != nil {
+		return nil, fmt.Errorf("restore crafting rewards: %w", err)
+	}
+
 	// Saves written before the transport pipeline landed have no transport
 	// block. Reconcile by replaying unlock checks against the quest state so
 	// the player doesn't get forced back to T1 on a mid/late-game load.
@@ -325,13 +339,19 @@ func FromSaveState(ss *save.SaveState, gd *gamedata.GameData, loc *locality.Loca
 			}
 		}
 	}
-	// Accept the exact pre-footbridge map signature, then revalidate the
-	// position against the new map. This migration only opens river tiles;
-	// arbitrary stale or corrupt map signatures still use normal recovery.
+	// Accept exact historical map signatures, then revalidate the position.
+	// Recognized historical maps preserve their checkpoint only after it passes
+	// current traversal validation. Unknown signatures use normal recovery.
 	if savedCheckpoint != nil && savedCheckpoint.MapSignature != worldMapSignature(tileMap) {
-		legacyMap := locality.GenerateTileMapBeforeFootbridges(loc, spawnID, walk)
-		if savedCheckpoint.MapSignature == worldMapSignature(legacyMap) {
+		beforeBiome := locality.GenerateTileMapBeforeBiomeCleanup(loc, spawnID, walk)
+		preTrailMap := locality.GenerateTileMapBeforePublicTrails(loc, spawnID, walk)
+		if savedCheckpoint.MapSignature == worldMapSignature(beforeBiome) || savedCheckpoint.MapSignature == worldMapSignature(preTrailMap) {
 			savedCheckpoint.MapSignature = worldMapSignature(tileMap)
+		} else {
+			legacyMap := locality.GenerateTileMapBeforeFootbridges(loc, spawnID, walk)
+			if savedCheckpoint.MapSignature == worldMapSignature(legacyMap) {
+				savedCheckpoint.MapSignature = worldMapSignature(tileMap)
+			}
 		}
 	}
 	game.worldCheckpoint = resolveWorldCheckpoint(savedCheckpoint, tileMap, loc, game.worldTraversal(), spawnID, dungeonOriginNodeID)
@@ -554,6 +574,16 @@ func (s *Server) handleAutosave(w http.ResponseWriter, r *http.Request) {
 	jsonResp(w, map[string]string{"status": "autosaved", "name": saveName})
 }
 
+// A campaign's seed survives save/load and distinguishes separate runs in the
+// same locality. Names, party levels and save type can change between snapshots.
+func saveAdventureID(state *save.SaveState) string {
+	if state.RNGSeed == 0 || state.LocalityID == "" {
+		return state.ID // Do not merge legacy saves with incomplete identity.
+	}
+	identity := fmt.Sprintf("%s/%s/%d", state.UserID, state.LocalityID, state.RNGSeed)
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(identity)))
+}
+
 func (s *Server) handleListSaves(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
@@ -570,6 +600,7 @@ func (s *Server) handleListSaves(w http.ResponseWriter, r *http.Request) {
 
 	// Build summary list
 	type SaveSummary struct {
+		AdventureID  string    `json:"adventure_id"`
 		ID           string    `json:"id"`
 		Name         string    `json:"name"`
 		SaveType     string    `json:"save_type"`
@@ -593,6 +624,7 @@ func (s *Server) handleListSaves(w http.ResponseWriter, r *http.Request) {
 
 		summaries = append(summaries, SaveSummary{
 			ID:           sv.ID,
+			AdventureID:  saveAdventureID(&sv),
 			Name:         sv.Name,
 			SaveType:     sv.SaveType,
 			TriggerEvent: sv.TriggerEvent,

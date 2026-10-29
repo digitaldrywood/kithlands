@@ -914,6 +914,21 @@ describe("smart attack planner", () => {
 });
 
 describe("battle action buttons", () => {
+  it("offers Defend with a visible shortcut and preserves it when repeating", () => {
+    const gs = makeState();
+    const buttons = buildBattleActionButtons({
+      member: gs.party[0],
+      gameState: gs,
+      hasLastRound: true,
+      autoMode: false,
+    });
+    expect(buttons.find((button) => button.type === "defend")).toMatchObject({
+      label: "[D]EFEND",
+    });
+    expect(resolveAction({ slot: 0, type: "defend" }, gs.party[0], gs)).toEqual(
+      { slot: 0, type: "defend" },
+    );
+  });
   it("shows Smart Attack from round 1 even without saved actions", () => {
     const gs = makeState();
     const buttons = buildBattleActionButtons({

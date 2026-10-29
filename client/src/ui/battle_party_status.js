@@ -15,6 +15,25 @@ function meterColor(current, maximum, kind) {
   return pct > 0.5 ? 0x8ac7aa : pct > 0.25 ? 0xffb84d : 0xff5f5f;
 }
 
+// Round playback may finish in victory without rebuilding the battle HUD.
+// Reconcile mana from Go's final party snapshot, never inferred spell costs.
+export function reconcilePartyMana(scene, entries = {}, party = []) {
+  for (const member of party) {
+    const meter = entries[member.name]?.mpBar;
+    if (!meter) continue;
+    const maximum = Math.max(0, member.max_mp | 0);
+    const current = Math.max(0, Math.min(maximum, member.mp | 0));
+    const width = hpBarFillWidth(current, maximum, meter.width || 1);
+    scene.tweens?.killTweensOf?.([meter.fill, meter.ghost].filter(Boolean));
+    meter.fill?.setSize(width, meter.fill.height);
+    meter.fill?.setFillStyle(meterColor(current, maximum, "mp"));
+    meter.ghost?.setSize(width, meter.ghost.height);
+    meter.label?.setText(formatHPLabel(current, maximum));
+    meter.currentHP = current;
+    meter.maxHP = maximum;
+  }
+}
+
 export function partyStatusRowLayout(rect, count, compact = false) {
   const columns = compact ? 2 : 1;
   const rows = Math.ceil(Math.max(1, count) / columns);
@@ -36,13 +55,14 @@ export function partyStatusRowLayout(rect, count, compact = false) {
 }
 
 function addMeter(scene, row, y, label, current, maximum, compact) {
+  const dense = compact && row.height < 210;
   const labelX = row.x + (compact ? 16 : 80);
   const numberX = row.x + (compact ? 72 : 100);
   const barX = row.x + (compact ? 16 : 151);
-  const barY = compact ? y + 40 : y + 5;
+  const barY = compact ? y + (dense ? 36 : 40) : y + 5;
   const barWidth = Math.max(54, row.width - (compact ? 32 : 163));
   const fontSize = compact ? "24px" : "8px";
-  const meterHeight = compact ? 18 : 6;
+  const meterHeight = compact ? (dense ? 12 : 18) : 6;
   const bg = roundedRectangle(
     scene,
     barX,
@@ -186,7 +206,7 @@ export function drawBattlePartyStatus(
       const hp = addMeter(
         scene,
         bounds,
-        bounds.y + (compact ? 70 : 3),
+        bounds.y + (compact ? (bounds.height < 210 ? 48 : 70) : 3),
         "HP",
         member.hp,
         member.max_hp,
@@ -195,7 +215,7 @@ export function drawBattlePartyStatus(
       const mp = addMeter(
         scene,
         bounds,
-        bounds.y + (compact ? 146 : 15),
+        bounds.y + (compact ? (bounds.height < 210 ? 96 : 146) : 15),
         "MP",
         member.mp || 0,
         member.max_mp || 0,

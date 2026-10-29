@@ -186,6 +186,7 @@
     },
     "magic": {
       "schools": ["white"],
+      "starting_spells": ["cure"],
       "max_spell_level": 6,
       "promoted_schools": ["white"],
       "promoted_max_spell_level": 8
@@ -233,6 +234,7 @@
     },
     "magic": {
       "schools": ["black"],
+      "starting_spells": ["spark"],
       "max_spell_level": 6,
       "promoted_schools": ["black"],
       "promoted_max_spell_level": 8

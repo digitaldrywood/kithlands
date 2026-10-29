@@ -1,0 +1,21 @@
+.merchant-browse {
+  position: fixed;
+  z-index: 1800;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid #d2bb83;
+  border-radius: 9px;
+  background: #c9b589;
+  color: #151e2b;
+  font:
+    600 14px/1.2 system-ui,
+    sans-serif;
+  cursor: pointer;
+}
+.merchant-browse:hover {
+  background: #e0cb98;
+}
+.merchant-browse:focus-visible {
+  outline: 3px solid #fff2bb;
+  outline-offset: 2px;
+}

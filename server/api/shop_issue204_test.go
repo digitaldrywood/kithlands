@@ -90,12 +90,17 @@ func TestLearnSpellRejectsPartyMemberBelowRequiredLevel(t *testing.T) {
 	setGold(t, game, 500)
 
 	heal := shopTestOffer(t, game, "heal")
+	before := game.State()
 	err := game.LearnSpell("cadott-general-store", heal.StockID, "Nia")
 	if err == nil {
 		t.Fatal("expected level gate error, got nil")
 	}
 	if !strings.Contains(err.Error(), "level too low") {
 		t.Fatalf("expected level gate error, got %v", err)
+	}
+	after := game.State()
+	if after.Gold != before.Gold || len(after.Party[1].Spells) != len(before.Party[1].Spells) {
+		t.Fatal("rejected spell learning changed gold or known spells")
 	}
 }
 
@@ -188,5 +193,40 @@ func TestGetShopItemsIncludesEquipmentCompareStats(t *testing.T) {
 	}
 	if len(armor.ClassIDs) == 0 {
 		t.Fatalf("armor class_ids missing: %+v", *armor)
+	}
+}
+
+func TestShopSpellLearningCharacterLevelBoundaries(t *testing.T) {
+	for _, tc := range []struct {
+		spell string
+		level int
+	}{
+		{spell: "ember", level: 3},
+		{spell: "fireball", level: 5},
+	} {
+		t.Run(tc.spell, func(t *testing.T) {
+			game := newShopSpellGame(t, []PartyMemberReq{
+				{Name: "Hero", ClassID: "warrior"},
+				{Name: "Sparks", ClassID: "cinder"},
+			})
+			setPartyLevel(t, game, 0, 20)
+			setPartyLevel(t, game, 1, tc.level-1)
+			setGold(t, game, 1000)
+			offer := shopTestOffer(t, game, tc.spell)
+			before := game.State()
+			if err := game.LearnSpell("cadott-general-store", offer.StockID, "Sparks"); err == nil {
+				t.Fatal("under-level character learned spell")
+			}
+			if after := game.State(); after.Gold != before.Gold || len(after.Party[1].Spells) != len(before.Party[1].Spells) {
+				t.Fatal("rejection changed gold or spells")
+			}
+			setPartyLevel(t, game, 1, tc.level)
+			if err := game.LearnSpell("cadott-general-store", offer.StockID, "Sparks"); err != nil {
+				t.Fatalf("character at required level cannot learn: %v", err)
+			}
+			if after := game.State(); after.Gold != before.Gold-offer.Price || len(after.Party[1].Spells) != len(before.Party[1].Spells)+1 {
+				t.Fatal("eligible learning did not charge exactly once and add one spell")
+			}
+		})
 	}
 }

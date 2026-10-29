@@ -193,3 +193,74 @@ describe("final encounter defeat presentation", () => {
     expect(scene.showVictoryResults).not.toHaveBeenCalled();
   });
 });
+
+describe("victory continuation acknowledgement", () => {
+  it("waits for Go to resume exploration before leaving the receipt", async () => {
+    const scene = makeScene();
+    scene.gameState = { ...combatState(), phase: "quest_complete" };
+    let resolve;
+    api.gameAction.mockImplementation(
+      () =>
+        new Promise((r) => {
+          resolve = r;
+        }),
+    );
+    const pending = scene.continueVictory();
+    expect(scene.scene.start).not.toHaveBeenCalled();
+    const next = { ...scene.gameState, phase: "world" };
+    resolve(next);
+    await pending;
+    expect(api.gameAction).toHaveBeenCalledWith(
+      "mill-game",
+      { type: "battle_continue" },
+      { signal: expect.any(AbortSignal) },
+    );
+    expect(scene.scene.start).toHaveBeenCalledExactlyOnceWith("Dungeon", {
+      gameState: next,
+    });
+  });
+
+  it("retains the receipt state after rejection and permits a successful retry", async () => {
+    const scene = makeScene();
+    scene.gameState = { ...combatState(), phase: "quest_complete" };
+    const original = scene.gameState;
+    api.gameAction.mockResolvedValueOnce({ error: "Connection interrupted" });
+    await expect(scene.continueVictory()).rejects.toThrow(
+      "Connection interrupted",
+    );
+    expect(scene.gameState).toBe(original);
+    expect(scene.scene.start).not.toHaveBeenCalled();
+    const next = { ...original, phase: "world" };
+    api.gameAction.mockResolvedValueOnce(next);
+    await scene.continueVictory();
+    expect(scene.gameState).toBe(next);
+    expect(scene.scene.start).toHaveBeenCalledOnce();
+  });
+
+  it("bounds a missing reply without leaving the result screen", async () => {
+    const scene = makeScene();
+    scene.gameState = { ...combatState(), phase: "quest_complete" };
+    scene.victoryAdvanceTimeoutMs = 10;
+    let signal;
+    api.gameAction.mockImplementation((_id, _body, options) => {
+      signal = options.signal;
+      return new Promise(() => {});
+    });
+    await expect(scene.continueVictory()).rejects.toMatchObject({
+      name: "AbortError",
+    });
+    expect(signal.aborted).toBe(true);
+    expect(scene.scene.start).not.toHaveBeenCalled();
+  });
+
+  it.each(["world", "victory"])(
+    "does not acknowledge an already resumed/final %s state",
+    async (phase) => {
+      const scene = makeScene();
+      scene.gameState = { ...combatState(), phase };
+      await scene.continueVictory();
+      expect(api.gameAction).not.toHaveBeenCalled();
+      expect(scene.scene.start).toHaveBeenCalledOnce();
+    },
+  );
+});

@@ -1,8 +1,8 @@
 import { monsterBattleSize } from "../data/monsterSprites.js";
 
 const PARTY_LAYOUT = {
-  desktop: { frontX: 548, backX: 630, slotStartY: 110, slotGapY: 88 },
-  mobile: { frontX: 552, backX: 628, slotStartY: 88, slotGapY: 140 },
+  desktop: { frontX: 550, backX: 680, slotStartY: 244, slotGapY: 54 },
+  mobile: { frontX: 550, backX: 680, slotStartY: 378, slotGapY: 54 },
   arrowOffsetX: -42,
   floatingTextLift: 12,
 };
@@ -33,9 +33,12 @@ export function inferPartyRow(member = {}) {
 
 export function buildPartyBattleLayout(party = [], { compact = false } = {}) {
   const config = compact ? PARTY_LAYOUT.mobile : PARTY_LAYOUT.desktop;
+  // Two full-height bodies in the same column need room for the rear member's
+  // feet/KO pose to remain visible above the foreground member's silhouette.
+  const slotGapY = config.slotGapY * (party.length === 2 ? 2 : 1);
   return party.map((member, slot) => {
     const row = inferPartyRow(member);
-    const y = config.slotStartY + slot * config.slotGapY;
+    const y = config.slotStartY + slot * slotGapY;
     const x = row === "front" ? config.frontX : config.backX;
 
     return {
@@ -49,9 +52,9 @@ export function buildPartyBattleLayout(party = [], { compact = false } = {}) {
       arrowY: y,
       lane: {
         x: 500,
-        y: y - config.slotGapY / 2,
+        y: y - slotGapY / 2,
         width: 292,
-        height: config.slotGapY,
+        height: slotGapY,
       },
     };
   });
@@ -83,17 +86,26 @@ export function buildEnemyBattleLayout(
       width: cellWidth,
       height: cellHeight,
     };
+    const spriteSize = Math.min(
+      monsterBattleSize(enemy),
+      cellWidth - 24,
+      cellHeight - 56,
+    );
+    // Multiple phone rows need room for readable names and result labels.
+    // Use the available field depth rather than compressing every row at its foot.
+    const groundTop =
+      bounds.groundTop ?? (bounds.compact ? (count > 3 ? 140 : 340) : 205);
+    const groundBottom = bounds.groundBottom ?? 414;
+    const feetY =
+      groundTop + ((row + 0.75) / rows) * (groundBottom - groundTop);
     return {
       lane,
       x: lane.x + lane.width / 2,
-      y: lane.y + lane.height * 0.56,
-      nameY: lane.y + 8,
+      y: feetY - spriteSize / 2,
+      nameY: feetY - spriteSize - 14,
       numberY: lane.y + lane.height - 10,
-      spriteSize: Math.min(
-        monsterBattleSize(enemy),
-        cellWidth - 24,
-        cellHeight - 56,
-      ),
+      spriteSize,
+      feetY,
     };
   });
 }
@@ -116,8 +128,11 @@ export function floatingTextAnchorForEntry(entry, fallback = {}) {
     };
   }
 
+  const top = y - (sprite?.feetAnchored ? height : height / 2);
+  const nameTop = entry?.nameText?.getBounds?.().top;
   return {
     x,
-    y: y - height / 2 - PARTY_LAYOUT.floatingTextLift,
+    y: top - PARTY_LAYOUT.floatingTextLift,
+    maxBottom: Math.min(top, nameTop ?? top) - (fallback.gap ?? 10),
   };
 }

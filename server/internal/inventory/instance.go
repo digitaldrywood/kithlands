@@ -34,6 +34,15 @@ type ItemSocket struct {
 
 // Normalize initializes additive fields after loading a legacy save.
 func (inv *Inventory) Normalize() {
+	if inv.ResourceReadyAt == nil {
+		inv.ResourceReadyAt = make(map[string]int64)
+	}
+	if inv.Materials == nil {
+		inv.Materials = make(map[string]int)
+	}
+	if inv.GatheredResources == nil {
+		inv.GatheredResources = make(map[string]bool)
+	}
 	if inv.SchemaVersion < currentSchemaVersion {
 		inv.SchemaVersion = currentSchemaVersion
 	}
@@ -77,6 +86,9 @@ func (inv *Inventory) Clone() *Inventory {
 		return nil
 	}
 	copy := *inv
+	copy.Materials = cloneCounts(inv.Materials)
+	copy.GatheredResources = maps.Clone(inv.GatheredResources)
+	copy.ResourceReadyAt = maps.Clone(inv.ResourceReadyAt)
 	copy.EquipmentBuilds = inv.EquipmentBuildsSnapshot()
 	copy.Consumables = cloneCounts(inv.Consumables)
 	copy.Gems = cloneCounts(inv.Gems)

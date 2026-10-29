@@ -245,3 +245,87 @@ test("manages the full loadout, previews recommendations, and returns from socke
     )
     .toBe(false);
 });
+
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 800, height: 600 },
+  { width: 390, height: 844 },
+]) {
+  test.describe(`character layout ${viewport.width}`, () => {
+    test.use({ hasTouch: viewport.width === 390 });
+    test(`readable character summary and reachable loadout ${viewport.width}`, async ({
+      page,
+    }) => {
+      await mkdir(PROOF_DIR, { recursive: true });
+      await page.setViewportSize(viewport);
+      await startEquipmentGame(page);
+      await openFromCharacterScreen(page);
+      const metrics = await page
+        .locator(".character-summary-panel")
+        .evaluate((panel) => {
+          const font = (selector) =>
+            [...panel.querySelectorAll(selector)].map((node) =>
+              parseFloat(getComputedStyle(node).fontSize),
+            );
+          const label = panel
+            .querySelector(".character-summary-label")
+            .getBoundingClientRect();
+          const bars = panel
+            .querySelector(".character-resource-bars")
+            .getBoundingClientRect();
+          return {
+            stats: font(
+              ".character-stat-grid dt, .character-stat-grid dd strong",
+            ),
+            resources: font(".character-resource-label"),
+            tabs: font(".character-detail-tab"),
+            gap: bars.top - label.bottom,
+            overflow: panel.scrollWidth - panel.clientWidth,
+          };
+        });
+      expect(Math.min(...metrics.stats)).toBeGreaterThanOrEqual(14);
+      expect(Math.min(...metrics.resources)).toBeGreaterThanOrEqual(14);
+      expect(Math.min(...metrics.tabs)).toBeGreaterThanOrEqual(14);
+      expect(metrics.gap).toBeLessThanOrEqual(12);
+      expect(metrics.overflow).toBeLessThanOrEqual(1);
+      if (viewport.width === 390) {
+        const flow = await page
+          .locator(".character-summary-panel")
+          .evaluate((panel) => ({
+            summaryBottom: panel.getBoundingClientRect().bottom,
+            conditionBottom: panel
+              .querySelector(".character-conditions")
+              .getBoundingClientRect().bottom,
+            loadoutTop: document
+              .querySelector(".loadout-panel")
+              .getBoundingClientRect().top,
+          }));
+        expect(flow.conditionBottom).toBeLessThanOrEqual(flow.summaryBottom);
+        expect(flow.loadoutTop).toBeGreaterThanOrEqual(flow.summaryBottom);
+      }
+      await page.screenshot({
+        path: path.join(PROOF_DIR, `summary-${viewport.width}.png`),
+      });
+      await page.locator(".character-conditions").scrollIntoViewIfNeeded();
+      await expect(page.locator(".character-conditions")).toBeInViewport();
+      await page.screenshot({
+        path: path.join(PROOF_DIR, `summary-condition-${viewport.width}.png`),
+      });
+      const weapon = page.locator('[data-slot-id="main_hand"]');
+      await weapon.scrollIntoViewIfNeeded();
+      if (viewport.width === 390) {
+        await weapon.tap();
+      } else await weapon.click();
+      await expect(page.locator(".equipment-drawer")).toBeVisible();
+      await page.screenshot({
+        path: path.join(PROOF_DIR, `readable-loadout-${viewport.width}.png`),
+      });
+      await page
+        .getByRole("button", { name: "Close equipment", exact: true })
+        .click();
+      await expect(
+        page.getByRole("dialog", { name: "Character" }),
+      ).toBeHidden();
+    });
+  });
+}

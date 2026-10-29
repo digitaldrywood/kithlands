@@ -41,6 +41,10 @@
       "effect": "damage",
       "element": "ice",
       "power": 10,
+      "presentation": {
+        "effect_family": "ice",
+        "intensity_tier": 1
+      },
       "description": "Small ice damage to one enemy"
     },
     {
@@ -54,6 +58,10 @@
       "power": 0,
       "status_effect": "sleep",
       "hit_chance": 60,
+      "presentation": {
+        "effect_family": "status_sleep",
+        "intensity_tier": 1
+      },
       "description": "Puts one enemy to sleep"
     },
     {
@@ -82,6 +90,10 @@
       "effect": "damage",
       "element": "ice",
       "power": 12,
+      "presentation": {
+        "effect_family": "ice",
+        "intensity_tier": 1
+      },
       "description": "Small ice damage to all enemies"
     },
     {
@@ -94,6 +106,10 @@
       "effect": "damage",
       "element": "lightning",
       "power": 16,
+      "presentation": {
+        "effect_family": "lightning",
+        "intensity_tier": 1
+      },
       "description": "Small lightning damage to one enemy"
     },
     {
@@ -164,6 +180,10 @@
       "power": 0,
       "status_effect": "silence",
       "hit_chance": 50,
+      "presentation": {
+        "effect_family": "status_silence",
+        "intensity_tier": 1
+      },
       "description": "Silences one enemy"
     },
     {
@@ -206,6 +226,10 @@
       "element": "ice",
       "power": 20,
       "cinematic_tier": "major",
+      "presentation": {
+        "effect_family": "ice",
+        "intensity_tier": 2
+      },
       "description": "Medium ice damage to one enemy"
     },
     {
@@ -220,6 +244,10 @@
       "status_effect": "slow",
       "hit_chance": 65,
       "cinematic_tier": "major",
+      "presentation": {
+        "effect_family": "status_slow",
+        "intensity_tier": 1
+      },
       "description": "Halves AGI of one enemy"
     },
     {
@@ -250,6 +278,10 @@
       "element": "ice",
       "power": 24,
       "cinematic_tier": "major",
+      "presentation": {
+        "effect_family": "ice",
+        "intensity_tier": 3
+      },
       "description": "Medium ice damage to all enemies"
     },
     {
@@ -262,6 +294,10 @@
       "effect": "damage",
       "element": "lightning",
       "power": 24,
+      "presentation": {
+        "effect_family": "lightning",
+        "intensity_tier": 2
+      },
       "cinematic_tier": "major",
       "description": "Medium lightning damage to all enemies"
     },

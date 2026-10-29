@@ -115,6 +115,9 @@ type MemberActionReq struct {
 
 // GameState is the full state sent to the client.
 type GameState struct {
+	Resources           []ResourceNodeState           `json:"resources,omitempty"`
+	Materials           []MaterialState               `json:"materials,omitempty"`
+	FieldRecipes        []FieldRecipeState            `json:"field_recipes,omitempty"`
 	EquipmentBuilds     [4][]inventory.EquipmentBuild `json:"equipment_builds"`
 	EquipmentBuildLimit int                           `json:"equipment_build_limit"`
 	BattleRewards       *BattleRewardsState           `json:"battle_rewards,omitempty"`
@@ -276,6 +279,7 @@ type ItemAffixState struct {
 }
 
 type ItemSocketState struct {
+	IconKey   string `json:"icon_key,omitempty"`
 	Index     int    `json:"index"`
 	GemID     string `json:"gem_id,omitempty"`
 	GemName   string `json:"gem_name,omitempty"`
@@ -286,6 +290,7 @@ type ItemSocketState struct {
 }
 
 type GemState struct {
+	IconKey       string           `json:"icon_key,omitempty"`
 	ID            string           `json:"id"`
 	Name          string           `json:"name"`
 	Count         int              `json:"count"`
@@ -317,6 +322,7 @@ type GemRecipeState struct {
 }
 
 type GemAmountState struct {
+	IconKey       string           `json:"icon_key,omitempty"`
 	GemID         string           `json:"gem_id"`
 	GemName       string           `json:"gem_name"`
 	Count         int              `json:"count"`
@@ -443,17 +449,23 @@ type SpellState struct {
 	Castable     bool                               `json:"castable_in_combat"`
 }
 
+type EnemyIntentState struct {
+	Kind  string `json:"kind"`
+	Label string `json:"label"`
+}
+
 type EnemyState struct {
-	ID          int      `json:"id"`
-	MonsterID   string   `json:"monster_id,omitempty"`
-	Name        string   `json:"name"`
-	HP          int      `json:"hp"`
-	MaxHP       int      `json:"max_hp"`
-	Size        string   `json:"size"`
-	Status      string   `json:"status"`
-	IsUndead    bool     `json:"is_undead"`
-	Weaknesses  []string `json:"weaknesses,omitempty"`
-	Resistances []string `json:"resistances,omitempty"`
+	Intent      *EnemyIntentState `json:"intent,omitempty"`
+	ID          int               `json:"id"`
+	MonsterID   string            `json:"monster_id,omitempty"`
+	Name        string            `json:"name"`
+	HP          int               `json:"hp"`
+	MaxHP       int               `json:"max_hp"`
+	Size        string            `json:"size"`
+	Status      string            `json:"status"`
+	IsUndead    bool              `json:"is_undead"`
+	Weaknesses  []string          `json:"weaknesses,omitempty"`
+	Resistances []string          `json:"resistances,omitempty"`
 }
 
 // isMonsterUndead looks up a live enemy name against the loaded monster
@@ -487,6 +499,7 @@ func (g *Game) buildEnemyState(e *combat.Combatant) EnemyState {
 		Size:      e.Size,
 		Status:    string(e.Status),
 		IsUndead:  g.isMonsterUndead(e.Name),
+		Intent:    g.enemyIntent(e),
 	}
 	if m := g.monsterByName(e.Name); m != nil {
 		state.Weaknesses = append([]string(nil), m.Weaknesses...)
@@ -498,25 +511,28 @@ func (g *Game) buildEnemyState(e *combat.Combatant) EnemyState {
 // CombatActionEntry carries structured metadata for a single combat log line.
 // Sent alongside combat_log so the client can drive animations without parsing text.
 type CombatActionEntry struct {
-	Kind          string                             `json:"kind"`                  // attack, spell, ability, heal, item, counter, info
-	Element       string                             `json:"element,omitempty"`     // fire, ice, lightning, holy, dark, none
-	DamageType    string                             `json:"damage_type,omitempty"` // physical, magical
-	ActorID       int                                `json:"actor_id,omitempty"`
-	ActorName     string                             `json:"actor_name,omitempty"`
-	TargetID      int                                `json:"target_id,omitempty"`
-	TargetName    string                             `json:"target_name,omitempty"`
-	Damage        int                                `json:"damage,omitempty"`
-	Killed        bool                               `json:"killed,omitempty"`
-	Crit          bool                               `json:"crit,omitempty"`
-	Missed        bool                               `json:"missed,omitempty"`
-	Hits          []CombatHitEntry                   `json:"hits,omitempty"`
-	ActionID      string                             `json:"action_id,omitempty"`
-	ActionName    string                             `json:"action_name,omitempty"`
-	CinematicTier string                             `json:"cinematic_tier,omitempty"`
-	SpellName     string                             `json:"spell_name,omitempty"`
-	TargetMode    string                             `json:"target_mode,omitempty"`
-	Presentation  *gamedata.BattleEffectPresentation `json:"presentation,omitempty"`
-	Initiative    int                                `json:"initiative,omitempty"` // weighted turn-order roll for this actor
+	StatusEffect    string                             `json:"status_effect,omitempty"`
+	StatusOutcome   string                             `json:"status_outcome,omitempty"` // applied or resisted, decided at resolution
+	Kind            string                             `json:"kind"`                     // attack, spell, ability, heal, item, counter, info
+	Element         string                             `json:"element,omitempty"`        // fire, ice, lightning, holy, dark, none
+	DamageType      string                             `json:"damage_type,omitempty"`    // physical, magical
+	ActorID         int                                `json:"actor_id,omitempty"`
+	ActorName       string                             `json:"actor_name,omitempty"`
+	TargetID        int                                `json:"target_id,omitempty"`
+	TargetName      string                             `json:"target_name,omitempty"`
+	Damage          int                                `json:"damage,omitempty"`
+	DamagePrevented int                                `json:"damage_prevented,omitempty"`
+	Killed          bool                               `json:"killed,omitempty"`
+	Crit            bool                               `json:"crit,omitempty"`
+	Missed          bool                               `json:"missed,omitempty"`
+	Hits            []CombatHitEntry                   `json:"hits,omitempty"`
+	ActionID        string                             `json:"action_id,omitempty"`
+	ActionName      string                             `json:"action_name,omitempty"`
+	CinematicTier   string                             `json:"cinematic_tier,omitempty"`
+	SpellName       string                             `json:"spell_name,omitempty"`
+	TargetMode      string                             `json:"target_mode,omitempty"`
+	Presentation    *gamedata.BattleEffectPresentation `json:"presentation,omitempty"`
+	Initiative      int                                `json:"initiative,omitempty"` // weighted turn-order roll for this actor
 }
 
 // CombatHitEntry represents a single hit within a multi-hit attack.
@@ -592,7 +608,11 @@ type QuestRewardState struct {
 
 // Game holds the live state of one game session.
 type Game struct {
-	savedInteriorTemplates map[string]string
+	resourcePlacementVersion int
+	resourceAnchorMap        *locality.TileMap
+	resourceMap              *locality.TileMap
+	resourceNodeCache        []ResourceNodeState
+	savedInteriorTemplates   map[string]string
 
 	dungeon             *DungeonProgress
 	dungeons            map[string]*DungeonProgress
@@ -668,68 +688,16 @@ type Game struct {
 func (g *Game) State() GameState {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	g.prepareFinalQuest()
-
-	state := GameState{
-		ID:                   g.id,
-		Phase:                g.phase,
-		CurrentQ:             g.currentQ,
-		Gold:                 g.inv.Gold,
-		Potions:              g.inv.Consumables["potion"],
-		Ethers:               g.inv.Consumables["ether"],
-		HiEthers:             g.inv.Consumables["hi_ether"],
-		XEthers:              g.inv.Consumables["x_ether"],
-		Message:              g.message,
-		CombatLog:            g.combatLog,
-		CombatActions:        g.combatActions,
-		LastRoundActions:     cloneMemberActionReqs(g.lastRoundActions),
-		ShowcaseMode:         g.showcaseMode,
-		ShowcaseTitle:        g.showcaseTitle,
-		ShowcaseTips:         append([]string(nil), g.showcaseTips...),
-		BattleCharacterAudit: cloneBattleCharacterAudit(g.battleAudit),
-	}
-
+	// All response paths share the same projection. Only full snapshots carry
+	// the map and developer presentation payloads.
+	state := g.stateUnlocked()
 	if g.loc != nil {
-		state.Location = g.loc.Name
 		state.TileMap = g.tileMap
 	}
-	state.WorldCheckpoint = cloneWorldCheckpoint(g.worldCheckpoint)
-	g.fillLocationState(&state)
-
-	state.Transport = g.buildTransportInfo()
-	state.CollectedHiddenItems = g.collectedHiddenItems
-	state.TriggeredFlags = cloneBoolMap(g.triggeredFlags)
-	g.fillNaturalDiscoveryState(&state)
-	state.PendingChestClaim = clonePendingChestClaimState(g.pendingChestClaim)
-	g.fillInventoryState(&state)
-	g.fillExtras(&state)
-	g.fillBattleRewardsState(&state)
-
-	for i, c := range g.party {
-		state.Party = append(state.Party, g.buildPartyMemberState(c, i))
-	}
-
-	for _, e := range g.enemies {
-		if e.CurrentHP > 0 {
-			state.Enemies = append(state.Enemies, g.buildEnemyState(e))
-		}
-	}
-	if g.phase == "combat" {
-		state.Formation = g.formation
-		// Only advertise the opening surprise outcome on round 0 — the
-		// client's battle scene triggers the banner + auto-wait handler
-		// whenever encounter_start is populated, so leaking it into
-		// round 1+ loops into infinite ambushes (issue raised by player).
-		if g.combatRound == 0 && g.encounterStart != combat.EncounterStartNormal {
-			state.EncounterStart = string(g.encounterStart)
-		}
-	}
-
-	for _, q := range g.quests {
-		state.Quests = append(state.Quests, questToState(&q))
-	}
-	g.fillBuildingSideQuestState(&state)
-
+	state.ShowcaseMode = g.showcaseMode
+	state.ShowcaseTitle = g.showcaseTitle
+	state.ShowcaseTips = append([]string(nil), g.showcaseTips...)
+	state.BattleCharacterAudit = cloneBattleCharacterAudit(g.battleAudit)
 	return state
 }
 
@@ -826,6 +794,21 @@ func (g *Game) ProcessAction(req GameActionRequest) (result *GameState, err erro
 		}
 	}()
 
+	// A result acknowledgement is safe to retry after a lost response. Keep it
+	// distinct from legacy advance, which starts encounters from the world.
+	if req.Type == "battle_continue" {
+		switch g.phase {
+		case "quest_complete":
+			g.combatLog = nil
+			g.combatActions = nil
+			return g.processAdvance(req)
+		case "world":
+			state := g.stateUnlocked()
+			return &state, nil
+		default:
+			return nil, fmt.Errorf("finish the current encounter before continuing")
+		}
+	}
 	allowedDungeonFieldAction := req.Type == "item" || req.Type == "spell" || g.phase == "quest_complete" && req.Type == "advance"
 	if g.inDungeon() && (g.phase == "world" || g.phase == "quest_complete") && !allowedDungeonFieldAction {
 		return nil, fmt.Errorf("use exploration actions inside the adventure")
@@ -1119,6 +1102,7 @@ func (g *Game) stateUnlocked() GameState {
 	g.fillNaturalDiscoveryState(&state)
 	state.PendingChestClaim = clonePendingChestClaimState(g.pendingChestClaim)
 	g.fillInventoryState(&state)
+	g.fillGatheringState(&state)
 	g.fillExtras(&state)
 	g.fillBattleRewardsState(&state)
 	for i, c := range g.party {

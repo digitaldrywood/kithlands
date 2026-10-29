@@ -94,6 +94,20 @@ describe("world landmark rendering", () => {
     });
   });
 
+  it("keeps a variant's marker and badge aligned when its art has an offset", () => {
+    const { scene } = makeScene();
+    const result = renderWorldLandmarks(
+      scene,
+      [{ node_id: "wilderness_2", name: "Ruins", x: 4, y: 6 }],
+      { dungeon_entries: [{ id: "old-mill", node_id: "wilderness_2" }] },
+    );
+    expect(result.markers.children[0].y).toBe(6 * 32 + 16 - 12);
+    expect(result.badges.children[0].y - result.markers.children[0].y).toBe(
+      -18,
+    );
+    expect(result.models[0].y).toBe(result.markers.children[0].y);
+  });
+
   it("destroys both old containers and rebuilds without duplicates", () => {
     const { scene } = makeScene();
     renderWorldLandmarks(scene, [

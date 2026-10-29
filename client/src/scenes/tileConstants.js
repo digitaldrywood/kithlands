@@ -139,6 +139,7 @@ export function blendPriority(tile) {
     case TILE_IDS.tree:
       return 80;
     case TILE_IDS.snow:
+      return 66;
     case TILE_IDS.hill:
       return 65;
     case TILE_IDS.marsh:

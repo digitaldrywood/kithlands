@@ -1,0 +1,34 @@
+{
+  "status": "approved_runtime",
+  "generated_on": "2026-10-26",
+  "generator": "OpenAI built-in image_gen (model identifier not returned)",
+  "identity_reference": "art-source/characters/cinder/battle/staff-cast/frame-00.png",
+  "guide_paths": [
+    "../../guides/staff-defend-brace.svg",
+    "../../guides/staff-defend-settle.svg"
+  ],
+  "generation_outputs": [
+    "exec-82188847-81c6-4a2b-9c5f-e06a1bf11fa4.png",
+    "exec-1d883d88-4f16-4935-acab-40e37d659f99.png"
+  ],
+  "prompts": {
+    "brace": "Use case: identity-preserve original pixel-art game animation frame. Image 1 is locked Kithlands Cinder identity and exact rendering. Image 2 is a DEFEND BRACE pose guide ONLY. Produce ONE body-only full-body same Cinder: shadow-black face, exactly two tiny cyan eyes, crooked bent-tip violet pointed hat, gold-edged layered purple robe and cloak, red-violet chest clasp, dark gloves/boots. Three-quarter facing screen-left with slightly overhead battle camera. PLANTED defensive stance: knees bend under robes, body visibly lowers and compacts, head tucked; near empty gloved palm raised at chest/face height toward screen-left to ward off a strike, far empty glove at right hip ready to hold a separately rendered staff. Both feet remain on ground, heavy robe hem grounded and spread, no jump or whole-body tilt. Maintain original hat/head scale and slim body proportions, coherent cloth folds, crisp chunky pixel-art equivalent 192px sprite detail, no painterly smoothing. No staff/weapon, magic/effects, aura, shield, shadow, ground, scenery, text or UI. Entire body centered with generous transparent margins, real alpha. One pose only, not a sheet/grid.",
+    "settle": "Use case identity-preserve original pixel-art game animation. Image1 is locked Kithlands Cinder idle identity and exact pixel cluster style. Image2 is same Cinder defensive brace candidate. Image3 is precise halfway SETTLING pose guide only. Produce ONE full-body body-only transition halfway from image1 to image2. SAME shadow-black face with exactly two tiny cyan eyes, crooked bent-tip violet hat, gold-edged layered purple robes/cloak, red-violet clasp and dark gloves/boots. Three-quarter facing screen-left. Knees slightly bent under grounded robes, head/torso a little lowered but not as low as image2. Near empty gloved hand lifts forward screen-left, palm beginning to open at upper chest height (lower and nearer body than image2's fully raised warding hand). Far empty glove stays near right hip to grip a separately rendered staff. Keep original hat/head mass, slim proportions, palette, camera and crisp chunky pixel-art style from image1. No jumping, floating, whole-body tilt, weapon, staff, shield, magic, glow, ground, shadow, scenery, blood, text or UI. Entire body centered with clear transparent margins, real alpha. One isolated pose, no grid or sheet."
+  },
+  "frame_contract": {
+    "frame_size": [192, 192],
+    "atlas_size": [576, 192],
+    "order": ["guard", "settle", "brace"],
+    "container_anchor": [96, 184],
+    "body_baseline": 182,
+    "weapon_baked_in": false
+  },
+  "normalization": "Preserve generated alpha, crop occupied alpha>8 bbox; uniformly nearest-neighbor resize settle to162px high and brace154px high; center in192px cells, occupied bottom y182. Frame0 copied unchanged from accepted cast guard.",
+  "candidate_path": "client/tmp/cinder-defend-candidate-1793067600",
+  "visual_acceptance": {
+    "proof": "docs/CINDER_DEFEND_POSE_PROOF.md",
+    "scope": "Native fresh Old Mill guarded round, recovery, win and trail return at desktop/phone touch/reduced motion",
+    "runtime_path": "client/public/sprites/battle/cinder/staff-defend-body.png",
+    "observations": "Planted hem/boots, lowered torso, raised free warding hand; separately attached staff at authored right glove; no body rotation/offset/shadow drift"
+  }
+}

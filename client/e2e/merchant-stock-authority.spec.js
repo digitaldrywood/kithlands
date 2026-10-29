@@ -1,7 +1,11 @@
+import { findStockRow } from "./helpers/shop-stock.js";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
+
+// Retain the first failure, including input/scene timing, without a retry.
+test.use({ trace: "retain-on-failure" });
 
 const RUN_ID = Date.now();
 const SPEC_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -19,6 +23,7 @@ const VIEWPORTS = [
   { label: "390x844", width: 390, height: 844, mobile: true },
 ];
 
+// Approach the painted steps at row 9; row 8 is the solid shop roof.
 const STORE_PATH = [
   "up",
   "right",
@@ -33,7 +38,6 @@ const STORE_PATH = [
   "right",
   "right",
   "right",
-  "up",
   "up",
   "up",
 ];
@@ -80,6 +84,11 @@ async function moveSettlement(page, directions) {
 }
 
 async function tapActionButton(page, sceneKey) {
+  const control = page.locator(".explore-interaction:visible");
+  if (await control.count()) {
+    await control.tap();
+    return;
+  }
   const layout = await page.evaluate(
     (key) => window.__kithlandsTest.gameplayViewportSnapshot(key),
     sceneKey,
@@ -88,8 +97,34 @@ async function tapActionButton(page, sceneKey) {
     (key) => window.__kithlandsTest.logicalGameSize(key),
     sceneKey,
   );
-  const box = await page.locator("canvas").boundingBox();
+  const box = await page.locator("#game > canvas").boundingBox();
   if (!box) throw new Error("game canvas is missing");
+  // Canvas scenes reserve their first real touch for revealing controls.
+  // Activate that mode explicitly; it is separate from confirming a door.
+  const actionVisible = await page.evaluate(
+    (key) =>
+      window.__kithlandsTest
+        .visibleTexts(key)
+        .some((entry) => entry.text === "A"),
+    sceneKey,
+  );
+  if (!actionVisible) {
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    await page.waitForFunction(
+      (key) =>
+        window.__kithlandsTest
+          .visibleTexts(key)
+          .some((entry) => entry.text === "A"),
+      sceneKey,
+    );
+  }
+  // Phaser registers the freshly revealed hit areas on its next input frame.
+  await page.evaluate(
+    () =>
+      new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+      ),
+  );
   await page.touchscreen.tap(
     box.x + (layout.action.x / size.width) * box.width,
     box.y + (layout.action.y / size.height) * box.height,
@@ -97,6 +132,15 @@ async function tapActionButton(page, sceneKey) {
 }
 
 async function startQuickGame(page) {
+  // This catalog fixture exercises shops, not a randomly chosen quest fight.
+  await page.route("**/api/game/new", (route) =>
+    route.continue({
+      postData: JSON.stringify({
+        ...route.request().postDataJSON(),
+        rng_seed: 4,
+      }),
+    }),
+  );
   const openTitle = async () => {
     await page.goto("/?noEncounters=1");
     await page.waitForFunction(() => !!window.__kithlandsTest);
@@ -120,13 +164,7 @@ async function startQuickGame(page) {
 async function triggerSceneAction(page, viewport, sceneKey) {
   if (viewport.mobile) {
     await tapActionButton(page, sceneKey);
-    await page.waitForTimeout(200);
-    if (
-      (await page.evaluate(() => window.__kithlandsTest.activeSceneKey())) ===
-      sceneKey
-    ) {
-      await tapActionButton(page, sceneKey);
-    }
+    // Callers await the destination scene. A second tap can race its fade.
   } else {
     await page.evaluate(
       (key) => window.__kithlandsTest.pressKey("Enter", key),
@@ -227,9 +265,14 @@ async function leaveShopForWorld(page) {
     () => window.__kithlandsTest.activeSceneKey() === "Settlement",
   );
   await page.waitForFunction(
-    () =>
-      window.__kithlandsTest.settlementSnapshot().currentInteraction === null,
+    () => !window.__kithlandsTest.settlementSnapshot().animating,
   );
+  // The authored return anchor is now on the store steps, beside its door.
+  expect(
+    await page.evaluate(
+      () => window.__kithlandsTest.settlementSnapshot().currentInteraction,
+    ),
+  ).toBe("general-store-door");
   await moveSettlement(page, SOUTH_EXIT_PATH);
   await page.evaluate(() =>
     window.__kithlandsTest.pressKey("Enter", "Settlement"),
@@ -286,10 +329,12 @@ for (const viewport of VIEWPORTS) {
     await page.evaluate(() =>
       window.__kithlandsTest.clickInteractiveText("Armor", "Town"),
     );
-    await page.evaluate(
-      (name) => window.__kithlandsTest.clickInteractiveText(name, "Town"),
+    const row = await findStockRow(
+      page,
+      page.locator(".kith-shop"),
       rolledOffer.name,
     );
+    await row[viewport.mobile ? "tap" : "click"]();
     await page.waitForFunction(
       (name) =>
         window.__kithlandsTest
@@ -449,11 +494,9 @@ test("merchant catalog failures recover without stale offers", async ({
   await page.evaluate(() =>
     window.__kithlandsTest.clickInteractiveText("Weapons", "Town"),
   );
-  await page.waitForFunction(() =>
-    window.__kithlandsTest
-      .visibleTexts("Town")
-      .some((entry) => entry.text === "Wooden Club"),
-  );
+  await expect(
+    await findStockRow(page, page.locator(".kith-shop"), "Wooden Club"),
+  ).toBeVisible();
 
   const catalog = await page.evaluate(() =>
     window.__kithlandsTest.shopItems("Town"),
@@ -464,10 +507,9 @@ test("merchant catalog failures recover without stale offers", async ({
   await page.evaluate(() =>
     window.__kithlandsTest.clickInteractiveText("Armor", "Town"),
   );
-  await page.evaluate(
-    (name) => window.__kithlandsTest.clickInteractiveText(name, "Town"),
-    rolledOffer.name,
-  );
+  await (
+    await findStockRow(page, page.locator(".kith-shop"), rolledOffer.name)
+  ).click();
 
   failedShopGets = 1;
   await page.evaluate(() =>
@@ -508,11 +550,9 @@ test("merchant catalog failures recover without stale offers", async ({
   await page.evaluate(() =>
     window.__kithlandsTest.clickInteractiveText("Weapons", "Town"),
   );
-  await page.waitForFunction(() =>
-    window.__kithlandsTest
-      .visibleTexts("Town")
-      .some((entry) => entry.text === "Wooden Club"),
-  );
+  await expect(
+    await findStockRow(page, page.locator(".kith-shop"), "Wooden Club"),
+  ).toBeVisible();
   const recoveredCatalog = await page.evaluate(() =>
     window.__kithlandsTest.shopItems("Town"),
   );
@@ -529,10 +569,9 @@ test("merchant catalog failures recover without stale offers", async ({
   await page.evaluate(() =>
     window.__kithlandsTest.clickInteractiveText("Weapons", "Town"),
   );
-  await page.evaluate(
-    (name) => window.__kithlandsTest.clickInteractiveText(name, "Town"),
-    reusableOffer.name,
-  );
+  await (
+    await findStockRow(page, page.locator(".kith-shop"), reusableOffer.name)
+  ).click();
   const remotePurchase = await page.evaluate(
     ({ nodeID, stockID }) =>
       window.__kithlandsTest.buyShopOfferRemote(nodeID, stockID, "Town"),

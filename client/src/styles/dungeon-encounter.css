@@ -1,0 +1,47 @@
+.kith-viewport-dialog.dungeon-encounter {
+  background: #071012b8;
+}
+.dungeon-encounter .viewport-dialog-panel {
+  max-width: 620px;
+}
+.encounter-description {
+  margin: 0 0 20px;
+}
+.encounter-enemy {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid var(--menu-line);
+  border-radius: 12px;
+  background: var(--menu-card);
+}
+.encounter-enemy img {
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+.encounter-enemy h2 {
+  font-size: 19px;
+  color: var(--menu-accent);
+  margin: 0 0 8px;
+}
+.encounter-enemy p {
+  margin: 0;
+}
+.encounter-note {
+  font-size: 13px;
+  color: var(--menu-muted);
+  margin-bottom: 0;
+}
+@media (max-width: 440px) {
+  .encounter-enemy {
+    padding: 12px;
+    gap: 10px;
+  }
+  .encounter-enemy img {
+    width: 64px;
+    height: 64px;
+  }
+}

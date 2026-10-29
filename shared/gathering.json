@@ -1,0 +1,283 @@
+{
+  "nodes_per_route": 4,
+  "max_routes": 3,
+  "resources": [
+    {
+      "id": "meadow_herbs",
+      "name": "Meadow herbs",
+      "material_id": "meadow_herb",
+      "material_name": "Meadow herb",
+      "quantity": 3,
+      "visual": "herb",
+      "source": "Gather in meadow herb beds \u00b7 regrows in 3 minutes",
+      "respawn_seconds": 180,
+      "habitat": "meadow"
+    },
+    {
+      "id": "iron_outcrop",
+      "name": "Ember iron outcrop",
+      "material_id": "ember_ore",
+      "material_name": "Ember iron ore",
+      "quantity": 4,
+      "visual": "mineral",
+      "source": "Mine rocky outcrops near quest trails \u00b7 renews in 10 minutes",
+      "respawn_seconds": 600,
+      "habitat": "rocky"
+    },
+    {
+      "id": "fallen_hardwood",
+      "name": "Fallen hardwood",
+      "material_id": "hardwood",
+      "material_name": "Hardwood",
+      "quantity": 2,
+      "visual": "wood",
+      "source": "Gather fallen wood at woodland edges \u00b7 renews in 5 minutes",
+      "placement": "route_end",
+      "max_per_map": 3,
+      "respawn_seconds": 300,
+      "habitat": "woodland"
+    },
+    {
+      "id": "mythril_seam",
+      "name": "Deep mythril seam",
+      "material_id": "mythril_ore",
+      "material_name": "Mythril ore",
+      "quantity": 2,
+      "visual": "mineral",
+      "source": "Rare rocky seam \u00b7 party level 8 \u00b7 renews in 30 minutes",
+      "placement": "route_end",
+      "max_per_map": 1,
+      "required_level": 8,
+      "respawn_seconds": 1800,
+      "habitat": "rocky"
+    }
+  ],
+  "recipes": [
+    {
+      "id": "brew_potion",
+      "name": "Brew Potion",
+      "description": "Brew trail herbs into a healing potion for your next battle.",
+      "inputs": [
+        {
+          "material_id": "meadow_herb",
+          "count": 2
+        }
+      ],
+      "output_id": "potion",
+      "output_count": 1,
+      "output_visual": "potion"
+    },
+    {
+      "id": "refine_ember",
+      "name": "Refine Ember Shards",
+      "description": "Separate the ember crystals from iron ore. Transmute three shards into a gem in the gem workshop.",
+      "inputs": [
+        {
+          "material_id": "ember_ore",
+          "count": 3
+        }
+      ],
+      "output_id": "ember_shard",
+      "output_count": 3,
+      "output_visual": "gem"
+    },
+    {
+      "id": "forge_iron_sword",
+      "name": "Forge Iron Sword",
+      "description": "Smelt and forge an iron blade, fit a hardwood handle, and leave one open gem socket.",
+      "inputs": [
+        {
+          "material_id": "ember_ore",
+          "count": 5
+        },
+        {
+          "material_id": "hardwood",
+          "count": 1
+        }
+      ],
+      "output_id": "iron_sword",
+      "output_count": 1,
+      "item_level": 1,
+      "sockets": 1,
+      "rarity_id": "common",
+      "output_visual": "sword"
+    },
+    {
+      "id": "forge_trail_sword",
+      "name": "Forge Balanced Trail Sword",
+      "description": "Balance an iron blade with the millwright\u2019s bronze pommel and a hardwood grip. Trades 1 Power for 10% Hit Chance against the Iron Sword. One gem socket. Recover the unique pommel at the optional Heron Pool.",
+      "inputs": [
+        {
+          "material_id": "ember_ore",
+          "count": 5
+        },
+        {
+          "material_id": "hardwood",
+          "count": 1
+        },
+        {
+          "material_id": "bronze_pommel",
+          "count": 1
+        }
+      ],
+      "output_id": "trail_sword",
+      "output_count": 1,
+      "output_visual": "sword",
+      "item_level": 1,
+      "sockets": 1,
+      "rarity_id": "common"
+    },
+    {
+      "id": "forge_steel_sword",
+      "name": "Forge Steel Sword",
+      "description": "Use charcoal to harden the iron, flux to remove impurities, and a leather wrap for a secure grip. Party level 4 unlocks this recipe.",
+      "inputs": [
+        {
+          "material_id": "ember_ore",
+          "count": 8
+        },
+        {
+          "material_id": "hardwood",
+          "count": 1
+        },
+        {
+          "material_id": "charcoal",
+          "count": 2
+        },
+        {
+          "material_id": "forge_flux",
+          "count": 1
+        },
+        {
+          "material_id": "leather_wrap",
+          "count": 1
+        }
+      ],
+      "output_id": "steel_sword",
+      "output_count": 1,
+      "output_visual": "sword",
+      "item_level": 1,
+      "required_level": 4,
+      "sockets": 1,
+      "rarity_id": "common"
+    },
+    {
+      "id": "forge_mythril_sword",
+      "name": "Forge Runic Mythril Sword",
+      "description": "Forge rare mythril into a light blade and bind Old Mill\u2019s runic core into its hilt. Two gem sockets make this a long-term project. Party level 8 required.",
+      "inputs": [
+        {
+          "material_id": "mythril_ore",
+          "count": 2
+        },
+        {
+          "material_id": "hardwood",
+          "count": 1
+        },
+        {
+          "material_id": "forge_flux",
+          "count": 2
+        },
+        {
+          "material_id": "leather_wrap",
+          "count": 1
+        },
+        {
+          "material_id": "mill_core",
+          "count": 1
+        }
+      ],
+      "output_id": "mythril_sword",
+      "output_count": 1,
+      "output_visual": "sword",
+      "item_level": 1,
+      "required_level": 8,
+      "sockets": 2,
+      "rarity_id": "rare"
+    }
+  ],
+  "spacing_tiles": 6,
+  "materials": [
+    {
+      "id": "charcoal",
+      "name": "Smithing charcoal",
+      "visual": "mineral",
+      "source": "Buy from a town shop \u00b7 smelting fuel",
+      "buy_price": 6
+    },
+    {
+      "id": "leather_wrap",
+      "name": "Leather grip wrap",
+      "visual": "wood",
+      "source": "Buy from a town shop \u00b7 sword grip",
+      "buy_price": 8
+    },
+    {
+      "id": "forge_flux",
+      "name": "Forge flux",
+      "visual": "mineral",
+      "source": "Buy from a town shop \u00b7 removes impurities",
+      "buy_price": 12
+    },
+    {
+      "id": "mill_core",
+      "name": "Millwright runic core",
+      "visual": "gem",
+      "source": "Quest reward \u00b7 restore Old Mill and return to the trail"
+    },
+    {
+      "id": "bronze_pommel",
+      "name": "Balanced bronze pommel",
+      "visual": "mineral",
+      "source": "One-time millwright supply box at Heron Pool, guarded by an optional bramblehog"
+    }
+  ],
+  "habitats": {
+    "meadow": {
+      "ground_tiles": [
+        0,
+        9
+      ],
+      "near_tiles": [
+        0,
+        9,
+        8,
+        13
+      ],
+      "search_radius": 4,
+      "patch_radius": 2,
+      "surface_tile": 0
+    },
+    "woodland": {
+      "ground_tiles": [
+        0,
+        9,
+        11
+      ],
+      "near_tiles": [
+        3,
+        10,
+        8
+      ],
+      "search_radius": 24,
+      "patch_radius": 2,
+      "surface_tile": 9
+    },
+    "rocky": {
+      "ground_tiles": [
+        0,
+        9,
+        11,
+        12
+      ],
+      "near_tiles": [
+        7,
+        11,
+        17
+      ],
+      "search_radius": 12,
+      "patch_radius": 2,
+      "surface_tile": 11
+    }
+  }
+}

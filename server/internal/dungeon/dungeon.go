@@ -17,11 +17,12 @@ type Point struct {
 	Y int `json:"y"`
 }
 type Reward struct {
-	ItemID  string `json:"item_id,omitempty"`
-	Count   int    `json:"count,omitempty"`
-	Level   int    `json:"level,omitempty"`
-	Sockets int    `json:"sockets,omitempty"`
-	Gold    int    `json:"gold,omitempty"`
+	Materials map[string]int `json:"materials,omitempty"`
+	ItemID    string         `json:"item_id,omitempty"`
+	Count     int            `json:"count,omitempty"`
+	Level     int            `json:"level,omitempty"`
+	Sockets   int            `json:"sockets,omitempty"`
+	Gold      int            `json:"gold,omitempty"`
 }
 type Encounter struct {
 	Monsters  []string `json:"monsters"`
@@ -30,6 +31,7 @@ type Encounter struct {
 	Boss      bool     `json:"boss,omitempty"`
 }
 type Action struct {
+	Optional    bool       `json:"optional,omitempty"`
 	ID          string     `json:"id"`
 	Label       string     `json:"label"`
 	Kind        string     `json:"kind"`
@@ -48,17 +50,32 @@ type VisualVariant struct {
 	Requires string `json:"requires"`
 	Image    string `json:"image"`
 }
+type DescriptionVariant struct {
+	Requires string `json:"requires"`
+	Text     string `json:"text"`
+}
 
 type Room struct {
-	BattleBackground string           `json:"battle_background,omitempty"`
-	VisualVariants   []VisualVariant  `json:"visual_variants,omitempty"`
-	ID               string           `json:"id"`
-	Name             string           `json:"name"`
-	Description      string           `json:"description"`
-	MapFile          string           `json:"map_file"`
-	Map              *settlements.Map `json:"-"`
-	Actions          []Action         `json:"actions"`
+	DescriptionVariants []DescriptionVariant `json:"description_variants,omitempty"`
+	BattleBackground    string               `json:"battle_background,omitempty"`
+	VisualVariants      []VisualVariant      `json:"visual_variants,omitempty"`
+	ID                  string               `json:"id"`
+	Name                string               `json:"name"`
+	Description         string               `json:"description"`
+	MapFile             string               `json:"map_file"`
+	Map                 *settlements.Map     `json:"-"`
+	Actions             []Action             `json:"actions"`
 }
+
+func (r *Room) DescriptionFor(flags map[string]bool) string {
+	for i := len(r.DescriptionVariants) - 1; i >= 0; i-- {
+		if v := r.DescriptionVariants[i]; flags[v.Requires] {
+			return v.Text
+		}
+	}
+	return r.Description
+}
+
 type Objective struct {
 	Until string `json:"until"`
 	Text  string `json:"text"`
@@ -237,6 +254,11 @@ func (d *Definition) Validate() error {
 		return fmt.Errorf("invalid adventure entry")
 	}
 	for i := range d.Rooms {
+		for _, v := range d.Rooms[i].DescriptionVariants {
+			if !flags[v.Requires] || strings.TrimSpace(v.Text) == "" {
+				return fmt.Errorf("room %s invalid description variant", d.Rooms[i].ID)
+			}
+		}
 		for _, v := range d.Rooms[i].VisualVariants {
 			if !flags[v.Requires] || !strings.HasPrefix(v.Image, "/api/data/dungeons/art/") || filepath.Base(v.Image) == "." {
 				return fmt.Errorf("room %s invalid visual variant", d.Rooms[i].ID)

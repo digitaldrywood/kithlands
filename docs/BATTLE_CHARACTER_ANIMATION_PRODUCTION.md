@@ -284,3 +284,191 @@ identity clothing, but the body contains no staff, sidearm, star, spell, or
 effect. Shared `war_staff` metadata selects the equipment layer, with the grip
 authored in the image-right hand. Its aggregate-review status is
 `approved_runtime`.
+
+## Ground registration and effect cues
+
+The runtime container position is the character's feet, using `feet_anchor`
+(currently `[96, 184]`) from `shared/battle_characters.json`. Body images and
+held attachments subtract the same offset from their centered atlas coordinates.
+Formation lanes, floor shadows, movement destinations, and acting rings use this
+feet position; target effects use the body center.
+
+Attack and cast states declare `cue_frame` as an authored atlas frame ID. The
+renderer reaches that pose before handing the authoritative server result to
+scene effects, and holds it through impact before playing recovery. Movement
+advances alongside the same authored frame durations. Reduced motion must retain
+the cue even when other poses are skipped. Recipe expansion and server content
+validation preserve and validate the cue against the actual frame sequence.
+
+### Optional Warrior critical strike
+
+`optional_states` declares identity-specific presentation states without making
+them a requirement for every class or expanding them through shared recipes.
+Warrior now authors `critical_attack` using the same approved six body images,
+hand sockets and frame-3 contact cue as its sword attack. Longer anticipation
+and recovery plus a modest shared body/attachment lean distinguish the strike.
+The authoritative action's `crit` flag selects it; other identities retain their
+normal physical attack until their own critical choreography is accepted.
+
+Normal and reduced-motion playback must both retain contact, following shadows
+and a return home. Critical damage and defeat text must remain separate. The
+actual server-resolved three-round proof, inspected frame sequences, exact
+commands and current limits are in `WARRIOR_CRITICAL_STRIKE_PROOF.md`.
+
+### Cinder Frost presentation reference
+
+Frost alone now selects an original `ice` release/lance/shatter presentation
+through shared spell metadata. It retains Cinder's approved body/staff and
+frame-3 emission cue. The cast aura belongs at the feet behind bodies.
+Desktop, touch portrait and reduced-motion release/contact/recovery evidence,
+plus a normal fresh-party purchase/use/save route, are recorded in
+`docs/CINDER_FROST_PROOF.md`. This is an accepted spell slice, not approval of
+all elemental spells or Cinder's complete action vocabulary.
+
+### Warrior sword Defend
+
+Warrior Defend now selects a separate three-cell 576×192 body atlas with the
+existing guard plus individually guided settle and low-brace poses. The
+192px RGBA cells retain [96,184] container registration and empty gloves;
+shared frame sockets raise the separate equipped sword toward the visor.
+Playback enters, holds brace, recovers and resets to the approved idle atlas;
+reduced motion retains the brace cue. This does not replace the approved
+attack or critical body images or expand the pattern to other classes.
+
+`docs/WARRIOR_DEFEND_POSE_PROOF.md` records actual guarded rounds, fresh normal
+Old Mill desktop/phone routes, source/frame inspection, regression gates and
+remaining class-action limitations.
+
+### Warrior contact recoil
+
+Warrior hit reaction uses a separate 576×192 RGBA body atlas: original guard,
+individually guided recoil and the accepted settle recovery. The first played
+pose is the recoil cue; damage contact and reaction begin together, then the
+renderer awaits the existing effect hold. A separate equipped sword follows
+the authored closed glove. Body transforms retain the common feet anchor, and
+reduced motion suppresses container shake. Lethal results select the existing
+persistent KO state instead of recoil.
+
+`docs/WARRIOR_HIT_REACTION_PROOF.md` records native Go-resolved surviving/lethal
+hits, contact timing, actual media flags, desktop/phone/reduced-motion captures
+and remaining limits. This accepts the hit slice without approving legacy KO
+art or expanding new body poses to other identities.
+
+### Warrior grounded KO
+
+Warrior KO now uses its approved recoil followed by individually guided knee
+buckle and settled-fall body art in a 576×192 atlas. The 192px cells keep the
+common [96,184] registration; the equipped sword rests as a separate layer
+beside the fallen body. No body rotation/translation simulates the fall. Frame
+2 is held until explicit reset/revival or transition. New battle redraws of a
+dead Warrior apply that terminal frame immediately.
+
+Native lethal-hit, held-pose, Phoenix Down and save-recovery evidence is in
+`docs/WARRIOR_KO_POSE_PROOF.md`. Tests use the authored terminal frame and
+persistence contract instead of requiring every identity to depict KO through
+a 90-degree rotation. Other identities retain their existing recipes; their
+full body-pose acceptance remains separate.
+
+## Warrior item-use reference (2026-10-26)
+
+`item_use` has a separate 576×192 three-cell body atlas:
+`/sprites/battle/warrior/sword-item-body.png`. Guard remains the existing source
+cell; individually guided retrieval and palm-forward presentation poses keep the
+same planted baseline. Playback is guard → retrieve → present → retrieve → guard,
+with cue frame 2 and no body translation/rotation. The separate item-selected sword
+is hidden during retrieval/presentation and restored on guard.
+
+Item result playback supports an authored cue exactly once and falls back to
+completion for legacy states without a cue. This is presentation only; Go owns
+consumption, healing and revival. Native potion and revival checks, reduced-motion
+flags, trace evidence and acceptance limits are in `WARRIOR_ITEM_USE_PROOF.md`.
+Sources, exact built-in image-generation prompts and guides are in
+`art-source/characters/warrior/battle/sword-item/metadata.json`.
+
+## Warrior victory reference (2026-10-26)
+
+Victory uses a dedicated 576×192 three-cell RGBA body atlas:
+`/sprites/battle/warrior/sword-victory-body.png`. Original guard is unchanged;
+individually guided chest-fist and raised-fist poses retain the planted baseline.
+The item-selected sword stays low in the near glove with authored grip sockets.
+Playback is guard → settle → salute → settle → guard, cue frame 2, with no body
+translation or rotation. The existing living-party victory beat completes before
+the receipt; reward and exploration acknowledgement remain Go-owned.
+
+Sources, exact built-in generation prompts and guides are retained in
+`art-source/characters/warrior/battle/sword-victory/metadata.json`.
+Native motion/receipt/World checks and acceptance limits are recorded in
+`WARRIOR_VICTORY_POSE_PROOF.md`. This does not approve other classes' reused
+victory art or close Warrior class-ability/Cinder choreography.
+
+## Cinder surviving-hit reference (2026-10-26)
+
+Cinder `hit_reaction` now overrides the caster recipe with a dedicated
+576×192 atlas, `/sprites/battle/cinder/staff-hit-body.png`. Guard is copied from
+the unchanged accepted cast atlas; new individually guided flinch/recovery cells
+keep occupied height 167px and bottom y182. Playback starts immediately on frame 1
+(95ms), settles through frame 2 (120ms), then guard frame 0 (90ms), with no body
+translation or rotation. Staff grips remain shared-data attachments.
+
+Native Go-resolved hits, normal/reduced motion and unchanged Frost casts are
+verified in `CINDER_HIT_REACTION_PROOF.md`. New source/prompts/guides live in
+`art-source/characters/cinder/battle/staff-hit/metadata.json`. The original cast
+source's stale pending flag is reconciled against the existing accepted cast and
+current Frost proof, without changing its pixels. This accepts surviving-hit
+reactions only; remaining Cinder states retain their separate acceptance gates.
+
+## Cinder grounded KO, Defend and item references (2026-10-26)
+
+Cinder now explicitly overrides three more generic caster states. The accepted
+cast atlas and surviving-hit art remain unchanged. Each new atlas is576×192 with
+three192px RGBA cells at container anchor(96,184), occupied bottom y182; no body
+rotation or translation. Separate original pose guides and exact prompts are
+retained with each source package under
+`art-source/characters/cinder/battle/`.
+
+- `staff-ko`: recoil → knee buckle → settled side-lying fall, terminal frame2 held
+  until revival. The item-selected staff drops beside the pooled robe. Native
+  lethal-hit/held-pose/Phoenix Down evidence is in `CINDER_KO_POSE_PROOF.md`.
+  Two-member vertical spacing keeps rear fallen bodies visible; four-member
+  spacing is unchanged.
+- `staff-defend`: guard → settle → brace → recovery, free palm guarding forward,
+  knees lowered under grounded robes and attached item-selected staff. Three
+  fresh Old Mill guard→win→trail routes and all-class regression proof are in
+  `CINDER_DEFEND_POSE_PROOF.md`.
+- `staff-item`: unchanged guard → retrieve supplies from robe → offer with an
+  open palm → retrieve → guard; durations80/150/260/110/80ms, cue frame2. The
+  item-selected staff hides during retrieval/offering and returns on guard.
+  Existing item-result playback fires once at that cue; consumption/healing
+  remains Go-owned. This is a generic supply gesture with the existing result
+  effect, without a new consumable prop. Native desktop/phone/reduced evidence
+  is in `CINDER_ITEM_USE_PROOF.md`.
+
+These references do not accept Cinder victory/melee, all other identities'
+choreography or the full integrated combat/environment/first-visit backlog.
+
+## Cinder victory reference (2026-10-26)
+
+`victory` uses `/sprites/battle/cinder/staff-victory-body.png`: a576×192 RGBA
+atlas with unchanged guard, hat-tip salute and a small drawn bow. Playback is
+0/1/2/1/0 at80/140/380/140/100ms, cue2. No body translation/rotation; fixed feet
+and shadow, separate visible staff throughout. Both new source cells use167px
+occupied height at bottom y182, anchor(96,184), preserving head/body mass rather
+than shrinking the sprite to simulate a bow.
+
+Exact source prompts, guides, outputs and rejected normalization are retained in
+`art-source/characters/cinder/battle/staff-victory/metadata.json`.
+Real Spark-win/receipt/World acceptance is in `CINDER_VICTORY_POSE_PROOF.md`.
+Cinder physical melee and the full integrated combat/environment/first-visit
+acceptance remain open. Final authoritative mana HUD reconciliation after action
+playback is now verified in `BATTLE_MANA_HUD_PROOF.md`; per-action MP animation
+is not established by that follow-up.
+
+### Cinder staff physical attack
+
+`physical_attack` uses dedicated `staff-strike-body.png`, six192px cells with
+original guard/coil/raise/downward impact/follow-through/original guard. Cue3;
+no body translation or tilt; separate staff grips per frame. Shared
+`contact_family: blunt` selects bounded blunt feedback and a closer normal-motion
+approach. Empty or slash retains legacy blade behavior; reduced travel stays local.
+Proof/source/rejections: `CINDER_MELEE_POSE_PROOF.md`. This accepts staff physical
+attack only, not other weapons or all-class battle expansion.

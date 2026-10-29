@@ -30,6 +30,14 @@ describe("staged quest presentation", () => {
       questCustodyText({ objectives: { clue: "The upper route is safe." } }),
     ).toContain("upper route is safe");
   });
+  it("shows the server-owned traveler and reunion destination", () => {
+    expect(
+      questCustodyText({
+        giver_name: "North lodge",
+        objectives: { companion: "lost traveler", clue: "found" },
+      }),
+    ).toBe("Traveling with you: lost traveler · Return to North lodge.");
+  });
   it("offers actions only beside the local ground-floor keeper", () => {
     const scene = {
       gameState: { current_quest: 0, quests: [quest] },

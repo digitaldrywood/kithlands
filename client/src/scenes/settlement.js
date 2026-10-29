@@ -1,5 +1,10 @@
 import { beginWalkStep } from "./walkPlayback.js";
 import { transitionLocation } from "../api.js";
+import { installInteriorCamera, settlementFraming } from "./interiorCamera.js";
+import { interiorControls } from "../ui/interior_controls.js";
+import { toggleMenu, showQuestLog } from "./world_menu.js";
+import { trackedObjective } from "./questJournalModel.js";
+import { isWorldInputLocked } from "../systems/modalLock.js";
 import { playMusic, playSFX } from "../systems/audio.js";
 import { initTouchControls, isTouchDevice } from "../systems/input.js";
 import { walkStepMs } from "../systems/prefs.js";
@@ -22,6 +27,7 @@ import {
 import {
   applyGameplayViewport,
   centeredPlayfieldOffset,
+  portraitFontSize,
 } from "../systems/gameplayViewport.js";
 
 const RENDERED_TILE = 32;
@@ -69,6 +75,7 @@ export class SettlementScene extends Phaser.Scene {
     this.animating = true;
     this.menuOpen = false;
     this.gameOver = false;
+    this._modalLocks = new Set();
     this.cameras.main.setBackgroundColor("#101719");
     playMusic("music_overworld");
 
@@ -200,6 +207,12 @@ export class SettlementScene extends Phaser.Scene {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.wasd = this.input.keyboard.addKeys("W,A,S,D");
     this.input.keyboard.on("keydown-ENTER", () => this.handleAction());
+    this.input.keyboard.on("keydown-M", () => {
+      if (!isWorldInputLocked(this)) toggleMenu(this);
+    });
+    this.input.keyboard.on("keydown-ESC", () => {
+      if (this.menuOpen) toggleMenu(this);
+    });
     this.input.keyboard.on("keydown-SPACE", (event) => {
       event?.preventDefault?.();
       this.handleAction();
@@ -233,10 +246,31 @@ export class SettlementScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(DEPTH_UI + 1);
+    if (this.gameplayLayout.portrait) this.footer.setVisible(false);
 
     this.animating = false;
     this.updateInteractionTargets();
-    if (this.gameState.message) this.showMessage(this.gameState.message);
+    installInteriorCamera(
+      this,
+      this.mapW * RENDERED_TILE,
+      this.mapH * RENDERED_TILE,
+      settlementFraming,
+    );
+    this.interiorMenuHUD = interiorControls(
+      this,
+      () => {
+        if (!isWorldInputLocked(this)) toggleMenu(this);
+      },
+      {
+        label: "Settlement controls",
+        objective: () => trackedObjective(this),
+        openJournal: () => showQuestLog(this),
+        contextAction: () =>
+          this.currentInteraction?.type === "exit"
+            ? { label: "Leave town", activate: () => this.handleAction() }
+            : null,
+      },
+    );
   }
 
   showLoadFailure(error) {
@@ -259,7 +293,7 @@ export class SettlementScene extends Phaser.Scene {
   }
 
   update(time) {
-    if (this.animating || !this.player) return;
+    if (isWorldInputLocked(this) || !this.player) return;
     if (time - (this.lastMoveTime || 0) < 145) return;
 
     let dx = 0;
@@ -279,7 +313,7 @@ export class SettlementScene extends Phaser.Scene {
   }
 
   tryMove(dx, dy) {
-    if (this.animating) return;
+    if (isWorldInputLocked(this)) return false;
     const nextX = this.playerX + dx;
     const nextY = this.playerY + dy;
     if (nextX < 0 || nextY < 0 || nextX >= this.mapW || nextY >= this.mapH) {
@@ -316,6 +350,7 @@ export class SettlementScene extends Phaser.Scene {
     const finishAnimation = () => {
       walk.complete();
       this.animating = false;
+      this.updateInteractionTargets();
     };
     this.tweens.add({
       targets: this.player,
@@ -339,7 +374,8 @@ export class SettlementScene extends Phaser.Scene {
       this.playerY,
       this.playerDir,
     );
-    if (this.currentInteraction) this.showInteractPrompt();
+    if (this.currentInteraction && this.currentInteraction.type !== "exit")
+      this.showInteractPrompt();
     else this.hideInteractPrompt();
   }
 
@@ -352,16 +388,23 @@ export class SettlementScene extends Phaser.Scene {
       .text(
         this.player.x,
         this.player.y - 32,
-        `${controls} ${action} ${destination}`,
+        this.gameplayLayout.portrait
+          ? `${action} ${destination} · Enter / A`
+          : `${controls} ${action} ${destination}`,
         {
-          fontSize: "10px",
+          fontSize: this.gameplayLayout.portrait
+            ? portraitFontSize(this, 16)
+            : "10px",
           color: "#fff0a8",
           fontFamily: "monospace",
           backgroundColor: "#101820e8",
           padding: { x: 6, y: 3 },
+          wordWrap: { width: this.gameplayLayout.width - 64 },
+          align: "center",
         },
       )
       .setOrigin(0.5)
+      .setScrollFactor(this.gameplayLayout.portrait ? 0 : 1)
       .setDepth(DEPTH_UI + 2);
   }
 
@@ -371,13 +414,23 @@ export class SettlementScene extends Phaser.Scene {
   }
 
   async handleAction() {
-    if (!this.currentInteraction || this.animating) return;
+    if (!this.currentInteraction || isWorldInputLocked(this)) return;
+    const interaction = this.currentInteraction;
     this.animating = true;
     this.hideInteractPrompt();
-    const result = await transitionLocation(
-      this.gameState.id,
-      this.currentInteraction.name,
-    );
+    let result;
+    try {
+      result = await transitionLocation(this.gameState.id, interaction.name);
+    } catch {
+      this.animating = false;
+      this.showMessage(
+        interaction.type === "exit"
+          ? "Could not leave town. Please try again."
+          : "Could not enter. Please try again.",
+      );
+      this.updateInteractionTargets();
+      return;
+    }
     if (result?.error) {
       this.animating = false;
       this.showMessage(result.error);
@@ -402,28 +455,44 @@ export class SettlementScene extends Phaser.Scene {
     });
   }
 
+  hideMessage() {
+    if (!this.messageText) return;
+    this.tweens.killTweensOf(this.messageText);
+    this.messageText.destroy();
+    this.messageText = null;
+  }
+
   showMessage(text) {
-    this.messageText?.destroy();
-    this.messageText = this.add
+    this.hideMessage();
+    const notice = this.add
       .text(
-        this.gameplayLayout?.centerX || 400,
-        this.gameplayLayout?.messageY || 300,
+        20,
+        this.gameplayLayout.portrait ? this.cameras.main.y + 20 : 70,
         text,
         {
-          fontSize: this.gameplayLayout?.portrait ? "22px" : "12px",
+          fontSize: this.gameplayLayout.portrait
+            ? portraitFontSize(this, 14)
+            : "14px",
           color: "#ffffff",
-          fontFamily: "monospace",
+          fontFamily: "Trebuchet MS, Arial, sans-serif",
           backgroundColor: "#000000e8",
           padding: { x: 12, y: 8 },
-          wordWrap: { width: 480 },
-          align: "center",
+          wordWrap: { width: this.gameplayLayout.portrait ? 600 : 360 },
         },
       )
-      .setOrigin(0.5)
+      .setOrigin(0)
+      .setScrollFactor(0)
       .setDepth(DEPTH_UI + 4);
-    this.time.delayedCall(2200, () => {
-      this.messageText?.destroy();
-      this.messageText = null;
+    this.messageText = notice;
+    this.tweens.add({
+      targets: notice,
+      alpha: 0,
+      delay: 2400,
+      duration: 500,
+      onComplete: () => {
+        notice.destroy();
+        if (this.messageText === notice) this.messageText = null;
+      },
     });
   }
 

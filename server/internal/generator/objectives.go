@@ -10,17 +10,38 @@ import (
 // ObjectiveProgress belongs to one quest. Its custody cannot be sold, dropped,
 // transferred to another quest, or supplied by a client inventory payload.
 type ObjectiveProgress struct {
-	Step int    `json:"step"`
-	Item string `json:"item,omitempty"`
-	Clue string `json:"clue,omitempty"`
+	EncounterActive bool   `json:"-"` // Combat is transient; saved progress stays at the unresolved kill step.
+	Companion       string `json:"companion,omitempty"`
+	CompanionSprite string `json:"companion_sprite,omitempty"`
+	Step            int    `json:"step"`
+	Item            string `json:"item,omitempty"`
+	Clue            string `json:"clue,omitempty"`
+	Recovery        string `json:"recovery,omitempty"`
 }
 
 type ObjectiveDefinition struct {
-	Name        string          `json:"name"`
-	Item        string          `json:"item"`
-	Description string          `json:"description"`
-	Completion  string          `json:"completion"`
-	Steps       []ObjectiveStep `json:"steps"`
+	Name        string              `json:"name"`
+	Item        string              `json:"item"`
+	Description string              `json:"description"`
+	Completion  string              `json:"completion"`
+	Steps       []ObjectiveStep     `json:"steps"`
+	Companion   *ObjectiveCompanion `json:"companion,omitempty"`
+	Encounter   *ObjectiveEncounter `json:"encounter,omitempty"`
+}
+
+type ObjectiveCompanion struct {
+	Sprite string `json:"sprite"`
+	Defeat string `json:"defeat"`
+}
+
+type ObjectiveEncounter struct {
+	Monsters          []string `json:"monsters"`
+	FullPartyMonsters []string `json:"full_party_monsters"`
+	Level             int      `json:"level"`
+	Formation         string   `json:"formation"`
+	Arrival           string   `json:"arrival"`
+	Flee              string   `json:"flee"`
+	Defeat            string   `json:"defeat"`
 }
 
 type ObjectiveStep struct {
@@ -33,26 +54,43 @@ type ObjectiveStep struct {
 
 // UsesObjectives deliberately excludes promotion, finale, and surprise quests.
 func UsesObjectives(q *Quest) bool {
-	return q != nil && !q.IsPromotion && !q.IsSideQuest && (q.TemplateID == "Q01" || q.TemplateID == "Q02" || q.TemplateID == "Q03")
+	return q != nil && !q.IsPromotion && !q.IsSideQuest && (q.TemplateID == "Q01" || q.TemplateID == "Q02" || q.TemplateID == "Q03" || q.TemplateID == "Q04" || q.TemplateID == "Q05")
 }
 
-// ValidateObjectiveDefinitions keeps this a bounded three-plan contract rather
+// ValidateObjectiveDefinitions keeps this a bounded objective-plan contract rather
 // than accepting arbitrary scripts from content files.
 func ValidateObjectiveDefinitions(defs map[string]ObjectiveDefinition) error {
 	expected := map[string][]ActionType{
 		"Q01": {ActionGoto, ActionGet, ActionGoto, ActionGive},
 		"Q02": {ActionGoto, ActionGet, ActionGoto, ActionGive},
 		"Q03": {ActionGoto, ActionLearn, ActionGoto, ActionReport},
+		"Q04": {ActionGoto, ActionKill, ActionGoto, ActionReport},
+		"Q05": {ActionGoto, ActionLearn, ActionGoto, ActionEscort, ActionGoto, ActionReport},
 	}
 	for id, types := range expected {
 		def, ok := defs[id]
 		if !ok || len(def.Steps) != len(types) || def.Name == "" || def.Item == "" || def.Description == "" || def.Completion == "" {
 			return fmt.Errorf("quest objectives: incomplete %s", id)
 		}
+		if id == "Q05" && (def.Companion == nil || def.Companion.Sprite == "" || def.Companion.Defeat == "") {
+			return fmt.Errorf("quest objectives: incomplete %s companion", id)
+		}
+		if id == "Q04" {
+			e := def.Encounter
+			if e == nil || len(e.Monsters) == 0 || len(e.FullPartyMonsters) == 0 || e.Level < 1 || e.Formation == "" || e.Arrival == "" || e.Flee == "" || e.Defeat == "" {
+				return fmt.Errorf("quest objectives: incomplete %s encounter", id)
+			}
+		}
 		for i, step := range def.Steps {
 			at := "target"
 			if (id == "Q02" && i < 2) || (id != "Q02" && i >= 2) {
 				at = "giver"
+			}
+			if id == "Q05" {
+				at = "target"
+				if i < 2 || i >= 4 {
+					at = "giver"
+				}
 			}
 			if step.Type != types[i] || step.At != at || step.Text == "" || (step.Type != ActionGoto && (step.Prompt == "" || step.Result == "")) {
 				return fmt.Errorf("quest objectives: invalid %s step %d", id, i)
@@ -79,7 +117,9 @@ func PrepareObjectives(quests []Quest, loc *locality.Locality, spawnID string, d
 			continue
 		}
 		if q.Completed || q.Objectives != nil {
-			used[q.TargetNodeID]++
+			if q.TemplateID != "Q05" {
+				used[q.TargetNodeID]++
+			}
 			continue
 		}
 		def, ok := defs[q.TemplateID]
@@ -107,7 +147,30 @@ func PrepareObjectives(quests []Quest, loc *locality.Locality, spawnID string, d
 		if target == nil {
 			target = giver
 		}
-		used[target.ID]++
+
+		if q.TemplateID == "Q05" {
+			// Preserve the existing search site and downstream target selection:
+			// gathered resource identities/respawn custody depend on these routes.
+			for _, n := range candidates {
+				if n.ID == q.TargetNodeID {
+					target = n
+					break
+				}
+			}
+			if target.ID == giver.ID && len(candidates) > 1 {
+				for _, n := range candidates {
+					if n.ID != target.ID {
+						giver = n
+						if n.Kind == locality.NodePerson {
+							break
+						}
+					}
+				}
+			}
+		} else {
+			used[target.ID]++
+		}
+
 		q.GiverNodeID, q.GiverName = giver.ID, giver.Name
 		q.TargetNodeID, q.TargetName = target.ID, target.Name
 		replace := strings.NewReplacer("{giver}", giver.Name, "{target}", target.Name, "{item}", def.Item)

@@ -1,3 +1,4 @@
+import { nearbyResource } from "./gatheringModel.js";
 import { buildWalkAuditParty } from "./walkAuditMode.js";
 import { showWorldMapDialog } from "../ui/world_map_menu.js";
 import { playSFX } from "../systems/audio.js";
@@ -53,6 +54,25 @@ export function updateWorldInteractionTarget(scene, playerX, playerY) {
         scene.gameState.current_location.world_node_id === spawn.node_id),
   );
   const spawn = nearbyWorldInteraction(spawns, playerX, playerY);
+  scene.currentResource = nearbyResource(
+    scene.gameState?.resources,
+    playerX,
+    playerY,
+  );
+  if (scene.currentResource) {
+    scene.currentDoorSpawn = null;
+    scene.currentNaturalSpawn = null;
+    hideInteractPrompt(scene);
+    const resource = scene.currentResource;
+    const requirement =
+      resource.required_level > 1
+        ? ` · Requires party Lv.${resource.required_level}`
+        : "";
+    scene.explorationHUD?.interaction(
+      `Gather — ${resource.name}${requirement}`,
+    );
+    return scene.currentResource;
+  }
   scene.currentDoorSpawn = spawn && !isNaturalSpawn(spawn) ? spawn : null;
   scene.currentNaturalSpawn = spawn && isNaturalSpawn(spawn) ? spawn : null;
   if (spawn) showInteractPrompt(scene, spawn);
@@ -207,10 +227,10 @@ export async function interactWithDoor(scene) {
   const entersAuthoredSettlement =
     scene.gameState?.settlement_map &&
     scene.gameState?.settlement_entry_node_id === spawn.node_id;
-  if (entersAuthoredSettlement) {
+  try {
     const result = await transitionLocation(
       scene.gameState.id,
-      "enter-settlement",
+      entersAuthoredSettlement ? "enter-settlement" : "enter-world-interior",
       spawn.node_id,
       currentWorldPosition(scene),
     );
@@ -220,6 +240,12 @@ export async function interactWithDoor(scene) {
       return;
     }
     scene.gameState = result;
+  } catch (error) {
+    scene.animating = false;
+    scene.showMessage?.(
+      `Could not enter: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return;
   }
 
   // Transition to the authored exterior or the existing direct interior.
@@ -344,6 +370,22 @@ export function showInteractPrompt(scene, spawn) {
   } else if (isRestBuilding(tags)) action = "Rest";
   else if (tags.includes("shop") || tags.includes("commerce")) action = "Shop";
   else if (tags.includes("temple") || tags.includes("revive")) action = "Pray";
+
+  const quest = scene.gameState?.quests?.[scene.gameState?.current_quest];
+  const step = quest?.objectives?.step;
+  const objective = quest?.actions?.[step];
+  const encounter =
+    objective?.type === "kill"
+      ? objective
+      : objective?.type === "goto"
+        ? quest?.actions?.[step + 1]
+        : null;
+  if (
+    !quest?.completed &&
+    encounter?.type === "kill" &&
+    encounter.location === spawn.node_id
+  )
+    action = encounter.prompt;
 
   if (scene.explorationHUD) {
     scene.explorationHUD.interaction(`${action} — ${destination}`);

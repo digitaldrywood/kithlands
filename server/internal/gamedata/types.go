@@ -49,6 +49,7 @@ type Equipment struct {
 }
 
 type Magic struct {
+	StartingSpells      []string `json:"starting_spells,omitempty"`
 	Schools             []string `json:"schools"`
 	MaxSpellLevel       int      `json:"max_spell_level"`
 	PromotedSchools     []string `json:"promoted_schools"`
@@ -65,8 +66,10 @@ type BareHand struct {
 // rules; Go loads and validates it so shared content remains the single source
 // of truth while Phaser consumes the same JSON at build time.
 type BattleCharactersData struct {
+	FeetAnchor     []float64                    `json:"feet_anchor"`
 	FrameSize      int                          `json:"frame_size"`
 	RequiredStates []string                     `json:"required_states"`
+	OptionalStates []string                     `json:"optional_states,omitempty"`
 	StateRecipes   map[string]BattleStateRecipe `json:"state_recipes"`
 	WeaponAssets   []BattleWeaponAsset          `json:"weapon_assets"`
 	OffHandAssets  []BattleWeaponAsset          `json:"off_hand_assets"`
@@ -96,6 +99,7 @@ type BattleStateRecipe struct {
 }
 
 type BattleStateRecipeDefinition struct {
+	CueFrame           *int                     `json:"cue_frame,omitempty"`
 	HoldLastFrame      bool                     `json:"hold_last_frame,omitempty"`
 	AttachmentsVisible *bool                    `json:"attachments_visible,omitempty"`
 	Frames             []BattleStateRecipeFrame `json:"frames"`
@@ -112,6 +116,8 @@ type BattleAttachmentDefinition struct {
 }
 
 type BattleStateDefinition struct {
+	ContactFamily string             `json:"contact_family,omitempty"`
+	CueFrame      *int               `json:"cue_frame,omitempty"`
 	BodyKey       string             `json:"body_key"`
 	BodyPath      string             `json:"body_path"`
 	HoldLastFrame bool               `json:"hold_last_frame,omitempty"`
@@ -186,6 +192,7 @@ type CombatConfig struct {
 	BaseHitChance      int       `json:"base_hit_chance"`
 	CritMultiplier     int       `json:"crit_multiplier"`
 	MinDamagePerHit    int       `json:"min_damage_per_hit"`
+	DefendDamagePct    int       `json:"defend_damage_pct"`
 	EnemyTargetWeights []float64 `json:"enemy_targeting_weights"`
 }
 
@@ -484,6 +491,7 @@ type LootModifier struct {
 }
 
 type Gem struct {
+	IconKey       string      `json:"icon_key,omitempty"`
 	Family        string      `json:"family"`
 	MaterialValue int         `json:"material_value"`
 	ID            string      `json:"id"`
@@ -578,28 +586,35 @@ type Spell struct {
 
 // Monsters
 
+// MonsterAction is one step in a repeating server-owned battle pattern.
+type MonsterAction struct {
+	Kind  string `json:"kind"`
+	Label string `json:"label"`
+}
+
 type Monster struct {
-	ID              string       `json:"id"`
-	Name            string       `json:"name"`
-	FieldNote       string       `json:"field_note"`
-	Habitats        []string     `json:"habitats"`
-	Tactics         string       `json:"tactics"`
-	Tier            int          `json:"tier"`
-	Size            string       `json:"size"` // small, medium, large, boss
-	IsBoss          bool         `json:"is_boss"`
-	IsUndead        bool         `json:"is_undead,omitempty"`
-	Stats           MonsterStats `json:"stats"`
-	HP              int          `json:"hp"`
-	ArmorAbsorb     int          `json:"armor_absorb"`
-	XPReward        int          `json:"xp_reward"`
-	GoldReward      int          `json:"gold_reward"`
-	Weaknesses      []string     `json:"weaknesses"`
-	Resistances     []string     `json:"resistances"`
-	Absorbs         []string     `json:"absorbs"`
-	Drops           []Drop       `json:"drops"`
-	EncounterWeight int          `json:"encounter_weight"`
-	MinGroup        int          `json:"min_group"`
-	MaxGroup        int          `json:"max_group"`
+	BattlePattern   []MonsterAction `json:"battle_pattern,omitempty"`
+	ID              string          `json:"id"`
+	Name            string          `json:"name"`
+	FieldNote       string          `json:"field_note"`
+	Habitats        []string        `json:"habitats"`
+	Tactics         string          `json:"tactics"`
+	Tier            int             `json:"tier"`
+	Size            string          `json:"size"` // small, medium, large, boss
+	IsBoss          bool            `json:"is_boss"`
+	IsUndead        bool            `json:"is_undead,omitempty"`
+	Stats           MonsterStats    `json:"stats"`
+	HP              int             `json:"hp"`
+	ArmorAbsorb     int             `json:"armor_absorb"`
+	XPReward        int             `json:"xp_reward"`
+	GoldReward      int             `json:"gold_reward"`
+	Weaknesses      []string        `json:"weaknesses"`
+	Resistances     []string        `json:"resistances"`
+	Absorbs         []string        `json:"absorbs"`
+	Drops           []Drop          `json:"drops"`
+	EncounterWeight int             `json:"encounter_weight"`
+	MinGroup        int             `json:"min_group"`
+	MaxGroup        int             `json:"max_group"`
 }
 
 type MonsterStats struct {

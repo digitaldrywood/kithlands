@@ -5,6 +5,13 @@ mkdirSync(proof, { recursive: true });
 for (const width of [1440, 720]) {
   test(`shop catalog and purchase at ${width}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
+    await page.route("**/src/main.js", async (route) => {
+      const response = await route.fetch();
+      await route.fulfill({
+        response,
+        body: (await response.text()) + "\nwindow.__keyboardGame = game;",
+      });
+    });
     await page.goto("/?noEncounters=1");
     await page.waitForFunction(
       () => window.__kithlandsTest?.activeSceneKey() === "Title",
@@ -60,9 +67,10 @@ for (const width of [1440, 720]) {
     const response = page.waitForResponse(
       (r) => r.url().endsWith("/buy") && r.request().method() === "POST",
     );
-    await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("Buy", "Town"),
-    );
+    const buyKey = await page
+      .locator(".shop-purchase")
+      .getAttribute("aria-keyshortcuts");
+    await page.keyboard.press(buyKey);
     const receipt = await response;
     const request = receipt.request().postDataJSON();
     const offer = catalog.shop_items.find(
@@ -75,9 +83,54 @@ for (const width of [1440, 720]) {
     await page.screenshot({
       path: new URL(`${width}-purchased.png`, proof).pathname,
     });
+
     await page.evaluate(() =>
-      window.__kithlandsTest.clickInteractiveText("Leave Shop", "Town"),
+      window.__kithlandsTest.clickInteractiveText("Supplies", "Town"),
     );
+    const supplyBefore = await page.evaluate(() =>
+      window.__kithlandsTest.gameState("Town"),
+    );
+    let supplyRequests = 0;
+    await page.route("**/buy", async (route) => {
+      supplyRequests++;
+      const response = await route.fetch();
+      // Delayed acknowledgement reproduces rapid-repeat purchase input.
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await route.fulfill({ response });
+    });
+    const supplyReceipt = page.waitForResponse((r) => r.url().endsWith("/buy"));
+    await page.getByRole("button", { name: /^Smithing charcoal/ }).click();
+    const supplyKey = await page
+      .locator(".shop-purchase")
+      .getAttribute("aria-keyshortcuts");
+    await page.keyboard.press(supplyKey);
+    await page.keyboard.press(supplyKey);
+    const supplied = await (await supplyReceipt).json();
+    await expect(page.locator(".kith-shop")).toHaveAttribute(
+      "aria-busy",
+      "false",
+    );
+    expect(supplied.error).toBeFalsy();
+    expect(supplyRequests).toBe(1);
+    expect(supplied.gold).toBe(supplyBefore.gold - 6);
+    expect(supplied.materials.find((m) => m.id === "charcoal").count).toBe(1);
+    await page.screenshot({
+      path: new URL(`${width}-supplies-keyboard-purchase.png`, proof).pathname,
+    });
+    // Reusable supplies must keep their selection while receiving a fresh quote.
+    await page.getByRole("button", { name: /^Forge flux/ }).click();
+    const fluxReceipt = page.waitForResponse((r) => r.url().endsWith("/buy"));
+    await page.locator(".shop-purchase").click();
+    const flux = await (await fluxReceipt).json();
+    expect(flux.error).toBeFalsy();
+    expect(flux.gold).toBe(supplied.gold - 12);
+    await expect(page.locator(".kith-shop")).toHaveAttribute(
+      "aria-busy",
+      "false",
+    );
+    await expect(page.locator(".shop-preview h2")).toHaveText("Forge flux");
+    expect(flux.materials.find((m) => m.id === "forge_flux").count).toBe(1);
+    await page.getByRole("button", { name: /^Leave Shop/ }).click();
     await page.waitForFunction(
       () =>
         !window.__kithlandsTest.sceneFlags("Town").modalLocks.includes("shop"),

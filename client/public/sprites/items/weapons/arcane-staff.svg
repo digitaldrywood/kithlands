@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs><linearGradient id="arcane-staff-crystal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#eee3ff"/><stop offset=".46" stop-color="#b095f4"/><stop offset=".5" stop-color="#dfcfff"/><stop offset="1" stop-color="#6847aa"/></linearGradient></defs>
+  <g stroke="#172332" stroke-width="2" stroke-linejoin="round">
+    <path d="M10 55L15 60L48 22L42 17Z" fill="#5d416e"/>
+    <path d="M15 53L42 23" stroke="#aa81a5" stroke-width="1.5"/>
+    <path d="M16 47L23 52M22 40L29 45M28 33L35 38" stroke="#d0b77d" stroke-width="2.5"/>
+    <path d="M54 3L61 11L49 25L42 16Z" fill="url(#arcane-staff-crystal)"/>
+    <path d="M54 3L53 14L49 25M53 14L61 11M53 14L42 16" fill="none" stroke="#eee3ff" stroke-width="1.2"/>
+    <path d="M39 15Q34 23 43 29Q51 33 57 24L52 21Q48 27 44 24Q40 22 43 18Z" fill="#c4a66a"/>
+    <path d="M37 26L43 31L47 27L41 22Z" fill="#d8c18c"/>
+    <path d="M10 53L18 59L14 63L6 57Z" fill="#c4a66a"/>
+  </g>
+</svg>

@@ -1,3 +1,4 @@
+import cadott from "../../../shared/settlements/cadott-town.json";
 import { describe, expect, it } from "vitest";
 import {
   buildSettlementModel,
@@ -69,6 +70,29 @@ describe("buildSettlementModel", () => {
     const interaction = interactionAt(model, 2, 1, "up");
     expect(interaction?.name).toBe("shop-door");
     expect(objectProperty(interaction, "display_name")).toBe("Shop");
+  });
+
+  it("makes the illustrated gate approach usable without exact exit-cell alignment", () => {
+    const model = buildSettlementModel(cadott, "world-entry");
+    for (const x of [11, 12, 13]) {
+      expect(interactionAt(model, x, 15, "down")?.name).toBe("south-exit");
+    }
+    expect(interactionAt(model, 14, 14, "down")?.type).not.toBe("exit");
+    expect(interactionAt(model, 18, 9, "up")?.name).toBe("general-store-door");
+  });
+
+  it("keeps the store roof solid and its illustrated steps reachable", () => {
+    const model = buildSettlementModel(cadott, "general-store-return");
+    for (const x of [18, 19]) {
+      expect(model.tileData[8][x]).toBe(1);
+      expect(model.tileData[9][x]).toBe(0);
+      expect(model.tileData[10][x]).toBe(0);
+      expect(interactionAt(model, x, 9, "up")?.name).toBe("general-store-door");
+      expect(interactionAt(model, x, 7, "up")?.name).not.toBe(
+        "general-store-door",
+      );
+    }
+    expect(model.spawn).toEqual({ x: 19, y: 10, direction: "down" });
   });
 
   it("rejects a missing transition anchor", () => {

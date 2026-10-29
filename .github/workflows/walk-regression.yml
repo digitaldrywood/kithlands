@@ -5,13 +5,16 @@ on:
 jobs:
   visual-tests:
     name: visual-tests (${{ matrix.suite }})
-    runs-on: ubuntu-latest
-    # Keep movement, gameplay, and interior checks within independent job budgets.
+    # Keep Playwright on a supported OS; ubuntu-latest now resolves to 26.04.
+    runs-on: ubuntu-24.04
+    # Give combat and exploration independent budgets; retain every existing check.
     strategy:
       fail-fast: false
       matrix:
-        suite: [walking, gameplay, interiors]
-    timeout-minutes: 30
+        suite: [walking, combat, combat-effects, spell-effects, gameplay, shops, interiors, campaign, escort, menus, crafting, adventure-recovery]
+    # The new recovery flow deliberately plays an entire all-Defend loss.
+    # Retain existing suite budgets; allow its native rounds plus installation.
+    timeout-minutes: ${{ matrix.suite == 'adventure-recovery' && 40 || 30 }}
     env:
       PGHOST: localhost
     services:
@@ -29,6 +32,7 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: '1.24'
+          cache-dependency-path: server/go.sum
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
@@ -51,13 +55,40 @@ jobs:
           python3 skills/kithlands-visual-production/scripts/audit_walk_sheets.py client/public/sprites/walk --columns 6 --rows 8 --mode enforce
       - name: Verify all-class walking and world rendering
         if: matrix.suite == 'walking'
-        run: ./scripts/run_playwright_local.sh e2e/walk-rendered-cadence.spec.js e2e/walk-all-classes.spec.js e2e/world-space-cycle.spec.js e2e/world-walk-audit-party.spec.js e2e/world-terrain-visibility.spec.js
-      - name: Verify battle controls, field magic, pacing, and adventure navigation
+        run: ./scripts/run_playwright_local.sh e2e/walk-rendered-cadence.spec.js e2e/walk-all-classes.spec.js e2e/world-space-cycle.spec.js e2e/world-walk-audit-party.spec.js e2e/world-terrain-visibility.spec.js e2e/meadow-ground.spec.js e2e/grove-snow-fringe.spec.js e2e/overworld-landmarks.spec.js e2e/ruin-landmark-art.spec.js e2e/cave-landmark-art.spec.js
+      - name: Verify combat controls, tactical encounters, and result recovery
+        if: matrix.suite == 'combat'
+        run: ./scripts/run_playwright_local.sh e2e/battle-continuity.spec.js e2e/battle-stop-auto.spec.js e2e/battle-defend.spec.js e2e/warrior-hit-reaction.spec.js e2e/cinder-hit-reaction.spec.js e2e/warrior-ko-revive.spec.js e2e/cinder-ko-reaction.spec.js e2e/cinder-ko-revive.spec.js e2e/warrior-item-use.spec.js e2e/cinder-item-use.spec.js e2e/warrior-victory.spec.js e2e/cinder-victory.spec.js e2e/cinder-melee.spec.js e2e/warrior-defend-route.spec.js e2e/cinder-defend-route.spec.js e2e/all-class-battle-states.spec.js e2e/battle-context-choices.spec.js e2e/enemy-tactics.spec.js e2e/bandit-guard.spec.js e2e/battle-hud-workstream.spec.js e2e/victory-receipt.spec.js e2e/victory-advance.spec.js e2e/defeat-receipt.spec.js
+      - name: Verify physical combat animation and readable per-hit results
+        if: matrix.suite == 'combat-effects'
+        run: ./scripts/run_playwright_local.sh e2e/warrior-critical.spec.js e2e/combat-text-readability.spec.js e2e/battle-crowded-results.spec.js e2e/battle-multi-hit.spec.js e2e/battle-counter-hits.spec.js e2e/battle-action-title.spec.js e2e/reference-combat-journey.spec.js
+      - name: Verify spell release, contact, recovery, and readable status outcomes
+        if: matrix.suite == 'spell-effects'
+        run: ./scripts/run_playwright_local.sh e2e/cinder-frost.spec.js e2e/cinder-lightning.spec.js e2e/cinder-ice-family.spec.js e2e/status-spell-feedback.spec.js
+      - name: Verify field magic, exploration and adventure navigation
         if: matrix.suite == 'gameplay'
-        run: ./scripts/run_playwright_local.sh e2e/battle-continuity.spec.js e2e/field-magic-repeat.spec.js e2e/battle-stop-auto.spec.js e2e/world-encounter-pacing.spec.js e2e/river-footbridges.spec.js e2e/adventure-map-navigation.spec.js
+        run: ./scripts/run_playwright_local.sh e2e/field-magic-repeat.spec.js e2e/world-encounter-pacing.spec.js e2e/river-footbridges.spec.js e2e/public-trails.spec.js e2e/public-trails-legacy.spec.js e2e/adventure-map-navigation.spec.js e2e/world-map-place-inspection.spec.js e2e/heron-playability-loop.spec.js e2e/heron-route-discovery.spec.js e2e/dungeon-reward-notice.spec.js e2e/opening-integration.spec.js e2e/first-session-route.spec.js e2e/first-session-touch.spec.js e2e/dev-artifact-isolation.spec.js e2e/exploration-notice-layout.spec.js e2e/exploration-touch.spec.js
+      - name: Verify shop purchases, learning gates and canonical item art
+        if: matrix.suite == 'shops'
+        run: ./scripts/run_playwright_local.sh e2e/shop-responsive.spec.js e2e/shop-spell-catalog.spec.js e2e/shop-buy-flow.spec.js e2e/shop-compare.spec.js e2e/shop-spell-learn.spec.js e2e/merchant-stock-authority.spec.js e2e/canonical-item-art.spec.js e2e/weapon-item-art.spec.js e2e/weapon-catalog-art.spec.js e2e/equipment-catalog-art.spec.js e2e/world-shop-entry.spec.js
+      - name: Verify gathering, crafted equipment and saved resources
+        if: matrix.suite == 'crafting'
+        run: ./scripts/run_playwright_local.sh e2e/gathering-crafting.spec.js e2e/resource-requirements.spec.js
+      - name: Verify native adventure recovery and saved resource respawns
+        if: matrix.suite == 'adventure-recovery'
+        run: ./scripts/run_playwright_local.sh e2e/heron-recovery.spec.js e2e/resource-route-respawn.spec.js
+      - name: Verify gems, equipment and locality navigation
+        if: matrix.suite == 'menus'
+        run: ./scripts/run_playwright_local.sh e2e/crafting-sources-layout.spec.js e2e/menu-choice-navigation.spec.js e2e/equipment-tooltip-input.spec.js e2e/equipment-party-navigation.spec.js e2e/options-held-key.spec.js e2e/gem-workshop.spec.js e2e/equipment-loadout-screen.spec.js e2e/equipment-builds.spec.js e2e/effective-equipment.spec.js e2e/wizard-back.spec.js e2e/wizard-start.spec.js e2e/wizard-responsive.spec.js e2e/save-adventures.spec.js e2e/post-battle-loot.spec.js e2e/dungeon-objective-layout.spec.js e2e/exploration-hud.spec.js
+      - name: Verify natural campaign progression and quest recovery
+        if: matrix.suite == 'campaign'
+        run: ./scripts/run_playwright_local.sh e2e/normal-route-input.spec.js e2e/campaign-first-level.spec.js
+      - name: Verify lost-traveler escort and save continuity
+        if: matrix.suite == 'escort'
+        run: ./scripts/run_playwright_local.sh e2e/escort-journey.spec.js
       - name: Verify complete interior library and playable entrances
         if: matrix.suite == 'interiors'
-        run: ./scripts/run_playwright_local.sh e2e/interior-library-gallery.spec.js e2e/elder-house-visit.spec.js e2e/interior-door-access.spec.js e2e/interior-templates-proof.spec.js
+        run: ./scripts/run_playwright_local.sh e2e/interior-library-gallery.spec.js e2e/elder-house-visit.spec.js e2e/interior-door-access.spec.js e2e/interior-templates-proof.spec.js e2e/portrait-interior.spec.js e2e/touch-npc-route.spec.js e2e/portrait-settlement.spec.js e2e/shop-approach-alignment.spec.js e2e/settlement-exit.spec.js e2e/settlement-save.spec.js e2e/interior-menu-shortcuts.spec.js
       - name: Retain motion evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -65,8 +96,93 @@ jobs:
           name: visual-proof-${{ matrix.suite }}
           path: |
             client/tmp/walk-rendered-*/
+            client/e2e/tmp/issue-202-*.png
+            client/tmp/victory-responsive-*/
+            client/tmp/victory-advance-*/
+            client/tmp/resource-route-*/
+            client/tmp/defeat-responsive-*/
+            client/tmp/save-adventures-*/
+            client/tmp/combat-text-*/
+            client/tmp/battle-crowded-*/
+            client/tmp/battle-multi-hit-*/
+            client/tmp/counter-hits-*/
+            client/tmp/action-title-*/
+            client/tmp/warrior-critical-*/
+            client/tmp/cinder-frost-*/
+            client/tmp/cinder-iceFamily-*/
+            client/tmp/cinder-statusSpell-*/
+            client/tmp/cinder-lightning-*/
+            client/tmp/weapon-item-art-*/
+            client/tmp/weapon-catalog-art-*/
+            client/tmp/equipment-catalog-art-*/
+            client/tmp/battle-defend-*/
+            client/tmp/warrior-hit-reaction-*/
+            client/tmp/cinder-hit-reaction-*/
+            client/tmp/warrior-ko-revive-*/
+            client/tmp/cinder-ko-reaction-*/
+            client/tmp/cinder-ko-revive-*/
+            client/tmp/warrior-item-use-*/
+            client/tmp/cinder-item-use-*/
+            client/tmp/reference-combat-journey-*/
+            client/tmp/warrior-victory-*/
+            client/tmp/cinder-victory-*/
+            client/tmp/cinder-melee-*/
+            client/tmp/warrior-defend-route-*/
+            client/tmp/cinder-defend-route-*/
+            client/tmp/enemy-tactics-*/
+            client/tmp/bandit-guard-*/
+            client/tmp/meadow-ground-*/
+            client/tmp/grove-snow-fringe-*/
+            client/tmp/public-trails-*/
+            client/tmp/gathering-*/
+            client/tmp/heron-recovery-*/
+            client/tmp/heron-route-discovery-*/
+            client/tmp/dungeon-reward-notice-*/
+            client/tmp/crafting-sources-*/
+            client/tmp/menu-choice-navigation-*/
+            client/tmp/equipment-tooltip-input-*/
+            client/tmp/equipment-party-navigation-*/
+            client/tmp/gem-discovery-*/
+            client/tmp/post-battle-loot-*/
+            client/tmp/equipment-loadout-*/
+            client/tmp/equipment-builds-*/
+            client/tmp/effective-equipment-*/
+            client/tmp/wizard-back-*/
+            client/tmp/wizard-responsive-*/
+            client/test-results/**/*.png
+            client/tmp/overworld-landmarks/
+            client/tmp/ruin-landmark-art-*/
+            client/tmp/cave-landmark-art-*/
+            client/tmp/opening-integration-*/
+            client/tmp/first-session-*/
+            client/tmp/campaign-first-level-*/
+            client/tmp/normal-route-input-*/
+            client/tmp/escort-journey-*/
+            client/tmp/world-shop-entry-*/
+            client/tmp/dev-artifact-isolation-*/
+            client/tmp/world-map-inspection-*/
+            client/tmp/exploration-notice-*/
+            client/tmp/exploration-touch-*/
+            client/tmp/exploration-hud-*/
+            client/tmp/dungeon-objective-layout-*/
+            client/tmp/shop-responsive-*/
+            client/tmp/resource-requirements-*/
+            client/tmp/shop-spell-catalog-*/
+            client/tmp/modern-shop-*/
+            client/tmp/canonical-art-*/
+            client/tmp/merchant-stock-authority/proof/
+            client/e2e/tmp/issue-202-*.png
+            client/e2e/tmp/issue-204-*.png
+            client/e2e/tmp/town-shared-journal-*.png
             client/test-results/
             client/tmp/interior-library-*/
+            client/tmp/portrait-interior-*/
+            client/tmp/touch-npc-route-*/
+            client/tmp/portrait-settlement-*/
+            client/tmp/shop-approach-*/
+            client/tmp/settlement-exit-*/
+            client/tmp/settlement-save-*/
+            client/tmp/interior-menu-shortcuts-*/
             client/e2e/tmp/issue-224-*.png
             /tmp/kithlands-server-*.log
             /tmp/kithlands-client-*.log
@@ -74,7 +190,8 @@ jobs:
 
   # Preserve the protected check name; every suite must pass.
   walking:
-    runs-on: ubuntu-latest
+    # Keep Playwright on a supported OS; ubuntu-latest now resolves to 26.04.
+    runs-on: ubuntu-24.04
     needs: visual-tests
     if: ${{ always() }}
     steps:

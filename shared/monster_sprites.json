@@ -140,6 +140,7 @@
     "bellbound_regent": "monster_bellbound_regent",
     "bell_sentinel": "monster_golem",
     "bramblehog": "monster_bramblehog",
+    "reedbank_bramblehog": "monster_bramblehog",
     "mire_toad": "monster_mire_toad",
     "frosthorn": "monster_frosthorn",
     "ridge_rook": "monster_ridge_rook"

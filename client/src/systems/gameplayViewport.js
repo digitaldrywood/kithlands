@@ -23,6 +23,7 @@ export function gameplayViewportLayout(viewportWidth, viewportHeight) {
   const dpad = portrait
     ? { x: 138, y: controlsY, size: 90, offset: 94, radius: 126 }
     : { x: 85, y: controlsY, size: 58, offset: 62, radius: 82 };
+  const dpadExtent = Math.max(dpad.radius, dpad.offset + dpad.size / 2);
   const action = portrait
     ? { x: 666, y: controlsY, radius: 50 }
     : { x: 715, y: 480, radius: 34 };
@@ -65,10 +66,10 @@ export function gameplayViewportLayout(viewportWidth, viewportHeight) {
     touchHud,
     controlArea: {
       footerTop: portrait ? height - 205 : 565,
-      dpadLeft: dpad.x - dpad.radius,
-      dpadRight: dpad.x + dpad.radius,
-      dpadTop: dpad.y - dpad.radius,
-      dpadBottom: dpad.y + dpad.radius,
+      dpadLeft: dpad.x - dpadExtent,
+      dpadRight: dpad.x + dpadExtent,
+      dpadTop: dpad.y - dpadExtent,
+      dpadBottom: dpad.y + dpadExtent,
       actionLeft: action.x - action.radius - 8,
       actionRight: action.x + action.radius + 8,
       actionTop: action.y - action.radius - 8,
@@ -113,4 +114,15 @@ export function centeredPlayfieldOffset(layout, contentWidth, contentHeight) {
     x: Math.round((layout.width - contentWidth) / 2),
     y: Math.round(layout.playfieldCenterY - contentHeight / 2),
   };
+}
+
+// Fixed canvas UI is sized in logical units, but readability is a CSS-pixel
+// requirement. Use the actual canvas fit, including a narrow browser panel.
+export function portraitFontSize(scene, cssPixels = 16) {
+  const canvasWidth =
+    scene.game?.canvas?.getBoundingClientRect?.()?.width ||
+    globalThis.innerWidth ||
+    GAMEPLAY_WIDTH;
+  const logicalWidth = scene.scale?.gameSize?.width || GAMEPLAY_WIDTH;
+  return `${Math.ceil((cssPixels * logicalWidth) / canvasWidth)}px`;
 }

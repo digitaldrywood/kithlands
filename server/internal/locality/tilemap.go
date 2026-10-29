@@ -132,16 +132,29 @@ func BuildingTypeFromTags(tags []string) string {
 // Map scales with node count. Nodes are spread across the map with
 // wilderness, forests, water, and paths between them.
 func GenerateTileMap(loc *Locality, spawnID string, walk *WalkResult) *TileMap {
-	return generateTileMap(loc, spawnID, walk, true)
+	m := generateTileMap(loc, spawnID, walk, true, true)
+	coalesceSnowPockets(m.Tiles)
+	return m
+}
+
+// GenerateTileMapBeforeBiomeCleanup reproduces public-trail saves.
+func GenerateTileMapBeforeBiomeCleanup(loc *Locality, spawnID string, walk *WalkResult) *TileMap {
+	return generateTileMap(loc, spawnID, walk, true, true)
 }
 
 // GenerateTileMapBeforeFootbridges reproduces the old map only to validate a
 // saved checkpoint during migration. New games must use GenerateTileMap.
 func GenerateTileMapBeforeFootbridges(loc *Locality, spawnID string, walk *WalkResult) *TileMap {
-	return generateTileMap(loc, spawnID, walk, false)
+	return generateTileMap(loc, spawnID, walk, false, false)
 }
 
-func generateTileMap(loc *Locality, spawnID string, walk *WalkResult, footbridges bool) *TileMap {
+// GenerateTileMapBeforePublicTrails reproduces the exact pre-trail signature
+// for checkpoint migration. New games must use GenerateTileMap.
+func GenerateTileMapBeforePublicTrails(loc *Locality, spawnID string, walk *WalkResult) *TileMap {
+	return generateTileMap(loc, spawnID, walk, true, false)
+}
+
+func generateTileMap(loc *Locality, spawnID string, walk *WalkResult, footbridges, publicTrails bool) *TileMap {
 	nodeCount := len(loc.Nodes)
 	mapW := clamp(nodeCount*18, 120, 250)
 	mapH := mapW * 3 / 4
@@ -230,6 +243,9 @@ func generateTileMap(loc *Locality, spawnID string, walk *WalkResult, footbridge
 	if footbridges {
 		addRiverFootbridges(tiles, spawns, mapW, mapH)
 	}
+	if publicTrails {
+		addPublicTrails(tiles, loc, walk, spawns, hiddenPath, mapW, mapH)
+	}
 
 	return &TileMap{
 		Width:      mapW,
@@ -240,6 +256,54 @@ func generateTileMap(loc *Locality, spawnID string, walk *WalkResult, footbridge
 		PlayerX:    playerX,
 		PlayerY:    playerY,
 		HiddenPath: hiddenPath,
+	}
+}
+
+// coalesceSnowPockets replaces isolated snow remnants after road and node
+// placement with the surrounding walkable terrain, retaining larger cold regions.
+func coalesceSnowPockets(tiles [][]int) {
+	const minimumSnowRegion = 12
+	type point struct{ x, y int }
+	seen := make(map[point]bool)
+	for y, row := range tiles {
+		for x, tile := range row {
+			start := point{x, y}
+			if tile != int(TileSnow) || seen[start] {
+				continue
+			}
+			seen[start] = true
+			region := []point{start}
+			for i := 0; i < len(region); i++ {
+				p := region[i]
+				for _, d := range []point{{1, 0}, {-1, 0}, {0, 1}, {0, -1}} {
+					n := point{p.x + d.x, p.y + d.y}
+					if n.y < 0 || n.y >= len(tiles) || n.x < 0 || n.x >= len(tiles[n.y]) || seen[n] || tiles[n.y][n.x] != int(TileSnow) {
+						continue
+					}
+					seen[n] = true
+					region = append(region, n)
+				}
+			}
+			if len(region) < minimumSnowRegion {
+				// Prefer adjacent highlands where present; otherwise join the meadow.
+				hills := 0
+				for _, p := range region {
+					for _, d := range []point{{1, 0}, {-1, 0}, {0, 1}, {0, -1}} {
+						n := point{p.x + d.x, p.y + d.y}
+						if n.y >= 0 && n.y < len(tiles) && n.x >= 0 && n.x < len(tiles[n.y]) && tiles[n.y][n.x] == int(TileHill) {
+							hills++
+						}
+					}
+				}
+				replacement := int(TileGrass)
+				if hills > 0 {
+					replacement = int(TileHill)
+				}
+				for _, p := range region {
+					tiles[p.y][p.x] = replacement
+				}
+			}
+		}
 	}
 }
 

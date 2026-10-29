@@ -522,30 +522,24 @@ Hit% is partly a derived stat (gained per level by class) and partly equipment-d
 
 ## 5.2 The XP curve
 
-FF1's XP curve is famous for getting essentially flat after level 29 (~32,800 XP per level forever). Kithlands uses a similar shape but caps at level 50 instead of 99 to keep campaigns short and replayable.
+Kithlands caps characters at level 50. The per-level requirements were
+flattened in #121; `shared/stats.json` contains the authoritative reference
+value for every level. The fallback formula when a reference entry is missing
+is `floor(40 * level^0.7) + 30`; it is not an interpolation rule. The table
+below summarizes the current data, with cumulative XP measured from level 1.
 
-**XP-to-next-level formula (approximate):**
-
-```
-xp(level) = floor(40 * level^1.6) + 30
-```
-
-The formula above is an approximation. The reference table below is authoritative; intermediate levels are linearly interpolated between sample points. See `shared/stats.json` for the full 50-level table.
-
-Resulting curve:
-
-| Level | XP to next | Cumulative |
-|---|---|---|
+| Level | XP to next | Cumulative XP to reach level |
+|---|---:|---:|
 | 1 | 70 | 0 |
-| 2 | 151 | 70 |
-| 5 | 487 | 1,154 |
-| 10 | 1,624 | 5,801 |
-| 15 | 3,260 | 17,062 |
-| 20 | 5,403 | 38,378 |
-| 25 | 8,054 | 71,761 |
-| 30 | 11,210 | 119,810 |
-| 40 | 19,016 | 271,200 |
-| 50 | 28,837 | 506,560 |
+| 2 | 95 | 70 |
+| 5 | 153 | 417 |
+| 10 | 230 | 1,343 |
+| 15 | 296 | 2,630 |
+| 20 | 355 | 4,230 |
+| 25 | 410 | 6,115 |
+| 30 | 462 | 8,269 |
+| 40 | 560 | 13,336 |
+| 50 | — (maximum level) | 19,363 |
 
 A typical campaign should see the party reach **level 25–35** at the final boss. Level 50 is for completionists who want to grind. The curve is deliberately not flat — every level should feel earned.
 
@@ -585,6 +579,15 @@ A round of combat:
 4. Server returns a list of resolved actions to the client.
 5. Client animates them in sequence.
 6. New round, or victory/defeat screen.
+
+Defend trades the member's action for protection during that round. A conscious,
+unconfused member establishes their guard before initiative, so faster attackers
+cannot bypass the choice. Physical hits (including criticals and physical
+abilities) use `combat.defend_damage_pct` after armor/critical calculations,
+retaining the minimum damage per landed hit. Guard ends with the round; poison
+and magic are unaffected. An ambush strips the party's guard with its other
+first-round actions. Dead, sleeping, stoned or confused members cannot prepare
+a guard. This makes defense a useful response to telegraphed physical threats.
 
 ## 6.2 The damage formula
 

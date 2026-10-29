@@ -88,6 +88,31 @@ function makeScene() {
 }
 
 describe("showInteractPrompt", () => {
+  it("announces the authored quest fight before entering and restores normal use after victory", () => {
+    const scene = makeScene();
+    scene.explorationHUD = { interaction: vi.fn() };
+    scene.gameState.current_quest = 0;
+    scene.gameState.quests = [
+      {
+        objectives: { step: 0 },
+        actions: [
+          { type: "goto", location: "shop" },
+          { type: "kill", location: "shop", prompt: "Clear the blocked trail" },
+          { type: "goto", location: "giver" },
+        ],
+      },
+    ];
+    const spawn = { node_id: "shop", name: "Trading Post", tags: ["shop"] };
+    showInteractPrompt(scene, spawn);
+    expect(scene.explorationHUD.interaction).toHaveBeenLastCalledWith(
+      "Clear the blocked trail — Trading Post",
+    );
+    scene.gameState.quests[0].objectives.step = 2;
+    showInteractPrompt(scene, spawn);
+    expect(scene.explorationHUD.interaction).toHaveBeenLastCalledWith(
+      "Shop — Trading Post",
+    );
+  });
   it("shows Rest for house tags", () => {
     const scene = makeScene();
     showInteractPrompt(scene, { name: "Home", tags: ["house"] });
@@ -526,4 +551,58 @@ describe("server-owned encounter movement", () => {
     );
     expect(scene.gameState).toBe(result);
   });
+});
+
+describe("direct world interior entry", () => {
+  it.each([false, true])(
+    "requires a server transition before rendering (rejected=%s)",
+    async (rejected) => {
+      const spawn = {
+        node_id: "world-store",
+        name: "General Store",
+        tags: ["shop"],
+      };
+      const state = {
+        id: "game-1",
+        phase: "world",
+        current_quest: 0,
+        quests: [],
+        current_location: { kind: "interior", interior: spawn },
+      };
+      apiMocks.transitionLocation.mockResolvedValue(
+        rejected ? { error: "not at this entrance" } : state,
+      );
+      const scene = {
+        currentDoorSpawn: spawn,
+        gameState: {
+          id: "game-1",
+          phase: "world",
+          current_quest: 0,
+          quests: [],
+        },
+        scene: { start: vi.fn() },
+        showMessage: vi.fn(),
+        cameras: {
+          main: { fadeOut: vi.fn(), once: vi.fn((event, cb) => cb()) },
+        },
+      };
+      await interactWithDoor(scene);
+      expect(apiMocks.transitionLocation).toHaveBeenCalledWith(
+        "game-1",
+        "enter-world-interior",
+        "world-store",
+        null,
+      );
+      if (rejected) {
+        expect(scene.scene.start).not.toHaveBeenCalled();
+        expect(scene.animating).toBe(false);
+        expect(scene.showMessage).toHaveBeenCalledWith("not at this entrance");
+      } else {
+        expect(scene.scene.start).toHaveBeenCalledWith("Town", {
+          gameState: state,
+          spawn,
+        });
+      }
+    },
+  );
 });

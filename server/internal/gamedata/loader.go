@@ -44,6 +44,7 @@ type DialoguePool struct {
 
 // GameData holds all loaded game data from shared/.
 type GameData struct {
+	Gathering          GatheringData
 	EncounterPacing    EncounterPacing
 	Campaign           generator.CampaignConfig
 	FinalEncounter     FinalEncounter
@@ -107,6 +108,7 @@ func Load(sharedDir string) *GameData {
 	gd.Stats = loadJSON[StatsConfig](sharedDir, "stats.json")
 	gd.Items = loadJSON[ItemsData](sharedDir, "items.json")
 	gd.Loot = loadJSON[LootData](sharedDir, "loot.json")
+	gd.Gathering = loadJSON[GatheringData](sharedDir, "gathering.json")
 	gd.Abilities = loadJSON[[]Ability](sharedDir, "abilities.json")
 	gd.Chests = loadJSON[ChestCatalog](sharedDir, "chests.json")
 	gd.Spells = loadJSON[SpellsData](sharedDir, "spells.json")
@@ -130,6 +132,21 @@ func Load(sharedDir string) *GameData {
 	}
 	gd.validateDungeons()
 	gd.validateFinalEncounter()
+	for id, def := range gd.QuestObjectives {
+		if def.Companion != nil && gd.ClassByID(def.Companion.Sprite) == nil {
+			panic(fmt.Sprintf("gamedata: quest %s companion sprite %q missing", id, def.Companion.Sprite))
+		}
+		if def.Encounter == nil {
+			continue
+		}
+		for _, roster := range [][]string{def.Encounter.Monsters, def.Encounter.FullPartyMonsters} {
+			for _, monster := range roster {
+				if gd.MonsterByID(monster) == nil {
+					panic(fmt.Sprintf("gamedata: quest %s monster %q missing", id, monster))
+				}
+			}
+		}
+	}
 
 	return gd
 }
@@ -189,6 +206,7 @@ func (gd *GameData) expandBattleCharacterStates() {
 				})
 			}
 			profile.States[stateID] = BattleStateDefinition{
+				CueFrame:      recipeState.CueFrame,
 				BodyKey:       signature.BodyKey,
 				BodyPath:      signature.BodyPath,
 				HoldLastFrame: recipeState.HoldLastFrame,
@@ -386,6 +404,9 @@ func cloneIntMap(source map[string]int) map[string]int {
 
 func (gd *GameData) validate() {
 	gd.validateLoot()
+	if err := gd.ValidateGathering(); err != nil {
+		panic(fmt.Sprintf("gamedata: %v", err))
+	}
 	gd.validateNaturalDiscoveries()
 
 	if len(gd.Classes) == 0 {
@@ -401,6 +422,7 @@ func (gd *GameData) validate() {
 			panic(fmt.Sprintf("gamedata: duplicate class id %q", c.ID))
 		}
 		classIDs[c.ID] = true
+		gd.validateStartingSpells(c)
 		if c.Name == "" {
 			panic(fmt.Sprintf("gamedata: class %q has empty name", c.ID))
 		}
@@ -439,6 +461,9 @@ func (gd *GameData) validate() {
 	}
 	if gd.Stats.Combat.MinDamagePerHit <= 0 {
 		panic("gamedata: stats.json combat.min_damage_per_hit must be > 0")
+	}
+	if gd.Stats.Combat.DefendDamagePct < 1 || gd.Stats.Combat.DefendDamagePct >= 100 {
+		panic("gamedata: stats.json combat.defend_damage_pct must be between 1 and 99")
 	}
 
 	validateEquipmentSlots(gd.Items.EquipmentSlots)
@@ -569,6 +594,14 @@ func (gd *GameData) validate() {
 
 	validSizes := map[string]bool{"small": true, "medium": true, "large": true, "boss": true}
 	for _, m := range gd.Monsters {
+		for _, step := range m.BattlePattern {
+			if step.Kind != "attack" && step.Kind != "focus" && step.Kind != "defend" {
+				panic(fmt.Sprintf("gamedata: monster %q has unsupported battle action %q", m.ID, step.Kind))
+			}
+			if strings.TrimSpace(step.Label) == "" || len(step.Label) > 40 {
+				panic(fmt.Sprintf("gamedata: monster %q requires a short battle action label", m.ID))
+			}
+		}
 		if m.ID == "" {
 			panic("gamedata: monster with empty id")
 		}
@@ -784,6 +817,9 @@ func (gd *GameData) validateBattleCharacters(baseClassIDs map[string]bool) {
 	if cfg.FrameSize <= 0 {
 		panic("gamedata: battle_characters.json frame_size must be positive")
 	}
+	if len(cfg.FeetAnchor) != 2 || cfg.FeetAnchor[0] < 0 || cfg.FeetAnchor[0] > float64(cfg.FrameSize) || cfg.FeetAnchor[1] < 0 || cfg.FeetAnchor[1] > float64(cfg.FrameSize) {
+		panic("gamedata: battle_characters.json has invalid feet_anchor")
+	}
 	if len(cfg.RequiredStates) == 0 {
 		panic("gamedata: battle_characters.json has no required_states")
 	}
@@ -796,6 +832,13 @@ func (gd *GameData) validateBattleCharacters(baseClassIDs map[string]bool) {
 	}
 	if len(cfg.StateRecipes) == 0 {
 		panic("gamedata: battle_characters.json has no state_recipes")
+	}
+	optionalStates := make(map[string]bool, len(cfg.OptionalStates))
+	for _, state := range cfg.OptionalStates {
+		if strings.TrimSpace(state) == "" || requiredStates[state] || optionalStates[state] {
+			panic(fmt.Sprintf("gamedata: battle_characters.json has invalid optional state %q", state))
+		}
+		optionalStates[state] = true
 	}
 	for recipeID, recipe := range cfg.StateRecipes {
 		if strings.TrimSpace(recipeID) == "" || len(recipe.States) == 0 {
@@ -810,6 +853,17 @@ func (gd *GameData) validateBattleCharacters(baseClassIDs map[string]bool) {
 			}
 			if len(state.Frames) == 0 {
 				panic(fmt.Sprintf("gamedata: battle state recipe %q state %q has no frames", recipeID, stateID))
+			}
+			if state.CueFrame != nil {
+				found := false
+				for _, frame := range state.Frames {
+					if frame.Frame == *state.CueFrame {
+						found = true
+					}
+				}
+				if !found {
+					panic(fmt.Sprintf("gamedata: battle character %q state %q has invalid cue_frame", recipeID, stateID))
+				}
 			}
 			for frameIndex, frame := range state.Frames {
 				if frame.Frame < 0 || frame.Duration <= 0 ||
@@ -903,7 +957,12 @@ func (gd *GameData) validateBattleCharacters(baseClassIDs map[string]bool) {
 			}
 		}
 		for stateID, state := range profile.States {
-			if !requiredStates[stateID] {
+			switch state.ContactFamily {
+			case "", "slash", "blunt":
+			default:
+				panic(fmt.Sprintf("gamedata: battle character %q state %q has invalid contact_family %q", profile.ID, stateID, state.ContactFamily))
+			}
+			if !requiredStates[stateID] && !optionalStates[stateID] {
 				panic(fmt.Sprintf("gamedata: battle character %q has unknown state %q", profile.ID, stateID))
 			}
 			if state.HoldLastFrame && stateID != "ko_defeated" {
@@ -911,6 +970,17 @@ func (gd *GameData) validateBattleCharacters(baseClassIDs map[string]bool) {
 			}
 			if state.BodyKey == "" || state.BodyPath == "" || len(state.Frames) == 0 {
 				panic(fmt.Sprintf("gamedata: battle character %q state %q is incomplete", profile.ID, stateID))
+			}
+			if state.CueFrame != nil {
+				found := false
+				for _, frame := range state.Frames {
+					if frame.Frame == *state.CueFrame {
+						found = true
+					}
+				}
+				if !found {
+					panic(fmt.Sprintf("gamedata: battle character %q state %q has invalid cue_frame", profile.ID, stateID))
+				}
 			}
 			for frameIndex, frame := range state.Frames {
 				if frame.Frame < 0 || frame.Duration <= 0 {
@@ -1151,6 +1221,7 @@ func validateBattleEffectPresentation(kind, id string, presentation *BattleEffec
 	validFamilies := map[string]bool{
 		"restorative_light": true, "ward_blessing": true, "fire": true,
 		"ice": true, "lightning": true, "status_dark": true,
+		"status_sleep": true, "status_silence": true, "status_slow": true,
 		"holy_revival": true, "focus": true, "counter": true,
 		"steal": true, "backstab": true, "inspire": true,
 	}

@@ -129,7 +129,7 @@ test("keeps spell cost, purpose, and target validity visible", async ({
       layoutMode: "mobile",
       logicalSize: { width: 800, height: 1600 },
       panelBounds: { width: 760, height: 1460 },
-      backBounds: { width: 680, height: 94 },
+      backBounds: { width: 348, height: 94 },
     });
   const targetSummary = await page.evaluate(() =>
     window.__kithlandsTest.menuOverlaySummary("magic", "World"),

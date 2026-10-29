@@ -55,7 +55,7 @@ describe("overworld landmark classification", () => {
     );
   });
 
-  it("selects variants deterministically without names or coordinates", () => {
+  it("keeps landmark identity across regenerated interiors, names and coordinates", () => {
     const spawn = {
       node_id: "place_2",
       name: "First Name",
@@ -66,7 +66,13 @@ describe("overworld landmark classification", () => {
     };
     const selected = landmarkMarkerFor(spawn).variant.id;
     expect(
-      landmarkMarkerFor({ ...spawn, name: "New Name", x: 90, y: 4 }).variant.id,
+      landmarkMarkerFor({
+        ...spawn,
+        name: "New Name",
+        x: 90,
+        y: 4,
+        interior_seed: 21909,
+      }).variant.id,
     ).toBe(selected);
     const seen = new Set(
       Array.from(

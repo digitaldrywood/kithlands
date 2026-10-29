@@ -1,0 +1,202 @@
+{
+  "source": "Original Kithlands outlined vector equipment art",
+  "dimensions": [
+    64,
+    64
+  ],
+  "background": "transparent",
+  "runtime_prefix": "equipment/catalog/",
+  "profiles": {
+    "patched_mantle": [
+      "mantle",
+      "moss",
+      "patch"
+    ],
+    "leather_gloves": [
+      "gloves",
+      "leather",
+      "plain"
+    ],
+    "traveler_belt": [
+      "belt",
+      "leather",
+      "plain"
+    ],
+    "trail_pants": [
+      "pants",
+      "moss",
+      "patch"
+    ],
+    "trail_boots": [
+      "boots",
+      "leather",
+      "plain"
+    ],
+    "copper_amulet": [
+      "amulet",
+      "copper",
+      "plain"
+    ],
+    "copper_ring": [
+      "ring",
+      "copper",
+      "plain"
+    ],
+    "twin_sigil_amulet": [
+      "amulet",
+      "mythril",
+      "twin"
+    ],
+    "warrior_signet": [
+      "ring",
+      "gold",
+      "signet"
+    ],
+    "cloth_robe": [
+      "robe",
+      "linen",
+      "plain"
+    ],
+    "leather_armor": [
+      "leather",
+      "leather",
+      "plain"
+    ],
+    "chain_mail": [
+      "chain",
+      "iron",
+      "plain"
+    ],
+    "silk_robe": [
+      "robe",
+      "jade",
+      "silk"
+    ],
+    "studded_leather": [
+      "leather",
+      "leather",
+      "studs"
+    ],
+    "plate_mail": [
+      "plate",
+      "steel",
+      "plain"
+    ],
+    "enchanted_robe": [
+      "robe",
+      "violet",
+      "rune"
+    ],
+    "war_plate": [
+      "plate",
+      "iron",
+      "crest"
+    ],
+    "mythril_chain": [
+      "chain",
+      "mythril",
+      "plain"
+    ],
+    "shadow_leather": [
+      "leather",
+      "shadow",
+      "rune"
+    ],
+    "arcane_robe": [
+      "robe",
+      "blue",
+      "rune"
+    ],
+    "dragonscale_plate": [
+      "plate",
+      "ember",
+      "scales"
+    ],
+    "knight_chain": [
+      "chain",
+      "steel",
+      "crest"
+    ],
+    "ranger_leather": [
+      "leather",
+      "moss",
+      "leaf"
+    ],
+    "sage_robe": [
+      "robe",
+      "jade",
+      "leaf"
+    ],
+    "blessed_plate": [
+      "plate",
+      "gold",
+      "sun"
+    ],
+    "guardian_chain": [
+      "chain",
+      "blue",
+      "crest"
+    ],
+    "hunter_leather": [
+      "leather",
+      "leather",
+      "fang"
+    ],
+    "void_robe": [
+      "robe",
+      "shadow",
+      "moon"
+    ],
+    "aegis_plate": [
+      "plate",
+      "mythril",
+      "wings"
+    ],
+    "titan_chain": [
+      "chain",
+      "gold",
+      "mountain"
+    ],
+    "phantom_leather": [
+      "leather",
+      "violet",
+      "moon"
+    ],
+    "celestial_robe": [
+      "robe",
+      "blue",
+      "star"
+    ],
+    "wooden_shield": [
+      "shield",
+      "leather",
+      "wood"
+    ],
+    "iron_shield": [
+      "shield",
+      "iron",
+      "boss"
+    ],
+    "steel_shield": [
+      "shield",
+      "steel",
+      "crest"
+    ],
+    "leather_cap": [
+      "cap",
+      "leather",
+      "plain"
+    ],
+    "iron_helm": [
+      "helm",
+      "iron",
+      "open"
+    ],
+    "great_helm": [
+      "helm",
+      "steel",
+      "closed"
+    ]
+  },
+  "preserved_existing_icons": true
+}

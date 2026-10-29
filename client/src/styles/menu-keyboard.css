@@ -1,0 +1,62 @@
+.menu-shortcut {
+  display: inline-block;
+  margin-left: 7px;
+  padding: 1px 4px;
+  border: 1px solid #94a8bd66;
+  border-radius: 4px;
+  font:
+    10px/1.3 system-ui,
+    sans-serif;
+  color: inherit;
+  opacity: 0.85;
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: #152030cc;
+}
+.craft-recipe .menu-shortcut {
+  position: absolute;
+  bottom: 5px;
+  right: 6px;
+  margin: 0;
+  font-size: 9px;
+}
+.field-crafting button.craft-recipe {
+  position: relative;
+  padding-bottom: 23px;
+}
+.equipment-slot .menu-shortcut {
+  position: absolute;
+  top: 4px;
+  right: 3px;
+  margin: 0;
+  font-size: 8px;
+  z-index: 2;
+}
+.party-card .menu-shortcut {
+  align-self: end;
+}
+.battle-choice .menu-shortcut {
+  margin-left: 0;
+  margin-right: 7px;
+}
+@media (max-width: 500px) {
+  .craft-recipe .menu-shortcut {
+    margin: 0;
+  }
+}
+
+.primary .menu-shortcut {
+  color: #f0dcb0;
+  background: #152030;
+}
+
+.kith-equipment-screen .character-detail-tab {
+  padding: 6px 2px;
+  font-size: 14px;
+  text-transform: none;
+}
+.kith-equipment-screen .character-detail-tab .menu-shortcut {
+  display: block;
+  width: fit-content;
+  margin: 3px auto 0;
+}

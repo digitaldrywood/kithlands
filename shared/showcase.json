@@ -50,11 +50,15 @@
       "spells": [
         "spark",
         "frost",
+        "sleep",
         "ember",
+        "chill",
         "shock",
         "fireball",
         "iceshard",
+        "slow",
         "blaze",
+        "blizzard",
         "thunder"
       ]
     },

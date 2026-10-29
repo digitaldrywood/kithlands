@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
+  battleBackdropFrame,
   BG_VARIANTS,
   INTERIOR_VARIANT_BY_BUILDING,
   backgroundKey,
@@ -9,6 +10,27 @@ import {
 } from "./battleBackgrounds.js";
 
 describe("battleBackgrounds", () => {
+  it("crops the painted floor without exposing the baked footer and caches the frame", () => {
+    let added = false;
+    const texture = {
+      has: () => added,
+      getSourceImage: () => ({ width: 800, height: 600 }),
+      add: vi.fn(() => {
+        added = true;
+      }),
+    };
+    expect(battleBackdropFrame(texture)).toBe("battle-ground");
+    battleBackdropFrame(texture);
+    expect(texture.add).toHaveBeenCalledExactlyOnceWith(
+      "battle-ground",
+      0,
+      0,
+      240,
+      800,
+      234,
+    );
+  });
+
   it("enumerates one entry per manifest variant", () => {
     const entries = enumerateBackgrounds();
     const expected = Object.values(BG_VARIANTS).reduce((a, n) => a + n, 0);

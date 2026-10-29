@@ -71,6 +71,9 @@ Every position is a real button with a stable slot ID and one of these states:
 Repeated positions remain distinct. Ring I and Ring II are separate buttons
 even though both accept the `ring` category.
 
+The current gem workbench layout and verified action/return flow are documented
+in [Gem Workshop workbench](GEM_WORKSHOP_WORKBENCH.md).
+
 ## 3. Interaction flow
 
 ### Equip or replace

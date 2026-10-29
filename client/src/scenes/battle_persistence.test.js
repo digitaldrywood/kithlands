@@ -1,6 +1,27 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearPrefs } from "../systems/prefs.js";
 
+describe("quest encounter defeat handoff", () => {
+  it("returns a recovered quest party to exploration instead of victory results", async () => {
+    const { BattleScene } = await import("./battle.js");
+    const scene = new BattleScene();
+    scene.returnFromBattle = vi.fn();
+    const recovered = {
+      phase: "world",
+      current_quest: 0,
+      quests: [{ objectives: { step: 1, recovery: "defeat" } }],
+    };
+    expect(scene.returnFromDungeonDefeat(recovered)).toBe(true);
+    expect(scene.returnFromBattle).toHaveBeenCalledWith(recovered);
+    // A retained recovery marker must not redirect an unrelated battle result.
+    scene.returnFromBattle.mockClear();
+    expect(
+      scene.returnFromDungeonDefeat({ ...recovered, phase: "quest_complete" }),
+    ).toBe(false);
+    expect(scene.returnFromBattle).not.toHaveBeenCalled();
+  });
+});
+
 const apiMocks = vi.hoisted(() => ({
   claimChest: vi.fn(),
   gameAction: vi.fn(),
@@ -148,6 +169,33 @@ beforeEach(() => {
 });
 
 describe("BattleScene repeat memory", () => {
+  it("advances once when rapid party choices finish before delayed callbacks", () => {
+    const scene = new BattleScene();
+    scene.gameState = {
+      party: ["Hero", "Sparks", "Mercy", "Shade"].map((name) => ({ name })),
+    };
+    scene.closePicker = vi.fn();
+    scene.promptText = {
+      setText() {
+        return this;
+      },
+      setColor() {
+        return this;
+      },
+    };
+    scene.memberActions = [];
+    scene.currentMemberIdx = 0;
+    scene.animating = false;
+    const callbacks = [];
+    scene.scaledDelay = (_, callback) => callbacks.push(callback);
+    scene.showCurrentMemberTurn = vi.fn();
+    for (let slot = 0; slot < 4; slot++)
+      scene.recordAction(slot, { slot, type: "defend" });
+    callbacks.forEach((callback) => callback());
+    expect(scene.memberActions).toHaveLength(4);
+    expect(scene.showCurrentMemberTurn).toHaveBeenCalledTimes(1);
+  });
+
   it("loads the saved round from authoritative game state", () => {
     const actions = [{ slot: 0, type: "attack", target_id: 7 }];
     const scene = new BattleScene();
@@ -409,48 +457,20 @@ describe("rounded battle meter updates", () => {
 });
 
 describe("defeated victory XP presentation", () => {
-  it.each([false, true])(
-    "retains a static half-full XP meter (mobile: %s)",
-    (mobile) => {
-      const scene = new BattleScene();
-      const shapes = [];
-      const object = (fields = {}) => {
-        const node = new Proxy(fields, {
-          get(target, key) {
-            if (key in target) return target[key];
-            return () => node;
-          },
-        });
-        return node;
-      };
-      scene.add = {
-        graphics: () => object(),
-        rectangle: (x, y, width, height, fill) => {
-          const shape = object({ x, y, width, height, fill });
-          shapes.push(shape);
-          return shape;
+  it.each([150, 225])(
+    "retains %s earned XP without animating a new award",
+    async (xp) => {
+      const { victoryXPState } = await import("./victory_receipt.js");
+      const state = victoryXPState(
+        {
+          party: [{ hp: 0, xp, xp_next: 300 }],
+          xp_before: [xp],
+          died_this_fight: [true],
         },
-        text: () => object(),
-      };
-      scene.hudLayout = { mode: mobile ? "mobile" : "desktop" };
-      scene.scale = { gameSize: { height: mobile ? 1600 : 600 } };
-      scene.children = { removeAll: vi.fn() };
-      scene.textures = { exists: () => false };
-      scene.input = { keyboard: { on: vi.fn() } };
-      scene.time = { delayedCall: vi.fn() };
-      scene.tweens = { add: vi.fn() };
-      scene.returnFromDungeonDefeat = () => false;
-      scene.showVictoryResults({
-        phase: "exploration",
-        party: [{ name: "Hero", hp: 0, max_hp: 100, xp: 150, xp_next: 300 }],
-        xp_before: [150],
-        died_this_fight: [true],
-      });
-      const fill = shapes.find((shape) => shape.fill === 0x65717d);
-      expect(fill).toBeDefined();
-      expect(fill.width).toBe(mobile ? 110 : 90);
-      expect(fill.x).toBe(mobile ? 430 : 395);
-      expect(scene.tweens.add).not.toHaveBeenCalled();
+        0,
+      );
+      expect(state.final).toBe(xp / 300);
+      expect(state.segments).toEqual([]);
     },
   );
 });

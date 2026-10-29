@@ -44,3 +44,19 @@ func TestFillTerrain_GeneratesExpandedBiomeVariety(t *testing.T) {
 		t.Fatal("fillTerrain should generate at least one mountain tile for the issue #181 biome variety pass")
 	}
 }
+
+func TestCoalesceSnowPocketsKeepsLargeRegionsAndOtherTerrain(t *testing.T) {
+	snow, grass, hill := int(TileSnow), int(TileGrass), int(TileHill)
+	tiles := [][]int{{snow, grass, snow, snow, snow, snow}, {grass, grass, snow, snow, snow, snow}, {hill, grass, snow, snow, snow, snow}}
+	coalesceSnowPockets(tiles)
+	if tiles[0][0] != grass || tiles[2][0] != hill || tiles[0][1] != grass {
+		t.Fatalf("small pocket or surrounding terrain changed incorrectly: %v", tiles)
+	}
+	for y := range tiles {
+		for x := 2; x < 6; x++ {
+			if tiles[y][x] != snow {
+				t.Fatalf("large snow region changed at %d,%d", x, y)
+			}
+		}
+	}
+}

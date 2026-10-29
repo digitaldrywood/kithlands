@@ -197,7 +197,11 @@
     "name": "Bandit",
     "field_note": "A roaming opportunist who prefers a toll demanded from cover to a fair fight in the open.",
     "habitats": ["Roadsides", "Foothills", "Wilderness camps"],
-    "tactics": "Bandits have no elemental weakness; steady physical pressure and front-row defense are the safest answer.",
+    "tactics": "Bandits alternate guarding and attacking. Guard halves physical hits but leaves magic unchanged. Strike exposed allies first, or use magic through the guard; defend when it opens to attack.",
+    "battle_pattern": [
+      { "kind": "defend", "label": "Guard: physical hits halved" },
+      { "kind": "attack", "label": "Attack: guard open" }
+    ],
     "tier": 2,
     "size": "medium",
     "stats": {
@@ -766,7 +770,12 @@
     "name": "Bramblehog",
     "field_note": "A sturdy forest forager whose leaf-covered quills scatter seeds wherever it roots for bulbs.",
     "habitats": ["Forests", "Dark grass", "Woodland margins"],
-    "tactics": "Fire catches its dry quills; focused attacks prevent a rooting herd from controlling the field.",
+    "tactics": "It prepares before two stronger attacks. Defend during the rush or burn its dry quills before it can strike.",
+    "battle_pattern": [
+      { "kind": "focus", "label": "Prepare rush" },
+      { "kind": "attack", "label": "Quill rush" },
+      { "kind": "attack", "label": "Quill rush" }
+    ],
     "tier": 1,
     "size": "small",
     "stats": {
@@ -884,5 +893,53 @@
     "encounter_weight": 14,
     "min_group": 1,
     "max_group": 3
+  },
+  {
+    "id": "reedbank_bramblehog",
+    "name": "Reed-bank Bramblehog",
+    "field_note": "An older bramblehog holding a sheltered reed bank. Its thick quills protect the herd\u2019s quiet resting place.",
+    "habitats": [
+      "Forests",
+      "Dark grass",
+      "Woodland margins"
+    ],
+    "tactics": "It prepares before two stronger attacks. Defend during the rush or burn its dry quills before it can strike.",
+    "battle_pattern": [
+      { "kind": "focus", "label": "Prepare rush" },
+      { "kind": "attack", "label": "Quill rush" },
+      { "kind": "attack", "label": "Quill rush" }
+    ],
+    "tier": 1,
+    "size": "small",
+    "stats": {
+      "str": 6,
+      "agi": 3,
+      "int": 1,
+      "vit": 4,
+      "lck": 2,
+      "hit_pct": 3
+    },
+    "hp": 48,
+    "armor_absorb": 1,
+    "xp_reward": 24,
+    "gold_reward": 10,
+    "weaknesses": [
+      "fire"
+    ],
+    "resistances": [],
+    "absorbs": [],
+    "drops": [
+      {
+        "item_id": "potion",
+        "chance_pct": 12
+      },
+      {
+        "item_id": "antidote",
+        "chance_pct": 8
+      }
+    ],
+    "encounter_weight": 0,
+    "min_group": 1,
+    "max_group": 2
   }
 ]

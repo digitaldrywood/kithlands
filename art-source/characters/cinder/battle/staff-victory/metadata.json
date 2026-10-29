@@ -1,0 +1,35 @@
+{
+  "status": "approved_runtime",
+  "generated_on": "2026-10-26",
+  "generator": "OpenAI built-in image_gen (model identifier not returned)",
+  "identity_reference": "art-source/characters/cinder/battle/staff-cast/frame-00.png",
+  "guide_paths": [
+    "../../guides/staff-victory-tip.svg",
+    "../../guides/staff-victory-bow.svg"
+  ],
+  "generation_outputs": [
+    "exec-e7479382-12ac-4096-b1a7-736c1263f1be.png",
+    "exec-bc3694a8-30ee-4ebd-a2bb-fbe83d8a19c8.png"
+  ],
+  "prompts": {
+    "tip": "Use case identity-preserve original game animation frame. Image1 is locked Kithlands Cinder identity, camera and exact chunky pixel-art style. Image2 is pose guide ONLY. Produce ONE body-only full-body VICTORY HAT-TIP gesture of the SAME slim shadow-faced mage, three-quarter facing screen-left, slightly overhead battle camera. Preserve crooked bent-tip violet pointed hat, shadow-black face with exactly two tiny cyan eyes, gold-edged layered purple robe/cloak, red-violet chest clasp, dark gloves/boots and original proportions/palette. Both boots planted in original guard stance, robe hem grounded; upright torso/head. Near screen-left arm bends UP at elbow, empty glove gently touches the FRONT-LEFT HAT BRIM near forehead in a modest victorious salute. Far empty glove rests low at right hip, ready for separate staff. Calm self-assured hat-tip, not a casting arm extension or overhead attack. Keep whole-body/head/hat scale stable and silhouette readable; preserve original robe folds and crisp pixel clusters equivalent192px sprite detail. No staff, weapon, shield, magic, aura, prop, ground, shadow, scenery, blood, text, UI or grid. Entire figure centered with clear transparent margins, real alpha. One isolated pose only, no sheet.",
+    "bow": "Use case identity-preserve original pixel-art game animation frame. Image1 is locked Kithlands Cinder idle identity and exact rendering. Image2 is preceding victory hat-tip of same mage for continuity. Image3 is BOW pose guide only. Produce ONE body-only full-body MODEST VICTORY BOW of the SAME slim shadow-faced mage: three-quarter facing screen-left, slightly overhead battle camera. Head and upper torso bow forward/down toward screen-left about15 degrees with an actual newly drawn bend at waist, NOT whole-body sprite rotation. Near empty glove continues touching front-left hat brim so hat stays on during bow. Far empty glove stays low near right hip ready to hold separate staff. BOTH boots stay planted on same ground, knees only slightly softened; robe hem remains grounded, lower body stays under hips, head/hat mass slightly lower, no crouching to floor, jumping or floating. Preserve bent-tip violet hat, black shadow face with exactly two tiny cyan eyes, gold-edged layered purple robes/cloak, red-violet chest clasp, dark gloves/boots, original slim proportions and camera. Calm small bow, not casting/attacking/praying. Crisp chunky pixel clusters equivalent192px original, no painterly smoothing. Entire full figure centered with clear transparent margins and real alpha. No staff, weapon, shield, magic/aura, prop, ground, baked shadow, scenery, blood, text, UI or grid. One isolated pose, no sheet."
+  },
+  "frame_contract": {
+    "frame_size": [192, 192],
+    "atlas_size": [576, 192],
+    "order": ["guard", "hat_tip", "bow"],
+    "container_anchor": [96, 184],
+    "body_baseline": 182,
+    "weapon_baked_in": false
+  },
+  "normalization": "Retain generated alpha, crop occupied alpha>8 bbox; uniform nearest-neighbor resize both new poses to167px high; center192px cells with occupied bottom y182. Guard copied unchanged from accepted cast. Body mass preserved; posture supplies bow.",
+  "candidate_path": "client/tmp/cinder-victory-candidate-1793073200",
+  "rejected_normalization": "Initial bow156px high preview visibly shrank the figure; corrected to167px before runtime install. Original preview retained as frames-review.png; accepted source review frames-review-consistent-mass.png.",
+  "visual_acceptance": {
+    "proof": "docs/CINDER_VICTORY_POSE_PROOF.md",
+    "scope": "Real Spark win with native celebration, receipt and Continue to World at desktop/phone touch/reduced motion",
+    "runtime_path": "client/public/sprites/battle/cinder/staff-victory-body.png",
+    "observations": "Hat-tip and small drawn bow, fixed body/feet/shadow, separate visible staff; corrected initial shrinking normalization before runtime"
+  }
+}

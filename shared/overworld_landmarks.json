@@ -75,12 +75,14 @@
         {
           "id": "dungeon-ruins",
           "key": "world_landmark_dungeon_ruins",
-          "path": "/sprites/world/landmarks/dungeon-ruins.png"
+          "path": "/sprites/world/landmarks/dungeon-ruins-detailed.png",
+          "offset_y": -12
         },
         {
           "id": "dungeon-cave",
           "key": "world_landmark_dungeon_cave",
-          "path": "/sprites/world/landmarks/dungeon-cave.png"
+          "path": "/sprites/world/landmarks/dungeon-cave-detailed.png",
+          "offset_y": -12
         }
       ]
     },
@@ -109,12 +111,12 @@
         {
           "id": "natural-grove",
           "key": "world_landmark_natural_grove",
-          "path": "/sprites/world/landmarks/natural-grove.png"
+          "path": "/sprites/world/landmarks/natural-grove-canopy.png"
         },
         {
           "id": "natural-spring",
           "key": "world_landmark_natural_spring",
-          "path": "/sprites/world/landmarks/natural-spring.png"
+          "path": "/sprites/world/landmarks/natural-spring-canopy.png"
         }
       ]
     }

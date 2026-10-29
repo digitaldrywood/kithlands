@@ -1,0 +1,34 @@
+{
+  "status": "approved_runtime",
+  "generated_on": "2026-10-26",
+  "generator": "OpenAI built-in image_gen (model identifier not returned)",
+  "identity_reference": "art-source/characters/cinder/battle/staff-cast/frame-00.png",
+  "guide_paths": [
+    "../../guides/staff-item-retrieve.svg",
+    "../../guides/staff-item-present.svg"
+  ],
+  "generation_outputs": [
+    "exec-7456a0c3-3f1a-4fe0-ad84-989facb839e7.png",
+    "exec-50651a57-f3c2-49b1-8de5-4e7088160d1b.png"
+  ],
+  "prompts": {
+    "retrieve": "Use case: identity-preserve original game animation frame. Image1 is locked Kithlands Cinder identity and exact crisp pixel-art rendering; image2 is skeleton pose guide ONLY. Produce ONE full-body body-only ITEM RETRIEVAL pose of the SAME slim shadow-faced mage, three-quarter facing screen-left, slightly overhead battle camera. Preserve bent-tip violet pointed hat, black face with exactly two tiny cyan eyes, gold-edged layered purple robes/cloak, red-violet chest clasp, dark gloves/boots and original proportions/palette. Both boots planted and robe hem grounded; torso upright and head looking slightly downward. Near screen-left arm bends DOWN to the waist; empty glove reaches partly inside the overlapping robe folds at waist height to retrieve supplies. Far empty glove rests low at the right hip. Calm deliberate reaching, not casting/attacking, no arm above shoulders. Keep hat/head scale and whole-body slim mass stable; cloth folds react subtly. Entire figure centered with clear transparent margins, real alpha. Crisp chunky pixel clusters equivalent192px sprite detail, no painterly smoothing. No staff, weapon, shield, bottle, potion or other held prop, magic, aura, ground, baked shadow, scenery, blood, text, UI or grid. One isolated pose, no sheet.",
+    "present": "Use case identity-preserve original pixel-art game animation frame. Image1 is locked Kithlands Cinder idle identity and exact pixel-cluster rendering. Image2 is that same Cinder calmly retrieving supplies for continuity. Image3 is an ITEM PRESENTATION pose guide ONLY. Produce ONE full-body body-only calm offering pose of this SAME slim shadow-faced mage, three-quarter facing screen-left with slightly overhead battle camera. Preserve crooked bent-tip violet pointed hat, shadow-black face with exactly two tiny cyan eyes, gold-edged layered purple robes/cloak, red-violet chest clasp, dark gloves/boots and original proportions. Both boots planted on common ground, upright torso, stable hat/head scale and robe silhouette. Near screen-left arm extends forward and slightly DOWN, elbow slightly bent, OPEN EMPTY glove PALM UP at lower-chest/waist height toward screen-left to offer supplies. Far empty hand rests low at right hip. Deliberate gentle presenting gesture, no casting arms above shoulder, no attack, no prayer, no shrug. Keep heavy cloth folds and original chunky crisp pixel-art detail equivalent192px sprite. No painterly smoothing. Entire full body centered with generous transparent margins and real alpha. No staff, sword, weapon, shield, potion/bottle/prop, magic, glow, ground, baked shadow, scenery, blood, text, UI or grid. One isolated pose only, no sheet."
+  },
+  "frame_contract": {
+    "frame_size": [192, 192],
+    "atlas_size": [576, 192],
+    "order": ["guard", "retrieve", "present"],
+    "container_anchor": [96, 184],
+    "body_baseline": 182,
+    "weapon_baked_in": false
+  },
+  "normalization": "Retain generated alpha, crop occupied alpha>8 bbox; uniform nearest-neighbor resize each new pose to167px high; center192px cells with occupied bottom y182. Guard frame0 copied unchanged from accepted cast.",
+  "candidate_path": "client/tmp/cinder-item-candidate-1793072000",
+  "notes": "Generic supply gesture, no baked consumable prop; runtime supplies existing item-result effect. Staff visible on guard, hidden only during retrieval/presentation.",
+  "visual_acceptance": {
+    "proof": "docs/CINDER_ITEM_USE_PROOF.md",
+    "scope": "Native Cinder Potion use, one authored result cue, fixed feet/body/shadow, staff hidden during gesture and restored on guard at desktop/phone touch/reduced motion",
+    "runtime_path": "client/public/sprites/battle/cinder/staff-item-body.png"
+  }
+}

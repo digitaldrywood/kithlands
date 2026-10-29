@@ -1,3 +1,10 @@
+import { playStatusRelease, playStatusToTarget } from "./battle_status_fx.js";
+import { playIceRelease, playIceToTarget } from "./battle_ice_fx.js";
+import {
+  playLightningRelease,
+  playLightningToTarget,
+} from "./battle_lightning_fx.js";
+import { drawFirebolt, fireContactDetails } from "./battle_contact_fx.js";
 const INTENSITY_TIERS = Object.freeze({
   1: Object.freeze({ scale: 0.82, particleCount: 4, strokeWidth: 2 }),
   2: Object.freeze({ scale: 1, particleCount: 6, strokeWidth: 3 }),
@@ -5,12 +12,47 @@ const INTENSITY_TIERS = Object.freeze({
 });
 
 const EFFECT_FAMILIES = Object.freeze({
+  status_sleep: Object.freeze({
+    motion: "sigil",
+    core: 0xc6b9ff,
+    glow: 0x7768bc,
+    accent: 0xffedbf,
+    soundHook: "sfx_spell",
+  }),
+  status_silence: Object.freeze({
+    motion: "sigil",
+    core: 0x9ce8df,
+    glow: 0x478d96,
+    accent: 0xffffff,
+    soundHook: "sfx_spell",
+  }),
+  status_slow: Object.freeze({
+    motion: "sigil",
+    core: 0xf0cc84,
+    glow: 0xb08745,
+    accent: 0xfff1d0,
+    soundHook: "sfx_spell",
+  }),
+  lightning: Object.freeze({
+    motion: "discharge",
+    core: 0xffef9b,
+    glow: 0x577cc9,
+    accent: 0xffffff,
+    soundHook: "sfx_lightning",
+  }),
   restorative_light: Object.freeze({
     motion: "field",
     core: 0xb9ffe8,
     glow: 0xe8c86d,
     accent: 0xffffff,
     soundHook: "sfx_heal",
+  }),
+  ice: Object.freeze({
+    motion: "projectile",
+    core: 0xb7ecff,
+    glow: 0x426baf,
+    accent: 0xffffff,
+    soundHook: "sfx_ice",
   }),
   fire: Object.freeze({
     motion: "projectile",
@@ -28,7 +70,13 @@ export function battleEffectPresentation(action = {}) {
   if (!family) return null;
   const intensityTier = Number(metadata?.intensity_tier) || 1;
   const tier = INTENSITY_TIERS[intensityTier] || INTENSITY_TIERS[1];
-  return { effectFamily, intensityTier, ...family, ...tier };
+  return {
+    effectFamily,
+    intensityTier,
+    ...family,
+    ...tier,
+    statusOutcome: action.status_outcome,
+  };
 }
 
 export function battleEffectMotion(presentation, reducedMotion = false) {
@@ -52,17 +100,23 @@ function tagEffect(object, presentation, stage, legacyTag) {
 
 export function playBattleEffectRelease(scene, actor, presentation) {
   if (!presentation || !actor) return null;
+  const origin = battleCastOrigin(actor);
+  if (presentation.motion === "sigil")
+    return playStatusRelease(scene, origin, presentation);
   const reducedMotion = scene.reducedBattleMotion();
+  if (presentation.effectFamily === "ice")
+    return playIceRelease(scene, origin, presentation);
+  if (presentation.effectFamily === "lightning")
+    return playLightningRelease(scene, origin, presentation, () =>
+      battleCastOrigin(actor, { live: true }),
+    );
   if (presentation.motion === "projectile") {
     const direction = actor.x > 400 ? -1 : 1;
     const release = tagEffect(
       scene.add
         .graphics()
         .setDepth(19)
-        .setPosition(
-          actor.x + direction * actor.width * 0.34,
-          actor.y + actor.height * 0.08,
-        )
+        .setPosition(origin.x, origin.y)
         .setAlpha(0),
       presentation,
       "release",
@@ -88,7 +142,7 @@ export function playBattleEffectRelease(scene, actor, presentation) {
     });
   }
   if (presentation.motion !== "field") return null;
-  const y = actor.y + actor.height * 0.34;
+  const y = actor.feetY ?? actor.y + actor.height * 0.34;
   const release = tagEffect(
     scene.add.graphics().setDepth(18).setPosition(actor.x, y).setAlpha(0),
     presentation,
@@ -119,15 +173,47 @@ export function playBattleEffectRelease(scene, actor, presentation) {
 export function playBattleEffectToTarget(scene, actor, target, presentation) {
   if (!presentation || !target) return null;
   const reducedMotion = scene.reducedBattleMotion();
+  // Keep the authored release pose planted throughout the charge. Follow
+  // through when the spell leaves the wand (or the restorative field opens).
+  scene.continueCastMotion?.(actor);
+  if (presentation.motion === "sigil") {
+    if (!actor) return null;
+    return playStatusToTarget(
+      scene,
+      battleCastOrigin(actor),
+      target,
+      presentation,
+    );
+  }
+  if (presentation.effectFamily === "lightning") {
+    if (!actor) return null;
+    return playLightningToTarget(
+      scene,
+      battleCastOrigin(actor),
+      target,
+      presentation,
+      () => battleCastOrigin(actor, { live: true }),
+    );
+  }
+  if (presentation.effectFamily === "ice") {
+    if (!actor) return null;
+    return playIceToTarget(
+      scene,
+      battleCastOrigin(actor),
+      target,
+      presentation,
+    );
+  }
   const motion = battleEffectMotion(presentation, reducedMotion);
   if (presentation.motion === "projectile") {
     if (!actor) return null;
+    const origin = battleCastOrigin(actor);
     const destinationY = target.y + target.height * 0.2;
     const projectile = tagEffect(
       scene.add
         .container(
-          reducedMotion ? target.x : actor.x,
-          reducedMotion ? destinationY : actor.y,
+          reducedMotion ? target.x : origin.x,
+          reducedMotion ? destinationY : origin.y,
         )
         .setDepth(20),
       presentation,
@@ -135,20 +221,13 @@ export function playBattleEffectToTarget(scene, actor, target, presentation) {
       "spell-projectile",
     );
     const flame = scene.add.graphics();
-    flame.fillStyle(presentation.glow, 0.48);
-    flame.fillTriangle(18, 0, -13, -12, -13, 12);
-    flame.fillStyle(presentation.core, 0.96);
-    flame.fillCircle(2, 0, 9 * presentation.scale);
-    flame.lineStyle(2, presentation.accent, 0.8);
-    flame.strokeCircle(2, 0, 6 * presentation.scale);
-    flame.fillStyle(presentation.accent, 0.7);
-    flame.fillCircle(-13, -5, 3);
-    flame.fillCircle(-20, 5, 2);
+    drawFirebolt(flame, presentation, presentation.scale);
     projectile.add(flame);
     projectile.setRotation(
-      Math.atan2(destinationY - actor.y, target.x - actor.x),
+      Math.atan2(destinationY - origin.y, target.x - origin.x),
     );
     const duration = reducedMotion ? 90 : 230 + presentation.intensityTier * 35;
+    let lastEmber = -1;
     return new Promise((resolve) => {
       scene.tweens.add({
         targets: projectile,
@@ -156,7 +235,30 @@ export function playBattleEffectToTarget(scene, actor, target, presentation) {
         y: destinationY,
         alpha: reducedMotion ? 0 : 1,
         duration: scene.scaledMs(duration),
-        ease: "Sine.InOut",
+        ease: "Sine.In",
+        onUpdate: (tween) => {
+          if (reducedMotion) return;
+          const step = Math.floor(tween.progress * 7);
+          flame.setScale(1, 1 + Math.sin(tween.progress * Math.PI * 8) * 0.08);
+          if (step === lastEmber) return;
+          lastEmber = step;
+          const ember = scene.add
+            .graphics()
+            .setDepth(19)
+            .setPosition(projectile.x, projectile.y);
+          ember._combatFxTag = "fire-trail";
+          ember.fillStyle(presentation.core, 0.6);
+          ember.fillCircle(0, 0, 3 + (step % 2));
+          scene.tweens.add({
+            targets: ember,
+            alpha: 0,
+            scaleX: 0.2,
+            scaleY: 0.2,
+            y: ember.y - 10,
+            duration: scene.scaledMs(180),
+            onComplete: () => ember.destroy(),
+          });
+        },
         onComplete: () => {
           projectile.destroy();
           const impact = tagEffect(
@@ -184,6 +286,13 @@ export function playBattleEffectToTarget(scene, actor, target, presentation) {
           impact.lineStyle(2, presentation.accent, 0.72);
           impact.lineBetween(-radius * 0.45, 8, 0, -radius * 0.65);
           impact.lineBetween(0, -radius * 0.65, radius * 0.45, 8);
+          fireContactDetails(
+            scene,
+            { x: target.x, y: destinationY },
+            presentation,
+            presentation.scale,
+          );
+          resolve();
           scene.tweens.add({
             targets: impact,
             alpha: 0,
@@ -193,7 +302,6 @@ export function playBattleEffectToTarget(scene, actor, target, presentation) {
             ease: "Quad.Out",
             onComplete: () => {
               impact.destroy();
-              resolve();
             },
           });
         },
@@ -201,7 +309,7 @@ export function playBattleEffectToTarget(scene, actor, target, presentation) {
     });
   }
   if (presentation.motion !== "field") return null;
-  const y = target.y + target.height * 0.36;
+  const y = target.feetY ?? target.y + target.height * 0.36;
   const field = tagEffect(
     scene.add.graphics().setDepth(18).setPosition(target.x, y).setAlpha(0),
     presentation,
@@ -239,6 +347,7 @@ export function playBattleEffectToTarget(scene, actor, target, presentation) {
         field.lineBetween(radius, -4, radius * 0.72, -34);
         field.lineBetween(-8, -20, 8, -20);
         field.lineBetween(0, -28, 0, -12);
+        resolve();
         scene.tweens.add({
           targets: field,
           alpha: 0,
@@ -247,10 +356,10 @@ export function playBattleEffectToTarget(scene, actor, target, presentation) {
           ease: "Sine.Out",
           onComplete: () => {
             field.destroy();
-            resolve();
           },
         });
       },
     });
   });
 }
+import { battleCastOrigin } from "./battle_cinematics.js";

@@ -2,16 +2,22 @@ import {
   questCustodyText,
   questKindLabel,
   questRewardText,
+  questObjectiveText,
 } from "./quest_text.js";
+import {
+  questJournalModel,
+  trackedQuestID,
+  trackQuest,
+} from "./questJournalModel.js";
 import { element, viewportDialog } from "../ui/viewport_dialog.js";
 
-// A native reading surface keeps the staged plan legible at phone sizes.
-// All objectives, progress, and custody are supplied by the server.
-export function showObjectiveQuestLog(scene) {
-  const gs = scene.gameState;
-  const q = gs.quests[gs.current_quest];
+// One reading surface across World, Town and Dungeon. Go supplies all progress.
+export function showObjectiveQuestLog(scene, { onClose } = {}) {
   let dialog;
-  const close = () => dialog.dispose();
+  const close = () => {
+    dialog.dispose();
+    onClose?.();
+  };
   dialog = viewportDialog(scene, {
     key: "quest_log",
     title: "Quest Log",
@@ -19,66 +25,145 @@ export function showObjectiveQuestLog(scene) {
   });
   dialog.root.dataset.questLog = "true";
   dialog.root.classList.add("objective-quest-log");
-  function text(parent, tag, value, className = "") {
-    const node = element(tag, className, value);
+  const model = questJournalModel(scene.gameState, trackedQuestID(scene));
+  const add = (parent, tag, value, cls = "") => {
+    const node = element(tag, cls, value);
     parent.append(node);
     return node;
-  }
-  const closeButton = element("button", "primary", "Close");
-  closeButton.type = "button";
-  closeButton.setAttribute("aria-label", "Close Quest Log");
-  closeButton.addEventListener("click", close);
-  text(
+  };
+  add(
     dialog.header,
     "p",
-    `${questKindLabel(q)} · ${gs.current_quest} quests complete`,
+    `${model.current} campaign quests complete · ${model.entries.filter((e) => e.completed).length} local stories complete`,
     "objective-quest-kicker",
   );
-  text(dialog.body, "h2", q.name);
-  text(dialog.body, "p", q.description, "objective-quest-description");
-  const list = element("ol", "objective-quest-plan");
-  dialog.body.append(list);
-  q.actions.forEach((action, index) => {
-    const done = index < q.objectives.step,
-      current = index === q.objectives.step;
-    const row = text(
-      list,
-      "li",
-      `${done ? "✓ " : ""}${action.text}`,
-      done ? "is-complete" : current ? "is-current" : "",
+  add(dialog.body, "h2", "Tracked objective");
+  add(dialog.body, "h3", model.tracker.title);
+  add(dialog.body, "p", model.tracker.detail);
+  function tracking(parent, id, title, completed = false) {
+    if (completed) return;
+    const button = add(
+      parent,
+      "button",
+      model.tracker.key === id ? "Tracking" : "Track objective",
+      "secondary",
     );
-    if (current) row.setAttribute("aria-current", "step");
-  });
-  const custody = questCustodyText(q);
-  if (custody) text(dialog.body, "p", custody, "objective-quest-custody");
-  text(
-    dialog.body,
-    "p",
-    `Reward: ${questRewardText(q)}`,
-    "objective-quest-reward",
-  );
-  if (gs.building_side_quests?.length) {
-    text(dialog.body, "h3", "Local favors");
-    for (const side of gs.building_side_quests)
-      text(
+    button.type = "button";
+    button.setAttribute("aria-label", `Track ${title}`);
+    button.disabled = model.tracker.key === id || !!scene.gameState.dungeon;
+    button.onclick = () => {
+      trackQuest(scene, id);
+      close();
+      showObjectiveQuestLog(scene, { onClose });
+    };
+  }
+  const section = add(dialog.body, "section", "", "journal-section");
+  add(section, "h2", "Your campaign");
+  const q = model.campaign;
+  if (q) {
+    add(section, "h3", `${questKindLabel(q)}: ${q.name}`);
+    if (q.description)
+      add(section, "p", q.description, "objective-quest-description");
+    if (q.objectives && q.actions?.length) {
+      const list = add(section, "ol", "", "objective-quest-plan");
+      q.actions.forEach((action, index) => {
+        const done = index < q.objectives.step;
+        const row = add(
+          list,
+          "li",
+          `${done ? "✓ " : ""}${action.text}`,
+          done
+            ? "is-complete"
+            : index === q.objectives.step
+              ? "is-current"
+              : "",
+        );
+        if (index === q.objectives.step)
+          row.setAttribute("aria-current", "step");
+      });
+    } else add(section, "p", questObjectiveText(q));
+    const custody = questCustodyText(q);
+    if (custody) add(section, "p", custody, "objective-quest-custody");
+    const reward = questRewardText(q);
+    if (reward)
+      add(section, "p", `Reward: ${reward}`, "objective-quest-reward");
+    tracking(section, "campaign", q.name);
+  } else
+    add(
+      section,
+      "p",
+      model.tracker.title === "Campaign Complete"
+        ? "All campaign quests complete."
+        : "Explore to uncover your next objective.",
+    );
+  if (model.entries.length) {
+    add(dialog.body, "h2", "Local stories");
+    for (const entry of model.entries) {
+      const card = add(dialog.body, "section", "", "journal-section");
+      card.dataset.questId = entry.key;
+      add(card, "h3", entry.title);
+      add(
+        card,
+        "p",
+        entry.completed
+          ? "Complete"
+          : entry.active
+            ? "In progress · Here"
+            : entry.started
+              ? "In progress"
+              : "Available",
+        "objective-quest-kicker",
+      );
+      add(card, "p", entry.description, "objective-quest-description");
+      if (!entry.completed) add(card, "p", entry.objective);
+      if (entry.reward_gold)
+        add(
+          card,
+          "p",
+          `Completion reward: ${entry.reward_gold} gold`,
+          "objective-quest-reward",
+        );
+      tracking(card, entry.key, entry.title, entry.completed);
+      if (entry.journal.length) {
+        const notes = add(card, "details", "");
+        notes.open = entry.active;
+        add(notes, "summary", "Discoveries and notes");
+        for (const note of [...entry.journal].reverse()) add(notes, "p", note);
+      }
+    }
+  }
+  if (model.favors.length) {
+    add(dialog.body, "h2", "Local favors");
+    for (const side of model.favors)
+      add(
         dialog.body,
         "p",
-        `${side.name} · ${side.completed ? "Complete" : side.status === "ready_to_turn_in" ? `Return to ${side.giver_name}` : `Visit ${side.target_name}`}`,
+        `${side.name} · ${side.completed || side.status === "completed" ? "Complete" : side.status === "ready_to_turn_in" ? `Return to ${side.giver_name}` : `Visit ${side.target_name}`}`,
         "objective-quest-secondary",
       );
   }
-  const upcoming = gs.quests
-    .slice(gs.current_quest + 1)
-    .filter((entry) => !entry.hidden)
-    .slice(0, 3);
-  if (upcoming.length) {
-    text(dialog.body, "h3", "Up next");
-    for (const next of upcoming)
-      text(dialog.body, "p", next.name, "objective-quest-secondary");
+  if (model.upcoming.length) {
+    add(dialog.body, "h2", "Up next");
+    for (const next of model.upcoming.slice(0, 3))
+      add(
+        dialog.body,
+        "p",
+        next.template_id === "Q12" ||
+          next.name?.toLowerCase().startsWith("defeat")
+          ? "Final encounter"
+          : next.name,
+        "objective-quest-secondary",
+      );
   }
-  const actions = element("div", "dialog-actions");
-  actions.append(closeButton);
-  dialog.footer.append(actions);
-  closeButton.focus();
+  if (model.completed.length) {
+    add(dialog.body, "h2", "Completed campaign quests");
+    for (const completed of model.completed)
+      add(dialog.body, "p", completed.name, "objective-quest-secondary");
+  }
+  const button = add(dialog.footer, "button", "Close", "primary");
+  button.type = "button";
+  button.setAttribute("aria-label", "Close Quest Log");
+  button.onclick = close;
+  button.focus();
   return dialog;
 }

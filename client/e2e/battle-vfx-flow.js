@@ -79,7 +79,9 @@ export async function runGoldSpellFlow(
   ).toHaveLength(targetCount);
   expect(impact.majorCinematics).toBe(0);
 
-  const impactHP = JSON.stringify(hpValues(impact, side));
+  // Results may already be applied by the time an impact screenshot returns.
+  // Compare with pre-action HP, rather than waiting for a second HP mutation.
+  const initialHP = JSON.stringify(hpValues(before, side));
   await page.waitForFunction(
     ({ effectFamily, targetSide, initialHP }) => {
       const snapshot = window.__kithlandsTest.battleVisibilitySnapshot();
@@ -94,7 +96,7 @@ export async function runGoldSpellFlow(
         ) && renderedHP !== initialHP
       );
     },
-    { effectFamily: family, targetSide: side, initialHP: impactHP },
+    { effectFamily: family, targetSide: side, initialHP },
   );
   const result = await captureProofFrame(
     page,
@@ -103,7 +105,7 @@ export async function runGoldSpellFlow(
     `${label}-result`,
     { fullPage: true },
   );
-  expect(JSON.stringify(hpValues(result, side))).not.toBe(impactHP);
+  expect(JSON.stringify(hpValues(result, side))).not.toBe(initialHP);
   if (reducedMotion) expect(result.majorCinematics).toBe(0);
   await writeTrace(testInfo, label, trace);
   return { before, result, trace };

@@ -10,7 +10,10 @@ import { toggleCodex } from "../scenes/world_codex.js";
 import { toggleMute, isMuted } from "./audio.js";
 import { isWorldInputLocked } from "./modalLock.js";
 import { TILE_WALKABLE } from "../scenes/tileConstants.js";
-import { gameplayViewportLayout } from "./gameplayViewport.js";
+import {
+  gameplayViewportLayout,
+  portraitFontSize,
+} from "./gameplayViewport.js";
 const RENDERED_TILE = 32;
 
 let _isTouch = false;
@@ -22,10 +25,10 @@ export function isTouchDevice() {
 
 // ─── A* Pathfinding ───────────────────────────────────────────
 
-function findPath(tileData, sx, sy, ex, ey, mapW, mapH, canWalk) {
+function findPath(tileData, sx, sy, ex, ey, mapW, mapH, canWalk, isOccupied) {
   const walkable = canWalk || ((tile) => !!TILE_WALKABLE[tile]);
   if (ex < 0 || ex >= mapW || ey < 0 || ey >= mapH) return null;
-  if (!walkable(tileData[ey][ex])) return null;
+  if (!walkable(tileData[ey][ex]) || isOccupied?.(ex, ey)) return null;
   if (sx === ex && sy === ey) return [];
 
   const toKey = (x, y) => x * mapH + y;
@@ -71,7 +74,7 @@ function findPath(tileData, sx, sy, ex, ey, mapW, mapH, canWalk) {
       const nx = cur.x + dx,
         ny = cur.y + dy;
       if (nx < 0 || nx >= mapW || ny < 0 || ny >= mapH) continue;
-      if (!walkable(tileData[ny][nx])) continue;
+      if (!walkable(tileData[ny][nx]) || isOccupied?.(nx, ny)) continue;
       const nk = toKey(nx, ny);
       if (closed.has(nk)) continue;
 
@@ -204,6 +207,13 @@ function touchLayout(scene) {
   };
 }
 
+// Renderer-facing logical boundary; overlays share the painted control geometry.
+export function touchControlsTop(scene) {
+  if (!_isTouch) return null;
+  const area = touchLayout(scene).controlArea;
+  return Math.min(area.dpadTop, area.actionTop);
+}
+
 function isControlArea(scene, x, y) {
   if (!_isTouch) return false;
   const area = touchLayout(scene).controlArea;
@@ -217,6 +227,7 @@ function isControlArea(scene, x, y) {
       y >= area.actionTop &&
       y <= area.actionBottom) ||
     (!scene.explorationHUD &&
+      !scene.interiorMenuHUD &&
       x >= area.touchHudLeft &&
       x <= area.touchHudRight &&
       y >= area.touchHudTop &&
@@ -230,7 +241,17 @@ function setupTapToMove(scene) {
 
   scene.input.on("pointerdown", (pointer) => {
     if (isWorldInputLocked(scene)) return;
-    if (!scene.tileData) return;
+    const grid = scene.tileData || scene.tiles;
+    if (!grid) return;
+    const field = scene.cameras.main;
+    if (
+      scene.interiorUICamera &&
+      (pointer.x < field.x ||
+        pointer.x > field.x + field.width ||
+        pointer.y < field.y ||
+        pointer.y > field.y + field.height)
+    )
+      return;
     // The first real touch is reserved for revealing the touch UI. Without
     // this guard it also leaks through as a tap-to-walk command.
     if (pointer.wasTouch && !_isTouch) return;
@@ -269,7 +290,7 @@ function setupTapToMove(scene) {
         ? (tile) => scene.canWalkTile(tile)
         : null;
       const path = findPath(
-        scene.tileData,
+        grid,
         scene.playerX,
         scene.playerY,
         tx,
@@ -277,6 +298,7 @@ function setupTapToMove(scene) {
         scene.mapW ?? scene.roomW,
         scene.mapH ?? scene.roomH,
         canWalk,
+        scene.isTileOccupied?.bind(scene),
       );
 
       if (path && path.length > 0) {
@@ -502,7 +524,9 @@ function createTouchHUD(scene) {
       .setInteractive();
     const txt = scene.add
       .text(x, y, label, {
-        fontSize: touchLayout(scene).portrait ? "19px" : "11px",
+        fontSize: touchLayout(scene).portrait
+          ? portraitFontSize(scene)
+          : "11px",
         color,
         fontFamily: "monospace",
       })
@@ -556,7 +580,7 @@ function createTouchUI(scene) {
   _controls = { elements: [], moveTimer: null };
   createDpad(scene);
   createActionButton(scene);
-  if (!scene.explorationHUD) createTouchHUD(scene);
+  if (!scene.explorationHUD && !scene.interiorMenuHUD) createTouchHUD(scene);
   setupPinchZoom(scene);
   setupSwipeGestures(scene);
 }

@@ -150,7 +150,7 @@ func TestQuestObjectivesIsolationAndInvalidVisits(t *testing.T) {
 			t.Fatal("invalid visit advanced objectives")
 		}
 	}
-	for _, template := range []string{"Q12", "promotion", "Q04"} {
+	for _, template := range []string{"Q12", "promotion", "Q08"} {
 		clone := *q
 		clone.TemplateID = template
 		if g.advanceObjectiveArrival(&clone, q.TargetNodeID) {
@@ -181,7 +181,7 @@ func TestQuestObjectivesCustomSpawnSaveAndLegacyResume(t *testing.T) {
 	}
 	questIdx := -1
 	for i := range g.quests {
-		if g.quests[i].Objectives != nil {
+		if g.quests[i].Objectives != nil && g.quests[i].TemplateID != "Q04" {
 			questIdx = i
 			break
 		}

@@ -3,6 +3,7 @@ import { isWorldInputLocked } from "../systems/modalLock.js";
 import { drawButton } from "../ui/panel.js";
 import { dungeonRouteForScene, followDungeonRoute } from "./dungeonRoute.js";
 import { checkpointWorldPosition } from "./world_interact.js";
+import { portraitFontSize } from "../systems/gameplayViewport.js";
 
 export function dungeonEntryForScene(scene) {
   const entries = scene.gameState?.dungeon_entries?.length
@@ -90,7 +91,8 @@ export function updateDungeonEntry(scene) {
     }
   }
 
-  const route = dungeonRouteForScene(scene);
+  // World route navigation lives in the map, not a permanent field prompt.
+  const route = scene.explorationHUD ? null : dungeonRouteForScene(scene);
   if (!route) {
     scene.dungeonRouteButton?.destroy();
     scene.dungeonRouteButton = null;
@@ -140,12 +142,20 @@ function createTrailButton(scene, label, onClick, route) {
     400,
     y,
     portrait ? 664 : 352,
-    portrait ? 88 : 42,
+    portrait
+      ? settlement
+        ? Math.max(88, parseFloat(portraitFontSize(scene, 44)))
+        : 88
+      : 42,
     label,
     onClick,
     {
       depth: settlement ? 1003 : 25,
-      fontSize: portrait ? "28px" : "16px",
+      fontSize: portrait
+        ? settlement
+          ? portraitFontSize(scene, 16)
+          : "28px"
+        : "16px",
       fontFamily: "Trebuchet MS, Arial, sans-serif",
       fill: route ? 0x29412e : 0x173b3a,
       fillHover: route ? 0x49613f : 0x315653,

@@ -16,18 +16,22 @@ import {
 } from "../systems/prefs.js";
 import { buildWalkAuditParty, walkAuditRequested } from "./walkAuditMode.js";
 
+import { renderSaveAdventures } from "../ui/title_saves.js";
 import { titleScreen, titleAccount } from "../ui/title_screen.js";
 import { element } from "../ui/viewport_dialog.js";
+import { clearQuestMilestones } from "../ui/quest_milestone.js";
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
     super("Title");
   }
 
-  create() {
+  create(data = {}) {
+    clearQuestMilestones();
     // World and party menus can use a tall portrait canvas.
     this.scale.setGameSize(800, 600);
     this.showMainMenu();
+    if (data.openSaves) void this.showLoadScreen();
   }
 
   clearMenu() {
@@ -100,6 +104,7 @@ export class TitleScene extends Phaser.Scene {
         return;
       }
       setToken(result.token);
+      setEmail(email);
       callback();
     } catch (e) {
       this.statusText
@@ -128,27 +133,7 @@ export class TitleScene extends Phaser.Scene {
           ? ""
           : "No saves yet. Start a new adventure to begin your story.",
       );
-      for (const [label, group] of [
-        ["Manual saves", saves.filter((save) => save.save_type !== "autosave")],
-        ["Autosaves", saves.filter((save) => save.save_type === "autosave")],
-      ]) {
-        if (!group.length) continue;
-        list.append(element("h3", "", label));
-        for (const save of group) {
-          const row = element("button", "title-save");
-          row.type = "button";
-          row.append(
-            element("strong", "", save.name),
-            element(
-              "span",
-              "",
-              `${(save.party || []).join(", ")} · ${new Date(save.updated_at).toLocaleDateString()}`,
-            ),
-          );
-          row.addEventListener("click", () => this.loadGameSave(save.id));
-          list.append(row);
-        }
-      }
+      renderSaveAdventures(list, saves, (id) => this.loadGameSave(id));
     } catch (error) {
       if (this.titleView === view)
         view.statusText

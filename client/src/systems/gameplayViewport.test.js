@@ -1,11 +1,32 @@
 import { describe, expect, it } from "vitest";
 import {
   centeredPlayfieldOffset,
+  portraitFontSize,
   gameplayViewportLayout,
   isPortraitPhone,
 } from "./gameplayViewport.js";
 
 describe("gameplay viewport", () => {
+  it.each([
+    [1440, 900],
+    [390, 844],
+  ])("reserves every painted D-pad button at %sx%s", (width, height) => {
+    const { dpad, controlArea } = gameplayViewportLayout(width, height);
+    const half = dpad.size / 2;
+    for (const [dx, dy] of [
+      [0, -1],
+      [0, 1],
+      [-1, 0],
+      [1, 0],
+    ]) {
+      const x = dpad.x + dx * dpad.offset;
+      const y = dpad.y + dy * dpad.offset;
+      expect(controlArea.dpadLeft).toBeLessThanOrEqual(x - half);
+      expect(controlArea.dpadRight).toBeGreaterThanOrEqual(x + half);
+      expect(controlArea.dpadTop).toBeLessThanOrEqual(y - half);
+      expect(controlArea.dpadBottom).toBeGreaterThanOrEqual(y + half);
+    }
+  });
   it("keeps the established 800x600 desktop contract", () => {
     const layout = gameplayViewportLayout(1440, 900);
     expect(layout).toMatchObject({
@@ -41,3 +62,16 @@ describe("gameplay viewport", () => {
     });
   });
 });
+
+it.each([320, 375, 390, 540])(
+  "keeps fixed portrait text at least sixteen CSS pixels at %s",
+  (width) => {
+    const scene = {
+      game: { canvas: { getBoundingClientRect: () => ({ width }) } },
+      scale: { gameSize: { width: 800 } },
+    };
+    expect(
+      (parseFloat(portraitFontSize(scene)) * width) / 800,
+    ).toBeGreaterThanOrEqual(16);
+  },
+);

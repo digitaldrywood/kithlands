@@ -1,0 +1,63 @@
+{
+  "generator": "built-in image_gen",
+  "model": "not exposed by tool",
+  "source": "generated-source.png",
+  "matching_spring_edit_source": "generated-spring-source.png",
+  "spring_edit_reference": "generated-source.png",
+  "visually_inspected_style_reference": "client/public/environment/meadow-props.png",
+  "prompt_files": [
+    "prompt.txt",
+    "spring-prompt.txt"
+  ],
+  "source_dimensions": [
+    1312,
+    1199
+  ],
+  "normalization": "normalize.sh; nearest-neighbor export; no runtime model calls",
+  "rejected_export": "Lanczos candidate produced bright edge flecks; retained outside runtime under client/tmp/grove-canopy-candidate-20261026",
+  "approved_art": [
+    {
+      "approved": "approved-64.png",
+      "runtime": "client/public/sprites/world/landmarks/natural-grove-canopy.png",
+      "sha256": "ef3bfe989bb613dfc7ef30e6e7f00471d6ccb362f392aafe40a3c8ef7135fd5e",
+      "dimensions": [
+        64,
+        64
+      ],
+      "alpha_bounds": [
+        4,
+        12,
+        60,
+        60
+      ]
+    },
+    {
+      "approved": "approved-spring-64.png",
+      "runtime": "client/public/sprites/world/landmarks/natural-spring-canopy.png",
+      "sha256": "e2a470bb682c67bcb01aee4c68e327a5c016c70564157accbde318c8e44c990b",
+      "dimensions": [
+        64,
+        64
+      ],
+      "alpha_bounds": [
+        4,
+        12,
+        60,
+        60
+      ]
+    }
+  ],
+  "unchanged": [
+    "landmark keys",
+    "variant IDs",
+    "selection hash",
+    "64x64 display frame",
+    "origins",
+    "depth",
+    "collision",
+    "encounters",
+    "resource positions",
+    "saved deadlines"
+  ],
+  "normalization_reproducibility": "Pixel-identical export verified; PNG encoder timestamp metadata can differ"
+}

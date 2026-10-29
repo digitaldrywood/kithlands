@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import authoredCatalog from "../../../shared/battle_characters.json";
 
 import {
   BATTLE_CHARACTER_CATALOG,
@@ -10,6 +12,25 @@ import {
 } from "./battleCharacters.js";
 
 describe("shared battle character catalog", () => {
+  it("keeps casting emission points inside the shipped weapon image", () => {
+    for (const asset of BATTLE_CHARACTER_CATALOG.weapon_assets) {
+      if (!asset.emission_point) continue;
+      const png = readFileSync(
+        new URL(`../../public${asset.path}`, import.meta.url),
+      );
+      expect(png.subarray(1, 4).toString(), asset.visual_id).toBe("PNG");
+      const width = png.readUInt32BE(16),
+        height = png.readUInt32BE(20);
+      const [x, y] = asset.emission_point;
+      expect(Number.isFinite(x) && Number.isFinite(y), asset.visual_id).toBe(
+        true,
+      );
+      expect(x, asset.visual_id).toBeGreaterThanOrEqual(0);
+      expect(x, asset.visual_id).toBeLessThan(width);
+      expect(y, asset.visual_id).toBeGreaterThanOrEqual(0);
+      expect(y, asset.visual_id).toBeLessThan(height);
+    }
+  });
   it("covers every runtime identity and required state name", () => {
     expect(BATTLE_CHARACTER_CATALOG.classes.map(({ id }) => id)).toEqual([
       "warrior",
@@ -29,19 +50,25 @@ describe("shared battle character catalog", () => {
     for (const profile of BATTLE_CHARACTER_CATALOG.classes) {
       expect(profile.state_recipe, profile.id).toBeTruthy();
       expect(Object.keys(profile.states), profile.id).toEqual(
-        BATTLE_CHARACTER_CATALOG.required_states,
+        profile.id === "warrior"
+          ? [...BATTLE_CHARACTER_CATALOG.required_states, "critical_attack"]
+          : BATTLE_CHARACTER_CATALOG.required_states,
       );
       const signature = profile.states[profile.default_state];
+      const authored = authoredCatalog.classes.find(
+        ({ id }) => id === profile.id,
+      );
       for (const stateID of BATTLE_CHARACTER_CATALOG.required_states) {
         const state = profile.states[stateID];
         expect(state.frames.length, `${profile.id}/${stateID}`).toBeGreaterThan(
           0,
         );
+        const expected = authored.states[stateID] || signature;
         expect(state.body_key, `${profile.id}/${stateID}`).toBe(
-          signature.body_key,
+          expected.body_key,
         );
         expect(state.body_path, `${profile.id}/${stateID}`).toBe(
-          signature.body_path,
+          expected.body_path,
         );
       }
       expect(profile.states.ko_defeated.hold_last_frame, profile.id).toBe(true);
@@ -49,11 +76,13 @@ describe("shared battle character catalog", () => {
         const itemPoses = profile.states.item_use.frames.flatMap((frame) =>
           Object.values(frame.attachments),
         );
-        if (profile.id === "warrior") {
-          expect(
-            itemPoses.some((pose) => pose.visible === false),
-            "warrior/item_use",
-          ).toBe(true);
+        if (["warrior", "cinder"].includes(profile.id)) {
+          for (const frame of profile.states.item_use.frames)
+            for (const pose of Object.values(frame.attachments))
+              expect(
+                pose.visible !== false,
+                `${profile.id}/item_use/${frame.frame}`,
+              ).toBe(frame.frame === 0);
         } else {
           expect(
             itemPoses.every((pose) => pose.visible === false),
@@ -64,9 +93,8 @@ describe("shared battle character catalog", () => {
     }
     expect(battleStateFor("warrior", "ko_defeated")).toMatchObject({
       hold_last_frame: true,
-      frames: expect.arrayContaining([
-        expect.objectContaining({ body: { x: 18, y: 16, angle: 90 } }),
-      ]),
+      body_key: "battle_warrior_sword_ko_body",
+      frames: expect.arrayContaining([expect.objectContaining({ frame: 2 })]),
     });
     expect(
       battleStateFor("warrior", "item_use").frames.some(
@@ -132,10 +160,21 @@ describe("shared battle character catalog", () => {
     ]);
     expect(battleBodyAssets().map(({ key }) => key)).toEqual([
       "battle_warrior_sword_attack_body",
+      "battle_warrior_sword_defend_body",
+      "battle_warrior_sword_hit_body",
+      "battle_warrior_sword_item_body",
+      "battle_warrior_sword_victory_body",
+      "battle_warrior_sword_ko_body",
       "battle_brawler_unarmed_strike_body",
       "battle_rogue_dagger_slash_body",
       "battle_mender_staff_cast_body",
       "battle_cinder_staff_cast_body",
+      "battle_cinder_staff_strike_body",
+      "battle_cinder_staff_defend_body",
+      "battle_cinder_staff_hit_body",
+      "battle_cinder_staff_item_body",
+      "battle_cinder_staff_victory_body",
+      "battle_cinder_staff_ko_body",
       "battle_wayfarer_staff_inspire_body",
       "battle_knight_sword_shield_defend_body",
       "battle_champion_unarmed_palm_burst_body",

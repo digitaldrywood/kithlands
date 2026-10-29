@@ -1,3 +1,4 @@
+import { drawMeadowPath } from "./meadowPath.js";
 import {
   TILE_IDS,
   TILE_SPRITE_KEYS,
@@ -117,6 +118,20 @@ export function buildTerrainRenderPlan(tiles, x, y) {
         isPathTile(neighbor) ||
         (tile === TILE_IDS.bridge && isGroundTile(neighbor)),
     );
+    let corners = 0;
+    for (const [dx, dy, bit] of [
+      [-1, -1, 1],
+      [1, -1, 2],
+      [1, 1, 4],
+      [-1, 1, 8],
+    ]) {
+      if (
+        isPathTile(getTile(tiles, x + dx, y)) &&
+        isPathTile(getTile(tiles, x, y + dy)) &&
+        isPathTile(getTile(tiles, x + dx, y + dy))
+      )
+        corners |= bit;
+    }
     return {
       baseKey:
         TILE_SPRITE_KEYS[baseTile] || TILE_SPRITE_KEYS[PATH_BASE_FALLBACK],
@@ -124,6 +139,7 @@ export function buildTerrainRenderPlan(tiles, x, y) {
         key: spriteKey,
         mask,
         kind: "path",
+        corners,
       },
     };
   }
@@ -239,7 +255,7 @@ function drawEdgeOverlay(ctx, image, mask) {
   }
 }
 
-function drawPathOverlay(ctx, image, mask) {
+function drawPathOverlay(ctx, image, mask, corners = 0) {
   ctx.drawImage(
     image,
     AUTOTILE_CENTER,
@@ -304,6 +320,16 @@ function drawPathOverlay(ctx, image, mask) {
       TILE_SIZE - AUTOTILE_CENTER * 2,
     );
   }
+  // Fill shared corners of a 2x2 road block. Without the diagonal check,
+  // neighboring lanes leave a repeating grid of grass holes at every join.
+  for (const [x, y, bit] of [
+    [0, 0, 1],
+    [TILE_SIZE / 2, 0, 2],
+    [TILE_SIZE / 2, TILE_SIZE / 2, 4],
+    [0, TILE_SIZE / 2, 8],
+  ]) {
+    if (corners & bit) drawQuarter(ctx, image, x, y, x, y);
+  }
 }
 
 function addCanvasTexture(scene, key, canvas) {
@@ -349,7 +375,7 @@ export function ensureTerrainRenderTexture(scene, plan) {
   if (!plan.baseKey) return null;
   if (!plan.overlay) return plan.baseKey;
 
-  const textureKey = `terrain:${plan.baseKey}:${plan.overlay.key}:${plan.overlay.kind}:${plan.overlay.mask}`;
+  const textureKey = `terrain:${plan.baseKey}:${plan.overlay.key}:${plan.overlay.kind}:${plan.overlay.mask}:${plan.overlay.corners || 0}:${plan.overlay.edgeStyle || "solid"}`;
   if (scene.textures.exists(textureKey)) return textureKey;
 
   const baseImage = getTextureImage(scene, plan.baseKey);
@@ -368,13 +394,50 @@ export function ensureTerrainRenderTexture(scene, plan) {
       TILE_SIZE,
       TILE_SIZE,
     );
-    if (plan.overlay.kind === "path") {
-      drawPathOverlay(ctx, overlayImage, plan.overlay.mask);
+    if (plan.overlay.edgeStyle === "worn") {
+      drawMeadowPath(
+        ctx,
+        overlayImage,
+        plan.overlay.mask,
+        plan.overlay.corners,
+        plan.overlay.variant,
+      );
+    } else if (plan.overlay.kind === "path") {
+      drawPathOverlay(
+        ctx,
+        overlayImage,
+        plan.overlay.mask,
+        plan.overlay.corners,
+      );
+    } else if (
+      plan.baseKey.startsWith("meadow:") &&
+      plan.overlay.key.startsWith("meadow:")
+    ) {
+      drawMeadowEdge(ctx, overlayImage, plan.overlay.mask);
     } else {
       drawEdgeOverlay(ctx, overlayImage, plan.overlay.mask);
     }
   });
   return addCanvasTexture(scene, textureKey, canvas);
+}
+
+// Pixel coverage, rather than translucent blur, keeps the original palette
+// crisp at integer scale. Only walkable meadow surfaces use this transition;
+// water, forest and blocked terrain retain their readable solid edges.
+function drawMeadowEdge(ctx, image, mask) {
+  const threshold = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  for (let y = 0; y < TILE_SIZE; y++) {
+    for (let x = 0; x < TILE_SIZE; x++) {
+      const distance = Math.min(
+        mask & AUTOTILE_EDGE_NORTH ? y : TILE_SIZE,
+        mask & AUTOTILE_EDGE_EAST ? TILE_SIZE - 1 - x : TILE_SIZE,
+        mask & AUTOTILE_EDGE_SOUTH ? TILE_SIZE - 1 - y : TILE_SIZE,
+        mask & AUTOTILE_EDGE_WEST ? x : TILE_SIZE,
+      );
+      if (threshold[(y % 4) * 4 + (x % 4)] < (8 - distance) * 2)
+        ctx.drawImage(image, x, y, 1, 1, x, y, 1, 1);
+    }
+  }
 }
 
 function noisePixel(seed, x, y, range) {

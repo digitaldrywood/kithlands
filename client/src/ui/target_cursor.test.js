@@ -96,6 +96,21 @@ function makeScene() {
 }
 
 describe("TargetCursor", () => {
+  it("places the target arrow and label above a measured enemy name", () => {
+    const cursor = new TargetCursor(makeScene());
+    cursor.showFor({ x: 100, y: 140, width: 60, height: 70, nameTop: 90 });
+    expect(cursor.label.y).toBe(72);
+    expect(cursor.graphics.commands).toContainEqual([
+      "fillTriangle",
+      -7,
+      -64,
+      7,
+      -64,
+      0,
+      -54,
+    ]);
+  });
+
   it("draws a labeled target reticle and hides cleanly", () => {
     const scene = makeScene();
     const cursor = new TargetCursor(scene);
@@ -131,7 +146,14 @@ describe("TargetCursor", () => {
       label: "ACTING",
     });
 
-    cursor.showFor({ x: 200, y: 220, width: 64, height: 80 });
+    cursor.showFor({ x: 200, y: 220, width: 64, height: 80, feetY: 270 });
+    expect(cursor.graphics.commands).toContainEqual([
+      "strokeEllipse",
+      0,
+      50,
+      78,
+      16,
+    ]);
 
     expect(cursor.label.text).toBe("ACTING");
     expect(

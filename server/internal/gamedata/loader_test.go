@@ -1,6 +1,8 @@
 package gamedata_test
 
 import (
+	"encoding/json"
+	"os"
 	"slices"
 	"testing"
 
@@ -105,6 +107,18 @@ func TestLayeredShieldVisualMetadataLoads(t *testing.T) {
 
 func TestBattleCharacterManifestLoadsEveryRuntimeIdentity(t *testing.T) {
 	gd := gamedata.Load("../../../shared")
+	raw, err := os.ReadFile("../../../shared/battle_characters.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var authored gamedata.BattleCharactersData
+	if err := json.Unmarshal(raw, &authored); err != nil {
+		t.Fatal(err)
+	}
+	authoredByID := make(map[string]gamedata.BattleCharacterProfile)
+	for _, profile := range authored.Classes {
+		authoredByID[profile.ID] = profile
+	}
 	if got := len(gd.BattleCharacters.Classes); got != 12 {
 		t.Fatalf("battle character identities = %d, want 12", got)
 	}
@@ -119,8 +133,12 @@ func TestBattleCharacterManifestLoadsEveryRuntimeIdentity(t *testing.T) {
 		if profile.StateRecipe == "" {
 			t.Fatalf("%s battle profile has no state recipe", profile.ID)
 		}
-		if got := len(profile.States); got != len(gd.BattleCharacters.RequiredStates) {
-			t.Fatalf("%s battle states = %d, want %d", profile.ID, got, len(gd.BattleCharacters.RequiredStates))
+		wantStates := len(gd.BattleCharacters.RequiredStates)
+		if profile.ID == "warrior" {
+			wantStates++
+		}
+		if got := len(profile.States); got != wantStates {
+			t.Fatalf("%s battle states = %d, want %d", profile.ID, got, wantStates)
 		}
 		signature := profile.States[profile.DefaultState]
 		for _, stateID := range gd.BattleCharacters.RequiredStates {
@@ -128,8 +146,12 @@ func TestBattleCharacterManifestLoadsEveryRuntimeIdentity(t *testing.T) {
 			if !ok || len(state.Frames) == 0 {
 				t.Fatalf("%s is missing populated state %s", profile.ID, stateID)
 			}
-			if state.BodyKey != signature.BodyKey || state.BodyPath != signature.BodyPath {
-				t.Fatalf("%s/%s changed identity atlas", profile.ID, stateID)
+			expected, explicit := authoredByID[profile.ID].States[stateID]
+			if !explicit {
+				expected = signature
+			}
+			if state.BodyKey != expected.BodyKey || state.BodyPath != expected.BodyPath {
+				t.Fatalf("%s/%s changed authored identity atlas", profile.ID, stateID)
 			}
 			for frameIndex, frame := range state.Frames {
 				for attachmentID := range profile.Attachments {
@@ -144,17 +166,27 @@ func TestBattleCharacterManifestLoadsEveryRuntimeIdentity(t *testing.T) {
 			t.Fatalf("%s KO state must hold its last frame", profile.ID)
 		}
 		finalKO := ko.Frames[len(ko.Frames)-1]
-		if finalKO.Body.Angle != 90 {
-			t.Fatalf("%s final KO body angle = %v, want 90", profile.ID, finalKO.Body.Angle)
+		wantKOAngle := 90.0
+		if profile.ID == "warrior" || profile.ID == "cinder" {
+			wantKOAngle = 0
+		}
+		if finalKO.Body.Angle != wantKOAngle {
+			t.Fatalf("%s final KO body angle = %v, want %v", profile.ID, finalKO.Body.Angle, wantKOAngle)
 		}
 		hiddenItemAttachments := 0
 		totalItemAttachments := 0
 		for _, frame := range profile.States["item_use"].Frames {
 			for attachmentID, pose := range frame.Attachments {
 				totalItemAttachments++
-				if pose.Visible != nil && !*pose.Visible {
+				visible := pose.Visible == nil || *pose.Visible
+				if profile.ID == "warrior" || profile.ID == "cinder" {
+					if visible != (frame.Frame == 0) {
+						t.Fatalf("%s item_use frame %d has unexpected %s visibility", profile.ID, frame.Frame, attachmentID)
+					}
+				}
+				if !visible {
 					hiddenItemAttachments++
-				} else if profile.ID != "warrior" {
+				} else if profile.ID != "warrior" && profile.ID != "cinder" {
 					t.Fatalf("%s item_use leaves %s visible", profile.ID, attachmentID)
 				}
 			}
@@ -452,4 +484,52 @@ func TestLoadPanicsOnMissingDir(t *testing.T) {
 		}
 	}()
 	gamedata.Load("/nonexistent/path")
+}
+
+func TestBattlePresentationCuesLoadAndExpand(t *testing.T) {
+	gd := gamedata.Load("../../../shared")
+	if !slices.Equal(gd.BattleCharacters.FeetAnchor, []float64{96, 184}) {
+		t.Fatalf("feet anchor = %v", gd.BattleCharacters.FeetAnchor)
+	}
+	for _, id := range []string{"warrior", "cinder", "knight"} {
+		for _, state := range []string{"physical_attack", "cast_class_ability"} {
+			cue := gd.BattleCharacterByID(id).States[state].CueFrame
+			if cue == nil {
+				t.Errorf("%s %s lost authored cue during load/recipe expansion", id, state)
+			}
+		}
+	}
+}
+
+func TestWarriorCriticalStateKeepsTheApprovedAtlas(t *testing.T) {
+	gd := gamedata.Load("../../../shared")
+	if !slices.Equal(gd.BattleCharacters.OptionalStates, []string{"critical_attack"}) {
+		t.Fatal("unexpected optional battle states")
+	}
+	for _, profile := range gd.BattleCharacters.Classes {
+		critical, ok := profile.States["critical_attack"]
+		if profile.ID != "warrior" {
+			if ok {
+				t.Fatalf("unreviewed critical choreography expanded to %s", profile.ID)
+			}
+			continue
+		}
+		normal := profile.States["physical_attack"]
+		if !ok || critical.BodyKey != normal.BodyKey || critical.BodyPath != normal.BodyPath {
+			t.Fatal("critical changed the accepted identity atlas")
+		}
+		cueCount, normalTime, criticalTime := 0, 0, 0
+		for _, frame := range normal.Frames {
+			normalTime += frame.Duration
+		}
+		for _, frame := range critical.Frames {
+			criticalTime += frame.Duration
+			if critical.CueFrame != nil && frame.Frame == *critical.CueFrame {
+				cueCount++
+			}
+		}
+		if cueCount != 1 || criticalTime <= normalTime || len(critical.Frames) != 6 {
+			t.Fatal("critical lacks one contact cue and deliberate six-pose timing")
+		}
+	}
 }

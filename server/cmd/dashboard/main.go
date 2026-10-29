@@ -27,6 +27,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/digitaldrywood/kithlands/internal/httpasset"
 )
 
 //go:embed index.html
@@ -59,7 +61,7 @@ type scanResult struct {
 type scanner struct {
 	mu           sync.RWMutex
 	latest       scanResult
-	allowPaths   map[string]struct{}
+	allowPaths   map[string]string // scanned absolute path -> canonical file
 	projectsDir  string
 	openclawDir  string
 	tmpDir       string
@@ -299,7 +301,7 @@ func worktreeLabel(dir string) string {
 
 func (s *scanner) run() {
 	groups := make([]Group, 0, 16)
-	allow := make(map[string]struct{}, 128)
+	allow := make(map[string]string, 128)
 	addGroup := func(g Group) {
 		g.Images = capImages(g.Images, maxImagesPerGroup)
 		if len(g.Images) == 0 {
@@ -309,7 +311,15 @@ func (s *scanner) run() {
 			return
 		}
 		for _, img := range g.Images {
-			allow[img.Path] = struct{}{}
+			abs, err := filepath.Abs(img.Path)
+			if err != nil {
+				continue
+			}
+			canonical, err := filepath.EvalSymlinks(abs)
+			if err != nil {
+				continue
+			}
+			allow[abs], allow[canonical] = canonical, canonical
 		}
 		groups = append(groups, g)
 	}
@@ -355,15 +365,20 @@ func (s *scanner) snapshot() scanResult {
 	return s.latest
 }
 
-// isAllowed returns true only when the exact path was surfaced by the most
-// recent scan. This is strictly narrower than "path lives under an allowed
-// root" — it stops the server from acting as a general PNG file server for
-// every image under /tmp or under any worktree.
+// isAllowed reports a name recorded for a scanned image, including its
+// canonical alias. A containing directory never grants access to other files.
 func (s *scanner) isAllowed(absPath string) bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	_, ok := s.allowPaths[absPath]
 	return ok
+}
+
+func (s *scanner) approvedImagePath(abs, resolved string) (string, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	approved, ok := s.allowPaths[abs]
+	return approved, ok && approved == resolved
 }
 
 func (s *scanner) handleSources(w http.ResponseWriter, r *http.Request) {
@@ -391,11 +406,10 @@ func (s *scanner) handleImage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	// The allow-list stores unresolved scan paths, so we check BOTH: the path
-	// as scanned and the symlink-resolved path. This rejects attempts to
-	// fetch an image that happens to sit under an allowed directory but was
-	// never surfaced by the scanner.
-	if !s.isAllowed(abs) && !s.isAllowed(resolved) {
+	// Match the current resolution to the canonical file recorded during the
+	// scan. An approved name cannot be retargeted to an unscanned image.
+	approved, ok := s.approvedImagePath(abs, resolved)
+	if !ok {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
@@ -404,7 +418,7 @@ func (s *scanner) handleImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")
-	http.ServeFile(w, r, resolved)
+	httpasset.ServeApprovedFile(w, r, filepath.Dir(approved), filepath.Base(approved))
 }
 
 func main() {

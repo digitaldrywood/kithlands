@@ -48,7 +48,7 @@ func main() {
 			enemies := result.Combatants
 
 			// Run combat
-			rounds, wiped, dmgDealt, dmgTaken := simulateFight(party, enemies, &gd.Stats.Combat, rng)
+			rounds, wiped, dmgDealt, dmgTaken := simulateFight(party, enemies, gd, rng)
 			totalRounds += rounds
 			if wiped {
 				totalWipes++
@@ -120,7 +120,7 @@ func makeParty(classIDs []string, level int, gd *gamedata.GameData, rng *rand.Ra
 	return party
 }
 
-func simulateFight(party, enemies []*combat.Combatant, stats *gamedata.CombatConfig, rng *rand.Rand) (rounds int, wiped bool, dmgDealt, dmgTaken int) {
+func simulateFight(party, enemies []*combat.Combatant, gd *gamedata.GameData, rng *rand.Rand) (rounds int, wiped bool, dmgDealt, dmgTaken int) {
 	maxRounds := 50
 
 	for round := 0; round < maxRounds; round++ {
@@ -142,21 +142,13 @@ func simulateFight(party, enemies []*combat.Combatant, stats *gamedata.CombatCon
 			})
 		}
 
-		// Enemies attack random party member
 		for _, e := range enemies {
-			if e.CurrentHP <= 0 {
-				continue
+			if action, ok := combat.PlanEnemyAction(e, party, gd.MonsterByID(e.MonsterID), round, rng); ok {
+				actions = append(actions, action)
 			}
-			target := combat.SelectEnemyTarget(party, rng)
-			if target == nil {
-				break
-			}
-			actions = append(actions, combat.Action{
-				ActorID: e.ID, Kind: combat.ActionAttack, TargetID: target.ID,
-			})
 		}
 
-		results := combat.ResolveTurn(party, enemies, actions, stats, rng)
+		results := combat.ResolveTurn(party, enemies, actions, &gd.Stats.Combat, rng)
 
 		for _, r := range results {
 			actor := findCombatant(party, enemies, r.ActorID)

@@ -179,6 +179,46 @@ function findMenuButtonAt(scene, label, occurrence = 0) {
   return null;
 }
 
+function shopControl(scene, text) {
+  const receiptButton =
+    scene?.victoryReceipt?.dialog.root.querySelector(".victory-continue");
+  if (
+    text === "Continue" &&
+    receiptButton?.isConnected &&
+    receiptButton.getClientRects().length > 0 &&
+    !receiptButton.hidden &&
+    !receiptButton.closest("[inert]")
+  )
+    return receiptButton;
+  const resultControl = [
+    ...(scene?.defeatDialog?.root.querySelectorAll("button") || []),
+  ].find(
+    (node) =>
+      node.dataset.resultLabel === text &&
+      !node.disabled &&
+      node.isConnected &&
+      node.getClientRects().length,
+  );
+  if (resultControl) return resultControl;
+  const wizard = [
+    ...(scene?.wizardDialog?.root.querySelectorAll("button") || []),
+  ].find(
+    (node) =>
+      node.dataset.wizardLabel === text &&
+      !node.disabled &&
+      node.isConnected &&
+      node.getClientRects().length,
+  );
+  if (wizard) return wizard;
+  const controls = [
+    ...(scene?.shopDialog?.root?.querySelectorAll("button") || []),
+  ].filter((node) => !node.disabled && node.getClientRects().length);
+  return (
+    controls.find((node) => node.dataset.shopLabel === text) ||
+    controls.find((node) => node.dataset.shopLabel?.includes(text))
+  );
+}
+
 function findInteractiveText(scene, text) {
   const normalize = (value) =>
     String(value)
@@ -549,6 +589,8 @@ function menuOverlaySummary(scene, kind) {
   return {
     kind,
     layoutMode: state.layout.mode,
+    busy: !!state.busy,
+    cursorLabel: state.rows?.[state.cursor]?.label || null,
     logicalSize: {
       width: scene?.scale?.gameSize?.width || null,
       height: scene?.scale?.gameSize?.height || null,
@@ -1250,10 +1292,18 @@ function visibleBattleFxSnapshot(scene) {
     groundPlaneCount: taggedCount("ground-plane"),
     shadowCount: taggedCount("combat-shadow"),
     actionPanelCount: taggedCount("action-panel"),
-    victoryReportPanelCount: taggedCount("victory-report-panel"),
-    victoryRewardCardCount: taggedCount("victory-reward-card"),
-    victoryPartyRowCount: taggedCount("victory-party-row"),
-    victorySpoilsPanelCount: taggedCount("victory-spoils-panel"),
+    victoryReportPanelCount: scene?.victoryReceipt?.dialog.root.isConnected
+      ? 1
+      : 0,
+    victoryRewardCardCount:
+      scene?.victoryReceipt?.dialog.root.querySelectorAll(".victory-reward")
+        .length || 0,
+    victoryPartyRowCount:
+      scene?.victoryReceipt?.dialog.root.querySelectorAll(".victory-member")
+        .length || 0,
+    victorySpoilsPanelCount:
+      scene?.victoryReceipt?.dialog.root.querySelectorAll(".victory-spoils")
+        .length || 0,
     partyMembers,
     enemyMembers,
     floatingTexts: (scene?.floatingText?.active || [])
@@ -1605,6 +1655,28 @@ export function installDevTestBridge(game) {
 
     visibleTexts(sceneKey) {
       const scene = getScene(game, sceneKey);
+      const root =
+        scene?.shopDialog?.root ||
+        scene?.wizardDialog?.root ||
+        scene?.defeatDialog?.root ||
+        scene?.victoryReceipt?.dialog.root;
+      if (root?.isConnected) {
+        return [
+          ...root.querySelectorAll(
+            "button, h1, h2, h3, p, span, small, strong, dt, dd",
+          ),
+        ]
+          .filter((node) => node.getClientRects().length)
+          .map((node) => ({
+            text: [...node.childNodes]
+              .filter((child) => child.nodeType === Node.TEXT_NODE)
+              .map((child) => child.textContent)
+              .join("")
+              .trim(),
+            interactive: node.tagName === "BUTTON" && !node.disabled,
+          }))
+          .filter((entry) => entry.text);
+      }
       return (scene?.children?.list || [])
         .filter((child) => typeof child?.text === "string")
         .map((child) => ({
@@ -1689,6 +1761,12 @@ export function installDevTestBridge(game) {
       const result = await newGame(gameData);
       if (result?.error) {
         throw new Error(result.error);
+      }
+      // SceneManager.start does not replace other active scenes. Match the
+      // wizard's production handoff so old keyboard handlers/DOM cannot leak
+      // into a custom fixture's menus or a later game.
+      for (const active of game.scene.getScenes(true)) {
+        game.scene.stop(active.scene.key);
       }
       game.scene.start("World", { gameState: result });
       await this.waitForSceneReady("World");
@@ -2184,10 +2262,9 @@ export function installDevTestBridge(game) {
       scene.pendingSpellTargetMode = null;
       scene.closePicker();
       scene.showSpellPicker(slot);
-      const eligible = member.spells.filter(
-        (entry) => (member.mp ?? 0) >= (entry.mp_cost ?? 0),
+      const spellIndex = member.spells.findIndex(
+        (entry) => entry.id === spellID,
       );
-      const spellIndex = eligible.findIndex((entry) => entry.id === spellID);
       const pickerLabels = (scene.pickerOverlay || [])
         .filter((entry) => typeof entry?.text === "string")
         .map((entry) => entry.text);
@@ -2407,6 +2484,11 @@ export function installDevTestBridge(game) {
 
     clickInteractiveText(text, sceneKey) {
       const scene = getScene(game, sceneKey);
+      const native = shopControl(scene, text);
+      if (native) {
+        native.click();
+        return;
+      }
       const target = findInteractiveText(scene, text);
       if (!target) throw new Error(`Interactive text not found: ${text}`);
       clickGameObject(target);
@@ -2414,6 +2496,11 @@ export function installDevTestBridge(game) {
 
     interactiveTextPosition(text, sceneKey) {
       const scene = getScene(game, sceneKey);
+      const native = shopControl(scene, text);
+      if (native) {
+        const rect = native.getBoundingClientRect();
+        return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+      }
       return gameObjectCenter(game, findInteractiveText(scene, text));
     },
 
@@ -3087,6 +3174,28 @@ export function installDevTestBridge(game) {
           : scene.step === 5
             ? "party"
             : "idle";
+      const root = scene.wizardDialog?.root;
+      if (root?.isConnected) {
+        const status = root.querySelector("[role=status]");
+        const rect = status?.getBoundingClientRect();
+        return {
+          phase,
+          visibleStatusLines: status?.textContent ? 1 : 0,
+          loadingPanelBounds:
+            phase === "loading" && rect
+              ? {
+                  left: rect.left,
+                  top: rect.top,
+                  right: rect.right,
+                  bottom: rect.bottom,
+                  width: rect.width,
+                  height: rect.height,
+                }
+              : null,
+          formVisible:
+            phase !== "loading" && !!root.querySelector("input:not(:disabled)"),
+        };
+      }
       // contentGroup is a Phaser Group, not an Array — pull its children list.
       const children = scene.contentGroup?.getChildren?.() || [];
       const visibleStatusLines = children.filter((obj) => {

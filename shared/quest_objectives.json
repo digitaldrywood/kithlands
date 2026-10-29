@@ -106,5 +106,109 @@
         "result": "You explain the damaged crossing and the safe upper path."
       }
     ]
+  },
+  "Q04": {
+    "name": "Bandit Clearing",
+    "item": "cleared trail report",
+    "description": "Bandits are blocking the trail approach to {target}. Defeat them there, then return to {giver} and report that the route is safe.",
+    "completion": "{giver} records the cleared trail. Travelers can use the approach to {target} again.",
+    "encounter": {
+      "monsters": [
+        "bandit"
+      ],
+      "full_party_monsters": [
+        "bandit",
+        "goblin"
+      ],
+      "level": 1,
+      "formation": "normal",
+      "arrival": "Bandits block the trail approach. Clear the route before reporting back.",
+      "flee": "You retreat from the blocked trail. The bandits remain; return when you are ready.",
+      "defeat": "A passing patrol brings your party to safety. Recover and return to clear the blocked trail."
+    },
+    "steps": [
+      {
+        "type": "goto",
+        "at": "target",
+        "text": "Approach the blocked trail near {target}.",
+        "prompt": "",
+        "result": ""
+      },
+      {
+        "type": "kill",
+        "at": "target",
+        "text": "Defeat the bandits blocking the approach to {target}.",
+        "prompt": "Clear the blocked trail",
+        "result": "The bandits retreat. The trail approach is safe."
+      },
+      {
+        "type": "goto",
+        "at": "giver",
+        "text": "Return to {giver} with news of the cleared trail.",
+        "prompt": "",
+        "result": ""
+      },
+      {
+        "type": "report",
+        "at": "giver",
+        "text": "Report the cleared trail to the keeper at {giver}.",
+        "prompt": "Report cleared trail",
+        "result": "You report the victory and the safe trail approach."
+      }
+    ]
+  },
+  "Q05": {
+    "name": "Lost Traveler",
+    "item": "lost traveler",
+    "description": "Ask the keeper at {giver} where the lost traveler was last seen. Find them at {target}, then escort them back to {giver}. They take cover during battles; keep your party standing.",
+    "completion": "The traveler is safely reunited with the keeper at {giver}.",
+    "companion": {
+      "sprite": "wayfarer",
+      "defeat": "The traveler takes cover and returns to {target} while your party regroups. Find them there to resume the escort; no quest reward has been paid."
+    },
+    "steps": [
+      {
+        "type": "goto",
+        "at": "giver",
+        "text": "Ask the keeper at {giver} about the missing traveler.",
+        "prompt": "",
+        "result": ""
+      },
+      {
+        "type": "learn",
+        "at": "giver",
+        "text": "Learn where the traveler was last seen.",
+        "prompt": "Ask about the lost traveler",
+        "result": "The keeper last saw the traveler sheltering at {target}."
+      },
+      {
+        "type": "goto",
+        "at": "target",
+        "text": "Find the lost traveler at {target}.",
+        "prompt": "",
+        "result": ""
+      },
+      {
+        "type": "escort",
+        "at": "target",
+        "text": "Offer to escort the traveler back to {giver}.",
+        "prompt": "Escort the traveler home",
+        "result": "The traveler joins you. Return to {giver}; they will take cover during battles. If your party falls, look for them again at {target}."
+      },
+      {
+        "type": "goto",
+        "at": "giver",
+        "text": "Escort the traveler back to {giver}.",
+        "prompt": "",
+        "result": ""
+      },
+      {
+        "type": "report",
+        "at": "giver",
+        "text": "Reunite the traveler with the keeper at {giver}.",
+        "prompt": "Reunite the traveler",
+        "result": "The keeper welcomes the traveler home and thanks your party."
+      }
+    ]
   }
 }

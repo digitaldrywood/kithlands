@@ -1,0 +1,67 @@
+.quest-milestone {
+  position: fixed;
+  z-index: 1000;
+  box-sizing: border-box;
+  padding: 18px 42px 18px 20px;
+  border: 1px solid #c9b589;
+  border-left: 4px solid #c9b589;
+  border-radius: 12px;
+  background: #142331f5;
+  color: #f0f4f8;
+  box-shadow: 0 8px 30px #0006;
+  font:
+    16px/1.4 Arial,
+    sans-serif;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 400ms ease;
+}
+.quest-milestone.is-leaving {
+  opacity: 0;
+}
+.quest-milestone p {
+  margin: 0;
+}
+.quest-milestone-heading {
+  color: #cfbc8c;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.quest-milestone-name {
+  margin: 4px 0 8px;
+  font-size: 19px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.quest-milestone-reward {
+  color: #f2d995;
+}
+.quest-milestone-level {
+  color: #a5e4c5;
+  padding-top: 3px;
+}
+.quest-milestone-close {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  color: #c4d2df;
+  font:
+    24px Arial,
+    sans-serif;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.quest-milestone-close:focus-visible {
+  outline: 2px solid #f2d995;
+  outline-offset: -5px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .quest-milestone {
+    transition: none;
+  }
+}

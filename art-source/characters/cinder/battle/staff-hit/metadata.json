@@ -1,0 +1,28 @@
+{
+  "status": "approved_runtime",
+  "generated_on": "2026-10-26",
+  "generator": "OpenAI built-in image_gen (model identifier not returned)",
+  "identity_reference": "art-source/characters/cinder/battle/staff-cast/frame-00.png",
+  "guide_paths": [
+    "../../guides/staff-hit-flinch.svg",
+    "../../guides/staff-hit-recover.svg"
+  ],
+  "generation_outputs": [
+    "exec-29f202b9-62a5-425a-a085-3c98177b4e6e.png",
+    "exec-cd219af3-a21d-45b8-9cda-5fc0bab84f14.png"
+  ],
+  "prompts": {
+    "flinch": "Use case: identity-preserve original game sprite animation. Image 1 is locked original Kithlands Cinder identity and pixel-art rendering; image 2 is a skeleton pose guide ONLY. Produce ONE body-only full-body Cinder HIT FLINCH frame, three-quarter facing screen-left. Same small shadow-faced spellcaster, crooked deep-violet pointed hat with bent tip, exactly TWO bright CYAN eyes inside completely BLACK face, no human features, gold-edged layered purple robes, purple cloak, red-violet chest clasp, dark gloves/boots. Follow pose: grounded robe hem and feet unchanged, upper torso recoils subtly BACK toward screen-right from an incoming left-side hit, shoulders compact and head ducked, near screen-left free glove raised defensively near hat brim; far screen-right staff-gripping glove remains closed down near hip in the original grip position. One controlled flinch, not casting, no attack gesture, no leap, no rigid rotation of the whole figure. Preserve original slim proportions, chunky crisp pixel shading, palette, camera and scale. NO staff/weapon, magic, effects, damage, blood, shadow, ground, scenery, text or UI. The staff is a separately rendered runtime attachment. Full body centered with clear margins, transparent alpha. One pose only, no sheet or grid.",
+    "recover": "Use case: identity-preserve original game sprite animation. Image 1 is locked original Kithlands Cinder identity/rendering. Image 2 is pose skeleton guide ONLY. Image 3 is preceding HIT FLINCH frame, for continuity only. Produce ONE body-only full-body Cinder HIT RECOVERY frame between that flinch and original guard, three-quarter facing screen-left. Same shadow-faced caster with crooked deep-violet bent-tip hat, exactly TWO small CYAN eyes inside BLACK face, no human features, gold-edged layered purple robes/cloak, red-violet chest clasp, dark gloves/boots. Torso settles upright over planted feet, shoulders still slightly hunched after impact, near screen-left glove lowered from hat brim toward waist, far screen-right staff-gripping glove closed at original hip position. No dramatic arm extension, not casting, no leap, no whole-body tilt. Robe hem and boots keep original ground baseline. Match original slim proportions, palette, hat/robe silhouette, crisp chunky pixel shading and camera elevation. NO staff/weapon, magic, glow, particles, blood, damage, text, ground, shadow, scenery or UI. Staff is separate runtime attachment. Full body centered with margins, transparent alpha. One pose only, no sheet/grid."
+  },
+  "frame_contract": {
+    "frame_size": [192, 192],
+    "atlas_size": [576, 192],
+    "order": ["guard", "flinch", "recover"],
+    "container_anchor": [96, 184],
+    "body_baseline": 182,
+    "weapon_baked_in": false
+  },
+  "normalization": "Retain generated alpha, crop alpha>8 occupied bbox, uniformly nearest-neighbor scale to 167px high matching original guard occupancy; center in 192px cell, bottom occupied y182. Guard source unchanged.",
+  "notes": "Source and normalized frames, native surviving-hit desktop/phone/reduced-motion traces and staff grip close-up inspected. Accepted cast pixels untouched. Raw copies retained at client/tmp/cinder-hit-candidate-1793063200. Acceptance is surviving Cinder hit reaction only; KO and remaining non-cast body actions stay open."
+}
