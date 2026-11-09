@@ -149,6 +149,8 @@ The current GitHub Actions CI runs:
 
 See [docs/CODEX_VALIDATION.md](docs/CODEX_VALIDATION.md).
 
+Never add `actions/upload-artifact` (or any other GitHub Actions artifact or cache upload) to a workflow. Artifact storage counts against the org's Actions quota and has blocked all Actions for the org more than once. Keep screenshots, videos, logs, and other proof evidence local or in `docs/proofs/`.
+
 ## 8. Proof Contract
 
 Every agent status update should report:
